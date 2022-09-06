@@ -1,105 +1,175 @@
-// package k8s is a Kubernetes implementation of the korrel8 interfaces.
+// package k8s is a Kubernetes implementation of the korrel8 interfaces
 package k8s
 
 import (
 	"context"
 	"fmt"
+	"net/url"
 	"reflect"
-	"strings"
 
 	"github.com/alanconway/korrel8/pkg/korrel8"
+	"k8s.io/apimachinery/pkg/fields"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/types"
 
-	"k8s.io/client-go/kubernetes/scheme"
+	"regexp"
+
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-const Domain = "k8s"
+// Domain for Kubernetes resources
+const Domain = "k8s.resource"
 
-// Class implements korrel8.Class as a k8s GroupVersionKind
-type Class schema.GroupVersionKind
+// TODO the Class implementation assumes all objects are pointers to the generated API struct.
+// We could use scheme & GVK comparisons to generalize to untyped representations as well.
 
-var _ korrel8.Class = Class{}
+// Class identifies a k8s resource kind.
+type Class struct{ reflect.Type }
 
-func (c Class) String() string { return schema.GroupVersionKind(c).String() }
+func (c Class) Contains(v korrel8.Object) bool {
+	o, ok := v.(runtime.Object)
+	return ok && c == ClassOf(o)
+}
+func (c Class) Domain() korrel8.Domain { return Domain }
 
-func (c Class) Contains(x any) bool {
-	o, _ := x.(runtime.Object)
-	gvks, _, _ := scheme.Scheme.ObjectKinds(o)
-	for _, gvk := range gvks {
-		if gvk == schema.GroupVersionKind(c) {
-			return true
+// ClassOf returns the Class of o.
+// o must be a pointer to a typed API resource struct.
+func ClassOf(o runtime.Object) Class { return Class{reflect.TypeOf(o).Elem()} }
+
+func isComparable[T comparable]() bool { return true }
+
+var _ korrel8.Class = Class{} // Implements interface.
+
+// Store implements the korrel8.Store interface over a k8s API client.
+type Store struct{ c client.Client }
+
+// NewStore creates a new store
+func NewStore(c client.Client) (*Store, error) { return &Store{c: c}, nil }
+
+// Execute a query in the form of a k8s REST URI.
+// Cancel if context is canceled.
+func (s *Store) Execute(ctx context.Context, query korrel8.Query) (result []any, err error) {
+	defer func() {
+		if err != nil {
+			err = fmt.Errorf("%w: executing %v query %q", err, Domain, query)
 		}
-	}
-	return false
-}
-
-func ClassOf(o runtime.Object) (Class, error) {
-	gvks, _, err := scheme.Scheme.ObjectKinds(o)
-	if err != nil || len(gvks) == 0 {
-		return Class{}, fmt.Errorf("not a k8s object: %T(%#v)", o, o)
-	}
-	return Class(gvks[0]), nil
-}
-
-func Decode(data []byte) (runtime.Object, error) {
-	o, _, err := scheme.Codecs.UniversalDeserializer().Decode(data, nil, nil)
-	return o, err
-}
-
-func Encode(o runtime.Object) ([]byte, error) {
-	class, err := ClassOf(o)
+	}()
+	u, err := url.Parse(string(query))
 	if err != nil {
 		return nil, err
 	}
-	gvk := schema.GroupVersionKind(class)
-	cf := scheme.Codecs
-	info, _ := runtime.SerializerInfoForMediaType(cf.SupportedMediaTypes(), runtime.ContentTypeJSON)
-	encoder := info.Serializer
-	codec := cf.CodecForVersions(encoder, nil, schema.GroupVersion{Group: gvk.Group, Version: gvk.Version}, nil)
-	return runtime.Encode(codec, o)
+	gvk, nsName, err := s.parseAPIPath(u)
+	if err != nil {
+		return nil, err
+	}
+	if nsName.Name != "" { // Request for single object.
+		return s.getObject(ctx, gvk, nsName)
+	} else {
+		return s.getList(ctx, gvk, nsName.Namespace, u.Query())
+	}
 }
 
-type Store struct{ kc client.Client }
-
-func NewStore(kc client.Client) Store { return Store{kc: kc} }
-
-// Execute accepts several types of query string.
-// FIXME initially just takes Kind.
-func (s Store) Execute(query korrel8.Query) (result []any, err error) {
-	list := listOf(findKind(string(query)))
-	if list == nil {
-		return nil, fmt.Errorf("invalid %v query: %v", Domain, query)
+// parsing a REST URI into components then using client.Client to recreate the REST query.
+//
+// FIXME revisit: this is weirdly indirect - parse an API path to make a Client call which re-creates the API path.
+func (s *Store) parseAPIPath(u *url.URL) (gvk schema.GroupVersionKind, nsName types.NamespacedName, err error) {
+	path := k8sPathRegex.FindStringSubmatch(u.Path)
+	if len(path) != pCount {
+		return gvk, nsName, fmt.Errorf("invalid URI")
 	}
-	if err := s.kc.List(context.Background(), list); err != nil {
+	nsName.Namespace, nsName.Name = path[pNamespace], path[pName]
+	gvr := schema.GroupVersionResource{Group: path[pGroup], Version: path[pVersion], Resource: path[pResource]}
+	gvk, err = s.c.RESTMapper().KindFor(gvr)
+	return gvk, nsName, err
+}
+
+func (s *Store) getObject(ctx context.Context, gvk schema.GroupVersionKind, nsName types.NamespacedName) ([]any, error) {
+	scheme := s.c.Scheme()
+	o, err := scheme.New(gvk)
+	if err != nil {
+		return nil, err
+	}
+	co, _ := o.(client.Object)
+	if co == nil {
+		return nil, fmt.Errorf("invalid client.Object: %T", o)
+	}
+	err = s.c.Get(ctx, nsName, co)
+	if err != nil {
+		return nil, err
+	}
+	return []any{co}, nil
+}
+
+func (s *Store) parseAPIQuery(q url.Values) (opts []client.ListOption, err error) {
+	if s := q.Get("labelSelector"); s != "" {
+		selector, err := labels.Parse(s)
+		if err != nil {
+			return nil, err
+		}
+		opts = append(opts, client.MatchingLabelsSelector{Selector: selector})
+	}
+	if s := q.Get("fieldSelector"); s != "" {
+		selector, err := fields.ParseSelector(s)
+		if err != nil {
+			return nil, err
+		}
+		opts = append(opts, client.MatchingFieldsSelector{Selector: selector})
+	}
+	return opts, nil
+}
+
+func (s *Store) getList(ctx context.Context, gvk schema.GroupVersionKind, namespace string, query url.Values) ([]any, error) {
+	gvk.Kind = gvk.Kind + "List"
+	o, err := s.c.Scheme().New(gvk)
+	if err != nil {
+		return nil, err
+	}
+	list, _ := o.(client.ObjectList)
+	if list == nil {
+		return nil, fmt.Errorf("invalid list object %T", o)
+	}
+	opts, err := s.parseAPIQuery(query)
+	if err != nil {
+		return nil, err
+	}
+	if namespace != "" {
+		opts = append(opts, client.InNamespace(namespace))
+	}
+	if err := s.c.List(ctx, list, opts...); err != nil { // FIXME options
 		return nil, err
 	}
 	defer func() { // Handle reflect panics.
 		if r := recover(); r != nil && err == nil {
-			err = fmt.Errorf("cannot execute query %v: %v", query, r)
+			err = fmt.Errorf("invalid list object: %T", list)
 		}
 	}()
 	items := reflect.ValueOf(list).Elem().FieldByName("Items")
-	result = []any{}
+	var result []any
 	for i := 0; i < items.Len(); i++ {
-		result = append(result, items.Index(i).Interface())
+		result = append(result, items.Index(i).Addr().Interface())
 	}
 	return result, nil
 }
 
-func listOf(gvk schema.GroupVersionKind) client.ObjectList {
-	gvk.Kind = gvk.Kind + "List"
-	listType := scheme.Scheme.KnownTypes(gvk.GroupVersion())[gvk.Kind]
-	list, _ := reflect.New(listType).Interface().(client.ObjectList)
-	return list
-}
+// Parse a K8s API path into: group, version, namespace, resourcetype, name.
+// See: https://kubernetes.io/docs/reference/using-api/api-concepts/
+var k8sPathRegex = regexp.MustCompile(`^(?:(?:/apis/([^/]+)/)|(?:/api/))([^/]+)(?:/namespaces/([^/]+))?/([^/]+)(?:/([^/]+))?`)
 
-func findKind(kind string) schema.GroupVersionKind {
-	for gvk := range scheme.Scheme.AllKnownTypes() {
-		if strings.EqualFold(gvk.Kind, kind) {
-			return gvk
-		}
+// Indices for match results from k8sPathRegex
+const (
+	pGroup = iota + 1
+	pVersion
+	pNamespace
+	pResource
+	pName
+	pCount
+)
+
+func must[T any](v T, err error) T {
+	if err != nil {
+		panic(err)
 	}
-	return schema.GroupVersionKind{}
+	return v
 }

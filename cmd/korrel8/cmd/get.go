@@ -5,6 +5,7 @@ Copyright © 2022 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -17,15 +18,14 @@ import (
 
 // getCmd represents the get command
 var getCmd = &cobra.Command{
-	Use:   "get domain query",
-	Short: "Get executes a query and prints the results",
-	Long:  `FIXME`,
+	Use:   "get DOMAIN QUERY",
+	Short: "Execute QUERY in the default store for DOMAIN and print the results",
 	Args:  cobra.ExactArgs(2),
 	Run: func(cmd *cobra.Command, args []string) {
 		domain, query := korrel8.Domain(args[0]), korrel8.Query(args[1])
 		store, err := store.Get(domain)
 		exitErr(err)
-		result, err := store.Execute(query)
+		result, err := store.Execute(context.Background(), query)
 		exitErr(err)
 		switch *output {
 		case "json":

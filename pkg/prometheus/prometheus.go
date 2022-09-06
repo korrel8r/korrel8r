@@ -1,6 +1,8 @@
+// package prometheus Work In Progress
 package prometheus
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 
@@ -24,7 +26,7 @@ func NewAlertStore(host string, hc *http.Client) *AlertStore {
 	return &AlertStore{Alertmanager: client.New(transport, strfmt.Default)}
 }
 
-func (s AlertStore) Execute(query korrel8.Query) ([]any, error) {
+func (s AlertStore) Execute(_ context.Context, query korrel8.Query) ([]any, error) {
 	// FIXME need to figure out the class hierarchy for metrics & alerts.
 	// This is just a placeholder that returns alerts.
 	switch query {

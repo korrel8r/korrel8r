@@ -10,27 +10,24 @@ import (
 
 // correlateCmd represents the correlate command
 var correlateCmd = &cobra.Command{
-	Use:   "correlate context-file store-type",
-	Short: "Given a file of context objects, return a query for correlated objects",
-	Long:  `If context-file is not given, use stdin`,
+	Use:   "correlate [start file] [store type]",
+	Short: "Given a file of starting objects, return a query for correlated objects. '-' means use stdin",
 	Args:  cobra.ExactArgs(2),
 	Run: func(cmd *cobra.Command, args []string) {
-		f, err := open(contextFile)
+		f, err := open(startFile)
 		exitErr(err)
 		defer f.Close()
-		// FIXME decode objects loop, add translators later...
+		// FIXME implement
 	},
 }
 
-// FIXME take objects from other sources, e.g. oc output.
-
 var (
-	contextFile, storeType string
+	startFile, storeType string
 )
 
 func init() {
 	rootCmd.AddCommand(correlateCmd)
-	correlateCmd.Flags().StringVar(&contextFile, "context", "", "file containing context objects")
+	correlateCmd.Flags().StringVar(&startFile, "start", "", "file containing start objects")
 	correlateCmd.Flags().StringVar(&storeType, "store", "", "store type for returned query")
 	for _, f := range []string{"context", "store"} {
 		correlateCmd.MarkFlagRequired(f)
