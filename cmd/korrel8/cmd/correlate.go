@@ -14,10 +14,9 @@ var correlateCmd = &cobra.Command{
 	Short: "Given a file of starting objects, return a query for correlated objects. '-' means use stdin",
 	Args:  cobra.ExactArgs(2),
 	Run: func(cmd *cobra.Command, args []string) {
-		f, err := open(startFile)
-		exitErr(err)
+		f := open(startFile)
 		defer f.Close()
-		// FIXME implement
+		panic("FIXME")
 	},
 }
 

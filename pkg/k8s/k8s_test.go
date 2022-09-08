@@ -5,7 +5,6 @@ import (
 	"net/url"
 	"testing"
 
-	"github.com/alanconway/korrel8/pkg/korrel8"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
@@ -21,8 +20,8 @@ import (
 
 func TestClassOf(t *testing.T) {
 	c := ClassOf(&corev1.Pod{})
-	assert.True(t, c.Contains(&corev1.Pod{TypeMeta: metav1.TypeMeta{Kind: "Pod", APIVersion: "v1"}}))
-	assert.False(t, c.Contains(&corev1.Service{}))
+	assert.Equal(t, c, Object{&corev1.Pod{TypeMeta: metav1.TypeMeta{Kind: "Pod", APIVersion: "v1"}}}.Class())
+	assert.NotEqual(t, c, Object{&corev1.Service{}}.Class())
 }
 
 func TestParseURIRegexp(t *testing.T) {
@@ -41,8 +40,6 @@ func TestParseURIRegexp(t *testing.T) {
 		})
 	}
 }
-
-// FIXME need https://pkg.go.dev/sigs.k8s.io/controller-runtime/tools/setup-envtest#section-readme
 
 func TestStore_ParseURI(t *testing.T) {
 	apiextensionsv1.AddToScheme(scheme.Scheme)
@@ -100,11 +97,11 @@ func TestStore_Execute(t *testing.T) {
 		//		{"/api/v1/pods?fieldSelector=metadata.name%3D", []types.NamespacedName{{"y", "wilma"}}},
 	} {
 		t.Run(x.query, func(t *testing.T) {
-			result, err := store.Execute(context.Background(), korrel8.Query(x.query))
+			result, err := store.Execute(context.Background(), x.query)
 			require.NoError(t, err)
 			var got []types.NamespacedName
 			for _, v := range result {
-				o := v.(*v1.Pod)
+				o := v.(Object).Object.(*v1.Pod)
 				got = append(got, types.NamespacedName{Namespace: o.Namespace, Name: o.Name})
 			}
 			assert.ElementsMatch(t, x.want, got)

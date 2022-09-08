@@ -10,7 +10,6 @@ import (
 	"github.com/alanconway/korrel8/pkg/korrel8"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 
@@ -25,22 +24,29 @@ const Domain = "k8s.resource"
 // TODO the Class implementation assumes all objects are pointers to the generated API struct.
 // We could use scheme & GVK comparisons to generalize to untyped representations as well.
 
-// Class identifies a k8s resource kind.
+// Class ses the Go API struct type to identify a kind of resource.
 type Class struct{ reflect.Type }
 
-func (c Class) Contains(v korrel8.Object) bool {
-	o, ok := v.(runtime.Object)
-	return ok && c == ClassOf(o)
-}
+// ClassOf returns the Class of o, which must be a pointer to a typed API resource struct.
+func ClassOf(o client.Object) Class { return Class{reflect.TypeOf(o).Elem()} }
+
 func (c Class) Domain() korrel8.Domain { return Domain }
 
-// ClassOf returns the Class of o.
-// o must be a pointer to a typed API resource struct.
-func ClassOf(o runtime.Object) Class { return Class{reflect.TypeOf(o).Elem()} }
-
-func isComparable[T comparable]() bool { return true }
-
 var _ korrel8.Class = Class{} // Implements interface.
+
+type Object struct{ client.Object }
+
+func (o Object) Class() korrel8.Class { return ClassOf(o.Object) }
+func (o Object) TemplateData() any    { return o.Object }
+
+type Identifier struct {
+	Name, Namespace string
+	Class           korrel8.Class
+}
+
+func (o Object) Identifier() korrel8.Identifier {
+	return Identifier{Name: o.GetName(), Namespace: o.GetNamespace(), Class: o.Class()}
+}
 
 // Store implements the korrel8.Store interface over a k8s API client.
 type Store struct{ c client.Client }
@@ -50,7 +56,7 @@ func NewStore(c client.Client) (*Store, error) { return &Store{c: c}, nil }
 
 // Execute a query in the form of a k8s REST URI.
 // Cancel if context is canceled.
-func (s *Store) Execute(ctx context.Context, query korrel8.Query) (result []any, err error) {
+func (s *Store) Execute(ctx context.Context, query string) (result []korrel8.Object, err error) {
 	defer func() {
 		if err != nil {
 			err = fmt.Errorf("%w: executing %v query %q", err, Domain, query)
@@ -74,6 +80,8 @@ func (s *Store) Execute(ctx context.Context, query korrel8.Query) (result []any,
 // parsing a REST URI into components then using client.Client to recreate the REST query.
 //
 // FIXME revisit: this is weirdly indirect - parse an API path to make a Client call which re-creates the API path.
+// Should be able to use a REST client directly, but client.Client does REST client creation & caching
+// and manages schema and RESTMapper stuff which I'm not sure I understand yet.
 func (s *Store) parseAPIPath(u *url.URL) (gvk schema.GroupVersionKind, nsName types.NamespacedName, err error) {
 	path := k8sPathRegex.FindStringSubmatch(u.Path)
 	if len(path) != pCount {
@@ -85,7 +93,7 @@ func (s *Store) parseAPIPath(u *url.URL) (gvk schema.GroupVersionKind, nsName ty
 	return gvk, nsName, err
 }
 
-func (s *Store) getObject(ctx context.Context, gvk schema.GroupVersionKind, nsName types.NamespacedName) ([]any, error) {
+func (s *Store) getObject(ctx context.Context, gvk schema.GroupVersionKind, nsName types.NamespacedName) ([]korrel8.Object, error) {
 	scheme := s.c.Scheme()
 	o, err := scheme.New(gvk)
 	if err != nil {
@@ -99,7 +107,7 @@ func (s *Store) getObject(ctx context.Context, gvk schema.GroupVersionKind, nsNa
 	if err != nil {
 		return nil, err
 	}
-	return []any{co}, nil
+	return []korrel8.Object{Object{co}}, nil
 }
 
 func (s *Store) parseAPIQuery(q url.Values) (opts []client.ListOption, err error) {
@@ -120,7 +128,7 @@ func (s *Store) parseAPIQuery(q url.Values) (opts []client.ListOption, err error
 	return opts, nil
 }
 
-func (s *Store) getList(ctx context.Context, gvk schema.GroupVersionKind, namespace string, query url.Values) ([]any, error) {
+func (s *Store) getList(ctx context.Context, gvk schema.GroupVersionKind, namespace string, query url.Values) ([]korrel8.Object, error) {
 	gvk.Kind = gvk.Kind + "List"
 	o, err := s.c.Scheme().New(gvk)
 	if err != nil {
@@ -146,9 +154,9 @@ func (s *Store) getList(ctx context.Context, gvk schema.GroupVersionKind, namesp
 		}
 	}()
 	items := reflect.ValueOf(list).Elem().FieldByName("Items")
-	var result []any
+	var result []korrel8.Object
 	for i := 0; i < items.Len(); i++ {
-		result = append(result, items.Index(i).Addr().Interface())
+		result = append(result, Object{items.Index(i).Addr().Interface().(client.Object)})
 	}
 	return result, nil
 }

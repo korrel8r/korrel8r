@@ -5,11 +5,13 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"reflect"
 
 	"github.com/alanconway/korrel8/pkg/korrel8"
 	openapiclient "github.com/go-openapi/runtime/client"
 	"github.com/go-openapi/strfmt"
 	"github.com/prometheus/alertmanager/api/v2/client"
+	"github.com/prometheus/alertmanager/api/v2/models"
 )
 
 // Domain is the prometheus domain name.
@@ -26,18 +28,27 @@ func NewAlertStore(host string, hc *http.Client) *AlertStore {
 	return &AlertStore{Alertmanager: client.New(transport, strfmt.Default)}
 }
 
-func (s AlertStore) Execute(_ context.Context, query korrel8.Query) ([]any, error) {
-	// FIXME need to figure out the class hierarchy for metrics & alerts.
-	// This is just a placeholder that returns alerts.
+type Class struct{ reflect.Type }
+
+func (c Class) Domain() korrel8.Domain { return Domain }
+func ClassOf(o any) korrel8.Class      { return Class{reflect.TypeOf(o).Elem()} }
+
+type AlertObject struct{ *models.GettableAlert }
+
+func (o AlertObject) Identifier() korrel8.Identifier { return o.Labels }
+func (o AlertObject) Class() korrel8.Class           { return Class{reflect.TypeOf(o)} }
+
+func (s AlertStore) Execute(_ context.Context, query string) ([]korrel8.Object, error) {
+	// TODO this just handles Alerts, there are other prometheus API types we need to deal with.
 	switch query {
 	case "alert":
 		resp, err := s.Alert.GetAlerts(nil)
 		if err != nil {
 			return nil, err
 		}
-		var result []any
+		var result []korrel8.Object
 		for _, a := range resp.Payload {
-			result = append(result, a)
+			result = append(result, AlertObject{a})
 		}
 		return result, nil
 	default:

@@ -31,3 +31,7 @@ Correlation rules that cross domains manage the translation of different label v
 Packages:
 - [korrel8](https://pkg.go.dev/github.com/alanconway/korrel8/pkg/korrel8) Generic interfaces and algorithms. Start here.
 - [other packages](https://pkg.go.dev/github.com/alanconway/korrel8/pkg) Domain-specific implementations for the generic interfaces.
+
+## TODO
+
+- Automate discovery & generation of rules for known resource patterns?

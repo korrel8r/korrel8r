@@ -20,91 +20,82 @@
 //
 package korrel8
 
-import "context"
+import (
+	"context"
+)
 
 // Object represents a signal instance.
-//
-// Domain-specific packages manipulate their own object types.
-// Must support json.Marshal and Unmarshal.
-type Object = any
+type Object interface {
+	Identifier() Identifier // Identifies this object instance.
+	Class() Class           // Class of the object.
+}
 
 // Domain names a set of objects based on the same technology.
 type Domain string
+
+// Identifier is a comparable value that identifies an "instance" of a signal.
+//
+// For example a namespace+name for a k8s resource, or a uri+labels for a metric time series.
+type Identifier any
 
 // Class identifies a subset of objects from the same domain with the same schema.
 // For example Pod is a class in the k8s domain.
 //
 // Class implementations must be comparable.
 type Class interface {
-	Contains(Object) bool // Contains returns true if the object belongs to the class.
+	Domain() Domain // Domain of this class.
 }
 
 // Rule encapsulates logic to find correlated goal objects from a start object.
-// Rule.Follow() returns a Query to be executed on a Store of objects in the Goal domain.
-// For example a k8s GET URL or a PromQL query string.
 //
-// Rule implementations must be comparable.
 type Rule interface {
-	Start() Class                 // Class of start object
-	Goal() Class                  // Class of desired result object(s)
-	Follow(Object) (Query, error) // Follow the rule from the start object
+	Start() Class                  // Class of start object
+	Goal() Class                   // Class of desired result object(s)
+	Follow(Object) (Result, error) // Follow the rule from the start object.
 }
 
-// FIXME association between rules and stores, need to provide Domain from Class.
-
-// Query is a query string, format depends on the store to be queried.
-type Query string
+// Result holds a collection of queries for a single Domain.
+// Query string format depends on the domain to be queried.
+// For example a k8s GET URL or a PromQL query string.
+type Result struct {
+	Domain  Domain
+	Queries []string
+}
 
 // Store is a source of signals belonging to a single domain.
 type Store interface {
 	// Execute a query, return the resulting objects.
-	Execute(context.Context, Query) ([]Object, error)
+	Execute(ctx context.Context, query string) ([]Object, error)
 }
 
 // Rules holds a collection of Rules forming a start/goal directed graph.
 type Rules struct {
-	rules       map[Rule]struct{}
-	rulesByGoal map[Class][]Rule
+	rules       []Rule
+	rulesByGoal map[Class][]int // Index into rules so we have a comparable rule id.
 }
 
-// NewRuleGraph creates new RuleGraph containing some rules.
-func NewRuleGraph(rules ...Rule) *Rules {
-	c := &Rules{rules: map[Rule]struct{}{}, rulesByGoal: map[Class][]Rule{}}
+// NewRules creates new RuleGraph containing some rules.
+func NewRules(rules ...Rule) *Rules {
+	c := &Rules{rulesByGoal: map[Class][]int{}}
 	c.Add(rules...)
 	return c
 }
 
 // Add new rules.
-// Idempotent, it is safe to add the same rule twice.
 func (c *Rules) Add(rules ...Rule) {
 	for _, r := range rules {
-		if _, ok := c.rules[r]; !ok {
-			c.rules[r] = struct{}{}
-			c.rulesByGoal[r.Goal()] = append(c.rulesByGoal[r.Goal()], r)
-		}
+		c.rules = append(c.rules, r)
+		i := len(c.rules) - 1 // Rule index
+		c.rulesByGoal[r.Goal()] = append(c.rulesByGoal[r.Goal()], i)
 	}
-}
-
-// FIXME
-// RulesWithGoal returns a list of rules with the given goal.
-func (c *Rules) RulesWithGoal(goal Class) []Rule { return c.rulesByGoal[goal] }
-
-// RulesWithStartAndGoal returns a list of rules with the given start and goal.
-func (c *Rules) RulesWithStartAndGoal(start, goal Class) []Rule {
-	var result []Rule
-	for _, r := range c.RulesWithGoal(goal) {
-		if r.Start() == start {
-			result = append(result, r)
-		}
-	}
-	return result
 }
 
 // Path is a list of rules where the Goal() of each rule is the Start() of the next.
 type Path []Rule
 
-func (p Path) Execute() {
-	// FIXME execute a rule chain, need mapping from Goal classes to stores.
+// Follow rules in a path, using the stores map to determine the store for each Domain.
+// Returns a result that may have more than one query.
+func (p Path) Follow(stores map[Domain]Store) Result {
 	panic("FIXME")
 }
 
@@ -112,12 +103,12 @@ func (p Path) Execute() {
 //
 // Paths be called in multiple goroutines concurrently.
 // It cannot be called concurrently with Add.
-func (g *Rules) Paths(start, goal Class) []Path {
+func (rs *Rules) Paths(start, goal Class) []Path {
 	// Rules form a directed cyclic graph, with Class nodes and Rule edges.
 	// Work backwards from the goal to find chains of rules from start.
 	state := pathSearch{
-		rulesByGoal: g.rulesByGoal,
-		visited:     map[Rule]bool{},
+		Rules:   rs,
+		visited: map[int]bool{},
 	}
 	state.dfs(start, goal)
 	return state.paths
@@ -125,10 +116,10 @@ func (g *Rules) Paths(start, goal Class) []Path {
 
 // pathSearch holds state for a single path search
 type pathSearch struct {
-	rulesByGoal map[Class][]Rule
-	visited     map[Rule]bool
-	current     Path
-	paths       []Path
+	*Rules
+	visited map[int]bool
+	current Path
+	paths   []Path
 }
 
 // dfs does depth first search for all simple edge paths treating rules as directed links from goal to start.
@@ -136,20 +127,21 @@ type pathSearch struct {
 // TODO efficiency - better algorithms?
 // TODO shortest paths? Weighted links or nodes?
 func (ps *pathSearch) dfs(start, goal Class) {
-	for _, r := range ps.rulesByGoal[goal] {
-		if ps.visited[r] { // Already used this rule.
+	for _, i := range ps.rulesByGoal[goal] {
+		if ps.visited[i] { // Already used this rule.
 			continue
 		}
-		ps.visited[r] = true
+		r := ps.rules[i]
+		ps.visited[i] = true
 		ps.current = append([]Rule{r}, ps.current...) // Add to chain
 		if r.Start() == start {                       // Path has arrived at the start
 			ps.paths = append(ps.paths, ps.current)
-			ps.visited[r] = false       // Allow r to be re-used in a different chain.
+			ps.visited[i] = false       // Allow r to be re-used in a different chain.
 			ps.current = ps.current[1:] // Pop and continue search.
 			continue
 		}
 		ps.dfs(start, r.Start()) // Recursive search from r.Start
 		ps.current = ps.current[1:]
-		ps.visited[r] = false // Allow r to be re-used in different path
+		ps.visited[i] = false // Allow r to be re-used in different path
 	}
 }

@@ -7,12 +7,22 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
-	v1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+func findRule(start, goal korrel8.Class) korrel8.Rule {
+	for _, r := range Rules {
+		if r.Start() == start && r.Goal() == goal {
+			return r
+		}
+	}
+	return nil
+}
+
 func TestRules_DeploymentHasPods(t *testing.T) {
-	r := korrel8.NewRuleGraph(Rules...).RulesWithStartAndGoal(ClassOf(&v1.Deployment{}), PodClass)[0]
+	r := findRule(ClassOf(&appsv1.Deployment{}), ClassOf(&corev1.Pod{}))
+	require.NotNil(t, r)
 	for _, x := range []struct {
 		deployment *appsv1.Deployment
 		query      string
@@ -35,9 +45,10 @@ func TestRules_DeploymentHasPods(t *testing.T) {
 		},
 	} {
 		t.Run(x.query, func(t *testing.T) {
-			q, err := r.Follow(x.deployment)
+			result, err := r.Follow(Object{x.deployment})
 			require.NoError(t, err)
-			assert.Equal(t, x.query, string(q))
+			assert.Len(t, result.Queries, 1)
+			assert.Equal(t, x.query, result.Queries[0])
 		})
 	}
 }
