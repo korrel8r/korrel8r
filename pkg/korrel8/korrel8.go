@@ -62,6 +62,26 @@ type Result struct {
 	Queries []string
 }
 
+// Get the collection of objects returned by executing all queries against store.
+// Results are de-duplicated based on Object.Identifier.
+func (r Result) Get(ctx context.Context, s Store) ([]Object, error) {
+	m := map[Identifier]Object{}
+	for _, q := range r.Queries {
+		objs, err := s.Execute(ctx, q)
+		if err != nil {
+			return nil, err
+		}
+		for _, o := range objs {
+			m[o.Identifier()] = o // Keep only one object per Identifier
+		}
+	}
+	var objs []Object
+	for _, o := range m {
+		objs = append(objs, o)
+	}
+	return objs, nil
+}
+
 // Store is a source of signals belonging to a single domain.
 type Store interface {
 	// Execute a query, return the resulting objects.
