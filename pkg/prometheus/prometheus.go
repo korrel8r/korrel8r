@@ -38,7 +38,7 @@ type AlertObject struct{ *models.GettableAlert }
 func (o AlertObject) Identifier() korrel8.Identifier { return o.Labels }
 func (o AlertObject) Class() korrel8.Class           { return Class{reflect.TypeOf(o)} }
 
-func (s AlertStore) Execute(_ context.Context, query string) ([]korrel8.Object, error) {
+func (s AlertStore) Query(_ context.Context, query string) ([]korrel8.Object, error) {
 	// TODO this just handles Alerts, there are other prometheus API types we need to deal with.
 	switch query {
 	case "alert":

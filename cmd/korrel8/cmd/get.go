@@ -23,7 +23,7 @@ var getCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		domain, query := korrel8.Domain(args[0]), args[1]
 		store := stores[domain]
-		result, err := store.Execute(context.Background(), query)
+		result, err := store.Query(context.Background(), query)
 		exitErr(err)
 		switch *output {
 		case "json":

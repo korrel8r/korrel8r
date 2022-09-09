@@ -56,7 +56,7 @@ func NewStore(c client.Client) (*Store, error) { return &Store{c: c}, nil }
 
 // Execute a query in the form of a k8s REST URI.
 // Cancel if context is canceled.
-func (s *Store) Execute(ctx context.Context, query string) (result []korrel8.Object, err error) {
+func (s *Store) Query(ctx context.Context, query string) (result []korrel8.Object, err error) {
 	defer func() {
 		if err != nil {
 			err = fmt.Errorf("%w: executing %v query %q", err, Domain, query)
@@ -145,7 +145,7 @@ func (s *Store) getList(ctx context.Context, gvk schema.GroupVersionKind, namesp
 	if namespace != "" {
 		opts = append(opts, client.InNamespace(namespace))
 	}
-	if err := s.c.List(ctx, list, opts...); err != nil { // FIXME options
+	if err := s.c.List(ctx, list, opts...); err != nil { // FIXME list options, limit etc.
 		return nil, err
 	}
 	defer func() { // Handle reflect panics.

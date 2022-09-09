@@ -67,7 +67,7 @@ type Result struct {
 func (r Result) Get(ctx context.Context, s Store) ([]Object, error) {
 	m := map[Identifier]Object{}
 	for _, q := range r.Queries {
-		objs, err := s.Execute(ctx, q)
+		objs, err := s.Query(ctx, q)
 		if err != nil {
 			return nil, err
 		}
@@ -84,8 +84,8 @@ func (r Result) Get(ctx context.Context, s Store) ([]Object, error) {
 
 // Store is a source of signals belonging to a single domain.
 type Store interface {
-	// Execute a query, return the resulting objects.
-	Execute(ctx context.Context, query string) ([]Object, error)
+	// Query a query, return the resulting objects.
+	Query(ctx context.Context, query string) ([]Object, error)
 }
 
 // Rules holds a collection of Rules forming a start/goal directed graph.

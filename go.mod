@@ -9,6 +9,8 @@ require (
 	github.com/prometheus/alertmanager v0.24.0
 	github.com/spf13/cobra v1.5.0
 	github.com/stretchr/testify v1.8.0
+	golang.org/x/net v0.0.0-20220812174116-3211cb980234
+	golang.org/x/sync v0.0.0-20220907140024-f12130a52804
 	gotest.tools/v3 v3.0.3
 	k8s.io/api v0.24.3
 	k8s.io/apiextensions-apiserver v0.24.2
@@ -54,7 +56,6 @@ require (
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	go.mongodb.org/mongo-driver v1.10.1 // indirect
-	golang.org/x/net v0.0.0-20220812174116-3211cb980234 // indirect
 	golang.org/x/oauth2 v0.0.0-20211104180415-d3ed0bb246c8 // indirect
 	golang.org/x/sys v0.0.0-20220728004956-3c1f35247d10 // indirect
 	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211 // indirect

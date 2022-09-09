@@ -69,7 +69,7 @@ func TestStore_ParseURI(t *testing.T) {
 	}
 }
 
-func TestStore_Execute(t *testing.T) {
+func TestStore_Query(t *testing.T) {
 	c := fake.NewClientBuilder().
 		WithRESTMapper(testrestmapper.TestOnlyStaticRESTMapper(scheme.Scheme)).
 		WithObjects(
@@ -97,7 +97,7 @@ func TestStore_Execute(t *testing.T) {
 		//		{"/api/v1/pods?fieldSelector=metadata.name%3D", []types.NamespacedName{{"y", "wilma"}}},
 	} {
 		t.Run(x.query, func(t *testing.T) {
-			result, err := store.Execute(context.Background(), x.query)
+			result, err := store.Query(context.Background(), x.query)
 			require.NoError(t, err)
 			var got []types.NamespacedName
 			for _, v := range result {

@@ -36,7 +36,7 @@ func tr(start, goal string) rule { return rule{start: class(start), goal: class(
 
 type store struct{}
 
-func (s store) Execute(_ context.Context, q string) ([]Object, error) {
+func (s store) Query(_ context.Context, q string) ([]Object, error) {
 	var objs []Object
 	for _, s := range strings.Split(q, ",") {
 		objs = append(objs, object(s))
