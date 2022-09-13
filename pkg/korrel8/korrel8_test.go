@@ -2,8 +2,6 @@ package korrel8
 
 import (
 	"context"
-	"fmt"
-	"strings"
 	"testing"
 
 	"strconv"
@@ -11,91 +9,112 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// Dummy implementations
-
-type class string
-
-func (c class) Domain() Domain { return "fake" }
-
-type object string
-
-func (o object) Class() Class           { return class("thing") }
-func (o object) Identifier() Identifier { return Identifier(o) }
-
-type rule struct {
-	start, goal Class
-	result      Result
-}
-
-func (r rule) Start() Class                  { return r.start }
-func (r rule) Goal() Class                   { return r.goal }
-func (r rule) String() string                { return fmt.Sprintf("(%v)->%v", r.start, r.goal) }
-func (r rule) Follow(Object) (Result, error) { return r.result, nil }
-
-func tr(start, goal string) rule { return rule{start: class(start), goal: class(goal)} }
-
-type store struct{}
-
-func (s store) Query(_ context.Context, q string) ([]Object, error) {
-	var objs []Object
-	for _, s := range strings.Split(q, ",") {
-		objs = append(objs, object(s))
-	}
-	return objs, nil
-}
-
-func TestRules_Path(t *testing.T) {
+func TestRuleSet_FindPath(t *testing.T) {
 	for i, g := range []struct {
-		rules *Rules
+		rules *RuleSet
 		want  []Path
 	}{
 		{
-			rules: NewRules(tr("a", "b"), tr("a", "c"), tr("c", "x"), tr("c", "y"), tr("y", "z")),
+			rules: NewRuleSet(r("a", "b"), r("a", "c"), r("c", "x"), r("c", "y"), r("y", "z")),
 			want: []Path{
-				{tr("a", "c"), tr("c", "y"), tr("y", "z")},
+				{r("a", "c"), r("c", "y"), r("y", "z")},
 			},
 		},
 		{
-			rules: NewRules(tr("a", "b"), tr("a", "c"), tr("c", "x"), tr("b", "y"), tr("c", "y"), tr("y", "z"), tr("z", "zz")),
+			rules: NewRuleSet(r("a", "b"), r("a", "c"), r("c", "x"), r("b", "y"), r("c", "y"), r("y", "z"), r("z", "zz")),
 			want: []Path{
-				{tr("a", "b"), tr("b", "y"), tr("y", "z")},
-				{tr("a", "c"), tr("c", "y"), tr("y", "z")},
+				{r("a", "b"), r("b", "y"), r("y", "z")},
+				{r("a", "c"), r("c", "y"), r("y", "z")},
 			},
 		},
 		{
-			rules: NewRules(tr("a", "b"), tr("a", "c"), tr("a", "z"), tr("b", "y"), tr("c", "y"), tr("y", "z")),
+			rules: NewRuleSet(r("a", "b"), r("a", "c"), r("a", "z"), r("b", "y"), r("c", "y"), r("y", "z")),
 			want: []Path{
-				{tr("a", "b"), tr("b", "y"), tr("y", "z")},
-				{tr("a", "c"), tr("c", "y"), tr("y", "z")},
-				{tr("a", "z")},
+				{r("a", "b"), r("b", "y"), r("y", "z")},
+				{r("a", "c"), r("c", "y"), r("y", "z")},
+				{r("a", "z")},
 			},
 		},
 		{
-			rules: NewRules(tr("a", "b"), tr("a", "c"), tr("c", "x"), tr("y", "z")),
+			rules: NewRuleSet(r("a", "b"), r("a", "c"), r("c", "x"), r("y", "z")),
 			want:  []Path{},
 		}} {
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
-			got := g.rules.Paths(class("a"), class("z"))
+			got := g.rules.FindPaths(mockClass("a"), mockClass("z"))
 			assert.ElementsMatch(t, g.want, got)
 		})
 	}
 }
 
 func TestResult_Get(t *testing.T) {
-	for _, x := range []struct {
-		r    Result
-		want []object
+	for i, x := range []struct {
+		queries []string
+		want    []mockObject
 	}{
 		{
-			r:    Result{Domain: "fake", Queries: []string{"a,b,c", "b,c,d", "x,y,x"}},
-			want: []object{"a", "b", "c", "d", "x", "y"},
+			queries: []string{"a.x,b.x,c.x", "b.x,c.y", "e.x,e.y,e.x"},
+			want:    []mockObject{{"a", "x"}, {"b", "x"}, {"c", "x"}, {"c", "y"}, {"e", "x"}, {"e", "y"}},
 		},
 		{
-			r:    Result{Domain: "fake", Queries: nil},
-			want: nil,
+			queries: nil,
+			want:    nil,
 		},
 	} {
-		objs, _ := x.r.Get(context.Background(), store{})
-		assert.ElementsMatch(t, x.want, objs)
+		t.Run(strconv.Itoa(i), func(t *testing.T) {
+			objs, _ := Result(x.queries).Get(context.Background(), mockStore{})
+			assert.ElementsMatch(t, x.want, objs)
+		})
+	}
+}
+
+func TestPath_Follow(t *testing.T) {
+	for i, x := range []struct {
+		path Path
+		want Result
+	}{
+		{
+			path: Path{
+				// Return 2 results, must follow both
+				rr("a", "b", func(Object) Result { return []string{"1.b", "2.b"} }),
+				// Return the start object's name with the goal class.
+				rr("b", "c", func(start Object) Result { return []string{start.(mockObject).name + ".c", "x.c"} }),
+				rr("c", "z", func(start Object) Result { return []string{start.(mockObject).name + ".z", "y.z"} }),
+			},
+			want: Result{"1.z", "2.z", "x.z", "y.z"},
+		},
+		{
+			path: nil,
+			want: Result{},
+		},
+	} {
+		t.Run(strconv.Itoa(i), func(t *testing.T) {
+			r, err := x.path.Follow(context.Background(), o("foo", "a"), mockStores)
+			assert.NoError(t, err)
+			assert.ElementsMatch(t, x.want, r)
+		})
+	}
+}
+
+func TestRule_FollowEach(t *testing.T) {
+	for i, x := range []struct {
+		rule  Rule
+		start []Object
+		want  Result
+	}{
+		{
+			rule:  rr("a", "b", func(start Object) Result { return []string{start.(mockObject).name + ".b", "x.b"} }),
+			start: []Object{o("1", "a"), o("2", ".a"), o("1", "a")},
+			want:  Result{"1.b", "2.b", "x.b"},
+		},
+		{
+			rule: r("a", "b"),
+			want: Result{},
+		},
+	} {
+		t.Run(strconv.Itoa(i), func(t *testing.T) {
+			r, err := FollowEach(x.rule, x.start)
+			assert.NoError(t, err)
+			assert.ElementsMatch(t, x.want, r)
+		})
 	}
 }

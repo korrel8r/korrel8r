@@ -22,6 +22,7 @@ package korrel8
 
 import (
 	"context"
+	"fmt"
 )
 
 // Object represents a signal instance.
@@ -46,40 +47,22 @@ type Class interface {
 	Domain() Domain // Domain of this class.
 }
 
-// Rule encapsulates logic to find correlated goal objects from a start object.
-//
-type Rule interface {
-	Start() Class                  // Class of start object
-	Goal() Class                   // Class of desired result object(s)
-	Follow(Object) (Result, error) // Follow the rule from the start object.
-}
-
-// Result holds a collection of queries for a single Domain.
-// Query string format depends on the domain to be queried.
-// For example a k8s GET URL or a PromQL query string.
-type Result struct {
-	Domain  Domain
-	Queries []string
-}
+// Result is a collection of query strings for the goal domain of the rule that returned the result.
+// Query string format depends on the domain to be queried, for example a k8s GET URoI or a PromQL query string.
+type Result []string
 
 // Get the collection of objects returned by executing all queries against store.
 // Results are de-duplicated based on Object.Identifier.
 func (r Result) Get(ctx context.Context, s Store) ([]Object, error) {
-	m := map[Identifier]Object{}
-	for _, q := range r.Queries {
+	dedup := uniqueObjects{}
+	for _, q := range r {
 		objs, err := s.Query(ctx, q)
 		if err != nil {
 			return nil, err
 		}
-		for _, o := range objs {
-			m[o.Identifier()] = o // Keep only one object per Identifier
-		}
+		dedup.add(objs)
 	}
-	var objs []Object
-	for _, o := range m {
-		objs = append(objs, o)
-	}
-	return objs, nil
+	return dedup.list(), nil
 }
 
 // Store is a source of signals belonging to a single domain.
@@ -88,21 +71,66 @@ type Store interface {
 	Query(ctx context.Context, query string) ([]Object, error)
 }
 
-// Rules holds a collection of Rules forming a start/goal directed graph.
-type Rules struct {
+// Rule encapsulates logic to find correlated goal objects from a start object.
+//
+type Rule interface {
+	Start() Class                        // Class of start object
+	Goal() Class                         // Class of desired result object(s)
+	Follow(start Object) (Result, error) // Follow the rule from the start object.
+}
+
+// FollowEach calls r.Follow() for each start object and collects the resulting queries.
+func FollowEach(r Rule, start []Object) (Result, error) {
+	results := unique[string]{}
+	for _, s := range start {
+		result, err := r.Follow(s)
+		if err != nil {
+			return nil, err
+		}
+		results.add(result)
+	}
+	return results.list(), nil
+}
+
+// Path is a list of rules where the Goal() of each rule is the Start() of the next.
+type Path []Rule
+
+// Follow rules in a path, using the map to determine the store to make intermediate queries.
+func (p Path) Follow(ctx context.Context, start Object, stores map[Domain]Store) (result Result, err error) {
+	starters := []Object{start}
+	for i, rule := range p {
+		result, err = FollowEach(rule, starters)
+		if i == len(p)-1 || err != nil {
+			break
+		}
+		d := rule.Goal().Domain()
+		store := stores[d]
+		if store == nil {
+			return nil, fmt.Errorf("error following %v: no %v store", rule, d)
+		}
+		if starters, err = result.Get(ctx, store); err != nil {
+			return nil, err
+		}
+		starters = uniqueObjectList(starters)
+	}
+	return result, err
+}
+
+// RuleSet holds a collection of RuleSet forming a directed graph from start -> goal or vice versa.
+type RuleSet struct {
 	rules       []Rule
 	rulesByGoal map[Class][]int // Index into rules so we have a comparable rule id.
 }
 
-// NewRules creates new RuleGraph containing some rules.
-func NewRules(rules ...Rule) *Rules {
-	c := &Rules{rulesByGoal: map[Class][]int{}}
+// NewRuleSet creates new RuleGraph containing some rules.
+func NewRuleSet(rules ...Rule) *RuleSet {
+	c := &RuleSet{rulesByGoal: map[Class][]int{}}
 	c.Add(rules...)
 	return c
 }
 
 // Add new rules.
-func (c *Rules) Add(rules ...Rule) {
+func (c *RuleSet) Add(rules ...Rule) {
 	for _, r := range rules {
 		c.rules = append(c.rules, r)
 		i := len(c.rules) - 1 // Rule index
@@ -110,24 +138,15 @@ func (c *Rules) Add(rules ...Rule) {
 	}
 }
 
-// Path is a list of rules where the Goal() of each rule is the Start() of the next.
-type Path []Rule
-
-// Follow rules in a path, using the stores map to determine the store for each Domain.
-// Returns a result that may have more than one query.
-func (p Path) Follow(stores map[Domain]Store) Result {
-	panic("FIXME")
-}
-
-// Paths returns chains of rules leading from start to goal.
+// FindPaths returns chains of rules leading from start to goal.
 //
-// Paths be called in multiple goroutines concurrently.
+// FindPaths be called in multiple goroutines concurrently.
 // It cannot be called concurrently with Add.
-func (rs *Rules) Paths(start, goal Class) []Path {
+func (rs *RuleSet) FindPaths(start, goal Class) []Path {
 	// Rules form a directed cyclic graph, with Class nodes and Rule edges.
 	// Work backwards from the goal to find chains of rules from start.
 	state := pathSearch{
-		Rules:   rs,
+		RuleSet: rs,
 		visited: map[int]bool{},
 	}
 	state.dfs(start, goal)
@@ -136,7 +155,7 @@ func (rs *Rules) Paths(start, goal Class) []Path {
 
 // pathSearch holds state for a single path search
 type pathSearch struct {
-	*Rules
+	*RuleSet
 	visited map[int]bool
 	current Path
 	paths   []Path

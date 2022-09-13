@@ -36,3 +36,9 @@ Packages:
 - [korrel8](https://pkg.go.dev/github.com/alanconway/korrel8/pkg/korrel8): Generic interfaces and algorithms. Start here.
 - [other packages](https://pkg.go.dev/github.com/alanconway/korrel8/pkg): Domain-specific implementations.
 
+
+## To-Do list
+
+- [X] Path following and de-duplication.
+- [ ] Propagate time interval for correlation.
+- [ ] Complete one sample correlation from alert to logs as demo.
