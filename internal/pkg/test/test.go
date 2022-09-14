@@ -3,11 +3,11 @@ package test
 
 import (
 	"context"
-	"sync"
 	"fmt"
 	"net"
 	"os"
 	"os/exec"
+	"sync"
 	"testing"
 
 	corev1 "k8s.io/api/core/v1"
@@ -39,15 +39,15 @@ func HasCluster() bool {
 	return hasCluster
 }
 
-// NeedsCluster calls t.Skip if no cluster is detected.
-func NeedsCluster(t *testing.T) {
+// SkipIfNoCluster calls t.Skip if no cluster is detected.
+func SkipIfNoCluster(t *testing.T) {
 	t.Helper()
 	if !HasCluster() {
 		skipf(t, "no cluster running")
 	}
 }
 
-func NeedsCommand(t *testing.T, cmd string) {
+func SkipIfNoCommand(t *testing.T, cmd string) {
 	t.Helper()
 	if _, err := exec.LookPath(cmd); err != nil {
 		skipf(t, "command %q not available", cmd)
@@ -69,4 +69,11 @@ func ListenPort() (int, error) {
 	}
 	defer l.Close()
 	return l.Addr().(*net.TCPAddr).Port, nil
+}
+
+func ExitError(err error) error {
+	if ex, ok := err.(*exec.ExitError); ok {
+		return fmt.Errorf("%v: %v", err, string(ex.Stderr))
+	}
+	return err
 }

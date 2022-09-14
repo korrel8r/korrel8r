@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/alanconway/korrel8/pkg/internal/test"
+	"github.com/alanconway/korrel8/internal/pkg/test"
 	"github.com/alanconway/korrel8/pkg/k8s"
 	"github.com/alanconway/korrel8/pkg/korrel8"
 	"github.com/stretchr/testify/require"
@@ -32,8 +32,8 @@ func TestRule_PodLogs(t *testing.T) {
 	rule := Rules[0]
 	result, err := rule.Follow(k8s.Object{Object: &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Namespace: "foo", Name: "bar"}}})
 	require.NoError(t, err)
-	require.Equal(t, []string{`{kubernetes_namespace_name="foo",kubernetes_pod_name="bar"}`}, result.Queries)
+	require.Equal(t, korrel8.Result{`{kubernetes_namespace_name="foo",kubernetes_pod_name="bar"}`}, result)
 	want := []korrel8.Object{Object("info: foo/bar 1"), Object("info: foo/bar 2"), Object("info: foo/bar 3")}
-	got, err := s.Query(context.Background(), result.Queries[0])
+	got, err := s.Query(context.Background(), result[0])
 	require.Equal(t, want, got)
 }

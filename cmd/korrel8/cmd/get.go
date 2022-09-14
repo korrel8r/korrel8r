@@ -23,6 +23,9 @@ var getCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		domain, query := korrel8.Domain(args[0]), args[1]
 		store := stores[domain]
+		if store == nil {
+			exitErr(fmt.Errorf("no store for domain %q", domain))
+		}
 		result, err := store.Query(context.Background(), query)
 		exitErr(err)
 		switch *output {

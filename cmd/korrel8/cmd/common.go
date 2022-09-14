@@ -4,8 +4,11 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/alanconway/korrel8/pkg/alert"
 	"github.com/alanconway/korrel8/pkg/k8s"
 	"github.com/alanconway/korrel8/pkg/korrel8"
+	"github.com/alanconway/korrel8/pkg/openshift"
+	"sigs.k8s.io/controller-runtime/pkg/client/config"
 )
 
 func exitErr(err error) {
@@ -26,5 +29,6 @@ func open(name string) (f *os.File) {
 }
 
 var stores = map[korrel8.Domain]korrel8.Store{
-	k8s.Domain: must(k8s.NewStore(must(k8s.NewClient()))),
+	k8s.Domain:   must(k8s.NewStore(must(k8s.NewClient()))),
+	alert.Domain: must(openshift.AlertManagerStore(config.GetConfigOrDie())),
 }

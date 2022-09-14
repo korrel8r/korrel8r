@@ -5,8 +5,8 @@ package openshift
 import (
 	"context"
 
+	"github.com/alanconway/korrel8/pkg/alert"
 	"github.com/alanconway/korrel8/pkg/korrel8"
-	"github.com/alanconway/korrel8/pkg/prometheus"
 	routev1 "github.com/openshift/api/route/v1"
 	"k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -34,10 +34,18 @@ func AlertManagerHost(c client.Client) (string, error) {
 }
 
 // AlertManagerStore creates a store client for alert manager.
-func AlertManagerStore(cfg *rest.Config, host string) (korrel8.Store, error) {
-	c, err := rest.HTTPClientFor(cfg)
+func AlertManagerStore(cfg *rest.Config) (korrel8.Store, error) {
+	c, err := client.New(cfg, client.Options{})
 	if err != nil {
 		return nil, err
 	}
-	return prometheus.NewAlertStore(host, c), nil
+	host, err := AlertManagerHost(c)
+	if err != nil {
+		return nil, err
+	}
+	hc, err := rest.HTTPClientFor(cfg)
+	if err != nil {
+		return nil, err
+	}
+	return alert.NewStore(host, hc), nil
 }

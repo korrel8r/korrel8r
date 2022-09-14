@@ -26,12 +26,6 @@ import (
 var k8Client client.Client
 
 func main() {
-	defer func() {
-		if r := recover(); r != nil {
-			fmt.Fprintf(os.Stderr, "%v", r)
-			os.Exit(1)
-		}
-	}()
 	if err := cmd.Execute(); err != nil {
 		fmt.Fprintln(os.Stderr, err.Error())
 		os.Exit(1)

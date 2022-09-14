@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/alanconway/korrel8/pkg/internal/test"
+	"github.com/alanconway/korrel8/internal/pkg/test"
 	"github.com/alanconway/korrel8/pkg/korrel8"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

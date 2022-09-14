@@ -47,8 +47,8 @@ func TestRules_DeploymentHasPods(t *testing.T) {
 		t.Run(x.query, func(t *testing.T) {
 			result, err := r.Follow(Object{x.deployment})
 			require.NoError(t, err)
-			assert.Len(t, result.Queries, 1)
-			assert.Equal(t, x.query, result.Queries[0])
+			assert.Len(t, result, 1)
+			assert.Equal(t, x.query, result[0])
 		})
 	}
 }

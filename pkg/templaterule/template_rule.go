@@ -38,7 +38,7 @@ func (r *Rule) Follow(start korrel8.Object) (result korrel8.Result, err error) {
 		data = td.TemplateData()
 	}
 	r.Execute(b, data)
-	return korrel8.Result{Domain: r.Goal().Domain(), Queries: []string{b.String()}}, nil
+	return []string{b.String()}, nil
 }
 
 var _ korrel8.Rule = &Rule{}
