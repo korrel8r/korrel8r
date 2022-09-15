@@ -21,21 +21,24 @@ type mockObject struct {
 
 func o(name, class string) Object { return mockObject{name: name, class: mockClass(class)} }
 func (o mockObject) Class() Class { return o.class }
+func (o mockObject) Native() any  { return o }
 
 // Identifier suppose name is only unique per class (like a K8s name) so identifier is whole object.
 func (o mockObject) Identifier() Identifier { return o }
 
 type mockRule struct {
 	start, goal Class
-	follow      func(Object) Result
+	follow      func(Object, *Constraint) Result
 }
 
-func (r mockRule) Start() Class                        { return r.start }
-func (r mockRule) Goal() Class                         { return r.goal }
-func (r mockRule) String() string                      { return fmt.Sprintf("(%v)->%v", r.start, r.goal) }
-func (r mockRule) Follow(start Object) (Result, error) { return r.follow(start), nil }
+func (r mockRule) Start() Class   { return r.start }
+func (r mockRule) Goal() Class    { return r.goal }
+func (r mockRule) String() string { return fmt.Sprintf("(%v)->%v", r.start, r.goal) }
+func (r mockRule) Follow(start Object, c *Constraint) (Result, error) {
+	return r.follow(start, c), nil
+}
 
-func rr(start, goal string, follow func(o Object) Result) mockRule {
+func rr(start, goal string, follow func(Object, *Constraint) Result) mockRule {
 	return mockRule{
 		start:  mockClass(start),
 		goal:   mockClass(goal),

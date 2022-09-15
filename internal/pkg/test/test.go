@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"sync"
 	"testing"
+	"time"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -17,24 +18,31 @@ import (
 )
 
 var (
-	hasCluster     bool
+	hasCluster     error
 	hasClusterOnce sync.Once
 )
 
-func HasCluster() bool {
+func HasCluster() error {
+	// Contact the cluster once per test run, after that assume nothing changes.
 	hasClusterOnce.Do(func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		var err error
+		defer func() {
+			hasCluster = err
+			cancel()
+		}()
 		cfg, err := config.GetConfig()
 		if err != nil {
 			return
 		}
+		cfg.Timeout = time.Second
 		c, err := client.New(cfg, client.Options{})
 		if err != nil {
 			return
 		}
 		ns := corev1.Namespace{}
 		ns.Name = "default"
-		err = c.Get(context.Background(), types.NamespacedName{Name: "default"}, &ns)
-		hasCluster = (err == nil)
+		err = c.Get(ctx, types.NamespacedName{Name: "default"}, &ns)
 	})
 	return hasCluster
 }
@@ -42,8 +50,8 @@ func HasCluster() bool {
 // SkipIfNoCluster calls t.Skip if no cluster is detected.
 func SkipIfNoCluster(t *testing.T) {
 	t.Helper()
-	if !HasCluster() {
-		skipf(t, "no cluster running")
+	if err := HasCluster(); err != nil {
+		skipf(t, "no cluster running: %v", err)
 	}
 }
 
@@ -57,7 +65,9 @@ func SkipIfNoCommand(t *testing.T, cmd string) {
 func skipf(t *testing.T, format string, args ...interface{}) {
 	t.Helper()
 	if os.Getenv("TEST_NO_SKIP") != "" {
-		t.Fatalf("TEST_NO_SKIP: %v", fmt.Sprintf(format, args...))
+		t.Fatalf(format, args...)
+	} else {
+		t.Skipf(format, args...)
 	}
 }
 

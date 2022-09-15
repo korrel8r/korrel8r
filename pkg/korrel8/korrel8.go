@@ -23,12 +23,14 @@ package korrel8
 import (
 	"context"
 	"fmt"
+	"time"
 )
 
 // Object represents a signal instance.
 type Object interface {
 	Identifier() Identifier // Identifies this object instance.
 	Class() Class           // Class of the object.
+	Native() any            // Native representation of the object.
 }
 
 // Domain names a set of objects based on the same technology.
@@ -74,16 +76,25 @@ type Store interface {
 // Rule encapsulates logic to find correlated goal objects from a start object.
 //
 type Rule interface {
-	Start() Class                        // Class of start object
-	Goal() Class                         // Class of desired result object(s)
-	Follow(start Object) (Result, error) // Follow the rule from the start object.
+	Start() Class // Class of start object
+	Goal() Class  // Class of desired result object(s)
+	// Follow the rule from the start Object, obeying the Constraint.
+	// FIXME Constraint is on Query or intermediate values, not on follow??
+	// Constraint can be nil.
+	Follow(Object, *Constraint) (Result, error)
+}
+
+// Constraint to include in the Result query strings.
+type Constraint struct {
+	After  *time.Time // Include only results timestamped after this time.
+	Before *time.Time // Include only results timestamped before this time.
 }
 
 // FollowEach calls r.Follow() for each start object and collects the resulting queries.
-func FollowEach(r Rule, start []Object) (Result, error) {
+func FollowEach(r Rule, start []Object, c *Constraint) (Result, error) {
 	results := unique[string]{}
 	for _, s := range start {
-		result, err := r.Follow(s)
+		result, err := r.Follow(s, c)
 		if err != nil {
 			return nil, err
 		}
@@ -96,10 +107,10 @@ func FollowEach(r Rule, start []Object) (Result, error) {
 type Path []Rule
 
 // Follow rules in a path, using the map to determine the store to make intermediate queries.
-func (p Path) Follow(ctx context.Context, start Object, stores map[Domain]Store) (result Result, err error) {
+func (p Path) Follow(ctx context.Context, start Object, c *Constraint, stores map[Domain]Store) (result Result, err error) {
 	starters := []Object{start}
 	for i, rule := range p {
-		result, err = FollowEach(rule, starters)
+		result, err = FollowEach(rule, starters, c)
 		if i == len(p)-1 || err != nil {
 			break
 		}

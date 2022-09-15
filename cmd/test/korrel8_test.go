@@ -1,4 +1,6 @@
-package main_test
+//go:build cluster
+
+package test
 
 import (
 	"encoding/json"
@@ -11,11 +13,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestCmd_GetAlert(t *testing.T) {
-	test.SkipIfNoCluster(t)
-	cmd := exec.Command("go", "run", "main.go", "get", "alert", "", "-o=json")
+func TestKorrel8_Cmd_GetAlert(t *testing.T) {
+	cmd := exec.Command("go", "run", "../korrel8/main.go", "get", "alert", "", "-o=json")
 	out, err := cmd.Output()
-	require.NoError(t, test.ExitError(err))
+	require.NoError(t, test.ExecError(err))
 	var result []models.GettableAlert
 	require.NoError(t, json.Unmarshal(out, &result), "expect valid alerts")
 	require.NotEmpty(t, result, "expect at least one alert")

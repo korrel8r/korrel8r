@@ -35,8 +35,10 @@ type Object struct{ *models.GettableAlert }
 
 func (o Object) Identifier() korrel8.Identifier { return o.Labels }
 func (o Object) Class() korrel8.Class           { return Class{} }
+func (o Object) Native() any                    { return o.GettableAlert }
 
-// Query is a JSON object containing JSON-commpatible fields of https://pkg.go.dev/github.com/prometheus/alertmanager/api/v2/client/alert#GetAlertsParams
+// Query is a JSON object containing JSON-commpatible fields of
+// https://pkg.go.dev/github.com/prometheus/alertmanager/api/v2/client/alert#GetAlertsParams
 func (s Store) Query(ctx context.Context, query string) ([]korrel8.Object, error) {
 	if query == "" {
 		query = "{}" // Allow empty string as empty object

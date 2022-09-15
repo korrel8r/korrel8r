@@ -24,19 +24,11 @@ func (r *Rule) String() string       { return fmt.Sprintf("%v(%v)->%v", r.Name()
 func (r *Rule) Start() korrel8.Class { return r.start }
 func (r *Rule) Goal() korrel8.Class  { return r.goal }
 
-// TemplateData interface provides the template starting data if different from the object itself.
-type TemplateData interface{ TemplateData() any }
-
-// Follow the rule by applying the template. If start implements TemplateData, use that as the template input.
-func (r *Rule) Follow(start korrel8.Object) (result korrel8.Result, err error) {
-	if r.Start() != start.Class() {
-		return result, fmt.Errorf("rule %v wants %v got %v", r, r.Start(), start.Class())
-	}
+// Follow the rule by applying the template to start.Native()
+func (r *Rule) Follow(start korrel8.Object, c *korrel8.Constraint) (result korrel8.Result, err error) {
 	b := &strings.Builder{}
 	var data any = start
-	if td, ok := start.(TemplateData); ok {
-		data = td.TemplateData()
-	}
+	data = start.Native()
 	r.Execute(b, data)
 	return []string{b.String()}, nil
 }

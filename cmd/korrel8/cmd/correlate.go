@@ -10,8 +10,9 @@ import (
 
 // correlateCmd represents the correlate command
 var correlateCmd = &cobra.Command{
-	Use:   "correlate [start file] [store type]",
-	Short: "Given a file of starting objects, return a query for correlated objects. '-' means use stdin",
+	// FIXME need string form for start/goal domain/class and start data.
+	Use:   "correlate DOMAIN START",
+	Short: "Correlate the objects in file START from DOMAIN to GOAL  a file of starting objects, return a query for correlated objects. '-' means use stdin",
 	Args:  cobra.ExactArgs(2),
 	Run: func(cmd *cobra.Command, args []string) {
 		f := open(startFile)

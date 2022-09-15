@@ -40,5 +40,10 @@ Packages:
 ## To-Do list
 
 - [X] Path following and de-duplication.
-- [ ] Propagate time interval for correlation.
+- [ ] Propagate time interval and other constraints on correlation.
+- [ ] Query object with fields (esp. k8s) JSON and native String
+- [ ] Make query a struct with internal and external forms.
 - [ ] Complete one sample correlation from alert to logs as demo.
+
+## Maybe later
+- [ ] Use local loki executable instead of image to speed up tests?

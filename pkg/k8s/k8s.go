@@ -37,7 +37,7 @@ var _ korrel8.Class = Class{} // Implements interface.
 type Object struct{ client.Object }
 
 func (o Object) Class() korrel8.Class { return ClassOf(o.Object) }
-func (o Object) TemplateData() any    { return o.Object }
+func (o Object) Native() any          { return o.Object }
 
 type Identifier struct {
 	Name, Namespace string

@@ -75,10 +75,10 @@ func TestPath_Follow(t *testing.T) {
 		{
 			path: Path{
 				// Return 2 results, must follow both
-				rr("a", "b", func(Object) Result { return []string{"1.b", "2.b"} }),
+				rr("a", "b", func(Object, *Constraint) Result { return []string{"1.b", "2.b"} }),
 				// Return the start object's name with the goal class.
-				rr("b", "c", func(start Object) Result { return []string{start.(mockObject).name + ".c", "x.c"} }),
-				rr("c", "z", func(start Object) Result { return []string{start.(mockObject).name + ".z", "y.z"} }),
+				rr("b", "c", func(start Object, _ *Constraint) Result { return []string{start.(mockObject).name + ".c", "x.c"} }),
+				rr("c", "z", func(start Object, _ *Constraint) Result { return []string{start.(mockObject).name + ".z", "y.z"} }),
 			},
 			want: Result{"1.z", "2.z", "x.z", "y.z"},
 		},
@@ -88,7 +88,7 @@ func TestPath_Follow(t *testing.T) {
 		},
 	} {
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
-			r, err := x.path.Follow(context.Background(), o("foo", "a"), mockStores)
+			r, err := x.path.Follow(context.Background(), o("foo", "a"), nil, mockStores)
 			assert.NoError(t, err)
 			assert.ElementsMatch(t, x.want, r)
 		})
@@ -102,7 +102,7 @@ func TestRule_FollowEach(t *testing.T) {
 		want  Result
 	}{
 		{
-			rule:  rr("a", "b", func(start Object) Result { return []string{start.(mockObject).name + ".b", "x.b"} }),
+			rule:  rr("a", "b", func(start Object, c *Constraint) Result { return []string{start.(mockObject).name + ".b", "x.b"} }),
 			start: []Object{o("1", "a"), o("2", ".a"), o("1", "a")},
 			want:  Result{"1.b", "2.b", "x.b"},
 		},
@@ -112,7 +112,7 @@ func TestRule_FollowEach(t *testing.T) {
 		},
 	} {
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
-			r, err := FollowEach(x.rule, x.start)
+			r, err := FollowEach(x.rule, x.start, nil)
 			assert.NoError(t, err)
 			assert.ElementsMatch(t, x.want, r)
 		})

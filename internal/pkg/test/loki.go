@@ -63,10 +63,10 @@ func (s *LokiServer) URL() string { return fmt.Sprintf("http://localhost:%v/loki
 func (s *LokiServer) Check(p func(format string, args ...any)) error {
 	u := s.URL() + "/query_range?direction=FORWARD&limit=30&query=%7Bx%3D%22y%22%7D"
 	resp, err := httpError(http.Get(u))
-	resp.Body.Close()
 	if err != nil {
 		return err
 	}
+	resp.Body.Close()
 	return s.Push(map[string]string{"x": "y"}, "z")
 }
 
