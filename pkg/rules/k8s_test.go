@@ -1,8 +1,9 @@
-package k8s
+package rules
 
 import (
 	"testing"
 
+	"github.com/alanconway/korrel8/pkg/k8s"
 	"github.com/alanconway/korrel8/pkg/korrel8"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -12,7 +13,7 @@ import (
 )
 
 func findRule(start, goal korrel8.Class) korrel8.Rule {
-	for _, r := range Rules {
+	for _, r := range K8sToK8s() {
 		if r.Start() == start && r.Goal() == goal {
 			return r
 		}
@@ -21,7 +22,7 @@ func findRule(start, goal korrel8.Class) korrel8.Rule {
 }
 
 func TestRules_DeploymentHasPods(t *testing.T) {
-	r := findRule(ClassOf(&appsv1.Deployment{}), ClassOf(&corev1.Pod{}))
+	r := findRule(k8s.ClassOf(&appsv1.Deployment{}), k8s.ClassOf(&corev1.Pod{}))
 	require.NotNil(t, r)
 	for _, x := range []struct {
 		deployment *appsv1.Deployment
@@ -45,7 +46,7 @@ func TestRules_DeploymentHasPods(t *testing.T) {
 		},
 	} {
 		t.Run(x.query, func(t *testing.T) {
-			result, err := r.Apply(Object{x.deployment}, nil)
+			result, err := r.Apply(k8s.Object{x.deployment}, nil)
 			require.NoError(t, err)
 			assert.Len(t, result, 1)
 			assert.Equal(t, x.query, result[0])

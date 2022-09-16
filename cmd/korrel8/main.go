@@ -16,9 +16,6 @@ limitations under the License.
 package main
 
 import (
-	"fmt"
-	"os"
-
 	"github.com/alanconway/korrel8/cmd/korrel8/cmd"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -26,8 +23,5 @@ import (
 var k8Client client.Client
 
 func main() {
-	if err := cmd.Execute(); err != nil {
-		fmt.Fprintln(os.Stderr, err.Error())
-		os.Exit(1)
-	}
+	cmd.Execute()
 }

@@ -81,7 +81,7 @@ func ListenPort() (int, error) {
 	return l.Addr().(*net.TCPAddr).Port, nil
 }
 
-func ExitError(err error) error {
+func ExecError(err error) error {
 	if ex, ok := err.(*exec.ExitError); ok {
 		return fmt.Errorf("%v: %v", err, string(ex.Stderr))
 	}

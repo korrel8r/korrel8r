@@ -1,6 +1,6 @@
 //go:build cluster
 
-package test
+package main
 
 import (
 	"encoding/json"
@@ -13,8 +13,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// Test main.go using "go run" and verify output.
+
 func TestKorrel8_Cmd_GetAlert(t *testing.T) {
-	cmd := exec.Command("go", "run", "../korrel8/main.go", "get", "alert", "", "-o=json")
+	cmd := exec.Command("go", "run", "main.go", "get", "alert", "{}", "-o=json")
 	out, err := cmd.Output()
 	require.NoError(t, test.ExecError(err))
 	var result []models.GettableAlert

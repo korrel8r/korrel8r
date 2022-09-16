@@ -14,7 +14,6 @@ import (
 	"github.com/prometheus/alertmanager/api/v2/models"
 )
 
-// Domain is the prometheus domain name.
 const Domain korrel8.Domain = "alert"
 
 type Store struct {

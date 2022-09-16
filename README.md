@@ -42,8 +42,19 @@ Packages:
 - [X] Path following and de-duplication.
 - [X] Propagate time interval and other constraints on correlation.
 - [X] Refactor Follower
-- [ ] Rename Result as Queries
+- [X] Rename Result as Queries
+- [ ] Use streams as Object for prom & loki, much more efficient & have same metadata. 
+
+- [ ] Multiple goals: avoid repeated queries (log + pod + metric...)
+- [ ] Serialize & deserialize Class, for command line.
+- [ ] Example correlation:
+  - metric log_collector_error_count_total => logs + pods 
+  - Traces?
+- [ ] Wildcard Start() classes?
+- [ ] Externalize (serialize) the rule base, allow it to be extended without recompile.
 - [ ] Complete one sample correlation from alert to logs as demo.
 - [ ] Query as value with fields - provide alternate serializations (e.g. URI or oc command, LogQL or URI)
+  - Simplify k8s query, avoid URI parse & re-construct.
+
 ## Maybe later
 - [ ] Use local loki executable instead of image to speed up tests?

@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"reflect"
 
+	"github.com/alanconway/korrel8/internal/pkg/logging"
 	"github.com/alanconway/korrel8/pkg/korrel8"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
@@ -17,6 +18,8 @@ import (
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
+
+var log = logging.Log
 
 // Domain for Kubernetes resources
 const Domain = "k8s.resource"
@@ -57,6 +60,8 @@ func NewStore(c client.Client) (*Store, error) { return &Store{c: c}, nil }
 // Execute a query in the form of a k8s REST URI.
 // Cancel if context is canceled.
 func (s *Store) Query(ctx context.Context, query string) (result []korrel8.Object, err error) {
+	defer logging.BeginEnd(log.V(3), "query: %v", "domain", Domain, "query", query)
+
 	defer func() {
 		if err != nil {
 			err = fmt.Errorf("%w: executing %v query %q", err, Domain, query)

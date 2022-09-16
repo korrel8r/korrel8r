@@ -7,10 +7,13 @@ require (
 	github.com/go-openapi/strfmt v0.21.3
 	github.com/openshift/api v3.9.0+incompatible
 	github.com/prometheus/alertmanager v0.24.0
+	github.com/prometheus/client_golang v1.12.1
+	github.com/prometheus/common v0.32.1
 	github.com/spf13/cobra v1.5.0
 	github.com/stretchr/testify v1.8.0
+	go.uber.org/zap v1.19.1
+	golang.org/x/exp v0.0.0-20220915210609-840b3808d824
 	golang.org/x/net v0.0.0-20220812174116-3211cb980234
-	golang.org/x/sync v0.0.0-20220907140024-f12130a52804
 	gotest.tools/v3 v3.0.3
 	k8s.io/api v0.24.3
 	k8s.io/apiextensions-apiserver v0.24.2
@@ -28,6 +31,7 @@ require (
 	github.com/emicklei/go-restful v2.9.5+incompatible // indirect
 	github.com/evanphx/json-patch v4.12.0+incompatible // indirect
 	github.com/go-logr/logr v1.2.3 // indirect
+	github.com/go-logr/zapr v1.2.0 // indirect
 	github.com/go-openapi/analysis v0.21.2 // indirect
 	github.com/go-openapi/errors v0.20.2 // indirect
 	github.com/go-openapi/jsonpointer v0.19.5 // indirect
@@ -56,7 +60,8 @@ require (
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	go.mongodb.org/mongo-driver v1.10.1 // indirect
-	golang.org/x/exp v0.0.0-20220915210609-840b3808d824 // indirect
+	go.uber.org/atomic v1.9.0 // indirect
+	go.uber.org/multierr v1.6.0 // indirect
 	golang.org/x/oauth2 v0.0.0-20211104180415-d3ed0bb246c8 // indirect
 	golang.org/x/sys v0.0.0-20220728004956-3c1f35247d10 // indirect
 	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211 // indirect

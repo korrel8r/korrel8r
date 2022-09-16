@@ -16,28 +16,40 @@ limitations under the License.
 package cmd
 
 import (
+	"fmt"
+	"os"
+
+	"github.com/alanconway/korrel8/internal/pkg/logging"
 	"github.com/spf13/cobra"
 )
 
 var rootCmd = &cobra.Command{
 	Use:     "korrel8",
-	Short:   "Command line correlation tool - work in progress",
-	Long:    `Command line correlation tool - work in progress`,
-	Version: "0.0.0",
+	Short:   "Command line correlation tool",
+	Version: "0.1.0",
 }
 
-// Execute adds all child commands to the root command and sets flags appropriately.
-// This is called by main.main(). It only needs to happen once to the rootCmd.
-func Execute() (err error) {
-	return rootCmd.Execute()
+func Execute() {
+	if err := rootCmd.Execute(); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
 }
 
 var (
-	pretty *bool
-	output *string
+	// Flags
+	pretty  *bool
+	output  *string
+	verbose *int
+
+	// Root logger
+	log = logging.Log
 )
 
 func init() {
 	pretty = rootCmd.PersistentFlags().BoolP("pretty", "p", true, "Pretty-print output with indentation")
 	output = rootCmd.PersistentFlags().StringP("output", "o", "yaml", "Output format, json or yaml")
+	verbose = rootCmd.PersistentFlags().IntP("verbose", "v", 0, "Verbosity for logging")
+
+	cobra.OnInitialize(func() { logging.Init(*verbose) })
 }

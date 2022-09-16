@@ -132,6 +132,7 @@ func (s *Store) Query(ctx context.Context, query string) (result []korrel8.Objec
 	if qr.Data.ResultType != "streams" {
 		return nil, fmt.Errorf("expected 'resultType: streams' in %v", qr)
 	}
+	// FIXME return as streams??? This is inefficient.
 	// Interleave and sort the stream results.
 	var logs [][]string // Each log is [timestamp,logline]
 	for _, sv := range qr.Data.Result {
