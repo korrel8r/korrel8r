@@ -22,7 +22,6 @@ package korrel8
 
 import (
 	"context"
-	"fmt"
 	"time"
 )
 
@@ -49,13 +48,13 @@ type Class interface {
 	Domain() Domain // Domain of this class.
 }
 
-// Result is a collection of query strings for the goal domain of the rule that returned the result.
+// Queries is a collection of query strings.
 // Query string format depends on the domain to be queried, for example a k8s GET URoI or a PromQL query string.
-type Result []string
+type Queries []string
 
 // Get the collection of objects returned by executing all queries against store.
 // Results are de-duplicated based on Object.Identifier.
-func (r Result) Get(ctx context.Context, s Store) ([]Object, error) {
+func (r Queries) Get(ctx context.Context, s Store) ([]Object, error) {
 	dedup := uniqueObjects{}
 	for _, q := range r {
 		objs, err := s.Query(ctx, q)
@@ -78,120 +77,18 @@ type Store interface {
 type Rule interface {
 	Start() Class // Class of start object
 	Goal() Class  // Class of desired result object(s)
-	// Follow the rule from the start Object, obeying the Constraint.
-	// FIXME Constraint is on Query or intermediate values, not on follow??
-	// Constraint can be nil.
-	Follow(Object, *Constraint) (Result, error)
+
+	// Apply the rule to start Object.
+	// Return a list of queries for correlated objects in the Goal() domain.
+	// The queries include the contraint (which can be nil)
+	Apply(Object, *Constraint) (Queries, error)
 }
 
-// Constraint to include in the Result query strings.
+// Constraint to apply to the result of following a rule.
 type Constraint struct {
 	After  *time.Time // Include only results timestamped after this time.
 	Before *time.Time // Include only results timestamped before this time.
 }
 
-// FollowEach calls r.Follow() for each start object and collects the resulting queries.
-func FollowEach(r Rule, start []Object, c *Constraint) (Result, error) {
-	results := unique[string]{}
-	for _, s := range start {
-		result, err := r.Follow(s, c)
-		if err != nil {
-			return nil, err
-		}
-		results.add(result)
-	}
-	return results.list(), nil
-}
-
 // Path is a list of rules where the Goal() of each rule is the Start() of the next.
 type Path []Rule
-
-// Follow rules in a path, using the map to determine the store to make intermediate queries.
-func (p Path) Follow(ctx context.Context, start Object, c *Constraint, stores map[Domain]Store) (result Result, err error) {
-	starters := []Object{start}
-	for i, rule := range p {
-		result, err = FollowEach(rule, starters, c)
-		if i == len(p)-1 || err != nil {
-			break
-		}
-		d := rule.Goal().Domain()
-		store := stores[d]
-		if store == nil {
-			return nil, fmt.Errorf("error following %v: no %v store", rule, d)
-		}
-		if starters, err = result.Get(ctx, store); err != nil {
-			return nil, err
-		}
-		starters = uniqueObjectList(starters)
-	}
-	return result, err
-}
-
-// RuleSet holds a collection of RuleSet forming a directed graph from start -> goal or vice versa.
-type RuleSet struct {
-	rules       []Rule
-	rulesByGoal map[Class][]int // Index into rules so we have a comparable rule id.
-}
-
-// NewRuleSet creates new RuleGraph containing some rules.
-func NewRuleSet(rules ...Rule) *RuleSet {
-	c := &RuleSet{rulesByGoal: map[Class][]int{}}
-	c.Add(rules...)
-	return c
-}
-
-// Add new rules.
-func (c *RuleSet) Add(rules ...Rule) {
-	for _, r := range rules {
-		c.rules = append(c.rules, r)
-		i := len(c.rules) - 1 // Rule index
-		c.rulesByGoal[r.Goal()] = append(c.rulesByGoal[r.Goal()], i)
-	}
-}
-
-// FindPaths returns chains of rules leading from start to goal.
-//
-// FindPaths be called in multiple goroutines concurrently.
-// It cannot be called concurrently with Add.
-func (rs *RuleSet) FindPaths(start, goal Class) []Path {
-	// Rules form a directed cyclic graph, with Class nodes and Rule edges.
-	// Work backwards from the goal to find chains of rules from start.
-	state := pathSearch{
-		RuleSet: rs,
-		visited: map[int]bool{},
-	}
-	state.dfs(start, goal)
-	return state.paths
-}
-
-// pathSearch holds state for a single path search
-type pathSearch struct {
-	*RuleSet
-	visited map[int]bool
-	current Path
-	paths   []Path
-}
-
-// dfs does depth first search for all simple edge paths treating rules as directed links from goal to start.
-//
-// TODO efficiency - better algorithms?
-// TODO shortest paths? Weighted links or nodes?
-func (ps *pathSearch) dfs(start, goal Class) {
-	for _, i := range ps.rulesByGoal[goal] {
-		if ps.visited[i] { // Already used this rule.
-			continue
-		}
-		r := ps.rules[i]
-		ps.visited[i] = true
-		ps.current = append([]Rule{r}, ps.current...) // Add to chain
-		if r.Start() == start {                       // Path has arrived at the start
-			ps.paths = append(ps.paths, ps.current)
-			ps.visited[i] = false       // Allow r to be re-used in a different chain.
-			ps.current = ps.current[1:] // Pop and continue search.
-			continue
-		}
-		ps.dfs(start, r.Start()) // Recursive search from r.Start
-		ps.current = ps.current[1:]
-		ps.visited[i] = false // Allow r to be re-used in different path
-	}
-}

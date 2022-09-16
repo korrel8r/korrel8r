@@ -61,60 +61,8 @@ func TestResult_Get(t *testing.T) {
 		},
 	} {
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
-			objs, _ := Result(x.queries).Get(context.Background(), mockStore{})
+			objs, _ := Queries(x.queries).Get(context.Background(), mockStore{})
 			assert.ElementsMatch(t, x.want, objs)
-		})
-	}
-}
-
-func TestPath_Follow(t *testing.T) {
-	for i, x := range []struct {
-		path Path
-		want Result
-	}{
-		{
-			path: Path{
-				// Return 2 results, must follow both
-				rr("a", "b", func(Object, *Constraint) Result { return []string{"1.b", "2.b"} }),
-				// Return the start object's name with the goal class.
-				rr("b", "c", func(start Object, _ *Constraint) Result { return []string{start.(mockObject).name + ".c", "x.c"} }),
-				rr("c", "z", func(start Object, _ *Constraint) Result { return []string{start.(mockObject).name + ".z", "y.z"} }),
-			},
-			want: Result{"1.z", "2.z", "x.z", "y.z"},
-		},
-		{
-			path: nil,
-			want: Result{},
-		},
-	} {
-		t.Run(strconv.Itoa(i), func(t *testing.T) {
-			r, err := x.path.Follow(context.Background(), o("foo", "a"), nil, mockStores)
-			assert.NoError(t, err)
-			assert.ElementsMatch(t, x.want, r)
-		})
-	}
-}
-
-func TestRule_FollowEach(t *testing.T) {
-	for i, x := range []struct {
-		rule  Rule
-		start []Object
-		want  Result
-	}{
-		{
-			rule:  rr("a", "b", func(start Object, c *Constraint) Result { return []string{start.(mockObject).name + ".b", "x.b"} }),
-			start: []Object{o("1", "a"), o("2", ".a"), o("1", "a")},
-			want:  Result{"1.b", "2.b", "x.b"},
-		},
-		{
-			rule: r("a", "b"),
-			want: Result{},
-		},
-	} {
-		t.Run(strconv.Itoa(i), func(t *testing.T) {
-			r, err := FollowEach(x.rule, x.start, nil)
-			assert.NoError(t, err)
-			assert.ElementsMatch(t, x.want, r)
 		})
 	}
 }

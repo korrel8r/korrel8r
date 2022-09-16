@@ -13,7 +13,6 @@ import (
 type Rule struct {
 	*template.Template
 	start, goal korrel8.Class
-	prep        func(korrel8.Object) any
 }
 
 func New(start, goal korrel8.Class, t *template.Template) *Rule {
@@ -25,7 +24,7 @@ func (r *Rule) Start() korrel8.Class { return r.start }
 func (r *Rule) Goal() korrel8.Class  { return r.goal }
 
 // Follow the rule by applying the template to start.Native()
-func (r *Rule) Follow(start korrel8.Object, c *korrel8.Constraint) (result korrel8.Result, err error) {
+func (r *Rule) Apply(start korrel8.Object, c *korrel8.Constraint) (result korrel8.Queries, err error) {
 	b := &strings.Builder{}
 	var data any = start
 	data = start.Native()

@@ -18,8 +18,8 @@ func init() {
 
 type rule struct{ *templaterule.Rule }
 
-func (r rule) Follow(start korrel8.Object, c *korrel8.Constraint) (result korrel8.Result, err error) {
-	result, err = r.Rule.Follow(start, c)
+func (r rule) Apply(start korrel8.Object, c *korrel8.Constraint) (result korrel8.Queries, err error) {
+	result, err = r.Rule.Apply(start, c)
 	for i, q := range result {
 		result[i] = addConstraint(q, c)
 	}
@@ -42,4 +42,9 @@ func addConstraint(q string, c *korrel8.Constraint) string {
 func addRule(name string, start korrel8.Class, body string) {
 	t := template.Must(template.New(name).Parse(body))
 	Rules = append(Rules, rule{templaterule.New(start, Class{}, t)})
+}
+
+func init() {
+	addRule("PodLogs", k8s.ClassOf(&v1.Pod{}),
+		`{kubernetes_pod_name="{{.ObjectMeta.Name}}",kubernetes_namespace_name="{{.ObjectMeta.Namespace}}}"`)
 }

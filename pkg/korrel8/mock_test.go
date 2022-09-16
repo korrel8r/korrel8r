@@ -28,21 +28,21 @@ func (o mockObject) Identifier() Identifier { return o }
 
 type mockRule struct {
 	start, goal Class
-	follow      func(Object, *Constraint) Result
+	apply       func(Object, *Constraint) Queries
 }
 
 func (r mockRule) Start() Class   { return r.start }
 func (r mockRule) Goal() Class    { return r.goal }
 func (r mockRule) String() string { return fmt.Sprintf("(%v)->%v", r.start, r.goal) }
-func (r mockRule) Follow(start Object, c *Constraint) (Result, error) {
-	return r.follow(start, c), nil
+func (r mockRule) Apply(start Object, c *Constraint) (Queries, error) {
+	return r.apply(start, c), nil
 }
 
-func rr(start, goal string, follow func(Object, *Constraint) Result) mockRule {
+func rr(start, goal string, apply func(Object, *Constraint) Queries) mockRule {
 	return mockRule{
-		start:  mockClass(start),
-		goal:   mockClass(goal),
-		follow: follow,
+		start: mockClass(start),
+		goal:  mockClass(goal),
+		apply: apply,
 	}
 }
 
@@ -60,4 +60,7 @@ func (s mockStore) Query(_ context.Context, q string) ([]Object, error) {
 	return objs, nil
 }
 
-var mockStores = map[Domain]Store{mockDomain: mockStore{}}
+var (
+	mockStores   = map[Domain]Store{mockDomain: mockStore{}}
+	mockFollower = Follower{mockStores}
+)
