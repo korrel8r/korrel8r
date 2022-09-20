@@ -1,6 +1,10 @@
 package korrel8
 
-// RuleSet holds a collection of RuleSet forming a directed graph from start -> goal or vice versa.
+import (
+	"fmt"
+)
+
+// RuleSet holds a collection of Rules forming a directed graph from start -> goal or vice versa.
 type RuleSet struct {
 	rules       []Rule
 	rulesByGoal map[Class][]int // Index into rules so we have a comparable rule id.
@@ -29,11 +33,18 @@ func (c *RuleSet) Add(rules ...Rule) {
 func (rs *RuleSet) FindPaths(start, goal Class) []Path {
 	// Rules form a directed cyclic graph, with Class nodes and Rule edges.
 	// Work backwards from the goal to find chains of rules from start.
+	log.Info("finding paths", "start", start, "goal", goal)
 	state := pathSearch{
 		RuleSet: rs,
 		visited: map[int]bool{},
 	}
 	state.dfs(start, goal)
+	// FIXME String()
+	var str []string
+	for _, p := range state.paths {
+		str = append(str, fmt.Sprintf("%v", p))
+	}
+	log.Info("found paths", "paths", str)
 	return state.paths
 }
 

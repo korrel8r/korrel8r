@@ -23,7 +23,11 @@ package korrel8
 import (
 	"context"
 	"time"
+
+	"github.com/alanconway/korrel8/internal/pkg/logging"
 )
+
+var log = logging.Log
 
 // Object represents a signal instance.
 type Object interface {

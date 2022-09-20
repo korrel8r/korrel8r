@@ -22,7 +22,6 @@ var getCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(2),
 	Run: func(cmd *cobra.Command, args []string) {
 		domain, query := korrel8.Domain(args[0]), args[1]
-		log.V(2).Info("initializing store", "domain", domain)
 		store, err := newStore(domain)
 		exitErr(err)
 		result, err := store.Query(context.Background(), query)

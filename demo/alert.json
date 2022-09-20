@@ -1,0 +1,33 @@
+{
+  "annotations": {
+    "description": "Deployment default/demo has not matched the expected number of replicas for longer than 15 minutes. This indicates that cluster infrastructure is unable to start or restart the necessary components. This most often occurs when one or more nodes are down or partioned from the cluster, or a fault occurs on the node that prevents the workload from starting. In rare cases this may indicate a new version of a cluster component cannot start due to a bug or configuration error. Assess the pods for this deployment to verify they are running on healthy nodes and then contact support.",
+    "runbook_url": "https://github.com/openshift/runbooks/blob/master/alerts/cluster-monitoring-operator/KubeDeploymentReplicasMismatch.md",
+    "summary": "Deployment has not matched the expected number of replicas"
+  },
+  "endsAt": "2022-09-20T12:22:32.179Z",
+  "fingerprint": "41378c126a5a269c",
+  "receivers": [
+    {
+      "name": "Default"
+    }
+  ],
+  "startsAt": "2022-09-19T20:24:32.179Z",
+  "status": {
+    "inhibitedBy": [],
+    "silencedBy": [],
+    "state": "active"
+  },
+  "updatedAt": "2022-09-20T12:18:32.214Z",
+  "generatorURL": "https:///console-openshift-console.apps.snoflake.my.test/monitoring/graph?g0.expr=%28%28%28kube_deployment_spec_replicas%7Bjob%3D%22kube-state-metrics%22%2Cnamespace%3D~%22%28openshift-.%2A%7Ckube-.%2A%7Cdefault%29%22%7D+%3E+kube_deployment_status_replicas_available%7Bjob%3D%22kube-state-metrics%22%2Cnamespace%3D~%22%28openshift-.%2A%7Ckube-.%2A%7Cdefault%29%22%7D%29+and+%28changes%28kube_deployment_status_replicas_updated%7Bjob%3D%22kube-state-metrics%22%2Cnamespace%3D~%22%28openshift-.%2A%7Ckube-.%2A%7Cdefault%29%22%7D%5B5m%5D%29+%3D%3D+0%29%29+%2A+on%28%29+group_left%28%29+cluster%3Acontrol_plane%3Aall_nodes_ready%29+%3E+0&g0.tab=1",
+  "labels": {
+    "alertname": "KubeDeploymentReplicasMismatch",
+    "container": "kube-rbac-proxy-main",
+    "deployment": "demo",
+    "endpoint": "https-main",
+    "job": "kube-state-metrics",
+    "namespace": "default",
+    "prometheus": "openshift-monitoring/k8s",
+    "service": "kube-state-metrics",
+    "severity": "warning"
+  }
+}

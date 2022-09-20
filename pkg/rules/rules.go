@@ -13,3 +13,7 @@ func newTemplate(name string, start, goal korrel8.Class, tmpl string) korrel8.Ru
 }
 
 var FuncMap = map[string]any{}
+
+func Rules() []korrel8.Rule {
+	return append(K8sToK8s(), K8sToLoki()...)
+}

@@ -13,7 +13,7 @@ var Log logr.Logger = log.Log
 
 // Init sets up the Root logger.
 func Init(verbose int) {
-	log.SetLogger(zap.New(zap.Level(zapcore.Level(-verbose)), zap.UseDevMode(true)).WithName("korrel8"))
+	log.SetLogger(zap.New(zap.Level(zapcore.Level(-verbose)), zap.UseDevMode(true)))
 }
 
 // BeginEnd logs Info "begin "+msg..., and returns a function to defer to log "end "+msg...

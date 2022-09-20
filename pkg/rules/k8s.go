@@ -3,6 +3,7 @@ package rules
 import (
 	"fmt"
 
+	"github.com/alanconway/korrel8/pkg/alert"
 	"github.com/alanconway/korrel8/pkg/k8s"
 	"github.com/alanconway/korrel8/pkg/korrel8"
 	appsv1 "github.com/openshift/api/apps/v1"
@@ -14,6 +15,12 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
+
+func K8sRules() []korrel8.Rule {
+	return append(
+		K8sToK8s(),
+		AlertToK8s()...)
+}
 
 func K8sToK8s() (rules []korrel8.Rule) {
 	// need to add schemes for all API types mentioned in rules.
@@ -30,12 +37,21 @@ func K8sToK8s() (rules []korrel8.Rule) {
 		&corev1.Service{},
 		&policyv1.PodDisruptionBudget{},
 	} {
-		rules = append(rules, newTemplate(fmt.Sprintf("%TPodSelector", o), k8s.ClassOf(o), k8s.ClassOf(&corev1.Pod{}),
+		// FIXME class string
+		rules = append(rules, newTemplate(fmt.Sprintf("%vToPodSelector", k8s.ClassOf(o).String()), k8s.ClassOf(o), k8s.ClassOf(&corev1.Pod{}),
 			`/api/v1/namespaces/{{.ObjectMeta.Namespace}}/pods?labelSelector={{$s := ""}}{{range $k,$v := .Spec.Selector.MatchLabels}}{{urlquery $s}}{{$k}}{{urlquery "="}}{{$v}}{{$s = ","}}{{end}}`))
 	}
 	rules = append(rules,
 		newTemplate("EventToPod", k8s.ClassOf(&eventsv1.Event{}), k8s.ClassOf(&corev1.Pod{}),
 			// FIXME only applies if involvedObject.kind == Pod, need to check.
 			`/api/v1/namespaces/{{.involvedObject.namespace}}/pods/{{.involvedObject.name}}`))
+	return rules
+}
+
+func AlertToK8s() (rules []korrel8.Rule) {
+	// FIXME divide alerts into classes by alertname, different "schema" (different labels)
+	// Wildcard matches?
+	rules = append(rules, newTemplate(("AlertToDeployment"), alert.Class{}, k8s.ClassOf(&appv1.Deployment{}),
+		`/api/v1/namespaces/{{.Labels.namespace}}/deployments/{{.Labels.deployment}}`))
 	return rules
 }

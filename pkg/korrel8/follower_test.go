@@ -53,7 +53,7 @@ func TestFollower_FollowEach(t *testing.T) {
 		},
 	} {
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
-			r, err := mockFollower.FollowEach(x.rule, x.start, nil)
+			r, err := mockFollower.followEach(x.rule, x.start, nil)
 			assert.NoError(t, err)
 			assert.ElementsMatch(t, x.want, r)
 		})

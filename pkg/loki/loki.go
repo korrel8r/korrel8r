@@ -25,6 +25,7 @@ const Domain = "logs.loki-viaq"
 type Class struct{}
 
 func (c Class) Domain() korrel8.Domain { return Domain }
+func (c Class) String() string         { return Domain } // FIXME require Stringa
 
 var _ korrel8.Class = Class{} // Implements interface.
 

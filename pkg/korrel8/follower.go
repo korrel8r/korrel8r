@@ -10,14 +10,16 @@ type Follower struct {
 	Stores map[Domain]Store
 }
 
-// Follow rules in a path, using the map to determine the store to make intermediate queries.
+// Follow rules in a path.
 func (f Follower) Follow(ctx context.Context, start Object, c *Constraint, path Path) (result Queries, err error) {
+	// FIXME multi-path following needs thought, reduce duplication.
 	if err := f.Validate(path); err != nil {
 		return nil, err
 	}
 	starters := []Object{start}
 	for i, rule := range path {
-		result, err = f.FollowEach(rule, starters, c)
+		log.Info("following", "rule", rule)
+		result, err = f.followEach(rule, starters, c)
 		if i == len(path)-1 || err != nil {
 			break
 		}
@@ -32,19 +34,6 @@ func (f Follower) Follow(ctx context.Context, start Object, c *Constraint, path 
 		starters = uniqueObjectList(starters)
 	}
 	return result, err
-}
-
-// FollowEach calls r.Apply() for each start object and collects the resulting queries.
-func (f Follower) FollowEach(r Rule, start []Object, c *Constraint) (Queries, error) {
-	results := unique[string]{}
-	for _, s := range start {
-		result, err := r.Apply(s, c)
-		if err != nil {
-			return nil, err
-		}
-		results.add(result)
-	}
-	return results.list(), nil
 }
 
 // Validate checks that the Goal() of each rule matches the Start() of the next,
@@ -62,4 +51,17 @@ func (f Follower) Validate(path Path) error {
 		}
 	}
 	return nil
+}
+
+// FollowEach calls r.Apply() for each start object and collects the resulting queries.
+func (f Follower) followEach(r Rule, start []Object, c *Constraint) (Queries, error) {
+	results := unique[string]{}
+	for _, s := range start {
+		result, err := r.Apply(s, c)
+		if err != nil {
+			return nil, err
+		}
+		results.add(result)
+	}
+	return results.list(), nil
 }

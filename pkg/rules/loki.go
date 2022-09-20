@@ -2,6 +2,7 @@ package rules
 
 import (
 	"encoding/json"
+	"fmt"
 	"time"
 
 	"github.com/alanconway/korrel8/pkg/k8s"
@@ -24,6 +25,7 @@ func (r rule) Apply(start korrel8.Object, c *korrel8.Constraint) (result korrel8
 }
 
 // FIXME
+func (r rule) String() string { return fmt.Sprintf("%v", r.Rule) }
 
 // QueryObject a JSON object representing a Loki query.
 // Time values are RFC3339 format: "2006-01-02T15:04:05.999999999Z07:00"
