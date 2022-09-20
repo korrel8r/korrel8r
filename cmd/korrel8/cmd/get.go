@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/alanconway/korrel8/pkg/korrel8"
 	"github.com/spf13/cobra"
 	"sigs.k8s.io/yaml"
 )
@@ -21,23 +20,23 @@ var getCmd = &cobra.Command{
 	Short: "Execute QUERY in the default store for DOMAIN and print the results",
 	Args:  cobra.ExactArgs(2),
 	Run: func(cmd *cobra.Command, args []string) {
-		domain, query := korrel8.Domain(args[0]), args[1]
-		store, err := newStore(domain)
-		exitErr(err)
-		result, err := store.Query(context.Background(), query)
-		exitErr(err)
+		domain, query := args[0], args[1]
+		e := engine()
+		store := e.Stores[domain]
+		if store == nil {
+			exitErr(fmt.Errorf("unknown domain name %q", domain))
+		}
+		result := must(store.Query(context.Background(), query))
 		switch *output {
 		case "json":
 			e := json.NewEncoder(os.Stdout)
 			if *pretty {
 				e.SetIndent("", "  ")
 			}
-			e.Encode(result)
+			exitErr(e.Encode(result))
 		case "yaml":
 			for _, o := range result {
-				b, err := yaml.Marshal(o)
-				exitErr(err)
-				fmt.Printf("---\n%s", b)
+				fmt.Printf("---\n%s", must(yaml.Marshal(o)))
 			}
 		default:
 			exitErr(fmt.Errorf("invalid output type: %v", *output))

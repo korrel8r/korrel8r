@@ -12,8 +12,10 @@ func newTemplate(name string, start, goal korrel8.Class, tmpl string) korrel8.Ru
 	return templaterule.New(start, goal, t)
 }
 
-var FuncMap = map[string]any{}
-
-func Rules() []korrel8.Rule {
-	return append(K8sToK8s(), K8sToLoki()...)
+func AddTo(r *korrel8.RuleSet) {
+	r.Add(K8sToK8s()...)
+	r.Add(AlertToK8s()...)
+	r.Add(K8sToLoki()...)
 }
+
+func All() *korrel8.RuleSet { rs := korrel8.NewRuleSet(); AddTo(rs); return rs }

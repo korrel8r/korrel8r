@@ -22,6 +22,8 @@ package korrel8
 
 import (
 	"context"
+	"fmt"
+	"strings"
 	"time"
 
 	"github.com/alanconway/korrel8/internal/pkg/logging"
@@ -32,12 +34,14 @@ var log = logging.Log
 // Object represents a signal instance.
 type Object interface {
 	Identifier() Identifier // Identifies this object instance.
-	Class() Class           // Class of the object.
 	Native() any            // Native representation of the object.
 }
 
-// Domain names a set of objects based on the same technology.
-type Domain string
+// Domain is a collection of classes describing signals in the same family.
+type Domain interface {
+	String() string     // Name of the domain
+	Class(string) Class // Find a class by name, return nil if not found.
+}
 
 // Identifier is a comparable value that identifies an "instance" of a signal.
 //
@@ -50,6 +54,9 @@ type Identifier any
 // Class implementations must be comparable.
 type Class interface {
 	Domain() Domain // Domain of this class.
+	New() Object    // Return a new instance of the class, for decoding from JSON.
+	String() string // Name of the class
+	// FIXME RemoveDuplicates([]Object)[]Object
 }
 
 // Queries is a collection of query strings.
@@ -79,8 +86,9 @@ type Store interface {
 // Rule encapsulates logic to find correlated goal objects from a start object.
 //
 type Rule interface {
-	Start() Class // Class of start object
-	Goal() Class  // Class of desired result object(s)
+	Start() Class   // Class of start object
+	Goal() Class    // Class of desired result object(s)
+	String() string // Name of the rule
 
 	// Apply the rule to start Object.
 	// Return a list of queries for correlated objects in the Goal() domain.
@@ -96,3 +104,15 @@ type Constraint struct {
 
 // Path is a list of rules where the Goal() of each rule is the Start() of the next.
 type Path []Rule
+
+func (p Path) String() string {
+	b := &strings.Builder{}
+	b.WriteString("[")
+	separator := ""
+	for _, r := range p {
+		fmt.Fprintf(b, "%v%v", separator, r)
+		separator = ", "
+	}
+	b.WriteString("]")
+	return b.String()
+}

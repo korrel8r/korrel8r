@@ -8,11 +8,16 @@ import (
 
 // Mock implementations
 
-const mockDomain Domain = "mock"
+type mockDomain struct{}
+
+func (d mockDomain) String() string          { return "mock" }
+func (d mockDomain) Class(name string) Class { return mockClass(name) }
 
 type mockClass string
 
-func (c mockClass) Domain() Domain { return mockDomain }
+func (c mockClass) Domain() Domain { return mockDomain{} }
+func (c mockClass) New() Object    { return mockObject{} }
+func (c mockClass) String() string { return string(c) }
 
 type mockObject struct {
 	name  string
@@ -20,7 +25,6 @@ type mockObject struct {
 }
 
 func o(name, class string) Object { return mockObject{name: name, class: mockClass(class)} }
-func (o mockObject) Class() Class { return o.class }
 func (o mockObject) Native() any  { return o }
 
 // Identifier suppose name is only unique per class (like a K8s name) so identifier is whole object.
@@ -59,8 +63,3 @@ func (s mockStore) Query(_ context.Context, q string) ([]Object, error) {
 	}
 	return objs, nil
 }
-
-var (
-	mockStores   = map[Domain]Store{mockDomain: mockStore{}}
-	mockFollower = Follower{mockStores}
-)

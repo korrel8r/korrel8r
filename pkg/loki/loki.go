@@ -20,19 +20,26 @@ import (
 
 // FIXME: currently assumption of viaq vocabulary is baked in, separate store query format from domain vocabulary.
 
-const Domain = "logs.loki-viaq"
+type domain struct{}
 
-type Class struct{}
+var Domain = domain{}
+
+func (d domain) String() string                  { return "loki" }
+func (d domain) Class(name string) korrel8.Class { return Class{} }
+
+var _ korrel8.Domain = Domain
+
+type Class struct{} // Only one class
 
 func (c Class) Domain() korrel8.Domain { return Domain }
-func (c Class) String() string         { return Domain } // FIXME require Stringa
+func (c Class) String() string         { return Domain.String() }
+func (c Class) New() korrel8.Object    { return Object("") }
 
 var _ korrel8.Class = Class{} // Implements interface.
 
-type Object string     // Log record
+type Object string     // Log record - TODO parse as JSON Object?
 type Identifier Object // The whole log record
 
-func (o Object) Class() korrel8.Class   { return Class{} }
 func (o Object) Domain() korrel8.Domain { return Domain }
 func (o Object) Native() any            { return o }
 
@@ -84,7 +91,7 @@ func (s *Store) Query(ctx context.Context, query string) (result []korrel8.Objec
 	qo := QueryObject{}
 	d := json.NewDecoder(strings.NewReader(query))
 	d.DisallowUnknownFields()
-	if d.Decode(&qo); err != nil || qo.Query == "" { // Not a QueryObject
+	if err := d.Decode(&qo); err != nil || qo.Query == "" { // Not a QueryObject
 		qo.Query = query
 	}
 	u := *s.u
@@ -117,7 +124,6 @@ func (s *Store) Query(ctx context.Context, query string) (result []korrel8.Objec
 		URL:    &u,
 		Header: header,
 	}
-	// FIXME logging
 	resp, err := httpError(s.c.Do(req))
 	if err != nil {
 		return nil, fmt.Errorf("%w\nURL: %v", err, u)

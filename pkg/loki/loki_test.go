@@ -27,6 +27,7 @@ func TestStore_Query_String(t *testing.T) {
 		want = append(want, Object(l))
 	}
 	got, err := s.Query(context.Background(), `{test="loki"}`)
+	require.NoError(t, err)
 	assert.Equal(t, want, got)
 }
 

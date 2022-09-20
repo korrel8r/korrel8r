@@ -43,7 +43,8 @@ Packages:
 - [X] Propagate time interval and other constraints on correlation.
 - [X] Refactor Follower
 - [X] Rename Result as Queries
-- [ ] Use streams as Object for prom & loki, much more efficient & have same metadata. 
+- [X] Introduce Engine to bring together rules, domains and stores.
+- [ ] Use streams as Object for prom & loki, more efficient & have same metadata. 
 
 - [ ] Multiple goals: avoid repeated queries (log + pod + metric...)
 - [ ] Serialize & deserialize Class, for command line.

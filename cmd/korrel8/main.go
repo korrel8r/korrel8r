@@ -19,11 +19,7 @@ import (
 	"fmt"
 
 	"github.com/alanconway/korrel8/cmd/korrel8/cmd"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
-
-// FIXME Sort out clients
-var k8Client client.Client
 
 func main() {
 	fmt.Println()

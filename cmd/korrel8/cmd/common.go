@@ -7,7 +7,9 @@ import (
 	"github.com/alanconway/korrel8/pkg/alert"
 	"github.com/alanconway/korrel8/pkg/k8s"
 	"github.com/alanconway/korrel8/pkg/korrel8"
+	"github.com/alanconway/korrel8/pkg/loki"
 	"github.com/alanconway/korrel8/pkg/openshift"
+	"github.com/alanconway/korrel8/pkg/rules"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/util/flowcontrol"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -17,6 +19,9 @@ import (
 func exitErr(err error) {
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err.Error())
+		if os.Getenv("KORREL8_PANIC") != "" {
+			panic(err)
+		}
 		os.Exit(1)
 	}
 }
@@ -31,29 +36,24 @@ func open(name string) (f *os.File) {
 	}
 }
 
-func restConfig() (*rest.Config, error) {
+func restConfig() *rest.Config {
 	cfg, err := config.GetConfig()
 	if err == nil {
 		cfg.RateLimiter = flowcontrol.NewTokenBucketRateLimiter(100, 1000)
 	}
-	return cfg, err
+	return must(cfg, err)
 }
 
-func newStore(d korrel8.Domain) (korrel8.Store, error) {
-	cfg, err := restConfig()
-	if err != nil {
-		return nil, err
-	}
-	switch d {
-	case k8s.Domain:
-		c, err := client.New(cfg, client.Options{})
-		if err != nil {
-			return nil, err
-		}
-		return k8s.NewStore(c)
-	case alert.Domain:
-		return openshift.AlertManagerStore(cfg)
-	default:
-		return nil, fmt.Errorf("creating store for unknown domain %v", d)
-	}
+func k8sClient(cfg *rest.Config) client.Client {
+	return must(client.New(cfg, client.Options{}))
+}
+
+func engine() *korrel8.Engine {
+	cfg := restConfig()
+	e := korrel8.NewEngine()
+	rules.AddTo(e.Rules)
+	e.Add(k8s.Domain, must(k8s.NewStore(k8sClient(cfg))))
+	e.Add(alert.Domain, must(openshift.AlertManagerStore(cfg)))
+	e.Add(loki.Domain, must(openshift.AlertManagerStore(cfg)))
+	return e
 }

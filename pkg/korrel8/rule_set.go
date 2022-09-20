@@ -2,17 +2,18 @@ package korrel8
 
 import (
 	"fmt"
+	"strings"
 )
 
 // RuleSet holds a collection of Rules forming a directed graph from start -> goal or vice versa.
 type RuleSet struct {
-	rules       []Rule
-	rulesByGoal map[Class][]int // Index into rules so we have a comparable rule id.
+	rules  []Rule
+	byGoal map[Class][]int // Index into rules so we have a comparable rule id.
 }
 
 // NewRuleSet creates new RuleGraph containing some rules.
 func NewRuleSet(rules ...Rule) *RuleSet {
-	c := &RuleSet{rulesByGoal: map[Class][]int{}}
+	c := &RuleSet{byGoal: map[Class][]int{}}
 	c.Add(rules...)
 	return c
 }
@@ -22,8 +23,27 @@ func (c *RuleSet) Add(rules ...Rule) {
 	for _, r := range rules {
 		c.rules = append(c.rules, r)
 		i := len(c.rules) - 1 // Rule index
-		c.rulesByGoal[r.Goal()] = append(c.rulesByGoal[r.Goal()], i)
+		c.byGoal[r.Goal()] = append(c.byGoal[r.Goal()], i)
 	}
+}
+
+// Add rules from map
+func (c *RuleSet) AddMap(m map[string]Rule) {
+	for _, r := range m {
+		c.Add(r)
+	}
+}
+
+// Find rules with the given start and goal.
+// Either or both can be nil, nil matches any class
+func (rs *RuleSet) GetRules(start, goal Class) []Rule {
+	var rules []Rule
+	for _, r := range rs.rules {
+		if (start == nil || start == r.Start()) && (goal == nil || goal == r.Goal()) {
+			rules = append(rules, r)
+		}
+	}
+	return rules
 }
 
 // FindPaths returns chains of rules leading from start to goal.
@@ -39,12 +59,14 @@ func (rs *RuleSet) FindPaths(start, goal Class) []Path {
 		visited: map[int]bool{},
 	}
 	state.dfs(start, goal)
-	// FIXME String()
-	var str []string
+	// FIXME display
+	b := &strings.Builder{}
+	sep := ""
 	for _, p := range state.paths {
-		str = append(str, fmt.Sprintf("%v", p))
+		fmt.Fprintf(b, "%v[%v]", sep, p)
+		sep = ", "
 	}
-	log.Info("found paths", "paths", str)
+	log.Info("found paths", "paths", b.String())
 	return state.paths
 }
 
@@ -61,7 +83,7 @@ type pathSearch struct {
 // TODO efficiency - better algorithms?
 // TODO shortest paths? Weighted links or nodes?
 func (ps *pathSearch) dfs(start, goal Class) {
-	for _, i := range ps.rulesByGoal[goal] {
+	for _, i := range ps.byGoal[goal] {
 		if ps.visited[i] { // Already used this rule.
 			continue
 		}

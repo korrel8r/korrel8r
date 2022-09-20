@@ -19,7 +19,7 @@ func TestAlertManagerMain(t *testing.T) {
 		ObjectMeta: v1.ObjectMeta{Name: openshift.AlertmanagerMain, Namespace: openshift.MonitoringNS},
 		Spec:       routev1.RouteSpec{Host: "example.test"},
 	}
-	c.Create(ctx, &r)
+	assert.NoError(t, c.Create(ctx, &r))
 	host, err := openshift.AlertManagerHost(c)
 	assert.NoError(t, err)
 	assert.Equal(t, "example.test", host)

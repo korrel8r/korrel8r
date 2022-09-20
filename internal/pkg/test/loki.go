@@ -74,10 +74,10 @@ func RequireLokiServer(t *testing.T) *LokiServer {
 	t.Helper()
 	s, err := NewLokiServer()
 	require.NoError(t, err)
-	defer s.Cmd.Process.Kill()
+	defer func() { _ = s.Cmd.Process.Kill() }()
 	require.Eventually(t, func() bool {
 		if err := s.Check(t.Logf); err != nil {
-			t.Logf("waiting for Loki server on port %v (%v)", s.Port, err)
+			t.Logf("waiting for Loki on port %v (%v)", s.Port, err)
 			return false
 		}
 		return true

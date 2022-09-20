@@ -11,47 +11,50 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/types"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/rest"
+	"k8s.io/client-go/util/flowcontrol"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 )
 
 var (
-	hasCluster     error
 	hasClusterOnce sync.Once
+	clusterErr     error
+
+	RESTConfig *rest.Config
+	K8sClient  client.WithWatch
 )
 
 func HasCluster() error {
 	// Contact the cluster once per test run, after that assume nothing changes.
 	hasClusterOnce.Do(func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-		var err error
-		defer func() {
-			hasCluster = err
-			cancel()
-		}()
-		cfg, err := config.GetConfig()
-		if err != nil {
+		defer cancel()
+		RESTConfig, clusterErr = config.GetConfig()
+		if clusterErr != nil {
 			return
 		}
-		cfg.Timeout = time.Second
-		c, err := client.New(cfg, client.Options{})
-		if err != nil {
+		RESTConfig.Timeout = time.Second
+		RESTConfig.RateLimiter = flowcontrol.NewTokenBucketRateLimiter(100, 1000)
+		K8sClient, clusterErr = client.NewWithWatch(RESTConfig, client.Options{})
+		if clusterErr != nil {
 			return
 		}
-		ns := corev1.Namespace{}
+		ns := &corev1.Namespace{}
 		ns.Name = "default"
-		err = c.Get(ctx, types.NamespacedName{Name: "default"}, &ns)
+		clusterErr = K8sClient.Get(ctx, client.ObjectKeyFromObject(ns), ns)
 	})
-	return hasCluster
+	return clusterErr
 }
 
 // SkipIfNoCluster calls t.Skip if no cluster is detected.
 func SkipIfNoCluster(t *testing.T) {
 	t.Helper()
 	if err := HasCluster(); err != nil {
-		skipf(t, "no cluster running: %v", err)
+		skipf(t, "no cluster available: %v", err)
 	}
 }
 
@@ -86,4 +89,21 @@ func ExecError(err error) error {
 		return fmt.Errorf("%v: %v", err, string(ex.Stderr))
 	}
 	return err
+}
+
+func CreateUniqueNamespace(t *testing.T, c client.Client) string {
+	t.Helper()
+	// Server-generated unique name.
+	ns := corev1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			GenerateName: "test-",
+			Labels:       map[string]string{"test": t.Name()},
+		},
+	}
+
+	require.NoError(t, c.Create(context.Background(), &ns))
+	require.NotEmpty(t, ns.Name)
+	t.Logf("test namespace: %v", ns.Name)
+	t.Cleanup(func() { _ = c.Delete(context.Background(), &ns) })
+	return ns.Name
 }

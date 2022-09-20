@@ -10,22 +10,17 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
+	v1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func findRule(start, goal korrel8.Class) korrel8.Rule {
-	for _, r := range Rules() {
-		if r.Start() == start && r.Goal() == goal {
-			return r
-		}
-	}
-	return nil
-}
-
 func TestRules_DeploymentHasPods(t *testing.T) {
-	r := findRule(k8s.ClassOf(&appsv1.Deployment{}), k8s.ClassOf(&corev1.Pod{}))
-	require.NotNil(t, r)
+	rs := korrel8.NewRuleSet()
+	AddTo(rs)
+	rules := rs.GetRules(k8s.ClassOf(&appsv1.Deployment{}), k8s.ClassOf(&corev1.Pod{}))
+	require.NotEmpty(t, rules)
+	r := rules[0]
 	for _, x := range []struct {
 		deployment *appsv1.Deployment
 		query      string
@@ -57,12 +52,12 @@ func TestRules_DeploymentHasPods(t *testing.T) {
 }
 
 func TestRules_ALertToK8s(t *testing.T) {
-	// FIXME awkward conversion to object, part of Domain?
 	a := alert.Object{GettableAlert: &models.GettableAlert{
 		Alert: models.Alert{Labels: map[string]string{"namespace": "foo", "deployment": "bar"}}},
 	}
-	r := AlertToK8s()[0] // FIXME finding rules.
-	q, err := r.Apply(a, nil)
+	r := All().GetRules(alert.Class{}, k8s.ClassOf(&v1.Deployment{}))
+	assert.NotEmpty(t, r)
+	q, err := r[0].Apply(a, nil)
 	assert.NoError(t, err)
 	assert.Equal(t, korrel8.Queries{"/api/v1/namespaces/foo/deployments/bar"}, q)
 }

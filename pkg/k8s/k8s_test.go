@@ -5,10 +5,11 @@ import (
 	"net/url"
 	"testing"
 
+	"github.com/alanconway/korrel8/pkg/korrel8"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/api/core/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/apimachinery/pkg/api/meta/testrestmapper"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -17,12 +18,6 @@ import (
 	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
-
-func TestClassOf(t *testing.T) {
-	c := ClassOf(&corev1.Pod{})
-	assert.Equal(t, c, Object{&corev1.Pod{TypeMeta: metav1.TypeMeta{Kind: "Pod", APIVersion: "v1"}}}.Class())
-	assert.NotEqual(t, c, Object{&corev1.Service{}}.Class())
-}
 
 func TestParseURIRegexp(t *testing.T) {
 	for _, path := range [][]string{
@@ -41,8 +36,39 @@ func TestParseURIRegexp(t *testing.T) {
 	}
 }
 
+func TestDomain_Class(t *testing.T) {
+	require.NoError(t, appsv1.AddToScheme(scheme.Scheme))
+	for _, x := range []struct {
+		name string
+		want korrel8.Class
+	}{
+		// FIXME need better way to write Kinds? Alllow Pod.v1 (empty group.)
+		// Find Deployment et all even without group?
+		{"Pod", ClassOf(&corev1.Pod{})},
+		{"Pod.v1", ClassOf(&corev1.Pod{})},
+		{"Pod.v1.", ClassOf(&corev1.Pod{})},
+		{"Deployment", ClassOf(&appsv1.Deployment{})},
+		{"Deployment.v1", ClassOf(&appsv1.Deployment{})},
+		{"Deployment.v1.apps", ClassOf(&appsv1.Deployment{})},
+	} {
+		t.Run(x.name, func(t *testing.T) {
+			assert.NotNil(t, x.want)
+			got := Domain.Class(x.name)
+			if assert.NotNil(t, got) {
+				assert.Equal(t, x.want.String(), got.String())
+			}
+			// Round trip for String()
+			name := got.String()
+			got2 := Domain.Class(name)
+			if assert.NotNil(t, got2, "lookup %v", name) {
+				assert.Equal(t, name, got2.String())
+			}
+		})
+	}
+}
+
 func TestStore_ParseURI(t *testing.T) {
-	apiextensionsv1.AddToScheme(scheme.Scheme)
+	require.NoError(t, apiextensionsv1.AddToScheme(scheme.Scheme))
 	s, err := NewStore(fake.NewClientBuilder().
 		WithRESTMapper(testrestmapper.TestOnlyStaticRESTMapper(scheme.Scheme)).
 		Build())
@@ -61,6 +87,7 @@ func TestStore_ParseURI(t *testing.T) {
 	} {
 		t.Run(x.uri, func(t *testing.T) {
 			u, err := url.Parse(x.uri)
+			require.NoError(t, err)
 			gvk, nsName, err := s.parseAPIPath(u)
 			require.NoError(t, err)
 			assert.Equal(t, x.gvk, gvk)
@@ -85,14 +112,19 @@ func TestStore_Query(t *testing.T) {
 		).Build()
 	store, err := NewStore(c)
 	require.NoError(t, err)
+	var (
+		fred   = types.NamespacedName{Namespace: "x", Name: "fred"}
+		barney = types.NamespacedName{Namespace: "x", Name: "barney"}
+		wilma  = types.NamespacedName{Namespace: "y", Name: "wilma"}
+	)
 	for _, x := range []struct {
 		query string
 		want  []types.NamespacedName
 	}{
-		{"/api/v1/namespaces/x/pods/fred", []types.NamespacedName{{"x", "fred"}}},
-		{"/api/v1/namespaces/x/pods", []types.NamespacedName{{"x", "fred"}, {"x", "barney"}}},
-		{"/api/v1/pods", []types.NamespacedName{{"x", "fred"}, {"x", "barney"}, {"y", "wilma"}}},
-		{"/api/v1/pods?labelSelector=app%3Dfoo", []types.NamespacedName{{"x", "fred"}, {"y", "wilma"}}},
+		{"/api/v1/namespaces/x/pods/fred", []types.NamespacedName{fred}},
+		{"/api/v1/namespaces/x/pods", []types.NamespacedName{fred, barney}},
+		{"/api/v1/pods", []types.NamespacedName{fred, barney, wilma}},
+		{"/api/v1/pods?labelSelector=app%3Dfoo", []types.NamespacedName{fred, wilma}},
 		// Field selectors are not supported by the fake client.
 		//		{"/api/v1/pods?fieldSelector=metadata.name%3D", []types.NamespacedName{{"y", "wilma"}}},
 	} {
@@ -101,7 +133,7 @@ func TestStore_Query(t *testing.T) {
 			require.NoError(t, err)
 			var got []types.NamespacedName
 			for _, v := range result {
-				o := v.(Object).Object.(*v1.Pod)
+				o := v.(Object).Object.(*corev1.Pod)
 				got = append(got, types.NamespacedName{Namespace: o.Namespace, Name: o.Name})
 			}
 			assert.ElementsMatch(t, x.want, got)

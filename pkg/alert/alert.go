@@ -14,7 +14,14 @@ import (
 	"github.com/prometheus/alertmanager/api/v2/models"
 )
 
-const Domain korrel8.Domain = "alert"
+var Domain = domain{}
+
+type domain struct{}
+
+func (d domain) String() string               { return "alert" }
+func (d domain) Class(_ string) korrel8.Class { return Class{} }
+
+var _ korrel8.Domain = Domain
 
 type Store struct {
 	manager *client.Alertmanager
@@ -28,12 +35,12 @@ func NewStore(host string, hc *http.Client) *Store {
 type Class struct{} // Only one class
 
 func (c Class) Domain() korrel8.Domain { return Domain }
-func (c Class) String() string         { return string(Domain) }
+func (c Class) String() string         { return Domain.String() }
+func (c Class) New() korrel8.Object    { return &Object{GettableAlert: &models.GettableAlert{}} }
 
 type Object struct{ *models.GettableAlert }
 
 func (o Object) Identifier() korrel8.Identifier { return o.Labels }
-func (o Object) Class() korrel8.Class           { return Class{} }
 func (o Object) Native() any                    { return o.GettableAlert }
 
 // Query is a JSON object containing JSON-commpatible fields of

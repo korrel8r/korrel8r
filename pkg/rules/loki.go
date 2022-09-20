@@ -11,8 +11,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 )
 
-// FIXME sort out rule construction
-// FIXME generalize constraint propagation.
+// FIXME generalize applying constraints to rules, constructing rules.
 
 type rule struct{ korrel8.Rule }
 
@@ -24,7 +23,6 @@ func (r rule) Apply(start korrel8.Object, c *korrel8.Constraint) (result korrel8
 	return result, err
 }
 
-// FIXME
 func (r rule) String() string { return fmt.Sprintf("%v", r.Rule) }
 
 // QueryObject a JSON object representing a Loki query.

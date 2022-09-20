@@ -41,9 +41,6 @@ var (
 	pretty  *bool
 	output  *string
 	verbose *int
-
-	// Root logger
-	log = logging.Log
 )
 
 func init() {

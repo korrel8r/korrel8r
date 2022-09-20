@@ -35,9 +35,3 @@ func (u unique[T]) list() (values []T) {
 	}
 	return values
 }
-
-func uniqueList[T comparable](values []T) []T {
-	u := unique[T]{}
-	u.add(values)
-	return u.list()
-}

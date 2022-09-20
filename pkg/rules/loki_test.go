@@ -22,6 +22,7 @@ func TestRule_PodLogs(t *testing.T) {
 	t.Parallel()
 	l := test.RequireLokiServer(t)
 	s, err := loki.NewStore(l.URL(), http.DefaultClient)
+	require.NoError(t, err)
 	for _, args := range [][]string{
 		{"foo", "bar", "info: foo/bar 1", "info: foo/bar 2"},
 		{"foo", "x", "info: foo/x"},
@@ -30,11 +31,12 @@ func TestRule_PodLogs(t *testing.T) {
 	} {
 		require.NoError(t, l.Push(nsPodName(args[0], args[1]), args[2:]...))
 	}
-	rule := K8sToLoki()[0] // FIXME find rules by name?
+	rule := K8sToLoki()[0]
 	result, err := rule.Apply(k8s.Object{Object: &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Namespace: "foo", Name: "bar"}}}, nil)
 	require.NoError(t, err)
 	require.Equal(t, korrel8.Queries{`{kubernetes_namespace_name="foo",kubernetes_pod_name="bar"}`}, result)
 	want := []korrel8.Object{loki.Object("info: foo/bar 1"), loki.Object("info: foo/bar 2"), loki.Object("info: foo/bar 3")}
 	got, err := s.Query(context.Background(), result[0])
+	require.NoError(t, err)
 	require.Equal(t, want, got)
 }

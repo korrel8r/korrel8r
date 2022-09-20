@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/url"
 	"reflect"
+	"strings"
 
 	"github.com/alanconway/korrel8/internal/pkg/logging"
 	"github.com/alanconway/korrel8/pkg/korrel8"
@@ -16,13 +17,50 @@ import (
 
 	"regexp"
 
+	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-var log = logging.Log
+var (
+	log    = logging.Log
+	Scheme = scheme.Scheme
+)
 
-// Domain for Kubernetes resources
-const Domain = "k8s.resource"
+var Domain = domain{}
+
+type domain struct{}
+
+func (d domain) String() string { return "k8s" }
+
+func (d domain) Class(name string) korrel8.Class {
+	// TODO there must be an easier way ...
+	parts := strings.Split(name, ".")
+	var gvk schema.GroupVersionKind
+	if len(parts) > 0 {
+		gvk.Kind = parts[0]
+	}
+	if len(parts) > 1 {
+		gvk.Version = parts[1]
+	}
+	var t reflect.Type
+	if len(parts) > 2 {
+		gvk.Group = strings.Join(parts[2:], ".")
+		t = Scheme.AllKnownTypes()[gvk]
+	} else {
+		gvs := Scheme.PreferredVersionAllGroups()
+		for _, gv := range gvs {
+			if t = Scheme.KnownTypes(gv)[gvk.Kind]; t != nil {
+				break
+			}
+		}
+	}
+	if t == nil {
+		return nil
+	}
+	return Class{t}
+}
+
+var _ korrel8.Domain = Domain // Implements interface
 
 // TODO the Class implementation assumes all objects are pointers to the generated API struct.
 // We could use scheme & GVK comparisons to generalize to untyped representations as well.
@@ -33,14 +71,24 @@ type Class struct{ reflect.Type }
 // ClassOf returns the Class of o, which must be a pointer to a typed API resource struct.
 func ClassOf(o client.Object) Class { return Class{reflect.TypeOf(o).Elem()} }
 
+func (c Class) String() string {
+	// TODO there must be an easier way...
+	for k, v := range Scheme.AllKnownTypes() {
+		if v == c.Type {
+			return fmt.Sprintf("%v.%v.%v", k.Kind, k.Version, k.Group)
+		}
+	}
+	return c.Type.String()
+}
+
 func (c Class) Domain() korrel8.Domain { return Domain }
+func (c Class) New() korrel8.Object    { return Object{reflect.New(c.Type).Interface().(client.Object)} }
 
 var _ korrel8.Class = Class{} // Implements interface.
 
 type Object struct{ client.Object }
 
-func (o Object) Class() korrel8.Class { return ClassOf(o.Object) }
-func (o Object) Native() any          { return o.Object }
+func (o Object) Native() any { return o.Object }
 
 type Identifier struct {
 	Name, Namespace string
@@ -48,7 +96,8 @@ type Identifier struct {
 }
 
 func (o Object) Identifier() korrel8.Identifier {
-	return Identifier{Name: o.GetName(), Namespace: o.GetNamespace(), Class: o.Class()}
+	// FIXME
+	return fmt.Sprintf("%v/%v", o.GetNamespace(), o.GetName())
 }
 
 // Store implements the korrel8.Store interface over a k8s API client.
@@ -62,7 +111,16 @@ func NewStore(c client.Client) (*Store, error) { return &Store{c: c}, nil }
 func (s *Store) Query(ctx context.Context, query string) (result []korrel8.Object, err error) {
 	log.Info("query    ", "domain", Domain, "query", query)
 	defer func() {
-		if err != nil {
+		// FIXME display
+		if err == nil {
+			b := &strings.Builder{}
+			sep := ""
+			for _, o := range result {
+				fmt.Fprintf(b, "%v%v", sep, o.Identifier())
+				sep = ","
+			}
+			log.Info("result    ", "objects", b.String())
+		} else {
 			err = fmt.Errorf("%w: executing %v query %q", err, Domain, query)
 		}
 	}()
@@ -86,6 +144,7 @@ func (s *Store) Query(ctx context.Context, query string) (result []korrel8.Objec
 // FIXME revisit: this is weirdly indirect - parse an API path to make a Client call which re-creates the API path.
 // Should be able to use a REST client directly, but client.Client does REST client creation & caching
 // and manages schema and RESTMapper stuff which I'm not sure I understand yet.
+// Use a JSON query object instead?
 func (s *Store) parseAPIPath(u *url.URL) (gvk schema.GroupVersionKind, nsName types.NamespacedName, err error) {
 	path := k8sPathRegex.FindStringSubmatch(u.Path)
 	if len(path) != pCount {
@@ -149,7 +208,7 @@ func (s *Store) getList(ctx context.Context, gvk schema.GroupVersionKind, namesp
 	if namespace != "" {
 		opts = append(opts, client.InNamespace(namespace))
 	}
-	if err := s.c.List(ctx, list, opts...); err != nil { // FIXME list options, limit etc.
+	if err := s.c.List(ctx, list, opts...); err != nil {
 		return nil, err
 	}
 	defer func() { // Handle reflect panics.
@@ -178,10 +237,3 @@ const (
 	pName
 	pCount
 )
-
-func must[T any](v T, err error) T {
-	if err != nil {
-		panic(err)
-	}
-	return v
-}
