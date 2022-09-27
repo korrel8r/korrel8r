@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"fmt"
 	"os"
 
 	"github.com/alanconway/korrel8/pkg/alert"
@@ -16,17 +15,13 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 )
 
-func exitErr(err error) {
+func check(err error) {
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err.Error())
-		if os.Getenv("KORREL8_PANIC") != "" {
-			panic(err)
-		}
-		os.Exit(1)
+		panic(err)
 	}
 }
 
-func must[T any](v T, err error) T { exitErr(err); return v }
+func must[T any](v T, err error) T { check(err); return v }
 
 func open(name string) (f *os.File) {
 	if name == "-" {

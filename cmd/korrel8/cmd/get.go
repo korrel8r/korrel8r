@@ -24,7 +24,7 @@ var getCmd = &cobra.Command{
 		e := engine()
 		store := e.Stores[domain]
 		if store == nil {
-			exitErr(fmt.Errorf("unknown domain name %q", domain))
+			check(fmt.Errorf("unknown domain name %q", domain))
 		}
 		result := must(store.Query(context.Background(), query))
 		switch *output {
@@ -33,13 +33,13 @@ var getCmd = &cobra.Command{
 			if *pretty {
 				e.SetIndent("", "  ")
 			}
-			exitErr(e.Encode(result))
+			check(e.Encode(result))
 		case "yaml":
 			for _, o := range result {
 				fmt.Printf("---\n%s", must(yaml.Marshal(o)))
 			}
 		default:
-			exitErr(fmt.Errorf("invalid output type: %v", *output))
+			check(fmt.Errorf("invalid output type: %v", *output))
 		}
 	},
 }

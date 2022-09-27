@@ -29,11 +29,15 @@ var rootCmd = &cobra.Command{
 	Version: "0.1.0",
 }
 
-func Execute() {
-	if err := rootCmd.Execute(); err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
+func Execute() (exitCode int) {
+	defer func() {
+		if err, _ := recover().(error); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			exitCode = 1
+		}
+	}()
+	check(rootCmd.Execute())
+	return 0
 }
 
 var (

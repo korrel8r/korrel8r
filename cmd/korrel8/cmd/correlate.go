@@ -29,7 +29,7 @@ FILE   File containing instance of START class.
 		f := open(args[2])
 		defer f.Close()
 		start := startClass.New()
-		exitErr(yaml.NewYAMLOrJSONDecoder(f, 1024).Decode(start))
+		check(yaml.NewYAMLOrJSONDecoder(f, 1024).Decode(start))
 		paths := e.Rules.FindPaths(startClass, goalClass)
 		var queries korrel8.Queries
 		for _, p := range paths {

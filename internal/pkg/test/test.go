@@ -2,8 +2,11 @@
 package test
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
 	"net"
 	"os"
 	"os/exec"
@@ -58,6 +61,7 @@ func SkipIfNoCluster(t *testing.T) {
 	}
 }
 
+// SkipIfNoCommand skips a test if the cmd is not found in PATH
 func SkipIfNoCommand(t *testing.T, cmd string) {
 	t.Helper()
 	if _, err := exec.LookPath(cmd); err != nil {
@@ -84,6 +88,7 @@ func ListenPort() (int, error) {
 	return l.Addr().(*net.TCPAddr).Port, nil
 }
 
+// ExecError extracts stderr if err is an exec.ExitError
 func ExecError(err error) error {
 	if ex, ok := err.(*exec.ExitError); ok {
 		return fmt.Errorf("%v: %v", err, string(ex.Stderr))
@@ -91,6 +96,7 @@ func ExecError(err error) error {
 	return err
 }
 
+// CreateUniqueNamespace creates a unique namespace.
 func CreateUniqueNamespace(t *testing.T, c client.Client) string {
 	t.Helper()
 	// Server-generated unique name.
@@ -100,10 +106,60 @@ func CreateUniqueNamespace(t *testing.T, c client.Client) string {
 			Labels:       map[string]string{"test": t.Name()},
 		},
 	}
-
 	require.NoError(t, c.Create(context.Background(), &ns))
 	require.NotEmpty(t, ns.Name)
 	t.Logf("test namespace: %v", ns.Name)
 	t.Cleanup(func() { _ = c.Delete(context.Background(), &ns) })
 	return ns.Name
+}
+
+// FakeMain temporarily sets os.Args and captures stdout and stderr
+// while calling f()
+func FakeMain(args []string, f func()) (stdout, stderr string) {
+	saveArgs := os.Args
+	saveOut, saveErr := os.Stdout, os.Stderr
+	defer func() {
+		os.Args = saveArgs
+		os.Stdout, os.Stderr = saveOut, saveErr
+	}()
+	os.Args = args
+	outBuf, errBuf := &bytes.Buffer{}, &bytes.Buffer{}
+	g := sync.WaitGroup{}
+	os.Stdout = pump(outBuf, &g)
+	os.Stderr = pump(errBuf, &g)
+	defer func() {
+		_ = os.Stdout.Close()
+		_ = os.Stderr.Close()
+		g.Wait()
+		stdout, stderr = outBuf.String(), errBuf.String()
+	}()
+	f()
+	return "", "" // Return value set in defer
+}
+
+func pump(buf *bytes.Buffer, g *sync.WaitGroup) *os.File {
+	r, w, err := os.Pipe()
+	PanicErr(err)
+	g.Add(1)
+	go func() { defer g.Done(); _, err = io.Copy(buf, r); PanicErr(err) }()
+	return w
+}
+
+// PanicErr panics if err is not nil
+func PanicErr(err error) {
+	if err != nil {
+		panic(err)
+	}
+}
+
+// Must panics if err is not nil, else returns v.
+func Must[T any](v T, err error) T { PanicErr(err); return v }
+
+// AsJSON converts to JSON string or error message.
+func AsJSON(v any) string {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err.Error()
+	}
+	return string(b)
 }

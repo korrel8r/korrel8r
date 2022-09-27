@@ -16,13 +16,11 @@ limitations under the License.
 package main
 
 import (
-	"fmt"
+	"os"
 
 	"github.com/alanconway/korrel8/cmd/korrel8/cmd"
 )
 
 func main() {
-	fmt.Println()
-	fmt.Println()
-	cmd.Execute()
+	os.Exit(cmd.Execute())
 }
