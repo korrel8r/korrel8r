@@ -22,6 +22,7 @@ package korrel8
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -56,7 +57,6 @@ type Class interface {
 	Domain() Domain // Domain of this class.
 	New() Object    // Return a new instance of the class, for decoding from JSON.
 	String() string // Name of the class
-	// FIXME RemoveDuplicates([]Object)[]Object
 }
 
 // Queries is a collection of query strings.
@@ -98,8 +98,8 @@ type Rule interface {
 
 // Constraint to apply to the result of following a rule.
 type Constraint struct {
-	After  *time.Time // Include only results timestamped after this time.
-	Before *time.Time // Include only results timestamped before this time.
+	Start *time.Time // Include only results timestamped after this time.
+	End   *time.Time // Include only results timestamped before this time.
 }
 
 // Path is a list of rules where the Goal() of each rule is the Start() of the next.
@@ -115,4 +115,13 @@ func (p Path) String() string {
 	}
 	b.WriteString("]")
 	return b.String()
+}
+
+// AsJSON returns marshaled JSON string or error message.
+func AsJSON(v any) string {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err.Error()
+	}
+	return string(b)
 }

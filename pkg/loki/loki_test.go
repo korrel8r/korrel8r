@@ -2,7 +2,9 @@ package loki
 
 import (
 	"context"
+	"fmt"
 	"net/http"
+	"net/url"
 	"testing"
 	"time"
 
@@ -18,15 +20,14 @@ func TestStore_Query_String(t *testing.T) {
 	lines := []string{"hello", "there", "mr. frog"}
 	err := l.Push(map[string]string{"test": "loki"}, lines...)
 	require.NoError(t, err)
-
-	s, err := NewStore(l.URL(), http.DefaultClient)
-	require.NoError(t, err)
+	s := NewStore(l.URL(), http.DefaultClient)
 
 	var want []korrel8.Object
 	for _, l := range lines {
 		want = append(want, Object(l))
 	}
-	got, err := s.Query(context.Background(), `{test="loki"}`)
+	query := fmt.Sprintf("query_range?direction=FORWARD&query=%v", url.QueryEscape(`{test="loki"}`))
+	got, err := s.Query(context.Background(), query)
 	require.NoError(t, err)
 	assert.Equal(t, want, got)
 }
@@ -45,8 +46,7 @@ func TestStore_Query_QueryObject(t *testing.T) {
 
 	err = l.Push(map[string]string{"test": "loki"}, "much", "too", "late")
 	require.NoError(t, err)
-
-	s, err := NewStore(l.URL(), http.DefaultClient)
+	s := NewStore(l.URL(), http.DefaultClient)
 	require.NoError(t, err)
 
 	for _, x := range []struct {
@@ -54,26 +54,13 @@ func TestStore_Query_QueryObject(t *testing.T) {
 		want  []korrel8.Object
 	}{
 		{
-			query: QueryObject{End: &t1, Query: `{test="loki"}`}.String(),
+			query: fmt.Sprintf("query_range?direction=FORWARD&query=%v&end=%v", url.QueryEscape(`{test="loki"}`), t1.UnixNano()),
 			want:  []korrel8.Object{Object("much"), Object("too"), Object("early")},
 		},
 		{
-			query: QueryObject{Start: &t1, End: &t2, Query: `{test="loki"}`}.String(),
+			query: fmt.Sprintf("query_range?direction=FORWARD&query=%v&start=%v&end=%v", url.QueryEscape(`{test="loki"}`), t1.UnixNano(), t2.UnixNano()),
 			want:  []korrel8.Object{Object("right"), Object("on"), Object("time")},
 		},
-		{
-			query: QueryObject{Start: &t2, Query: `{test="loki"}`}.String(),
-			want:  []korrel8.Object{Object("much"), Object("too"), Object("late")},
-		},
-		{
-			query: QueryObject{Start: &t1, End: &t2, Direction: "backward", Query: `{test="loki"}`}.String(),
-			want:  []korrel8.Object{Object("time"), Object("on"), Object("right")},
-		},
-		{
-			query: QueryObject{Limit: 5, Query: `{test="loki"}`}.String(),
-			want:  []korrel8.Object{Object("much"), Object("too"), Object("early"), Object("right"), Object("on")},
-		},
-		// FIXME more cases for all fields.
 	} {
 		t.Run(x.query, func(t *testing.T) {
 			got, err := s.Query(context.Background(), x.query)

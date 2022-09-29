@@ -24,10 +24,8 @@ type mockObject struct {
 	class mockClass
 }
 
-func o(name, class string) Object { return mockObject{name: name, class: mockClass(class)} }
-func (o mockObject) Native() any  { return o }
-
-// Identifier suppose name is only unique per class (like a K8s name) so identifier is whole object.
+func o(name, class string) Object           { return mockObject{name: name, class: mockClass(class)} }
+func (o mockObject) Native() any            { return o }
 func (o mockObject) Identifier() Identifier { return o }
 
 type mockRule struct {

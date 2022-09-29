@@ -7,11 +7,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"net/url"
-	"path"
-	"strconv"
-	"strings"
-	"time"
 
 	"github.com/alanconway/korrel8/pkg/korrel8"
 	"golang.org/x/exp/slices"
@@ -49,84 +44,27 @@ var _ korrel8.Object = Object("") // Implements interface.
 
 // Store implements the korrel8.Store interface over a Loki HTTP client
 type Store struct {
-	c *http.Client
-	u *url.URL
+	c       *http.Client
+	baseURL string
 }
 
 var _ korrel8.Store = &Store{}
 
 // NewStore creates a new store.
 // baseURL is the URL with API path, e.g. "https://foo/loki/api/v1"
-func NewStore(baseURL string, c *http.Client) (*Store, error) {
-	u, err := url.Parse(baseURL)
-	if err != nil {
-		return nil, err
-	}
-	return &Store{c: c, u: u}, nil
+func NewStore(baseURL string, c *http.Client) *Store {
+	return &Store{c: c, baseURL: baseURL}
 }
 
-// QueryObject a JSON object representing a Loki query.
-// Time values are RFC3339 format: "2006-01-02T15:04:05.999999999Z07:00"
-type QueryObject struct {
-	Query     string     `json:"query,omitempty"`     // LogQL log query
-	Direction string     `json:"direction,omitempty"` // Direction is "FORWARD" or "BACKWARD"
-	Start     *time.Time `json:"start,omitempty"`     // Start of time interval, RFC3339 format
-	End       *time.Time `json:"end,omitempty"`       // End of time interval, RFC3339 format
-	Limit     int        `json:"limit,omitempty"`     // Max records to retrieve
-	OrgID     string     `json:"orgID,omitempty"`     // Organization ID aka tenant.
-}
-
-func (qo QueryObject) String() string {
-	b, err := json.Marshal(qo)
-	if err != nil {
-		panic(err)
-	}
-	return string(b)
-}
-
-// Query executes a LogQL log query via the query_range endpoint.
+// Query executes a LogQL log query via the query_range endpoint
 //
 // The query string can a JSON QueryObject or a LogQL query string.
 func (s *Store) Query(ctx context.Context, query string) (result []korrel8.Object, err error) {
-	qo := QueryObject{}
-	d := json.NewDecoder(strings.NewReader(query))
-	d.DisallowUnknownFields()
-	if err := d.Decode(&qo); err != nil || qo.Query == "" { // Not a QueryObject
-		qo.Query = query
-	}
-	u := *s.u
-	u.Path = path.Join(u.Path, "query_range")
-	q := url.Values{}
-	q.Add("query", qo.Query)
-	if qo.Limit > 0 {
-		q.Add("limit", strconv.Itoa(qo.Limit))
-	}
-	if qo.Direction == "" {
-		qo.Direction = "forward" // Change the default
-	}
-	if qo.Direction != "backward" && qo.Direction != "forward" {
-		return nil, fmt.Errorf("Invalid direction in Loki query object: %q", qo.Direction)
-	}
-	q.Add("direction", qo.Direction)
-	if qo.Start != nil {
-		q.Add("start", fmt.Sprintf("%v", (qo.Start.UnixNano())))
-	}
-	if qo.End != nil {
-		q.Add("end", fmt.Sprintf("%v", (qo.End.UnixNano())))
-	}
-	u.RawQuery = q.Encode()
-	header := http.Header{}
-	if qo.OrgID != "" {
-		header.Add("X-Scope-OrgID", qo.OrgID)
-	}
-	req := &http.Request{
-		Method: "GET",
-		URL:    &u,
-		Header: header,
-	}
-	resp, err := httpError(s.c.Do(req))
+	ustr := fmt.Sprintf("%v/%v", s.baseURL, query)
+	println("FIXME", ustr)
+	resp, err := httpError(s.c.Get(ustr))
 	if err != nil {
-		return nil, fmt.Errorf("%w\nURL: %v", err, u)
+		return nil, err
 	}
 	defer resp.Body.Close()
 	qr := queryResponse{}
@@ -139,19 +77,12 @@ func (s *Store) Query(ctx context.Context, query string) (result []korrel8.Objec
 	if qr.Data.ResultType != "streams" {
 		return nil, fmt.Errorf("expected 'resultType: streams' in %v", qr)
 	}
-	// FIXME return as streams??? This is inefficient.
 	// Interleave and sort the stream results.
 	var logs [][]string // Each log is [timestamp,logline]
 	for _, sv := range qr.Data.Result {
 		logs = append(logs, sv.Values...)
 	}
-	var less func(a, b []string) bool
-	if qo.Direction == "forward" {
-		less = func(a, b []string) bool { return a[0] < b[0] }
-	} else {
-		less = func(a, b []string) bool { return a[0] > b[0] }
-	}
-	slices.SortStableFunc(logs, less)
+	slices.SortStableFunc(logs, func(a, b []string) bool { return a[0] < b[0] })
 	var objs []korrel8.Object
 	for _, tl := range logs { // tl is [time, line]
 		objs = append(objs, Object(tl[1]))

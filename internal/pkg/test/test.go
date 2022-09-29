@@ -4,7 +4,6 @@ package test
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	"io"
 	"net"
@@ -154,12 +153,3 @@ func PanicErr(err error) {
 
 // Must panics if err is not nil, else returns v.
 func Must[T any](v T, err error) T { PanicErr(err); return v }
-
-// AsJSON converts to JSON string or error message.
-func AsJSON(v any) string {
-	b, err := json.Marshal(v)
-	if err != nil {
-		return err.Error()
-	}
-	return string(b)
-}

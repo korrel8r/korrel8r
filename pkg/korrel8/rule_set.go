@@ -59,7 +59,6 @@ func (rs *RuleSet) FindPaths(start, goal Class) []Path {
 		visited: map[int]bool{},
 	}
 	state.dfs(start, goal)
-	// FIXME display
 	b := &strings.Builder{}
 	sep := ""
 	for _, p := range state.paths {

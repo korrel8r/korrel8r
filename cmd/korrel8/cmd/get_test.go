@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/alanconway/korrel8/internal/pkg/test"
+	"github.com/alanconway/korrel8/pkg/korrel8"
 	"github.com/prometheus/alertmanager/api/v2/models"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -26,7 +27,7 @@ func TestGet_Alert(t *testing.T) {
 	var result []models.GettableAlert
 	require.NoError(t, json.Unmarshal([]byte(stdout), &result), "expect valid alerts, got: %v", stdout)
 	require.NotEmpty(t, result, "expect at least one alert")
-	t.Logf("%v", test.AsJSON(result[0]))
+	t.Logf("%v", korrel8.AsJSON(result[0]))
 }
 
 func TestCorrelate_Pods(t *testing.T) {
@@ -81,5 +82,5 @@ func TestCorrelate_Pods(t *testing.T) {
 		exitCode = Execute()
 	})
 	require.Equal(t, 0, exitCode, "exitCode=%v: %v", exitCode, stderr)
-	require.Regexp(t, `resulting queries: \[{kubernetes_namespace_name="default",kubernetes_pod_name="demo-.*"}]`, strings.TrimSpace(stdout))
+	require.Equal(t, "resulting queries: [query_range?direction=forward&query=%7Bkubernetes_namespace_name%3D%22default%22%2Ckubernetes_pod_name%3D%22demo-5cf9f87c6-n9zzk%22%7D]", strings.TrimSpace(stdout))
 }

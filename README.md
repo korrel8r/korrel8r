@@ -44,10 +44,11 @@ Packages:
 - [X] Refactor Follower
 - [X] Rename Result as Queries
 - [X] Introduce Engine to bring together rules, domains and stores.
-- [ ] Use streams as Object for prom & loki, more efficient & have same metadata. 
-
+- [X] Serialize & deserialize Class, for command line.
+- [ ] Constraint propagation.
+- [ ] Query objects with exportable string forms.
 - [ ] Multiple goals: avoid repeated queries (log + pod + metric...)
-- [ ] Serialize & deserialize Class, for command line.
+- [ ] "wildcard" classes: classes with common structure.
 - [ ] Example correlation:
   - metric log_collector_error_count_total => logs + pods 
   - Traces?
@@ -56,6 +57,7 @@ Packages:
 - [ ] Complete one sample correlation from alert to logs as demo.
 - [ ] Query as value with fields - provide alternate serializations (e.g. URI or oc command, LogQL or URI)
   - Simplify k8s query, avoid URI parse & re-construct.
+- [ ] Use streams as Object for prom & loki, more efficient & have same metadata. 
 
 ## Maybe later
 - [ ] Use local loki executable instead of image to speed up tests?

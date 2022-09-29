@@ -18,11 +18,10 @@ func nsPodName(ns, name string) map[string]string {
 	return map[string]string{"kubernetes_pod_name": name, "kubernetes_namespace_name": ns}
 }
 
-func TestRule_PodLogs(t *testing.T) {
+func TestRule_PodToLokiLogs(t *testing.T) {
 	t.Parallel()
 	l := test.RequireLokiServer(t)
-	s, err := loki.NewStore(l.URL(), http.DefaultClient)
-	require.NoError(t, err)
+	s := loki.NewStore(l.URL(), http.DefaultClient)
 	for _, args := range [][]string{
 		{"foo", "bar", "info: foo/bar 1", "info: foo/bar 2"},
 		{"foo", "x", "info: foo/x"},
@@ -34,9 +33,10 @@ func TestRule_PodLogs(t *testing.T) {
 	rule := K8sToLoki()[0]
 	result, err := rule.Apply(k8s.Object{Object: &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Namespace: "foo", Name: "bar"}}}, nil)
 	require.NoError(t, err)
-	require.Equal(t, korrel8.Queries{`{kubernetes_namespace_name="foo",kubernetes_pod_name="bar"}`}, result)
-	want := []korrel8.Object{loki.Object("info: foo/bar 1"), loki.Object("info: foo/bar 2"), loki.Object("info: foo/bar 3")}
+	wantQuery := `query_range?direction=forward&query=%7Bkubernetes_namespace_name%3D%22foo%22%2Ckubernetes_pod_name%3D%22bar%22%7D`
+	require.Equal(t, korrel8.Queries{wantQuery}, result)
 	got, err := s.Query(context.Background(), result[0])
 	require.NoError(t, err)
-	require.Equal(t, want, got)
+	wantObjects := []korrel8.Object{loki.Object("info: foo/bar 1"), loki.Object("info: foo/bar 2"), loki.Object("info: foo/bar 3")}
+	require.Equal(t, wantObjects, got)
 }

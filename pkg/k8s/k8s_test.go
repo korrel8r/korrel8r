@@ -42,8 +42,6 @@ func TestDomain_Class(t *testing.T) {
 		name string
 		want korrel8.Class
 	}{
-		// FIXME need better way to write Kinds? Alllow Pod.v1 (empty group.)
-		// Find Deployment et all even without group?
 		{"Pod", ClassOf(&corev1.Pod{})},
 		{"Pod.v1", ClassOf(&corev1.Pod{})},
 		{"Pod.v1.", ClassOf(&corev1.Pod{})},

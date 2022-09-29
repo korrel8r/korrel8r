@@ -37,9 +37,9 @@ func TestRules_DeploymentHasPods(t *testing.T) {
 			deployment: &appsv1.Deployment{
 				ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "y"},
 				Spec: appsv1.DeploymentSpec{
-					Selector: &metav1.LabelSelector{MatchLabels: map[string]string{"app": "foo"}},
+					Selector: &metav1.LabelSelector{MatchLabels: map[string]string{"app": "foo", "x": "y"}},
 				}},
-			query: "/api/v1/namespaces/y/pods?labelSelector=app%3Dfoo",
+			query: "/api/v1/namespaces/y/pods?labelSelector=app%3Dfoo%2Cx%3Dy",
 		},
 	} {
 		t.Run(x.query, func(t *testing.T) {

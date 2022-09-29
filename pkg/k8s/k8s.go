@@ -96,8 +96,7 @@ type Identifier struct {
 }
 
 func (o Object) Identifier() korrel8.Identifier {
-	// FIXME
-	return fmt.Sprintf("%v/%v", o.GetNamespace(), o.GetName())
+	return types.NamespacedName{Namespace: o.GetNamespace(), Name: o.GetName()}
 }
 
 // Store implements the korrel8.Store interface over a k8s API client.
@@ -109,9 +108,8 @@ func NewStore(c client.Client) (*Store, error) { return &Store{c: c}, nil }
 // Execute a query in the form of a k8s REST URI.
 // Cancel if context is canceled.
 func (s *Store) Query(ctx context.Context, query string) (result []korrel8.Object, err error) {
-	log.Info("query    ", "domain", Domain, "query", query)
+	log.Info("query", "domain", Domain, "query", query)
 	defer func() {
-		// FIXME display
 		if err == nil {
 			b := &strings.Builder{}
 			sep := ""
