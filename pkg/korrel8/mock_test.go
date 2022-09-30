@@ -12,12 +12,17 @@ type mockDomain struct{}
 
 func (d mockDomain) String() string          { return "mock" }
 func (d mockDomain) Class(name string) Class { return mockClass(name) }
+func (d mockDomain) KnownClasses() []Class   { return nil } // FIXME list classes
+
+var _ Domain = mockDomain{} // Implements interface
 
 type mockClass string
 
 func (c mockClass) Domain() Domain { return mockDomain{} }
 func (c mockClass) New() Object    { return mockObject{} }
 func (c mockClass) String() string { return string(c) }
+
+var _ Class = mockClass("") // Implements interface
 
 type mockObject struct {
 	name  string
@@ -27,6 +32,8 @@ type mockObject struct {
 func o(name, class string) Object           { return mockObject{name: name, class: mockClass(class)} }
 func (o mockObject) Native() any            { return o }
 func (o mockObject) Identifier() Identifier { return o }
+
+var _ Object = mockObject{} // Implements interface
 
 type mockRule struct {
 	start, goal Class
@@ -39,6 +46,8 @@ func (r mockRule) String() string { return fmt.Sprintf("(%v)->%v", r.start, r.go
 func (r mockRule) Apply(start Object, c *Constraint) (Queries, error) {
 	return r.apply(start, c), nil
 }
+
+var _ Rule = mockRule{} // Implements interface
 
 func rr(start, goal string, apply func(Object, *Constraint) Queries) mockRule {
 	return mockRule{
@@ -61,3 +70,5 @@ func (s mockStore) Query(_ context.Context, q string) ([]Object, error) {
 	}
 	return objs, nil
 }
+
+var _ Store = mockStore{} // Implements interface

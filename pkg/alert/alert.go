@@ -18,8 +18,9 @@ var Domain = domain{}
 
 type domain struct{}
 
-func (d domain) String() string               { return "alert" }
-func (d domain) Class(_ string) korrel8.Class { return Class{} }
+func (d domain) String() string                { return "alert" }
+func (d domain) Class(string) korrel8.Class    { return Class{} }
+func (d domain) KnownClasses() []korrel8.Class { return nil } // FIXME list classes
 
 var _ korrel8.Domain = Domain
 

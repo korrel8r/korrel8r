@@ -40,8 +40,9 @@ type Object interface {
 
 // Domain is a collection of classes describing signals in the same family.
 type Domain interface {
-	String() string     // Name of the domain
-	Class(string) Class // Find a class by name, return nil if not found.
+	String() string        // Name of the domain
+	Class(string) Class    // Find a class by name, return nil if not found.
+	KnownClasses() []Class // List of known classes in the Domain
 }
 
 // Identifier is a comparable value that identifies an "instance" of a signal.

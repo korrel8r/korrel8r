@@ -32,32 +32,39 @@ type domain struct{}
 
 func (d domain) String() string { return "k8s" }
 
+// parseGVK parse name of the form: kind[.version[.group]]
+// TODO is this in the k8s libs?
+func parseGVK(name string) (gvk schema.GroupVersionKind) {
+	parts := strings.SplitN(name, ".", 3)
+	for i, f := range []*string{&gvk.Kind, &gvk.Version, &gvk.Group} {
+		if len(parts) > i {
+			*f = parts[i]
+		}
+	}
+	return gvk
+}
+
 func (d domain) Class(name string) korrel8.Class {
-	// TODO there must be an easier way ...
-	parts := strings.Split(name, ".")
-	var gvk schema.GroupVersionKind
-	if len(parts) > 0 {
-		gvk.Kind = parts[0]
-	}
-	if len(parts) > 1 {
-		gvk.Version = parts[1]
-	}
+	gvk := parseGVK(name)
 	var t reflect.Type
-	if len(parts) > 2 {
-		gvk.Group = strings.Join(parts[2:], ".")
-		t = Scheme.AllKnownTypes()[gvk]
-	} else {
+	if gvk.Group != "" { // Fully qualified, direct lookup
+		return Class{Scheme.AllKnownTypes()[gvk]}
+	} else { // No version
 		gvs := Scheme.PreferredVersionAllGroups()
 		for _, gv := range gvs {
 			if t = Scheme.KnownTypes(gv)[gvk.Kind]; t != nil {
-				break
+				return Class{t}
 			}
 		}
 	}
-	if t == nil {
-		return nil
+	return nil
+}
+
+func (d domain) KnownClasses() (classes []korrel8.Class) {
+	for _, t := range Scheme.AllKnownTypes() {
+		classes = append(classes, Class{t})
 	}
-	return Class{t}
+	return classes
 }
 
 var _ korrel8.Domain = Domain // Implements interface
@@ -73,9 +80,12 @@ func ClassOf(o client.Object) Class { return Class{reflect.TypeOf(o).Elem()} }
 
 func (c Class) String() string {
 	// TODO there must be an easier way...
-	for k, v := range Scheme.AllKnownTypes() {
-		if v == c.Type {
-			return fmt.Sprintf("%v.%v.%v", k.Kind, k.Version, k.Group)
+	for gvk, t := range Scheme.AllKnownTypes() {
+		if t == c.Type {
+			if gvk.Group == "" { // Core group has empty group name
+				return fmt.Sprintf("%v.%v", gvk.Kind, gvk.Version)
+			}
+			return fmt.Sprintf("%v.%v.%v", gvk.Kind, gvk.Version, gvk.Group)
 		}
 	}
 	return c.Type.String()

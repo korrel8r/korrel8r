@@ -21,6 +21,7 @@ var Domain = domain{}
 
 func (d domain) String() string                  { return "loki" }
 func (d domain) Class(name string) korrel8.Class { return Class{} }
+func (d domain) KnownClasses() []korrel8.Class   { return nil } // FIXME list classes
 
 var _ korrel8.Domain = Domain
 
