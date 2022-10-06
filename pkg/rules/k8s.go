@@ -41,7 +41,7 @@ func K8sToK8s() (rules []korrel8.Rule) {
 	} {
 		name := fmt.Sprintf("%vToPodSelector", reflect.TypeOf(o).Elem().Name())
 		add(templaterule.New(name, k8s.ClassOf(o), k8s.ClassOf(&corev1.Pod{}), `/api/v1/namespaces/
-{{- .ObjectMeta.Namespace}}/pods?labelSelector={{$s := ""}}{{range $k,$v := .Spec.Selector.MatchLabels -}}
+{{- .Namespace}}/pods?labelSelector={{$s := ""}}{{range $k,$v := .Spec.Selector.MatchLabels -}}
 {{- urlquery $s $k "=" $v}}{{$s = ","}}{{end}}`))
 	}
 	add(templaterule.New("EventToPod", k8s.ClassOf(&eventsv1.Event{}), k8s.ClassOf(&corev1.Pod{}),

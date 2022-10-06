@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"net/http"
 	"os"
 	"os/exec"
 	"sync"
@@ -27,8 +28,11 @@ var (
 	hasClusterOnce sync.Once
 	clusterErr     error
 
+	// These variables are initialized if HasCluster succeeds.
+	// Safe for use in tests after calling SkipIfNoCluster.
 	RESTConfig *rest.Config
 	K8sClient  client.WithWatch
+	HTTPClient *http.Client
 )
 
 func HasCluster() error {
@@ -46,6 +50,7 @@ func HasCluster() error {
 		if clusterErr != nil {
 			return
 		}
+		HTTPClient, clusterErr = rest.HTTPClientFor(RESTConfig)
 		ns := &corev1.Namespace{}
 		ns.Name = "default"
 		clusterErr = K8sClient.Get(ctx, client.ObjectKeyFromObject(ns), ns)

@@ -42,15 +42,16 @@ func Execute() (exitCode int) {
 
 var (
 	// Flags
-	pretty  *bool
-	output  *string
-	verbose *int
+	pretty      *bool
+	output      *string
+	verbose     *int
+	lokiBaseURL *string
 )
 
 func init() {
-	pretty = rootCmd.PersistentFlags().BoolP("pretty", "p", true, "Pretty-print output with indentation")
-	output = rootCmd.PersistentFlags().StringP("output", "o", "yaml", "Output format, json or yaml")
+	output = rootCmd.PersistentFlags().StringP("output", "o", "yaml", "Output format: json, json-pretty or yaml")
 	verbose = rootCmd.PersistentFlags().IntP("verbose", "v", 0, "Verbosity for logging")
 
+	lokiBaseURL = rootCmd.PersistentFlags().StringP("loki", "", "", "Loki base URL, up to .../v1")
 	cobra.OnInitialize(func() { logging.Init(*verbose) })
 }

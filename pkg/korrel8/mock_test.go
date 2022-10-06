@@ -12,7 +12,7 @@ type mockDomain struct{}
 
 func (d mockDomain) String() string          { return "mock" }
 func (d mockDomain) Class(name string) Class { return mockClass(name) }
-func (d mockDomain) KnownClasses() []Class   { return nil } // FIXME list classes
+func (d mockDomain) KnownClasses() []Class   { return nil }
 
 var _ Domain = mockDomain{} // Implements interface
 
@@ -31,25 +31,25 @@ type mockObject struct {
 
 func o(name, class string) Object           { return mockObject{name: name, class: mockClass(class)} }
 func (o mockObject) Native() any            { return o }
-func (o mockObject) Identifier() Identifier { return o }
+func (o mockObject) Identifier() Identifier { return o.name }
 
 var _ Object = mockObject{} // Implements interface
 
 type mockRule struct {
 	start, goal Class
-	apply       func(Object, *Constraint) Queries
+	apply       func(Object, *Constraint) []string
 }
 
 func (r mockRule) Start() Class   { return r.start }
 func (r mockRule) Goal() Class    { return r.goal }
 func (r mockRule) String() string { return fmt.Sprintf("(%v)->%v", r.start, r.goal) }
-func (r mockRule) Apply(start Object, c *Constraint) (Queries, error) {
+func (r mockRule) Apply(start Object, c *Constraint) ([]string, error) {
 	return r.apply(start, c), nil
 }
 
 var _ Rule = mockRule{} // Implements interface
 
-func rr(start, goal string, apply func(Object, *Constraint) Queries) mockRule {
+func rr(start, goal string, apply func(Object, *Constraint) []string) mockRule {
 	return mockRule{
 		start: mockClass(start),
 		goal:  mockClass(goal),
@@ -62,13 +62,12 @@ func r(start, goal string) mockRule { return rr(start, goal, nil) }
 type mockStore struct{}
 
 // Query a mock "query" is a comma-separated list of "name.class" to be turned into mock objects.
-func (s mockStore) Query(_ context.Context, q string) ([]Object, error) {
-	var objs []Object
+func (s mockStore) Get(_ context.Context, q string, r Result) error {
 	for _, s := range strings.Split(q, ",") {
 		nc := strings.Split(s, ".")
-		objs = append(objs, mockObject{name: nc[0], class: mockClass(nc[1])})
+		r.Append(mockObject{name: nc[0], class: mockClass(nc[1])})
 	}
-	return objs, nil
+	return nil
 }
 
 var _ Store = mockStore{} // Implements interface

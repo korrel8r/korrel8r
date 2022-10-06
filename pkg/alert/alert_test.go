@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/alanconway/korrel8/internal/pkg/test"
+	"github.com/alanconway/korrel8/pkg/korrel8"
 	"github.com/stretchr/testify/require"
 )
 
@@ -13,7 +14,7 @@ func TestQuery_Alert(t *testing.T) {
 	test.SkipIfNoCluster(t)
 	store, err := OpenshiftManagerStore(test.RESTConfig)
 	require.NoError(t, err)
-	alerts, err := store.Query(context.Background(), "")
-	require.NoError(t, err)
-	require.NotEmpty(t, alerts)
+	result := korrel8.NewListResult()
+	require.NoError(t, store.Get(context.Background(), "", result))
+	require.NotEmpty(t, result.List())
 }

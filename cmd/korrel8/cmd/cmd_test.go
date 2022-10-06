@@ -23,10 +23,9 @@ func TestGet_Alert(t *testing.T) {
 	var exitCode int
 	stdout, stderr := test.FakeMain([]string{"", "get", "alert", "{}", "-o=json"}, func() { exitCode = Execute() })
 	require.Equal(t, 0, exitCode, "exitCode=%v: %v", exitCode, stderr)
-	var result []models.GettableAlert
-	require.NoError(t, json.Unmarshal([]byte(stdout), &result), "expect valid alerts, got: %v", stdout)
-	require.NotEmpty(t, result, "expect at least one alert")
-	t.Logf("%v", test.JSONString(result[0]))
+	decoder := json.NewDecoder(strings.NewReader(stdout))
+	var a models.GettableAlert
+	require.NoError(t, decoder.Decode(&a), "invalid alert in: %v", stdout)
 }
 
 func TestCorrelate_Pods(t *testing.T) {

@@ -13,8 +13,8 @@ A Kubernetes cluster generates many types of *observable signal*, including:
 - **Events**: Kubernetes `Event` objects describe significant events in a cluster.
 - **Resources**: Not traditionally considered 'signals'; cluster resources have observable status and spec information, and are often the starting point for correlation.
 
-This project is an experimental *correlation engine* to automate the process of taking a "start" signal and producing a set of "goal" signals that are related to it.
-The engine automatically follows relationships (expressed as Rules) to get to the goal.
+This project is an experimental *correlation engine* which applies a set of *rules* to a "start" signal,
+and produces a query for a set of related "goal" signals.
 
 For example: Given an Alert, I want to see related Logs:
 
@@ -23,41 +23,28 @@ For example: Given an Alert, I want to see related Logs:
 3. The identity of the Pods is used to create a query for associated logs around the time of the Alert.
 4. The log store is queried and returns relevant log data.
 
-The correlation engine constructs and follows chains of rules like this automatically.
-This means the cluster administrator can spend less time manually constructing queries and following relationships,
-and can jump directly to looking at relevant signal data.
 
-Frequently the different types of signal use different "vocabularies" to refer to the same things.
-For example: A label for a Pod name may be called `pod`, `podname`, `k8s.pod.name`, `kubernetes.pod_name`
-depending on the type of signal carrying the label.
-The correlation engine translates between different label vocabularies.
+For more details see the [Go API documentation](https://pkg.go.dev/github.com/alanconway/korrel8/)
 
-Packages:
-- [korrel8](https://pkg.go.dev/github.com/alanconway/korrel8/pkg/korrel8): Generic interfaces and algorithms. Start here.
-- [other packages](https://pkg.go.dev/github.com/alanconway/korrel8/pkg): Domain-specific implementations.
+## Key Concepts
+
+- **Domain**: a family of signals with common storage and representation. \
+  Examples: resource, alert, metric, trace
+- **Store**: a source of signal data from some \
+  Examples: Loki, Prometheus, Kubernetes API server.
+- **Query**: Stores accept a Query and return a set of matching signals.
+- **Class**: A subset of signals in a Domain with a common same schema: field names, field types and semantics. \
+  Examples: Pod (k8s), Event(k8s), KubeContainerWaiting(alert), log_logged_bytes_total(metric)
+- **Object**: An instance of a signal. 
+
+## Object and Rules
+
+All objects can marshal as JSON or YAML.
+Each domain may defines its own object types, with their own JSON encoding.
+For example the k8s domain will decode JSON into Go API objects, with typed fields converted from JSON.
+
+Rules have a start Class and a goal Class. Rules take an Object and generate a Query.
+Rules are written in terms of the specific domain objects, field names and query languages they deal with.
 
 
-## To-Do list
 
-- [X] Path following and de-duplication.
-- [X] Propagate time interval and other constraints on correlation.
-- [X] Refactor Follower
-- [X] Rename Result as Queries
-- [X] Introduce Engine to bring together rules, domains and stores.
-- [X] Serialize & deserialize Class, for command line.
-- [ ] Constraint propagation.
-- [ ] Query objects with exportable string forms.
-- [ ] Multiple goals: avoid repeated queries (log + pod + metric...)
-- [ ] "wildcard" classes: classes with common structure.
-- [ ] Example correlation:
-  - metric log_collector_error_count_total => logs + pods 
-  - Traces?
-- [ ] Wildcard Start() classes?
-- [ ] Externalize (serialize) the rule base, allow it to be extended without recompile.
-- [ ] Complete one sample correlation from alert to logs as demo.
-- [ ] Query as value with fields - provide alternate serializations (e.g. URI or oc command, LogQL or URI)
-  - Simplify k8s query, avoid URI parse & re-construct.
-- [ ] Use streams as Object for prom & loki, more efficient & have same metadata. 
-
-## Maybe later
-- [ ] Use local loki executable instead of image to speed up tests?

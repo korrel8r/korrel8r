@@ -59,5 +59,5 @@ func TestRules_ALertToK8s(t *testing.T) {
 	assert.NotEmpty(t, r)
 	q, err := r[0].Apply(a, nil)
 	assert.NoError(t, err)
-	assert.Equal(t, korrel8.Queries{"/api/v1/namespaces/foo/deployments/bar"}, q)
+	assert.Equal(t, []string{"/api/v1/namespaces/foo/deployments/bar"}, q)
 }

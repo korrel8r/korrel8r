@@ -94,7 +94,7 @@ func TestStore_ParseURI(t *testing.T) {
 	}
 }
 
-func TestStore_Query(t *testing.T) {
+func TestStore_Get(t *testing.T) {
 	c := fake.NewClientBuilder().
 		WithRESTMapper(testrestmapper.TestOnlyStaticRESTMapper(scheme.Scheme)).
 		WithObjects(
@@ -127,7 +127,8 @@ func TestStore_Query(t *testing.T) {
 		//		{"/api/v1/pods?fieldSelector=metadata.name%3D", []types.NamespacedName{{"y", "wilma"}}},
 	} {
 		t.Run(x.query, func(t *testing.T) {
-			result, err := store.Query(context.Background(), x.query)
+			var result korrel8.ListResult
+			err := store.Get(context.Background(), x.query, &result)
 			require.NoError(t, err)
 			var got []types.NamespacedName
 			for _, v := range result {

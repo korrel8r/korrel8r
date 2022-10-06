@@ -6,12 +6,10 @@ package cmd
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"os"
 
 	"github.com/spf13/cobra"
-	"sigs.k8s.io/yaml"
 )
 
 // getCmd represents the get command
@@ -26,21 +24,8 @@ var getCmd = &cobra.Command{
 		if store == nil {
 			check(fmt.Errorf("unknown domain name %q", domain))
 		}
-		result := must(store.Query(context.Background(), query))
-		switch *output {
-		case "json":
-			e := json.NewEncoder(os.Stdout)
-			if *pretty {
-				e.SetIndent("", "  ")
-			}
-			check(e.Encode(result))
-		case "yaml":
-			for _, o := range result {
-				fmt.Printf("---\n%s", must(yaml.Marshal(o)))
-			}
-		default:
-			check(fmt.Errorf("invalid output type: %v", *output))
-		}
+		result := newPrinter(os.Stdout)
+		check(store.Get(context.Background(), query, result))
 	},
 }
 

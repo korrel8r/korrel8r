@@ -117,42 +117,33 @@ func NewStore(c client.Client) (*Store, error) { return &Store{c: c}, nil }
 
 // Execute a query in the form of a k8s REST URI.
 // Cancel if context is canceled.
-func (s *Store) Query(ctx context.Context, query string) (result []korrel8.Object, err error) {
+func (s *Store) Get(ctx context.Context, query string, result korrel8.Result) (err error) {
 	log.Info("query", "domain", Domain, "query", query)
 	defer func() {
-		if err == nil {
-			b := &strings.Builder{}
-			sep := ""
-			for _, o := range result {
-				fmt.Fprintf(b, "%v%v", sep, o.Identifier())
-				sep = ","
-			}
-			log.Info("result    ", "objects", b.String())
-		} else {
+		if err != nil {
 			err = fmt.Errorf("%w: executing %v query %q", err, Domain, query)
 		}
 	}()
 	u, err := url.Parse(string(query))
 	if err != nil {
-		return nil, err
+		return err
 	}
 	gvk, nsName, err := s.parseAPIPath(u)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	if nsName.Name != "" { // Request for single object.
-		return s.getObject(ctx, gvk, nsName)
+		return s.getObject(ctx, gvk, nsName, result)
 	} else {
-		return s.getList(ctx, gvk, nsName.Namespace, u.Query())
+		return s.getList(ctx, gvk, nsName.Namespace, u.Query(), result)
 	}
 }
 
 // parsing a REST URI into components then using client.Client to recreate the REST query.
 //
-// FIXME revisit: this is weirdly indirect - parse an API path to make a Client call which re-creates the API path.
+// TODO revisit: this is weirdly indirect - parse an API path to make a Client call which re-creates the API path.
 // Should be able to use a REST client directly, but client.Client does REST client creation & caching
 // and manages schema and RESTMapper stuff which I'm not sure I understand yet.
-// Use a JSON query object instead?
 func (s *Store) parseAPIPath(u *url.URL) (gvk schema.GroupVersionKind, nsName types.NamespacedName, err error) {
 	path := k8sPathRegex.FindStringSubmatch(u.Path)
 	if len(path) != pCount {
@@ -164,21 +155,22 @@ func (s *Store) parseAPIPath(u *url.URL) (gvk schema.GroupVersionKind, nsName ty
 	return gvk, nsName, err
 }
 
-func (s *Store) getObject(ctx context.Context, gvk schema.GroupVersionKind, nsName types.NamespacedName) ([]korrel8.Object, error) {
+func (s *Store) getObject(ctx context.Context, gvk schema.GroupVersionKind, nsName types.NamespacedName, result korrel8.Result) error {
 	scheme := s.c.Scheme()
 	o, err := scheme.New(gvk)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	co, _ := o.(client.Object)
 	if co == nil {
-		return nil, fmt.Errorf("invalid client.Object: %T", o)
+		return fmt.Errorf("invalid client.Object: %T", o)
 	}
 	err = s.c.Get(ctx, nsName, co)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	return []korrel8.Object{Object{co}}, nil
+	result.Append(Object{co})
+	return nil
 }
 
 func (s *Store) parseAPIQuery(q url.Values) (opts []client.ListOption, err error) {
@@ -199,25 +191,25 @@ func (s *Store) parseAPIQuery(q url.Values) (opts []client.ListOption, err error
 	return opts, nil
 }
 
-func (s *Store) getList(ctx context.Context, gvk schema.GroupVersionKind, namespace string, query url.Values) ([]korrel8.Object, error) {
+func (s *Store) getList(ctx context.Context, gvk schema.GroupVersionKind, namespace string, query url.Values, result korrel8.Result) error {
 	gvk.Kind = gvk.Kind + "List"
 	o, err := s.c.Scheme().New(gvk)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	list, _ := o.(client.ObjectList)
 	if list == nil {
-		return nil, fmt.Errorf("invalid list object %T", o)
+		return fmt.Errorf("invalid list object %T", o)
 	}
 	opts, err := s.parseAPIQuery(query)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	if namespace != "" {
 		opts = append(opts, client.InNamespace(namespace))
 	}
 	if err := s.c.List(ctx, list, opts...); err != nil {
-		return nil, err
+		return err
 	}
 	defer func() { // Handle reflect panics.
 		if r := recover(); r != nil && err == nil {
@@ -225,11 +217,10 @@ func (s *Store) getList(ctx context.Context, gvk schema.GroupVersionKind, namesp
 		}
 	}()
 	items := reflect.ValueOf(list).Elem().FieldByName("Items")
-	var result []korrel8.Object
 	for i := 0; i < items.Len(); i++ {
-		result = append(result, Object{items.Index(i).Addr().Interface().(client.Object)})
+		result.Append(Object{items.Index(i).Addr().Interface().(client.Object)})
 	}
-	return result, nil
+	return nil
 }
 
 // Parse a K8s API path into: group, version, namespace, resourcetype, name.

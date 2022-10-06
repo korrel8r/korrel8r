@@ -13,15 +13,13 @@ import (
 	"golang.org/x/net/html"
 )
 
-// FIXME: currently assumption of viaq vocabulary is baked in, separate store query format from domain vocabulary.
-
 type domain struct{}
 
 var Domain = domain{}
 
 func (d domain) String() string                  { return "loki" }
 func (d domain) Class(name string) korrel8.Class { return Class{} }
-func (d domain) KnownClasses() []korrel8.Class   { return nil } // FIXME list classes
+func (d domain) KnownClasses() []korrel8.Class   { return []korrel8.Class{Class{}} }
 
 var _ korrel8.Domain = Domain
 
@@ -60,23 +58,22 @@ func NewStore(baseURL string, c *http.Client) *Store {
 // Query executes a LogQL log query via the query_range endpoint
 //
 // The query string can a JSON QueryObject or a LogQL query string.
-func (s *Store) Query(ctx context.Context, query string) (result []korrel8.Object, err error) {
+func (s *Store) Get(ctx context.Context, query string, result korrel8.Result) error {
 	ustr := fmt.Sprintf("%v/%v", s.baseURL, query)
-	println("FIXME", ustr)
 	resp, err := httpError(s.c.Get(ustr))
 	if err != nil {
-		return nil, err
+		return err
 	}
 	defer resp.Body.Close()
 	qr := queryResponse{}
 	if err = json.NewDecoder(resp.Body).Decode(&qr); err != nil {
-		return nil, err
+		return err
 	}
 	if qr.Status != "success" {
-		return nil, fmt.Errorf("expected 'status: success' in %v", qr)
+		return fmt.Errorf("expected 'status: success' in %v", qr)
 	}
 	if qr.Data.ResultType != "streams" {
-		return nil, fmt.Errorf("expected 'resultType: streams' in %v", qr)
+		return fmt.Errorf("expected 'resultType: streams' in %v", qr)
 	}
 	// Interleave and sort the stream results.
 	var logs [][]string // Each log is [timestamp,logline]
@@ -84,11 +81,10 @@ func (s *Store) Query(ctx context.Context, query string) (result []korrel8.Objec
 		logs = append(logs, sv.Values...)
 	}
 	slices.SortStableFunc(logs, func(a, b []string) bool { return a[0] < b[0] })
-	var objs []korrel8.Object
 	for _, tl := range logs { // tl is [time, line]
-		objs = append(objs, Object(tl[1]))
+		result.Append(Object(tl[1]))
 	}
-	return objs, nil
+	return nil
 }
 
 // queryResponse is the response to a loki query.

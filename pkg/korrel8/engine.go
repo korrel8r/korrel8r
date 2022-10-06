@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"strings"
+
+	"github.com/alanconway/korrel8/pkg/unique"
 )
 
 // Engine combines a set of domains and a set of rules, so it can perform correlation.
@@ -41,7 +43,7 @@ func (e *Engine) Add(d Domain, s Store) {
 }
 
 // Follow rules in a path.
-func (e Engine) Follow(ctx context.Context, start Object, c *Constraint, path Path) (result Queries, err error) {
+func (e Engine) Follow(ctx context.Context, start Object, c *Constraint, path Path) (queries []string, err error) {
 	// TODO multi-path following needs thought, reduce duplication.
 	if err := e.Validate(path); err != nil {
 		return nil, err
@@ -49,7 +51,7 @@ func (e Engine) Follow(ctx context.Context, start Object, c *Constraint, path Pa
 	starters := []Object{start}
 	for i, rule := range path {
 		log.Info("following", "rule", rule)
-		result, err = e.followEach(rule, starters, c)
+		queries, err = e.followEach(rule, starters, c)
 		if i == len(path)-1 || err != nil {
 			break
 		}
@@ -58,12 +60,16 @@ func (e Engine) Follow(ctx context.Context, start Object, c *Constraint, path Pa
 		if store == nil {
 			return nil, fmt.Errorf("error following %v: no %v store", rule, d)
 		}
-		if starters, err = result.Get(ctx, store); err != nil {
-			return nil, err
+		next := NewSetResult()
+		for _, q := range queries {
+			if err := store.Get(ctx, q, next); err != nil {
+				return nil, err
+			}
 		}
-		starters = uniqueObjectList(starters)
+		starters = next.List()
 	}
-	return result, err
+
+	return unique.InPlace(queries, unique.Same[string]), err
 }
 
 // Validate checks that the Goal() of each rule matches the Start() of the next,
@@ -84,14 +90,14 @@ func (e Engine) Validate(path Path) error {
 }
 
 // FollowEach calls r.Apply() for each start object and collects the resulting queries.
-func (f Engine) followEach(r Rule, start []Object, c *Constraint) (Queries, error) {
-	results := unique[string]{}
+func (f Engine) followEach(r Rule, start []Object, c *Constraint) ([]string, error) {
+	queries := unique.NewSet(unique.Same[string])
 	for _, s := range start {
-		result, err := r.Apply(s, c)
+		qs, err := r.Apply(s, c)
 		if err != nil {
 			return nil, err
 		}
-		results.add(result)
+		queries.Append(qs...)
 	}
-	return results.list(), nil
+	return queries.List(), nil
 }

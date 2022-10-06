@@ -30,7 +30,7 @@ func TestRule_Apply(t *testing.T) {
 	constraint := korrel8.Constraint{Start: &now, End: &now}
 	q, err := tr.Apply(mockObject("thing"), &constraint)
 	assert.NoError(t, err)
-	assert.Equal(t, korrel8.Queries{fmt.Sprintf("object: thing, constraint: %v", constraint)}, q)
+	assert.Equal(t, []string{fmt.Sprintf("object: thing, constraint: %v", constraint)}, q)
 }
 
 func TestRule_DoesNotApply(t *testing.T) {

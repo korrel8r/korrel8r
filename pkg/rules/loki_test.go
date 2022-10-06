@@ -31,12 +31,14 @@ func TestRule_PodToLokiLogs(t *testing.T) {
 		require.NoError(t, l.Push(nsPodName(args[0], args[1]), args[2:]...))
 	}
 	rule := K8sToLoki()[0]
-	result, err := rule.Apply(k8s.Object{Object: &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Namespace: "foo", Name: "bar"}}}, nil)
+	queries, err := rule.Apply(k8s.Object{Object: &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Namespace: "foo", Name: "bar"}}}, nil)
 	require.NoError(t, err)
-	wantQuery := `query_range?direction=forward&query=%7Bkubernetes_namespace_name%3D%22foo%22%2Ckubernetes_pod_name%3D%22bar%22%7D`
-	require.Equal(t, korrel8.Queries{wantQuery}, result)
-	got, err := s.Query(context.Background(), result[0])
-	require.NoError(t, err)
-	wantObjects := []korrel8.Object{loki.Object("info: foo/bar 1"), loki.Object("info: foo/bar 2"), loki.Object("info: foo/bar 3")}
-	require.Equal(t, wantObjects, got)
+	wantQuery := string(`query_range?direction=forward&query=%7Bkubernetes_namespace_name%3D%22foo%22%2Ckubernetes_pod_name%3D%22bar%22%7D`)
+	require.Equal(t, []string{wantQuery}, queries)
+	result := korrel8.NewListResult()
+	for _, q := range queries {
+		require.NoError(t, s.Get(context.Background(), q, result))
+	}
+	want := []korrel8.Object{loki.Object("info: foo/bar 1"), loki.Object("info: foo/bar 2"), loki.Object("info: foo/bar 3")}
+	require.Equal(t, want, result.List())
 }

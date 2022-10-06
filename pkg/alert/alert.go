@@ -44,23 +44,24 @@ type Object struct{ *models.GettableAlert }
 func (o Object) Identifier() korrel8.Identifier { return o.Labels }
 func (o Object) Native() any                    { return o.GettableAlert }
 
+// FIXME use a REST URI for consistency?
+
 // Query is a JSON object containing JSON-commpatible fields of
 // https://pkg.go.dev/github.com/prometheus/alertmanager/api/v2/client/alert#GetAlertsParams
-func (s Store) Query(ctx context.Context, query string) ([]korrel8.Object, error) {
+func (s Store) Get(ctx context.Context, query string, result korrel8.Result) error {
 	if query == "" {
 		query = "{}" // Allow empty string as empty object
 	}
 	params := alert.NewGetAlertsParamsWithContext(ctx)
 	if err := json.Unmarshal([]byte(query), params); err != nil {
-		return nil, err
+		return err
 	}
 	resp, err := s.manager.Alert.GetAlerts(params)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	var result []korrel8.Object
 	for _, a := range resp.Payload {
-		result = append(result, Object{a})
+		result.Append(Object{a})
 	}
-	return result, nil
+	return nil
 }

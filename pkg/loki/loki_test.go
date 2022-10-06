@@ -27,9 +27,9 @@ func TestStore_Query_String(t *testing.T) {
 		want = append(want, Object(l))
 	}
 	query := fmt.Sprintf("query_range?direction=FORWARD&query=%v", url.QueryEscape(`{test="loki"}`))
-	got, err := s.Query(context.Background(), query)
-	require.NoError(t, err)
-	assert.Equal(t, want, got)
+	result := korrel8.NewListResult()
+	require.NoError(t, s.Get(context.Background(), query, result))
+	assert.Equal(t, want, result.List())
 }
 
 func TestStore_Query_QueryObject(t *testing.T) {
@@ -63,11 +63,9 @@ func TestStore_Query_QueryObject(t *testing.T) {
 		},
 	} {
 		t.Run(x.query, func(t *testing.T) {
-			got, err := s.Query(context.Background(), x.query)
-			assert.NoError(t, err)
-			assert.Equal(t, x.want, got)
+			var result korrel8.ListResult
+			assert.NoError(t, s.Get(context.Background(), x.query, &result))
+			assert.Equal(t, x.want, result.List())
 		})
 	}
 }
-
-// FIXME more tests: multi-stream results sorted correctly, QueryObject fields respected.

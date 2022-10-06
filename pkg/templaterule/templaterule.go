@@ -38,11 +38,11 @@ func (r *Rule) Goal() korrel8.Class  { return r.goal }
 
 // Follow the rule by applying the template to start.Native()
 // The template will be executed with start as the "." context object and a function "constarint" that returns the constraint.
-func (r *Rule) Apply(start korrel8.Object, c *korrel8.Constraint) (result korrel8.Queries, err error) {
+func (r *Rule) Apply(start korrel8.Object, c *korrel8.Constraint) (result []string, err error) {
 	b := &strings.Builder{}
 	data := start.Native()
 	err = r.Template.Funcs(map[string]any{"constraint": func() *korrel8.Constraint { return c }}).Execute(b, data)
-	return korrel8.Queries{b.String()}, err
+	return []string{string(b.String())}, err
 }
 
 var _ korrel8.Rule = &Rule{}
