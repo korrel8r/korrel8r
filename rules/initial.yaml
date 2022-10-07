@@ -1,0 +1,90 @@
+goal: k8s/Pod.v1
+name: DeploymentConfigToPodSelector
+start: k8s/DeploymentConfig.v1.apps.openshift.io
+template: |-
+  /api/v1/namespaces/
+  {{- .Namespace}}/pods?labelSelector={{$s := ""}}{{range $k,$v := .Spec.Selector.MatchLabels -}}
+  {{- urlquery $s $k "=" $v}}{{$s = ","}}{{end}}
+---
+goal: k8s/Pod.v1
+name: DaemonSetToPodSelector
+start: k8s/DaemonSet.v1.apps
+template: |-
+  /api/v1/namespaces/
+  {{- .Namespace}}/pods?labelSelector={{$s := ""}}{{range $k,$v := .Spec.Selector.MatchLabels -}}
+  {{- urlquery $s $k "=" $v}}{{$s = ","}}{{end}}
+---
+goal: k8s/Pod.v1
+name: DeploymentToPodSelector
+start: k8s/Deployment.v1.apps
+template: |-
+  /api/v1/namespaces/
+  {{- .Namespace}}/pods?labelSelector={{$s := ""}}{{range $k,$v := .Spec.Selector.MatchLabels -}}
+  {{- urlquery $s $k "=" $v}}{{$s = ","}}{{end}}
+---
+goal: k8s/Pod.v1
+name: ReplicaSetToPodSelector
+start: k8s/ReplicaSet.v1.apps
+template: |-
+  /api/v1/namespaces/
+  {{- .Namespace}}/pods?labelSelector={{$s := ""}}{{range $k,$v := .Spec.Selector.MatchLabels -}}
+  {{- urlquery $s $k "=" $v}}{{$s = ","}}{{end}}
+---
+goal: k8s/Pod.v1
+name: StatefulSetToPodSelector
+start: k8s/StatefulSet.v1.apps
+template: |-
+  /api/v1/namespaces/
+  {{- .Namespace}}/pods?labelSelector={{$s := ""}}{{range $k,$v := .Spec.Selector.MatchLabels -}}
+  {{- urlquery $s $k "=" $v}}{{$s = ","}}{{end}}
+---
+goal: k8s/Pod.v1
+name: JobToPodSelector
+start: k8s/Job.v1.batch
+template: |-
+  /api/v1/namespaces/
+  {{- .Namespace}}/pods?labelSelector={{$s := ""}}{{range $k,$v := .Spec.Selector.MatchLabels -}}
+  {{- urlquery $s $k "=" $v}}{{$s = ","}}{{end}}
+---
+goal: k8s/Pod.v1
+name: ReplicationControllerToPodSelector
+start: k8s/ReplicationController.v1
+template: |-
+  /api/v1/namespaces/
+  {{- .Namespace}}/pods?labelSelector={{$s := ""}}{{range $k,$v := .Spec.Selector.MatchLabels -}}
+  {{- urlquery $s $k "=" $v}}{{$s = ","}}{{end}}
+---
+goal: k8s/Pod.v1
+name: ServiceToPodSelector
+start: k8s/Service.v1
+template: |-
+  /api/v1/namespaces/
+  {{- .Namespace}}/pods?labelSelector={{$s := ""}}{{range $k,$v := .Spec.Selector.MatchLabels -}}
+  {{- urlquery $s $k "=" $v}}{{$s = ","}}{{end}}
+---
+goal: k8s/Pod.v1
+name: PodDisruptionBudgetToPodSelector
+start: k8s/PodDisruptionBudget.v1.policy
+template: |-
+  /api/v1/namespaces/
+  {{- .Namespace}}/pods?labelSelector={{$s := ""}}{{range $k,$v := .Spec.Selector.MatchLabels -}}
+  {{- urlquery $s $k "=" $v}}{{$s = ","}}{{end}}
+---
+goal: k8s/Pod.v1
+name: EventToPod
+start: k8s/Event.v1.events.k8s.io
+template: '{{if eq .involvedObject.kind "Pod"}}/api/v1/namespaces/{{.involvedObject.namespace}}/pods/{{.involvedObject.name}}{{else}}{{doesnotapply}}{{end}}'
+---
+goal: k8s/Deployment.v1.apps
+name: AlertToDeployment
+start: alert/alert
+template: /api/v1/namespaces/{{.Labels.namespace}}/deployments/{{.Labels.deployment}}
+---
+goal: loki/loki
+name: PodToLokiLogs
+start: k8s/Pod.v1
+template: |
+  query_range?direction=forward&query=
+  {{- urlquery (printf "{kubernetes_namespace_name=%q,kubernetes_pod_name=%q}" .ObjectMeta.Namespace .ObjectMeta.Name) }}
+  {{- with constraint}}&start={{constraint.Start.UnixNano}}{{end -}}
+  {{- with constraint}}&end={{constraint.End.UnixNano}}{{end -}}

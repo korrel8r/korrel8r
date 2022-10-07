@@ -23,7 +23,7 @@ FILE   File containing instance of START class.
 `,
 	Args: cobra.ExactArgs(3),
 	Run: func(cmd *cobra.Command, args []string) {
-		e := engine()
+		e := newEngine()
 		startClass, goalClass := must(e.ParseClass(args[0])), must(e.ParseClass(args[1]))
 		f := open(args[2])
 		defer f.Close()

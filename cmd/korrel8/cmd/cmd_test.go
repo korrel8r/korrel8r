@@ -106,7 +106,7 @@ func TestList_Domains(t *testing.T) {
 	require.Equal(t, 0, exitCode, "exitCode=%v: %v", exitCode, stderr)
 	got := strings.Split(strings.TrimSpace(stdout), "\n")
 	var want []string
-	for k := range engine().Domains {
+	for k := range newEngine().Domains {
 		want = append(want, k)
 	}
 	assert.ElementsMatch(t, want, got)

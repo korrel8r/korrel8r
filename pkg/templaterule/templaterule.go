@@ -4,10 +4,13 @@ package templaterule
 import (
 	"errors"
 	"fmt"
+	"io"
 	"strings"
 	"text/template"
 
+	"github.com/alanconway/korrel8/pkg/engine"
 	"github.com/alanconway/korrel8/pkg/korrel8"
+	"k8s.io/apimachinery/pkg/util/yaml"
 )
 
 // Rule implements korrel8.Rule as a Go template that generate a query string from the start object.
@@ -49,3 +52,38 @@ func (r *Rule) Apply(start korrel8.Object, c *korrel8.Constraint) (result []stri
 }
 
 var _ korrel8.Rule = &Rule{}
+
+// Read rules and add them to the engine.
+func Read(reader io.Reader, engine *engine.Engine) error {
+	decoder := yaml.NewYAMLOrJSONDecoder(reader, 1024)
+	sr := struct { // Serialized rule
+		Name     string `json:"name"`
+		Start    string `json:"start"`
+		Goal     string `json:"goal"`
+		Template string `json:"template"`
+	}{}
+	for {
+		if err := decoder.Decode(&sr); err != nil {
+			if err == io.EOF {
+				return nil
+			}
+			return err
+		}
+		if sr.Name == "" || sr.Template == "" {
+			return fmt.Errorf("invalid rule: %v", sr)
+		}
+		start, err := engine.ParseClass(sr.Start)
+		if err != nil {
+			return err
+		}
+		goal, err := engine.ParseClass(sr.Goal)
+		if err != nil {
+			return err
+		}
+		r, err := New(sr.Name, start, goal, sr.Template)
+		if err != nil {
+			return err
+		}
+		engine.Rules.Add(r)
+	}
+}

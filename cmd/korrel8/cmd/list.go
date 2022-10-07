@@ -16,7 +16,7 @@ list DOMAIN  # list all known classes in DOMAIN
 `,
 	Args: cobra.MaximumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		e := engine()
+		e := newEngine()
 		fmt.Println()
 		switch len(args) {
 		case 0:

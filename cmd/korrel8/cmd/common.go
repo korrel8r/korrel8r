@@ -5,14 +5,17 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/fs"
 	"net/http"
 	"os"
+	"path/filepath"
 
 	"github.com/alanconway/korrel8/pkg/alert"
+	"github.com/alanconway/korrel8/pkg/engine"
 	"github.com/alanconway/korrel8/pkg/k8s"
 	"github.com/alanconway/korrel8/pkg/korrel8"
 	"github.com/alanconway/korrel8/pkg/loki"
-	"github.com/alanconway/korrel8/pkg/rules"
+	"github.com/alanconway/korrel8/pkg/templaterule"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/util/flowcontrol"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -60,13 +63,24 @@ func needStore(store korrel8.Store, err error) korrel8.Store {
 }
 func (s noStore) Get(context.Context, string, korrel8.Result) error { return s.err }
 
-func engine() *korrel8.Engine {
+func newEngine() *engine.Engine {
 	cfg := restConfig()
-	e := korrel8.NewEngine()
-	rules.AddTo(e.Rules)
-	e.Add(k8s.Domain, needStore(k8s.NewStore(k8sClient(cfg))))
-	e.Add(alert.Domain, needStore(alert.OpenshiftManagerStore(cfg)))
-	e.Add(loki.Domain, loki.NewStore(*lokiBaseURL, http.DefaultClient))
+	e := engine.New()
+	e.AddDomain(k8s.Domain, needStore(k8s.NewStore(k8sClient(cfg))))
+	e.AddDomain(alert.Domain, needStore(alert.OpenshiftManagerStore(cfg)))
+	e.AddDomain(loki.Domain, loki.NewStore(*lokiBaseURL, http.DefaultClient))
+
+	// Load rules
+	for _, root := range *rulePaths {
+		check(filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
+			check(err)
+			if d.Type().IsRegular() {
+				f := must(os.Open(path))
+				check(templaterule.Read(f, e))
+			}
+			return nil
+		}))
+	}
 	return e
 }
 

@@ -18,6 +18,9 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"path/filepath"
+	"runtime"
+	"strings"
 
 	"github.com/alanconway/korrel8/internal/pkg/logging"
 	"github.com/spf13/cobra"
@@ -46,12 +49,47 @@ var (
 	output      *string
 	verbose     *int
 	lokiBaseURL *string
+	rulePaths   *[]string
 )
+
+// defaultRulePaths looks for a default "rules" directory in a few places.
+func defaultRulePaths() []string {
+	for _, f := range []func() string{
+		// Check for env var.
+		func() string { return os.Getenv("KORREL8_RULE_DIR") },
+		// Check for "rules" directory beside executable.
+		func() string {
+			path, _ := os.Executable()
+			if path != "" {
+				path = filepath.Join(filepath.Dir(path), "rules")
+			}
+			return path
+		},
+		// Check if there is a source tree for development.
+		func() string {
+			_, path, _, _ := runtime.Caller(1)
+			if srcRoot := strings.TrimSuffix(path, "/cmd/korrel8/cmd/root.go"); srcRoot != path {
+				return filepath.Join(srcRoot, "rules")
+			}
+			return ""
+		},
+	} {
+		if path := f(); path != "" {
+			if _, err := os.Stat(path); err == nil {
+				return []string{path}
+			}
+		}
+	}
+	return nil
+}
 
 func init() {
 	output = rootCmd.PersistentFlags().StringP("output", "o", "yaml", "Output format: json, json-pretty or yaml")
 	verbose = rootCmd.PersistentFlags().IntP("verbose", "v", 0, "Verbosity for logging")
 
-	lokiBaseURL = rootCmd.PersistentFlags().StringP("loki", "", "", "Loki base URL, up to .../v1")
+	rulePaths = rootCmd.PersistentFlags().StringArrayP("rules", "r", defaultRulePaths(), "Files or directories containing rules.")
+
+	lokiBaseURL = rootCmd.PersistentFlags().String("loki", "", "Loki base URL, up to .../v1")
+
 	cobra.OnInitialize(func() { logging.Init(*verbose) })
 }

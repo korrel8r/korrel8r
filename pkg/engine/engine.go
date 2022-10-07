@@ -1,25 +1,30 @@
-package korrel8
+// package engine implements generic correlation logic to correlate across domains.
+package engine
 
 import (
 	"context"
 	"fmt"
 	"strings"
 
+	"github.com/alanconway/korrel8/internal/pkg/logging"
+	"github.com/alanconway/korrel8/pkg/korrel8"
 	"github.com/alanconway/korrel8/pkg/unique"
 )
 
+var log = logging.Log
+
 // Engine combines a set of domains and a set of rules, so it can perform correlation.
 type Engine struct {
-	Stores  map[string]Store
-	Domains map[string]Domain
-	Rules   *RuleSet
+	Stores  map[string]korrel8.Store
+	Domains map[string]korrel8.Domain
+	Rules   *korrel8.RuleSet
 }
 
-func NewEngine() *Engine {
-	return &Engine{Stores: map[string]Store{}, Domains: map[string]Domain{}, Rules: NewRuleSet()}
+func New() *Engine {
+	return &Engine{Stores: map[string]korrel8.Store{}, Domains: map[string]korrel8.Domain{}, Rules: korrel8.NewRuleSet()}
 }
 
-func (e *Engine) ParseClass(name string) (Class, error) {
+func (e *Engine) ParseClass(name string) (korrel8.Class, error) {
 	parts := strings.SplitN(name, "/", 2)
 	domain := e.Domains[parts[0]]
 	if domain == nil {
@@ -36,19 +41,19 @@ func (e *Engine) ParseClass(name string) (Class, error) {
 	return class, nil
 }
 
-// Add domain and corresponding store, s may be nil.
-func (e *Engine) Add(d Domain, s Store) {
+// AddDomain domain and corresponding store, s may be nil.
+func (e *Engine) AddDomain(d korrel8.Domain, s korrel8.Store) {
 	e.Domains[d.String()] = d
 	e.Stores[d.String()] = s
 }
 
 // Follow rules in a path.
-func (e Engine) Follow(ctx context.Context, start Object, c *Constraint, path Path) (queries []string, err error) {
+func (e Engine) Follow(ctx context.Context, start korrel8.Object, c *korrel8.Constraint, path korrel8.Path) (queries []string, err error) {
 	// TODO multi-path following needs thought, reduce duplication.
 	if err := e.Validate(path); err != nil {
 		return nil, err
 	}
-	starters := []Object{start}
+	starters := []korrel8.Object{start}
 	for i, rule := range path {
 		log.Info("following", "rule", rule)
 		queries, err = e.followEach(rule, starters, c)
@@ -60,7 +65,7 @@ func (e Engine) Follow(ctx context.Context, start Object, c *Constraint, path Pa
 		if store == nil {
 			return nil, fmt.Errorf("error following %v: no %v store", rule, d)
 		}
-		result := NewListResult()
+		result := korrel8.NewListResult()
 		for _, q := range queries {
 			if err := store.Get(ctx, q, result); err != nil {
 				return nil, err
@@ -74,7 +79,7 @@ func (e Engine) Follow(ctx context.Context, start Object, c *Constraint, path Pa
 
 // Validate checks that the Goal() of each rule matches the Start() of the next,
 // and that the engine has all the stores needed to follow the path.
-func (e Engine) Validate(path Path) error {
+func (e Engine) Validate(path korrel8.Path) error {
 	for i, r := range path {
 		if i < len(path)-1 {
 			if r.Goal() != path[i+1].Start() {
@@ -90,7 +95,7 @@ func (e Engine) Validate(path Path) error {
 }
 
 // FollowEach calls r.Apply() for each start object and collects the resulting queries.
-func (f Engine) followEach(rule Rule, start []Object, c *Constraint) ([]string, error) {
+func (f Engine) followEach(rule korrel8.Rule, start []korrel8.Object, c *korrel8.Constraint) ([]string, error) {
 	var queries []string
 	for _, s := range start {
 		qs, err := rule.Apply(s, c)

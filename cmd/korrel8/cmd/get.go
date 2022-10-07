@@ -19,7 +19,7 @@ var getCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(2),
 	Run: func(cmd *cobra.Command, args []string) {
 		domain, query := args[0], args[1]
-		e := engine()
+		e := newEngine()
 		store := e.Stores[domain]
 		if store == nil {
 			check(fmt.Errorf("unknown domain name %q", domain))

@@ -46,5 +46,6 @@ For example the k8s domain will decode JSON into Go API objects, with typed fiel
 Rules have a start Class and a goal Class. Rules take an Object and generate a Query.
 Rules are written in terms of the specific domain objects, field names and query languages they deal with.
 
+Existing rules are defined using Go templates, see ./rules for examples.
 
 
