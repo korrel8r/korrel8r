@@ -25,11 +25,11 @@ var _ korrel8.Domain = Domain
 
 type Class struct{} // Only one class
 
-func (c Class) Domain() korrel8.Domain                { return Domain }
-func (c Class) String() string                        { return Domain.String() }
-func (c Class) New() korrel8.Object                   { return Object("") }
-func (c Class) Contains(o korrel8.Object) bool        { _, ok := o.(string); return ok }
-func (c Class) NewDeduplicator() korrel8.Deduplicator { return korrel8.NeverDeduplicator{} }
+func (c Class) Domain() korrel8.Domain         { return Domain }
+func (c Class) String() string                 { return Domain.String() }
+func (c Class) New() korrel8.Object            { return Object("") }
+func (c Class) Contains(o korrel8.Object) bool { _, ok := o.(string); return ok }
+func (c Class) Key(o korrel8.Object) any       { return o }
 
 var _ korrel8.Class = Class{} // Implements interface.
 

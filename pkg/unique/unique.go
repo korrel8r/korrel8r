@@ -8,8 +8,8 @@ type Deduplicator[K, V any] struct {
 }
 
 // NewDeduplicator uses func key to extract keys from values.
-func NewDeduplicator[K, V any](key func(V) K) *Deduplicator[K, V] {
-	return &Deduplicator[K, V]{key: key}
+func NewDeduplicator[K, V any](key func(V) K) Deduplicator[K, V] {
+	return Deduplicator[K, V]{key: key}
 }
 
 // Unique returns true if  the key of v has not been seen before.

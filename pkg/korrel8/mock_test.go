@@ -7,7 +7,6 @@ import (
 )
 
 // Mock implementations
-
 type mockDomain struct{}
 
 func (d mockDomain) String() string          { return "mock" }
@@ -18,11 +17,11 @@ var _ Domain = mockDomain{} // Implements interface
 
 type mockClass string
 
-func (c mockClass) Domain() Domain                { return mockDomain{} }
-func (c mockClass) New() Object                   { return mockObject{} }
-func (c mockClass) String() string                { return string(c) }
-func (c mockClass) Contains(o Object) bool        { _, ok := o.(*mockObject); return ok }
-func (c mockClass) NewDeduplicator() Deduplicator { return NeverDeduplicator{} }
+func (c mockClass) Domain() Domain         { return mockDomain{} }
+func (c mockClass) New() Object            { return mockObject{} }
+func (c mockClass) String() string         { return string(c) }
+func (c mockClass) Contains(o Object) bool { _, ok := o.(*mockObject); return ok }
+func (c mockClass) Key(o Object) any       { return o }
 
 var _ Class = mockClass("") // Implements interface
 

@@ -10,7 +10,6 @@ import (
 
 	"github.com/alanconway/korrel8/internal/pkg/logging"
 	"github.com/alanconway/korrel8/pkg/korrel8"
-	"github.com/alanconway/korrel8/pkg/unique"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -80,8 +79,9 @@ type Class struct{ reflect.Type }
 func ClassOf(o client.Object) Class { return Class{reflect.TypeOf(o).Elem()} }
 
 func (c Class) Contains(o korrel8.Object) bool { return reflect.TypeOf(o) == c.Type }
-func (c Class) NewDeduplicator() korrel8.Deduplicator {
-	return unique.NewDeduplicator(func(o korrel8.Object) any { return client.ObjectKeyFromObject(o.(client.Object)) })
+func (c Class) Key(o korrel8.Object) any {
+	co, _ := o.(client.Object)
+	return client.ObjectKeyFromObject(co)
 }
 
 func (c Class) String() string {

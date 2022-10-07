@@ -5,6 +5,7 @@ package korrel8
 
 import (
 	"context"
+	"path"
 	"time"
 
 	"github.com/alanconway/korrel8/internal/pkg/logging"
@@ -12,10 +13,16 @@ import (
 
 var log = logging.Log
 
-// Object represents a signal instance. Values must support JSON marshal.
+// Object represents an instance of a signal.
+//
+// Object has no methods to avoid clashes with fields or method names of the underlying object.
+// The Class type provides some methods for inspecting objects.
+// Object values must support JSON marshal.
 type Object any
 
 // Domain is a collection of classes describing signals in the same family.
+//
+// Domain implementations must be comparable.
 type Domain interface {
 	String() string        // Name of the domain
 	Class(string) Class    // Find a class by name, return nil if not found.
@@ -23,21 +30,19 @@ type Domain interface {
 }
 
 // Class identifies a subset of objects from the same domain with the same schema.
-// For example Pod is a class in the k8s domain.
 //
+// For example Pod is a class in the k8s domain.
 // Class implementations must be comparable.
 type Class interface {
-	Contains(Object) bool          // True if object is in this class
-	Domain() Domain                // Domain of this class.
-	New() Object                   // Return a new instance of the class, for decoding from JSON.
-	NewDeduplicator() Deduplicator // Deduplicates objects of this class.
-	String() string                // Name of the class
+	Domain() Domain       // Domain of this class.
+	New() Object          // Return a new instance of the class, can be decoded from JSON or YAML.
+	Contains(Object) bool // True if object is in this class
+	Key(Object) any       // Comparable key for de-duplication or nil if object is not in this class.
+	String() string       // Name of the class within the domain, e.g "Pod.v1". See ClassName()
 }
 
-// Deduplicator identifies duplicate values.
-type Deduplicator interface {
-	Unique(Object) bool // True if object is unique so far, remembers Object.
-}
+// ClassName is the qualified domain/name of a class, e.g. "k8s/Pod.v1"
+func ClassName(c Class) string { return path.Join(c.Domain().String(), c.String()) }
 
 // Result gathers results from Store.Get calls.
 type Result interface {

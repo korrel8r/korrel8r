@@ -65,9 +65,9 @@ func (e Engine) Follow(ctx context.Context, start korrel8.Object, c *korrel8.Con
 		if store == nil {
 			return nil, fmt.Errorf("error following %v: no %v store", rule, d)
 		}
-		result := korrel8.NewListResult()
+		var result korrel8.ListResult
 		for _, q := range queries {
-			if err := store.Get(ctx, q, result); err != nil {
+			if err := store.Get(ctx, q, &result); err != nil {
 				return nil, err
 			}
 		}

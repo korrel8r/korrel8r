@@ -20,11 +20,11 @@ var _ korrel8.Domain = mockDomain{} // Implements interface
 
 type mockClass string
 
-func (c mockClass) Domain() korrel8.Domain                { return mockDomain{} }
-func (c mockClass) New() korrel8.Object                   { return mockObject{} }
-func (c mockClass) String() string                        { return string(c) }
-func (c mockClass) Contains(o korrel8.Object) bool        { _, ok := o.(*mockObject); return ok }
-func (c mockClass) NewDeduplicator() korrel8.Deduplicator { return korrel8.NeverDeduplicator{} }
+func (c mockClass) Domain() korrel8.Domain         { return mockDomain{} }
+func (c mockClass) New() korrel8.Object            { return mockObject{} }
+func (c mockClass) String() string                 { return string(c) }
+func (c mockClass) Contains(o korrel8.Object) bool { _, ok := o.(*mockObject); return ok }
+func (c mockClass) Key(o korrel8.Object) any       { return o }
 
 var _ korrel8.Class = mockClass("") // Implements interface
 
