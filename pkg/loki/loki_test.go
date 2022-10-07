@@ -26,7 +26,7 @@ func TestStore_Query_String(t *testing.T) {
 	for _, l := range lines {
 		want = append(want, Object(l))
 	}
-	query := fmt.Sprintf("query_range?direction=FORWARD&query=%v", url.QueryEscape(`{test="loki"}`))
+	query := korrel8.Query(fmt.Sprintf("query_range?direction=FORWARD&query=%v", url.QueryEscape(`{test="loki"}`)))
 	result := korrel8.NewListResult()
 	require.NoError(t, s.Get(context.Background(), query, result))
 	assert.Equal(t, want, result.List())
@@ -50,19 +50,19 @@ func TestStore_Query_QueryObject(t *testing.T) {
 	require.NoError(t, err)
 
 	for _, x := range []struct {
-		query string
+		query korrel8.Query
 		want  []korrel8.Object
 	}{
 		{
-			query: fmt.Sprintf("query_range?direction=FORWARD&query=%v&end=%v", url.QueryEscape(`{test="loki"}`), t1.UnixNano()),
+			query: korrel8.Query(fmt.Sprintf("query_range?direction=FORWARD&query=%v&end=%v", url.QueryEscape(`{test="loki"}`), t1.UnixNano())),
 			want:  []korrel8.Object{Object("much"), Object("too"), Object("early")},
 		},
 		{
-			query: fmt.Sprintf("query_range?direction=FORWARD&query=%v&start=%v&end=%v", url.QueryEscape(`{test="loki"}`), t1.UnixNano(), t2.UnixNano()),
+			query: korrel8.Query(fmt.Sprintf("query_range?direction=FORWARD&query=%v&start=%v&end=%v", url.QueryEscape(`{test="loki"}`), t1.UnixNano(), t2.UnixNano())),
 			want:  []korrel8.Object{Object("right"), Object("on"), Object("time")},
 		},
 	} {
-		t.Run(x.query, func(t *testing.T) {
+		t.Run(string(x.query), func(t *testing.T) {
 			var result korrel8.ListResult
 			assert.NoError(t, s.Get(context.Background(), x.query, &result))
 			assert.Equal(t, x.want, result.List())

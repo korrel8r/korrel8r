@@ -47,7 +47,7 @@ type Object *models.GettableAlert
 
 // Query is a JSON object containing JSON-commpatible fields of
 // https://pkg.go.dev/github.com/prometheus/alertmanager/api/v2/client/alert#GetAlertsParams
-func (s Store) Get(ctx context.Context, query string, result korrel8.Result) error {
+func (s Store) Get(ctx context.Context, query korrel8.Query, result korrel8.Result) error {
 	if query == "" {
 		query = "{}" // Allow empty string as empty object
 	}

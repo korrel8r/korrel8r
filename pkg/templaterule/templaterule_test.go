@@ -28,14 +28,15 @@ func TestRule_Apply(t *testing.T) {
 	constraint := korrel8.Constraint{Start: &now, End: &now}
 	q, err := tr.Apply(mockObject("thing"), &constraint)
 	assert.NoError(t, err)
-	assert.Equal(t, []string{fmt.Sprintf("object: thing, constraint: %v", constraint)}, q)
+	assert.Equal(t, korrel8.Query(fmt.Sprintf("object: thing, constraint: %v", constraint)), q)
 }
 
 func TestRule_DoesNotApply(t *testing.T) {
 	tr, err := templaterule.New("myrule", mockClass(""), mockClass(""), `{{doesnotapply}}`)
 	require.NoError(t, err)
-	_, err = tr.Apply(mockObject("thing"), nil)
-	assert.Contains(t, err.Error(), "does not apply")
+	q, err := tr.Apply(mockObject("thing"), nil)
+	assert.Empty(t, q)
+	assert.ErrorIs(t, err, templaterule.ErrRuleDoesNotApply)
 }
 
 func TestRule_MissingKey(t *testing.T) {

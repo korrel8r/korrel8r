@@ -110,7 +110,7 @@ func NewStore(c client.Client) (*Store, error) { return &Store{c: c}, nil }
 
 // Execute a query in the form of a k8s REST URI.
 // Cancel if context is canceled.
-func (s *Store) Get(ctx context.Context, query string, result korrel8.Result) (err error) {
+func (s *Store) Get(ctx context.Context, query korrel8.Query, result korrel8.Result) (err error) {
 	log.Info("query", "domain", Domain, "query", query)
 	defer func() {
 		if err != nil {

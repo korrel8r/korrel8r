@@ -37,19 +37,19 @@ var _ Object = mockObject{} // Implements interface
 
 type mockRule struct {
 	start, goal Class
-	apply       func(Object, *Constraint) []string
+	apply       func(Object, *Constraint) Query
 }
 
 func (r mockRule) Start() Class   { return r.start }
 func (r mockRule) Goal() Class    { return r.goal }
 func (r mockRule) String() string { return fmt.Sprintf("(%v)->%v", r.start, r.goal) }
-func (r mockRule) Apply(start Object, c *Constraint) ([]string, error) {
+func (r mockRule) Apply(start Object, c *Constraint) (Query, error) {
 	return r.apply(start, c), nil
 }
 
 var _ Rule = mockRule{} // Implements interface
 
-func rr(start, goal string, apply func(Object, *Constraint) []string) mockRule {
+func rr(start, goal string, apply func(Object, *Constraint) Query) mockRule {
 	return mockRule{
 		start: mockClass(start),
 		goal:  mockClass(goal),
@@ -62,8 +62,8 @@ func r(start, goal string) mockRule { return rr(start, goal, nil) }
 type mockStore struct{}
 
 // Query a mock "query" is a comma-separated list of "name.class" to be turned into mock objects.
-func (s mockStore) Get(_ context.Context, q string, r Result) error {
-	for _, s := range strings.Split(q, ",") {
+func (s mockStore) Get(_ context.Context, q Query, r Result) error {
+	for _, s := range strings.Split(string(q), ",") {
 		nc := strings.Split(s, ".")
 		r.Append(mockObject{name: nc[0], class: mockClass(nc[1])})
 	}

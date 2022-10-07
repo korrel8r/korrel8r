@@ -48,7 +48,7 @@ func (e *Engine) AddDomain(d korrel8.Domain, s korrel8.Store) {
 }
 
 // Follow rules in a path.
-func (e Engine) Follow(ctx context.Context, start korrel8.Object, c *korrel8.Constraint, path korrel8.Path) (queries []string, err error) {
+func (e Engine) Follow(ctx context.Context, start korrel8.Object, c *korrel8.Constraint, path korrel8.Path) (queries []korrel8.Query, err error) {
 	// TODO multi-path following needs thought, reduce duplication.
 	if err := e.Validate(path); err != nil {
 		return nil, err
@@ -74,7 +74,7 @@ func (e Engine) Follow(ctx context.Context, start korrel8.Object, c *korrel8.Con
 		starters = result.List()
 	}
 
-	return unique.InPlace(queries, unique.Same[string]), err
+	return unique.InPlace(queries, unique.Same[korrel8.Query]), err
 }
 
 // Validate checks that the Goal() of each rule matches the Start() of the next,
@@ -95,14 +95,14 @@ func (e Engine) Validate(path korrel8.Path) error {
 }
 
 // FollowEach calls r.Apply() for each start object and collects the resulting queries.
-func (f Engine) followEach(rule korrel8.Rule, start []korrel8.Object, c *korrel8.Constraint) ([]string, error) {
-	var queries []string
+func (f Engine) followEach(rule korrel8.Rule, start []korrel8.Object, c *korrel8.Constraint) ([]korrel8.Query, error) {
+	var queries []korrel8.Query
 	for _, s := range start {
-		qs, err := rule.Apply(s, c)
+		q, err := rule.Apply(s, c)
 		if err != nil {
 			return nil, err
 		}
-		queries = append(queries, qs...)
+		queries = append(queries, q)
 	}
-	return unique.InPlace(queries, unique.Same[string]), nil
+	return unique.InPlace(queries, unique.Same[korrel8.Query]), nil
 }

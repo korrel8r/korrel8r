@@ -56,7 +56,7 @@ func NewStore(baseURL string, c *http.Client) *Store {
 // Query executes a LogQL log query via the query_range endpoint
 //
 // The query string can a JSON QueryObject or a LogQL query string.
-func (s *Store) Get(ctx context.Context, query string, result korrel8.Result) error {
+func (s *Store) Get(ctx context.Context, query korrel8.Query, result korrel8.Result) error {
 	ustr := fmt.Sprintf("%v/%v", s.baseURL, query)
 	resp, err := httpError(s.c.Get(ustr))
 	if err != nil {

@@ -116,7 +116,7 @@ func TestStore_Get(t *testing.T) {
 		wilma  = types.NamespacedName{Namespace: "y", Name: "wilma"}
 	)
 	for _, x := range []struct {
-		query string
+		query korrel8.Query
 		want  []types.NamespacedName
 	}{
 		{"/api/v1/namespaces/x/pods/fred", []types.NamespacedName{fred}},
@@ -126,7 +126,7 @@ func TestStore_Get(t *testing.T) {
 		// Field selectors are not supported by the fake client.
 		//		{"/api/v1/pods?fieldSelector=metadata.name%3D", []types.NamespacedName{{"y", "wilma"}}},
 	} {
-		t.Run(x.query, func(t *testing.T) {
+		t.Run(string(x.query), func(t *testing.T) {
 			var result korrel8.ListResult
 			err := store.Get(context.Background(), x.query, &result)
 			require.NoError(t, err)

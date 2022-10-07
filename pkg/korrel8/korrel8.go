@@ -44,10 +44,13 @@ type Result interface {
 	Append(...Object)
 }
 
+// Query for a signal store. Format depends on type of store, usually a REST path.
+type Query string
+
 // Store is a source of signals belonging to a single domain.
 type Store interface {
 	// Get executes one or more a Queries and appends objects to Result the resulting objects.
-	Get(ctx context.Context, query string, r Result) error
+	Get(ctx context.Context, query Query, r Result) error
 }
 
 // Rule encapsulates logic to find correlated goal objects from a start object.
@@ -60,7 +63,7 @@ type Rule interface {
 	// Apply the rule to start Object.
 	// Return a list of queries for correlated objects in the Goal() domain.
 	// The queries include the contraint (which can be nil)
-	Apply(Object, *Constraint) ([]string, error)
+	Apply(Object, *Constraint) (Query, error)
 }
 
 // Constraint to apply to the result of following a rule.

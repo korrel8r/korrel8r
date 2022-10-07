@@ -20,11 +20,14 @@ type Rule struct {
 	start, goal korrel8.Class
 }
 
+// Error returned if a rule is applied to an object that does not have required fields or values.
+var ErrRuleDoesNotApply = errors.New("rule does not apply")
+
 // Funcs that are automatically added to templates created by New.
 // Rule.Apply() also adds a "constraint" function.
 var funcs = map[string]any{
 	// doesnotapply fails template evaluation, call when a rule does not apply to its start object.
-	"doesnotapply": func() (int, error) { return 0, errors.New("rule does not apply") },
+	"doesnotapply": func() (int, error) { return 0, ErrRuleDoesNotApply },
 	// constraint is a placeholder ,in Rule.Apply it will return a *Constraint (possibly nil)
 	"constraint": func() *korrel8.Constraint { panic("placeholder") },
 }
@@ -42,13 +45,13 @@ func (r *Rule) Goal() korrel8.Class  { return r.goal }
 // Follow the rule by applying the template.
 // The template will be executed with start as the "." context object.
 // A function "constraint" returns the constraint.
-func (r *Rule) Apply(start korrel8.Object, c *korrel8.Constraint) (result []string, err error) {
+func (r *Rule) Apply(start korrel8.Object, c *korrel8.Constraint) (result korrel8.Query, err error) {
 	b := &strings.Builder{}
 	err = r.Template.Funcs(map[string]any{"constraint": func() *korrel8.Constraint { return c }}).Execute(b, start)
 	if err != nil {
-		err = fmt.Errorf("Appply %T %v: %w", start, start, err)
+		err = fmt.Errorf("apply %v to (%T)%v: %w", r, start, start, err)
 	}
-	return []string{string(b.String())}, err
+	return korrel8.Query(b.String()), err
 }
 
 var _ korrel8.Rule = &Rule{}

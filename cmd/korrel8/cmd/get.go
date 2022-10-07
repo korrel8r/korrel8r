@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/alanconway/korrel8/pkg/korrel8"
 	"github.com/spf13/cobra"
 )
 
@@ -18,7 +19,7 @@ var getCmd = &cobra.Command{
 	Short: "Execute QUERY in the default store for DOMAIN and print the results",
 	Args:  cobra.ExactArgs(2),
 	Run: func(cmd *cobra.Command, args []string) {
-		domain, query := args[0], args[1]
+		domain, query := args[0], korrel8.Query(args[1])
 		e := newEngine()
 		store := e.Stores[domain]
 		if store == nil {

@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/alanconway/korrel8/pkg/korrel8"
 	"github.com/spf13/cobra"
 	"k8s.io/apimachinery/pkg/util/yaml"
 )
@@ -30,7 +31,7 @@ FILE   File containing instance of START class.
 		start := startClass.New()
 		check(yaml.NewYAMLOrJSONDecoder(f, 1024).Decode(&start))
 		paths := e.Rules.FindPaths(startClass, goalClass)
-		var queries []string
+		var queries []korrel8.Query
 		for _, p := range paths {
 			queries = append(queries, must(e.Follow(context.Background(), start, nil, p))...)
 		}

@@ -61,7 +61,7 @@ func needStore(store korrel8.Store, err error) korrel8.Store {
 	}
 	return store
 }
-func (s noStore) Get(context.Context, string, korrel8.Result) error { return s.err }
+func (s noStore) Get(context.Context, korrel8.Query, korrel8.Result) error { return s.err }
 
 func newEngine() *engine.Engine {
 	cfg := restConfig()
