@@ -18,9 +18,11 @@ var _ Domain = mockDomain{} // Implements interface
 
 type mockClass string
 
-func (c mockClass) Domain() Domain { return mockDomain{} }
-func (c mockClass) New() Object    { return mockObject{} }
-func (c mockClass) String() string { return string(c) }
+func (c mockClass) Domain() Domain                { return mockDomain{} }
+func (c mockClass) New() Object                   { return mockObject{} }
+func (c mockClass) String() string                { return string(c) }
+func (c mockClass) Contains(o Object) bool        { _, ok := o.(*mockObject); return ok }
+func (c mockClass) NewDeduplicator() Deduplicator { return NeverDeduplicator{} }
 
 var _ Class = mockClass("") // Implements interface
 
@@ -29,9 +31,7 @@ type mockObject struct {
 	class mockClass
 }
 
-func o(name, class string) Object           { return mockObject{name: name, class: mockClass(class)} }
-func (o mockObject) Native() any            { return o }
-func (o mockObject) Identifier() Identifier { return o.name }
+func o(name, class string) Object { return mockObject{name: name, class: mockClass(class)} }
 
 var _ Object = mockObject{} // Implements interface
 

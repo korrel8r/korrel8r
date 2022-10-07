@@ -60,13 +60,13 @@ func (e Engine) Follow(ctx context.Context, start Object, c *Constraint, path Pa
 		if store == nil {
 			return nil, fmt.Errorf("error following %v: no %v store", rule, d)
 		}
-		next := NewSetResult()
+		result := NewListResult()
 		for _, q := range queries {
-			if err := store.Get(ctx, q, next); err != nil {
+			if err := store.Get(ctx, q, result); err != nil {
 				return nil, err
 			}
 		}
-		starters = next.List()
+		starters = result.List()
 	}
 
 	return unique.InPlace(queries, unique.Same[string]), err
@@ -90,14 +90,14 @@ func (e Engine) Validate(path Path) error {
 }
 
 // FollowEach calls r.Apply() for each start object and collects the resulting queries.
-func (f Engine) followEach(r Rule, start []Object, c *Constraint) ([]string, error) {
-	queries := unique.NewSet(unique.Same[string])
+func (f Engine) followEach(rule Rule, start []Object, c *Constraint) ([]string, error) {
+	var queries []string
 	for _, s := range start {
-		qs, err := r.Apply(s, c)
+		qs, err := rule.Apply(s, c)
 		if err != nil {
 			return nil, err
 		}
-		queries.Append(qs...)
+		queries = append(queries, qs...)
 	}
-	return queries.List(), nil
+	return unique.InPlace(queries, unique.Same[string]), nil
 }

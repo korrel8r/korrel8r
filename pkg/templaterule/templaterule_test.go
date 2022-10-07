@@ -13,15 +13,13 @@ import (
 )
 
 type mockClass string
-
-func (c mockClass) Domain() korrel8.Domain { return nil }
-func (c mockClass) New() korrel8.Object    { return nil }
-func (c mockClass) String() string         { return "" }
-
 type mockObject string
 
-func (o mockObject) Native() any                    { return o }
-func (o mockObject) Identifier() korrel8.Identifier { return o }
+func (c mockClass) Domain() korrel8.Domain                { return nil }
+func (c mockClass) New() korrel8.Object                   { return nil }
+func (c mockClass) String() string                        { return "" }
+func (c mockClass) NewDeduplicator() korrel8.Deduplicator { return korrel8.NeverDeduplicator{} }
+func (c mockClass) Contains(o korrel8.Object) bool        { panic("not implemented") }
 
 func TestRule_Apply(t *testing.T) {
 	tr, err := templaterule.New("myrule", mockClass(""), mockClass(""), "object: {{.}}, constraint: {{ constraint }}")

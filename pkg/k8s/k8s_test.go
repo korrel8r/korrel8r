@@ -132,7 +132,7 @@ func TestStore_Get(t *testing.T) {
 			require.NoError(t, err)
 			var got []types.NamespacedName
 			for _, v := range result {
-				o := v.(Object).Object.(*corev1.Pod)
+				o := v.(Object).(*corev1.Pod)
 				got = append(got, types.NamespacedName{Namespace: o.Namespace, Name: o.Name})
 			}
 			assert.ElementsMatch(t, x.want, got)

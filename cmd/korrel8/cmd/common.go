@@ -92,7 +92,7 @@ func newPrinter(w io.Writer) printer {
 		return printer{print: func(o korrel8.Object) { check(encoder.Encode(o)) }}
 
 	case "yaml":
-		return printer{print: func(o korrel8.Object) { fmt.Fprintf(w, "---\n%s", must(yaml.Marshal(o))) }}
+		return printer{print: func(o korrel8.Object) { fmt.Fprintf(w, "---\n%s", must(yaml.Marshal(&o))) }}
 
 	default:
 		check(fmt.Errorf("invalid output type: %v", *output))

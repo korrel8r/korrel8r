@@ -20,7 +20,7 @@ type domain struct{}
 
 func (d domain) String() string                { return "alert" }
 func (d domain) Class(string) korrel8.Class    { return Class{} }
-func (d domain) KnownClasses() []korrel8.Class { return nil } // FIXME list classes
+func (d domain) KnownClasses() []korrel8.Class { panic("not implemented") } // FIXME
 
 var _ korrel8.Domain = Domain
 
@@ -35,14 +35,13 @@ func NewStore(host string, hc *http.Client) *Store {
 
 type Class struct{} // Only one class
 
-func (c Class) Domain() korrel8.Domain { return Domain }
-func (c Class) String() string         { return Domain.String() }
-func (c Class) New() korrel8.Object    { return &Object{GettableAlert: &models.GettableAlert{}} }
+func (c Class) Domain() korrel8.Domain                { return Domain }
+func (c Class) String() string                        { return Domain.String() }
+func (c Class) New() korrel8.Object                   { return &models.GettableAlert{} }
+func (c Class) NewDeduplicator() korrel8.Deduplicator { return korrel8.NeverDeduplicator{} }
+func (c Class) Contains(o korrel8.Object) bool        { _, ok := o.(Object); return ok }
 
-type Object struct{ *models.GettableAlert }
-
-func (o Object) Identifier() korrel8.Identifier { return o.Labels }
-func (o Object) Native() any                    { return o.GettableAlert }
+type Object *models.GettableAlert
 
 // FIXME use a REST URI for consistency?
 
@@ -61,7 +60,7 @@ func (s Store) Get(ctx context.Context, query string, result korrel8.Result) err
 		return err
 	}
 	for _, a := range resp.Payload {
-		result.Append(Object{a})
+		result.Append(a)
 	}
 	return nil
 }

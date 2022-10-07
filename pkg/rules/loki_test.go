@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/alanconway/korrel8/internal/pkg/test"
-	"github.com/alanconway/korrel8/pkg/k8s"
 	"github.com/alanconway/korrel8/pkg/korrel8"
 	"github.com/alanconway/korrel8/pkg/loki"
 	"github.com/stretchr/testify/require"
@@ -31,7 +30,7 @@ func TestRule_PodToLokiLogs(t *testing.T) {
 		require.NoError(t, l.Push(nsPodName(args[0], args[1]), args[2:]...))
 	}
 	rule := K8sToLoki()[0]
-	queries, err := rule.Apply(k8s.Object{Object: &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Namespace: "foo", Name: "bar"}}}, nil)
+	queries, err := rule.Apply(&corev1.Pod{ObjectMeta: metav1.ObjectMeta{Namespace: "foo", Name: "bar"}}, nil)
 	require.NoError(t, err)
 	wantQuery := string(`query_range?direction=forward&query=%7Bkubernetes_namespace_name%3D%22foo%22%2Ckubernetes_pod_name%3D%22bar%22%7D`)
 	require.Equal(t, []string{wantQuery}, queries)

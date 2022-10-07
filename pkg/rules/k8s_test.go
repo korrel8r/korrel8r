@@ -43,7 +43,7 @@ func TestRules_DeploymentHasPods(t *testing.T) {
 		},
 	} {
 		t.Run(x.query, func(t *testing.T) {
-			result, err := r.Apply(k8s.Object{Object: x.deployment}, nil)
+			result, err := r.Apply(x.deployment, nil)
 			require.NoError(t, err)
 			assert.Len(t, result, 1)
 			assert.Equal(t, x.query, result[0])
@@ -52,9 +52,7 @@ func TestRules_DeploymentHasPods(t *testing.T) {
 }
 
 func TestRules_ALertToK8s(t *testing.T) {
-	a := alert.Object{GettableAlert: &models.GettableAlert{
-		Alert: models.Alert{Labels: map[string]string{"namespace": "foo", "deployment": "bar"}}},
-	}
+	a := &models.GettableAlert{Alert: models.Alert{Labels: map[string]string{"namespace": "foo", "deployment": "bar"}}}
 	r := All().GetRules(alert.Class{}, k8s.ClassOf(&v1.Deployment{}))
 	assert.NotEmpty(t, r)
 	q, err := r[0].Apply(a, nil)

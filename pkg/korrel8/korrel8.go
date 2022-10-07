@@ -12,11 +12,8 @@ import (
 
 var log = logging.Log
 
-// Object represents a signal instance.
-type Object interface {
-	Identifier() Identifier // Identifies this object instance.
-	Native() any            // Native representation of the object.
-}
+// Object represents a signal instance. Values must support JSON marshal.
+type Object any
 
 // Domain is a collection of classes describing signals in the same family.
 type Domain interface {
@@ -25,19 +22,21 @@ type Domain interface {
 	KnownClasses() []Class // List of known classes in the Domain
 }
 
-// Identifier is a comparable value that identifies an "instance" of a signal.
-//
-// For example a namespace+name for a k8s resource, or a uri+labels for a metric time series.
-type Identifier any
-
 // Class identifies a subset of objects from the same domain with the same schema.
 // For example Pod is a class in the k8s domain.
 //
 // Class implementations must be comparable.
 type Class interface {
-	Domain() Domain // Domain of this class.
-	New() Object    // Return a new instance of the class, for decoding from JSON.
-	String() string // Name of the class
+	Contains(Object) bool          // True if object is in this class
+	Domain() Domain                // Domain of this class.
+	New() Object                   // Return a new instance of the class, for decoding from JSON.
+	NewDeduplicator() Deduplicator // Deduplicates objects of this class.
+	String() string                // Name of the class
+}
+
+// Deduplicator identifies duplicate values.
+type Deduplicator interface {
+	Unique(Object) bool // True if object is unique so far, remembers Object.
 }
 
 // Result gathers results from Store.Get calls.
@@ -72,3 +71,11 @@ type Constraint struct {
 
 // Path is a list of rules where the Goal() of each rule is the Start() of the next.
 type Path []Rule
+
+// Goal returns the goal of the last rule in the path, nil if the path is empty
+func (p Path) Goal() Class {
+	if len(p) == 0 {
+		return nil
+	}
+	return p[len(p)-1].Goal()
+}

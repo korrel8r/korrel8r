@@ -36,12 +36,15 @@ func (r *Rule) String() string       { return fmt.Sprintf("%v(%v)->%v", r.Templa
 func (r *Rule) Start() korrel8.Class { return r.start }
 func (r *Rule) Goal() korrel8.Class  { return r.goal }
 
-// Follow the rule by applying the template to start.Native()
-// The template will be executed with start as the "." context object and a function "constarint" that returns the constraint.
+// Follow the rule by applying the template.
+// The template will be executed with start as the "." context object.
+// A function "constraint" returns the constraint.
 func (r *Rule) Apply(start korrel8.Object, c *korrel8.Constraint) (result []string, err error) {
 	b := &strings.Builder{}
-	data := start.Native()
-	err = r.Template.Funcs(map[string]any{"constraint": func() *korrel8.Constraint { return c }}).Execute(b, data)
+	err = r.Template.Funcs(map[string]any{"constraint": func() *korrel8.Constraint { return c }}).Execute(b, start)
+	if err != nil {
+		err = fmt.Errorf("Appply %T %v: %w", start, start, err)
+	}
 	return []string{string(b.String())}, err
 }
 

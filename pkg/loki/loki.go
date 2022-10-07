@@ -25,19 +25,17 @@ var _ korrel8.Domain = Domain
 
 type Class struct{} // Only one class
 
-func (c Class) Domain() korrel8.Domain { return Domain }
-func (c Class) String() string         { return Domain.String() }
-func (c Class) New() korrel8.Object    { return Object("") }
+func (c Class) Domain() korrel8.Domain                { return Domain }
+func (c Class) String() string                        { return Domain.String() }
+func (c Class) New() korrel8.Object                   { return Object("") }
+func (c Class) Contains(o korrel8.Object) bool        { _, ok := o.(string); return ok }
+func (c Class) NewDeduplicator() korrel8.Deduplicator { return korrel8.NeverDeduplicator{} }
 
 var _ korrel8.Class = Class{} // Implements interface.
 
-type Object string     // Log record - TODO parse as JSON Object?
-type Identifier Object // The whole log record
+type Object string // Log record - TODO parse as JSON Object?
 
 func (o Object) Domain() korrel8.Domain { return Domain }
-func (o Object) Native() any            { return o }
-
-func (o Object) Identifier() korrel8.Identifier { return o }
 
 var _ korrel8.Object = Object("") // Implements interface.
 

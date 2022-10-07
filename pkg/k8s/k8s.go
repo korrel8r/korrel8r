@@ -10,6 +10,7 @@ import (
 
 	"github.com/alanconway/korrel8/internal/pkg/logging"
 	"github.com/alanconway/korrel8/pkg/korrel8"
+	"github.com/alanconway/korrel8/pkg/unique"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -26,11 +27,11 @@ var (
 	Scheme = scheme.Scheme
 )
 
-var Domain = domain{}
-
 type domain struct{}
 
 func (d domain) String() string { return "k8s" }
+
+var Domain = domain{}
 
 // parseGVK parse name of the form: kind[.version[.group]]
 // TODO is this in the k8s libs?
@@ -78,6 +79,11 @@ type Class struct{ reflect.Type }
 // ClassOf returns the Class of o, which must be a pointer to a typed API resource struct.
 func ClassOf(o client.Object) Class { return Class{reflect.TypeOf(o).Elem()} }
 
+func (c Class) Contains(o korrel8.Object) bool { return reflect.TypeOf(o) == c.Type }
+func (c Class) NewDeduplicator() korrel8.Deduplicator {
+	return unique.NewDeduplicator(func(o korrel8.Object) any { return client.ObjectKeyFromObject(o.(client.Object)) })
+}
+
 func (c Class) String() string {
 	// TODO there must be an easier way...
 	for gvk, t := range Scheme.AllKnownTypes() {
@@ -92,22 +98,9 @@ func (c Class) String() string {
 }
 
 func (c Class) Domain() korrel8.Domain { return Domain }
-func (c Class) New() korrel8.Object    { return Object{reflect.New(c.Type).Interface().(client.Object)} }
+func (c Class) New() korrel8.Object    { return reflect.New(c.Type).Interface() }
 
-var _ korrel8.Class = Class{} // Implements interface.
-
-type Object struct{ client.Object }
-
-func (o Object) Native() any { return o.Object }
-
-type Identifier struct {
-	Name, Namespace string
-	Class           korrel8.Class
-}
-
-func (o Object) Identifier() korrel8.Identifier {
-	return types.NamespacedName{Namespace: o.GetNamespace(), Name: o.GetName()}
-}
+type Object client.Object
 
 // Store implements the korrel8.Store interface over a k8s API client.
 type Store struct{ c client.Client }
@@ -169,7 +162,7 @@ func (s *Store) getObject(ctx context.Context, gvk schema.GroupVersionKind, nsNa
 	if err != nil {
 		return err
 	}
-	result.Append(Object{co})
+	result.Append(co)
 	return nil
 }
 
@@ -218,7 +211,7 @@ func (s *Store) getList(ctx context.Context, gvk schema.GroupVersionKind, namesp
 	}()
 	items := reflect.ValueOf(list).Elem().FieldByName("Items")
 	for i := 0; i < items.Len(); i++ {
-		result.Append(Object{items.Index(i).Addr().Interface().(client.Object)})
+		result.Append(items.Index(i).Addr().Interface().(client.Object))
 	}
 	return nil
 }
