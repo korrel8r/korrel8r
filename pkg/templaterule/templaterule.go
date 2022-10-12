@@ -70,7 +70,7 @@ func Read(reader io.Reader, engine *engine.Engine) error {
 			if err == io.EOF {
 				return nil
 			}
-			return err
+			return fmt.Errorf("decode: %w", err)
 		}
 		if sr.Name == "" || sr.Template == "" {
 			return fmt.Errorf("invalid rule: %v", sr)

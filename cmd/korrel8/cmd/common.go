@@ -67,7 +67,7 @@ func newEngine() *engine.Engine {
 	cfg := restConfig()
 	e := engine.New()
 	e.AddDomain(k8s.Domain, needStore(k8s.NewStore(k8sClient(cfg))))
-	e.AddDomain(alert.Domain, needStore(alert.OpenshiftManagerStore(cfg)))
+	e.AddDomain(alert.Domain, needStore(alert.NewStore(cfg)))
 	e.AddDomain(loki.Domain, loki.NewStore(*lokiBaseURL, http.DefaultClient))
 
 	// Load rules
