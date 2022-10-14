@@ -75,11 +75,6 @@ name: EventToPod
 start: k8s/Event.v1.events.k8s.io
 template: '{{if eq .involvedObject.kind "Pod"}}/api/v1/namespaces/{{.involvedObject.namespace}}/pods/{{.involvedObject.name}}{{else}}{{doesnotapply}}{{end}}'
 ---
-goal: k8s/Deployment.v1.apps
-name: AlertToDeployment
-start: alert/alert
-template: /api/v1/namespaces/{{.Labels.namespace}}/deployments/{{.Labels.deployment}}
----
 goal: loki/loki
 name: PodToLokiLogs
 start: k8s/Pod.v1

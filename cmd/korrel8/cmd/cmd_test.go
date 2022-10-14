@@ -22,9 +22,12 @@ func TestGet_Alert(t *testing.T) {
 	test.SkipIfNoCluster(t)
 	var exitCode int
 	stdout, stderr := test.FakeMain([]string{"", "get", "alert", "{}", "-o=json"}, func() { exitCode = Execute() })
-	require.Equal(t, 0, exitCode, "exitCode=%v: %v", exitCode, stderr)
+	t.Logf("stdout: %s", stdout)
+	t.Logf("stderr: %s", stderr)
+	require.Equal(t, 0, exitCode, "exitCode=%v", exitCode)
+
 	decoder := json.NewDecoder(strings.NewReader(stdout))
-	var a models.GettableAlert
+	var a alert.Alert
 	require.NoError(t, decoder.Decode(&a), "invalid alert in: %v", stdout)
 }
 

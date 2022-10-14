@@ -67,20 +67,37 @@ func newEngine() *engine.Engine {
 	cfg := restConfig()
 	e := engine.New()
 	e.AddDomain(k8s.Domain, needStore(k8s.NewStore(k8sClient(cfg))))
-	e.AddDomain(alert.Domain, needStore(alert.OpenshiftManagerStore(cfg)))
+	e.AddDomain(alert.Domain, needStore(alert.NewStore(cfg)))
 	e.AddDomain(loki.Domain, loki.NewStore(*lokiBaseURL, http.DefaultClient))
 
-	// Load rules
+	// Load rules.
 	for _, root := range *rulePaths {
 		check(filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
-			check(err)
-			if d.Type().IsRegular() {
-				f := must(os.Open(path))
-				check(templaterule.Read(f, e))
+			if err != nil {
+				return err
 			}
+
+			if !d.Type().IsRegular() {
+				return nil
+			}
+
+			if filepath.Ext(path) != ".yml" && filepath.Ext(path) != ".yaml" && filepath.Ext(path) != ".json" {
+				return nil
+			}
+
+			f, err := os.Open(path)
+			if err != nil {
+				return err
+			}
+
+			if err := templaterule.Read(f, e); err != nil {
+				return fmt.Errorf("%s: %w", path, err)
+			}
+
 			return nil
 		}))
 	}
+
 	return e
 }
 
