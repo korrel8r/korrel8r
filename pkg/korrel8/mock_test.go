@@ -39,7 +39,7 @@ type mockRule struct {
 
 func (r mockRule) Start() Class   { return r.start }
 func (r mockRule) Goal() Class    { return r.goal }
-func (r mockRule) String() string { return fmt.Sprintf("(%v)->%v", r.start, r.goal) }
+func (r mockRule) String() string { return fmt.Sprintf("(%v)=%v", r.start, r.goal) }
 func (r mockRule) Apply(start Object, c *Constraint) (Query, error) {
 	return r.apply(start, c), nil
 }

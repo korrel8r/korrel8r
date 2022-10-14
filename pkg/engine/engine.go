@@ -4,14 +4,25 @@ package engine
 import (
 	"context"
 	"fmt"
+	"io"
+	"io/fs"
+	"os"
+	"path/filepath"
 	"strings"
 
+	"github.com/korrel8/korrel8/internal/pkg/decoder"
 	"github.com/korrel8/korrel8/internal/pkg/logging"
 	"github.com/korrel8/korrel8/pkg/korrel8"
+	"github.com/korrel8/korrel8/pkg/templaterule"
 	"github.com/korrel8/korrel8/pkg/unique"
+	"go.uber.org/multierr"
 )
 
-var log = logging.Log
+var (
+	log   = logging.Log
+	debug = log.V(2)
+	warn  = log.V(1)
+)
 
 // Engine combines a set of domains and a set of rules, so it can perform correlation.
 type Engine struct {
@@ -48,32 +59,40 @@ func (e *Engine) AddDomain(d korrel8.Domain, s korrel8.Store) {
 }
 
 // Follow rules in a path.
+// Returns multiple queries if some rules in the path return multiple objects.
+// May return queries and a multierr if there are some errors.
 func (e Engine) Follow(ctx context.Context, start korrel8.Object, c *korrel8.Constraint, path korrel8.Path) (queries []korrel8.Query, err error) {
 	// TODO multi-path following needs thought, reduce duplication.
+	debug.Info("following path", "path", path)
 	if err := e.Validate(path); err != nil {
 		return nil, err
 	}
 	starters := []korrel8.Object{start}
 	for i, rule := range path {
-		log.Info("following", "rule", rule)
+		debug.Info("following rule", "rule", rule, "starters", starters)
 		queries, err = e.followEach(rule, starters, c)
-		if i == len(path)-1 || err != nil {
+		if err != nil {
+			warn.Error(err, "ignored")
+			continue
+		}
+		debug.Info("queries", "queries", queries)
+		if i == len(path)-1 {
 			break
 		}
 		d := rule.Goal().Domain()
 		store := e.Stores[d.String()]
 		if store == nil {
-			return nil, fmt.Errorf("error following %v: no %v store", rule, d)
+			warn.Info("no store", "domain", d)
+			continue
 		}
 		var result korrel8.ListResult
 		for _, q := range queries {
 			if err := store.Get(ctx, q, &result); err != nil {
-				return nil, err
+				warn.Error(err, "ignored")
 			}
 		}
 		starters = result.List()
 	}
-
 	return unique.InPlace(queries, unique.Same[korrel8.Query]), err
 }
 
@@ -95,14 +114,52 @@ func (e Engine) Validate(path korrel8.Path) error {
 }
 
 // FollowEach calls r.Apply() for each start object and collects the resulting queries.
+// May return queries and a multierr if some rules fail to apply.
 func (f Engine) followEach(rule korrel8.Rule, start []korrel8.Object, c *korrel8.Constraint) ([]korrel8.Query, error) {
-	var queries []korrel8.Query
+	var (
+		queries []korrel8.Query
+		merr    error
+	)
 	for _, s := range start {
 		q, err := rule.Apply(s, c)
-		if err != nil {
-			return nil, err
+		if err == nil && q != "" {
+			queries = append(queries, q)
 		}
-		queries = append(queries, q)
+		merr = multierr.Append(merr, err)
 	}
-	return unique.InPlace(queries, unique.Same[korrel8.Query]), nil
+	return unique.InPlace(queries, unique.Same[korrel8.Query]), merr
+}
+
+// Load rules from a file or walk a directory to find files.
+func (e Engine) LoadRules(root string) error {
+	return filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) (reterr error) {
+		defer func() {
+			if reterr != nil { // Add file name to error
+				reterr = fmt.Errorf("%v: %w", path, reterr)
+			}
+		}()
+		ext := filepath.Ext(path)
+		if err == nil && d.Type().IsRegular() && (ext == ".yaml" || ext == ".yml" || ext == ".json") {
+			debug.Info("loading rules", "path", path)
+			f, err := os.Open(path)
+			if err != nil {
+				return err
+			}
+			d := decoder.New(f)
+			for {
+				rule, err := templaterule.Decode(d, e.ParseClass)
+				switch err {
+				case nil:
+					debug.Info("loaded rule", "rule", rule)
+					e.Rules.Add(rule)
+				case io.EOF:
+					return nil
+				default:
+					// Estimate number of lines
+					return fmt.Errorf("line %v: %w", d.Line(), err)
+				}
+			}
+		}
+		return nil
+	})
 }

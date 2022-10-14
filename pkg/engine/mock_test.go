@@ -44,7 +44,7 @@ type mockRule struct {
 
 func (r mockRule) Start() korrel8.Class { return r.start }
 func (r mockRule) Goal() korrel8.Class  { return r.goal }
-func (r mockRule) String() string       { return fmt.Sprintf("(%v)->%v", r.start, r.goal) }
+func (r mockRule) String() string       { return fmt.Sprintf("(%v)=%v", r.start, r.goal) }
 func (r mockRule) Apply(start korrel8.Object, c *korrel8.Constraint) (korrel8.Query, error) {
 	return r.apply(start, c), nil
 }

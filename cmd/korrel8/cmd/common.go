@@ -5,17 +5,15 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/fs"
 	"net/http"
 	"os"
-	"path/filepath"
 
+	"github.com/korrel8/korrel8/internal/pkg/logging"
 	"github.com/korrel8/korrel8/pkg/alert"
 	"github.com/korrel8/korrel8/pkg/engine"
 	"github.com/korrel8/korrel8/pkg/k8s"
 	"github.com/korrel8/korrel8/pkg/korrel8"
 	"github.com/korrel8/korrel8/pkg/loki"
-	"github.com/korrel8/korrel8/pkg/templaterule"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/util/flowcontrol"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -23,9 +21,18 @@ import (
 	"sigs.k8s.io/yaml"
 )
 
-func check(err error) {
+var (
+	log   = logging.Log
+	debug = log.V(2)
+)
+
+func check(err error, format ...any) {
 	if err != nil {
-		panic(err)
+		if len(format) == 0 {
+			panic(err)
+		} else {
+			panic(fmt.Errorf(format[0].(string), format[1:]...))
+		}
 	}
 }
 
@@ -69,33 +76,10 @@ func newEngine() *engine.Engine {
 	e.AddDomain(k8s.Domain, needStore(k8s.NewStore(k8sClient(cfg))))
 	e.AddDomain(alert.Domain, needStore(alert.NewStore(cfg)))
 	e.AddDomain(loki.Domain, loki.NewStore(*lokiBaseURL, http.DefaultClient))
-
-	// Load rules.
-	for _, root := range *rulePaths {
-		check(filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
-			if err != nil {
-				return err
-			}
-
-			if !d.Type().IsRegular() {
-				return nil
-			}
-
-			if filepath.Ext(path) != ".yml" && filepath.Ext(path) != ".yaml" && filepath.Ext(path) != ".json" {
-				return nil
-			}
-
-			f, err := os.Open(path)
-			if err != nil {
-				return err
-			}
-
-			if err := templaterule.Read(f, e); err != nil {
-				return fmt.Errorf("%s: %w", path, err)
-			}
-
-			return nil
-		}))
+	// Load rules
+	for _, path := range *rulePaths {
+		debug.Info("loading rules", "path", path)
+		check(e.LoadRules(path))
 	}
 
 	return e

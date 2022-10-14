@@ -27,13 +27,6 @@ func (c *RuleSet) Add(rules ...Rule) {
 	}
 }
 
-// Add rules from map
-func (c *RuleSet) AddMap(m map[string]Rule) {
-	for _, r := range m {
-		c.Add(r)
-	}
-}
-
 // Find rules with the given start and goal.
 // Either or both can be nil, nil matches any class
 func (rs *RuleSet) GetRules(start, goal Class) []Rule {
@@ -53,7 +46,6 @@ func (rs *RuleSet) GetRules(start, goal Class) []Rule {
 func (rs *RuleSet) FindPaths(start, goal Class) []Path {
 	// Rules form a directed cyclic graph, with Class nodes and Rule edges.
 	// Work backwards from the goal to find chains of rules from start.
-	log.Info("finding paths", "start", start, "goal", goal)
 	state := pathSearch{
 		RuleSet: rs,
 		visited: map[int]bool{},
@@ -65,7 +57,6 @@ func (rs *RuleSet) FindPaths(start, goal Class) []Path {
 		fmt.Fprintf(b, "%v[%v]", sep, p)
 		sep = ", "
 	}
-	log.Info("found paths", "paths", b.String())
 	return state.paths
 }
 

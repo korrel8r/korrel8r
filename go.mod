@@ -9,6 +9,7 @@ require (
 	github.com/prometheus/client_golang v1.12.1
 	github.com/spf13/cobra v1.5.0
 	github.com/stretchr/testify v1.8.0
+	go.uber.org/multierr v1.6.0
 	go.uber.org/zap v1.19.1
 	golang.org/x/exp v0.0.0-20220915210609-840b3808d824
 	golang.org/x/net v0.0.0-20220812174116-3211cb980234
@@ -47,7 +48,6 @@ require (
 	github.com/prometheus/common v0.37.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	go.uber.org/atomic v1.9.0 // indirect
-	go.uber.org/multierr v1.6.0 // indirect
 	golang.org/x/oauth2 v0.0.0-20220223155221-ee480838109b // indirect
 	golang.org/x/sys v0.0.0-20220728004956-3c1f35247d10 // indirect
 	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211 // indirect

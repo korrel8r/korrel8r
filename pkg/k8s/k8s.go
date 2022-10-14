@@ -6,24 +6,16 @@ import (
 	"fmt"
 	"net/url"
 	"reflect"
+	"regexp"
 	"strings"
 
-	"github.com/korrel8/korrel8/internal/pkg/logging"
 	"github.com/korrel8/korrel8/pkg/korrel8"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 
-	"regexp"
-
-	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-)
-
-var (
-	log    = logging.Log
-	Scheme = scheme.Scheme
 )
 
 type domain struct{}
@@ -111,7 +103,6 @@ func NewStore(c client.Client) (*Store, error) { return &Store{c: c}, nil }
 // Execute a query in the form of a k8s REST URI.
 // Cancel if context is canceled.
 func (s *Store) Get(ctx context.Context, query korrel8.Query, result korrel8.Result) (err error) {
-	log.Info("query", "domain", Domain, "query", query)
 	defer func() {
 		if err != nil {
 			err = fmt.Errorf("%w: executing %v query %q", err, Domain, query)

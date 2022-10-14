@@ -5,19 +5,16 @@ package korrel8
 
 import (
 	"context"
+	"encoding/json"
 	"path"
 	"time"
-
-	"github.com/korrel8/korrel8/internal/pkg/logging"
 )
-
-var log = logging.Log
 
 // Object represents an instance of a signal.
 //
 // Object has no methods to avoid clashes with fields or method names of the underlying object.
 // The Class type provides some methods for inspecting objects.
-// Object values must support JSON marshal.
+// Object implementations MUST be pointers and MUST support JSON marshal/unmarshal.
 type Object any
 
 // Domain is a collection of classes describing signals in the same family.
@@ -86,4 +83,13 @@ func (p Path) Goal() Class {
 		return nil
 	}
 	return p[len(p)-1].Goal()
+}
+
+// MarshalJSON for displaying paths in log messages.
+func (p Path) MarshalJSON() ([]byte, error) {
+	s := make([]string, len(p))
+	for i, r := range p {
+		s[i] = r.String()
+	}
+	return json.Marshal(s)
 }

@@ -18,9 +18,3 @@ func Init(verbose int) {
 	}
 	log.SetLogger(zap.New(zap.Level(zapcore.Level(verbose)), zap.UseDevMode(true), zap.ConsoleEncoder()))
 }
-
-// BeginEnd logs Info "begin "+msg..., and returns a function to defer to log "end "+msg...
-func BeginEnd(log logr.Logger, msg string, args ...any) func() {
-	log.Info("begin "+msg, args...)
-	return func() { log.Info("end   "+msg, args...) }
-}

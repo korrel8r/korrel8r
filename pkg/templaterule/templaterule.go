@@ -4,13 +4,11 @@ package templaterule
 import (
 	"errors"
 	"fmt"
-	"io"
 	"strings"
 	"text/template"
 
-	"github.com/korrel8/korrel8/pkg/engine"
+	"github.com/korrel8/korrel8/internal/pkg/decoder"
 	"github.com/korrel8/korrel8/pkg/korrel8"
-	"k8s.io/apimachinery/pkg/util/yaml"
 )
 
 // Rule implements korrel8.Rule as a Go template that generate a query string from the start object.
@@ -38,55 +36,45 @@ func New(name string, start, goal korrel8.Class, tmpl string) (*Rule, error) {
 	return &Rule{Template: t, start: start, goal: goal}, err
 }
 
-func (r *Rule) String() string       { return fmt.Sprintf("%v(%v)->%v", r.Template.Name(), r.start, r.goal) }
-func (r *Rule) Start() korrel8.Class { return r.start }
-func (r *Rule) Goal() korrel8.Class  { return r.goal }
+func (r Rule) String() string       { return r.Template.Name() }
+func (r Rule) Start() korrel8.Class { return r.start }
+func (r Rule) Goal() korrel8.Class  { return r.goal }
 
-// Follow the rule by applying the template.
+// Apply the rule by applying the template.
 // The template will be executed with start as the "." context object.
 // A function "constraint" returns the constraint.
 func (r *Rule) Apply(start korrel8.Object, c *korrel8.Constraint) (result korrel8.Query, err error) {
 	b := &strings.Builder{}
 	err = r.Template.Funcs(map[string]any{"constraint": func() *korrel8.Constraint { return c }}).Execute(b, start)
 	if err != nil {
-		err = fmt.Errorf("apply %v to (%T)%v: %w", r, start, start, err)
+		err = fmt.Errorf("apply %v to %T:  %w (start = %#v):", r, start, err, start)
 	}
 	return korrel8.Query(b.String()), err
 }
 
 var _ korrel8.Rule = &Rule{}
 
-// Read rules and add them to the engine.
-func Read(reader io.Reader, engine *engine.Engine) error {
-	decoder := yaml.NewYAMLOrJSONDecoder(reader, 1024)
+// Decode a template rule from JSON or YAML.
+func Decode(decoder *decoder.Decoder, parseClass func(string) (korrel8.Class, error)) (*Rule, error) {
 	sr := struct { // Serialized rule
 		Name     string `json:"name"`
 		Start    string `json:"start"`
 		Goal     string `json:"goal"`
 		Template string `json:"template"`
 	}{}
-	for {
-		if err := decoder.Decode(&sr); err != nil {
-			if err == io.EOF {
-				return nil
-			}
-			return fmt.Errorf("decode: %w", err)
-		}
-		if sr.Name == "" || sr.Template == "" {
-			return fmt.Errorf("invalid rule: %v", sr)
-		}
-		start, err := engine.ParseClass(sr.Start)
-		if err != nil {
-			return err
-		}
-		goal, err := engine.ParseClass(sr.Goal)
-		if err != nil {
-			return err
-		}
-		r, err := New(sr.Name, start, goal, sr.Template)
-		if err != nil {
-			return err
-		}
-		engine.Rules.Add(r)
+	if err := decoder.Decode(&sr); err != nil {
+		return nil, err
 	}
+	if sr.Name == "" || sr.Template == "" || sr.Goal == "" || sr.Start == "" {
+		return nil, fmt.Errorf("invalid rule: %+v", sr)
+	}
+	start, err := parseClass(sr.Start)
+	if err != nil {
+		return nil, err
+	}
+	goal, err := parseClass(sr.Goal)
+	if err != nil {
+		return nil, err
+	}
+	return New(sr.Name, start, goal, sr.Template)
 }

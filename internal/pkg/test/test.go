@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -123,20 +124,27 @@ func CreateUniqueNamespace(t *testing.T, c client.Client) string {
 	return ns.Name
 }
 
-// FakeMain temporarily sets os.Args and captures stdout and stderr
-// while calling f()
+// FakeMain temporarily sets os.Args and captures stdout and stderr while calling f()
 func FakeMain(args []string, f func()) (stdout, stderr string) {
+	return FakeMainStdin("", args, f)
+}
+
+// FakeMainStdin is like FakeMain but also feeds stdin to standard input.
+func FakeMainStdin(stdin string, args []string, f func()) (stdout, stderr string) {
 	saveArgs := os.Args
 	saveOut, saveErr := os.Stdout, os.Stderr
+	saveIn := os.Stdin
 	defer func() {
 		os.Args = saveArgs
 		os.Stdout, os.Stderr = saveOut, saveErr
+		os.Stdin = saveIn
 	}()
 	os.Args = args
 	outBuf, errBuf := &bytes.Buffer{}, &bytes.Buffer{}
 	g := sync.WaitGroup{}
-	os.Stdout = pump(outBuf, &g)
-	os.Stderr = pump(errBuf, &g)
+	os.Stdout = pipeOut(outBuf, &g)
+	os.Stderr = pipeOut(errBuf, &g)
+	os.Stdin = pipeIn(strings.NewReader(stdin), &g)
 	defer func() {
 		_ = os.Stdout.Close()
 		_ = os.Stderr.Close()
@@ -147,12 +155,20 @@ func FakeMain(args []string, f func()) (stdout, stderr string) {
 	return "", "" // Return value set in defer
 }
 
-func pump(buf *bytes.Buffer, g *sync.WaitGroup) *os.File {
+func pipeOut(dest io.Writer, g *sync.WaitGroup) *os.File {
 	r, w, err := os.Pipe()
 	PanicErr(err)
 	g.Add(1)
-	go func() { defer g.Done(); _, err = io.Copy(buf, r); PanicErr(err) }()
+	go func() { defer g.Done(); _, err = io.Copy(dest, r); PanicErr(err) }()
 	return w
+}
+
+func pipeIn(src io.Reader, g *sync.WaitGroup) *os.File {
+	r, w, err := os.Pipe()
+	PanicErr(err)
+	g.Add(1)
+	go func() { defer g.Done(); _, err = io.Copy(w, src); _ = w.Close(); PanicErr(err) }()
+	return r
 }
 
 // PanicErr panics if err is not nil
