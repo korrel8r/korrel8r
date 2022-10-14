@@ -59,8 +59,6 @@ func rr(start, goal string, apply func(korrel8.Object, *korrel8.Constraint) korr
 	}
 }
 
-func r(start, goal string) mockRule { return rr(start, goal, nil) }
-
 type mockStore struct{}
 
 // Query a mock "query" is a comma-separated list of "name.class" to be turned into mock objects.

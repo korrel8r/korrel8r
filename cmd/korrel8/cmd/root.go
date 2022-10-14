@@ -45,7 +45,6 @@ func Execute() (exitCode int) {
 
 var (
 	// Flags
-	pretty      *bool
 	output      *string
 	verbose     *int
 	lokiBaseURL *string

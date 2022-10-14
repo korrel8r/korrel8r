@@ -30,8 +30,6 @@ type mockObject struct {
 	class mockClass
 }
 
-func o(name, class string) Object { return mockObject{name: name, class: mockClass(class)} }
-
 var _ Object = mockObject{} // Implements interface
 
 type mockRule struct {
