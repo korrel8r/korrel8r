@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/alanconway/korrel8/internal/pkg/test"
+	"github.com/korrel8/korrel8/internal/pkg/test"
 	"github.com/prometheus/alertmanager/api/v2/models"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

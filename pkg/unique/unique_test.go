@@ -3,7 +3,7 @@ package unique_test
 import (
 	"testing"
 
-	"github.com/alanconway/korrel8/pkg/unique"
+	"github.com/korrel8/korrel8/pkg/unique"
 
 	"github.com/stretchr/testify/assert"
 )

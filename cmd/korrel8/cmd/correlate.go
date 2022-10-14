@@ -8,7 +8,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/alanconway/korrel8/pkg/korrel8"
+	"github.com/korrel8/korrel8/pkg/korrel8"
 	"github.com/spf13/cobra"
 	"k8s.io/apimachinery/pkg/util/yaml"
 )

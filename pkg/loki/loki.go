@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/alanconway/korrel8/pkg/korrel8"
+	"github.com/korrel8/korrel8/pkg/korrel8"
 	"golang.org/x/exp/slices"
 	"golang.org/x/net/html"
 )

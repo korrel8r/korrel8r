@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/alanconway/korrel8/internal/pkg/logging"
-	"github.com/alanconway/korrel8/pkg/korrel8"
-	"github.com/alanconway/korrel8/pkg/unique"
+	"github.com/korrel8/korrel8/internal/pkg/logging"
+	"github.com/korrel8/korrel8/pkg/korrel8"
+	"github.com/korrel8/korrel8/pkg/unique"
 )
 
 var log = logging.Log

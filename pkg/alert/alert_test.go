@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"github.com/alanconway/korrel8/internal/pkg/test"
-	"github.com/alanconway/korrel8/pkg/korrel8"
+	"github.com/korrel8/korrel8/internal/pkg/test"
+	"github.com/korrel8/korrel8/pkg/korrel8"
 	"github.com/stretchr/testify/require"
 )
 

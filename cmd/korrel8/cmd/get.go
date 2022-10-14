@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/alanconway/korrel8/pkg/korrel8"
+	"github.com/korrel8/korrel8/pkg/korrel8"
 	"github.com/spf13/cobra"
 )
 
