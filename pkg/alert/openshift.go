@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/alanconway/korrel8/pkg/korrel8"
+	"github.com/korrel8/korrel8/pkg/korrel8"
 	routev1 "github.com/openshift/api/route/v1"
 	authenticationv1 "k8s.io/api/authentication/v1"
 	v1 "k8s.io/api/core/v1"

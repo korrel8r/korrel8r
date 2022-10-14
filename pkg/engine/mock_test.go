@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/alanconway/korrel8/pkg/korrel8"
+	"github.com/korrel8/korrel8/pkg/korrel8"
 )
 
 // Mock implementations

@@ -22,7 +22,7 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/alanconway/korrel8/internal/pkg/logging"
+	"github.com/korrel8/korrel8/internal/pkg/logging"
 	"github.com/spf13/cobra"
 )
 

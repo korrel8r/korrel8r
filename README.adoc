@@ -41,14 +41,14 @@ Goals include:
 
 For more details:
 
-- https://pkg.go.dev/github.com/alanconway/korrel8/[Go API documentation on pkg.go.dev]
-- https://github.com/alanconway/korrel8[Source code on GitHub]
+- https://pkg.go.dev/github.com/korrel8/korrel8/[Go API documentation on pkg.go.dev]
+- https://github.com/korrel8/korrel8[Source code on GitHub]
 
 
 == Request for Input ==
 
 If you work with OpenShift or kubernetes clusters, your experience can help to build a useful rule-base.
-If you are interested, please https://github.com/alanconway/korrel8/issues/new[create a GitHub issue], following this template:
+If you are interested, please https://github.com/korrel8/korrel8/issues/new[create a GitHub issue], following this template:
 
 === 1. When I am in this situation: ＿＿＿＿ ===
 

@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/alanconway/korrel8/pkg/korrel8"
-	"github.com/alanconway/korrel8/pkg/templaterule"
+	"github.com/korrel8/korrel8/pkg/korrel8"
+	"github.com/korrel8/korrel8/pkg/templaterule"
 	"github.com/stretchr/testify/require"
 
 	"github.com/stretchr/testify/assert"

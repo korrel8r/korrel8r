@@ -1,6 +1,6 @@
 package korrel8
 
-import "github.com/alanconway/korrel8/pkg/unique"
+import "github.com/korrel8/korrel8/pkg/unique"
 
 // ListResult implements Result to append to a slice []Object.
 type ListResult []Object

@@ -1,4 +1,4 @@
-module github.com/alanconway/korrel8
+module github.com/korrel8/korrel8
 
 go 1.18
 
