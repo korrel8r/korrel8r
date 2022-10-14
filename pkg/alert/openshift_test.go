@@ -6,20 +6,45 @@ import (
 
 	routev1 "github.com/openshift/api/route/v1"
 	"github.com/stretchr/testify/assert"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 var ctx = context.Background()
 
-func TestAlertManagerMain(t *testing.T) {
+func TestOpenshiftHostFromRoute(t *testing.T) {
 	c := fake.NewClientBuilder().Build()
-	r := routev1.Route{
-		ObjectMeta: v1.ObjectMeta{Name: AlertmanagerMain, Namespace: MonitoringNS},
-		Spec:       routev1.RouteSpec{Host: "example.test"},
-	}
-	assert.NoError(t, c.Create(ctx, &r))
-	host, err := OpenshiftManagerHost(c)
+
+	assert.NoError(t, c.Create(ctx, &routev1.Route{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "thanos-querier",
+			Namespace: "openshift-monitoring",
+		},
+		Spec: routev1.RouteSpec{
+			Host: "thanos.monitoring.example.com",
+		},
+	}))
+
+	host, err := openshiftHostFromRoute(c)
 	assert.NoError(t, err)
-	assert.Equal(t, "example.test", host)
+	assert.Equal(t, "thanos.monitoring.example.com", host)
+}
+
+func TestOpenshiftHostFromInClusterService(t *testing.T) {
+	c := fake.NewClientBuilder().Build()
+
+	assert.NoError(t, c.Create(ctx, &v1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "thanos-querier",
+			Namespace: "openshift-monitoring",
+		},
+		Spec: v1.ServiceSpec{
+			Ports: []v1.ServicePort{{Name: "web", Port: 9091}},
+		},
+	}))
+
+	host, err := openshiftHostFromInClusterService(c)
+	assert.NoError(t, err)
+	assert.Equal(t, "thanos-querier.openshift-monitoring:9091", host)
 }

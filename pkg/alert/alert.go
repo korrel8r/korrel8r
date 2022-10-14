@@ -3,15 +3,15 @@ package alert
 
 import (
 	"context"
-	"encoding/json"
+	"fmt"
 	"net/http"
+	"strings"
+	"time"
 
 	"github.com/alanconway/korrel8/pkg/korrel8"
-	openapiclient "github.com/go-openapi/runtime/client"
-	"github.com/go-openapi/strfmt"
-	"github.com/prometheus/alertmanager/api/v2/client"
-	"github.com/prometheus/alertmanager/api/v2/client/alert"
-	"github.com/prometheus/alertmanager/api/v2/models"
+	"github.com/prometheus/alertmanager/pkg/labels"
+	"github.com/prometheus/client_golang/api"
+	v1 "github.com/prometheus/client_golang/api/prometheus/v1"
 )
 
 var Domain = domain{}
@@ -25,42 +25,85 @@ func (d domain) KnownClasses() []korrel8.Class { panic("not implemented") } // F
 var _ korrel8.Domain = Domain
 
 type Store struct {
-	manager *client.Alertmanager
+	api  v1.API
+	host string
 }
 
-func NewStore(host string, hc *http.Client) *Store {
-	transport := openapiclient.NewWithClient(host, client.DefaultBasePath, []string{"https"}, hc)
-	return &Store{manager: client.New(transport, strfmt.Default)}
+func newAlertStore(host string, rt http.RoundTripper) (*Store, error) {
+	host = fmt.Sprintf("https://%s", host)
+	client, err := api.NewClient(api.Config{
+		Address:      host,
+		RoundTripper: rt,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return &Store{
+		api:  v1.NewAPI(client),
+		host: host,
+	}, nil
 }
 
 type Class struct{} // Only one class
 
 func (c Class) Domain() korrel8.Domain         { return Domain }
 func (c Class) String() string                 { return Domain.String() }
-func (c Class) New() korrel8.Object            { return &models.GettableAlert{} }
+func (c Class) New() korrel8.Object            { return Alert{} }
 func (c Class) Key(o korrel8.Object) any       { return o }
-func (c Class) Contains(o korrel8.Object) bool { _, ok := o.(Object); return ok }
+func (c Class) Contains(o korrel8.Object) bool { _, ok := o.(Alert); return ok }
 
-type Object *models.GettableAlert
+// Alert is a 1:1 mapping of the v1.Alert type which can be used in Go templates.
+type Alert struct {
+	ActiveAt    time.Time
+	Annotations map[string]string
+	Labels      map[string]string
+	State       string
+	Value       string
+}
 
-// FIXME use a REST URI for consistency?
+func convert(a v1.Alert) Alert {
+	r := Alert{
+		ActiveAt:    a.ActiveAt,
+		Annotations: map[string]string{},
+		Labels:      map[string]string{},
+		State:       string(a.State),
+		Value:       a.Value,
+	}
 
-// Query is a JSON object containing JSON-commpatible fields of
-// https://pkg.go.dev/github.com/prometheus/alertmanager/api/v2/client/alert#GetAlertsParams
+	for k, v := range a.Labels {
+		r.Labels[string(k)] = string(v)
+	}
+
+	for k, v := range a.Annotations {
+		r.Annotations[string(k)] = string(v)
+	}
+
+	return r
+}
+
+// Get implements the korrel8.Store interface.
+// The query parameter is a PromQL label matcher expression with the wrapping
+// `{` and `}` being optional, e.g.  `namespace="default",pod=~"myapp-.+"`.
 func (s Store) Get(ctx context.Context, query korrel8.Query, result korrel8.Result) error {
-	if query == "" {
-		query = "{}" // Allow empty string as empty object
-	}
-	params := alert.NewGetAlertsParamsWithContext(ctx)
-	if err := json.Unmarshal([]byte(query), params); err != nil {
-		return err
-	}
-	resp, err := s.manager.Alert.GetAlerts(params)
+	// TODO: allow to filter on alert state (pending/firing)?
+	// TODO: support sorting order (e.g. most recent/oldest, severity)?
+	// TODO: allow grouping (all alerts related to podX grouped together)?
+	matchers, err := labels.ParseMatchers(strings.Trim(string(query), "\n"))
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to parse query: %q: %w", query, err)
 	}
-	for _, a := range resp.Payload {
-		result.Append(a)
+
+	resp, err := s.api.Alerts(ctx)
+	if err != nil {
+		return fmt.Errorf("%s: %w", s.host, err)
 	}
+
+	for _, a := range resp.Alerts {
+		if labels.Matchers(matchers).Matches(a.Labels) {
+			result.Append(convert(a))
+		}
+	}
+
 	return nil
 }
