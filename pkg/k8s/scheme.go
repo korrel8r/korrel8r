@@ -13,7 +13,7 @@ import (
 // Scheme including all known k8s types.
 var Scheme = runtime.NewScheme()
 
-// FIXME use generic types rather than struct types?
+// TODO use generic types rather than struct types?
 // Class types are limited to what we load here.
 // What do generic types look like for templates? Are they typed (e.g. timestamps)
 

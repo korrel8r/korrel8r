@@ -8,11 +8,10 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/korrel8/korrel8/internal/pkg/decoder"
-	"github.com/korrel8/korrel8/pkg/korrel8"
 	"github.com/spf13/cobra"
-	"go.uber.org/multierr"
 )
 
 // correlateCmd represents the correlate command
@@ -30,26 +29,41 @@ var correlateCmd = &cobra.Command{
 		}
 		start := startClass.New()
 		check(decoder.New(startReader).Decode(&start))
-
-		paths := e.Rules.FindPaths(startClass, goalClass)
-
-		var (
-			queries []korrel8.Query
-			merr    error
-		)
-
-		for _, p := range paths {
-			q, err := e.Follow(context.Background(), start, nil, p)
-			merr = multierr.Append(merr, err)
-			queries = append(queries, q...)
-		}
-		for _, err := range multierr.Errors(merr) {
-			log.V(1).Error(err, "ignored")
-		}
+		path := e.Graph.ShortestPath(startClass, goalClass)
+		// FIXME allow constraint
+		queries, err := e.Follow(context.Background(), start, nil, path)
+		check(err)
 		fmt.Printf("\nresulting queries: %v\n\n", queries)
 	},
 }
 
+var (
+	focusTime *time.Time
+	interval  *time.Duration
+)
+
+type TimeValue struct {
+	Time *time.Time
+}
+
+func (v TimeValue) String() string {
+	if v.Time != nil {
+		return v.Time.String()
+	}
+	return ""
+}
+
+func (v TimeValue) Set(s string) error {
+	if t, err := time.ParseInLocation(time.RFC3339, s, time.Local); err != nil {
+		return err
+	} else {
+		*v.Time = t
+	}
+	return nil
+}
+
 func init() {
 	rootCmd.AddCommand(correlateCmd)
+	correlateCmd.Flags().Duration("interval", time.Minute*10, "limit results to this interval around --time")
+	correlateCmd.Flags()
 }

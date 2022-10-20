@@ -5,7 +5,6 @@ package korrel8
 
 import (
 	"context"
-	"encoding/json"
 	"path"
 	"time"
 )
@@ -72,24 +71,4 @@ type Rule interface {
 type Constraint struct {
 	Start *time.Time // Include only results timestamped after this time.
 	End   *time.Time // Include only results timestamped before this time.
-}
-
-// Path is a list of rules where the Goal() of each rule is the Start() of the next.
-type Path []Rule
-
-// Goal returns the goal of the last rule in the path, nil if the path is empty
-func (p Path) Goal() Class {
-	if len(p) == 0 {
-		return nil
-	}
-	return p[len(p)-1].Goal()
-}
-
-// MarshalJSON for displaying paths in log messages.
-func (p Path) MarshalJSON() ([]byte, error) {
-	s := make([]string, len(p))
-	for i, r := range p {
-		s[i] = r.String()
-	}
-	return json.Marshal(s)
 }

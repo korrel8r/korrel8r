@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/korrel8/korrel8/internal/pkg/test/mock"
 	"github.com/korrel8/korrel8/pkg/korrel8"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -15,13 +16,13 @@ func TestEngine_Parse(t *testing.T) {
 		want korrel8.Class
 		err  string
 	}{
-		{"mock/foo", mockDomain{}.Class("foo"), ""},
-		{"mock", mockDomain{}.Class(""), ""}, // Allow "default" class, empty string
+		{"mock/foo", mock.Domain{}.Class("foo"), ""},
+		{"mock", mock.Domain{}.Class(""), ""}, // Allow "default" class, empty string
 		{"nosuch", nil, `unknown domain: "nosuch"`},
 	} {
 		t.Run(x.name, func(t *testing.T) {
 			e := New()
-			e.AddDomain(mockDomain{}, nil)
+			e.AddDomain(mock.Domain{}, nil)
 			c, err := e.ParseClass(x.name)
 			if x.err == "" {
 				require.NoError(t, err)
@@ -34,22 +35,22 @@ func TestEngine_Parse(t *testing.T) {
 }
 
 func TestEngine_Follow(t *testing.T) {
-	path := korrel8.Path{
+	path := []korrel8.Rule{
 		// Return 2 results, must follow both
-		rr("a", "b", func(korrel8.Object, *korrel8.Constraint) korrel8.Query { return korrel8.Query("1.b,2.b") }),
+		mock.NewRule("a", "b", func(korrel8.Object, *korrel8.Constraint) korrel8.Query { return korrel8.Query("1.b,2.b") }),
 		// Replace start object's class with goal class
-		rr("b", "c", func(start korrel8.Object, _ *korrel8.Constraint) korrel8.Query {
-			return korrel8.Query(start.(mockObject).name + ".c")
+		mock.NewRule("b", "c", func(start korrel8.Object, _ *korrel8.Constraint) korrel8.Query {
+			return korrel8.Query(start.(mock.Object).Name + ".c")
 		}),
-		rr("c", "z", func(start korrel8.Object, _ *korrel8.Constraint) korrel8.Query {
-			return korrel8.Query(start.(mockObject).name + ".z")
+		mock.NewRule("c", "z", func(start korrel8.Object, _ *korrel8.Constraint) korrel8.Query {
+			return korrel8.Query(start.(mock.Object).Name + ".z")
 		}),
 	}
 	want := []korrel8.Query{"1.z", "2.z"}
 
 	e := New()
-	e.AddDomain(mockDomain{}, mockStore{})
-	queries, err := e.Follow(context.Background(), o("foo", "a"), nil, path)
+	e.AddDomain(mock.Domain{}, mock.Store{})
+	queries, err := e.Follow(context.Background(), mock.NewObject("foo", "a"), nil, path)
 	assert.NoError(t, err)
 	assert.ElementsMatch(t, want, queries)
 }

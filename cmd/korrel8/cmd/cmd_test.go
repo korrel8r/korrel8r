@@ -64,7 +64,6 @@ func TestCorrelate_Pods(t *testing.T) {
 				t.Fatal("watch closed")
 			}
 			d = e.Object.(*appv1.Deployment)
-			t.Logf("FIXME %s %+v", d.Namespace, d.Status)
 		case <-time.After(time.Until(deadline)):
 			t.Fatal("timeout waiting")
 		}

@@ -20,7 +20,7 @@ type domain struct{}
 
 func (d domain) String() string                { return "alert" }
 func (d domain) Class(string) korrel8.Class    { return Class{} }
-func (d domain) KnownClasses() []korrel8.Class { panic("not implemented") } // FIXME
+func (d domain) KnownClasses() []korrel8.Class { return []korrel8.Class{Class{}} }
 
 var _ korrel8.Domain = Domain
 

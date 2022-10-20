@@ -12,6 +12,7 @@ import (
 
 	"github.com/korrel8/korrel8/internal/pkg/decoder"
 	"github.com/korrel8/korrel8/internal/pkg/logging"
+	"github.com/korrel8/korrel8/pkg/graph"
 	"github.com/korrel8/korrel8/pkg/korrel8"
 	"github.com/korrel8/korrel8/pkg/templaterule"
 	"github.com/korrel8/korrel8/pkg/unique"
@@ -28,11 +29,11 @@ var (
 type Engine struct {
 	Stores  map[string]korrel8.Store
 	Domains map[string]korrel8.Domain
-	Rules   *korrel8.RuleSet
+	Graph   *graph.Graph // Rules forms a directed graph, with korrel8.Class nodes and korrel8.Rule edges.
 }
 
 func New() *Engine {
-	return &Engine{Stores: map[string]korrel8.Store{}, Domains: map[string]korrel8.Domain{}, Rules: korrel8.NewRuleSet()}
+	return &Engine{Stores: map[string]korrel8.Store{}, Domains: map[string]korrel8.Domain{}}
 }
 
 func (e *Engine) ParseClass(name string) (korrel8.Class, error) {
@@ -61,7 +62,7 @@ func (e *Engine) AddDomain(d korrel8.Domain, s korrel8.Store) {
 // Follow rules in a path.
 // Returns multiple queries if some rules in the path return multiple objects.
 // May return queries and a multierr if there are some errors.
-func (e Engine) Follow(ctx context.Context, start korrel8.Object, c *korrel8.Constraint, path korrel8.Path) (queries []korrel8.Query, err error) {
+func (e Engine) Follow(ctx context.Context, start korrel8.Object, c *korrel8.Constraint, path []korrel8.Rule) (queries []korrel8.Query, err error) {
 	// TODO multi-path following needs thought, reduce duplication.
 	debug.Info("following path", "path", path)
 	if err := e.Validate(path); err != nil {
@@ -98,7 +99,7 @@ func (e Engine) Follow(ctx context.Context, start korrel8.Object, c *korrel8.Con
 
 // Validate checks that the Goal() of each rule matches the Start() of the next,
 // and that the engine has all the stores needed to follow the path.
-func (e Engine) Validate(path korrel8.Path) error {
+func (e Engine) Validate(path []korrel8.Rule) error {
 	for i, r := range path {
 		if i < len(path)-1 {
 			if r.Goal() != path[i+1].Start() {
@@ -132,34 +133,37 @@ func (f Engine) followEach(rule korrel8.Rule, start []korrel8.Object, c *korrel8
 
 // Load rules from a file or walk a directory to find files.
 func (e Engine) LoadRules(root string) error {
-	return filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) (reterr error) {
+	var rules []korrel8.Rule
+	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) (reterr error) {
 		defer func() {
 			if reterr != nil { // Add file name to error
 				reterr = fmt.Errorf("%v: %w", path, reterr)
 			}
 		}()
 		ext := filepath.Ext(path)
-		if err == nil && d.Type().IsRegular() && (ext == ".yaml" || ext == ".yml" || ext == ".json") {
-			debug.Info("loading rules", "path", path)
-			f, err := os.Open(path)
-			if err != nil {
-				return err
-			}
-			d := decoder.New(f)
-			for {
-				rule, err := templaterule.Decode(d, e.ParseClass)
-				switch err {
-				case nil:
-					debug.Info("loaded rule", "rule", rule)
-					e.Rules.Add(rule)
-				case io.EOF:
-					return nil
-				default:
-					// Estimate number of lines
-					return fmt.Errorf("line %v: %w", d.Line(), err)
-				}
+		if err != nil || !d.Type().IsRegular() || (ext != ".yaml" && ext != ".yml" && ext != ".json") {
+			return nil
+		}
+		debug.Info("loading rules", "path", path)
+		f, err := os.Open(path)
+		if err != nil {
+			return err
+		}
+		decoder := decoder.New(f)
+		for {
+			rule, err := templaterule.Decode(decoder, e.ParseClass)
+			switch err {
+			case nil:
+				debug.Info("loaded rule", "rule", rule)
+				rules = append(rules, rule)
+			case io.EOF:
+				return nil
+			default:
+				// Estimate number of lines
+				return fmt.Errorf("line %v: %w", decoder.Line(), err)
 			}
 		}
-		return nil
 	})
+	e.Graph = graph.New(rules)
+	return err
 }
