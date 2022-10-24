@@ -36,6 +36,14 @@ func New() *Engine {
 	return &Engine{Stores: map[string]korrel8.Store{}, Domains: map[string]korrel8.Domain{}, Graph: graph.New()}
 }
 
+func (e *Engine) Store(d korrel8.Domain) (korrel8.Store, error) {
+	s, ok := e.Stores[d.String()]
+	if !ok {
+		return nil, fmt.Errorf("no store for domain %v", d)
+	}
+	return s, nil
+}
+
 func (e *Engine) ParseClass(name string) (korrel8.Class, error) {
 	parts := strings.SplitN(name, "/", 2)
 	domain := e.Domains[parts[0]]
@@ -62,13 +70,12 @@ func (e *Engine) AddDomain(d korrel8.Domain, s korrel8.Store) {
 // Follow rules in a path.
 // Returns multiple queries if some rules in the path return multiple objects.
 // May return queries and a multierr if there are some errors.
-func (e Engine) Follow(ctx context.Context, start korrel8.Object, c *korrel8.Constraint, path []korrel8.Rule) (queries []korrel8.Query, err error) {
+func (e Engine) Follow(ctx context.Context, starters []korrel8.Object, c *korrel8.Constraint, path []korrel8.Rule) (queries []korrel8.Query, err error) {
 	// TODO multi-path following needs thought, reduce duplication.
 	debug.Info("following path", "path", path)
 	if err := e.Validate(path); err != nil {
 		return nil, err
 	}
-	starters := []korrel8.Object{start}
 	for i, rule := range path {
 		debug.Info("following rule", "rule", rule, "starters", starters)
 		queries, err = e.followEach(rule, starters, c)

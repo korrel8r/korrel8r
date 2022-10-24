@@ -104,7 +104,7 @@ func (q *Query) REST(base *url.URL) *url.URL {
 
 func (q *Query) String() string { return string(*q) }
 
-func (q *Query) Browser(base *url.URL) *url.URL { panic("FIXME") }
+func (q *Query) Console(base *url.URL) *url.URL { panic("FIXME") }
 
 type Object client.Object
 

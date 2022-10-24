@@ -10,8 +10,6 @@ import (
 	"net/url"
 	"path"
 
-	"errors"
-
 	"github.com/korrel8/korrel8/pkg/korrel8"
 	"golang.org/x/exp/slices"
 	"golang.org/x/net/html"
@@ -45,7 +43,7 @@ func (q *Query) String() string { return string(*q) }
 
 func (q *Query) REST(base *url.URL) *url.URL {
 	u := *base
-	u.Path = path.Join(u.Path, "query_range")
+	u.Path = path.Join(u.Path, "/query_range")
 	v := url.Values{}
 	v.Set("query", q.String())
 	v.Set("direction", "FORWARD")
@@ -54,9 +52,9 @@ func (q *Query) REST(base *url.URL) *url.URL {
 	return &u
 }
 
-func (q *Query) Browser(base *url.URL) *url.URL {
+func (q *Query) Console(base *url.URL) *url.URL {
 	u := *base
-	u.Path = path.Join(u.Path, "monitoring/logs")
+	u.Path = path.Join(u.Path, "/monitoring/logs")
 	v := url.Values{}
 	v.Add("q", q.String())
 	u.RawQuery = v.Encode()
@@ -71,35 +69,36 @@ func (o Object) Domain() korrel8.Domain { return Domain }
 
 var _ korrel8.Object = Object("") // Implements interface.
 
-// Store implements the korrel8.Store interface over a Loki HTTP client
-type Store struct {
+// LokiStore implements the korrel8.LokiStore interface over a Loki HTTP client
+type LokiStore struct {
 	Constraint *korrel8.Constraint
 	c          *http.Client
 	baseURL    url.URL
 }
 
-var _ korrel8.Store = &Store{}
+var _ korrel8.Store = &LokiStore{}
 
-// NewStore creates a new store.
+// NewLokiStore creates a new store using the direct Loki API.
 // baseURL is the URL with API path, e.g. "https://foo/loki/api/v1"
-func NewStore(baseURL *url.URL, c *http.Client) (*Store, error) {
-	if baseURL == nil {
-		return nil, errors.New("no loki URL provided")
-	}
-	return &Store{c: c, baseURL: *baseURL}, nil
+func NewLokiStore(baseURL *url.URL, c *http.Client) (*LokiStore, error) {
+	return &LokiStore{c: c, baseURL: *baseURL}, nil
 }
 
-// Query executes a LogQL log query via the query_range endpoint
-//
-// The query string can a JSON QueryObject or a LogQL query string.
-func (s *Store) Get(ctx context.Context, q korrel8.Query, result korrel8.Result) error {
+// Get executes a LogQL query_range call.
+func (s *LokiStore) Get(ctx context.Context, q korrel8.Query, result korrel8.Result) error {
+	return s.get(ctx, q, result, &s.baseURL)
+}
+
+// get executes a logQL query against a different base URL.
+func (s *LokiStore) get(ctx context.Context, q korrel8.Query, result korrel8.Result, baseURL *url.URL) error {
 	query, ok := q.(*Query)
 	if !ok {
 		return fmt.Errorf("%v store expects %T but got %T", Domain, query, q)
 	}
-	resp, err := httpError(s.c.Get(query.REST(&s.baseURL).String()))
+	u := query.REST(baseURL).String()
+	resp, err := httpError(s.c.Get(u))
 	if err != nil {
-		return err
+		return fmt.Errorf("%w: %v", err, u)
 	}
 	defer resp.Body.Close()
 	qr := queryResponse{}

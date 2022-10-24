@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"strings"
 	"testing"
 	"time"
@@ -15,6 +16,7 @@ import (
 	appv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/watch"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -33,7 +35,7 @@ func TestGet_Alert(t *testing.T) {
 func TestCorrelate_Pods(t *testing.T) {
 	test.SkipIfNoCluster(t)
 	c := test.K8sClient
-	ns := test.CreateUniqueNamespace(t, c)
+	ns := test.TempNamespace(t, c)
 
 	// Deployment
 	labels := map[string]string{"test": "testme"}
@@ -42,40 +44,41 @@ func TestCorrelate_Pods(t *testing.T) {
 		Spec: appv1.DeploymentSpec{
 			Selector: &metav1.LabelSelector{MatchLabels: labels},
 			Template: corev1.PodTemplateSpec{
-				ObjectMeta: metav1.ObjectMeta{
-					Labels: labels,
-				},
+				ObjectMeta: metav1.ObjectMeta{Labels: labels},
 				Spec: corev1.PodSpec{
-					Containers: []corev1.Container{
-						{
-							Name:    "testme",
-							Image:   "quay.io/quay/busybox",
-							Command: []string{"sh", "-c", "while true; do echo $(date) hello world; sleep 1; done"},
-						}}}}}}
-	require.NoError(t, c.Create(context.Background(), d))
+					Containers: []corev1.Container{{
+						Name:    "testme",
+						Image:   "quay.io/quay/busybox",
+						Command: []string{"sh", "-c", "while true; do echo $(date) hello world; sleep 1; done"},
+					}}}}}}
+	require.NoError(t, c.Create(ctx, d))
 
 	// Wait for pod.
-	w, err := c.Watch(context.Background(), &corev1.PodList{}, client.InNamespace(d.Namespace), client.MatchingLabels(labels))
+	w, err := c.Watch(ctx, &corev1.PodList{}, client.InNamespace(d.Namespace), client.MatchingLabels(labels))
 	require.NoError(t, err)
-	defer w.Stop()
 	var pod *corev1.Pod
-	select {
-	case e, ok := <-w.ResultChan():
-		if !ok {
-			t.Fatal("watch closed")
-		}
+	test.Watch(t, w, time.Minute, func(e watch.Event) bool {
 		pod = e.Object.(*corev1.Pod)
-	case <-time.After(time.Minute):
-		t.Fatal("timeout waiting")
-	}
-	var exitCode int
-	stdout, stderr := test.FakeMainStdin(test.JSONString(d), []string{"", "correlate", "k8s/Deployment", "loki/Logs", "-v9"}, func() {
-		exitCode = Execute()
+		return true
 	})
-	require.Equal(t, 0, exitCode, stderr)
-	t.Log(stderr)
-	want := fmt.Sprintf(`resulting queries: [{ kubernetes_namespace_name="%v", kubernetes_pod_name="%v"}]`, pod.Namespace, pod.Name)
-	require.Equal(t, want, strings.TrimSpace(stdout))
+	// Try all the result types
+	wantStr := fmt.Sprintf(`{kubernetes_namespace_name=%q,kubernetes_pod_name=%q}`, pod.Namespace, pod.Name)
+	for _, x := range []struct{ result, want string }{
+		{"string", wantStr},
+		{"rest", "/query_range?direction=FORWARD&query=" + url.QueryEscape(wantStr)},
+		{"console", "/monitoring/logs?q=" + url.QueryEscape(wantStr)},
+		{"data", ""},
+	} {
+		t.Run(x.result, func(t *testing.T) {
+			var exitCode int
+			stdout, stderr := test.FakeMainStdin(test.JSONString(d), []string{"", "correlate", "k8s/Deployment", "loki/Logs", "--result", x.result, "-v9"}, func() {
+				exitCode = Execute()
+			})
+			require.Equal(t, 0, exitCode, stderr)
+			require.Equal(t, x.want, strings.TrimSpace(stdout))
+		})
+
+	}
 }
 
 func TestList_Classes(t *testing.T) {
@@ -106,3 +109,5 @@ func TestList_Domains(t *testing.T) {
 	}
 	assert.ElementsMatch(t, want, got)
 }
+
+var ctx = context.Background()

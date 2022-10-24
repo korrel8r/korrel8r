@@ -1,6 +1,10 @@
 package korrel8
 
-import "github.com/korrel8/korrel8/pkg/unique"
+import (
+	"encoding/json"
+
+	"github.com/korrel8/korrel8/pkg/unique"
+)
 
 // ListResult implements Result to append to a slice []Object.
 type ListResult []Object
@@ -31,4 +35,10 @@ func (r *SetResult) Append(objects ...Object) {
 			r.list = append(r.list, objects...)
 		}
 	}
+}
+
+func ParseQuery(d Domain, query string) (Query, error) {
+	q := d.NewQuery()
+	err := json.Unmarshal([]byte(query), q)
+	return q, err
 }

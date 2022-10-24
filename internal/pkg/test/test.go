@@ -20,6 +20,7 @@ import (
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/util/flowcontrol"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -107,14 +108,14 @@ func ExecError(err error) error {
 	return err
 }
 
-// CreateUniqueNamespace creates a unique namespace.
-func CreateUniqueNamespace(t *testing.T, c client.Client) string {
+// TempNamespace creates a unique namespace.
+func TempNamespace(t *testing.T, c client.Client) string {
 	t.Helper()
 	// Server-generated unique name.
 	ns := corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
 			GenerateName: "test-",
-			Labels:       map[string]string{"test": t.Name()},
+			Labels:       map[string]string{"test": t.Name(), "test-client": t.Name()},
 		},
 	}
 	require.NoError(t, c.Create(context.Background(), &ns))
@@ -188,4 +189,23 @@ func JSONString(v any) string {
 		return err.Error()
 	}
 	return string(b)
+}
+
+// Watch in a loop, call f for each event, return when f returns true.
+func Watch(t *testing.T, w watch.Interface, timeout time.Duration, f func(e watch.Event) (finished bool)) {
+	t.Helper()
+	defer w.Stop()
+	for {
+		select {
+		case e, ok := <-w.ResultChan():
+			if !ok {
+				t.Fatal("watch closed")
+			}
+			if f(e) {
+				break
+			}
+		case <-time.After(timeout):
+			t.Fatal("timeout in watch")
+		}
+	}
 }

@@ -72,4 +72,4 @@ template: '{{or (eq .involvedObject.kind "Pod") (fail "not a pod")}}"/api/v1/nam
 goal: loki/loki
 name: PodToLokiLogs
 start: k8s/Pod.v1
-template: '"{ kubernetes_namespace_name=\"{{.ObjectMeta.Namespace}}\", kubernetes_pod_name=\"{{.ObjectMeta.Name}}\"}"'
+template: '"{kubernetes_namespace_name=\"{{.ObjectMeta.Namespace}}\",kubernetes_pod_name=\"{{.ObjectMeta.Name}}\"}"'

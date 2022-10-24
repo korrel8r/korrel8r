@@ -51,7 +51,7 @@ type Result interface {
 // Query implementations MUST be pointers and MUST support JSON marshal/unmarshal.
 type Query interface {
 	String() string                 // Plain query string
-	Browser(base *url.URL) *url.URL // Browser URL for console
+	Console(base *url.URL) *url.URL // Openshift console URL
 	REST(base *url.URL) *url.URL    // REST URL relative to base
 }
 

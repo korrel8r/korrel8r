@@ -11,13 +11,13 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestStore_Query_String(t *testing.T) {
+func TestLokiStore_Get(t *testing.T) {
 	t.Parallel()
 	l := test.RequireLokiServer(t)
 	lines := []string{"hello", "there", "mr. frog"}
 	err := l.Push(map[string]string{"test": "loki"}, lines...)
 	require.NoError(t, err)
-	s, err := NewStore(l.URL(), http.DefaultClient)
+	s, err := NewLokiStore(l.URL(), http.DefaultClient)
 	require.NoError(t, err)
 
 	var want []korrel8.Object
@@ -26,7 +26,7 @@ func TestStore_Query_String(t *testing.T) {
 	}
 	query := Query(`{test="loki"}`)
 	result := korrel8.NewListResult()
-	require.NoError(t, s.Get(context.Background(), &query, result))
+	require.NoError(t, s.Get(ctx, &query, result))
 	assert.Equal(t, want, result.List())
 }
 
@@ -63,8 +63,10 @@ func TestStore_Query_String(t *testing.T) {
 // 	} {
 // 		t.Run(strconv.Itoa(n), func(t *testing.T) {
 // 			var result korrel8.ListResult
-// 			assert.NoError(t, s.Get(context.Background(), x.query, &result))
+// 			assert.NoError(t, s.Get(ctx, x.query, &result))
 // 			assert.Equal(t, x.want, result.List())
 // 		})
 // 	}
 // }
+
+var ctx = context.Background()

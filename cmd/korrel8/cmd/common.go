@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"net/http"
 	"os"
 
 	"github.com/korrel8/korrel8/internal/pkg/logging"
@@ -58,24 +57,32 @@ func k8sClient(cfg *rest.Config) client.Client {
 	return must(client.New(cfg, client.Options{}))
 }
 
-// noStore returns an error if it is used.
-type noStore struct{ err error }
-
 // Defer store creation errors until the store is used. It may not be.
-func needStore(store korrel8.Store, err error) korrel8.Store {
-	if err != nil {
-		return noStore{err}
-	}
-	return store
+type deferredStore struct {
+	store  korrel8.Store
+	create func() (korrel8.Store, error)
 }
-func (s noStore) Get(context.Context, korrel8.Query, korrel8.Result) error { return s.err }
+
+func (ds *deferredStore) Get(ctx context.Context, query korrel8.Query, r korrel8.Result) (err error) {
+	if ds.store == nil {
+		if ds.store, err = ds.create(); err != nil {
+			return err
+		}
+	}
+	return ds.store.Get(ctx, query, r)
+}
+
+func ds(create func() (korrel8.Store, error)) korrel8.Store { return &deferredStore{create: create} }
 
 func newEngine() *engine.Engine {
 	cfg := restConfig()
 	e := engine.New()
-	e.AddDomain(k8s.Domain, needStore(k8s.NewStore(k8sClient(cfg))))
-	e.AddDomain(alert.Domain, needStore(alert.OpenshiftManagerStore(cfg)))
-	e.AddDomain(loki.Domain, needStore(loki.NewStore(lokiBaseURL.URL, http.DefaultClient)))
+
+	e.AddDomain(k8s.Domain, ds(func() (korrel8.Store, error) { return k8s.NewStore(k8sClient(cfg)) }))
+	e.AddDomain(alert.Domain, ds(func() (korrel8.Store, error) { return alert.OpenshiftManagerStore(cfg) }))
+	e.AddDomain(loki.Domain, ds(func() (korrel8.Store, error) {
+		return loki.NewLokiStackStore(context.Background(), k8sClient(cfg), cfg)
+	}))
 	// Load rules
 	for _, path := range *rulePaths {
 		debug.Info("loading rules", "path", path)

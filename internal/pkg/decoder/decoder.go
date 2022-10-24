@@ -44,5 +44,5 @@ func New(r io.Reader) *Decoder {
 	return &Decoder{reader: lc, decoder: decoder}
 }
 
-func (d *Decoder) Decode(into interface{}) error { return d.decoder.Decode(into) }
-func (d *Decoder) Line() int                     { return d.reader.Line() }
+func (d *Decoder) Decode(into any) error { return d.decoder.Decode(into) }
+func (d *Decoder) Line() int             { return d.reader.Line() }

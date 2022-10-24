@@ -20,7 +20,7 @@ type domain struct{}
 
 func (d domain) String() string                { return "alert" }
 func (d domain) Class(string) korrel8.Class    { return Class{} }
-func (d domain) KnownClasses() []korrel8.Class { panic("FIXME") }
+func (d domain) KnownClasses() []korrel8.Class { return []korrel8.Class{Class{}} }
 func (d domain) NewQuery() korrel8.Query       { return &Query{} }
 
 var _ korrel8.Domain = Domain
@@ -45,7 +45,7 @@ func (c Class) Contains(o korrel8.Object) bool { _, ok := o.(Object); return ok 
 type Query struct{} // FIXME - gets all alerts.
 
 func (q *Query) String() string                 { return Domain.String() }
-func (q *Query) Browser(base *url.URL) *url.URL { panic("FIXME") }
+func (q *Query) Console(base *url.URL) *url.URL { panic("FIXME") }
 func (q *Query) REST(base *url.URL) *url.URL    { panic("FIXME") }
 
 type Object *models.GettableAlert

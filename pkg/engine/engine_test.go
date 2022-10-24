@@ -52,7 +52,7 @@ func TestEngine_Follow(t *testing.T) {
 
 	e := New()
 	e.AddDomain(mock.Domain{}, mock.Store{})
-	queries, err := e.Follow(context.Background(), mock.NewObject("foo", "a"), nil, path)
+	queries, err := e.Follow(context.Background(), []korrel8.Object{mock.NewObject("foo", "a")}, nil, path)
 	assert.NoError(t, err)
 	assert.ElementsMatch(t, want, queries)
 }

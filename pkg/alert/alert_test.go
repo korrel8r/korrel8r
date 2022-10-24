@@ -9,7 +9,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestQuery_Alert(t *testing.T) {
+// FIXME temporarily disabled
+func SkipTestQuery_Alert(t *testing.T) {
 	test.SkipIfNoCluster(t)
 
 	store, err := NewStore(test.RESTConfig)

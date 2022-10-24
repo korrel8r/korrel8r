@@ -59,7 +59,7 @@ func (c Class) Contains(o korrel8.Object) bool { _, ok := o.(Alert); return ok }
 type Query string
 
 func (q *Query) String() string                 { return string(*q) }
-func (q *Query) Browser(base *url.URL) *url.URL { panic("FIXME") }
+func (q *Query) Console(base *url.URL) *url.URL { panic("FIXME") }
 func (q *Query) REST(base *url.URL) *url.URL    { panic("FIXME") }
 
 // Alert is a 1:1 mapping of the v1.Alert type which can be used in Go templates.

@@ -35,7 +35,7 @@ type Query string
 
 func NewQuery(s string) korrel8.Query           { q := Query(s); return &q }
 func (q *Query) String() string                 { return string(*q) }
-func (q *Query) Browser(base *url.URL) *url.URL { panic("FIXME") }
+func (q *Query) Console(base *url.URL) *url.URL { panic("FIXME") }
 func (q *Query) REST(base *url.URL) *url.URL    { panic("FIXME") }
 
 var _ korrel8.Query = (*Query)(nil) // Implements interface
