@@ -9,7 +9,7 @@ import (
 	"os"
 
 	"github.com/korrel8/korrel8/internal/pkg/logging"
-	"github.com/korrel8/korrel8/pkg/alert"
+	alert "github.com/korrel8/korrel8/pkg/amalert"
 	"github.com/korrel8/korrel8/pkg/engine"
 	"github.com/korrel8/korrel8/pkg/k8s"
 	"github.com/korrel8/korrel8/pkg/korrel8"
@@ -61,7 +61,7 @@ func k8sClient(cfg *rest.Config) client.Client {
 // noStore returns an error if it is used.
 type noStore struct{ err error }
 
-// Defer store creation errors until the store is used. It may no be.
+// Defer store creation errors until the store is used. It may not be.
 func needStore(store korrel8.Store, err error) korrel8.Store {
 	if err != nil {
 		return noStore{err}
@@ -74,8 +74,8 @@ func newEngine() *engine.Engine {
 	cfg := restConfig()
 	e := engine.New()
 	e.AddDomain(k8s.Domain, needStore(k8s.NewStore(k8sClient(cfg))))
-	e.AddDomain(alert.Domain, needStore(alert.NewStore(cfg)))
-	e.AddDomain(loki.Domain, loki.NewStore(*lokiBaseURL, http.DefaultClient))
+	e.AddDomain(alert.Domain, needStore(alert.OpenshiftManagerStore(cfg)))
+	e.AddDomain(loki.Domain, needStore(loki.NewStore(lokiBaseURL.URL, http.DefaultClient)))
 	// Load rules
 	for _, path := range *rulePaths {
 		debug.Info("loading rules", "path", path)

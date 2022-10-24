@@ -2,10 +2,12 @@
 package templaterule
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
-	"strings"
 	"text/template"
+
+	"bytes"
 
 	"github.com/korrel8/korrel8/internal/pkg/decoder"
 	"github.com/korrel8/korrel8/pkg/korrel8"
@@ -21,15 +23,6 @@ type Rule struct {
 // Error returned if a rule is applied to an object that does not have required fields or values.
 var ErrRuleDoesNotApply = errors.New("rule does not apply")
 
-// Funcs that are automatically added to templates created by New.
-// Rule.Apply() also adds a "constraint" function.
-var funcs = map[string]any{
-	// doesnotapply fails template evaluation, call when a rule does not apply to its start object.
-	"doesnotapply": func() (int, error) { return 0, ErrRuleDoesNotApply },
-	// constraint is a placeholder ,in Rule.Apply it will return a *Constraint (possibly nil)
-	"constraint": func() *korrel8.Constraint { panic("placeholder") },
-}
-
 // New rule using a template to convert the start object to a goal query.
 func New(name string, start, goal korrel8.Class, tmpl string) (*Rule, error) {
 	t, err := template.New(name).Funcs(funcs).Option("missingkey=error").Parse(tmpl)
@@ -44,12 +37,21 @@ func (r Rule) Goal() korrel8.Class  { return r.goal }
 // The template will be executed with start as the "." context object.
 // A function "constraint" returns the constraint.
 func (r *Rule) Apply(start korrel8.Object, c *korrel8.Constraint) (result korrel8.Query, err error) {
-	b := &strings.Builder{}
+	defer func() {
+		if err != nil {
+			err = fmt.Errorf("error applying %v to %v: %w", r, korrel8.ClassName(r.Start()), err)
+		}
+	}()
+	b := &bytes.Buffer{}
 	err = r.Template.Funcs(map[string]any{"constraint": func() *korrel8.Constraint { return c }}).Execute(b, start)
 	if err != nil {
-		err = fmt.Errorf("apply %v to %T:  %w (start = %#v):", r, start, err, start)
+		return nil, err
 	}
-	return korrel8.Query(b.String()), err
+	q := r.Goal().Domain().NewQuery()
+	if err = json.Unmarshal(b.Bytes(), &q); err != nil {
+		err = fmt.Errorf("invalid %v query: %w: %s", r.Goal().Domain(), err, string(b.Bytes()))
+	}
+	return q, err
 }
 
 var _ korrel8.Rule = &Rule{}

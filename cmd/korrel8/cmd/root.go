@@ -17,6 +17,7 @@ package cmd
 
 import (
 	"fmt"
+	"net/url"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -34,9 +35,11 @@ var rootCmd = &cobra.Command{
 
 func Execute() (exitCode int) {
 	defer func() {
-		if err, _ := recover().(error); err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			exitCode = 1
+		if !*panicOnErr { // Suppress panic
+			if r := recover(); r != nil {
+				fmt.Fprintln(os.Stderr, r)
+				exitCode = 1
+			}
 		}
 	}()
 	check(rootCmd.Execute())
@@ -47,8 +50,9 @@ var (
 	// Flags
 	output      *string
 	verbose     *int
-	lokiBaseURL *string
+	lokiBaseURL URLFlag
 	rulePaths   *[]string
+	panicOnErr  *bool
 )
 
 // defaultRulePaths looks for a default "rules" directory in a few places.
@@ -82,13 +86,31 @@ func defaultRulePaths() []string {
 	return nil
 }
 
+type URLFlag struct{ *url.URL }
+
+func (u *URLFlag) String() string {
+	if u.URL != nil {
+		return u.URL.String()
+	}
+	return ""
+}
+
+func (u *URLFlag) Set(s string) error {
+	var err error
+	u.URL, err = url.Parse(s)
+	return err
+}
+
+func (u *URLFlag) Type() string { return "URL" }
+
 func init() {
+	panicOnErr = rootCmd.PersistentFlags().Bool("panic", false, "panic on error instead of exit code 1")
 	output = rootCmd.PersistentFlags().StringP("output", "o", "yaml", "Output format: json, json-pretty or yaml")
 	verbose = rootCmd.PersistentFlags().IntP("verbose", "v", 0, "Verbosity for logging")
 
 	rulePaths = rootCmd.PersistentFlags().StringArrayP("rules", "r", defaultRulePaths(), "Files or directories containing rules.")
 
-	lokiBaseURL = rootCmd.PersistentFlags().String("loki", "", "Loki base URL, up to .../v1")
+	rootCmd.PersistentFlags().Var(&lokiBaseURL, "loki", "Loki base URL, up to .../v1")
 
 	cobra.OnInitialize(func() { logging.Init(*verbose) })
 }

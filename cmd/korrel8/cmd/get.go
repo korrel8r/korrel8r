@@ -6,10 +6,10 @@ package cmd
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 
-	"github.com/korrel8/korrel8/pkg/korrel8"
 	"github.com/spf13/cobra"
 )
 
@@ -19,12 +19,19 @@ var getCmd = &cobra.Command{
 	Short: "Execute QUERY in the default store for DOMAIN and print the results",
 	Args:  cobra.ExactArgs(2),
 	Run: func(cmd *cobra.Command, args []string) {
-		domain, query := args[0], korrel8.Query(args[1])
+		domainName, queryString := args[0], args[1]
 		e := newEngine()
-		store := e.Stores[domain]
-		if store == nil {
-			check(fmt.Errorf("unknown domain name %q", domain))
+		domain, ok := e.Domains[domainName]
+		if !ok {
+			check(fmt.Errorf("unknown domain name %q", domainName))
 		}
+		store, ok := e.Stores[domain.String()]
+		if !ok {
+			check(fmt.Errorf("no store for domaina %q", domainName))
+		}
+		query := domain.NewQuery()
+		err := json.Unmarshal([]byte(queryString), query)
+		check(err, "bad query %q: %v", queryString, err)
 		result := newPrinter(os.Stdout)
 		check(store.Get(context.Background(), query, result))
 	},

@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/korrel8/korrel8/internal/pkg/test/mock"
 	"github.com/korrel8/korrel8/pkg/korrel8"
 	"github.com/korrel8/korrel8/pkg/templaterule"
 	"github.com/stretchr/testify/require"
@@ -12,36 +13,26 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-type mockClass string
-type mockObject string
-
-func (c mockClass) Domain() korrel8.Domain         { return nil }
-func (c mockClass) New() korrel8.Object            { return nil }
-func (c mockClass) String() string                 { return "" }
-func (c mockClass) Key(o korrel8.Object) any       { return o }
-func (c mockClass) Contains(o korrel8.Object) bool { panic("not implemented") }
-
 func TestRule_Apply(t *testing.T) {
-	tr, err := templaterule.New("myrule", mockClass(""), mockClass(""), "object: {{.}}, constraint: {{ constraint }}")
+	tr, err := templaterule.New("myrule", mock.Class(""), mock.Class(""), `"object: {{.Name}}, constraint: {{ constraint }}"`)
 	require.NoError(t, err)
 	now := time.Now()
 	constraint := korrel8.Constraint{Start: &now, End: &now}
-	q, err := tr.Apply(mockObject("thing"), &constraint)
+	q, err := tr.Apply(mock.NewObject("thing", ""), &constraint)
 	assert.NoError(t, err)
-	assert.Equal(t, korrel8.Query(fmt.Sprintf("object: thing, constraint: %v", constraint)), q)
+	assert.Equal(t, mock.NewQuery(fmt.Sprintf("object: thing, constraint: %v", constraint)), q)
 }
 
-func TestRule_DoesNotApply(t *testing.T) {
-	tr, err := templaterule.New("myrule", mockClass(""), mockClass(""), `{{doesnotapply}}`)
+func TestRule_Error(t *testing.T) {
+	tr, err := templaterule.New("myrule", mock.Class(""), mock.Class(""), `{{fail "foobar"}}`)
 	require.NoError(t, err)
-	q, err := tr.Apply(mockObject("thing"), nil)
-	assert.Empty(t, q)
-	assert.ErrorIs(t, err, templaterule.ErrRuleDoesNotApply)
+	_, err = tr.Apply(mock.NewObject("thing", ""), nil)
+	assert.Equal(t, "error applying myrule to mock: template: myrule:1:2: executing \"myrule\" at <fail \"foobar\">: error calling fail: foobar", err.Error())
 }
 
 func TestRule_MissingKey(t *testing.T) {
-	tr, err := templaterule.New(t.Name(), mockClass(""), mockClass(""), `{{.nosuchkey}}`)
+	tr, err := templaterule.New(t.Name(), mock.Class(""), mock.Class(""), `{{.nosuchkey}}`)
 	require.NoError(t, err)
-	_, err = tr.Apply(mockObject("thing"), nil)
+	_, err = tr.Apply(mock.NewObject("thing", ""), nil)
 	assert.Contains(t, err.Error(), "can't evaluate field nosuchkey")
 }

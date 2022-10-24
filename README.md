@@ -107,3 +107,13 @@ They each use a different convention that was established before Open Telemetry 
 Historically, observability tools have developed in "silos" without standardization.
 Different conventions adopted in each domain are now entrenched and difficult to change.
 A single vocabulary may eventually become universal, but in the medium term we have to handle mixed signals.
+
+# Implementation TODO list
+
+## Alert Domain
+Currently implemented 2 ways: pkg/alert (thanos) and package amalert (openshift alert manager)
+Unify as a single domain, with multiple store options for thanos/alert manager.
+
+## Functional/End-to-end test automation
+Cluster tests are currently not automated as part of CI.
+Need to figure out a test cluster solution that can run in CI (Kind? EnvTest? Openshift Local?)

@@ -7,6 +7,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
+	"path"
+
+	"errors"
 
 	"github.com/korrel8/korrel8/pkg/korrel8"
 	"golang.org/x/exp/slices"
@@ -20,6 +24,7 @@ var Domain = domain{}
 func (d domain) String() string                  { return "loki" }
 func (d domain) Class(name string) korrel8.Class { return Class{} }
 func (d domain) KnownClasses() []korrel8.Class   { return []korrel8.Class{Class{}} }
+func (d domain) NewQuery() korrel8.Query         { var q Query; return &q }
 
 var _ korrel8.Domain = Domain
 
@@ -33,6 +38,33 @@ func (c Class) Key(o korrel8.Object) any       { return o }
 
 var _ korrel8.Class = Class{} // Implements interface.
 
+// Query is the LogQL string
+type Query string
+
+func (q *Query) String() string { return string(*q) }
+
+func (q *Query) REST(base *url.URL) *url.URL {
+	u := *base
+	u.Path = path.Join(u.Path, "query_range")
+	v := url.Values{}
+	v.Set("query", q.String())
+	v.Set("direction", "FORWARD")
+	// FIXME constraint handling
+	u.RawQuery = v.Encode()
+	return &u
+}
+
+func (q *Query) Browser(base *url.URL) *url.URL {
+	u := *base
+	u.Path = path.Join(u.Path, "monitoring/logs")
+	v := url.Values{}
+	v.Add("q", q.String())
+	u.RawQuery = v.Encode()
+	return &u
+}
+
+var _ korrel8.Query = (*Query)(nil) // Implements interface
+
 type Object string // Log record - TODO parse as JSON Object?
 
 func (o Object) Domain() korrel8.Domain { return Domain }
@@ -41,24 +73,31 @@ var _ korrel8.Object = Object("") // Implements interface.
 
 // Store implements the korrel8.Store interface over a Loki HTTP client
 type Store struct {
-	c       *http.Client
-	baseURL string
+	Constraint *korrel8.Constraint
+	c          *http.Client
+	baseURL    url.URL
 }
 
 var _ korrel8.Store = &Store{}
 
 // NewStore creates a new store.
 // baseURL is the URL with API path, e.g. "https://foo/loki/api/v1"
-func NewStore(baseURL string, c *http.Client) *Store {
-	return &Store{c: c, baseURL: baseURL}
+func NewStore(baseURL *url.URL, c *http.Client) (*Store, error) {
+	if baseURL == nil {
+		return nil, errors.New("no loki URL provided")
+	}
+	return &Store{c: c, baseURL: *baseURL}, nil
 }
 
 // Query executes a LogQL log query via the query_range endpoint
 //
 // The query string can a JSON QueryObject or a LogQL query string.
-func (s *Store) Get(ctx context.Context, query korrel8.Query, result korrel8.Result) error {
-	ustr := fmt.Sprintf("%v/%v", s.baseURL, query)
-	resp, err := httpError(s.c.Get(ustr))
+func (s *Store) Get(ctx context.Context, q korrel8.Query, result korrel8.Result) error {
+	query, ok := q.(*Query)
+	if !ok {
+		return fmt.Errorf("%v store expects %T but got %T", Domain, query, q)
+	}
+	resp, err := httpError(s.c.Get(query.REST(&s.baseURL).String()))
 	if err != nil {
 		return err
 	}

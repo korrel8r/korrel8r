@@ -1,9 +1,11 @@
-// mock implementation of korrel8 interfaces for testing
+// mock implementation of korrel8 interfaces for testing.
+// Also serves as a handy template/reference when implementing a new  domain.
 package mock
 
 import (
 	"context"
 	"fmt"
+	"net/url"
 	"strings"
 
 	"github.com/korrel8/korrel8/pkg/korrel8"
@@ -14,6 +16,7 @@ type Domain struct{}
 func (d Domain) String() string                  { return "mock" }
 func (d Domain) Class(name string) korrel8.Class { return Class(name) }
 func (d Domain) KnownClasses() []korrel8.Class   { return nil }
+func (d Domain) NewQuery() korrel8.Query         { return NewQuery("") }
 
 var _ korrel8.Domain = Domain{} // Implements interface
 
@@ -26,6 +29,16 @@ func (c Class) Contains(o korrel8.Object) bool { _, ok := o.(*Object); return ok
 func (c Class) Key(o korrel8.Object) any       { return o }
 
 var _ korrel8.Class = Class("") // Implements interface
+
+// Query a  "query" is a comma-separated list of "name.class" to be turned into  objects.
+type Query string
+
+func NewQuery(s string) korrel8.Query           { q := Query(s); return &q }
+func (q *Query) String() string                 { return string(*q) }
+func (q *Query) Browser(base *url.URL) *url.URL { panic("FIXME") }
+func (q *Query) REST(base *url.URL) *url.URL    { panic("FIXME") }
+
+var _ korrel8.Query = (*Query)(nil) // Implements interface
 
 type Object struct {
 	Name  string
@@ -72,9 +85,8 @@ func NewRules(startGoal ...string) []korrel8.Rule {
 
 type Store struct{}
 
-// Query a  "query" is a comma-separated list of "name.class" to be turned into  objects.
 func (s Store) Get(_ context.Context, q korrel8.Query, r korrel8.Result) error {
-	for _, s := range strings.Split(string(q), ",") {
+	for _, s := range strings.Split(q.String(), ",") {
 		nc := strings.Split(s, ".")
 		r.Append(Object{Name: nc[0], Class: Class(nc[1])})
 	}

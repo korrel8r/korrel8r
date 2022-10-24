@@ -5,10 +5,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 	"os/exec"
+	"strconv"
 	"sync"
 	"testing"
 	"time"
+
+	"net"
 
 	"github.com/stretchr/testify/require"
 	"golang.org/x/net/html"
@@ -58,10 +62,13 @@ func NewLokiServer() (server *LokiServer, err error) {
 	return server, nil
 }
 
-func (s *LokiServer) URL() string { return fmt.Sprintf("http://localhost:%v/loki/api/v1", s.Port) }
+func (s *LokiServer) URL() *url.URL {
+	return &url.URL{Scheme: "http", Host: net.JoinHostPort("localhost", strconv.Itoa(s.Port)), Path: "/loki/api/v1"}
+}
 
+// Check if server is ready.
 func (s *LokiServer) Check(p func(format string, args ...any)) error {
-	u := s.URL() + "/query_range?direction=FORWARD&limit=30&query=%7Bx%3D%22y%22%7D"
+	u := s.URL().String() + "/query_range?direction=FORWARD&limit=30&query=%7Bx%3D%22y%22%7D"
 	resp, err := httpError(http.Get(u))
 	if err != nil {
 		return err

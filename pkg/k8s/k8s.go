@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"net/url"
+	"path"
 	"reflect"
 	"regexp"
 	"strings"
@@ -58,6 +59,7 @@ func (d domain) KnownClasses() (classes []korrel8.Class) {
 	}
 	return classes
 }
+func (d domain) NewQuery() korrel8.Query { q := Query(""); return &q }
 
 var _ korrel8.Domain = Domain // Implements interface
 
@@ -75,6 +77,8 @@ func (c Class) Key(o korrel8.Object) any {
 	co, _ := o.(client.Object)
 	return client.ObjectKeyFromObject(co)
 }
+func (c Class) Domain() korrel8.Domain { return Domain }
+func (c Class) New() korrel8.Object    { return reflect.New(c.Type).Interface() }
 
 func (c Class) String() string {
 	// TODO there must be an easier way...
@@ -89,8 +93,18 @@ func (c Class) String() string {
 	return c.Type.String()
 }
 
-func (c Class) Domain() korrel8.Domain { return Domain }
-func (c Class) New() korrel8.Object    { return reflect.New(c.Type).Interface() }
+// Query is a REST URI
+type Query string
+
+func (q *Query) REST(base *url.URL) *url.URL {
+	u := *base
+	u.Path = path.Join(u.Path, q.String())
+	return &u
+}
+
+func (q *Query) String() string { return string(*q) }
+
+func (q *Query) Browser(base *url.URL) *url.URL { panic("FIXME") }
 
 type Object client.Object
 
@@ -100,19 +114,22 @@ type Store struct{ c client.Client }
 // NewStore creates a new store
 func NewStore(c client.Client) (*Store, error) { return &Store{c: c}, nil }
 
-// Execute a query in the form of a k8s REST URI.
-// Cancel if context is canceled.
-func (s *Store) Get(ctx context.Context, query korrel8.Query, result korrel8.Result) (err error) {
+func (s *Store) Get(ctx context.Context, q korrel8.Query, result korrel8.Result) (err error) {
+	query, ok := q.(*Query)
+	if !ok {
+		// FIXME extract common implementation stuff.
+		return fmt.Errorf("%v store expects %T but got %T", Domain, query, q)
+	}
 	defer func() {
 		if err != nil {
 			err = fmt.Errorf("%w: executing %v query %q", err, Domain, query)
 		}
 	}()
-	u, err := url.Parse(string(query))
+	u, err := url.Parse(string(*query))
 	if err != nil {
 		return err
 	}
-	gvk, nsName, err := s.parseAPIPath(u)
+	gvk, nsName, err := s.parseAPIPath(u.Path)
 	if err != nil {
 		return err
 	}
@@ -128,13 +145,13 @@ func (s *Store) Get(ctx context.Context, query korrel8.Query, result korrel8.Res
 // TODO revisit: this is weirdly indirect - parse an API path to make a Client call which re-creates the API path.
 // Should be able to use a REST client directly, but client.Client does REST client creation & caching
 // and manages schema and RESTMapper stuff which I'm not sure I understand yet.
-func (s *Store) parseAPIPath(u *url.URL) (gvk schema.GroupVersionKind, nsName types.NamespacedName, err error) {
-	path := k8sPathRegex.FindStringSubmatch(u.Path)
-	if len(path) != pCount {
+func (s *Store) parseAPIPath(path string) (gvk schema.GroupVersionKind, nsName types.NamespacedName, err error) {
+	parts := k8sPathRegex.FindStringSubmatch(path)
+	if len(parts) != pCount {
 		return gvk, nsName, fmt.Errorf("invalid URI")
 	}
-	nsName.Namespace, nsName.Name = path[pNamespace], path[pName]
-	gvr := schema.GroupVersionResource{Group: path[pGroup], Version: path[pVersion], Resource: path[pResource]}
+	nsName.Namespace, nsName.Name = parts[pNamespace], parts[pName]
+	gvr := schema.GroupVersionResource{Group: parts[pGroup], Version: parts[pVersion], Resource: parts[pResource]}
 	gvk, err = s.c.RESTMapper().KindFor(gvr)
 	return gvk, nsName, err
 }

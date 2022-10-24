@@ -2,25 +2,19 @@ goal: k8s/Pod.v1
 name: DeploymentConfigToPodSelector
 start: k8s/DeploymentConfig.v1.apps.openshift.io
 template: |-
-  /api/v1/namespaces/
-  {{- .Namespace}}/pods?labelSelector={{$s := ""}}{{range $k,$v := .Spec.Selector.MatchLabels -}}
-  {{- urlquery $s $k "=" $v}}{{$s = ","}}{{end}}
+  "/api/v1/namespaces/{{.Namespace}}/pods?labelSelector={{.Spec.Selector.MatchLabels | k8sSelector | urlquery -}}"
 ---
 goal: k8s/Pod.v1
 name: DaemonSetToPodSelector
 start: k8s/DaemonSet.v1.apps
 template: |-
-  /api/v1/namespaces/
-  {{- .Namespace}}/pods?labelSelector={{$s := ""}}{{range $k,$v := .Spec.Selector.MatchLabels -}}
-  {{- urlquery $s $k "=" $v}}{{$s = ","}}{{end}}
+  "/api/v1/namespaces/{{.Namespace}}/pods?labelSelector={{.Spec.Selector.MatchLabels | k8sSelector | urlquery -}}"
 ---
 goal: k8s/Pod.v1
 name: DeploymentToPodSelector
 start: k8s/Deployment.v1.apps
 template: |-
-  /api/v1/namespaces/
-  {{- .Namespace}}/pods?labelSelector={{$s := ""}}{{range $k,$v := .Spec.Selector.MatchLabels -}}
-  {{- urlquery $s $k "=" $v}}{{$s = ","}}{{end}}
+  "/api/v1/namespaces/{{.Namespace}}/pods?labelSelector={{.Spec.Selector.MatchLabels | k8sSelector | urlquery -}}"
 ---
 goal: k8s/Pod.v1
 name: ReplicaSetToPodSelector
@@ -73,13 +67,9 @@ template: |-
 goal: k8s/Pod.v1
 name: EventToPod
 start: k8s/Event.v1.events.k8s.io
-template: '{{if eq .involvedObject.kind "Pod"}}/api/v1/namespaces/{{.involvedObject.namespace}}/pods/{{.involvedObject.name}}{{else}}{{doesnotapply}}{{end}}'
+template: '{{or (eq .involvedObject.kind "Pod") (fail "not a pod")}}"/api/v1/namespaces/{{.involvedObject.namespace}}/pods/{{.involvedObject.name}}""'
 ---
 goal: loki/loki
 name: PodToLokiLogs
 start: k8s/Pod.v1
-template: |
-  query_range?direction=forward&query=
-  {{- urlquery (printf "{kubernetes_namespace_name=%q,kubernetes_pod_name=%q}" .ObjectMeta.Namespace .ObjectMeta.Name) }}
-  {{- with constraint}}&start={{constraint.Start.UnixNano}}{{end -}}
-  {{- with constraint}}&end={{constraint.End.UnixNano}}{{end -}}
+template: '"{ kubernetes_namespace_name=\"{{.ObjectMeta.Namespace}}\", kubernetes_pod_name=\"{{.ObjectMeta.Name}}\"}"'

@@ -33,7 +33,7 @@ type Engine struct {
 }
 
 func New() *Engine {
-	return &Engine{Stores: map[string]korrel8.Store{}, Domains: map[string]korrel8.Domain{}}
+	return &Engine{Stores: map[string]korrel8.Store{}, Domains: map[string]korrel8.Domain{}, Graph: graph.New()}
 }
 
 func (e *Engine) ParseClass(name string) (korrel8.Class, error) {
@@ -123,7 +123,7 @@ func (f Engine) followEach(rule korrel8.Rule, start []korrel8.Object, c *korrel8
 	)
 	for _, s := range start {
 		q, err := rule.Apply(s, c)
-		if err == nil && q != "" {
+		if err == nil && q != nil {
 			queries = append(queries, q)
 		}
 		merr = multierr.Append(merr, err)
@@ -160,10 +160,10 @@ func (e Engine) LoadRules(root string) error {
 				return nil
 			default:
 				// Estimate number of lines
-				return fmt.Errorf("line %v: %w", decoder.Line(), err)
+				return err
 			}
 		}
 	})
-	e.Graph = graph.New(rules)
+	e.Graph.Add(rules)
 	return err
 }

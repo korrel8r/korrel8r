@@ -5,6 +5,7 @@ package korrel8
 
 import (
 	"context"
+	"net/url"
 	"path"
 	"time"
 )
@@ -23,6 +24,7 @@ type Domain interface {
 	String() string        // Name of the domain
 	Class(string) Class    // Find a class by name, return nil if not found.
 	KnownClasses() []Class // List of known classes in the Domain
+	NewQuery() Query       // NewQuery returns a new query, can be unmarshaled from JSON.
 }
 
 // Class identifies a subset of objects from the same domain with the same schema.
@@ -31,7 +33,7 @@ type Domain interface {
 // Class implementations must be comparable.
 type Class interface {
 	Domain() Domain       // Domain of this class.
-	New() Object          // Return a new instance of the class, can be decoded from JSON or YAML.
+	New() Object          // Return a new instance of the class, can be unmarshaled from JSON.
 	Contains(Object) bool // True if object is in this class
 	Key(Object) any       // Comparable key for de-duplication or nil if object is not in this class.
 	String() string       // Name of the class within the domain, e.g "Pod.v1". See ClassName()
@@ -45,8 +47,13 @@ type Result interface {
 	Append(...Object)
 }
 
-// Query for a signal store. Format depends on type of store, usually a REST path.
-type Query string
+// Query for result signals.
+// Query implementations MUST be pointers and MUST support JSON marshal/unmarshal.
+type Query interface {
+	String() string                 // Plain query string
+	Browser(base *url.URL) *url.URL // Browser URL for console
+	REST(base *url.URL) *url.URL    // REST URL relative to base
+}
 
 // Store is a source of signals belonging to a single domain.
 type Store interface {

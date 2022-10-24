@@ -3,6 +3,7 @@ package cmd
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -21,7 +22,7 @@ func TestGet_Alert(t *testing.T) {
 	// Dubious test, assumes there is an alert on the cluster.
 	test.SkipIfNoCluster(t)
 	var exitCode int
-	stdout, stderr := test.FakeMain([]string{"", "get", "alert", "{}", "-o=json"}, func() { exitCode = Execute() })
+	stdout, stderr := test.FakeMain([]string{"", "--panic", "get", "alert", "{}", "-o=json"}, func() { exitCode = Execute() })
 	require.Equal(t, 0, exitCode, "%v", stderr)
 
 	decoder := json.NewDecoder(strings.NewReader(stdout))
@@ -35,13 +36,14 @@ func TestCorrelate_Pods(t *testing.T) {
 	ns := test.CreateUniqueNamespace(t, c)
 
 	// Deployment
+	labels := map[string]string{"test": "testme"}
 	d := &appv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{Name: "testme", Namespace: ns},
 		Spec: appv1.DeploymentSpec{
-			Selector: &metav1.LabelSelector{MatchLabels: map[string]string{"test": "testme"}},
+			Selector: &metav1.LabelSelector{MatchLabels: labels},
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Labels: map[string]string{"test": "testme"},
+					Labels: labels,
 				},
 				Spec: corev1.PodSpec{
 					Containers: []corev1.Container{
@@ -52,29 +54,28 @@ func TestCorrelate_Pods(t *testing.T) {
 						}}}}}}
 	require.NoError(t, c.Create(context.Background(), d))
 
-	// Wait for it...
-	w, err := c.Watch(context.Background(), &appv1.DeploymentList{}, client.InNamespace(d.Namespace))
+	// Wait for pod.
+	w, err := c.Watch(context.Background(), &corev1.PodList{}, client.InNamespace(d.Namespace), client.MatchingLabels(labels))
 	require.NoError(t, err)
 	defer w.Stop()
-	deadline := time.Now().Add(time.Minute)
-	for d.Status.Replicas < 1 {
-		select {
-		case e, ok := <-w.ResultChan():
-			if !ok {
-				t.Fatal("watch closed")
-			}
-			d = e.Object.(*appv1.Deployment)
-		case <-time.After(time.Until(deadline)):
-			t.Fatal("timeout waiting")
+	var pod *corev1.Pod
+	select {
+	case e, ok := <-w.ResultChan():
+		if !ok {
+			t.Fatal("watch closed")
 		}
+		pod = e.Object.(*corev1.Pod)
+	case <-time.After(time.Minute):
+		t.Fatal("timeout waiting")
 	}
 	var exitCode int
-	stdout, stderr := test.FakeMainStdin(test.JSONString(d), []string{"", "correlate", "k8s/Deployment", "k8s/Pod", "-v9"}, func() {
+	stdout, stderr := test.FakeMainStdin(test.JSONString(d), []string{"", "correlate", "k8s/Deployment", "loki/Logs", "-v9"}, func() {
 		exitCode = Execute()
 	})
 	require.Equal(t, 0, exitCode, stderr)
 	t.Log(stderr)
-	require.Equal(t, "resulting queries: [query_range?direction=forward&query=%7Bkubernetes_namespace_name%3D%22default%22%2Ckubernetes_pod_name%3D%22demo-5cf9f87c6-n9zzk%22%7D]", strings.TrimSpace(stdout))
+	want := fmt.Sprintf(`resulting queries: [{ kubernetes_namespace_name="%v", kubernetes_pod_name="%v"}]`, pod.Namespace, pod.Name)
+	require.Equal(t, want, strings.TrimSpace(stdout))
 }
 
 func TestList_Classes(t *testing.T) {

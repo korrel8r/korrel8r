@@ -2,8 +2,9 @@ package k8s
 
 import (
 	"context"
-	"net/url"
 	"testing"
+
+	"net/url"
 
 	"github.com/korrel8/korrel8/pkg/korrel8"
 	"github.com/stretchr/testify/assert"
@@ -72,7 +73,7 @@ func TestStore_ParseURI(t *testing.T) {
 		Build())
 	require.NoError(t, err)
 	for _, x := range []struct {
-		uri    string
+		path   string
 		gvk    schema.GroupVersionKind
 		nsName types.NamespacedName
 	}{
@@ -83,10 +84,8 @@ func TestStore_ParseURI(t *testing.T) {
 		{"/apis/apiextensions.k8s.io/v1/customresourcedefinitions", schema.GroupVersionKind{Group: "apiextensions.k8s.io", Version: "v1", Kind: "CustomResourceDefinition"}, types.NamespacedName{Namespace: "", Name: ""}},
 		{"/apis/apiextensions.k8s.io/v1/namespaces/foo/customresourcedefinitions/bar", schema.GroupVersionKind{Group: "apiextensions.k8s.io", Version: "v1", Kind: "CustomResourceDefinition"}, types.NamespacedName{Namespace: "foo", Name: "bar"}},
 	} {
-		t.Run(x.uri, func(t *testing.T) {
-			u, err := url.Parse(x.uri)
-			require.NoError(t, err)
-			gvk, nsName, err := s.parseAPIPath(u)
+		t.Run(x.path, func(t *testing.T) {
+			gvk, nsName, err := s.parseAPIPath(x.path)
 			require.NoError(t, err)
 			assert.Equal(t, x.gvk, gvk)
 			assert.Equal(t, x.nsName, nsName)
@@ -116,19 +115,19 @@ func TestStore_Get(t *testing.T) {
 		wilma  = types.NamespacedName{Namespace: "y", Name: "wilma"}
 	)
 	for _, x := range []struct {
-		query korrel8.Query
+		query string
 		want  []types.NamespacedName
 	}{
 		{"/api/v1/namespaces/x/pods/fred", []types.NamespacedName{fred}},
 		{"/api/v1/namespaces/x/pods", []types.NamespacedName{fred, barney}},
 		{"/api/v1/pods", []types.NamespacedName{fred, barney, wilma}},
-		{"/api/v1/pods?labelSelector=app%3Dfoo", []types.NamespacedName{fred, wilma}},
+		{"/api/v1/pods?labelSelector=" + url.QueryEscape("app=foo"), []types.NamespacedName{fred, wilma}},
 		// Field selectors are not supported by the fake client.
-		//		{"/api/v1/pods?fieldSelector=metadata.name%3D", []types.NamespacedName{{"y", "wilma"}}},
 	} {
-		t.Run(string(x.query), func(t *testing.T) {
+		t.Run(x.query, func(t *testing.T) {
+			query := Query(x.query)
 			var result korrel8.ListResult
-			err := store.Get(context.Background(), x.query, &result)
+			err := store.Get(context.Background(), &query, &result)
 			require.NoError(t, err)
 			var got []types.NamespacedName
 			for _, v := range result {

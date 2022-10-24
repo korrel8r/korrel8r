@@ -18,8 +18,12 @@ type Graph struct {
 
 type edge struct{ start, goal int }
 
-func New(rules []korrel8.Rule) *Graph {
+func New() *Graph {
 	g := &Graph{vertexID: map[korrel8.Class]int{}, edges: map[edge][]korrel8.Rule{}}
+	return g
+}
+
+func (g *Graph) Add(rules []korrel8.Rule) {
 	// Create all the vertices.
 	for _, r := range rules {
 		start := g.addVertex(r.Start())
@@ -29,7 +33,6 @@ func New(rules []korrel8.Rule) *Graph {
 		g.edges[e] = append(g.edges[e], r)
 	}
 	g.graph = graph.Sort(iterator{g})
-	return g
 }
 
 func (g *Graph) addVertex(vertex korrel8.Class) int {

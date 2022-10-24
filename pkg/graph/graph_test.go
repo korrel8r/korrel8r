@@ -32,7 +32,8 @@ func TestGraph_ShortestPath(t *testing.T) {
 		},
 	} {
 		t.Run(x.name, func(t *testing.T) {
-			g := New(x.rules)
+			g := New()
+			g.Add(x.rules)
 			got := g.ShortestPath(mock.Class("a"), mock.Class("z"))
 			assert.ElementsMatch(t, x.want, got, g.graph.String())
 		})
