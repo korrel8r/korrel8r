@@ -14,10 +14,13 @@ import (
 const (
 	OpenshiftLogging = "openshift-logging"
 	LoggingLoki      = "logging-loki"
+	OpenshiftConsole = "openshift-console"
+	Console          = "console"
 )
 
 var (
 	LokiStackNSName = NamespacedName(OpenshiftLogging, LoggingLoki)
+	ConsoleNSName   = NamespacedName(OpenshiftConsole, Console)
 )
 
 func init() {

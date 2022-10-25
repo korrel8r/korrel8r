@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"net/url"
@@ -10,7 +9,7 @@ import (
 	"time"
 
 	"github.com/korrel8/korrel8/internal/pkg/test"
-	"github.com/korrel8/korrel8/pkg/alert"
+	alert "github.com/korrel8/korrel8/pkg/amalert"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	appv1 "k8s.io/api/apps/v1"
@@ -24,11 +23,11 @@ func TestGet_Alert(t *testing.T) {
 	// Dubious test, assumes there is an alert on the cluster.
 	test.SkipIfNoCluster(t)
 	var exitCode int
-	stdout, stderr := test.FakeMain([]string{"", "--panic", "get", "alert", "{}", "-o=json"}, func() { exitCode = Execute() })
+	stdout, stderr := test.FakeMain([]string{"", "--panic", "get", "alert", `/alert?{alertname=~".+"}`, "-o=json"}, func() { exitCode = Execute() })
 	require.Equal(t, 0, exitCode, "%v", stderr)
 
 	decoder := json.NewDecoder(strings.NewReader(stdout))
-	var a alert.Alert
+	a := alert.Domain.Class("alert").New()
 	require.NoError(t, decoder.Decode(&a), "invalid alert in: %v", stdout)
 }
 
@@ -59,19 +58,17 @@ func TestCorrelate_Pods(t *testing.T) {
 	var pod *corev1.Pod
 	test.Watch(t, w, time.Minute, func(e watch.Event) bool {
 		pod = e.Object.(*corev1.Pod)
-		return true
+		return pod.Status.Phase == corev1.PodRunning
 	})
 	// Try all the result types
-	wantStr := fmt.Sprintf(`{kubernetes_namespace_name=%q,kubernetes_pod_name=%q}`, pod.Namespace, pod.Name)
-	for _, x := range []struct{ result, want string }{
-		{"string", wantStr},
-		{"rest", "/query_range?direction=FORWARD&query=" + url.QueryEscape(wantStr)},
-		{"console", "/monitoring/logs?q=" + url.QueryEscape(wantStr)},
-		{"data", ""},
+	logQL := fmt.Sprintf(`{kubernetes_namespace_name=%q,kubernetes_pod_name=%q}`, pod.Namespace, pod.Name)
+	for _, x := range []struct{ export, want string }{
+		{"", "/query_range?direction=FORWARD&query=" + url.QueryEscape(logQL)},
+		{"console", "/monitoring/logs?q=" + url.QueryEscape(logQL)},
 	} {
-		t.Run(x.result, func(t *testing.T) {
+		t.Run(x.export, func(t *testing.T) {
 			var exitCode int
-			stdout, stderr := test.FakeMainStdin(test.JSONString(d), []string{"", "correlate", "k8s/Deployment", "loki/Logs", "--result", x.result, "-v9"}, func() {
+			stdout, stderr := test.FakeMainStdin(test.JSONString(d), []string{"", "correlate", "k8s/Deployment", "loki/application", "--export", x.export}, func() {
 				exitCode = Execute()
 			})
 			require.Equal(t, 0, exitCode, stderr)
@@ -109,5 +106,3 @@ func TestList_Domains(t *testing.T) {
 	}
 	assert.ElementsMatch(t, want, got)
 }
-
-var ctx = context.Background()

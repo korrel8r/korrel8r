@@ -1,8 +1,6 @@
 package korrel8
 
 import (
-	"encoding/json"
-
 	"github.com/korrel8/korrel8/pkg/unique"
 )
 
@@ -35,10 +33,4 @@ func (r *SetResult) Append(objects ...Object) {
 			r.list = append(r.list, objects...)
 		}
 	}
-}
-
-func ParseQuery(d Domain, query string) (Query, error) {
-	q := d.NewQuery()
-	err := json.Unmarshal([]byte(query), q)
-	return q, err
 }

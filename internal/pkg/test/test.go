@@ -202,7 +202,7 @@ func Watch(t *testing.T, w watch.Interface, timeout time.Duration, f func(e watc
 				t.Fatal("watch closed")
 			}
 			if f(e) {
-				break
+				return
 			}
 		case <-time.After(timeout):
 			t.Fatal("timeout in watch")

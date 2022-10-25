@@ -77,7 +77,7 @@ func (e Engine) Follow(ctx context.Context, starters []korrel8.Object, c *korrel
 		return nil, err
 	}
 	for i, rule := range path {
-		debug.Info("following rule", "rule", rule, "starters", starters)
+		log.Info("following rule", "rule", rule.String(), "goal", rule.Goal().String())
 		queries, err = e.followEach(rule, starters, c)
 		if err != nil {
 			warn.Error(err, "ignored")
@@ -95,7 +95,7 @@ func (e Engine) Follow(ctx context.Context, starters []korrel8.Object, c *korrel
 		}
 		var result korrel8.ListResult
 		for _, q := range queries {
-			if err := store.Get(ctx, q, &result); err != nil {
+			if err := store.Get(ctx, &q, &result); err != nil {
 				warn.Error(err, "ignored")
 			}
 		}
@@ -131,7 +131,7 @@ func (f Engine) followEach(rule korrel8.Rule, start []korrel8.Object, c *korrel8
 	for _, s := range start {
 		q, err := rule.Apply(s, c)
 		if err == nil && q != nil {
-			queries = append(queries, q)
+			queries = append(queries, *q)
 		}
 		merr = multierr.Append(merr, err)
 	}

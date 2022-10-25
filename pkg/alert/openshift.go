@@ -4,10 +4,10 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/korrel8/korrel8/internal/pkg/openshift"
 	"github.com/korrel8/korrel8/pkg/korrel8"
 	routev1 "github.com/openshift/api/route/v1"
 	authenticationv1 "k8s.io/api/authentication/v1"
-	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/kubernetes"
@@ -29,42 +29,14 @@ func init() {
 	runtime.Must(routev1.AddToScheme(scheme.Scheme))
 }
 
-// openshiftHostFromRoute returns the OpenShift alerts endpoint accessible from the outside of the cluster.
-func openshiftHostFromRoute(c client.Client) (string, error) {
-	r := routev1.Route{}
-	nsName := client.ObjectKey{Name: thanosService, Namespace: monitoringNS}
-	if err := c.Get(context.Background(), nsName, &r); err != nil {
-		return "", fmt.Errorf("failed to get route %s: %w", nsName.String(), err)
-	}
-
-	return r.Spec.Host, nil
-}
-
-// openshiftHostFromInClusterService returns the OpenShift alerts endpoint accessible from within the cluster.
-func openshiftHostFromInClusterService(c client.Client) (string, error) {
-	svc := v1.Service{}
-	nsName := client.ObjectKey{Name: thanosService, Namespace: monitoringNS}
-	if err := c.Get(context.Background(), nsName, &svc); err != nil {
-		return "", fmt.Errorf("failed to get service %s: %w", nsName.String(), err)
-	}
-
-	for _, port := range svc.Spec.Ports {
-		if port.Name == alertsPort {
-			return fmt.Sprintf("%s.%s:%d", svc.Name, svc.Namespace, port.Port), nil
-		}
-	}
-
-	return "", fmt.Errorf("failed to find port %q in service %s", alertsPort, nsName.String())
-}
-
-// NewStore creates a store client for the openshift alerts endpoint.
-func NewStore(cfg *rest.Config) (korrel8.Store, error) {
+// NewOpenshiftStore creates a store client for the openshift alerts endpoint.
+func NewOpenshiftStore(cfg *rest.Config) (korrel8.Store, error) {
 	c, err := client.New(cfg, client.Options{})
 	if err != nil {
 		return nil, err
 	}
-
-	host, err := openshiftHostFromRoute(c)
+	nsName := client.ObjectKey{Name: thanosService, Namespace: monitoringNS}
+	host, err := openshift.RouteHost(context.Background(), c, nsName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to locate the alerts endpoint: %w", err)
 	}
@@ -95,5 +67,5 @@ func NewStore(cfg *rest.Config) (korrel8.Store, error) {
 		return nil, fmt.Errorf("failed to create transport: %w", err)
 	}
 
-	return newAlertStore(host, rt)
+	return NewStore(host, rt)
 }

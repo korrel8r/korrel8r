@@ -23,6 +23,7 @@ import (
 var (
 	log   = logging.Log
 	debug = log.V(2)
+	ctx   = context.Background()
 )
 
 func check(err error, format ...any) {
@@ -63,7 +64,7 @@ type deferredStore struct {
 	create func() (korrel8.Store, error)
 }
 
-func (ds *deferredStore) Get(ctx context.Context, query korrel8.Query, r korrel8.Result) (err error) {
+func (ds *deferredStore) Get(ctx context.Context, query *korrel8.Query, r korrel8.Result) (err error) {
 	if ds.store == nil {
 		if ds.store, err = ds.create(); err != nil {
 			return err
@@ -79,9 +80,9 @@ func newEngine() *engine.Engine {
 	e := engine.New()
 
 	e.AddDomain(k8s.Domain, ds(func() (korrel8.Store, error) { return k8s.NewStore(k8sClient(cfg)) }))
-	e.AddDomain(alert.Domain, ds(func() (korrel8.Store, error) { return alert.OpenshiftManagerStore(cfg) }))
+	e.AddDomain(alert.Domain, ds(func() (korrel8.Store, error) { return alert.NewOpenshiftStore(cfg) }))
 	e.AddDomain(loki.Domain, ds(func() (korrel8.Store, error) {
-		return loki.NewLokiStackStore(context.Background(), k8sClient(cfg), cfg)
+		return loki.NewOpenshiftDefaultStore(ctx, k8sClient(cfg), cfg)
 	}))
 	// Load rules
 	for _, path := range *rulePaths {

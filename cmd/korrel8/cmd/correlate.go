@@ -13,6 +13,8 @@ import (
 	"time"
 
 	"github.com/korrel8/korrel8/internal/pkg/decoder"
+	"github.com/korrel8/korrel8/internal/pkg/openshift"
+	"github.com/korrel8/korrel8/pkg/engine"
 	"github.com/korrel8/korrel8/pkg/korrel8"
 	"github.com/spf13/cobra"
 )
@@ -28,11 +30,13 @@ var correlateCmd = &cobra.Command{
 		path := e.Graph.ShortestPath(start, goal)
 		starters := korrel8.NewSetResult(start)
 
+		// FIXME include constraint
+
 		if len(args) == 3 { // Get starters using query
-			query := must(korrel8.ParseQuery(start.Domain(), args[2]))
+			query := must(url.Parse(args[2]))
 			store := must(e.Store(start.Domain()))
-			store.Get(context.Background(), query, starters)
-		} else { // Get starters from stdin
+			store.Get(ctx, query, starters)
+		} else { // Read starters from stdin
 			dec := decoder.New(os.Stdin)
 			for {
 				o := start.New()
@@ -44,49 +48,43 @@ var correlateCmd = &cobra.Command{
 				}
 				starters.Append(o)
 			}
-			// FIXME allow constraint
-			startObjs := starters.List()
-			debug.Info("following objects", "objects", startObjs)
-			queries := must(e.Follow(context.Background(), startObjs, nil, path))
-			debug.Info("resulting queries", "queries", queries)
-			if *resultType.Value == "data" {
-				store := must(e.Store(goal.Domain()))
-				printer := newPrinter(os.Stdout)
-				for _, q := range queries {
-					err := store.Get(context.Background(), q, printer)
-					check(err, "%v query %v: %w", goal.Domain(), q, err)
-				}
-			} else {
-				for _, q := range queries {
-					empty := url.URL{}
-					switch *resultType.Value {
-					case "rest":
-						fmt.Println(q.REST(&empty))
-					case "string":
-						fmt.Println(q.String())
-					case "console":
-						fmt.Println(q.Console(&empty))
-					default:
-						check(fmt.Errorf("invalid value for --result"))
-					}
-				}
-			}
 		}
+		queries := must(e.Follow(ctx, starters.List(), nil, path))
+		printResult(e, goal, queries)
 	},
 }
 
+func printResult(e *engine.Engine, goal korrel8.Class, queries []korrel8.Query) {
+	formatter := func(q *korrel8.Query) *korrel8.Query { return q }
+	if *format != "" {
+		formatter = goal.Domain().Formatter(*format)
+		if formatter == nil {
+			check(fmt.Errorf("unknown URL export filter: %q", *format))
+		}
+		if *format == "console" { // FIXME this is messy
+			c := k8sClient(restConfig())
+			base := url.URL{
+				Scheme: "https",
+				Path:   "/",
+				Host:   must(openshift.RouteHost(context.Background(), c, openshift.ConsoleNSName))}
+			export1 := formatter
+			formatter = func(ref *korrel8.Query) *url.URL { return base.ResolveReference(export1(ref)) }
+		}
+	}
+	for _, q := range queries {
+		fmt.Println(formatter(&q))
+	}
+}
+
 var (
-	baseURL    URLFlag
-	interval   *time.Duration
-	endTime    TimeFlag
-	resultType = NewEnumFlag("string", "rest", "console", "data")
+	format   *string
+	interval *time.Duration
+	endTime  TimeFlag
 )
 
 func init() {
 	rootCmd.AddCommand(correlateCmd)
-	correlateCmd.Flags().VarP(resultType, "result", "r", "form of result: query string, REST URL, console URL or object data")
-
-	// FIXME implement time and interval
+	format = correlateCmd.Flags().String("format", "", "format for URLs, e.g. console")
 	interval = correlateCmd.Flags().Duration("interval", time.Minute*10, "limit results to this interval")
 	correlateCmd.Flags().Var(&endTime, "time", "find results up to this time")
 }

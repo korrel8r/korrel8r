@@ -6,8 +6,8 @@ package cmd
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
+	"net/url"
 	"os"
 
 	"github.com/spf13/cobra"
@@ -29,9 +29,8 @@ var getCmd = &cobra.Command{
 		if !ok {
 			check(fmt.Errorf("no store for domaina %q", domainName))
 		}
-		query := domain.NewQuery()
-		err := json.Unmarshal([]byte(queryString), query)
-		check(err, "bad query %q: %v", queryString, err)
+		query, err := url.Parse(queryString)
+		check(err, "invalid query URL: %v", queryString)
 		result := newPrinter(os.Stdout)
 		check(store.Get(context.Background(), query, result))
 	},

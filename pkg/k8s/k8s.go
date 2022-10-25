@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"net/url"
-	"path"
 	"reflect"
 	"regexp"
 	"strings"
@@ -59,7 +58,8 @@ func (d domain) KnownClasses() (classes []korrel8.Class) {
 	}
 	return classes
 }
-func (d domain) NewQuery() korrel8.Query { q := Query(""); return &q }
+
+func (d domain) Formatter(string) korrel8.Formatter { return nil }
 
 var _ korrel8.Domain = Domain // Implements interface
 
@@ -72,7 +72,6 @@ type Class struct{ reflect.Type }
 // ClassOf returns the Class of o, which must be a pointer to a typed API resource struct.
 func ClassOf(o client.Object) Class { return Class{reflect.TypeOf(o).Elem()} }
 
-func (c Class) Contains(o korrel8.Object) bool { return reflect.TypeOf(o) == c.Type }
 func (c Class) Key(o korrel8.Object) any {
 	co, _ := o.(client.Object)
 	return client.ObjectKeyFromObject(co)
@@ -93,19 +92,6 @@ func (c Class) String() string {
 	return c.Type.String()
 }
 
-// Query is a REST URI
-type Query string
-
-func (q *Query) REST(base *url.URL) *url.URL {
-	u := *base
-	u.Path = path.Join(u.Path, q.String())
-	return &u
-}
-
-func (q *Query) String() string { return string(*q) }
-
-func (q *Query) Console(base *url.URL) *url.URL { panic("FIXME") }
-
 type Object client.Object
 
 // Store implements the korrel8.Store interface over a k8s API client.
@@ -114,29 +100,20 @@ type Store struct{ c client.Client }
 // NewStore creates a new store
 func NewStore(c client.Client) (*Store, error) { return &Store{c: c}, nil }
 
-func (s *Store) Get(ctx context.Context, q korrel8.Query, result korrel8.Result) (err error) {
-	query, ok := q.(*Query)
-	if !ok {
-		// FIXME extract common implementation stuff.
-		return fmt.Errorf("%v store expects %T but got %T", Domain, query, q)
-	}
+func (s *Store) Get(ctx context.Context, query *korrel8.Query, result korrel8.Result) (err error) {
 	defer func() {
 		if err != nil {
 			err = fmt.Errorf("%w: executing %v query %q", err, Domain, query)
 		}
 	}()
-	u, err := url.Parse(string(*query))
-	if err != nil {
-		return err
-	}
-	gvk, nsName, err := s.parseAPIPath(u.Path)
+	gvk, nsName, err := s.parseAPIPath(query.Path)
 	if err != nil {
 		return err
 	}
 	if nsName.Name != "" { // Request for single object.
 		return s.getObject(ctx, gvk, nsName, result)
 	} else {
-		return s.getList(ctx, gvk, nsName.Namespace, u.Query(), result)
+		return s.getList(ctx, gvk, nsName.Namespace, query.Query(), result)
 	}
 }
 
@@ -148,7 +125,7 @@ func (s *Store) Get(ctx context.Context, q korrel8.Query, result korrel8.Result)
 func (s *Store) parseAPIPath(path string) (gvk schema.GroupVersionKind, nsName types.NamespacedName, err error) {
 	parts := k8sPathRegex.FindStringSubmatch(path)
 	if len(parts) != pCount {
-		return gvk, nsName, fmt.Errorf("invalid URI")
+		return gvk, nsName, fmt.Errorf("invalid URI path")
 	}
 	nsName.Namespace, nsName.Name = parts[pNamespace], parts[pName]
 	gvr := schema.GroupVersionResource{Group: parts[pGroup], Version: parts[pVersion], Resource: parts[pResource]}

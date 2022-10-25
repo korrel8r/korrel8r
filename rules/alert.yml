@@ -3,19 +3,7 @@ goal: k8s/Deployment.v1.apps
 name: AlertToDeployment
 start: alert/alert
 template: |-
-  {{ if index .Labels "deployment" }}/api/v1/namespaces/{{.Labels.namespace}}/deployments/{{.Labels.deployment}}{{ end }}
----
-goal: k8s/Pod.v1
-name: AlertToPod
-start: alert/alert
-template: |-
-  {{ if index .Labels "pod" }}/api/v1/namespaces/{{.Labels.namespace}}/pods/{{.Labels.pod}}{{ end }}
----
-goal: k8s/Service.v1
-name: AlertToService
-start: alert/alert
-template: |-
-  {{ if index .Labels "service" }}/api/v1/namespaces/{{.Labels.namespace}}/services/{{.Labels.service}}{{ end }}
+ /api/v1/namespaces/{{.Labels.namespace}}/deployments/{{.Labels.deployment}}
 ---
 goal: k8s/Namespace.v1
 name: AlertToNamespace

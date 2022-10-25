@@ -125,9 +125,10 @@ func TestStore_Get(t *testing.T) {
 		// Field selectors are not supported by the fake client.
 	} {
 		t.Run(x.query, func(t *testing.T) {
-			query := Query(x.query)
+			query, err := url.Parse(x.query)
+			require.NoError(t, err)
 			var result korrel8.ListResult
-			err := store.Get(context.Background(), &query, &result)
+			err = store.Get(context.Background(), query, &result)
 			require.NoError(t, err)
 			var got []types.NamespacedName
 			for _, v := range result {

@@ -30,8 +30,8 @@ func OpenshiftManagerHost(c client.Client) (string, error) {
 	return r.Spec.Host, nil
 }
 
-// OpenshiftManagerStore creates a store client for the openshift alert manager.
-func OpenshiftManagerStore(cfg *rest.Config) (korrel8.Store, error) {
+// NewOpenshiftStore creates a store client for the openshift alert manager.
+func NewOpenshiftStore(cfg *rest.Config) (korrel8.Store, error) {
 	c, err := client.New(cfg, client.Options{})
 	if err != nil {
 		return nil, err

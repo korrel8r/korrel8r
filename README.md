@@ -1,5 +1,7 @@
 **⚠ Experimental ⚠** This code may change or vanish. It may not work. It may not even make sense.
 
+- [Go API documentation on pkg.go.dev](https://pkg.go.dev/github.com/korrel8/korrel8/pkg/korrel8)
+
 # Overview
 
 A Kubernetes cluster generates many types of *observable signal*, including:
@@ -32,11 +34,6 @@ Goals include:
 -   Automate navigation from symptoms to data that helps diagnose causes.
 -   Reduce multiple-step manual procedures and ad-hoc scripts to a single click/query for the operator.
 -   Help tools that gather and/or analyze diagnostic data to find and focus on useful data.
-
-For more details:
-
--   [Go API documentation on pkg.go.dev](https://pkg.go.dev/github.com/korrel8/korrel8/)
--   [Source code on GitHub](https://github.com/korrel8/korrel8)
 
 # Request for Input
 
@@ -79,22 +76,27 @@ Examples:
 The following concepts are represented by interfaces in the korrel8 package. Support for a new domain implements these interfaces:
 
 **Domain** \
-a family of signals with common storage and representation. Examples: resource, alert, metric, trace
+A family of signals with common storage and representation.
+Examples: resource, alert, metric, trace
 
 **Store** \
-a source of signal data from some + Examples: Loki, Prometheus, Kubernetes API server.
+A source of signal data from some Domain.
+Examples: Loki, Prometheus, Kubernetes API server.
 
 **Query**  \
-Stores accept a Query and return a set of matching signals.
+A URL or URI reference to fetch a set of signals from a Store
 
 **Class**  \
-A subset of signals in a Domain with a common same schema: field names, field types and semantics. + Examples: Pod (k8s), Event(k8s), `KubeContainerWaiting`(alert), log_logged_bytes_total(metric)
+A subset of signals in a Domain with a common schema (field definitions).
+Examples: Pod (k8s), Event(k8s), `KubeContainerWaiting`(alert), log_logged_bytes_total(metric)
 
 **Object** \
 An instance of a signal.
 
 **Rule**  \
-Apply to an instance of a *start* Class, generate a query for the *goal* Class. + Rules are written in terms of domain-specific objects and query languages, but the start and goal can be in different domains (e.g. k8s/Service.v1 → loki/log) + Currently rules are defined as Go templates, see ./rules for examples.
+Apply to an instance of a *start* Class, generate a query for a *goal* Class.
+Rules are written in terms of domain-specific objects and query languages, but the start and goal can be in different domains (e.g. k8s/Service.v1 → loki/log)
+Currently rules are defined as Go templates, see ./rules for examples.
 
 # Conflicting Vocabularies
 
@@ -107,13 +109,3 @@ They each use a different convention that was established before Open Telemetry 
 Historically, observability tools have developed in "silos" without standardization.
 Different conventions adopted in each domain are now entrenched and difficult to change.
 A single vocabulary may eventually become universal, but in the medium term we have to handle mixed signals.
-
-# Implementation TODO list
-
-## Alert Domain
-Currently implemented 2 ways: pkg/alert (thanos) and package amalert (openshift alert manager)
-Unify as a single domain, with multiple store options for thanos/alert manager.
-
-## Functional/End-to-end test automation
-Cluster tests are currently not automated as part of CI.
-Need to figure out a test cluster solution that can run in CI (Kind? EnvTest? Openshift Local?)

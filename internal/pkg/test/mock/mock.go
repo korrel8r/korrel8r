@@ -5,7 +5,6 @@ package mock
 import (
 	"context"
 	"fmt"
-	"net/url"
 	"strings"
 
 	"github.com/korrel8/korrel8/pkg/korrel8"
@@ -13,32 +12,21 @@ import (
 
 type Domain struct{}
 
-func (d Domain) String() string                  { return "mock" }
-func (d Domain) Class(name string) korrel8.Class { return Class(name) }
-func (d Domain) KnownClasses() []korrel8.Class   { return nil }
-func (d Domain) NewQuery() korrel8.Query         { return NewQuery("") }
+func (d Domain) String() string                            { return "mock" }
+func (d Domain) Class(name string) korrel8.Class           { return Class(name) }
+func (d Domain) KnownClasses() []korrel8.Class             { return nil }
+func (d Domain) Formatter(format string) korrel8.Formatter { return nil }
 
 var _ korrel8.Domain = Domain{} // Implements interface
 
 type Class string
 
-func (c Class) Domain() korrel8.Domain         { return Domain{} }
-func (c Class) New() korrel8.Object            { return Object{} }
-func (c Class) String() string                 { return string(c) }
-func (c Class) Contains(o korrel8.Object) bool { _, ok := o.(*Object); return ok }
-func (c Class) Key(o korrel8.Object) any       { return o }
+func (c Class) Domain() korrel8.Domain   { return Domain{} }
+func (c Class) New() korrel8.Object      { return Object{} }
+func (c Class) String() string           { return string(c) }
+func (c Class) Key(o korrel8.Object) any { return o }
 
 var _ korrel8.Class = Class("") // Implements interface
-
-// Query a  "query" is a comma-separated list of "name.class" to be turned into  objects.
-type Query string
-
-func NewQuery(s string) korrel8.Query           { q := Query(s); return &q }
-func (q *Query) String() string                 { return string(*q) }
-func (q *Query) Console(base *url.URL) *url.URL { panic("FIXME") }
-func (q *Query) REST(base *url.URL) *url.URL    { panic("FIXME") }
-
-var _ korrel8.Query = (*Query)(nil) // Implements interface
 
 type Object struct {
 	Name  string
@@ -51,19 +39,19 @@ var _ korrel8.Object = Object{} // Implements interface
 
 type Rule struct {
 	start, goal korrel8.Class
-	apply       func(korrel8.Object, *korrel8.Constraint) korrel8.Query
+	apply       func(korrel8.Object, *korrel8.Constraint) *korrel8.Query
 }
 
 func (r Rule) Start() korrel8.Class { return r.start }
 func (r Rule) Goal() korrel8.Class  { return r.goal }
 func (r Rule) String() string       { return fmt.Sprintf("(%v)=%v", r.start, r.goal) }
-func (r Rule) Apply(start korrel8.Object, c *korrel8.Constraint) (korrel8.Query, error) {
+func (r Rule) Apply(start korrel8.Object, c *korrel8.Constraint) (*korrel8.Query, error) {
 	return r.apply(start, c), nil
 }
 
 var _ korrel8.Rule = Rule{} // Implements interface
 
-func NewRule(start, goal string, apply func(korrel8.Object, *korrel8.Constraint) korrel8.Query) Rule {
+func NewRule(start, goal string, apply func(korrel8.Object, *korrel8.Constraint) *korrel8.Query) Rule {
 	return Rule{
 		start: Class(start),
 		goal:  Class(goal),
@@ -85,8 +73,8 @@ func NewRules(startGoal ...string) []korrel8.Rule {
 
 type Store struct{}
 
-func (s Store) Get(_ context.Context, q korrel8.Query, r korrel8.Result) error {
-	for _, s := range strings.Split(q.String(), ",") {
+func (s Store) Get(_ context.Context, q *korrel8.Query, r korrel8.Result) error {
+	for _, s := range strings.Split(q.Path, "/") {
 		nc := strings.Split(s, ".")
 		r.Append(Object{Name: nc[0], Class: Class(nc[1])})
 	}

@@ -14,20 +14,21 @@ import (
 )
 
 func TestRule_Apply(t *testing.T) {
-	tr, err := templaterule.New("myrule", mock.Class(""), mock.Class(""), `"object: {{.Name}}, constraint: {{ constraint }}"`)
+	tr, err := templaterule.New("myrule", mock.Class(""), mock.Class(""), `/mock?name={{.Name}}&constraint={{constraint}}`)
 	require.NoError(t, err)
 	now := time.Now()
 	constraint := korrel8.Constraint{Start: &now, End: &now}
 	q, err := tr.Apply(mock.NewObject("thing", ""), &constraint)
 	assert.NoError(t, err)
-	assert.Equal(t, mock.NewQuery(fmt.Sprintf("object: thing, constraint: %v", constraint)), q)
+	assert.Equal(t, fmt.Sprintf("/mock?name=thing&constraint=%v", constraint), q.String())
 }
 
 func TestRule_Error(t *testing.T) {
 	tr, err := templaterule.New("myrule", mock.Class(""), mock.Class(""), `{{fail "foobar"}}`)
 	require.NoError(t, err)
 	_, err = tr.Apply(mock.NewObject("thing", ""), nil)
-	assert.Equal(t, "error applying myrule to mock: template: myrule:1:2: executing \"myrule\" at <fail \"foobar\">: error calling fail: foobar", err.Error())
+	want := "template: myrule:1:2: executing \"myrule\" at <fail \"foobar\">: error calling fail: foobar"
+	assert.EqualError(t, err, want)
 }
 
 func TestRule_MissingKey(t *testing.T) {

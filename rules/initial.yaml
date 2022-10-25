@@ -2,19 +2,19 @@ goal: k8s/Pod.v1
 name: DeploymentConfigToPodSelector
 start: k8s/DeploymentConfig.v1.apps.openshift.io
 template: |-
-  "/api/v1/namespaces/{{.Namespace}}/pods?labelSelector={{.Spec.Selector.MatchLabels | k8sSelector | urlquery -}}"
+  /api/v1/namespaces/{{.Namespace}}/pods?labelSelector={{.Spec.Selector.MatchLabels | k8sSelector | urlquery -}}
 ---
 goal: k8s/Pod.v1
 name: DaemonSetToPodSelector
 start: k8s/DaemonSet.v1.apps
 template: |-
-  "/api/v1/namespaces/{{.Namespace}}/pods?labelSelector={{.Spec.Selector.MatchLabels | k8sSelector | urlquery -}}"
+  /api/v1/namespaces/{{.Namespace}}/pods?labelSelector={{.Spec.Selector.MatchLabels | k8sSelector | urlquery -}}
 ---
 goal: k8s/Pod.v1
 name: DeploymentToPodSelector
 start: k8s/Deployment.v1.apps
 template: |-
-  "/api/v1/namespaces/{{.Namespace}}/pods?labelSelector={{.Spec.Selector.MatchLabels | k8sSelector | urlquery -}}"
+  /api/v1/namespaces/{{.Namespace}}/pods?labelSelector={{.Spec.Selector.MatchLabels | k8sSelector | urlquery -}}
 ---
 goal: k8s/Pod.v1
 name: ReplicaSetToPodSelector
@@ -67,9 +67,11 @@ template: |-
 goal: k8s/Pod.v1
 name: EventToPod
 start: k8s/Event.v1.events.k8s.io
-template: '{{or (eq .involvedObject.kind "Pod") (fail "not a pod")}}"/api/v1/namespaces/{{.involvedObject.namespace}}/pods/{{.involvedObject.name}}""'
+template: |-
+  {{or (eq .involvedObject.kind "Pod") (fail "not a pod")}}"/api/v1/namespaces/{{.involvedObject.namespace}}/pods/{{.involvedObject.name}}
 ---
-goal: loki/loki
-name: PodToLokiLogs
+goal: loki/infrastructure
+name: PodToInfrastrctureLogs
 start: k8s/Pod.v1
-template: '"{kubernetes_namespace_name=\"{{.ObjectMeta.Namespace}}\",kubernetes_pod_name=\"{{.ObjectMeta.Name}}\"}"'
+template: |-
+  /api/logs/v1/infrastructure/loki/api/v1/query_range?query={{urlquery (printf "{kubernetes_namespace_name=%q,kubernetes_pod_name=%q} | json" .ObjectMeta.Namespace  .ObjectMeta.Name)}}
