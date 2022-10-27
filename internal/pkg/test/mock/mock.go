@@ -22,7 +22,7 @@ var _ korrel8.Domain = Domain{} // Implements interface
 type Class string
 
 func (c Class) Domain() korrel8.Domain   { return Domain{} }
-func (c Class) New() korrel8.Object      { return Object{} }
+func (c Class) New() korrel8.Object      { return Object{Class: c} }
 func (c Class) String() string           { return string(c) }
 func (c Class) Key(o korrel8.Object) any { return o }
 
@@ -39,19 +39,19 @@ var _ korrel8.Object = Object{} // Implements interface
 
 type Rule struct {
 	start, goal korrel8.Class
-	apply       func(korrel8.Object, *korrel8.Constraint) *korrel8.Query
+	apply       func(korrel8.Object, *korrel8.Constraint) (*korrel8.Query, error)
 }
 
 func (r Rule) Start() korrel8.Class { return r.start }
 func (r Rule) Goal() korrel8.Class  { return r.goal }
 func (r Rule) String() string       { return fmt.Sprintf("(%v)=%v", r.start, r.goal) }
 func (r Rule) Apply(start korrel8.Object, c *korrel8.Constraint) (*korrel8.Query, error) {
-	return r.apply(start, c), nil
+	return r.apply(start, c)
 }
 
 var _ korrel8.Rule = Rule{} // Implements interface
 
-func NewRule(start, goal string, apply func(korrel8.Object, *korrel8.Constraint) *korrel8.Query) Rule {
+func NewRule(start, goal string, apply func(korrel8.Object, *korrel8.Constraint) (*korrel8.Query, error)) Rule {
 	return Rule{
 		start: Class(start),
 		goal:  Class(goal),

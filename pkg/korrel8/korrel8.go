@@ -61,14 +61,18 @@ type Query = url.URL
 type Result interface{ Append(...Object) }
 
 // Rule for finding correlated objects.
+// Rule implementations must be comparable.
 type Rule interface {
-	Start() Class   // Class of start object
-	Goal() Class    // Class of desired result object(s)
-	String() string // Name of the rule
-
-	// Apply the rule to start Object, return a Query for results.
+	// Class of start object. If nil, this is a "wildcard" rule that can start from any class it applies to.
+	Start() Class
+	// Class of desired result object(s), must not be nil.
+	Goal() Class
+	// Name of the rule
+	String() string
+	// Apply the rule to a start Object, return a Query for results.
 	// Optional Constraint (if non-nil) is included in the Query.
-	// May optionally return a Constraint to be used by the next rule in the chain.
+	//
+	// FIXME: May optionally return a Constraint to be used by the next rule in the chain.
 	Apply(start Object, constraint *Constraint) (*Query, error)
 }
 

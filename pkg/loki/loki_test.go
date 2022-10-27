@@ -50,19 +50,22 @@ func TestLokiStackStore_Get(t *testing.T) {
 			Containers: []corev1.Container{{
 				Name:    "logger",
 				Image:   "quay.io/quay/busybox",
-				Command: []string{"echo", strings.Join(want, "\n")}}}},
+				Command: []string{"sh", "-c", fmt.Sprintf("echo %v; sleep infinity", strings.Join(want, "; echo "))}}}},
 	}
 	require.NoError(t, c.Create(ctx, &pod))
-	s, err := NewOpenshiftDefaultStore(ctx, c, test.RESTConfig)
+	s, err := NewOpenshiftLokiStack(ctx, c, test.RESTConfig)
 	require.NoError(t, err)
 	logQL := fmt.Sprintf(`{kubernetes_pod_name="%v", kubernetes_namespace_name="%v"}`, pod.Name, pod.Namespace)
 	query := NewLokiStackQuery(Application, logQL, nil)
+	t.Logf("query: %v", query)
 	var result korrel8.ListResult
 	assert.Eventually(t, func() bool {
-		t.Log("waiting for pod")
 		result = nil
 		err = s.Get(ctx, query, &result)
 		require.NoError(t, err)
+		if len(result) < 3 {
+			t.Logf("waiting for 4 logs, got %v", len(result))
+		}
 		return len(result) >= 3
 	}, time.Minute, time.Second)
 	var got []string

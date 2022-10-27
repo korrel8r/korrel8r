@@ -62,13 +62,13 @@ func TestCorrelate_Pods(t *testing.T) {
 	})
 	// Try all the result types
 	logQL := fmt.Sprintf(`{kubernetes_namespace_name=%q,kubernetes_pod_name=%q}`, pod.Namespace, pod.Name)
-	for _, x := range []struct{ export, want string }{
+	for _, x := range []struct{ format, want string }{
 		{"", "/query_range?direction=FORWARD&query=" + url.QueryEscape(logQL)},
 		{"console", "/monitoring/logs?q=" + url.QueryEscape(logQL)},
 	} {
-		t.Run(x.export, func(t *testing.T) {
+		t.Run(x.format, func(t *testing.T) {
 			var exitCode int
-			stdout, stderr := test.FakeMainStdin(test.JSONString(d), []string{"", "correlate", "k8s/Deployment", "loki/application", "--export", x.export}, func() {
+			stdout, stderr := test.FakeMainStdin(test.JSONString(d), []string{"", "correlate", "k8s/Deployment", "loki/application", "--format", x.format}, func() {
 				exitCode = Execute()
 			})
 			require.Equal(t, 0, exitCode, stderr)

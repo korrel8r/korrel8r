@@ -28,9 +28,9 @@ func New(name string, start, goal korrel8.Class, tmpl string) (*Rule, error) {
 	return &Rule{Template: t, start: start, goal: goal}, err
 }
 
-func (r Rule) String() string       { return r.Template.Name() }
-func (r Rule) Start() korrel8.Class { return r.start }
-func (r Rule) Goal() korrel8.Class  { return r.goal }
+func (r *Rule) String() string       { return r.Template.Name() }
+func (r *Rule) Start() korrel8.Class { return r.start }
+func (r *Rule) Goal() korrel8.Class  { return r.goal }
 
 // Apply the rule by applying the template.
 // The template will be executed with start as the "." context object.

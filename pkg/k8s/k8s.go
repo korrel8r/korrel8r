@@ -79,18 +79,7 @@ func (c Class) Key(o korrel8.Object) any {
 func (c Class) Domain() korrel8.Domain { return Domain }
 func (c Class) New() korrel8.Object    { return reflect.New(c.Type).Interface() }
 
-func (c Class) String() string {
-	// TODO there must be an easier way...
-	for gvk, t := range Scheme.AllKnownTypes() {
-		if t == c.Type {
-			if gvk.Group == "" { // Core group has empty group name
-				return fmt.Sprintf("%v.%v", gvk.Kind, gvk.Version)
-			}
-			return fmt.Sprintf("%v.%v.%v", gvk.Kind, gvk.Version, gvk.Group)
-		}
-	}
-	return c.Type.String()
-}
+func (c Class) String() string { return c.Type.Name() }
 
 type Object client.Object
 

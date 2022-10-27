@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"github.com/korrel8/korrel8/internal/pkg/decoder"
 	"github.com/korrel8/korrel8/internal/pkg/logging"
@@ -27,13 +28,16 @@ var (
 
 // Engine combines a set of domains and a set of rules, so it can perform correlation.
 type Engine struct {
-	Stores  map[string]korrel8.Store
-	Domains map[string]korrel8.Domain
-	Graph   *graph.Graph // Rules forms a directed graph, with korrel8.Class nodes and korrel8.Rule edges.
+	Stores    map[string]korrel8.Store
+	Domains   map[string]korrel8.Domain
+	Rules     []korrel8.Rule
+	Classes   []korrel8.Class
+	graph     *graph.Graph
+	graphOnce sync.Once
 }
 
 func New() *Engine {
-	return &Engine{Stores: map[string]korrel8.Store{}, Domains: map[string]korrel8.Domain{}, Graph: graph.New()}
+	return &Engine{Stores: map[string]korrel8.Store{}, Domains: map[string]korrel8.Domain{}}
 }
 
 func (e *Engine) Store(d korrel8.Domain) (korrel8.Store, error) {
@@ -139,8 +143,7 @@ func (f Engine) followEach(rule korrel8.Rule, start []korrel8.Object, c *korrel8
 }
 
 // Load rules from a file or walk a directory to find files.
-func (e Engine) LoadRules(root string) error {
-	var rules []korrel8.Rule
+func (e *Engine) LoadRules(root string) error {
 	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) (reterr error) {
 		defer func() {
 			if reterr != nil { // Add file name to error
@@ -162,7 +165,7 @@ func (e Engine) LoadRules(root string) error {
 			switch err {
 			case nil:
 				debug.Info("loaded rule", "rule", rule)
-				rules = append(rules, rule)
+				e.Rules = append(e.Rules, rule)
 			case io.EOF:
 				return nil
 			default:
@@ -171,6 +174,14 @@ func (e Engine) LoadRules(root string) error {
 			}
 		}
 	})
-	e.Graph.Add(rules)
 	return err
+}
+
+// Graph computes the rule graph from e.Rules and e.Classes on the first call.
+// On subsequent calls it returns the same graph, it is not re-computed.
+func (e Engine) Graph() *graph.Graph {
+	e.graphOnce.Do(func() {
+		e.graph = graph.New(e.Rules, e.Classes)
+	})
+	return e.graph
 }

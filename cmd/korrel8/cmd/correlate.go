@@ -27,7 +27,7 @@ var correlateCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		e := newEngine()
 		start, goal := must(e.ParseClass(args[0])), must(e.ParseClass(args[1]))
-		path := e.Graph.ShortestPath(start, goal)
+		path := e.Graph().ShortestPath(start, goal)
 		starters := korrel8.NewSetResult(start)
 
 		// FIXME include constraint
@@ -56,12 +56,12 @@ var correlateCmd = &cobra.Command{
 
 func printResult(e *engine.Engine, goal korrel8.Class, queries []korrel8.Query) {
 	formatter := func(q *korrel8.Query) *korrel8.Query { return q }
-	if *format != "" {
-		formatter = goal.Domain().Formatter(*format)
+	if *formatFlag != "" {
+		formatter = goal.Domain().Formatter(*formatFlag)
 		if formatter == nil {
-			check(fmt.Errorf("unknown URL export filter: %q", *format))
+			check(fmt.Errorf("unknown URL format: %q", *formatFlag))
 		}
-		if *format == "console" { // FIXME this is messy
+		if *formatFlag == "console" { // FIXME this is messy
 			c := k8sClient(restConfig())
 			base := url.URL{
 				Scheme: "https",
@@ -77,14 +77,14 @@ func printResult(e *engine.Engine, goal korrel8.Class, queries []korrel8.Query) 
 }
 
 var (
-	format   *string
-	interval *time.Duration
-	endTime  TimeFlag
+	formatFlag   *string
+	intervalFlag *time.Duration
+	endTime      TimeFlag
 )
 
 func init() {
 	rootCmd.AddCommand(correlateCmd)
-	format = correlateCmd.Flags().String("format", "", "format for URLs, e.g. console")
-	interval = correlateCmd.Flags().Duration("interval", time.Minute*10, "limit results to this interval")
+	formatFlag = correlateCmd.Flags().String("format", "", "format for URLs, e.g. console")
+	intervalFlag = correlateCmd.Flags().Duration("interval", time.Minute*10, "limit results to this interval")
 	correlateCmd.Flags().Var(&endTime, "time", "find results up to this time")
 }

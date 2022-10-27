@@ -37,19 +37,18 @@ func TestEngine_Parse(t *testing.T) {
 func TestEngine_Follow(t *testing.T) {
 	path := []korrel8.Rule{
 		// Return 2 results, must follow both
-		mock.NewRule("a", "b", func(korrel8.Object, *korrel8.Constraint) *korrel8.Query {
-			return &korrel8.Query{Path: "1.b/2.b"}
+		mock.NewRule("a", "b", func(korrel8.Object, *korrel8.Constraint) (*korrel8.Query, error) {
+			return &korrel8.Query{Path: "1.b/2.b"}, nil
 		}),
 		// Replace start object's class with goal class
-		mock.NewRule("b", "c", func(start korrel8.Object, _ *korrel8.Constraint) *korrel8.Query {
-			return &korrel8.Query{Path: start.(mock.Object).Name + ".c"}
+		mock.NewRule("b", "c", func(start korrel8.Object, _ *korrel8.Constraint) (*korrel8.Query, error) {
+			return &korrel8.Query{Path: start.(mock.Object).Name + ".c"}, nil
 		}),
-		mock.NewRule("c", "z", func(start korrel8.Object, _ *korrel8.Constraint) *korrel8.Query {
-			return &korrel8.Query{Path: start.(mock.Object).Name + ".z"}
+		mock.NewRule("c", "z", func(start korrel8.Object, _ *korrel8.Constraint) (*korrel8.Query, error) {
+			return &korrel8.Query{Path: start.(mock.Object).Name + ".z"}, nil
 		}),
 	}
 	want := []korrel8.Query{{Path: "1.z"}, {Path: "2.z"}}
-
 	e := New()
 	e.AddDomain(mock.Domain{}, mock.Store{})
 	queries, err := e.Follow(context.Background(), []korrel8.Object{mock.NewObject("foo", "a")}, nil, path)

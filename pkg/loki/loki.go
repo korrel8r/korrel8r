@@ -151,7 +151,7 @@ func (s *PlainStore) Get(ctx context.Context, query *korrel8.Query, result korre
 	return s.Store.Get(ctx, &u, result)
 }
 
-func NewOpenshiftDefaultStore(ctx context.Context, c client.Client, cfg *rest.Config) (*Store, error) {
+func NewOpenshiftLokiStack(ctx context.Context, c client.Client, cfg *rest.Config) (*Store, error) {
 	host, err := openshift.RouteHost(ctx, c, openshift.LokiStackNSName)
 	if err != nil {
 		return nil, err

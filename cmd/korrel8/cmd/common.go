@@ -82,7 +82,7 @@ func newEngine() *engine.Engine {
 	e.AddDomain(k8s.Domain, ds(func() (korrel8.Store, error) { return k8s.NewStore(k8sClient(cfg)) }))
 	e.AddDomain(alert.Domain, ds(func() (korrel8.Store, error) { return alert.NewOpenshiftStore(cfg) }))
 	e.AddDomain(loki.Domain, ds(func() (korrel8.Store, error) {
-		return loki.NewOpenshiftDefaultStore(ctx, k8sClient(cfg), cfg)
+		return loki.NewOpenshiftLokiStack(ctx, k8sClient(cfg), cfg)
 	}))
 	// Load rules
 	for _, path := range *rulePaths {
