@@ -9,42 +9,73 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func r(start, goal string) korrel8.Rule { return mock.NewRule(start, goal, nil) }
+var r = mock.QuickRule
 
-func TestGraph_ShortestPath(t *testing.T) {
+func nr(name, start, goal string) korrel8.Rule { return mock.NewRule(name, start, goal, nil) }
+
+func l(startGoal ...string) Links { return append(Links{}, mock.Rules(startGoal...)...) }
+
+func TestGraph_ShortestPaths(t *testing.T) {
 	for _, x := range []struct {
-		name        string
-		rules, want []korrel8.Rule
+		name  string
+		rules []korrel8.Rule
+		want  []MultiPath
 	}{
 		{
 			name:  "simple",
 			rules: []korrel8.Rule{r("a", "b"), r("b", "c"), r("c", "z")},
-			want:  []korrel8.Rule{r("a", "b"), r("b", "c"), r("c", "z")},
+			want:  []MultiPath{{l("a", "b"), l("b", "c"), l("c", "z")}},
 		},
 		{
 			name:  "shortest",
 			rules: []korrel8.Rule{r("a", "b"), r("b", "c"), r("c", "d"), r("d", "z"), r("c", "z"), r("a", "z")},
-			want:  []korrel8.Rule{r("a", "z")},
+			want:  []MultiPath{{l("a", "z")}},
 		},
 		{
 			name:  "none",
-			rules: []korrel8.Rule{r("a", "b"), r("b", "c"), r("c", "d")},
+			rules: []korrel8.Rule{r("a", "b"), r("c", "z")},
 			want:  nil,
+		},
+		{
+			name:  "multi-pick-shortest",
+			rules: []korrel8.Rule{r("a", "b"), r("b", "c"), r("a", "c"), r("c", "z")},
+			want:  []MultiPath{{links("a", "c"), links("c", "z")}},
+		},
+		{
+			name:  "multi-shortest",
+			rules: []korrel8.Rule{r("a", "b"), r("b", "c"), r("b", "y"), r("y", "z"), r("c", "z")},
+			want: []MultiPath{
+				{links("a", "b"), links("b", "c"), links("c", "z")},
+				{links("a", "b"), links("b", "y"), links("y", "z")},
+			},
+		},
+		{
+			name:  "multi-link",
+			rules: []korrel8.Rule{r("a", "c"), nr("cz1", "c", "z"), nr("cz2", "c", "z")},
+			want:  []MultiPath{{links("a", "c"), links("c", "z", "cz1", "cz2")}},
+		},
+		{
+			name:  "multi-link-and-path",
+			rules: []korrel8.Rule{r("a", "c"), nr("cz1", "c", "z"), nr("cz2", "c", "z")},
+			want: []MultiPath{
+				{links("a", "c"), links("c", "z", "cz1", "cz2")},
+			},
 		},
 	} {
 		t.Run(x.name, func(t *testing.T) {
-			g := New(x.rules, nil)
-			got := g.ShortestPath(mock.Class("a"), mock.Class("z"))
-			assert.ElementsMatch(t, x.want, got)
+			g := New("test", x.rules, nil)
+			got, err := g.ShortestPaths(mock.Class("a"), mock.Class("z"))
+			assert.NoError(t, err)
+			assert.ElementsMatch(t, x.want, got, "%v != %v", x.want, got)
 		})
 	}
 }
 
 func rm(start, goal string, extras ...string) korrel8.Rule {
-	return mock.NewRule(start, goal,
+	return mock.NewRule(start+"_"+goal, start, goal,
 		func(o korrel8.Object, _ *korrel8.Constraint) (*korrel8.Query, error) {
 			for _, s := range extras {
-				if s == o.(mock.Object).Class.String() {
+				if s == o.(mock.Object).Class().String() {
 					return nil, nil // Accept
 				}
 			}

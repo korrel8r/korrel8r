@@ -7,6 +7,5 @@ lint:				## Check for lint.
 	golangci-lint run
 
 .PHONY: test
-test:				## Run all the tests
-	TEST_NO_SKIP=1 go test -cover ./...
-	$(MAKE) -s lint
+test:				## Run all the tests. Requires a cluster.
+	TEST_NO_SKIP=1 go test -cover -race ./...

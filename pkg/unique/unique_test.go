@@ -25,3 +25,9 @@ func TestInPlace(t *testing.T) {
 	assert.Equal(t, []int(nil), unique.InPlace(nil, unique.Same[int]))
 	assert.Equal(t, []int{}, unique.InPlace([]int{}, unique.Same[int]))
 }
+
+func TestList(t *testing.T) {
+	l := unique.NewList[int]()
+	l.Append(1, 2, 3, 1, 4, 3, 5, 5, 5, 6)
+	assert.Equal(t, []int{1, 2, 3, 4, 5, 6}, l.List)
+}

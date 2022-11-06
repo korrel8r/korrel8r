@@ -23,7 +23,7 @@ type Object any
 type Domain interface {
 	String() string                    // Name of the domain
 	Class(string) Class                // Find a class by name, return nil if not found.
-	KnownClasses() []Class             // List of known classes in the Domain
+	Classes() []Class                  // List of known classes in the Domain
 	Formatter(format string) Formatter // Get a URL exporter, returns nil if not available.
 }
 
@@ -39,11 +39,11 @@ type Class interface {
 	Domain() Domain // Domain of this class.
 	New() Object    // Return a new instance of the class, can be unmarshaled from JSON.
 	Key(Object) any // Comparable key for de-duplication or nil if object is not in this class.
-	String() string // Name of the class within the domain, e.g "Pod.v1". See ClassName()
+	String() string // Name of the class within the domain, e.g "Pod". See ClassName()
 }
 
-// ClassName is the qualified domain/name of a class, e.g. "k8s/Pod.v1"
-func ClassName(c Class) string { return path.Join(c.Domain().String(), c.String()) }
+// FullName is the qualified domain/name of a class, e.g. "k8s/Pod"
+func FullName(c Class) string { return path.Join(c.Domain().String(), c.String()) }
 
 // Store is a source of signals belonging to a single domain.
 type Store interface {

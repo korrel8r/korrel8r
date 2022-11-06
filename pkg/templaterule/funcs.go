@@ -2,40 +2,46 @@ package templaterule
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
-	"strings"
+	"net/url"
+	"reflect"
 
 	"github.com/korrel8/korrel8/pkg/korrel8"
 	"sigs.k8s.io/yaml"
 )
 
-// Funcs that are automatically added to templates created by New.
-// Rule.Apply() adds a "constraint" function with the constraint if present.
-var funcs = map[string]any{
+// FIXME document extra funcs, see text/template
+
+// Funcs that are available in templates created by New.
+// Rule.Apply() adds the "constraint" function with the constraint if present.
+var Funcs = map[string]any{
 	"constraint":  func() *korrel8.Constraint { return nil },
-	"fail":        func(msg string) (string, error) { return "", errors.New(msg) },
-	"toJSON":      ToJSON,
-	"toYAML":      ToYAML,
-	"k8sSelector": K8SSelector,
+	"has":         func(_ ...any) bool { return true },
+	"json":        toJSON,
+	"yaml":        toYAML,
+	"fullname":    korrel8.FullName,
+	"urlquerymap": urlQueryMap,
 }
 
-func Fail(message string) error {
-	if message != "" {
-		return fmt.Errorf("rule failed: %s", message)
+func toJSON(v any) (string, error) { b, err := json.Marshal(v); return string(b), err }
+func toYAML(v any) (string, error) { b, err := yaml.Marshal(v); return string(b), err }
+
+func doAssert(ok bool) string {
+	if !ok {
+		panic("assertion failed")
 	}
-	return errors.New("rule failed")
+	return ""
 }
 
-func ToJSON(v any) (string, error) { b, err := json.Marshal(v); return string(b), err }
-func ToYAML(v any) (string, error) { b, err := yaml.Marshal(v); return string(b), err }
-
-func K8SSelector(m map[string]string) string {
-	b := &strings.Builder{}
-	sep := ""
-	for k, v := range m {
-		fmt.Fprintf(b, "%v%v=%v", sep, k, v)
-		sep = ","
+func urlQueryMap(m any) string {
+	v := reflect.ValueOf(m)
+	if !v.IsValid() {
+		return ""
 	}
-	return b.String()
+	p := url.Values{}
+	i := v.MapRange()
+	for i.Next() {
+		p.Add(fmt.Sprintf("%v", i.Key()), fmt.Sprintf("%v", i.Value()))
+	}
+	return p.Encode()
 }

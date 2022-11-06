@@ -43,25 +43,24 @@ func TestDomain_Class(t *testing.T) {
 		name string
 		want korrel8.Class
 	}{
-		{"Pod", ClassOf(&corev1.Pod{})},
-		{"Pod.v1", ClassOf(&corev1.Pod{})},
-		{"Pod.v1.", ClassOf(&corev1.Pod{})},
-		{"Deployment", ClassOf(&appsv1.Deployment{})},
-		{"Deployment.v1", ClassOf(&appsv1.Deployment{})},
-		{"Deployment.v1.apps", ClassOf(&appsv1.Deployment{})},
+		{"Pod", ClassOf(&corev1.Pod{})},                       // Kind only
+		{"Pod.", ClassOf(&corev1.Pod{})},                      // Kind and group (core group is named "")
+		{"Pod.v1.", ClassOf(&corev1.Pod{})},                   // Kind, version gand roup.
+		{"Deployment", ClassOf(&appsv1.Deployment{})},         // Kind only
+		{"Deployment.apps", ClassOf(&appsv1.Deployment{})},    // Kind and group
+		{"Deployment.v1.apps", ClassOf(&appsv1.Deployment{})}, // Kind, version and group
 	} {
 		t.Run(x.name, func(t *testing.T) {
 			assert.NotNil(t, x.want)
 			got := Domain.Class(x.name)
-			if assert.NotNil(t, got) {
-				assert.Equal(t, x.want.String(), got.String())
-			}
+			require.NotNil(t, got)
+			assert.Equal(t, x.want.String(), got.String())
+
 			// Round trip for String()
 			name := got.String()
 			got2 := Domain.Class(name)
-			if assert.NotNil(t, got2, "lookup %v", name) {
-				assert.Equal(t, name, got2.String())
-			}
+			require.NotNil(t, got2)
+			assert.Equal(t, name, got2.String())
 		})
 	}
 }

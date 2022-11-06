@@ -4,125 +4,124 @@ package engine
 import (
 	"context"
 	"fmt"
-	"io"
-	"io/fs"
-	"os"
-	"path/filepath"
+	"net/url"
 	"strings"
 	"sync"
 
-	"github.com/korrel8/korrel8/internal/pkg/decoder"
 	"github.com/korrel8/korrel8/internal/pkg/logging"
 	"github.com/korrel8/korrel8/pkg/graph"
 	"github.com/korrel8/korrel8/pkg/korrel8"
-	"github.com/korrel8/korrel8/pkg/templaterule"
 	"github.com/korrel8/korrel8/pkg/unique"
 	"go.uber.org/multierr"
+	"golang.org/x/exp/maps"
 )
 
-var (
-	log   = logging.Log
-	debug = log.V(2)
-	warn  = log.V(1)
-)
+var log = logging.Log
 
 // Engine combines a set of domains and a set of rules, so it can perform correlation.
 type Engine struct {
-	Stores    map[string]korrel8.Store
-	Domains   map[string]korrel8.Domain
-	Rules     []korrel8.Rule
-	Classes   []korrel8.Class
+	name      string
+	stores    map[string]korrel8.Store
+	domains   map[string]korrel8.Domain
+	rules     []korrel8.Rule
+	classes   []korrel8.Class
 	graph     *graph.Graph
 	graphOnce sync.Once
 }
 
-func New() *Engine {
-	return &Engine{Stores: map[string]korrel8.Store{}, Domains: map[string]korrel8.Domain{}}
+func New(name string) *Engine {
+	return &Engine{name: name, stores: map[string]korrel8.Store{}, domains: map[string]korrel8.Domain{}}
 }
 
-func (e *Engine) Store(d korrel8.Domain) (korrel8.Store, error) {
-	s, ok := e.Stores[d.String()]
-	if !ok {
-		return nil, fmt.Errorf("no store for domain %v", d)
-	}
-	return s, nil
+func (e Engine) Name() string { return e.name }
+
+// Domain or nil if no domain of that name exists.
+func (e *Engine) Domain(name string) korrel8.Domain { return e.domains[name] }
+
+func (e *Engine) Domains() (domains []korrel8.Domain) { return maps.Values(e.domains) }
+
+// Store for domain or nil if no store is available.
+func (e *Engine) Store(d korrel8.Domain) korrel8.Store { return e.stores[d.String()] }
+
+// AddDomain domain and corresponding store, store may be nil.
+func (e *Engine) AddDomain(d korrel8.Domain, s korrel8.Store) {
+	e.domains[d.String()] = d
+	e.stores[d.String()] = s
 }
 
+// ParseClass parses a full 'domain/class' name and returns the class.
 func (e *Engine) ParseClass(name string) (korrel8.Class, error) {
-	parts := strings.SplitN(name, "/", 2)
-	domain := e.Domains[parts[0]]
+	d, c, ok := strings.Cut(name, "/")
+	if !ok || c == "" || d == "" {
+		return nil, fmt.Errorf("invalid class name: %v", name)
+	}
+	domain := e.Domain(d)
 	if domain == nil {
-		return nil, fmt.Errorf("unknown domain: %q", parts[0])
+		return nil, fmt.Errorf("unknown domain: %v", d)
 	}
-	var cname string
-	if len(parts) == 2 {
-		cname = parts[1]
-	}
-	class := domain.Class(cname)
+	class := domain.Class(c)
 	if class == nil {
-		return nil, fmt.Errorf("unknown class: %q", parts[1])
+		return nil, fmt.Errorf("unknown class in domain %v: %v", d, c)
 	}
 	return class, nil
 }
 
-// AddDomain domain and corresponding store, s may be nil.
-func (e *Engine) AddDomain(d korrel8.Domain, s korrel8.Store) {
-	e.Domains[d.String()] = d
-	e.Stores[d.String()] = s
+func (e *Engine) Rules() []korrel8.Rule { return e.rules }
+
+func (e *Engine) AddRule(r korrel8.Rule) error {
+	e.rules = append(e.rules, r)
+	/// FIXME validate rules while adding
+	return nil
+}
+
+func (e *Engine) AddRules(rules ...korrel8.Rule) error {
+	for _, r := range rules {
+		if err := e.AddRule(r); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // Follow rules in a path.
 // Returns multiple queries if some rules in the path return multiple objects.
 // May return queries and a multierr if there are some errors.
-func (e Engine) Follow(ctx context.Context, starters []korrel8.Object, c *korrel8.Constraint, path []korrel8.Rule) (queries []korrel8.Query, err error) {
+func (e Engine) Follow(ctx context.Context, starters []korrel8.Object, c *korrel8.Constraint, path graph.MultiPath) ([]korrel8.Query, error) {
 	// TODO multi-path following needs thought, reduce duplication.
-	debug.Info("following path", "path", path)
-	if err := e.Validate(path); err != nil {
-		return nil, err
+	log.V(1).Info("following path", "path", path)
+	if !path.Valid() {
+		return nil, fmt.Errorf("invalid path: %v", path)
 	}
-	for i, rule := range path {
-		log.Info("following rule", "rule", rule.String(), "goal", rule.Goal().String())
-		queries, err = e.followEach(rule, starters, c)
-		if err != nil {
-			warn.Error(err, "ignored")
-			continue
+	queries := unique.NewList[url.URL]()
+	for i, links := range path {
+		queries.List = queries.List[:0] // Clear previous queries
+		log.V(1).Info("following links", "rules", links, "start", links.Start(), "goal", links.Goal())
+		for _, rule := range links {
+			q, err := e.followEach(rule, starters, c)
+			if err != nil {
+				log.V(1).Error(err, "ignored")
+				continue
+			}
+			queries.Append(q...)
 		}
-		debug.Info("queries", "queries", queries)
+		log.V(1).Info("queries", "queries", queries)
 		if i == len(path)-1 {
 			break
 		}
-		d := rule.Goal().Domain()
-		store := e.Stores[d.String()]
+		d := links.Goal().Domain()
+		store := e.stores[d.String()]
 		if store == nil {
-			warn.Info("no store", "domain", d)
-			continue
+			return nil, fmt.Errorf("no store for domain %v", d)
 		}
 		var result korrel8.ListResult
-		for _, q := range queries {
+		for _, q := range queries.List {
 			if err := store.Get(ctx, &q, &result); err != nil {
-				warn.Error(err, "ignored")
+				log.V(1).Error(err, "ignored")
 			}
 		}
 		starters = result.List()
 	}
-	return unique.InPlace(queries, unique.Same[korrel8.Query]), err
-}
-
-// Validate checks that the Goal() of each rule matches the Start() of the next,
-// and that the engine has all the stores needed to follow the path.
-func (e Engine) Validate(path []korrel8.Rule) error {
-	for i, r := range path {
-		if i < len(path)-1 {
-			if r.Goal() != path[i+1].Start() {
-				return fmt.Errorf("invalid path, mismatched rues: %v, %v", r, path[i+1])
-			}
-			d := r.Goal().Domain()
-			if _, ok := e.Stores[d.String()]; !ok {
-				return fmt.Errorf("no store available for %v", d)
-			}
-		}
-	}
-	return nil
+	return queries.List, nil
 }
 
 // FollowEach calls r.Apply() for each start object and collects the resulting queries.
@@ -142,46 +141,11 @@ func (f Engine) followEach(rule korrel8.Rule, start []korrel8.Object, c *korrel8
 	return unique.InPlace(queries, unique.Same[korrel8.Query]), merr
 }
 
-// Load rules from a file or walk a directory to find files.
-func (e *Engine) LoadRules(root string) error {
-	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) (reterr error) {
-		defer func() {
-			if reterr != nil { // Add file name to error
-				reterr = fmt.Errorf("%v: %w", path, reterr)
-			}
-		}()
-		ext := filepath.Ext(path)
-		if err != nil || !d.Type().IsRegular() || (ext != ".yaml" && ext != ".yml" && ext != ".json") {
-			return nil
-		}
-		debug.Info("loading rules", "path", path)
-		f, err := os.Open(path)
-		if err != nil {
-			return err
-		}
-		decoder := decoder.New(f)
-		for {
-			rule, err := templaterule.Decode(decoder, e.ParseClass)
-			switch err {
-			case nil:
-				debug.Info("loaded rule", "rule", rule)
-				e.Rules = append(e.Rules, rule)
-			case io.EOF:
-				return nil
-			default:
-				// Estimate number of lines
-				return err
-			}
-		}
-	})
-	return err
-}
-
 // Graph computes the rule graph from e.Rules and e.Classes on the first call.
 // On subsequent calls it returns the same graph, it is not re-computed.
 func (e Engine) Graph() *graph.Graph {
 	e.graphOnce.Do(func() {
-		e.graph = graph.New(e.Rules, e.Classes)
+		e.graph = graph.New(e.name, e.rules, e.classes)
 	})
 	return e.graph
 }

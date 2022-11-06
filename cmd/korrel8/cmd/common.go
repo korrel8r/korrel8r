@@ -5,14 +5,18 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
+	"path/filepath"
 
+	"github.com/korrel8/korrel8/internal/pkg/decoder"
 	"github.com/korrel8/korrel8/internal/pkg/logging"
 	alert "github.com/korrel8/korrel8/pkg/amalert"
 	"github.com/korrel8/korrel8/pkg/engine"
 	"github.com/korrel8/korrel8/pkg/k8s"
 	"github.com/korrel8/korrel8/pkg/korrel8"
 	"github.com/korrel8/korrel8/pkg/loki"
+	"github.com/korrel8/korrel8/pkg/templaterule"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/util/flowcontrol"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -21,9 +25,8 @@ import (
 )
 
 var (
-	log   = logging.Log
-	debug = log.V(2)
-	ctx   = context.Background()
+	log = logging.Log
+	ctx = context.Background()
 )
 
 func check(err error, format ...any) {
@@ -77,19 +80,17 @@ func ds(create func() (korrel8.Store, error)) korrel8.Store { return &deferredSt
 
 func newEngine() *engine.Engine {
 	cfg := restConfig()
-	e := engine.New()
+	e := engine.New("korrel8")
 
 	e.AddDomain(k8s.Domain, ds(func() (korrel8.Store, error) { return k8s.NewStore(k8sClient(cfg)) }))
 	e.AddDomain(alert.Domain, ds(func() (korrel8.Store, error) { return alert.NewOpenshiftStore(cfg) }))
 	e.AddDomain(loki.Domain, ds(func() (korrel8.Store, error) {
-		return loki.NewOpenshiftLokiStack(ctx, k8sClient(cfg), cfg)
+		return loki.NewOpenshiftLokiStackStore(ctx, k8sClient(cfg), cfg)
 	}))
 	// Load rules
 	for _, path := range *rulePaths {
-		debug.Info("loading rules", "path", path)
-		check(e.LoadRules(path))
+		check(loadRules(e, path))
 	}
-
 	return e
 }
 
@@ -126,5 +127,51 @@ func newPrinter(w io.Writer) printer {
 func (p printer) Append(objects ...korrel8.Object) {
 	for _, o := range objects {
 		p.print(o)
+	}
+}
+
+// loadRules from a file or walk a directory to find files.
+func loadRules(e *engine.Engine, root string) error {
+	log.V(2).Info("loading rules from", "root", root)
+	return filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) (reterr error) {
+		ext := filepath.Ext(path)
+		if !d.Type().IsRegular() || (ext != ".yaml" && ext != ".yml" && ext != ".json") {
+			return nil
+		}
+		log.V(2).Info("loading rules", "path", path)
+		return decodeRules(e, path)
+	})
+}
+
+// FIXME Move rule loading to library
+
+// decodeRules from a single file
+func decodeRules(e *engine.Engine, path string) (err error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	decoder := decoder.New(f)
+	defer func() {
+		if err != nil {
+			err = fmt.Errorf("%v:%v: %w", path, decoder.Line(), err)
+		}
+	}()
+	for {
+		rule := templaterule.Rule{}
+		switch decoder.Decode(&rule) {
+		case nil:
+			krs, err := rule.Rules(e)
+			if err != nil {
+				return err
+			}
+			e.AddRules(krs...)
+			log.V(2).Info("loaded", "rule", rule.Name, "expanded", len(krs))
+		case io.EOF:
+			return nil
+		default:
+			return err
+		}
 	}
 }

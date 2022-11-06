@@ -29,7 +29,7 @@ import (
 var rootCmd = &cobra.Command{
 	Use:     "korrel8",
 	Short:   "Command line correlation tool",
-	Version: "0.1.0",
+	Version: "0.1.1",
 }
 
 func Execute() (exitCode int) {

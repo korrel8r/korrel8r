@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"strings"
 
 	"github.com/spf13/cobra"
 )
@@ -21,13 +22,10 @@ var getCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		domainName, queryString := args[0], args[1]
 		e := newEngine()
-		domain, ok := e.Domains[domainName]
-		if !ok {
-			check(fmt.Errorf("unknown domain name %q", domainName))
-		}
-		store, ok := e.Stores[domain.String()]
-		if !ok {
-			check(fmt.Errorf("no store for domaina %q", domainName))
+		domainName, _, _ = strings.Cut(domainName, "/") // Allow a class name, extract the domain.
+		store := e.Store(e.Domain(domainName))
+		if store == nil {
+			check(fmt.Errorf("no store for domain %v", domainName))
 		}
 		query, err := url.Parse(queryString)
 		check(err, "invalid query URL: %v", queryString)

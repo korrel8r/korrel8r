@@ -16,6 +16,7 @@ import (
 	"github.com/korrel8/korrel8/internal/pkg/openshift"
 	"github.com/korrel8/korrel8/pkg/engine"
 	"github.com/korrel8/korrel8/pkg/korrel8"
+	"github.com/korrel8/korrel8/pkg/unique"
 	"github.com/spf13/cobra"
 )
 
@@ -27,14 +28,17 @@ var correlateCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		e := newEngine()
 		start, goal := must(e.ParseClass(args[0])), must(e.ParseClass(args[1]))
-		path := e.Graph().ShortestPath(start, goal)
+		paths := must(e.Graph().ShortestPaths(start, goal))
 		starters := korrel8.NewSetResult(start)
 
 		// FIXME include constraint
 
 		if len(args) == 3 { // Get starters using query
 			query := must(url.Parse(args[2]))
-			store := must(e.Store(start.Domain()))
+			store := e.Store(start.Domain())
+			if store == nil {
+				check(fmt.Errorf("domain has no store: %v", start.Domain()))
+			}
 			store.Get(ctx, query, starters)
 		} else { // Read starters from stdin
 			dec := decoder.New(os.Stdin)
@@ -49,8 +53,11 @@ var correlateCmd = &cobra.Command{
 				starters.Append(o)
 			}
 		}
-		queries := must(e.Follow(ctx, starters.List(), nil, path))
-		printResult(e, goal, queries)
+		queries := unique.NewList[url.URL]()
+		for _, path := range paths {
+			queries.Append(must(e.Follow(ctx, starters.List(), nil, path))...)
+		}
+		printResult(e, goal, queries.List)
 	},
 }
 
@@ -59,7 +66,7 @@ func printResult(e *engine.Engine, goal korrel8.Class, queries []korrel8.Query) 
 	if *formatFlag != "" {
 		formatter = goal.Domain().Formatter(*formatFlag)
 		if formatter == nil {
-			check(fmt.Errorf("unknown URL format: %q", *formatFlag))
+			check(fmt.Errorf("unknown URL format: %v", *formatFlag))
 		}
 		if *formatFlag == "console" { // FIXME this is messy
 			c := k8sClient(restConfig())

@@ -20,7 +20,7 @@ type domain struct{}
 
 func (d domain) String() string                     { return "alert" }
 func (d domain) Class(string) korrel8.Class         { return Class{} }
-func (d domain) KnownClasses() []korrel8.Class      { return []korrel8.Class{Class{}} }
+func (d domain) Classes() []korrel8.Class           { return []korrel8.Class{Class{}} }
 func (d domain) Formatter(string) korrel8.Formatter { return nil }
 
 var _ korrel8.Domain = Domain
@@ -92,7 +92,7 @@ func (s Store) Get(ctx context.Context, query *url.URL, result korrel8.Result) e
 	promQL := query.Query().Get("query")
 	matchers, err := labels.ParseMatchers(promQL)
 	if err != nil {
-		return fmt.Errorf("failed to parse query: %q: %w", query, err)
+		return fmt.Errorf("invai query: %w: %v", err, query)
 	}
 
 	resp, err := s.api.Alerts(ctx)

@@ -26,7 +26,7 @@ var Domain = domain{}
 
 func (d domain) String() string                  { return "loki" }
 func (d domain) Class(name string) korrel8.Class { return classMap[name] }
-func (d domain) KnownClasses() []korrel8.Class   { return classes }
+func (d domain) Classes() []korrel8.Class        { return classes }
 
 func (d domain) Formatter(format string) korrel8.Formatter {
 	switch format {
@@ -74,6 +74,8 @@ var _ korrel8.Store = &Store{}
 func NewStore(baseURL *url.URL, c *http.Client) (*Store, error) {
 	return &Store{c: c, base: *baseURL}, nil
 }
+
+func (s *Store) String() string { return s.base.String() }
 
 func (s *Store) Get(ctx context.Context, query *korrel8.Query, result korrel8.Result) error {
 	query = s.base.ResolveReference(query)
@@ -151,7 +153,7 @@ func (s *PlainStore) Get(ctx context.Context, query *korrel8.Query, result korre
 	return s.Store.Get(ctx, &u, result)
 }
 
-func NewOpenshiftLokiStack(ctx context.Context, c client.Client, cfg *rest.Config) (*Store, error) {
+func NewOpenshiftLokiStackStore(ctx context.Context, c client.Client, cfg *rest.Config) (*Store, error) {
 	host, err := openshift.RouteHost(ctx, c, openshift.LokiStackNSName)
 	if err != nil {
 		return nil, err
@@ -166,7 +168,7 @@ func NewOpenshiftLokiStack(ctx context.Context, c client.Client, cfg *rest.Confi
 func NewPlainQuery(logQL string, constraint *korrel8.Constraint) *korrel8.Query {
 	v := url.Values{}
 	v.Add("query", logQL)
-	v.Add("direction", "FORWARD")
+	v.Add("direction", "forward")
 	if constraint != nil {
 		if constraint.Limit != nil {
 			v.Add("limit", fmt.Sprintf("%v", *constraint.Limit))

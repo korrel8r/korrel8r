@@ -8,24 +8,45 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func assertReadOK(t *testing.T, want string, buf []byte, n int, err error) {
+	t.Helper()
+	assert.NoError(t, err, "read error")
+	assert.Equal(t, len(want), n, "length mismatch")
+	assert.Equal(t, want, string(buf[:len(want)]), "data mismatch")
+}
+
 func TestLineCountReader(t *testing.T) {
-	r := strings.NewReader(`
-one
-two
-three
-`)
-	lr := NewLineCountReader(r)
-	assert.Equal(t, 1, lr.Line())
-	data := make([]byte, 3)
-	n, err := lr.Read(data)
-	assert.NoError(t, err)
-	assert.Equal(t, 3, n)
-	n, _ = lr.Read(data[:1])
-	assert.Equal(t, 2, lr.Line())
-	data = make([]byte, 100)
-	n, _ = lr.Read(data)
-	assert.Equal(t, 11, n)
-	assert.Equal(t, 5, lr.Line())
+	s := "one\ntwo\nthree\n"
+	buf := make([]byte, len(s))
+
+	t.Run("read full line", func(t *testing.T) {
+		lr := NewLineCountReader(strings.NewReader(s))
+		assert.Equal(t, 0, lr.Line)
+		n, err := lr.Read(buf[:4])
+		assertReadOK(t, "one\n", buf, n, err)
+		assert.Equal(t, 1, lr.Line)
+	})
+
+	t.Run("read part line", func(t *testing.T) {
+		lr := NewLineCountReader(strings.NewReader(s))
+		n, err := lr.Read(buf[:2])
+		assertReadOK(t, "on", buf, n, err)
+		assert.Equal(t, 0, lr.Line)
+
+		n, err = lr.Read(buf[:4])
+		assertReadOK(t, "e\n", buf, n, err)
+		assert.Equal(t, 1, lr.Line)
+	})
+
+	t.Run("read multi-line", func(t *testing.T) {
+		lr := NewLineCountReader(strings.NewReader(s))
+		for i, s := range []string{"one\n", "two\n", "three\n"} {
+			n, err := lr.Read(buf)
+			assertReadOK(t, s, buf, n, err)
+			assert.NoError(t, err)
+			assert.Equal(t, i+1, lr.Line)
+		}
+	})
 }
 
 func TestDecoder_DecodeGood(t *testing.T) {
@@ -59,10 +80,10 @@ func TestDecoder_DecodeBad(t *testing.T) {
 		err  string
 		line int
 	}{
-		{`{"a":"b"`, "unexpected EOF", 1},
 		{`
 a: b
-: x`, "error converting YAML to JSON: yaml: line 2: did not find expected key", 3},
+: x`, "error converting YAML to JSON: yaml: line 2: did not find expected key", 2},
+		{`{"a":"b"`, "unexpected EOF", 0},
 	} {
 		t.Run(x.data, func(t *testing.T) {
 			d := New(strings.NewReader(x.data))
@@ -70,7 +91,6 @@ a: b
 			assert.EqualError(t, d.Decode(&got), x.err)
 			assert.Equal(t, x.line, d.Line())
 			assert.Nil(t, got)
-
 		})
 	}
 }

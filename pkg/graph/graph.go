@@ -1,6 +1,8 @@
 package graph
 
 import (
+	"fmt"
+
 	"github.com/korrel8/korrel8/internal/pkg/logging"
 	"github.com/korrel8/korrel8/pkg/korrel8"
 	"gonum.org/v1/gonum/graph"
@@ -13,6 +15,7 @@ var log = logging.Log
 
 // Graph is a directed multigraph with korrel8.Class vertices and korrel8.Rule edges.
 type Graph struct {
+	name string
 	*multi.DirectedGraph
 	rules   []korrel8.Rule
 	classes []korrel8.Class
@@ -20,64 +23,78 @@ type Graph struct {
 	paths   path.AllShortest
 }
 
-// New graph: nodes are classes, edge for each rule is (rule.start, rule.goal)
-func New(rules []korrel8.Rule, classes []korrel8.Class) *Graph {
-	g := &Graph{DirectedGraph: multi.NewDirectedGraph(),
-		rules:   rules,
-		classes: classes,
-		nodeID:  map[korrel8.Class]int64{},
+// line is a graph edge, corresponds to a rule.
+type line struct {
+	multi.Line
+	korrel8.Rule
+}
+
+func (l line) DOTID() string { return "" }
+func (l line) Attributes() []encoding.Attribute {
+	return []encoding.Attribute{{Key: "tooltip", Value: l.String()}}
+}
+
+// node is a graph node, corresponds to a Class.
+type node struct {
+	multi.Node
+	korrel8.Class
+}
+
+func (n node) DOTID() string                    { return korrel8.FullName(n.Class) }
+func (n node) Attributes() []encoding.Attribute { return nil }
+
+// New graph: nodes are classes, rules are edges from start to goal.
+func New(name string, rules []korrel8.Rule, extra []korrel8.Class) *Graph {
+	g := &Graph{name: name, DirectedGraph: multi.NewDirectedGraph(),
+		rules:  rules,
+		nodeID: map[korrel8.Class]int64{},
 	}
 	for i, r := range g.rules {
 		f, t := g.addClass(r.Start()), g.addClass(r.Goal())
 		g.SetLine(line{Line: multi.Line{F: f, T: t, UID: int64(i)}, Rule: r})
 	}
-	for _, c := range g.classes { // Extra classes
+	for _, c := range extra { // Extra classes
 		g.addClass(c)
 	}
-	// FIXME expand wildcards here.
 	g.paths = path.DijkstraAllPaths(g.DirectedGraph)
 	return g
 }
 
+func (g *Graph) Name() string { return g.name }
+
 func (g *Graph) addClass(c korrel8.Class) graph.Node {
-	if _, ok := g.nodeID[c]; !ok {
-		id := int64(len(g.classes))
+	id, ok := g.nodeID[c]
+	if !ok {
+		id = int64(len(g.classes))
+		g.classes = append(g.classes, c)
+		g.nodeID[c] = id
 		n, _ := g.NodeWithID(id)
 		g.AddNode(node{Node: n.(multi.Node), Class: c})
-		g.nodeID[c] = id
-		g.classes = append(g.classes, c)
 	}
-	return g.Node(g.nodeID[c])
+	return g.Node(id)
 }
 
-// node for a class
-func (g *Graph) node(c korrel8.Class) graph.Node {
-	return g.Node(g.nodeID[c])
-}
-
-// FIXME multi-path!?
-func (g *Graph) ShortestPath(start, goal korrel8.Class) []korrel8.Rule {
+// ShortestPaths returns all the shortest paths from start to goal.
+func (g *Graph) ShortestPaths(start, goal korrel8.Class) ([]MultiPath, error) {
+	var (
+		startID, goalID int64
+		ok              bool
+	)
+	if startID, ok = g.nodeID[start]; !ok {
+		return nil, fmt.Errorf("start class not found in graph: %v", start)
+	}
+	if goalID, ok = g.nodeID[goal]; !ok {
+		return nil, fmt.Errorf("goal class not found in graph: %v", goal)
+	}
 	if start == goal {
-		return nil
+		return nil, fmt.Errorf("same start and goal class: a%v", start)
 	}
-	p, _, multi := g.paths.Between(g.nodeID[start], g.nodeID[goal])
-	if multi {
-		log.V(3).Info("multiple paths from %v to %v", start, goal)
+	var mp []MultiPath
+	paths, _ := g.paths.AllBetween(startID, goalID)
+	for _, path := range paths {
+		mp = append(mp, newMultiPath(g, path))
 	}
-	rules := []korrel8.Rule{}
-	u := p[0]
-	for _, v := range p[1:] {
-		lines := g.Lines(u.ID(), v.ID())
-		if lines.Len() > 1 {
-			log.V(3).Info("multiple lines from %v to %v", start, goal)
-		}
-		lines.Next()
-		l := lines.Line()
-		r := l.(line).Rule
-		rules = append(rules, r)
-		u = v
-	}
-	return rules
+	return mp, nil
 }
 
 func (g *Graph) DOTAttributers() (graph, node, edge encoding.Attributer) {
@@ -97,26 +114,20 @@ func (g *Graph) DOTAttributers() (graph, node, edge encoding.Attributer) {
 		}
 }
 
-// line is a graph edge, contains a rule.
-type line struct {
-	multi.Line
-	korrel8.Rule
-}
+func (g *Graph) DOTID() string { return g.Name() }
 
-func (l line) DOTID() string { return l.String() }
-func (l line) Attributes() []encoding.Attribute {
-	return []encoding.Attribute{
-		{Key: "tooltip", Value: l.String()},
+func newMultiPath(g graph.Multigraph, path []graph.Node) MultiPath {
+	if len(path) == 0 {
+		return nil
 	}
-}
-
-// node is a graph node, contains a Class.
-type node struct {
-	multi.Node
-	korrel8.Class
-}
-
-func (n node) DOTID() string { return n.String() }
-func (n node) Attributes() []encoding.Attribute {
-	return []encoding.Attribute{}
+	var mp MultiPath
+	for i := 0; i < len(path)-1; i++ {
+		var e Links
+		lines := g.Lines(path[i].ID(), path[i+1].ID())
+		for lines.Next() {
+			e = append(e, lines.Line().(line).Rule)
+		}
+		mp = append(mp, e)
+	}
+	return mp
 }

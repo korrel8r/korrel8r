@@ -7,7 +7,6 @@ import (
 	"net/url"
 	"reflect"
 	"regexp"
-	"strings"
 
 	"github.com/korrel8/korrel8/pkg/korrel8"
 	"k8s.io/apimachinery/pkg/fields"
@@ -24,37 +23,33 @@ func (d domain) String() string { return "k8s" }
 
 var Domain = domain{}
 
-// parseGVK parse name of the form: kind[.version[.group]]
-// TODO is this in the k8s libs?
-func parseGVK(name string) (gvk schema.GroupVersionKind) {
-	parts := strings.SplitN(name, ".", 3)
-	for i, f := range []*string{&gvk.Kind, &gvk.Version, &gvk.Group} {
-		if len(parts) > i {
-			*f = parts[i]
-		}
-	}
-	return gvk
-}
-
 func (d domain) Class(name string) korrel8.Class {
-	gvk := parseGVK(name)
-	var t reflect.Type
-	if gvk.Group != "" { // Fully qualified, direct lookup
-		return Class{Scheme.AllKnownTypes()[gvk]}
-	} else { // No version
-		gvs := Scheme.PreferredVersionAllGroups()
-		for _, gv := range gvs {
-			if t = Scheme.KnownTypes(gv)[gvk.Kind]; t != nil {
-				return Class{t}
+	var gvk schema.GroupVersionKind
+	tryGVK, tryGK := schema.ParseKindArg(name)
+	switch {
+	case tryGVK != nil && Scheme.Recognizes(*tryGVK): // Direct hit
+		gvk = *tryGVK
+	case tryGK.Group != "": // GroupKind, must find version
+		gvs := Scheme.VersionsForGroupKind(tryGK)
+		if len(gvs) == 0 {
+			return nil
+		}
+		gvk = tryGK.WithVersion(gvs[0].Version)
+	default: // Only have a Kind, search for group and version.
+		for _, gv := range Scheme.PreferredVersionAllGroups() {
+			gvk = gv.WithKind(tryGK.Kind)
+			if Scheme.Recognizes(gvk) {
+				break
 			}
 		}
 	}
+	return Class(gvk)
 	return nil
 }
 
-func (d domain) KnownClasses() (classes []korrel8.Class) {
-	for _, t := range Scheme.AllKnownTypes() {
-		classes = append(classes, Class{t})
+func (d domain) Classes() (classes []korrel8.Class) {
+	for gvk := range Scheme.AllKnownTypes() {
+		classes = append(classes, Class(gvk))
 	}
 	return classes
 }
@@ -66,20 +61,27 @@ var _ korrel8.Domain = Domain // Implements interface
 // TODO the Class implementation assumes all objects are pointers to the generated API struct.
 // We could use scheme & GVK comparisons to generalize to untyped representations as well.
 
-// Class ses the Go API struct type to identify a kind of resource.
-type Class struct{ reflect.Type }
+// Class is a k8s GroupVersionKind.
+type Class schema.GroupVersionKind
 
 // ClassOf returns the Class of o, which must be a pointer to a typed API resource struct.
-func ClassOf(o client.Object) Class { return Class{reflect.TypeOf(o).Elem()} }
-
-func (c Class) Key(o korrel8.Object) any {
-	co, _ := o.(client.Object)
-	return client.ObjectKeyFromObject(co)
+func ClassOf(o client.Object) korrel8.Class {
+	if gvks, _, err := Scheme.ObjectKinds(o); err == nil {
+		return Class(gvks[0])
+	}
+	return nil
 }
-func (c Class) Domain() korrel8.Domain { return Domain }
-func (c Class) New() korrel8.Object    { return reflect.New(c.Type).Interface() }
 
-func (c Class) String() string { return c.Type.Name() }
+func (c Class) Key(o korrel8.Object) any { return c }
+func (c Class) Domain() korrel8.Domain   { return Domain }
+func (c Class) New() korrel8.Object {
+	if o, err := Scheme.New(schema.GroupVersionKind(c)); err == nil {
+		return o
+	}
+	return nil
+}
+
+func (c Class) String() string { return fmt.Sprintf("%v.%v.%v", c.Kind, c.Version, c.Group) }
 
 type Object client.Object
 
@@ -92,7 +94,7 @@ func NewStore(c client.Client) (*Store, error) { return &Store{c: c}, nil }
 func (s *Store) Get(ctx context.Context, query *korrel8.Query, result korrel8.Result) (err error) {
 	defer func() {
 		if err != nil {
-			err = fmt.Errorf("%w: executing %v query %q", err, Domain, query)
+			err = fmt.Errorf("query error: %w: domain %v, query: %v", err, Domain, query)
 		}
 	}()
 	gvk, nsName, err := s.parseAPIPath(query.Path)

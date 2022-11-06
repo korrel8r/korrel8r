@@ -65,7 +65,7 @@ func (f *EnumFlag) Set(s string) error {
 			return nil
 		}
 	}
-	return fmt.Errorf("invalid value %q, expected %v", s, f.Type())
+	return fmt.Errorf("invalid value %v, expected %v", s, f.Type())
 }
 
 func (f EnumFlag) Type() string { return strings.Join(f.Enum, "|") }

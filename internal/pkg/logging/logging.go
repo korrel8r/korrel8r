@@ -2,19 +2,21 @@
 package logging
 
 import (
+	"log"
+	"os"
+	"strconv"
+
 	"github.com/go-logr/logr"
-	"go.uber.org/zap/zapcore"
-	"sigs.k8s.io/controller-runtime/pkg/log"
-	"sigs.k8s.io/controller-runtime/pkg/log/zap"
+	"github.com/go-logr/stdr"
 )
 
 // The root logger. Not functional till Init() is called.
-var Log logr.Logger = log.Log
+var Log logr.Logger = stdr.New(log.New(os.Stderr, "korrel8 ", log.Ltime))
 
 // Init sets up the Root logger.
-func Init(verbose int) {
-	if verbose > 0 {
-		verbose = -verbose
+func Init(verbosity int) {
+	if n, err := strconv.Atoi(os.Getenv("KORREL8_VERBOSE")); err == nil && verbosity == 0 {
+		verbosity = n
 	}
-	log.SetLogger(zap.New(zap.Level(zapcore.Level(verbose)), zap.UseDevMode(true), zap.ConsoleEncoder()))
+	stdr.SetVerbosity((verbosity))
 }

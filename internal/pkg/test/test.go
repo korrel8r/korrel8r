@@ -51,7 +51,6 @@ func HasCluster() error {
 		if clusterErr != nil {
 			return
 		}
-		RESTConfig.Timeout = time.Second
 		RESTConfig.RateLimiter = flowcontrol.NewTokenBucketRateLimiter(100, 1000)
 		K8sClient, clusterErr = client.NewWithWatch(RESTConfig, client.Options{})
 		if clusterErr != nil {
@@ -120,8 +119,14 @@ func TempNamespace(t *testing.T, c client.Client) string {
 	}
 	require.NoError(t, c.Create(context.Background(), &ns))
 	require.NotEmpty(t, ns.Name)
-	t.Logf("test namespace: %v", ns.Name)
-	t.Cleanup(func() { _ = c.Delete(context.Background(), &ns) })
+	t.Cleanup(func() {
+		t.Helper()
+		if t.Failed() {
+			t.Logf("test namespace not deleted: %v", ns.Name)
+		} else {
+			_ = c.Delete(context.Background(), &ns)
+		}
+	})
 	return ns.Name
 }
 
@@ -191,7 +196,19 @@ func JSONString(v any) string {
 	return string(b)
 }
 
+// JSONPretty returns an indented JSON string, or error message if marshal fails.
+func JSONPretty(v any) string {
+	w := &bytes.Buffer{}
+	e := json.NewEncoder(w)
+	e.SetIndent("", "  ")
+	if err := e.Encode(v); err != nil {
+		return err.Error()
+	}
+	return w.String()
+}
+
 // Watch in a loop, call f for each event, return when f returns true.
+// Fatal if watch closes or times out
 func Watch(t *testing.T, w watch.Interface, timeout time.Duration, f func(e watch.Event) (finished bool)) {
 	t.Helper()
 	defer w.Stop()

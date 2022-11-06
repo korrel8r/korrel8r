@@ -23,8 +23,8 @@ func TestGet_Alert(t *testing.T) {
 	// Dubious test, assumes there is an alert on the cluster.
 	test.SkipIfNoCluster(t)
 	var exitCode int
-	stdout, stderr := test.FakeMain([]string{"", "--panic", "get", "alert", `/alert?{alertname=~".+"}`, "-o=json"}, func() { exitCode = Execute() })
-	require.Equal(t, 0, exitCode, "%v", stderr)
+	stdout, stderr := test.FakeMain([]string{"", "get", "alert/alert", `/alert?{alertname=~".+"}`, "-o=json"}, func() { exitCode = Execute() })
+	require.Equal(t, 0, exitCode, "\n%v", stderr)
 
 	decoder := json.NewDecoder(strings.NewReader(stdout))
 	a := alert.Domain.Class("alert").New()
@@ -60,33 +60,26 @@ func TestCorrelate_Pods(t *testing.T) {
 		pod = e.Object.(*corev1.Pod)
 		return pod.Status.Phase == corev1.PodRunning
 	})
-	// Try all the result types
-	logQL := fmt.Sprintf(`{kubernetes_namespace_name=%q,kubernetes_pod_name=%q}`, pod.Namespace, pod.Name)
-	for _, x := range []struct{ format, want string }{
-		{"", "/query_range?direction=FORWARD&query=" + url.QueryEscape(logQL)},
-		{"console", "/monitoring/logs?q=" + url.QueryEscape(logQL)},
-	} {
-		t.Run(x.format, func(t *testing.T) {
-			var exitCode int
-			stdout, stderr := test.FakeMainStdin(test.JSONString(d), []string{"", "correlate", "k8s/Deployment", "loki/application", "--format", x.format}, func() {
-				exitCode = Execute()
-			})
-			require.Equal(t, 0, exitCode, stderr)
-			require.Equal(t, x.want, strings.TrimSpace(stdout))
-		})
 
-	}
+	logQL := fmt.Sprintf(`{kubernetes_namespace_name=%q,kubernetes_pod_name=%q}`, pod.Namespace, pod.Name)
+	want := "/application/loki/api/v1/query_range?query=" + url.QueryEscape(logQL)
+	var exitCode int
+	stdout, stderr := test.FakeMainStdin(test.JSONString(d), []string{"", "correlate", "k8s/Deployment", "loki/application"}, func() {
+		exitCode = Execute()
+	})
+	require.Equal(t, 0, exitCode, stderr)
+	require.Equal(t, want, strings.TrimSpace(stdout))
 }
 
 func TestList_Classes(t *testing.T) {
 	test.SkipIfNoCluster(t)
 	// List all k8s classes
 	var exitCode int
-	stdout, stderr := test.FakeMain([]string{"", "list", "k8s"}, func() {
+	stdout, stderr := test.FakeMain([]string{"", "classes", "k8s"}, func() {
 		exitCode = Execute()
 	})
 	require.Equal(t, 0, exitCode, stderr)
-	for _, x := range []string{"Deployment.v1.apps", "Pod.v1", "EventList.v1.events.k8s.io"} {
+	for _, x := range []string{"Deployment.v1.apps", "Pod.v1.", "EventList.v1.events.k8s.io"} {
 		assert.Contains(t, stdout, "\n"+x+"\n")
 	}
 }
@@ -95,14 +88,14 @@ func TestList_Domains(t *testing.T) {
 	test.SkipIfNoCluster(t)
 	// List all k8s classes
 	var exitCode int
-	stdout, stderr := test.FakeMain([]string{"", "list"}, func() {
+	stdout, stderr := test.FakeMain([]string{"", "domains"}, func() {
 		exitCode = Execute()
 	})
 	require.Equal(t, 0, exitCode, stderr)
 	got := strings.Split(strings.TrimSpace(stdout), "\n")
 	var want []string
-	for k := range newEngine().Domains {
-		want = append(want, k)
+	for _, d := range newEngine().Domains() {
+		want = append(want, d.String())
 	}
 	assert.ElementsMatch(t, want, got)
 }
