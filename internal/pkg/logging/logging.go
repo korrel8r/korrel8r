@@ -3,6 +3,7 @@ package logging
 
 import (
 	"log"
+	"net/url"
 	"os"
 	"strconv"
 
@@ -11,12 +12,29 @@ import (
 )
 
 // The root logger. Not functional till Init() is called.
-var Log logr.Logger = stdr.New(log.New(os.Stderr, "korrel8 ", log.Ltime))
+var Log logr.Logger
 
-// Init sets up the Root logger.
-func Init(verbosity int) {
-	if n, err := strconv.Atoi(os.Getenv("KORREL8_VERBOSE")); err == nil && verbosity == 0 {
-		verbosity = n
+func init() {
+	Log = stdr.New(log.New(os.Stderr, "korrel8 ", log.Ltime))
+	if n, err := strconv.Atoi(os.Getenv("KORREL8_VERBOSE")); err == nil {
+		stdr.SetVerbosity(n)
 	}
-	stdr.SetVerbosity((verbosity))
+}
+
+// Init sets verbosity for the Root logger.
+func Init(verbosity int) {
+	if verbosity > 0 {
+		stdr.SetVerbosity((verbosity))
+	}
+}
+
+// Log url slices properly, url.URL only has a pointer-receiver String() method.
+type URLs []url.URL
+
+func (u URLs) MarshalLog() any {
+	p := make([]*url.URL, len(u))
+	for i, v := range u {
+		p[i] = &v
+	}
+	return p
 }

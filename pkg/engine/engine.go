@@ -57,7 +57,7 @@ func (e *Engine) ParseClass(name string) (korrel8.Class, error) {
 	}
 	domain := e.Domain(d)
 	if domain == nil {
-		return nil, fmt.Errorf("unknown domain: %v", d)
+		return nil, fmt.Errorf("unknown domain in class name: %v", name)
 	}
 	class := domain.Class(c)
 	if class == nil {
@@ -104,7 +104,7 @@ func (e Engine) Follow(ctx context.Context, starters []korrel8.Object, c *korrel
 			}
 			queries.Append(q...)
 		}
-		log.V(1).Info("queries", "queries", queries)
+		log.V(1).Info("queries", "queries", logging.URLs(queries.List))
 		if i == len(path)-1 {
 			break
 		}
@@ -120,6 +120,19 @@ func (e Engine) Follow(ctx context.Context, starters []korrel8.Object, c *korrel
 			}
 		}
 		starters = result.List()
+	}
+	return queries.List, nil
+}
+
+func (e Engine) FollowAll(ctx context.Context, starters []korrel8.Object, c *korrel8.Constraint, paths []graph.MultiPath) ([]korrel8.Query, error) {
+	// TODO: can we optimize multi-multi-path following by using common results?
+	queries := unique.NewList[korrel8.Query]()
+	for _, p := range paths {
+		q, err := e.Follow(ctx, starters, nil, p)
+		if err != nil {
+			return nil, err
+		}
+		queries.Append(q...)
 	}
 	return queries.List, nil
 }

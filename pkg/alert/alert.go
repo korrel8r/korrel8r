@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"net/url"
 	"time"
 
 	"github.com/korrel8/korrel8/pkg/korrel8"
@@ -18,10 +17,9 @@ var Domain = domain{}
 
 type domain struct{}
 
-func (d domain) String() string                     { return "alert" }
-func (d domain) Class(string) korrel8.Class         { return Class{} }
-func (d domain) Classes() []korrel8.Class           { return []korrel8.Class{Class{}} }
-func (d domain) Formatter(string) korrel8.Formatter { return nil }
+func (d domain) String() string             { return "alert" }
+func (d domain) Class(string) korrel8.Class { return Class{} }
+func (d domain) Classes() []korrel8.Class   { return []korrel8.Class{Class{}} }
 
 var _ korrel8.Domain = Domain
 
@@ -85,7 +83,7 @@ func convert(a v1.Alert) Alert {
 // Get implements the korrel8.Store interface.
 // The query parameter is a PromQL label matcher expression with the wrapping
 // `{` and `}` being optional, e.g.  `namespace="default",pod=~"myapp-.+"`.
-func (s Store) Get(ctx context.Context, query *url.URL, result korrel8.Result) error {
+func (s Store) Get(ctx context.Context, query *korrel8.Query, result korrel8.Result) error {
 	// TODO: allow to filter on alert state (pending/firing)?
 	// TODO: support sorting order (e.g. most recent/oldest, severity)?
 	// TODO: allow grouping (all alerts related to podX grouped together)?

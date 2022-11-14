@@ -28,15 +28,20 @@ func (d domain) String() string                  { return "loki" }
 func (d domain) Class(name string) korrel8.Class { return classMap[name] }
 func (d domain) Classes() []korrel8.Class        { return classes }
 
-func (d domain) Formatter(format string) korrel8.Formatter {
-	switch format {
-	case "plain":
-		return FormatPlainLoki // Format lokistack URI (tenant in path) for plain Loki.
-	case "console":
-		return FormatConsole
-	default:
-		return nil
+func (d domain) RewritePLainLokiURL(query *korrel8.Query) *url.URL {
+	u := *query
+	u.Path = lokiStackPath.ReplaceAllString(u.Path, "")
+	return &u
+}
+
+func (d domain) RewriteConsoleURL(query *korrel8.Query) *url.URL {
+	v := url.Values{}
+	v.Add("q", query.Query().Get("query"))
+	m := lokiStackPath.FindStringSubmatch(query.Path)
+	if len(m) == 2 {
+		v.Add("tenant", m[1])
 	}
+	return &url.URL{Path: "/monitoring/logs", RawQuery: v.Encode()}
 }
 
 var _ korrel8.Domain = Domain
@@ -190,20 +195,4 @@ func NewLokiStackQuery(class Class, logQL string, constraint *korrel8.Constraint
 	u := NewPlainQuery(logQL, constraint)
 	u.Path = path.Join("/api/logs/v1/", class.String(), u.Path)
 	return u
-}
-
-func FormatPlainLoki(query *korrel8.Query) *url.URL {
-	u := *query
-	u.Path = lokiStackPath.ReplaceAllString(u.Path, "")
-	return &u
-}
-
-func FormatConsole(query *korrel8.Query) *url.URL {
-	v := url.Values{}
-	v.Add("q", query.Query().Get("query"))
-	m := lokiStackPath.FindStringSubmatch(query.Path)
-	if len(m) == 2 {
-		v.Add("tenant", m[1])
-	}
-	return &url.URL{Path: "/monitoring/logs", RawQuery: v.Encode()}
 }

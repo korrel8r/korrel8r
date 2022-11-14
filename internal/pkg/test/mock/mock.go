@@ -41,7 +41,6 @@ func (d Domain) Classes() (classes []korrel8.Class) {
 	}
 	return classes
 }
-func (d Domain) Formatter(format string) korrel8.Formatter { panic("not implemented") }
 
 var _ korrel8.Domain = Domain("") // Implements interface
 

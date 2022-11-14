@@ -24,26 +24,23 @@ func (d domain) String() string { return "k8s" }
 var Domain = domain{}
 
 func (d domain) Class(name string) korrel8.Class {
-	var gvk schema.GroupVersionKind
 	tryGVK, tryGK := schema.ParseKindArg(name)
 	switch {
 	case tryGVK != nil && Scheme.Recognizes(*tryGVK): // Direct hit
-		gvk = *tryGVK
+		return Class(*tryGVK)
 	case tryGK.Group != "": // GroupKind, must find version
-		gvs := Scheme.VersionsForGroupKind(tryGK)
-		if len(gvs) == 0 {
-			return nil
+		for _, gv := range Scheme.VersionsForGroupKind(tryGK) {
+			if gvk := tryGK.WithVersion(gv.Version); Scheme.Recognizes(gvk) {
+				return Class(gvk)
+			}
 		}
-		gvk = tryGK.WithVersion(gvs[0].Version)
 	default: // Only have a Kind, search for group and version.
 		for _, gv := range Scheme.PreferredVersionAllGroups() {
-			gvk = gv.WithKind(tryGK.Kind)
-			if Scheme.Recognizes(gvk) {
-				break
+			if gvk := gv.WithKind(tryGK.Kind); Scheme.Recognizes(gvk) {
+				return Class(gvk)
 			}
 		}
 	}
-	return Class(gvk)
 	return nil
 }
 
@@ -53,8 +50,6 @@ func (d domain) Classes() (classes []korrel8.Class) {
 	}
 	return classes
 }
-
-func (d domain) Formatter(string) korrel8.Formatter { return nil }
 
 var _ korrel8.Domain = Domain // Implements interface
 
@@ -85,7 +80,7 @@ func (c Class) String() string { return fmt.Sprintf("%v.%v.%v", c.Kind, c.Versio
 
 type Object client.Object
 
-// Store implements the korrel8.Store interface over a k8s API client.
+// Store implements the korrel8.Store interface as a k8s API client.
 type Store struct{ c client.Client }
 
 // NewStore creates a new store

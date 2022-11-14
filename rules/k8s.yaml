@@ -1,20 +1,17 @@
 ---
-# From any resource with a .Spec.Selector.MatchLabels to Pods.
-name: SelectorToPods
-start: [k8s, '{{has .Spec.Selector}}']
-goal: [k8s, Pod]
-query: |-
-  /api/v1/namespaces/{{.Namespace}}/pods?labelSelector={{.Spec.Selector.MatchLabels | urlquerymap -}}
----
-# From Event to its involved object
-# FIXME need to fix use of APIVersion in class designation.
 name: EventToObject
-start: [k8s, Event.events.k8s.io]
-goal: [k8s, '{{.InvolvedObject.Kind}}FIXME}}']
+start: [k8s, Event.v1.]
+goal: [k8s, '{{k8sClass .InvolvedObject.Kind .InvolvedObject.APIVersion}}}']
 query: |-
-  /api/v1{{with .InvolvedObject.Namespace}}/namespaces/{{.}}{{end}}/{{.InvolvedObject.Kind}}
+  /api/v1{{with .InvolvedObject.Namespace}}/namespaces/{{.}}{{end}}/{{k8sResource .InvolvedObject.Kind .InvolvedObject.APIVersion}}/{{.InvolvedObject.Name}}
 ---
-# FIXME can we make the infra/app/audit distinction more compact?
+name: ObjectToEvent
+start: [k8s, "true"]            # Applies to all classes
+goal: [k8s, Event.v1.]
+query: |-
+  /api/v1/events?fieldSelector={{printf "involvedObject.name=%v,involvedObject.namespace=%v" .ObjectMeta.Name .ObjectMeta.Namespace | urlquery}}
+---
+# FIXME can we make the infra/app/audit distinction more compact? BASED on namespace!
 name: PodToInfraLogs
 start: [k8s, Pod]
 goal: [loki, infrastructure]
@@ -39,3 +36,10 @@ query: |-
   printf "{kubernetes_namespace_name=%q,kubernetes_pod_name=%q}" .ObjectMeta.Namespace .ObjectMeta.Name | urlquery
   -}}
 # FIXME need rule direct from Pod selector to logs.
+---
+# From any resource with a .Spec.Selector.MatchLabels to Pods.
+name: SelectorToPods
+start: [k8s, '{{has .Spec.Selector}}']
+goal: [k8s, Pod]
+query: |-
+  /api/v1/namespaces/{{.Namespace}}/pods?labelSelector={{.Spec.Selector.MatchLabels | urlquerymap -}}

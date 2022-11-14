@@ -9,7 +9,10 @@ import (
 	"github.com/korrel8/korrel8/pkg/engine"
 	"github.com/korrel8/korrel8/pkg/korrel8"
 	"github.com/korrel8/korrel8/pkg/unique"
+	"golang.org/x/exp/maps"
 )
+
+// FIXME simplify - just templates?
 
 // Rule is a serializable rule template, that generates one or more korrel8.Rules.
 type Rule struct {
@@ -63,9 +66,12 @@ type ruleBuilder struct {
 	goalTemplate *template.Template
 
 	query, constraint *template.Template
+
+	funcs map[string]any
 }
 
 // Rules generates one or more korrel8.Rule from the template Rule.
+// funcs are template helper functions to make available to template parsing.
 func (r Rule) Rules(e *engine.Engine) ([]korrel8.Rule, error) {
 	rb := ruleBuilder{Rule: r, engine: e, startClasses: unique.NewList[korrel8.Class]()}
 	var rules []korrel8.Rule
@@ -89,6 +95,16 @@ func (r Rule) Rules(e *engine.Engine) ([]korrel8.Rule, error) {
 /// FIXME this has gotten too complex.?
 
 func (rb *ruleBuilder) setup() (err error) {
+	rb.funcs = map[string]any{}
+	for _, d := range rb.engine.Domains() {
+		if th, ok := d.(korrel8.TemplateHelper); ok {
+			maps.Copy(rb.funcs, th.TemplateHelpers())
+		}
+		s := rb.engine.Store(d)
+		if th, ok := s.(korrel8.TemplateHelper); ok {
+			maps.Copy(rb.funcs, th.TemplateHelpers())
+		}
+	}
 	for _, f := range []func() error{
 		rb.setupStart,
 		rb.setupGoal,
@@ -143,7 +159,7 @@ func (rb *ruleBuilder) setupGoal() (err error) {
 }
 
 func (rb *ruleBuilder) newTemplate(text, suffix string) (*template.Template, error) {
-	return template.New(rb.Name + suffix).Funcs(Funcs).Option("missingkey=error").Parse(text)
+	return template.New(rb.Name + suffix).Funcs(Funcs).Funcs(rb.funcs).Option("missingkey=error").Parse(text)
 }
 
 func (rb *ruleBuilder) getDomain(what string, list []string) (korrel8.Domain, error) {

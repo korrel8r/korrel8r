@@ -62,36 +62,33 @@ var correlateCmd = &cobra.Command{
 }
 
 func printResult(e *engine.Engine, goal korrel8.Class, queries []korrel8.Query) {
-	formatter := func(q *korrel8.Query) *korrel8.Query { return q }
-	if *formatFlag != "" {
-		formatter = goal.Domain().Formatter(*formatFlag)
-		if formatter == nil {
-			check(fmt.Errorf("unknown URL format: %v", *formatFlag))
-		}
-		if *formatFlag == "console" { // FIXME this is messy
+	rewrite := func(q *korrel8.Query) *url.URL { return q }
+	if *consoleFlag {
+		d := goal.Domain()
+		if rw, ok := d.(korrel8.ConsoleURLRewriter); ok {
 			c := k8sClient(restConfig())
 			base := url.URL{
 				Scheme: "https",
 				Path:   "/",
-				Host:   must(openshift.RouteHost(context.Background(), c, openshift.ConsoleNSName))}
-			export1 := formatter
-			formatter = func(ref *korrel8.Query) *url.URL { return base.ResolveReference(export1(ref)) }
+				Host:   must(openshift.RouteHost(context.Background(), c, openshift.ConsoleNSName)),
+			}
+			rewrite = func(q *korrel8.Query) *url.URL { return base.ResolveReference(rw.RewriteConsoleURL(q)) }
 		}
 	}
 	for _, q := range queries {
-		fmt.Println(formatter(&q))
+		fmt.Println(rewrite(&q))
 	}
 }
 
 var (
-	formatFlag   *string
+	consoleFlag  *bool
 	intervalFlag *time.Duration
 	endTime      TimeFlag
 )
 
 func init() {
 	rootCmd.AddCommand(correlateCmd)
-	formatFlag = correlateCmd.Flags().String("format", "", "format for URLs, e.g. console")
+	consoleFlag = correlateCmd.Flags().Bool("console", false, "Print openshift console URLs instead of queries")
 	intervalFlag = correlateCmd.Flags().Duration("interval", time.Minute*10, "limit results to this interval")
 	correlateCmd.Flags().Var(&endTime, "time", "find results up to this time")
 }

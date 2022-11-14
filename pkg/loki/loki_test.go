@@ -114,8 +114,9 @@ func TestStoreGet_Constraint(t *testing.T) {
 	}
 }
 
-func TestDomain_Export(t *testing.T) {
-	assert.Equal(t, "/monitoring/logs?q=%7Bx%3Dy%7D", Domain.Formatter("console")(NewPlainQuery(`{x=y}`, nil)).String())
+func TestDomain_RewriteConsoleURL(t *testing.T) {
+	assert.Equal(t, "/monitoring/logs?q=%7Bx%3Dy%7D", Domain.RewriteConsoleURL(NewPlainQuery(`{x=y}`, nil)).String())
+	assert.Equal(t, "/monitoring/logs?q=%7Bx%3Dy%7D&tenant=application", Domain.RewriteConsoleURL(NewLokiStackQuery(Application, `{x=y}`, nil)).String())
 	// FIXME test for constraints, check for other features of console URLs.
 }
 

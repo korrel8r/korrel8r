@@ -12,11 +12,11 @@ import (
 
 // FIXME document extra funcs, see text/template
 
-// Funcs that are available in templates created by New.
+// Funcs that are available in all templates created by New.
 // Rule.Apply() adds the "constraint" function with the constraint if present.
 var Funcs = map[string]any{
 	"constraint":  func() *korrel8.Constraint { return nil },
-	"has":         func(_ ...any) bool { return true },
+	"has":         func(_ ...any) bool { return true }, // Used for side-effect: evaluate arguments to detect errors
 	"json":        toJSON,
 	"yaml":        toYAML,
 	"fullname":    korrel8.FullName,
@@ -26,13 +26,8 @@ var Funcs = map[string]any{
 func toJSON(v any) (string, error) { b, err := json.Marshal(v); return string(b), err }
 func toYAML(v any) (string, error) { b, err := yaml.Marshal(v); return string(b), err }
 
-func doAssert(ok bool) string {
-	if !ok {
-		panic("assertion failed")
-	}
-	return ""
-}
-
+// urlQueryMap takes a map of any type and performs URL query encoding.
+// Map values are stringified with fmt "%v"
 func urlQueryMap(m any) string {
 	v := reflect.ValueOf(m)
 	if !v.IsValid() {
