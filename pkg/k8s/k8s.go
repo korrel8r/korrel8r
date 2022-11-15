@@ -21,8 +21,6 @@ type domain struct{}
 
 func (d domain) String() string { return "k8s" }
 
-var Domain = domain{}
-
 func (d domain) Class(name string) korrel8.Class {
 	tryGVK, tryGK := schema.ParseKindArg(name)
 	switch {
@@ -51,7 +49,9 @@ func (d domain) Classes() (classes []korrel8.Class) {
 	return classes
 }
 
-var _ korrel8.Domain = Domain // Implements interface
+func (d domain) URLRewriter(name string) korrel8.URLRewriter { panic("FIXME") }
+
+var Domain korrel8.Domain = domain{} // Implements interface
 
 // TODO the Class implementation assumes all objects are pointers to the generated API struct.
 // We could use scheme & GVK comparisons to generalize to untyped representations as well.

@@ -21,17 +21,21 @@ type Object any
 //
 // Domain implementations must be comparable.
 type Domain interface {
-	String() string     // Name of the domain
-	Class(string) Class // Find a class by name, return nil if not found.
-	Classes() []Class   // List of known classes in the Domain
+	String() string                      // Name of the domain
+	Class(string) Class                  // Find a class by name, return nil if not found.
+	Classes() []Class                    // List of known classes in the Domain
+	URLRewriter(name string) URLRewriter // Get named URL transformer for this domain.
 }
 
 // TemplateHelper optionally implemented by domains that provide template helper functions.
 // see text/template.Template.Funcs
 type TemplateHelper interface{ TemplateHelpers() map[string]any }
 
-// ConsoleURLRewriter optionally implemented by domains that can rewrite queries as openshift console URLs.
-type ConsoleURLRewriter interface{ RewriteConsoleURL(*Query) *url.URL }
+// URLRewriter transforms between Query URLs and some an alternate URL format.
+type URLRewriter interface {
+	FromQuery(*Query) *url.URL
+	ToQuery(*url.URL) *Query
+}
 
 // Class identifies a subset of objects from the same domain with the same schema.
 //

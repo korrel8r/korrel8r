@@ -17,9 +17,10 @@ var Domain = domain{}
 
 type domain struct{}
 
-func (d domain) String() string             { return "alert" }
-func (d domain) Class(string) korrel8.Class { return Class{} }
-func (d domain) Classes() []korrel8.Class   { return []korrel8.Class{Class{}} }
+func (d domain) String() string                         { return "alert" }
+func (d domain) Class(string) korrel8.Class             { return Class{} }
+func (d domain) Classes() []korrel8.Class               { return []korrel8.Class{Class{}} }
+func (d domain) URLRewriter(string) korrel8.URLRewriter { return nil }
 
 var _ korrel8.Domain = Domain
 

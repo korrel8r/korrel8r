@@ -22,19 +22,24 @@ import (
 
 type domain struct{}
 
-var Domain = domain{}
-
 func (d domain) String() string                  { return "loki" }
 func (d domain) Class(name string) korrel8.Class { return classMap[name] }
 func (d domain) Classes() []korrel8.Class        { return classes }
 
-func (d domain) RewritePLainLokiURL(query *korrel8.Query) *url.URL {
-	u := *query
+type plainRewriter struct{}
+
+func (plainRewriter) FromQuery(q *korrel8.Query) *url.URL {
+	u := *q
 	u.Path = lokiStackPath.ReplaceAllString(u.Path, "")
 	return &u
 }
+func (plainRewriter) ToQuery(u *url.URL) *url.URL {
+	panic("FIXME") //Need to parse tenant from LogQL log_type?
+}
 
-func (d domain) RewriteConsoleURL(query *korrel8.Query) *url.URL {
+type consoleRewriter struct{}
+
+func (consoleRewriter) FromQuery(query *korrel8.Query) *url.URL {
 	v := url.Values{}
 	v.Add("q", query.Query().Get("query"))
 	m := lokiStackPath.FindStringSubmatch(query.Path)
@@ -43,8 +48,22 @@ func (d domain) RewriteConsoleURL(query *korrel8.Query) *url.URL {
 	}
 	return &url.URL{Path: "/monitoring/logs", RawQuery: v.Encode()}
 }
+func (consoleRewriter) ToQuery(u *url.URL) *url.URL {
+	panic("FIXME") //Need to parse tenant from LogQL log_type?
+}
 
-var _ korrel8.Domain = Domain
+func (d domain) URLRewriter(name string) korrel8.URLRewriter {
+	switch name {
+	case "console":
+		return consoleRewriter{}
+	case "plain":
+		return plainRewriter{}
+	default:
+		return nil
+	}
+}
+
+var Domain korrel8.Domain = domain{}
 
 type Class string
 

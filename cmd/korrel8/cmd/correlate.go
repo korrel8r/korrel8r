@@ -5,7 +5,6 @@ Copyright © 2022 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
-	"context"
 	"fmt"
 	"io"
 	"net/url"
@@ -65,14 +64,11 @@ func printResult(e *engine.Engine, goal korrel8.Class, queries []korrel8.Query) 
 	rewrite := func(q *korrel8.Query) *url.URL { return q }
 	if *consoleFlag {
 		d := goal.Domain()
-		if rw, ok := d.(korrel8.ConsoleURLRewriter); ok {
+
+		if transform := d.URLRewriter("console"); transform != nil {
 			c := k8sClient(restConfig())
-			base := url.URL{
-				Scheme: "https",
-				Path:   "/",
-				Host:   must(openshift.RouteHost(context.Background(), c, openshift.ConsoleNSName)),
-			}
-			rewrite = func(q *korrel8.Query) *url.URL { return base.ResolveReference(rw.RewriteConsoleURL(q)) }
+			base := must(openshift.ConsoleURL(ctx, c))
+			rewrite = func(q *korrel8.Query) *url.URL { return base.ResolveReference(transform.FromQuery(q)) }
 		}
 	}
 	for _, q := range queries {

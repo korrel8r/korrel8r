@@ -42,6 +42,8 @@ func (d Domain) Classes() (classes []korrel8.Class) {
 	return classes
 }
 
+func (d Domain) URLRewriter(string) korrel8.URLRewriter { return nil }
+
 var _ korrel8.Domain = Domain("") // Implements interface
 
 // Class string is domain/class
