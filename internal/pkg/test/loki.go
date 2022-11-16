@@ -18,6 +18,8 @@ import (
 	"golang.org/x/net/html"
 )
 
+// FIXME clean up loki servers after test.
+
 // LokiServer is a single-process Loki instance running in a container.
 type LokiServer struct {
 	Port int

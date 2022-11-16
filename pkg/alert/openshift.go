@@ -18,11 +18,7 @@ import (
 )
 
 const (
-	monitoringNS  = "openshift-monitoring"
-	thanosService = "thanos-querier"
-	thanosRoute   = "thanos-querier"
-	alertsPort    = "web"
-	prometheusSA  = "prometheus-k8s"
+	prometheusSA = "prometheus-k8s"
 )
 
 func init() {
@@ -30,42 +26,34 @@ func init() {
 }
 
 // NewOpenshiftStore creates a store client for the openshift alerts endpoint.
-func NewOpenshiftStore(cfg *rest.Config) (korrel8.Store, error) {
+func NewOpenshiftStore(ctx context.Context, cfg *rest.Config) (korrel8.Store, error) {
 	c, err := client.New(cfg, client.Options{})
 	if err != nil {
 		return nil, err
 	}
-	nsName := client.ObjectKey{Name: thanosService, Namespace: monitoringNS}
-	host, err := openshift.RouteHost(context.Background(), c, nsName)
+	host, err := openshift.RouteHost(ctx, c, openshift.ThanosQuerierNSName)
 	if err != nil {
-		return nil, fmt.Errorf("failed to locate the alerts endpoint: %w", err)
+		return nil, err
 	}
-
-	// We need to provide a RoundTripper that authenticates with a bearer token
-	// to talk to the alerts endpoint.
+	// We need to provide a RoundTripper that authenticates with a bearer token to talk to the alerts endpoint.
 	trConfig, err := cfg.TransportConfig()
 	if err != nil {
 		return nil, err
 	}
-
 	if trConfig.BearerToken == "" && trConfig.BearerTokenFile == "" {
 		kclient, err := kubernetes.NewForConfig(cfg)
 		if err != nil {
-			return nil, fmt.Errorf("failed to create Kubernetes client: %w", err)
+			return nil, err
 		}
-
-		tr, err := kclient.CoreV1().ServiceAccounts(monitoringNS).CreateToken(context.Background(), prometheusSA, &authenticationv1.TokenRequest{}, metav1.CreateOptions{})
+		tr, err := kclient.CoreV1().ServiceAccounts(openshift.OpenshiftMonitoring).CreateToken(context.Background(), prometheusSA, &authenticationv1.TokenRequest{}, metav1.CreateOptions{})
 		if err != nil {
-			return nil, fmt.Errorf("failed to obtain token: %w", err)
+			return nil, err
 		}
-
 		trConfig.BearerToken = tr.Status.Token
 	}
-
 	rt, err := transport.New(trConfig)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create transport: %w", err)
 	}
-
 	return NewStore(host, rt)
 }

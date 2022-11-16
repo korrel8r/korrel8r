@@ -1,9 +1,8 @@
-// package amalert implements korrel8 interfaces on prometheus amalerts.
-package amalert
+// package alert implements korrel8 interfaces on prometheus alerts.
+package alert
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 
 	openapiclient "github.com/go-openapi/runtime/client"
@@ -12,9 +11,9 @@ import (
 	"github.com/prometheus/alertmanager/api/v2/client"
 	"github.com/prometheus/alertmanager/api/v2/client/alert"
 	"github.com/prometheus/alertmanager/api/v2/models"
-	"github.com/prometheus/alertmanager/pkg/labels"
-	"github.com/prometheus/common/model"
 )
+
+var Domain = domain{}
 
 type domain struct{}
 
@@ -23,14 +22,11 @@ func (d domain) Class(string) korrel8.Class             { return Class{} }
 func (d domain) Classes() []korrel8.Class               { return []korrel8.Class{Class{}} }
 func (d domain) URLRewriter(string) korrel8.URLRewriter { return nil }
 
-var Domain korrel8.Domain = domain{}
-
 type Class struct{} // Only one class
 
-func (c Class) Domain() korrel8.Domain { return Domain }
-func (c Class) String() string         { return Domain.String() }
-func (c Class) New() korrel8.Object    { return &models.GettableAlert{} }
-
+func (c Class) Domain() korrel8.Domain   { return Domain }
+func (c Class) String() string           { return Domain.String() }
+func (c Class) New() korrel8.Object      { return &models.GettableAlert{} }
 func (c Class) Key(o korrel8.Object) any { return o.(*models.GettableAlert).Labels["alertname"] }
 
 type Object *models.GettableAlert
@@ -42,35 +38,20 @@ func NewStore(host string, hc *http.Client) *Store {
 	return &Store{manager: client.New(transport, strfmt.Default)}
 }
 
-// Get implements the korrel8.Store interface.
-// The query URL query= parameter is a PromQL label matcher expression with the wrapping
-// `{` and `}` being optional, e.g.  `namespace="default",pod=~"myapp-.+"`.
+// Query is an alertmanager REST URL, see:
+// https://petstore.swagger.io/?url=https://raw.githubusercontent.com/prometheus/alertmanager/master/api/v2/openapi.yaml
 func (s Store) Get(ctx context.Context, query *korrel8.Query, result korrel8.Result) error {
-	// TODO: allow to filter on alert state (pending/firing)?
-	// TODO: support sorting order (e.g. most recent/oldest, severity)?
-	// TODO: allow grouping (all alerts related to podX grouped together)?
-	promQL := query.Query().Get("query")
-	matchers, err := labels.ParseMatchers(promQL)
-	if err != nil {
-		return fmt.Errorf("invalid query: %w: %q", err, query)
+	params := alert.NewGetAlertsParamsWithContext(ctx)
+	// FIXME support other query parameters - active etc.
+	if f := query.Query().Get("filter"); f != "" {
+		params.WithFilter([]string{f})
 	}
-	if err != nil {
-	}
-
-	params := alert.NewGetAlertsParamsWithContext(context.Background())
 	resp, err := s.manager.Alert.GetAlerts(params)
 	if err != nil {
 		return err
 	}
 	for _, a := range resp.Payload {
-		// Convert LabelSet between libraries
-		labelSet := model.LabelSet{}
-		for k, v := range a.Labels {
-			labelSet[model.LabelName(k)] = model.LabelValue(v)
-		}
-		if labels.Matchers(matchers).Matches((labelSet)) {
-			result.Append(a)
-		}
+		result.Append(a)
 	}
 	return nil
 }

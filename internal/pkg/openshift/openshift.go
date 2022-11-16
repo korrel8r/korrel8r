@@ -13,15 +13,20 @@ import (
 )
 
 const (
-	OpenshiftLogging = "openshift-logging"
-	LoggingLoki      = "logging-loki"
-	OpenshiftConsole = "openshift-console"
-	Console          = "console"
+	OpenshiftLogging    = "openshift-logging"
+	LoggingLoki         = "logging-loki"
+	OpenshiftConsole    = "openshift-console"
+	Console             = "console"
+	OpenshiftMonitoring = "openshift-monitoring"
+	ThanosQuerier       = "thanos-querier"
+	AlertmanagerMain    = "alertmanager-main"
 )
 
 var (
-	LokiStackNSName = NamespacedName(OpenshiftLogging, LoggingLoki)
-	ConsoleNSName   = NamespacedName(OpenshiftConsole, Console)
+	LokiStackNSName        = NamespacedName(OpenshiftLogging, LoggingLoki)
+	ConsoleNSName          = NamespacedName(OpenshiftConsole, Console)
+	ThanosQuerierNSName    = NamespacedName(OpenshiftMonitoring, ThanosQuerier)
+	AlertmanagerMainNSName = NamespacedName(OpenshiftMonitoring, AlertmanagerMain)
 )
 
 func init() {

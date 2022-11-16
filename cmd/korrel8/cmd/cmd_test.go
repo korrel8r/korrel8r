@@ -23,7 +23,7 @@ func TestGet_Alert(t *testing.T) {
 	// Dubious test, assumes there is an alert on the cluster.
 	test.SkipIfNoCluster(t)
 	var exitCode int
-	stdout, stderr := test.FakeMain([]string{"", "get", "alert/alert", `/alert?{alertname=~".+"}`, "-o=json"}, func() { exitCode = Execute() })
+	stdout, stderr := test.FakeMain([]string{"", "get", "alert/alert", "", "-o=json"}, func() { exitCode = Execute() })
 	require.Equal(t, 0, exitCode, "\n%v", stderr)
 
 	decoder := json.NewDecoder(strings.NewReader(stdout))

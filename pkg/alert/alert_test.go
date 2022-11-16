@@ -9,11 +9,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// FIXME skip temporarily
-func SkipTestQuery_Alert(t *testing.T) {
+// skip for now: Test is failing with 404
+func skipTestQuery_Alert(t *testing.T) {
 	test.SkipIfNoCluster(t)
-
-	store, err := NewOpenshiftStore(test.RESTConfig)
+	store, err := NewOpenshiftStore(context.Background(), test.RESTConfig)
 	require.NoError(t, err)
 	result := korrel8.NewListResult()
 	require.NoError(t, store.Get(context.Background(), &korrel8.Query{}, result))

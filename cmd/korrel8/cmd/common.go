@@ -69,7 +69,7 @@ func newEngine() *engine.Engine {
 		create func() (korrel8.Store, error)
 	}{
 		{k8s.Domain, func() (korrel8.Store, error) { return k8s.NewStore(k8sClient(cfg)) }},
-		{alert.Domain, func() (korrel8.Store, error) { return alert.NewOpenshiftStore(cfg) }},
+		{alert.Domain, func() (korrel8.Store, error) { return alert.NewOpenshiftAlertManagerStore(ctx, cfg) }},
 		{loki.Domain, func() (korrel8.Store, error) { return loki.NewOpenshiftLokiStackStore(ctx, k8sClient(cfg), cfg) }},
 	} {
 		s, err := x.create()
