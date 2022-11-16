@@ -42,8 +42,6 @@ func (d Domain) Classes() (classes []korrel8.Class) {
 	return classes
 }
 
-func (d Domain) URLRewriter(string) korrel8.URLRewriter { return nil }
-
 var _ korrel8.Domain = Domain("") // Implements interface
 
 // Class string is domain/class
@@ -129,6 +127,8 @@ func (s Store) Get(_ context.Context, q *korrel8.Query, r korrel8.Result) error 
 	}
 	return nil
 }
+
+func (s Store) URL(q *korrel8.Query) *url.URL { return q }
 
 func NewQuery(objects ...Object) *korrel8.Query {
 	v := url.Values{}

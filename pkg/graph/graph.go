@@ -74,27 +74,51 @@ func (g *Graph) addClass(c korrel8.Class) graph.Node {
 	return g.Node(id)
 }
 
-// ShortestPaths returns all the shortest paths from start to goal.
-func (g *Graph) ShortestPaths(start, goal korrel8.Class) ([]MultiPath, error) {
-	var (
-		startID, goalID int64
-		ok              bool
-	)
-	if startID, ok = g.nodeID[start]; !ok {
-		return nil, fmt.Errorf("start class not found in graph: %v", start)
+func (g *Graph) findNodeID(c korrel8.Class) (int64, error) {
+	if id, ok := g.nodeID[c]; ok {
+		return id, nil
 	}
-	if goalID, ok = g.nodeID[goal]; !ok {
-		return nil, fmt.Errorf("goal class not found in graph: %v", goal)
-	}
+	return 0, fmt.Errorf("class not found in graph: %v", c)
+}
+
+type pathFunc func(u, v int64) (paths [][]graph.Node)
+
+func (g *Graph) multiPaths(start, goal korrel8.Class, f pathFunc) (mp []MultiPath, err error) {
 	if start == goal {
 		return nil, fmt.Errorf("same start and goal class: a%v", start)
 	}
-	var mp []MultiPath
-	paths, _ := g.paths.AllBetween(startID, goalID)
-	for _, path := range paths {
+	var startID, goalID int64
+	if startID, err = g.findNodeID(start); err != nil {
+		return nil, err
+	}
+	if goalID, err = g.findNodeID(goal); err != nil {
+		return nil, err
+	}
+	for _, path := range f(startID, goalID) {
 		mp = append(mp, newMultiPath(g, path))
 	}
 	return mp, nil
+}
+
+// ShortestPaths returns all the shortest paths from start to goal.
+func (g *Graph) ShortestPaths(start, goal korrel8.Class) ([]MultiPath, error) {
+	return g.multiPaths(start, goal, func(u, v int64) [][]graph.Node {
+		paths, _ := g.paths.AllBetween(u, v)
+		return paths
+	})
+}
+
+// KPaths returns the k-shortest paths from start to goal.
+func (g *Graph) KShortestPaths(start, goal korrel8.Class, k int) ([]MultiPath, error) {
+	return g.multiPaths(start, goal, func(u, v int64) [][]graph.Node {
+		return path.YenKShortestPaths(g, k, g.Node(u), g.Node(v))
+	})
+}
+
+func (g *Graph) AllPaths(start, goal korrel8.Class) ([]MultiPath, error) {
+	return g.multiPaths(start, goal, func(u, v int64) [][]graph.Node {
+		return AllPaths(g, u, v)
+	})
 }
 
 func (g *Graph) DOTAttributers() (graph, node, edge encoding.Attributer) {

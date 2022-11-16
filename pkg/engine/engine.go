@@ -83,29 +83,22 @@ func (e *Engine) AddRules(rules ...korrel8.Rule) error {
 	return nil
 }
 
-// Follow rules in a path.
-// Returns multiple queries if some rules in the path return multiple objects.
-// May return queries and a multierr if there are some errors.
+// Follow rules in a multi-path, return all queries at the end of the path.
 func (e Engine) Follow(ctx context.Context, starters []korrel8.Object, c *korrel8.Constraint, path graph.MultiPath) ([]korrel8.Query, error) {
-	// TODO multi-path following needs thought, reduce duplication.
-	log.V(1).Info("following path", "path", path)
+	log.V(1).Info("follow: starting", "path", path)
 	if !path.Valid() {
 		return nil, fmt.Errorf("invalid path: %v", path)
 	}
 	queries := unique.NewList[url.URL]()
 	for i, links := range path {
 		queries.List = queries.List[:0] // Clear previous queries
-		log.V(1).Info("following links", "rules", links, "start", links.Start(), "goal", links.Goal())
+		log.V(1).Info("follow: follow rule set", "rules", links, "start", links.Start(), "goal", links.Goal())
 		for _, rule := range links {
-			q, err := e.followEach(rule, starters, c)
-			if err != nil {
-				log.V(1).Error(err, "ignored")
-				continue
-			}
+			q := e.followEach(rule, starters, c)
 			queries.Append(q...)
 		}
-		log.V(1).Info("queries", "queries", logging.URLs(queries.List))
-		if i == len(path)-1 {
+		log.V(1).Info("follow: got queries", "domain", links.Goal(), "queries", logging.URLs(queries.List))
+		if i == len(path)-1 || len(queries.List) == 0 {
 			break
 		}
 		d := links.Goal().Domain()
@@ -116,10 +109,11 @@ func (e Engine) Follow(ctx context.Context, starters []korrel8.Object, c *korrel
 		var result korrel8.ListResult
 		for _, q := range queries.List {
 			if err := store.Get(ctx, &q, &result); err != nil {
-				log.V(1).Error(err, "ignored")
+				log.V(1).Error(err, "get error in follow, skipping", "query", q)
 			}
 		}
 		starters = result.List()
+		log.V(1).Info("follow: found objects, continuing", "count", len(starters))
 	}
 	return queries.List, nil
 }
@@ -138,20 +132,31 @@ func (e Engine) FollowAll(ctx context.Context, starters []korrel8.Object, c *kor
 }
 
 // FollowEach calls r.Apply() for each start object and collects the resulting queries.
-// May return queries and a multierr if some rules fail to apply.
-func (f Engine) followEach(rule korrel8.Rule, start []korrel8.Object, c *korrel8.Constraint) ([]korrel8.Query, error) {
+// Ignores (but logs) rules that fail to apply.
+func (f Engine) followEach(rule korrel8.Rule, start []korrel8.Object, c *korrel8.Constraint) []korrel8.Query {
 	var (
-		queries []korrel8.Query
+		queries = unique.NewList[korrel8.Query]()
 		merr    error
 	)
 	for _, s := range start {
 		q, err := rule.Apply(s, c)
-		if err == nil && q != nil {
-			queries = append(queries, *q)
+		logContext := func() {
+			log.V(3).Info("follow: start context", "object", s, "constraint", c)
+		}
+		switch {
+		case err != nil:
+			log.V(1).Info("follow: error applying rule", "rule", rule, "error", err)
+			logContext()
+		case q == nil || *q == url.URL{}:
+			log.V(1).Info("follow: rule returned nil or empty query", "rule", rule)
+			logContext()
+		default:
+			log.V(2).Info("follow: rule returned query", "rule", rule, "query", q)
+			queries.Append(*q)
 		}
 		merr = multierr.Append(merr, err)
 	}
-	return unique.InPlace(queries, unique.Same[korrel8.Query]), merr
+	return queries.List
 }
 
 // Graph computes the rule graph from e.Rules and e.Classes on the first call.

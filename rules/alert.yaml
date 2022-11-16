@@ -1,36 +1,7 @@
 ---
-goal: [k8s, Deployment.apps]
+# NOTE this has been modified for the Alertmanager API.
 name: AlertToDeployment
 start: [alert, alert]
-template: |-
- /api/v1/namespaces/{{.Labels.namespace}}/deployments/{{.Labels.deployment}}
----
-goal: [k8s, Namespace]
-name: AlertToNamespace
-start: [alert, alert]
-template: |-
-  {{ if index .Labels "namespace" }}/api/v1/namespaces/{{.Labels.namespace}}{{ end }}
----
-goal: [alert, alert]
-start: [k8s, Deployment.apps]
-name: DeploymentToAlert
-template: |-
-   namespace="{{ .ObjectMeta.Namespace }}",deployment=~"{{ .ObjectMeta.Name }}-.+"
----
-goal: [alert, alert]
-start: [k8s, Namespace]
-name: NamespaceToAlert
-template: |-
-  namespace="{{ .ObjectMeta.Name }}"
----
-goal: [alert, alert]
-start: [k8s, Service]
-name: ServiceToAlert
-template: |-
-  namespace="{{ .ObjectMeta.Namespace }}",service="{{ .ObjectMeta.Name }}"
----
-goal: [alert, alert]
-name: PodToAlert
-start: [k8s, Pod]
-template: |-
-  {{eq .Kind "Pod" | assert}}namespace="{{ .ObjectMeta.Namespace }}",pod="{{ .ObjectMeta.Name }}" }}
+goal: [k8s, Deployment.apps]
+query: |-
+  /api/v1/namespaces/{{.Alert.Labels.namespace}}/deployments/{{.Alert.Labels.deployment}}

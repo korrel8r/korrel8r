@@ -28,5 +28,5 @@ func TestLinks_String(t *testing.T) {
 func TestMultiPath_String(t *testing.T) {
 	assert.Equal(t, "[]", fmt.Sprint(MultiPath{}))
 	assert.Equal(t, "[]", fmt.Sprint(MultiPath(nil)))
-	assert.Equal(t, "[(a)[x y z](b)[u v](c)]", fmt.Sprint(MultiPath{links("a", "b", "x", "y", "z"), links("b", "c", "u", "v")}))
+	assert.Equal(t, "[<a> [x y z] <b> [u v] <c>]", fmt.Sprint(MultiPath{links("a", "b", "x", "y", "z"), links("b", "c", "u", "v")}))
 }

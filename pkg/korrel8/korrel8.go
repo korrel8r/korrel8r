@@ -21,21 +21,14 @@ type Object any
 //
 // Domain implementations must be comparable.
 type Domain interface {
-	String() string                      // Name of the domain
-	Class(string) Class                  // Find a class by name, return nil if not found.
-	Classes() []Class                    // List of known classes in the Domain
-	URLRewriter(name string) URLRewriter // Get named URL transformer for this domain.
+	String() string     // Name of the domain
+	Class(string) Class // Find a class by name, return nil if not found.
+	Classes() []Class   // List of known classes in the Domain
 }
 
 // TemplateHelper optionally implemented by domains that provide template helper functions.
 // see text/template.Template.Funcs
 type TemplateHelper interface{ TemplateHelpers() map[string]any }
-
-// URLRewriter transforms between Query URLs and some an alternate URL format.
-type URLRewriter interface {
-	FromQuery(*Query) *url.URL
-	ToQuery(*url.URL) *Query
-}
 
 // Class identifies a subset of objects from the same domain with the same schema.
 //
@@ -56,6 +49,9 @@ type Store interface {
 	// Get the objects selected by query in this store.
 	// Appends resulting objects to Result.
 	Get(ctx context.Context, query *Query, result Result) error
+
+	// URL resolves a relative Query URI to a full URL for this store.
+	URL(query *Query) *url.URL
 }
 
 // Query is a relative URI - a URL with only path and query.

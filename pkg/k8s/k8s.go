@@ -1,6 +1,8 @@
 // package k8s is a Kubernetes implementation of the korrel8 interfaces
 package k8s
 
+/// FIXME move this back to the domains as optional store functions?
+
 import (
 	"context"
 	"fmt"
@@ -13,6 +15,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/rest"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -49,8 +52,6 @@ func (d domain) Classes() (classes []korrel8.Class) {
 	return classes
 }
 
-func (d domain) URLRewriter(name string) korrel8.URLRewriter { panic("FIXME") }
-
 var Domain korrel8.Domain = domain{} // Implements interface
 
 // TODO the Class implementation assumes all objects are pointers to the generated API struct.
@@ -81,18 +82,21 @@ func (c Class) String() string { return fmt.Sprintf("%v.%v.%v", c.Kind, c.Versio
 type Object client.Object
 
 // Store implements the korrel8.Store interface as a k8s API client.
-type Store struct{ c client.Client }
+type Store struct {
+	c   client.Client
+	cfg *rest.Config
+}
 
 // NewStore creates a new store
-func NewStore(c client.Client) (*Store, error) { return &Store{c: c}, nil }
+func NewStore(c client.Client, cfg *rest.Config) (*Store, error) { return &Store{c: c, cfg: cfg}, nil }
 
 func (s *Store) Get(ctx context.Context, query *korrel8.Query, result korrel8.Result) (err error) {
 	defer func() {
 		if err != nil {
-			err = fmt.Errorf("query error: %w: domain %v, query: %v", err, Domain, query)
+			err = fmt.Errorf("%v query error: %w: query= %v", Domain, err, query)
 		}
 	}()
-	gvk, nsName, err := s.parseAPIPath(query.Path)
+	gvk, nsName, err := s.ParseQuery(query.Path)
 	if err != nil {
 		return err
 	}
@@ -103,20 +107,33 @@ func (s *Store) Get(ctx context.Context, query *korrel8.Query, result korrel8.Re
 	}
 }
 
+func (s Store) URL(q *korrel8.Query) *url.URL {
+	u := url.URL{Scheme: "https", Host: s.cfg.Host}
+	return u.ResolveReference(q)
+}
+
 // parsing a REST URI into components then using client.Client to recreate the REST query.
 //
 // TODO revisit: this is weirdly indirect - parse an API path to make a Client call which re-creates the API path.
 // Should be able to use a REST client directly, but client.Client does REST client creation & caching
 // and manages schema and RESTMapper stuff which I'm not sure I understand yet.
-func (s *Store) parseAPIPath(path string) (gvk schema.GroupVersionKind, nsName types.NamespacedName, err error) {
+func (s *Store) ParseQuery(path string) (gvk schema.GroupVersionKind, nsName types.NamespacedName, err error) {
 	parts := k8sPathRegex.FindStringSubmatch(path)
 	if len(parts) != pCount {
-		return gvk, nsName, fmt.Errorf("invalid URI path")
+		return gvk, nsName, fmt.Errorf("invalid k8s REST path: %v", path)
 	}
 	nsName.Namespace, nsName.Name = parts[pNamespace], parts[pName]
 	gvr := schema.GroupVersionResource{Group: parts[pGroup], Version: parts[pVersion], Resource: parts[pResource]}
 	gvk, err = s.c.RESTMapper().KindFor(gvr)
 	return gvk, nsName, err
+}
+
+func (s *Store) ClassFor(resource string) korrel8.Class {
+	gvks, err := s.c.RESTMapper().KindsFor(schema.GroupVersionResource{Resource: resource})
+	if err != nil || len(gvks) == 0 {
+		return nil
+	}
+	return Class(gvks[0])
 }
 
 func (s *Store) getObject(ctx context.Context, gvk schema.GroupVersionKind, nsName types.NamespacedName, result korrel8.Result) error {
@@ -200,3 +217,16 @@ const (
 	pName
 	pCount
 )
+
+// ToConsole converts a k8s query to a console query
+func ToConsole(q *korrel8.Query) (*url.URL, error) {
+	parts := k8sPathRegex.FindStringSubmatch(q.Path)
+	if len(parts) != pCount {
+		return nil, fmt.Errorf("invalid k8s query: %v", q)
+	}
+	var ns string
+	if parts[pNamespace] != "" {
+		ns = "/ns/" + parts[pNamespace]
+	}
+	return &url.URL{Path: fmt.Sprintf("/k8s/%v/%v/%v", ns, parts[pResource], parts[pName])}, nil
+}

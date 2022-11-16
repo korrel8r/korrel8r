@@ -17,10 +17,11 @@ import (
 var Funcs = map[string]any{
 	"constraint":  func() *korrel8.Constraint { return nil },
 	"has":         func(_ ...any) bool { return true }, // Used for side-effect: evaluate arguments to detect errors
-	"json":        toJSON,
-	"yaml":        toYAML,
+	"toJSON":      toJSON,
+	"toYAML":      toYAML,
 	"fullname":    korrel8.FullName,
 	"urlquerymap": urlQueryMap,
+	"map":         kvMap,
 }
 
 func toJSON(v any) (string, error) { b, err := json.Marshal(v); return string(b), err }
@@ -39,4 +40,14 @@ func urlQueryMap(m any) string {
 		p.Add(fmt.Sprintf("%v", i.Key()), fmt.Sprintf("%v", i.Value()))
 	}
 	return p.Encode()
+}
+
+func storeURL(s korrel8.Store, q *korrel8.Query) (*url.URL, error) { return s.URL(q), nil }
+
+func kvMap(keyValue ...any) map[any]any {
+	m := map[any]any{}
+	for i := 0; i < len(keyValue); i += 2 { // Will panic out of range on odd number
+		m[keyValue[i]] = keyValue[i+1]
+	}
+	return m
 }

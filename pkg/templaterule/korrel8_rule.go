@@ -13,6 +13,7 @@ import (
 type rule struct {
 	*template.Template
 	start, goal korrel8.Class
+	origin      *Rule
 }
 
 func (r *rule) String() string       { return r.Template.Name() }

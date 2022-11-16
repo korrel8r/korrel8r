@@ -6,8 +6,10 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/korrel8/korrel8/internal/pkg/decoder"
 	"github.com/korrel8/korrel8/internal/pkg/logging"
@@ -68,7 +70,7 @@ func newEngine() *engine.Engine {
 		d      korrel8.Domain
 		create func() (korrel8.Store, error)
 	}{
-		{k8s.Domain, func() (korrel8.Store, error) { return k8s.NewStore(k8sClient(cfg)) }},
+		{k8s.Domain, func() (korrel8.Store, error) { return k8s.NewStore(k8sClient(cfg), cfg) }},
 		{alert.Domain, func() (korrel8.Store, error) { return alert.NewOpenshiftAlertManagerStore(ctx, cfg) }},
 		{loki.Domain, func() (korrel8.Store, error) { return loki.NewOpenshiftLokiStackStore(ctx, k8sClient(cfg), cfg) }},
 	} {
@@ -123,13 +125,13 @@ func (p printer) Append(objects ...korrel8.Object) {
 
 // loadRules from a file or walk a directory to find files.
 func loadRules(e *engine.Engine, root string) error {
-	log.V(2).Info("loading rules from", "root", root)
+	log.V(3).Info("loading rules from", "root", root)
 	return filepath.WalkDir(root, func(path string, info fs.DirEntry, err error) (reterr error) {
 		ext := filepath.Ext(path)
 		if !info.Type().IsRegular() || (ext != ".yaml" && ext != ".yml" && ext != ".json") {
 			return nil // Skip file
 		}
-		log.V(2).Info("loading rules", "path", path)
+		log.V(3).Info("loading rules", "path", path)
 		f, err := os.Open(path)
 		if err != nil {
 			return err
@@ -141,4 +143,25 @@ func loadRules(e *engine.Engine, root string) error {
 		}
 		return nil
 	})
+}
+
+// queryFromArgs treats args[0] as the initial URI, and args[1:] as NAME=VALUE strings for query parameters.
+func queryFromArgs(args []string) (*korrel8.Query, error) {
+	if len(args) == 0 {
+		return &korrel8.Query{}, nil
+	}
+	u, err := url.Parse(args[0])
+	if err != nil {
+		return nil, err
+	}
+	q := u.Query()
+	for _, nv := range args[1:] {
+		n, v, ok := strings.Cut(nv, "=")
+		if !ok {
+			return nil, fmt.Errorf("not a name=value argument: %v", nv)
+		}
+		q.Set(n, v)
+	}
+	u.RawQuery = q.Encode()
+	return u, err
 }

@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"net/url"
 
 	"github.com/korrel8/korrel8/internal/pkg/logging"
 	"github.com/korrel8/korrel8/pkg/korrel8"
@@ -19,10 +20,9 @@ var Domain korrel8.Domain = domain{}
 
 type domain struct{}
 
-func (d domain) String() string                         { return "alert" }
-func (d domain) Class(string) korrel8.Class             { return Class{} }
-func (d domain) Classes() []korrel8.Class               { return []korrel8.Class{Class{}} }
-func (d domain) URLRewriter(string) korrel8.URLRewriter { return nil }
+func (d domain) String() string             { return "alert" }
+func (d domain) Class(string) korrel8.Class { return Class{} }
+func (d domain) Classes() []korrel8.Class   { return []korrel8.Class{Class{}} }
 
 type Class struct{} // Only one class
 
@@ -78,4 +78,9 @@ func (s Store) Get(ctx context.Context, query *korrel8.Query, result korrel8.Res
 		}
 	}
 	return nil
+}
+
+func (s Store) URL(q *korrel8.Query) *url.URL {
+	u := url.URL{Scheme: "https", Host: s.host}
+	return u.ResolveReference(q)
 }

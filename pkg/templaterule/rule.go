@@ -81,10 +81,10 @@ func (r Rule) Rules(e *engine.Engine) ([]korrel8.Rule, error) {
 	for _, start := range rb.startClasses.List {
 		switch {
 		case rb.goalClass != nil: // Literal goal class, single korrel8.Rule
-			rules = append(rules, &rule{Template: rb.query, start: start, goal: rb.goalClass})
+			rules = append(rules, &rule{Template: rb.query, start: start, goal: rb.goalClass, origin: &r})
 		case rb.goalTemplate != nil: // Goal class template test, must try against all goal domain classes.
 			for _, g := range rb.goalDomain.Classes() {
-				rules = append(rules, &rule{Template: rb.query, start: start, goal: g})
+				rules = append(rules, &rule{Template: rb.query, start: start, goal: g, origin: &r})
 			}
 		}
 		// FIXME constraint handling - see Apply
@@ -95,6 +95,7 @@ func (r Rule) Rules(e *engine.Engine) ([]korrel8.Rule, error) {
 /// FIXME this has gotten too complex.?
 
 func (rb *ruleBuilder) setup() (err error) {
+	// Collect template functions.
 	rb.funcs = map[string]any{}
 	for _, d := range rb.engine.Domains() {
 		if th, ok := d.(korrel8.TemplateHelper); ok {
@@ -103,6 +104,7 @@ func (rb *ruleBuilder) setup() (err error) {
 		s := rb.engine.Store(d)
 		if th, ok := s.(korrel8.TemplateHelper); ok {
 			maps.Copy(rb.funcs, th.TemplateHelpers())
+			rb.funcs[fmt.Sprintf("%vStoreURL", d)] = storeURL
 		}
 	}
 	for _, f := range []func() error{
@@ -147,7 +149,7 @@ func (rb *ruleBuilder) setupStart() (err error) {
 
 func (rb *ruleBuilder) setupGoal() (err error) {
 	if len(rb.Goal) != 2 {
-		return fmt.Errorf("goal must contain two elements; [domain, classOrTemplate]")
+		return fmt.Errorf("goal must contain two elements: %+v", rb.Rule)
 	}
 	if rb.goalDomain, err = rb.getDomain("goal", rb.Goal); err != nil {
 		return err
@@ -159,17 +161,18 @@ func (rb *ruleBuilder) setupGoal() (err error) {
 }
 
 func (rb *ruleBuilder) newTemplate(text, suffix string) (*template.Template, error) {
-	return template.New(rb.Name + suffix).Funcs(Funcs).Funcs(rb.funcs).Option("missingkey=error").Parse(text)
+	return template.New(rb.Name + suffix).Option("missingkey=error").Funcs(Funcs).Funcs(rb.funcs).Parse(text)
 }
 
 func (rb *ruleBuilder) getDomain(what string, list []string) (korrel8.Domain, error) {
 	if len(list) > 0 {
 		d := rb.engine.Domain(list[0])
-		if d != nil {
-			return d, nil
+		if d == nil {
+			return nil, fmt.Errorf("unknown domain: %v", list[0])
 		}
+		return d, nil
 	}
-	return nil, fmt.Errorf("%v must start with a domain name: %v", what, list)
+	return nil, fmt.Errorf("%v cannot be empty: %v", what, rb.Rule.Name)
 }
 
 func (rb *ruleBuilder) classOrTemplate(x string, d korrel8.Domain) (korrel8.Class, *template.Template, error) {

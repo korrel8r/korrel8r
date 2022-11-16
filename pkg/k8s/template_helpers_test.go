@@ -21,4 +21,6 @@ func TestKindToResource(t *testing.T) {
 			assert.Equal(t, tc[0], resource)
 		}
 	}
+	_, err := kindToResource(rm, "x", "y")
+	assert.EqualError(t, err, "no matches for kind \"x\" in version \"y\"")
 }

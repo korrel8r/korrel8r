@@ -15,7 +15,7 @@ func (s *Store) TemplateHelpers() map[string]any {
 }
 
 // kindToResource convert a kind and apiVersion to a resource string.
-func kindToResource(restMapper meta.RESTMapper, kind string, apiVersion string) (string, error) {
+func kindToResource(restMapper meta.RESTMapper, kind string, apiVersion string) (resource string, err error) {
 	gv, err := schema.ParseGroupVersion(apiVersion)
 	if err != nil {
 		return "", err

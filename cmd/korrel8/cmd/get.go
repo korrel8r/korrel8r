@@ -7,7 +7,6 @@ package cmd
 import (
 	"context"
 	"fmt"
-	"net/url"
 	"os"
 	"strings"
 
@@ -24,26 +23,16 @@ Optional NAME=VALUE arguments are added to URL query.
 `,
 	Args: cobra.MinimumNArgs(2),
 	Run: func(cmd *cobra.Command, args []string) {
-		domainName, queryString := args[0], args[1]
 		e := newEngine()
-		domainName, _, _ = strings.Cut(domainName, "/") // Allow a class name, extract the domain.
+		domainName, _, _ := strings.Cut(args[0], "/") // Allow a class name, extract the domain.
 		store := e.Store(e.Domain(domainName))
 		if store == nil {
 			check(fmt.Errorf("no store for domain %v", domainName))
 		}
-		query, err := url.Parse(queryString)
-		check(err, "invalid query URL: %v", queryString)
-		q := query.Query()
-		for _, nv := range args[2:] {
-			n, v, ok := strings.Cut(nv, "=")
-			if !ok {
-				check(fmt.Errorf("not a name=value argument: %v", nv))
-			}
-			q.Set(n, v)
-		}
-		query.RawQuery = q.Encode()
+		u := must(queryFromArgs(args[1:]))
+		log.V(1).Info("getting", "query", u)
 		result := newPrinter(os.Stdout)
-		check(store.Get(context.Background(), query, result))
+		check(store.Get(context.Background(), u, result))
 	},
 }
 

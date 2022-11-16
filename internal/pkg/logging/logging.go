@@ -2,6 +2,7 @@
 package logging
 
 import (
+	"encoding/json"
 	"log"
 	"net/url"
 	"os"
@@ -38,3 +39,18 @@ func (u URLs) MarshalLog() any {
 	}
 	return p
 }
+
+// JSONString returns the JSON marshaled string from v, or the error message if marshal fails
+func JSONString(v any) string {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err.Error()
+	}
+	return string(b)
+}
+
+type logJSON struct{ v any }
+
+func (l logJSON) MarshalLog() any { return JSONString(l.v) }
+
+func JSON(v any) logr.Marshaler { return logJSON{v: v} }

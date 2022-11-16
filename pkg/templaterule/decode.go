@@ -22,7 +22,7 @@ func AddRules(d Decoder, e *engine.Engine) error {
 			if err != nil {
 				return err
 			}
-			log.V(2).Info("adding template rules", "template", tr.Name, "expandced", len(krs))
+			log.V(3).Info("adding template rules", "template", tr.Name, "expanded", len(krs))
 
 			if err := e.AddRules(krs...); err != nil {
 				return err

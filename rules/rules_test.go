@@ -8,53 +8,43 @@ import (
 	"testing"
 
 	"github.com/korrel8/korrel8/internal/pkg/decoder"
+	tk "github.com/korrel8/korrel8/internal/pkg/test/k8s"
 	"github.com/korrel8/korrel8/pkg/engine"
 	"github.com/korrel8/korrel8/pkg/k8s"
 	"github.com/korrel8/korrel8/pkg/korrel8"
+	"github.com/korrel8/korrel8/pkg/loki"
 	"github.com/korrel8/korrel8/pkg/templaterule"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta/testrestmapper"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
-func setup(t *testing.T) (client.Client, *engine.Engine) {
+func setup(t *testing.T, ruleFiles ...string) (client.Client, *engine.Engine) {
 	t.Helper()
 	e := engine.New("test")
 	c := fake.NewClientBuilder().WithRESTMapper(testrestmapper.TestOnlyStaticRESTMapper(k8s.Scheme)).Build()
-	s, err := k8s.NewStore(c)
+	s, err := k8s.NewStore(c, client.Die)
 	require.NoError(t, err)
 	e.AddDomain(k8s.Domain, s)
+	e.AddDomain(loki.Domain, nil)
+	for _, name := range ruleFiles {
+		f, err := os.Open(name)
+		require.NoError(t, err)
+		defer f.Close()
+		d := decoder.New(f)
+		require.NoError(t, templaterule.AddRules(d, e), "%v:%v", name, d.Line())
+	}
 	return c, e
 }
 
 func TestEventRules(t *testing.T) {
-	c, e := setup(t)
-	f, err := os.Open("k8s.yaml")
-	require.NoError(t, err)
-	defer f.Close()
-	templaterule.AddRules(decoder.New(f), e)
-	pod := &corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "foo",
-			Namespace: "default",
-		}}
-	event := &corev1.Event{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "some-event",
-			Namespace: "default",
-		},
-		InvolvedObject: corev1.ObjectReference{
-			Kind:       "Pod",
-			Namespace:  "default",
-			Name:       "foo",
-			APIVersion: "v1",
-		}}
-	require.NoError(t, c.Create(ctx, pod))
-	require.NoError(t, c.Create(ctx, event))
+	c, e := setup(t, "k8s.yaml")
+	pod := tk.Build(&corev1.Pod{}).NSName("aNamespace", "foo").Object()
+	event := tk.EventFor(pod)
+	require.NoError(t, tk.Create(c, pod, event))
 
 	t.Run("PodToEvent", func(t *testing.T) {
 		paths, err := e.Graph().ShortestPaths(k8s.ClassOf(pod), k8s.ClassOf(event))
@@ -63,7 +53,7 @@ func TestEventRules(t *testing.T) {
 		require.NoError(t, err)
 		want := []korrel8.Query{{
 			Path:     "/api/v1/events",
-			RawQuery: url.Values{"fieldSelector": []string{"involvedObject.name=foo,involvedObject.namespace=default"}}.Encode()}}
+			RawQuery: url.Values{"fieldSelector": []string{"involvedObject.name=foo,involvedObject.namespace=aNamespace"}}.Encode()}}
 		require.NotEmpty(t, queries)
 		assert.Equal(t, want, queries, "%v != %v", &want[0], &queries[0])
 	})
@@ -73,7 +63,7 @@ func TestEventRules(t *testing.T) {
 		require.NoError(t, err)
 		queries, err := e.FollowAll(ctx, []korrel8.Object{event}, nil, paths)
 		require.NoError(t, err)
-		want := []korrel8.Query{{Path: "/api/v1/namespaces/default/pods/foo"}}
+		want := []korrel8.Query{{Path: "/api/v1/namespaces/aNamespace/pods/foo"}}
 		require.NotEmpty(t, queries)
 		assert.Equal(t, want, queries, "%v != %v", &want[0], &queries[0])
 	})

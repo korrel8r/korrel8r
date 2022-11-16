@@ -69,7 +69,7 @@ func TestStore_ParseURI(t *testing.T) {
 	require.NoError(t, apiextensionsv1.AddToScheme(scheme.Scheme))
 	s, err := NewStore(fake.NewClientBuilder().
 		WithRESTMapper(testrestmapper.TestOnlyStaticRESTMapper(scheme.Scheme)).
-		Build())
+		Build(), nil)
 	require.NoError(t, err)
 	for _, x := range []struct {
 		path   string
@@ -84,7 +84,7 @@ func TestStore_ParseURI(t *testing.T) {
 		{"/apis/apiextensions.k8s.io/v1/namespaces/foo/customresourcedefinitions/bar", schema.GroupVersionKind{Group: "apiextensions.k8s.io", Version: "v1", Kind: "CustomResourceDefinition"}, types.NamespacedName{Namespace: "foo", Name: "bar"}},
 	} {
 		t.Run(x.path, func(t *testing.T) {
-			gvk, nsName, err := s.parseAPIPath(x.path)
+			gvk, nsName, err := s.ParseQuery(x.path)
 			require.NoError(t, err)
 			assert.Equal(t, x.gvk, gvk)
 			assert.Equal(t, x.nsName, nsName)
@@ -106,7 +106,7 @@ func TestStore_Get(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{Name: "wilma", Namespace: "y", Labels: map[string]string{"app": "foo"}},
 			},
 		).Build()
-	store, err := NewStore(c)
+	store, err := NewStore(c, nil)
 	require.NoError(t, err)
 	var (
 		fred   = types.NamespacedName{Namespace: "x", Name: "fred"}

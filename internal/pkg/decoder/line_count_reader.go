@@ -20,13 +20,13 @@ func NewLineCountReader(r io.Reader) *LineCountReader {
 // Read returns at most one line of data, and keeps count of lines returned.
 // Only recognizes "\n" as a line separator.
 func (r *LineCountReader) Read(data []byte) (int, error) {
-	buf, err := r.Peek(len(data))
-	if len(buf) == 0 {
+	peek, err := r.Peek(len(data))
+	if len(peek) == 0 {
 		return 0, err
 	}
-	i := bytes.IndexByte(buf, '\n')
+	i := bytes.IndexByte(peek, '\n')
 	if i < 0 { // No newlines
-		return r.Reader.Read(data[:len(buf)])
+		return r.Reader.Read(data[:len(peek)])
 	}
 	r.Line++
 	return r.Reader.Read(data[:i+1])

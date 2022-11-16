@@ -5,6 +5,7 @@ Copyright © 2022 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"net/url"
@@ -12,8 +13,8 @@ import (
 	"time"
 
 	"github.com/korrel8/korrel8/internal/pkg/decoder"
-	"github.com/korrel8/korrel8/internal/pkg/openshift"
 	"github.com/korrel8/korrel8/pkg/engine"
+	"github.com/korrel8/korrel8/pkg/graph"
 	"github.com/korrel8/korrel8/pkg/korrel8"
 	"github.com/korrel8/korrel8/pkg/unique"
 	"github.com/spf13/cobra"
@@ -21,19 +22,28 @@ import (
 
 // correlateCmd represents the correlate command
 var correlateCmd = &cobra.Command{
-	Use:   "correlate START_CLASS GOAL_CLASS [QUERY]",
-	Short: "Correlate from START_CLASS to GOAL_CLASS, using QUERY or object data from stdin",
-	Args:  cobra.RangeArgs(2, 3),
+	Use:   "correlate START_CLASS GOAL_CLASS [QUERY_URL [NAME=VALUE...]]",
+	Short: "Correlate from START_CLASS to GOAL_CLASS. Use QUERY_URL if present, read object from stdin if not",
+	Args:  cobra.MinimumNArgs(2),
 	Run: func(cmd *cobra.Command, args []string) {
 		e := newEngine()
 		start, goal := must(e.ParseClass(args[0])), must(e.ParseClass(args[1]))
-		paths := must(e.Graph().ShortestPaths(start, goal))
+		var paths []graph.MultiPath
+		switch {
+		case *allFlag:
+			paths = must(e.Graph().AllPaths(start, goal))
+		case *kFlag > 0:
+			paths = must(e.Graph().KShortestPaths(start, goal, *kFlag))
+		default:
+			paths = must(e.Graph().ShortestPaths(start, goal))
+		}
+		log.V(1).Info("found paths", "paths", paths, "count", len(paths))
 		starters := korrel8.NewSetResult(start)
 
 		// FIXME include constraint
 
-		if len(args) == 3 { // Get starters using query
-			query := must(url.Parse(args[2]))
+		if len(args) >= 3 { // Get starters using query
+			query := must(queryFromArgs(args[2:]))
 			store := e.Store(start.Domain())
 			if store == nil {
 				check(fmt.Errorf("domain has no store: %v", start.Domain()))
@@ -56,35 +66,44 @@ var correlateCmd = &cobra.Command{
 		for _, path := range paths {
 			queries.Append(must(e.Follow(ctx, starters.List(), nil, path))...)
 		}
-		printResult(e, goal, queries.List)
+		if *getFlag {
+			printObjects(e, goal, queries.List)
+		} else {
+			printQueries(e, goal, queries.List)
+		}
 	},
 }
 
-func printResult(e *engine.Engine, goal korrel8.Class, queries []korrel8.Query) {
-	rewrite := func(q *korrel8.Query) *url.URL { return q }
-	if *consoleFlag {
-		d := goal.Domain()
-
-		if transform := d.URLRewriter("console"); transform != nil {
-			c := k8sClient(restConfig())
-			base := must(openshift.ConsoleURL(ctx, c))
-			rewrite = func(q *korrel8.Query) *url.URL { return base.ResolveReference(transform.FromQuery(q)) }
-		}
-	}
+func printQueries(e *engine.Engine, goal korrel8.Class, queries []korrel8.Query) {
 	for _, q := range queries {
-		fmt.Println(rewrite(&q))
+		fmt.Println(q)
+	}
+}
+
+func printObjects(e *engine.Engine, goal korrel8.Class, queries []korrel8.Query) {
+	d := goal.Domain()
+	store := e.Store(d)
+	if store == nil {
+		check(fmt.Errorf("no store for domain %d", d))
+	}
+	result := newPrinter(os.Stdout)
+	for _, q := range queries {
+		check(store.Get(context.Background(), &q, result))
 	}
 }
 
 var (
-	consoleFlag  *bool
-	intervalFlag *time.Duration
-	endTime      TimeFlag
+	allFlag, getFlag *bool
+	intervalFlag     *time.Duration
+	kFlag            *int
+	endTime          TimeFlag
 )
 
 func init() {
 	rootCmd.AddCommand(correlateCmd)
-	consoleFlag = correlateCmd.Flags().Bool("console", false, "Print openshift console URLs instead of queries")
 	intervalFlag = correlateCmd.Flags().Duration("interval", time.Minute*10, "limit results to this interval")
 	correlateCmd.Flags().Var(&endTime, "time", "find results up to this time")
+	kFlag = correlateCmd.Flags().IntP("kshortest", "k", 0, "Use K-shortest paths")
+	allFlag = correlateCmd.Flags().BoolP("allpaths", "a", false, "Use all paths")
+	getFlag = correlateCmd.Flags().Bool("get", false, "Get objects from query")
 }
