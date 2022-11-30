@@ -7,14 +7,11 @@ import (
 	"net/http"
 	"net/url"
 
-	"github.com/korrel8/korrel8/internal/pkg/logging"
 	"github.com/korrel8/korrel8/pkg/korrel8"
 	"github.com/prometheus/alertmanager/pkg/labels"
 	"github.com/prometheus/client_golang/api"
 	v1 "github.com/prometheus/client_golang/api/prometheus/v1"
 )
-
-var log = logging.Log
 
 var Domain korrel8.Domain = domain{}
 

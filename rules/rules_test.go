@@ -18,6 +18,7 @@ import (
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta/testrestmapper"
+	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
@@ -26,7 +27,7 @@ func setup(t *testing.T, ruleFiles ...string) (client.Client, *engine.Engine) {
 	t.Helper()
 	e := engine.New("test")
 	c := fake.NewClientBuilder().WithRESTMapper(testrestmapper.TestOnlyStaticRESTMapper(k8s.Scheme)).Build()
-	s, err := k8s.NewStore(c, client.Die)
+	s, err := k8s.NewStore(c, &rest.Config{})
 	require.NoError(t, err)
 	e.AddDomain(k8s.Domain, s)
 	e.AddDomain(loki.Domain, nil)

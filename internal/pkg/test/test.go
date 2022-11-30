@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -41,10 +40,6 @@ var (
 func HasCluster() error {
 	// Contact the cluster once per test run, after that assume nothing changes.
 	hasClusterOnce.Do(func() {
-		if os.Getenv("TEST_NO_CLUSTER") != "" {
-			clusterErr = errors.New("TEST_NO_CLUSTER is set")
-			return
-		}
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 		RESTConfig, clusterErr = config.GetConfig()
@@ -67,6 +62,9 @@ func HasCluster() error {
 // SkipIfNoCluster calls t.Skip if no cluster is detected.
 func SkipIfNoCluster(t *testing.T) {
 	t.Helper()
+	if os.Getenv("TEST_NO_CLUSTER") != "" {
+		skipf(t, "TEST_NO_CLUSTER is set")
+	}
 	if err := HasCluster(); err != nil {
 		skipf(t, "no cluster available: %v", err)
 	}

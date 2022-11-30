@@ -9,8 +9,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// skip for now: Test is failing with 404
-func skipTestQuery_Alert(t *testing.T) {
+func TestQuery_Alert(t *testing.T) {
+	t.Skip("temporary skip: failing with 404")
 	test.SkipIfNoCluster(t)
 	store, err := NewOpenshiftStore(context.Background(), test.RESTConfig)
 	require.NoError(t, err)

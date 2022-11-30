@@ -1,5 +1,4 @@
 // package loki generates queries for logs stored in Loki or LokiStack
-//
 package loki
 
 import (
@@ -188,7 +187,7 @@ func NewPlainQuery(logQL string, constraint *korrel8.Constraint) *korrel8.Query 
 		}
 	}
 	return &korrel8.Query{
-		Path:     fmt.Sprintf("/loki/api/v1/query_range"),
+		Path:     "/loki/api/v1/query_range",
 		RawQuery: v.Encode(),
 	}
 }

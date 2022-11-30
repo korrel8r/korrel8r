@@ -3,7 +3,6 @@ package console
 import (
 	"fmt"
 	"net/url"
-	"regexp"
 	"strings"
 
 	"github.com/korrel8/korrel8/internal/pkg/logging"
@@ -12,6 +11,8 @@ import (
 	"github.com/korrel8/korrel8/pkg/k8s"
 	"github.com/korrel8/korrel8/pkg/korrel8"
 	"github.com/korrel8/korrel8/pkg/loki"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
 
 var log = logging.Log
@@ -26,6 +27,7 @@ func ParseURL(consoleURL string) (korrel8.Class, *korrel8.Query, error) {
 		return nil, nil, err
 	}
 	switch {
+	// FIXME common parsing of URLs
 	case strings.HasPrefix(u.Path, "/monitoring/alerts"):
 		c := alert.Domain.Classes()[0]
 		q := &url.URL{RawQuery: url.Values{"filter": []string{"alertname=" + u.Query().Get("alertname")}}.Encode()}
@@ -33,23 +35,13 @@ func ParseURL(consoleURL string) (korrel8.Class, *korrel8.Query, error) {
 	case strings.HasPrefix(u.Path, "/k8s/"):
 		s := strings.Split(u.Path, "/")
 		ns, res, name := s[3], s[4], s[5]
-		kind := strings.Title(res[:len(res)-1])
+		kind := cases.Title(language.Und).String(res[:len(res)-1])
 		log.Info("FIXME", "path", u.Path, "ns", ns, "res", res, "name", name, "kind", kind)
 		return k8s.Domain.Class(kind), &url.URL{Path: fmt.Sprintf("/api/v1/namespaces/%v/%v/%v", ns, res, name)}, nil
 	default:
 		return nil, nil, fmt.Errorf("unknown console URL: %v", consoleURL)
 	}
 }
-
-const (
-	ns       = ""
-	resource = "(?:/)"
-	name     = "(?:/)"
-)
-
-// [/ns/<namespace>]/<resource>[/<name>/[events]]
-var k8sPathRegex = regexp.MustCompile(
-	`/k8s/ns/(?P<ns>/[^/]+)/(?P<resource>/[^/]+)/(?P<name>/[^/]+)`)
 
 // FormatURL formats a console URL from a query URI reference.
 func FormatURL(base *url.URL, c korrel8.Class, q *korrel8.Query) (*url.URL, error) {

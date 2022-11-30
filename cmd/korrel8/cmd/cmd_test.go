@@ -61,8 +61,8 @@ func TestCorrelate_Pods(t *testing.T) {
 		return pod.Status.Phase == corev1.PodRunning
 	})
 
-	logQL := fmt.Sprintf(`{kubernetes_namespace_name=%q,kubernetes_pod_name=%q}`, pod.Namespace, pod.Name)
-	want := "/application/loki/api/v1/query_range?query=" + url.QueryEscape(logQL)
+	logQL := fmt.Sprintf(`{kubernetes_namespace_name=%q,kubernetes_pod_name=%q} |  json`, pod.Namespace, pod.Name)
+	want := "/api/logs/v1/application/loki/api/v1/query_range?query=" + url.QueryEscape(logQL)
 	var exitCode int
 	stdout, stderr := test.FakeMainStdin(test.JSONString(d), []string{"", "correlate", "k8s/Deployment", "loki/application"}, func() {
 		exitCode = Execute()
@@ -85,6 +85,7 @@ func TestList_Classes(t *testing.T) {
 }
 
 func TestList_Domains(t *testing.T) {
+
 	test.SkipIfNoCluster(t)
 	// List all k8s classes
 	var exitCode int

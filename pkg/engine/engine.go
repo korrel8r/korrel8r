@@ -33,7 +33,7 @@ func New(name string) *Engine {
 	return &Engine{name: name, stores: map[string]korrel8.Store{}, domains: map[string]korrel8.Domain{}}
 }
 
-func (e Engine) Name() string { return e.name }
+func (e *Engine) Name() string { return e.name }
 
 // Domain or nil if no domain of that name exists.
 func (e *Engine) Domain(name string) korrel8.Domain { return e.domains[name] }
@@ -84,7 +84,7 @@ func (e *Engine) AddRules(rules ...korrel8.Rule) error {
 }
 
 // Follow rules in a multi-path, return all queries at the end of the path.
-func (e Engine) Follow(ctx context.Context, starters []korrel8.Object, c *korrel8.Constraint, path graph.MultiPath) ([]korrel8.Query, error) {
+func (e *Engine) Follow(ctx context.Context, starters []korrel8.Object, c *korrel8.Constraint, path graph.MultiPath) ([]korrel8.Query, error) {
 	log.V(1).Info("follow: starting", "path", path)
 	if !path.Valid() {
 		return nil, fmt.Errorf("invalid path: %v", path)
@@ -118,7 +118,7 @@ func (e Engine) Follow(ctx context.Context, starters []korrel8.Object, c *korrel
 	return queries.List, nil
 }
 
-func (e Engine) FollowAll(ctx context.Context, starters []korrel8.Object, c *korrel8.Constraint, paths []graph.MultiPath) ([]korrel8.Query, error) {
+func (e *Engine) FollowAll(ctx context.Context, starters []korrel8.Object, c *korrel8.Constraint, paths []graph.MultiPath) ([]korrel8.Query, error) {
 	// TODO: can we optimize multi-multi-path following by using common results?
 	queries := unique.NewList[korrel8.Query]()
 	for _, p := range paths {
@@ -133,7 +133,7 @@ func (e Engine) FollowAll(ctx context.Context, starters []korrel8.Object, c *kor
 
 // FollowEach calls r.Apply() for each start object and collects the resulting queries.
 // Ignores (but logs) rules that fail to apply.
-func (f Engine) followEach(rule korrel8.Rule, start []korrel8.Object, c *korrel8.Constraint) []korrel8.Query {
+func (f *Engine) followEach(rule korrel8.Rule, start []korrel8.Object, c *korrel8.Constraint) []korrel8.Query {
 	var (
 		queries = unique.NewList[korrel8.Query]()
 		merr    error
@@ -161,7 +161,7 @@ func (f Engine) followEach(rule korrel8.Rule, start []korrel8.Object, c *korrel8
 
 // Graph computes the rule graph from e.Rules and e.Classes on the first call.
 // On subsequent calls it returns the same graph, it is not re-computed.
-func (e Engine) Graph() *graph.Graph {
+func (e *Engine) Graph() *graph.Graph {
 	e.graphOnce.Do(func() {
 		e.graph = graph.New(e.name, e.rules, e.classes)
 	})

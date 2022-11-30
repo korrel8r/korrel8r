@@ -3,15 +3,12 @@ package graph
 import (
 	"fmt"
 
-	"github.com/korrel8/korrel8/internal/pkg/logging"
 	"github.com/korrel8/korrel8/pkg/korrel8"
 	"gonum.org/v1/gonum/graph"
 	"gonum.org/v1/gonum/graph/encoding"
 	"gonum.org/v1/gonum/graph/multi"
 	"gonum.org/v1/gonum/graph/path"
 )
-
-var log = logging.Log
 
 // Graph is a directed multigraph with korrel8.Class vertices and korrel8.Rule edges.
 type Graph struct {

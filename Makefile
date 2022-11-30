@@ -2,6 +2,8 @@
 help: ## Describe make targets
 	@grep '^[^: ]*: *.* *##' Makefile | sed 's/^\([^: ]*\): *.* *## \(.*\)$$/\1: \2/'
 
+all: lint test
+
 .PHONY: lint
 lint:				## Check for lint.
 	golangci-lint run

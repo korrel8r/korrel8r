@@ -1,7 +1,6 @@
 package graph
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/korrel8/korrel8/internal/pkg/test/mock"
@@ -71,18 +70,19 @@ func TestGraph_ShortestPaths(t *testing.T) {
 	}
 }
 
-func rm(start, goal string, extras ...string) korrel8.Rule {
-	return mock.NewRule(start+"_"+goal, start, goal,
-		func(o korrel8.Object, _ *korrel8.Constraint) (*korrel8.Query, error) {
-			for _, s := range extras {
-				if s == o.(mock.Object).Class().String() {
-					return nil, nil // Accept
-				}
-			}
-			return nil, fmt.Errorf("no match: %+v in %v", o, extras)
-		})
-}
-func c(s string) korrel8.Class { return mock.Class(s) }
+// func rm(start, goal string, extras ...string) korrel8.Rule {
+// 	return mock.NewRule(start+"_"+goal, start, goal,
+// 		func(o korrel8.Object, _ *korrel8.Constraint) (*korrel8.Query, error) {
+// 			for _, s := range extras {
+// 				if s == o.(mock.Object).Class().String() {
+// 					return nil, nil // Accept
+// 				}
+// 			}
+// 			return nil, fmt.Errorf("no match: %+v in %v", o, extras)
+// 		})
+// }
+
+// func (s string) korrel8.Class { return mock.Class(s) }
 
 // func TestGraph_Matches(t *testing.T) {
 // 	for _, x := range []struct {

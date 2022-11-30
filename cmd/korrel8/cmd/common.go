@@ -43,14 +43,6 @@ func check(err error, format ...any) {
 
 func must[T any](v T, err error) T { check(err); return v }
 
-func open(name string) (f *os.File) {
-	if name == "-" {
-		return os.Stdin
-	} else {
-		return must(os.Open(name))
-	}
-}
-
 func restConfig() *rest.Config {
 	cfg, err := config.GetConfig()
 	if err == nil {
@@ -126,7 +118,10 @@ func (p printer) Append(objects ...korrel8.Object) {
 // loadRules from a file or walk a directory to find files.
 func loadRules(e *engine.Engine, root string) error {
 	log.V(3).Info("loading rules from", "root", root)
-	return filepath.WalkDir(root, func(path string, info fs.DirEntry, err error) (reterr error) {
+	return filepath.WalkDir(root, func(path string, info fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
 		ext := filepath.Ext(path)
 		if !info.Type().IsRegular() || (ext != ".yaml" && ext != ".yml" && ext != ".json") {
 			return nil // Skip file

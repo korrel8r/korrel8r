@@ -1,10 +1,12 @@
 package mock
 
 import (
+	"context"
 	"testing"
 
 	"github.com/korrel8/korrel8/pkg/korrel8"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestDomain(t *testing.T) {
@@ -41,7 +43,7 @@ func TestObject(t *testing.T) {
 func TestStore_Get(t *testing.T) {
 	r := korrel8.NewListResult()
 
-	Store{}.Get(nil, NewQuery("X/foo:x", "Y/bar.y", "foo:a", "bar:b", ":u", ":v"), r)
+	require.NoError(t, Store{}.Get(context.Background(), NewQuery("X/foo:x", "Y/bar.y", "foo:a", "bar:b", ":u", ":v"), r))
 	want := NewObjects("X/foo:x", "Y/bar.y", "foo:a", "bar:b", ":u", ":v")
 	assert.ElementsMatch(t, want, r.List())
 }

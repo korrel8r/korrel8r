@@ -1,6 +1,5 @@
 /*
 Copyright © 2022 NAME HERE <EMAIL ADDRESS>
-
 */
 package cmd
 
@@ -10,7 +9,6 @@ import (
 	"io"
 	"net/url"
 	"os"
-	"time"
 
 	"github.com/korrel8/korrel8/internal/pkg/decoder"
 	"github.com/korrel8/korrel8/pkg/engine"
@@ -48,7 +46,7 @@ var correlateCmd = &cobra.Command{
 			if store == nil {
 				check(fmt.Errorf("domain has no store: %v", start.Domain()))
 			}
-			store.Get(ctx, query, starters)
+			check(store.Get(ctx, query, starters))
 		} else { // Read starters from stdin
 			dec := decoder.New(os.Stdin)
 			for {
@@ -76,7 +74,7 @@ var correlateCmd = &cobra.Command{
 
 func printQueries(e *engine.Engine, goal korrel8.Class, queries []korrel8.Query) {
 	for _, q := range queries {
-		fmt.Println(q)
+		fmt.Println(&q)
 	}
 }
 
@@ -94,14 +92,12 @@ func printObjects(e *engine.Engine, goal korrel8.Class, queries []korrel8.Query)
 
 var (
 	allFlag, getFlag *bool
-	intervalFlag     *time.Duration
 	kFlag            *int
 	endTime          TimeFlag
 )
 
 func init() {
 	rootCmd.AddCommand(correlateCmd)
-	intervalFlag = correlateCmd.Flags().Duration("interval", time.Minute*10, "limit results to this interval")
 	correlateCmd.Flags().Var(&endTime, "time", "find results up to this time")
 	kFlag = correlateCmd.Flags().IntP("kshortest", "k", 0, "Use K-shortest paths")
 	allFlag = correlateCmd.Flags().BoolP("allpaths", "a", false, "Use all paths")

@@ -8,10 +8,10 @@ import (
 	"net/url"
 	"strings"
 
+	merr "github.com/hashicorp/go-multierror"
 	"github.com/korrel8/korrel8/internal/pkg/openshift/console"
 	"github.com/korrel8/korrel8/pkg/korrel8"
 	"github.com/korrel8/korrel8/pkg/unique"
-	"go.uber.org/multierr"
 )
 
 type correlateValues struct {
@@ -32,10 +32,6 @@ type correlateHandler struct {
 	// Request parameters
 	Params url.Values
 	correlateValues
-}
-
-func (h correlateHandler) Errors() []error {
-	return multierr.Errors(h.Err)
 }
 
 func (h *correlateHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
@@ -98,14 +94,15 @@ func (h *correlateHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 }
 
 func (h *correlateHandler) update(req *http.Request) {
+	// Reset
 	h.Params = req.URL.Query()
-	h.correlateValues = correlateValues{} // Reset
-
-	var err error
+	h.correlateValues = correlateValues{}
 	h.Err = nil
 
+	addErr := func(err error) bool { h.Err = merr.Append(h.Err, err); return h.Err != nil }
+
 	query, err := url.Parse(h.Params.Get("query"))
-	h.Err = multierr.Append(h.Err, err)
+	addErr(err)
 
 	pathFunc := h.UI.Engine.Graph().ShortestPaths
 	// FIXME brutal hack for demo, need URL recognizers and class from query. Sort out URL rewrite story.
@@ -117,47 +114,49 @@ func (h *correlateHandler) update(req *http.Request) {
 		h.Start, err = h.UI.Engine.ParseClass(h.Params.Get("start"))
 		pathFunc = h.UI.Engine.Graph().AllPaths
 	}
-	h.Err = multierr.Append(h.Err, err)
+	addErr(err)
 
+	if h.Err != nil {
+		return
+	}
 	h.Goal, err = h.UI.Engine.ParseClass(h.Params.Get("goal"))
-	h.Err = multierr.Append(h.Err, err)
+	if addErr(err) {
+		return
+	}
 
-	if h.Err == nil {
-		h.StartStore = h.UI.Engine.Store(h.Start.Domain())
-		if h.StartStore == nil {
-			h.Err = multierr.Append(h.Err, fmt.Errorf("no store for %v", h.Start.Domain()))
-		}
-		h.GoalStore = h.UI.Engine.Store(h.Goal.Domain())
-		if h.GoalStore == nil {
-			h.Err = multierr.Append(h.Err, fmt.Errorf("no store for %v", h.Goal.Domain()))
+	h.StartStore = h.UI.Engine.Store(h.Start.Domain())
+	if h.StartStore == nil {
+		addErr(fmt.Errorf("no store for %v", h.Start.Domain()))
+	}
+	h.GoalStore = h.UI.Engine.Store(h.Goal.Domain())
+	if h.GoalStore == nil {
+		h.Err = merr.Append(h.Err, fmt.Errorf("no store for %v", h.Goal.Domain()))
+	}
+
+	paths := must(pathFunc(h.Start, h.Goal))
+	starters := korrel8.NewSetResult(h.Start)
+	addErr(h.StartStore.Get(context.Background(), h.Query, starters))
+	h.StartObjects = starters.List()
+	queries := unique.NewList[url.URL]()
+	for _, path := range paths {
+		qs, err := h.UI.Engine.Follow(context.Background(), starters.List(), nil, path)
+		addErr(err)
+		queries.Append(qs...)
+	}
+	h.GoalURLs = nil
+	for _, q := range queries.List {
+		u, err := console.FormatURL(h.UI.ConsoleURL, h.Goal, &q)
+		addErr(err)
+		h.GoalURLs = append(h.GoalURLs, u)
+	}
+	var rules []korrel8.Rule
+	for _, m := range paths {
+		for _, r := range m {
+			rules = append(rules, r...)
 		}
 	}
-	if h.Err == nil {
-		paths := must(pathFunc(h.Start, h.Goal))
-		starters := korrel8.NewSetResult(h.Start)
-		h.StartStore.Get(context.Background(), h.Query, starters)
-		h.StartObjects = starters.List()
-		queries := unique.NewList[url.URL]()
-		for _, path := range paths {
-			qs, err := h.UI.Engine.Follow(context.Background(), starters.List(), nil, path)
-			h.Err = multierr.Append(h.Err, err)
-			queries.Append(qs...)
-		}
-		h.GoalURLs = nil
-		for _, q := range queries.List {
-			u, err := console.FormatURL(h.UI.ConsoleURL, h.Goal, &q)
-			h.Err = multierr.Append(h.Err, err)
-			h.GoalURLs = append(h.GoalURLs, u)
-		}
-		var rules []korrel8.Rule
-		for _, m := range paths {
-			for _, r := range m {
-				rules = append(rules, r...)
-			}
-		}
-		if rules != nil {
-			// FIXME draw from start to goal?
-			h.Diagram = h.UI.Diagram("paths", rules)
-		}
+	if rules != nil {
+		// FIXME draw from start to goal?
+		h.Diagram = h.UI.Diagram("paths", rules)
 	}
 }
