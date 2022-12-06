@@ -1,7 +1,11 @@
 ---
-# NOTE this has been modified for the Alertmanager API.
 name: AlertToDeployment
-start: [alert, alert]
-goal: [k8s, Deployment.apps]
-query: |-
-  /api/v1/namespaces/{{.Alert.Labels.namespace}}/deployments/{{.Alert.Labels.deployment}}
+start:
+  domain: alert
+goal:
+  domain: k8s
+  classes: [Deployment.apps]
+result:
+  # NOTE this has been modified for the Alertmanager API.
+  uri:  |-
+    /api/v1/namespaces/{{.Alert.Labels.namespace}}/deployments/{{.Alert.Labels.deployment}}

@@ -7,7 +7,7 @@ import (
 	"github.com/korrel8/korrel8/pkg/engine"
 )
 
-var log = logging.Log
+var log = logging.Log()
 
 type Decoder interface{ Decode(into any) error }
 

@@ -26,10 +26,6 @@ type Domain interface {
 	Classes() []Class   // List of known classes in the Domain
 }
 
-// TemplateHelper optionally implemented by domains that provide template helper functions.
-// see text/template.Template.Funcs
-type TemplateHelper interface{ TemplateHelpers() map[string]any }
-
 // Class identifies a subset of objects from the same domain with the same schema.
 //
 // For example Pod is a class in the k8s domain.
@@ -38,7 +34,7 @@ type Class interface {
 	Domain() Domain // Domain of this class.
 	New() Object    // Return a new instance of the class, can be unmarshaled from JSON.
 	Key(Object) any // Comparable key for de-duplication or nil if object is not in this class.
-	String() string // Name of the class within the domain, e.g "Pod". See ClassName()
+	String() string // Name of the class within the domain, e.g "Pod". See FullName()
 }
 
 // FullName is the qualified domain/name of a class, e.g. "k8s/Pod"
@@ -83,4 +79,10 @@ type Constraint struct {
 	Limit *uint      `json:"limit,omitempty"` // Max number of entries to return
 	Start *time.Time `json:"start,omitempty"` // Include only results timestamped after this time.
 	End   *time.Time `json:"end,omitempty"`   // Include only results timestamped before this time.
+}
+
+// Combine this constraint with a new constraint.
+// Values that are not set in the original constraint
+func (c *Constraint) Combine(other *Constraint) {
+	panic("FIXME")
 }

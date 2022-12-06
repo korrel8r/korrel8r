@@ -1,38 +1,64 @@
 ---
+name: PodToLogs
+start:
+  domain: k8s
+  classes: [Pod.]
+goal:
+  domain: loki
+result:
+  uri: |-
+    /api/logs/v1/{{ k8sLogType .ObjectMeta.Namespace }}/loki/api/v1/query_range?query=
+    {{- printf "{kubernetes_namespace_name=%q,kubernetes_pod_name=%q} | json" .ObjectMeta.Namespace .ObjectMeta.Name | urlquery -}}
+  class: 'loki/{{ k8sLogType .ObjectMeta.Namespace }}'
+---
+name: SelectorToPods
+start:
+  domain: k8s
+  matches: ['{{has .Spec.Selector}}']
+goal:
+  domain: k8s
+  classes: [Pod.]
+result:
+  # FIXME Handle match expressions as well as labels.
+  uri: |-
+    /api/v1/namespaces/{{.Namespace}}/pods?labelSelector={{.Spec.Selector.MatchLabels | urlquerymap -}}
+# FIXME
+# ---
+# name: SelectorToLogs
+# start:
+#   domain: k8s
+#   matches: ['{{has .Spec.Selector}}']
+# goal:
+#   domain: loki
+# result:
+#   # FIXME Handle match expressions as well as labels.
+#   uri: |-
+#     /api/logs/v1/{{ k8sLogType .ObjectMeta.Namespace }}/loki/api/v1/query_range?query=
+#     {{- printf "{kubernetes_namespace_name=%q" .ObjectMeta.Namespace | urlquery -}}
+#     {{- logqlmap .Spec.Selector.MatchLabels}}
+#   class: 'loki/{{ k8sLogType .ObjectMeta.Namespace }}'
+---
 name: EventToObject
-start: [k8s, Event.v1.]
-goal: [k8s, '{{k8sClass .InvolvedObject.Kind .InvolvedObject.APIVersion}}']
-query: |-
-  /api/v1/
-  {{- with .InvolvedObject.Namespace}}namespaces/{{.}}/{{end -}}
-  {{- k8sResource .InvolvedObject.Kind .InvolvedObject.APIVersion -}}/
-  {{- .InvolvedObject.Name -}}
+start:
+  domain: k8s
+  classes: [Event.]
+goal:
+  domain: k8s
+result:
+  uri: |-
+    /api/v1/
+    {{- with .InvolvedObject.Namespace}}namespaces/{{.}}/{{end -}}
+    {{- k8sResource .InvolvedObject.Kind .InvolvedObject.APIVersion -}}/
+    {{- .InvolvedObject.Name -}}
+  class: '{{k8sClass .InvolvedObject.Kind .InvolvedObject.APIVersion}}'
 ---
 name: ObjectToEvent
-start: [k8s, "true"]            # Applies to all classes
-goal: [k8s, Event.v1.]
-query: |-
-  /api/v1/events?fieldSelector={{printf "involvedObject.name=%v,involvedObject.namespace=%v" .ObjectMeta.Name .ObjectMeta.Namespace | urlquery}}
----
-# FIXME can we make the infra/app/audit distinction more compact? BASED on namespace!
-name: PodToInfraLogs
-start: [k8s, Pod]
-goal: [loki, infrastructure]
-query: |-
-  /api/logs/v1/infrastructure/loki/api/v1/query_range?query={{-
-  printf "{kubernetes_namespace_name=%q,kubernetes_pod_name=%q} | json" .ObjectMeta.Namespace .ObjectMeta.Name | urlquery -}}
----
-name: PodToAppLogs
-start: [k8s, Pod]
-goal: [loki, application]
-query: |-
-  /api/logs/v1/application/loki/api/v1/query_range?query={{-
-  printf "{kubernetes_namespace_name=%q,kubernetes_pod_name=%q} |  json" .ObjectMeta.Namespace .ObjectMeta.Name | urlquery
-  -}}
----
-# From any resource with a .Spec.Selector.MatchLabels to Pods.
-name: SelectorToPods
-start: [k8s, '{{has .Spec.Selector}}']
-goal: [k8s, Pod]
-query: |-
-  /api/v1/namespaces/{{.Namespace}}/pods?labelSelector={{.Spec.Selector.MatchLabels | urlquerymap -}}
+start:
+  domain: k8s
+goal:
+  domain: k8s
+  classes: [Event.]
+result:
+  uri: |-
+    /api/v1/events?fieldSelector=
+    {{- printf "involvedObject.name=%v,involvedObject.namespace=%v" .ObjectMeta.Name .ObjectMeta.Namespace | urlquery -}}

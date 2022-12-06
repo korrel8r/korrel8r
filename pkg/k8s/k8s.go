@@ -24,6 +24,7 @@ type domain struct{}
 
 func (d domain) String() string { return "k8s" }
 
+// Class name in one of the forms: Kind,  Kind.Group,  Kind.Version.Group.
 func (d domain) Class(name string) korrel8.Class {
 	tryGVK, tryGK := schema.ParseKindArg(name)
 	switch {

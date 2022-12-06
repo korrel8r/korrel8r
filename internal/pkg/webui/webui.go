@@ -18,7 +18,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-var log = logging.Log.WithName("webui")
+var log = logging.Log().WithName("webui")
 
 type WebUI struct {
 	Engine     *engine.Engine

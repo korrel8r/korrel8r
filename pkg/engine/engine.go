@@ -16,25 +16,32 @@ import (
 	"golang.org/x/exp/maps"
 )
 
-var log = logging.Log
+var log = logging.Log()
 
 // Engine combines a set of domains and a set of rules, so it can perform correlation.
 type Engine struct {
-	name      string
-	stores    map[string]korrel8.Store
-	domains   map[string]korrel8.Domain
-	rules     []korrel8.Rule
-	classes   []korrel8.Class
-	graph     *graph.Graph
-	graphOnce sync.Once
+	name          string
+	stores        map[string]korrel8.Store
+	domains       map[string]korrel8.Domain
+	rules         []korrel8.Rule
+	classes       []korrel8.Class
+	graph         *graph.Graph
+	graphOnce     sync.Once
+	templateFuncs map[string]any
 }
 
 func New(name string) *Engine {
-	return &Engine{name: name, stores: map[string]korrel8.Store{}, domains: map[string]korrel8.Domain{}}
+	return &Engine{
+		name:          name,
+		stores:        map[string]korrel8.Store{},
+		domains:       map[string]korrel8.Domain{},
+		templateFuncs: map[string]any{},
+	}
 }
 
 func (e *Engine) Name() string { return e.name }
 
+// FIXME return error
 // Domain or nil if no domain of that name exists.
 func (e *Engine) Domain(name string) korrel8.Domain { return e.domains[name] }
 
@@ -47,6 +54,13 @@ func (e *Engine) Store(d korrel8.Domain) korrel8.Store { return e.stores[d.Strin
 func (e *Engine) AddDomain(d korrel8.Domain, s korrel8.Store) {
 	e.domains[d.String()] = d
 	e.stores[d.String()] = s
+	// Stores and Domains implement TemplateFuncser if they provide template helper functions
+	// for use by rules.
+	for _, v := range []any{d, s} {
+		if tf, ok := v.(TemplateFuncser); ok {
+			maps.Copy(e.templateFuncs, tf.TemplateFuncs())
+		}
+	}
 }
 
 // ParseClass parses a full 'domain/class' name and returns the class.
@@ -167,3 +181,11 @@ func (e *Engine) Graph() *graph.Graph {
 	})
 	return e.graph
 }
+
+// TemplateFuncser is implemented by Domains or Stores that provide template helper functions.
+// See text/template.Template.Funcs
+type TemplateFuncser interface{ TemplateFuncs() map[string]any }
+
+// TemplateFuncs returns template helper functions for stores and domains known to this engine.
+// See text/template.Template.Funcs
+func (e *Engine) TemplateFuncs() map[string]any { return e.templateFuncs }

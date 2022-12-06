@@ -3,29 +3,39 @@ package logging
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/url"
 	"os"
 	"strconv"
+	"sync"
 
 	"github.com/go-logr/logr"
 	"github.com/go-logr/stdr"
 )
 
-// The root logger. Not functional till Init() is called.
-var Log logr.Logger
+const env = "KORREL8_VERBOSE"
 
-func init() {
-	Log = stdr.New(log.New(os.Stderr, "korrel8 ", log.Ltime))
-	if n, err := strconv.Atoi(os.Getenv("KORREL8_VERBOSE")); err == nil {
-		stdr.SetVerbosity(n)
-	}
+// The root logger.
+func Log() logr.Logger {
+	once.Do(func() {
+		root = stdr.New(log.New(os.Stderr, "korrel8 ", log.Ltime))
+		if n, err := strconv.Atoi(os.Getenv(env)); err == nil {
+			stdr.SetVerbosity(n)
+		}
+	})
+	return root
 }
+
+var (
+	root logr.Logger
+	once sync.Once
+)
 
 // Init sets verbosity for the Root logger.
 func Init(verbosity int) {
 	if verbosity > 0 {
-		stdr.SetVerbosity((verbosity))
+		os.Setenv(env, fmt.Sprint(verbosity))
 	}
 }
 
@@ -53,4 +63,5 @@ type logJSON struct{ v any }
 
 func (l logJSON) MarshalLog() any { return JSONString(l.v) }
 
+// JSON wraps a value so it will be printed as JSON if logged.
 func JSON(v any) logr.Marshaler { return logJSON{v: v} }

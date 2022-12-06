@@ -1,11 +1,13 @@
 package k8s
 
 import (
+	"regexp"
+
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
-func (s *Store) TemplateHelpers() map[string]any {
+func (s *Store) TemplateFuncs() map[string]any {
 	return map[string]any{
 		"k8sResource": func(kind, apiVersion string) (string, error) {
 			return kindToResource(s.c.RESTMapper(), kind, apiVersion)
@@ -34,4 +36,20 @@ func kindToClass(kind, apiVersion string) (string, error) {
 		return "", err
 	}
 	return Class(gv.WithKind(kind)).String(), nil
+}
+
+var domainFuncs = map[string]any{
+	"k8sLogType": logType,
+}
+
+func (d domain) TemplateFuncs() map[string]any { return domainFuncs }
+
+var infraNamespace = regexp.MustCompile(`^(default|(openshift|kube)(-.*)?)$`)
+
+// logType returns the type (application or infrastructure) of a container log based on the namespace.
+func logType(namespace string) string {
+	if infraNamespace.MatchString(namespace) {
+		return "infrastructure"
+	}
+	return "application"
 }

@@ -27,7 +27,7 @@ import (
 )
 
 var (
-	log = logging.Log
+	log = logging.Log()
 	ctx = context.Background()
 )
 
@@ -69,8 +69,10 @@ func newEngine() *engine.Engine {
 		s, err := x.create()
 		if err != nil {
 			log.Error(err, "error creating store", "domain", x.d)
+			e.AddDomain(x.d, nil)
+		} else {
+			e.AddDomain(x.d, s)
 		}
-		e.AddDomain(x.d, s)
 	}
 	// Load rules
 	for _, path := range *rulePaths {

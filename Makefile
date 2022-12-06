@@ -2,7 +2,7 @@
 help: ## Describe make targets
 	@grep '^[^: ]*: *.* *##' Makefile | sed 's/^\([^: ]*\): *.* *## \(.*\)$$/\1: \2/'
 
-all: lint test
+all: lint test			## Run all tests.
 
 .PHONY: lint
 lint:				## Check for lint.

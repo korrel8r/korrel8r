@@ -121,7 +121,7 @@ func TestStore_Get(t *testing.T) {
 		{"/api/v1/namespaces/x/pods", []types.NamespacedName{fred, barney}},
 		{"/api/v1/pods", []types.NamespacedName{fred, barney, wilma}},
 		{"/api/v1/pods?labelSelector=" + url.QueryEscape("app=foo"), []types.NamespacedName{fred, wilma}},
-		// Field selectors are not supported by the fake client.
+		// Field matches are not supported by the fake client.
 	} {
 		t.Run(x.query, func(t *testing.T) {
 			query, err := url.Parse(x.query)

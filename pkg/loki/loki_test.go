@@ -18,6 +18,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+var ctx = context.Background()
+
 func TestStore_Get(t *testing.T) {
 	t.Parallel()
 	l := test.RequireLokiServer(t)
@@ -65,7 +67,7 @@ func TestLokiStackStore_Get(t *testing.T) {
 		require.NoError(t, err)
 		t.Logf("waiting for 4 logs, got %v", len(result))
 		return len(result) >= 3
-	}, time.Minute, time.Second)
+	}, time.Minute, 5*time.Second)
 	var got []string
 	for _, obj := range result {
 		var m map[string]any
@@ -114,4 +116,7 @@ func TestStoreGet_Constraint(t *testing.T) {
 	}
 }
 
-var ctx = context.Background()
+func TestLogQLMap(t *testing.T) {
+	assert.Equal(t, `foo_a="x",foo_b="y"`, logQLMap(map[string]string{"a": "x", "b": "y"}, "foo_"))
+	assert.Equal(t, `foo_a=1,foo_b=2`, logQLMap(map[string]int{"a": 1, "b": 2}, "foo_"))
+}

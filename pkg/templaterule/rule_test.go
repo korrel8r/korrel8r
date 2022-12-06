@@ -1,27 +1,29 @@
 package templaterule
 
 import (
+	"strings"
 	"testing"
 
-	"github.com/korrel8/korrel8/internal/pkg/logging"
 	"github.com/korrel8/korrel8/internal/pkg/test/mock"
 	"github.com/korrel8/korrel8/pkg/engine"
 	"github.com/korrel8/korrel8/pkg/korrel8"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"sigs.k8s.io/yaml"
+	"gopkg.in/yaml.v2"
 )
 
-func init() {
-	logging.Init(0)
+// rule makes a mock rule
+func mockRule(name string, start, goal korrel8.Class) mock.Rule {
+	return mock.NewRuleFromClasses(name, start, goal, nil)
 }
 
-// Edges turns a slice of rules into a slice of [[startClassName, endClassName]...]
-func edges(rules []korrel8.Rule) (edges [][]korrel8.Class) {
-	for _, r := range rules {
-		edges = append(edges, []korrel8.Class{r.Start(), r.Goal()})
+// mockRules copies public parts of korrel8.Rule to a mock.Rule for easy comparison.
+func mockRules(k []korrel8.Rule) []mock.Rule {
+	m := make([]mock.Rule, len(k))
+	for i := range k {
+		m[i] = mock.NewRuleFromClasses(k[i].String(), k[i].Start(), k[i].Goal(), nil)
 	}
-	return edges
+	return m
 }
 
 func TestRule_Rules(t *testing.T) {
@@ -31,59 +33,114 @@ func TestRule_Rules(t *testing.T) {
 	e.AddDomain(foo, nil)
 	e.AddDomain(bar, nil)
 	a, b, c := foo.Class("a"), foo.Class("b"), foo.Class("c")
-	x, y, z := bar.Class("x"), bar.Class("y"), bar.Class("z")
-
+	x, _, z := bar.Class("x"), bar.Class("y"), bar.Class("z")
 	for _, x := range []struct {
 		rule string
-		want [][]korrel8.Class // [[start1,goal1], [start2,goal2]...]
+		want []mock.Rule
 	}{
 		{
-			rule: `{name: simple, start: [foo, a], goal: [bar, z], query: 'bar/z:hello'}`,
-			want: [][]korrel8.Class{{a, z}},
+			rule: `
+name:   "simple"
+start:  {domain: "foo", classes: [a]}
+goal:   {domain: "bar", classes: [z]}
+result: {uri: dummy, class: dummy}
+`,
+			want: []mock.Rule{mockRule("simple", a, z)},
 		},
 		{
-			rule: `{name: multi-start, start: [foo, a, b, c], goal: [bar, z], query: 'bar/z:hello'}`,
-			want: [][]korrel8.Class{{a, z}, {b, z}, {c, z}},
+			rule: `
+name: "multistart"
+start: {domain: foo, classes: [a, b, c]}
+goal:  {domain: bar, classes: [z]}
+result: {uri: dummy, class: dummy}
+`,
+			want: []mock.Rule{mockRule("multistart", a, z), mockRule("multistart", b, z), mockRule("multistart", c, z)},
 		},
 		{
-			rule: `{name: "template start", start: [foo, '{{ne .Class.String "b"}}'], goal: [bar, z], query: 'bar/z:hello'}`,
-			want: [][]korrel8.Class{{a, z}, {c, z}},
-		}, {
-			rule: `{name: "template goal", start: [foo, a], goal: [bar, '{{.Class.String}}:hello'], query: 'bar/z:hello'}`,
-			want: [][]korrel8.Class{{a, x}, {a, y}, {a, z}},
+			rule: `
+name: "select-start"
+start: {domain: foo, matches: ['{{assert (ne .Class.String "b") "ignoring %v" .Class.String}}']}
+goal:  {domain: bar, classes: [z]}
+result: {uri: dummy, class: dummy}
+`,
+			want: []mock.Rule{mockRule("select-start", a, z), mockRule("select-start", c, z)},
+		},
+		{
+			rule: `
+name: "select-goal"
+start: {domain: foo, classes: [a]}
+goal: {domain: bar, matches: ['{{assert (eq .Class.String "x")}}']}
+result: {uri: dummy, class: dummy}
+`,
+			want: []mock.Rule{mockRule("select-goal", a, x)},
+		},
+		{
+			rule: `
+name: "all-all"
+start: {domain: foo}
+goal: {domain: bar}
+result: {uri: dummy, class: dummy}
+`,
+			want: func() []mock.Rule {
+				var rules []mock.Rule
+				for _, foo := range foo.Classes() {
+					for _, bar := range bar.Classes() {
+						rules = append(rules, mockRule("all-all", foo, bar))
+					}
+				}
+				return rules
+			}(),
 		},
 	} {
 		t.Run(x.rule, func(t *testing.T) {
-			rule := Rule{}
+			var rule Rule
 			require.NoError(t, yaml.Unmarshal([]byte(x.rule), &rule))
 			got, err := rule.Rules(e)
 			if assert.NoError(t, err) {
-				assert.Equal(t, x.want, edges(got))
+				assert.ElementsMatch(t, x.want, mockRules(got))
 			}
 		})
 	}
 
-	// 	emptyClass := mock.ParseClass("")
-	// 	tr, err := templaterule.New("myrule", emptyClass, emptyClass, `/mock?name={{.Name}}&constraint={{constraint}}`)
-	// 	assert.NoError(t, err)
-	// 	now := time.Now()
-	// 	constraint := korrel8.Constraint{Start: &now, End: &now}
-	// 	q, err := tr.Apply(mock.NewObject("thing", ""), &constraint)
-	// 	assert.NoError(t, err)
-	// 	assert.Equal(t, fmt.Sprintf("/mock?name=thing&constraint=%v", constraint), q.String())
-	// }
-
-	// func TestRule_Error(t *testing.T) {
-	// 	tr, err := templaterule.New("myrule", mock.Class(""), mock.Class(""), `{{fail "foobar"}}`)
-	// 	assert.NoError(t, err)
-	// 	_, err = tr.Apply(mock.NewObject("thing", ""), nil)
-	// 	want := "template: myrule:1:2: executing \"myrule\" at <fail \"foobar\">: error calling fail: foobar"
-	// 	assert.EqualError(t, err, want)
-	// }
-
-	// func TestRule_MissingKey(t *testing.T) {
-	// 	tr, err := templaterule.New(t.Name(), mock.Class(""), mock.Class(""), `{{.nosuchkey}}`)
-	// 	assert.NoError(t, err)
-	// 	_, err = tr.Apply(mock.NewObject("thing", ""), nil)
-	// 	assert.Contains(t, err.Error(), "can't evaluate field nosuchkey")
+	t.Run("implied-goal", func(t *testing.T) {
+		r := Rule{
+			Start:  ClassSpec{Domain: "foo", Classes: []string{"a"}},
+			Goal:   ClassSpec{Domain: "bar", Classes: []string{"x"}},
+			Result: ResultSpec{URI: "dummy"},
+		}
+		rs, err := r.Rules(e)
+		require.NoError(t, err)
+		require.Len(t, rs, 1)
+		b := &strings.Builder{}
+		require.NoError(t, rs[0].(*rule).class.Execute(b, nil)) // Template should be a constant string.
+		assert.Equal(t, "bar/x", b.String())
+	})
 }
+
+//FIXME
+
+// }
+
+// 	emptyClass := mock.ParseClass("")
+// 	tr, err := templaterule.New("myrule", emptyClass, emptyClass, `/mock?name={{.Name}}&constraint={{constraint}}`)
+// 	assert.NoError(t, err)
+// 	now := time.Now()
+// 	constraint := korrel8.Constraint{Start: &now, End: &now}
+// 	q, err := tr.Apply(mock.NewObject("thing", ""), &constraint)
+// 	assert.NoError(t, err)
+// 	assert.Equal(t, fmt.Sprintf("/mock?name=thing&constraint=%v", constraint), q.String())
+// }
+
+// func TestRule_Error(t *testing.T) {
+// 	tr, err := templaterule.New("myrule", mock.Class(""), mock.Class(""), `{{fail "foobar"}}`)
+// 	assert.NoError(t, err)
+// 	_, err = tr.Apply(mock.NewObject("thing", ""), nil)
+// 	want := "template: myrule:1:2: executing \"myrule\" at <fail \"foobar\">: error calling fail: foobar"
+// 	assert.EqualError(t, err, want)
+// }
+
+// func TestRule_MissingKey(t *testing.T) {
+// 	tr, err := templaterule.New(t.Name(), mock.Class(""), mock.Class(""), `{{.nosuchkey}}`)
+// 	assert.NoError(t, err)
+// 	_, err = tr.Apply(mock.NewObject("thing", ""), nil)
+// 	assert.Contains(t, err.Error(), "can't evaluate field nosuchkey")

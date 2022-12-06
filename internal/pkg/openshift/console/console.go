@@ -15,7 +15,7 @@ import (
 	"golang.org/x/text/language"
 )
 
-var log = logging.Log
+var log = logging.Log()
 
 // BaseURL gets base URL for openshift console.
 var BaseURL = openshift.ConsoleURL

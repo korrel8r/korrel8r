@@ -2,6 +2,7 @@ package templaterule
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/url"
 	"reflect"
@@ -17,11 +18,27 @@ import (
 var Funcs = map[string]any{
 	"constraint":  func() *korrel8.Constraint { return nil },
 	"has":         func(_ ...any) bool { return true }, // Used for side-effect: evaluate arguments to detect errors
+	"assert":      doAssert,                            // Assert a condition in a template
 	"toJSON":      toJSON,
 	"toYAML":      toYAML,
 	"fullname":    korrel8.FullName,
 	"urlquerymap": urlQueryMap,
-	"map":         kvMap,
+	"kvmap":       kvMap, // Useful for passing parameters to a template
+}
+
+var errFailed = errors.New("failed")
+
+// assert a condition in a template - int return is a dummy value required for template functions.
+func doAssert(ok bool, msg ...any) (int, error) {
+	if !ok {
+		if len(msg) > 0 {
+			if s, ok := msg[0].(string); ok {
+				return 0, fmt.Errorf(s, msg[1:]...)
+			}
+		}
+		return 0, errFailed
+	}
+	return 0, nil
 }
 
 func toJSON(v any) (string, error) { b, err := json.Marshal(v); return string(b), err }
@@ -41,8 +58,6 @@ func urlQueryMap(m any) string {
 	}
 	return p.Encode()
 }
-
-func storeURL(s korrel8.Store, q *korrel8.Query) (*url.URL, error) { return s.URL(q), nil }
 
 func kvMap(keyValue ...any) map[any]any {
 	m := map[any]any{}

@@ -3,190 +3,77 @@ package templaterule
 
 import (
 	"fmt"
-	"strings"
-	"text/template"
 
 	"github.com/korrel8/korrel8/pkg/engine"
 	"github.com/korrel8/korrel8/pkg/korrel8"
-	"github.com/korrel8/korrel8/pkg/unique"
-	"golang.org/x/exp/maps"
 )
 
-// FIXME simplify - just templates?
-
-// Rule is a serializable rule template, that generates one or more korrel8.Rules.
+// Rule is a template rule specification that can be serialized as JSON.
 type Rule struct {
 	// Name is a short, descriptive name.
-	Name string `json:"name"`
+	// If omitted, a name is generated from Start and Goal.
+	Name string `json:"name,omitempty"`
 
-	// Start defines the set of classes that this rule can apply to.
-	//
-	// Start[0] is a domain name.
-	//
-	// Elements of Start[1:] may be class names in the Start[0] domain or class selection templates.
-	//
-	// Class selection templates are applied to an empty instance of each class in the domain.
-	// If they generate the string "true" the class is selected.
-	// Any other result, including errors, means the class is not included as a start class.
-	//
-	Start []string `json:"start"`
+	// Start specifies the set of classes that this rule can apply to.
+	Start ClassSpec `json:"start"`
 
-	// Goal indicates the class(es) of goals this rule can produce.
-	//
-	// Start[0] is a domain name.
-	//
-	// Start[1] may be a class name in the Start[0] domain or a class generator template.
-	//
-	// Class generator templates are applied to a starting object for the rule.
-	// They should generate the class name of the goal class when applying the rule to that object.
-	// Any other result, including errors, means the rule will not be followed for that start object.
-	//
-	Goal []string `json:"goal"`
+	// Goal specifies the set of classes that this rule can produce.
+	Goal ClassSpec `json:"goal"`
 
-	// Query is a template that generates the goal query from a start object.
-	//
-	// For a given start object, Query should return a query that gets instances of the Goal class.
-	Query string `json:"query"`
+	// Result contains templates to generate the result of applying this rule.
+	// Each template is applied to an object from one of the `start` classes.
+	// If any template yields a blank string or an error, the rule does not apply.
+	Result ResultSpec
+}
 
-	// Constraint is an optional template that generates a korrel8.Constraint in JSON form from a start object.
-	//
-	// If there is already a constraint in force, this constraint is ignored.
+// ClassSpec specifies one or more classes.
+type ClassSpec struct {
+	// Domain is the domain for selected classes.
+	// If both Classes and Matches are omitted, then all classes in the domain are selected.
+	Domain string `json:"domain"`
+
+	// Classes is a list of class names to b selected from the domain.
+	Classes []string `json:"classes,omitempty"`
+
+	// Matches is a list of templates to select classes from the domain.
+	// Each template is executed with an empty instance of each class in the domain.
+	// If the template executes without error, the class is selected.
+	// The result of the template is ignored.
+	Matches []string `json:"wildcards,omitempty"`
+}
+
+// ResultSpec contains result templates.
+type ResultSpec struct {
+	// URI template generates a query URI (normally a relative URI reference) that can be resolved
+	// by a Store to retrieve objects.
+	URI string `json:"uri"`
+
+	// Class template generates the qualified class name for objects referenced by the URI.
+	// Must be a class name selected by the Goal field.
+	// If the Goal field contains a single, non-wildcard class, this field is optional.
+	Class string `json:"class,omitempty"`
+
+	// Constraint template is optional, it generates a korrel8.Constraint in JSON form.
+	// This constraint is combined with the constraint already in force, if there is one.
+	// See Constraint.Combine
 	Constraint string `json:"constraint,omitempty"`
 }
 
-type ruleBuilder struct {
-	Rule
-	engine *engine.Engine
-
-	startDomain  korrel8.Domain
-	startClasses unique.List[korrel8.Class]
-
-	goalDomain   korrel8.Domain
-	goalClass    korrel8.Class
-	goalTemplate *template.Template
-
-	query, constraint *template.Template
-
-	funcs map[string]any
-}
-
 // Rules generates one or more korrel8.Rule from the template Rule.
-// funcs are template helper functions to make available to template parsing.
-func (r Rule) Rules(e *engine.Engine) ([]korrel8.Rule, error) {
-	rb := ruleBuilder{Rule: r, engine: e, startClasses: unique.NewList[korrel8.Class]()}
-	var rules []korrel8.Rule
-	if err := rb.setup(); err != nil {
+func (r *Rule) Rules(e *engine.Engine) (rules []korrel8.Rule, err error) {
+	rb, err := newRuleBuilder(r, e)
+	if err != nil {
 		return nil, err
 	}
-	for _, start := range rb.startClasses.List {
-		switch {
-		case rb.goalClass != nil: // Literal goal class, single korrel8.Rule
-			rules = append(rules, &rule{Template: rb.query, start: start, goal: rb.goalClass, origin: &r})
-		case rb.goalTemplate != nil: // Goal class template test, must try against all goal domain classes.
-			for _, g := range rb.goalDomain.Classes() {
-				rules = append(rules, &rule{Template: rb.query, start: start, goal: g, origin: &r})
-			}
-		}
-		// FIXME constraint handling - see Apply
-	}
-	return rules, nil
+	return rb.rules()
 }
 
-/// FIXME this has gotten too complex.?
+func (c ClassSpec) single() bool { return len(c.Matches) == 0 && len(c.Classes) == 1 }
 
-func (rb *ruleBuilder) setup() (err error) {
-	// Collect template functions.
-	rb.funcs = map[string]any{}
-	for _, d := range rb.engine.Domains() {
-		if th, ok := d.(korrel8.TemplateHelper); ok {
-			maps.Copy(rb.funcs, th.TemplateHelpers())
-		}
-		s := rb.engine.Store(d)
-		if th, ok := s.(korrel8.TemplateHelper); ok {
-			maps.Copy(rb.funcs, th.TemplateHelpers())
-			rb.funcs[fmt.Sprintf("%vStoreURL", d)] = storeURL
-		}
+func (c ClassSpec) String() string {
+	if c.single() {
+		return fmt.Sprintf("%v/%v", c.Domain, c.Classes[0])
+	} else {
+		return fmt.Sprintf("%v/%v%v", c.Domain, c.Classes, c.Matches)
 	}
-	for _, f := range []func() error{
-		rb.setupStart,
-		rb.setupGoal,
-		// FIXME use nested templates?
-		func() error { rb.query, err = rb.newTemplate(rb.Query, ""); return err },
-		func() error { rb.constraint, err = rb.newTemplate(rb.Constraint, "-constraint"); return err },
-	} {
-		if err := f(); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (rb *ruleBuilder) setupStart() (err error) {
-	if rb.startDomain, err = rb.getDomain("start", rb.Start); err != nil {
-		return err
-	}
-	knownClasses := rb.startDomain.Classes()
-	for _, x := range rb.Start[1:] {
-		c, t, err := rb.classOrTemplate(x, rb.startDomain)
-		switch {
-		case c != nil: // Literal class name
-			rb.startClasses.Append(c)
-		case t != nil: // Test template, test each class in start domain
-			for _, c := range knownClasses {
-				if rb.matches(c, t) {
-					rb.startClasses.Append(c)
-				}
-			}
-		case err != nil:
-			return err
-		}
-	}
-	if rb.startClasses.List == nil {
-		return fmt.Errorf("start must match at least one class: %+v", rb.Rule)
-	}
-	return nil
-}
-
-func (rb *ruleBuilder) setupGoal() (err error) {
-	if len(rb.Goal) != 2 {
-		return fmt.Errorf("goal must contain two elements: %+v", rb.Rule)
-	}
-	if rb.goalDomain, err = rb.getDomain("goal", rb.Goal); err != nil {
-		return err
-	}
-	if rb.goalClass, rb.goalTemplate, err = rb.classOrTemplate(rb.Goal[1], rb.goalDomain); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (rb *ruleBuilder) newTemplate(text, suffix string) (*template.Template, error) {
-	return template.New(rb.Name + suffix).Option("missingkey=error").Funcs(Funcs).Funcs(rb.funcs).Parse(text)
-}
-
-func (rb *ruleBuilder) getDomain(what string, list []string) (korrel8.Domain, error) {
-	if len(list) > 0 {
-		d := rb.engine.Domain(list[0])
-		if d == nil {
-			return nil, fmt.Errorf("unknown domain: %v", list[0])
-		}
-		return d, nil
-	}
-	return nil, fmt.Errorf("%v cannot be empty: %v", what, rb.Rule.Name)
-}
-
-func (rb *ruleBuilder) classOrTemplate(x string, d korrel8.Domain) (korrel8.Class, *template.Template, error) {
-	if c := d.Class(x); c != nil {
-		return c, nil, nil
-	}
-	t, err := rb.newTemplate(x, "-test")
-	return nil, t, err
-}
-
-func (rb *ruleBuilder) matches(c korrel8.Class, t *template.Template) bool {
-	w := &strings.Builder{}
-	if err := t.Execute(w, c.New()); err != nil {
-		return false
-	}
-	return w.String() == "true"
 }

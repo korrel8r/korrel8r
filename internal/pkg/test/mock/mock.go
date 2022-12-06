@@ -83,10 +83,12 @@ func NewObjects(objectStrings ...string) []korrel8.Object {
 
 var _ korrel8.Object = Object("") // Implements interface
 
+type ApplyFunc = func(korrel8.Object, *korrel8.Constraint) (*korrel8.Query, error)
+
 type Rule struct {
 	name        string
 	start, goal korrel8.Class
-	apply       func(korrel8.Object, *korrel8.Constraint) (*korrel8.Query, error)
+	apply       ApplyFunc
 }
 
 func (r Rule) Start() korrel8.Class { return r.start }
@@ -98,13 +100,12 @@ func (r Rule) Apply(start korrel8.Object, c *korrel8.Constraint) (*korrel8.Query
 
 var _ korrel8.Rule = Rule{} // Implements interface
 
-func NewRule(name, start, goal string, apply func(korrel8.Object, *korrel8.Constraint) (*korrel8.Query, error)) Rule {
-	return Rule{
-		name:  name,
-		start: Class(start),
-		goal:  Class(goal),
-		apply: apply,
-	}
+func NewRule(name, start, goal string, apply ApplyFunc) Rule {
+	return NewRuleFromClasses(name, Class(start), Class(goal), apply)
+}
+
+func NewRuleFromClasses(name string, start, goal korrel8.Class, apply ApplyFunc) Rule {
+	return Rule{name: name, start: start, goal: goal, apply: apply}
 }
 
 func QuickRule(start, goal string) Rule { return NewRule(start+":"+goal, start, goal, nil) }
