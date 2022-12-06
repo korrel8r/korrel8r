@@ -29,10 +29,8 @@ var classesCmd = &cobra.Command{
 	Args:  cobra.RangeArgs(1, 2),
 	Run: func(cmd *cobra.Command, args []string) {
 		e := newEngine()
-		d := e.Domain(args[0])
-		if d == nil {
-			check(fmt.Errorf("unknown domain: %v", d))
-		}
+		d, err := e.Domain(args[0])
+		check(err)
 		var match = regexp.MustCompile("")
 		if len(args) > 1 {
 			match = must(regexp.Compile(args[1]))

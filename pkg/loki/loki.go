@@ -15,7 +15,6 @@ import (
 	"github.com/korrel8/korrel8/internal/pkg/openshift"
 	"github.com/korrel8/korrel8/pkg/korrel8"
 	"golang.org/x/exp/slices"
-	"golang.org/x/net/html"
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -84,11 +83,14 @@ func (s *Store) String() string { return s.base.String() }
 
 func (s *Store) Get(ctx context.Context, query *korrel8.Query, result korrel8.Result) error {
 	query = s.base.ResolveReference(query)
-	resp, err := httpError(s.c.Get(query.String()))
+	resp, err := s.c.Get(query.String())
 	if err != nil {
 		return fmt.Errorf("%w: %v", err, query)
 	}
 	defer resp.Body.Close()
+	if resp.StatusCode/100 != 2 {
+		return fmt.Errorf("%v: %v", resp.Status, query)
+	}
 	qr := queryResponse{}
 	if err = json.NewDecoder(resp.Body).Decode(&qr); err != nil {
 		return err
@@ -129,19 +131,6 @@ type queryData struct {
 type streamValues struct {
 	Stream map[string]string `json:"stream"` // Labels for the stream
 	Values [][]string        `json:"values"`
-}
-
-// httpError returns err if not nil, an error constructed from resp.Body if resp.Status is not 2xx, nil otherwise.
-func httpError(resp *http.Response, err error) (*http.Response, error) {
-	if err != nil {
-		return resp, err
-	}
-	if resp.Status[0] == '2' {
-		return resp, nil
-	}
-	node, _ := html.Parse(resp.Body)
-	defer resp.Body.Close()
-	return resp, fmt.Errorf("%v: %v", resp.Status, node.Data)
 }
 
 var lokiStackPath = regexp.MustCompile(fmt.Sprintf("/api/logs/v1/(%v)", strings.Join(classNames, "|")))

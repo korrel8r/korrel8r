@@ -20,7 +20,7 @@ import (
 
 var ctx = context.Background()
 
-func TestStore_Get(t *testing.T) {
+func TestStore_Get_PlainLoki(t *testing.T) {
 	t.Parallel()
 	l := test.RequireLokiServer(t)
 	lines := []string{"hello", "there", "mr. frog"}
@@ -59,13 +59,12 @@ func TestLokiStackStore_Get(t *testing.T) {
 	require.NoError(t, err)
 	logQL := fmt.Sprintf(`{kubernetes_pod_name="%v", kubernetes_namespace_name="%v"}`, pod.Name, pod.Namespace)
 	query := NewLokiStackQuery(Application, logQL, nil)
-	t.Logf("URL: %v%v", s, query)
 	var result korrel8.ListResult
 	assert.Eventually(t, func() bool {
 		result = nil
 		err = s.Get(ctx, query, &result)
 		require.NoError(t, err)
-		t.Logf("waiting for 4 logs, got %v", len(result))
+		t.Logf("waiting for 4 logs, got %v. %v%v", len(result), s, query)
 		return len(result) >= 3
 	}, time.Minute, 5*time.Second)
 	var got []string
@@ -117,6 +116,10 @@ func TestStoreGet_Constraint(t *testing.T) {
 }
 
 func TestLogQLMap(t *testing.T) {
-	assert.Equal(t, `foo_a="x",foo_b="y"`, logQLMap(map[string]string{"a": "x", "b": "y"}, "foo_"))
-	assert.Equal(t, `foo_a=1,foo_b=2`, logQLMap(map[string]int{"a": 1, "b": 2}, "foo_"))
+	assert.ElementsMatch(t,
+		[]string{`foo_a="x"`, `foo_b="y"`},
+		strings.Split(logQLMap(map[string]string{"a": "x", "b": "y"}, "foo_"), ","))
+	assert.ElementsMatch(t,
+		[]string{`foo_a=1`, `foo_b=2`},
+		strings.Split(logQLMap(map[string]int{"a": 1, "b": 2}, "foo_"), ","))
 }

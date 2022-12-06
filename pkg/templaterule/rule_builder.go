@@ -60,9 +60,9 @@ func (rb *ruleBuilder) expand(spec *ClassSpec, what string) (classes []korrel8.C
 		}
 	}()
 
-	domain := rb.engine.Domain(spec.Domain)
-	if domain == nil {
-		return nil, fmt.Errorf("unknown domain %v", spec.Domain)
+	domain, err := rb.engine.Domain(spec.Domain)
+	if err != nil {
+		return nil, err
 	}
 	if len(spec.Classes) == 0 && len(spec.Matches) == 0 {
 		return domain.Classes(), nil // Default to all classes in domain

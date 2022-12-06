@@ -41,14 +41,23 @@ func New(name string) *Engine {
 
 func (e *Engine) Name() string { return e.name }
 
-// FIXME return error
-// Domain or nil if no domain of that name exists.
-func (e *Engine) Domain(name string) korrel8.Domain { return e.domains[name] }
+// Domain gets a named domain.
+func (e *Engine) Domain(name string) (korrel8.Domain, error) {
+	if d, ok := e.domains[name]; ok {
+		return d, nil
+	}
+	return nil, fmt.Errorf("domain not found: %v", name)
+}
 
 func (e *Engine) Domains() (domains []korrel8.Domain) { return maps.Values(e.domains) }
 
 // Store for domain or nil if no store is available.
-func (e *Engine) Store(d korrel8.Domain) korrel8.Store { return e.stores[d.String()] }
+func (e *Engine) Store(name string) (korrel8.Store, error) {
+	if s, ok := e.stores[name]; ok {
+		return s, nil
+	}
+	return nil, fmt.Errorf("no store for domain: %v", name)
+}
 
 // AddDomain domain and corresponding store, store may be nil.
 func (e *Engine) AddDomain(d korrel8.Domain, s korrel8.Store) {
@@ -69,9 +78,9 @@ func (e *Engine) ParseClass(name string) (korrel8.Class, error) {
 	if !ok || c == "" || d == "" {
 		return nil, fmt.Errorf("invalid class name: %v", name)
 	}
-	domain := e.Domain(d)
-	if domain == nil {
-		return nil, fmt.Errorf("unknown domain in class name: %v", name)
+	domain, err := e.Domain(d)
+	if err != nil {
+		return nil, err
 	}
 	class := domain.Class(c)
 	if class == nil {
@@ -84,7 +93,6 @@ func (e *Engine) Rules() []korrel8.Rule { return e.rules }
 
 func (e *Engine) AddRule(r korrel8.Rule) error {
 	e.rules = append(e.rules, r)
-	/// FIXME validate rules while adding
 	return nil
 }
 

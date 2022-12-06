@@ -22,7 +22,7 @@ func TestEngine_ParseClass(t *testing.T) {
 		{"/x", nil, "invalid class name: /x"},
 		{"x", nil, "invalid class name: x"},
 		{"", nil, "invalid class name: "},
-		{"bad/foo", nil, `unknown domain in class name: bad/foo`},
+		{"bad/foo", nil, `domain not found: bad`},
 	} {
 		t.Run(x.name, func(t *testing.T) {
 			e := New("")

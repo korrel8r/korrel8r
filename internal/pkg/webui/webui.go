@@ -42,8 +42,7 @@ func New(e *engine.Engine, cfg *rest.Config, c client.Client) (*WebUI, error) {
 		dir:        dir,
 		Engine:     e,
 		ConsoleURL: must(openshift.ConsoleURL(context.Background(), c)),
-		// FIXME better organization of template funcs.
-		page: template.Must(template.New("page").Funcs(templaterule.Funcs).Parse(`
+		page: template.Must(template.New("page").Funcs(templaterule.Funcs).Funcs(e.TemplateFuncs()).Parse(`
 {{block "header" . -}}
 <head>
   <title>Korrel8 Web UI</title>

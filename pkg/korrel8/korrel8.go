@@ -84,5 +84,5 @@ type Constraint struct {
 // Combine this constraint with a new constraint.
 // Values that are not set in the original constraint
 func (c *Constraint) Combine(other *Constraint) {
-	panic("FIXME")
+	panic("FIXME constraint")
 }

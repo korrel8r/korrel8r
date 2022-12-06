@@ -14,6 +14,18 @@ func nr(name, start, goal string) korrel8.Rule { return mock.NewRule(name, start
 
 func l(startGoal ...string) Links { return append(Links{}, mock.Rules(startGoal...)...) }
 
+func AssertMultiPathEqual(t *testing.T, a, b MultiPath) bool {
+	if !assert.Equal(t, len(a), len(b), "lengths not equal") {
+		return false
+	}
+	for i := range a {
+		if !assert.ElementsMatch(t, a[i], b[i]) {
+			return false
+		}
+	}
+	return true
+}
+
 func TestGraph_ShortestPaths(t *testing.T) {
 	for _, x := range []struct {
 		name  string
@@ -56,59 +68,17 @@ func TestGraph_ShortestPaths(t *testing.T) {
 		{
 			name:  "multi-link-and-path",
 			rules: []korrel8.Rule{r("a", "c"), nr("cz1", "c", "z"), nr("cz2", "c", "z")},
-			want: []MultiPath{
-				{links("a", "c"), links("c", "z", "cz1", "cz2")},
-			},
-		},
+			want:  []MultiPath{{links("a", "c"), links("c", "z", "cz1", "cz2")}}},
 	} {
 		t.Run(x.name, func(t *testing.T) {
 			g := New("test", x.rules, nil)
 			got, err := g.ShortestPaths(mock.Class("a"), mock.Class("z"))
 			assert.NoError(t, err)
-			assert.ElementsMatch(t, x.want, got, "%v != %v", x.want, got)
+			if assert.Equal(t, len(x.want), len(got)) {
+				for i := range got {
+					assert.ElementsMatch(t, x.want[i], got[i])
+				}
+			}
 		})
 	}
 }
-
-// func rm(start, goal string, extras ...string) korrel8.Rule {
-// 	return mock.NewRule(start+"_"+goal, start, goal,
-// 		func(o korrel8.Object, _ *korrel8.Constraint) (*korrel8.Query, error) {
-// 			for _, s := range extras {
-// 				if s == o.(mock.Object).Class().String() {
-// 					return nil, nil // Accept
-// 				}
-// 			}
-// 			return nil, fmt.Errorf("no match: %+v in %v", o, extras)
-// 		})
-// }
-
-// func (s string) korrel8.Class { return mock.Class(s) }
-
-// func TestGraph_Matches(t *testing.T) {
-// 	for _, x := range []struct {
-// 		name    string
-// 		rule    korrel8.Rule
-// 		classes []korrel8.Class
-// 		want    []korrel8.Class
-// 	}{
-// 		{
-// 			name:    "no match",
-// 			rule:    rm("a", "b"),
-// 			classes: []korrel8.Class{c("a"), c("b"), c("x"), c("y")},
-// 			want:    nil,
-// 		},
-// 		{
-// 			name:    "2 matches",
-// 			rule:    rm("a", "b", "x", "y"),
-// 			classes: []korrel8.Class{c("a"), c("b"), c("x"), c("y")},
-// 			want:    []korrel8.Class{c("x"), c("y")},
-// 		},
-// 	} {
-// 		t.Run(x.name, func(t *testing.T) {
-// 			g := New(nil, x.classes)
-// 			got := g.extras(x.rule)
-// 			assert.ElementsMatch(t, x.want, got)
-// 		})
-// 	}
-// }
-// FIXME wildcard

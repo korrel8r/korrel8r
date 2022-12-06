@@ -1,8 +1,6 @@
 // package k8s is a Kubernetes implementation of the korrel8 interfaces
 package k8s
 
-/// FIXME move this back to the domains as optional store functions?
-
 import (
 	"context"
 	"fmt"

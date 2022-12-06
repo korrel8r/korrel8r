@@ -48,7 +48,7 @@ func NewStore(host string, hc *http.Client) *Store {
 // https://petstore.swagger.io/?url=https://raw.githubusercontent.com/prometheus/alertmanager/master/api/v2/openapi.yaml
 func (s Store) Get(ctx context.Context, query *korrel8.Query, result korrel8.Result) error {
 	params := alert.NewGetAlertsParamsWithContext(ctx)
-	// FIXME support other query parameters - active etc.
+
 	if f := query.Query().Get("filter"); f != "" {
 		params.WithFilter([]string{f})
 	}

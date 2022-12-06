@@ -117,7 +117,7 @@ result: {uri: dummy, class: dummy}
 	})
 }
 
-//FIXME
+//FIXME tests
 
 // }
 

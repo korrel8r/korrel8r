@@ -2,7 +2,6 @@ package webui
 
 import (
 	"context"
-	"fmt"
 	"html/template"
 	"net/http"
 	"net/url"
@@ -109,7 +108,6 @@ func (h *correlateHandler) update(req *http.Request) {
 	if strings.HasPrefix(query.Host, "console") {
 		h.Start, h.Query, err = console.ParseURL(h.Params.Get("query"))
 	} else {
-		// FIXME hack, hack, hack
 		h.Query = query
 		h.Start, err = h.UI.Engine.ParseClass(h.Params.Get("start"))
 		pathFunc = h.UI.Engine.Graph().AllPaths
@@ -124,14 +122,11 @@ func (h *correlateHandler) update(req *http.Request) {
 		return
 	}
 
-	h.StartStore = h.UI.Engine.Store(h.Start.Domain())
-	if h.StartStore == nil {
-		addErr(fmt.Errorf("no store for %v", h.Start.Domain()))
-	}
-	h.GoalStore = h.UI.Engine.Store(h.Goal.Domain())
-	if h.GoalStore == nil {
-		h.Err = merr.Append(h.Err, fmt.Errorf("no store for %v", h.Goal.Domain()))
-	}
+	h.StartStore, err = h.UI.Engine.Store(h.Start.Domain().String())
+	addErr(err)
+
+	h.GoalStore, err = h.UI.Engine.Store(h.Goal.Domain().String())
+	addErr(err)
 
 	paths := must(pathFunc(h.Start, h.Goal))
 	starters := korrel8.NewSetResult(h.Start)
@@ -156,7 +151,6 @@ func (h *correlateHandler) update(req *http.Request) {
 		}
 	}
 	if rules != nil {
-		// FIXME draw from start to goal?
 		h.Diagram = h.UI.Diagram("paths", rules)
 	}
 }

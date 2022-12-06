@@ -42,10 +42,8 @@ var correlateCmd = &cobra.Command{
 
 		if len(args) >= 3 { // Get starters using query
 			query := must(queryFromArgs(args[2:]))
-			store := e.Store(start.Domain())
-			if store == nil {
-				check(fmt.Errorf("domain has no store: %v", start.Domain()))
-			}
+			store, err := e.Store(start.Domain().String())
+			check(err)
 			check(store.Get(ctx, query, starters))
 		} else { // Read starters from stdin
 			dec := decoder.New(os.Stdin)
@@ -80,10 +78,8 @@ func printQueries(e *engine.Engine, goal korrel8.Class, queries []korrel8.Query)
 
 func printObjects(e *engine.Engine, goal korrel8.Class, queries []korrel8.Query) {
 	d := goal.Domain()
-	store := e.Store(d)
-	if store == nil {
-		check(fmt.Errorf("no store for domain %d", d))
-	}
+	store, err := e.Store(d.String())
+	check(err)
 	result := newPrinter(os.Stdout)
 	for _, q := range queries {
 		check(store.Get(context.Background(), &q, result))

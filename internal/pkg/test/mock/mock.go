@@ -140,5 +140,3 @@ func NewQuery(objects ...Object) *korrel8.Query {
 }
 
 var _ korrel8.Store = Store{} // Implements interface
-
-// FIXME more intuitive, consistent mock strings.

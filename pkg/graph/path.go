@@ -7,11 +7,6 @@ import (
 	"github.com/korrel8/korrel8/pkg/korrel8"
 )
 
-// MultiPath represents multiple paths from a Start to a Goal.
-type MultiPath []Links
-
-// FIXME multipath Valid()?
-
 // Links are a set of rules with the same Start() and Goal().
 // They form one step on a MultiPath.
 type Links []korrel8.Rule
@@ -28,6 +23,9 @@ func (l Links) Valid() bool {
 	}
 	return true
 }
+
+// MultiPath represents multiple paths from a Start to a Goal.
+type MultiPath []Links
 
 func (path MultiPath) Valid() bool {
 	for i, links := range path {

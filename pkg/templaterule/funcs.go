@@ -11,19 +11,39 @@ import (
 	"sigs.k8s.io/yaml"
 )
 
-// FIXME document extra funcs, see text/template
-
 // Funcs that are available in all templates created by New.
-// Rule.Apply() adds the "constraint" function with the constraint if present.
-var Funcs = map[string]any{
-	"constraint":  func() *korrel8.Constraint { return nil },
-	"has":         func(_ ...any) bool { return true }, // Used for side-effect: evaluate arguments to detect errors
-	"assert":      doAssert,                            // Assert a condition in a template
-	"toJSON":      toJSON,
-	"toYAML":      toYAML,
-	"fullname":    korrel8.FullName,
-	"urlquerymap": urlQueryMap,
-	"kvmap":       kvMap, // Useful for passing parameters to a template
+//
+//	constraint
+//	  Returns the korrel8.Constraint in force when applying a rule. May be nil.
+//	has
+//	  Evaluates its arguments for errors. Useful for asserting that fields exist in the context value.
+//	assert
+//	  Exits with an error if its argument is false.
+//	toJSON
+//	  Marshals its argument as JSON and returns the string.
+//	toYAML
+//	  Marshals its argument as YAML and returns the string.
+//	fullname
+//	  Returns the domain qualified name of a korrel8.Class argument.
+//	urlQueryMap
+//	  Returns the URL query encoding of a map argument.
+//	  Map values are stringified with fmt "%v"
+//	kvmap
+//	  Returns a map formed from (key, value, key2, value2...) arguments.
+//	  Useful for passing multiple parameters to a template execution.
+var Funcs map[string]any
+
+func init() {
+	Funcs = map[string]any{
+		"constraint":  func() *korrel8.Constraint { return nil },
+		"has":         func(_ ...any) bool { return true }, // Used for side-effect: evaluate arguments to detect errors
+		"assert":      doAssert,                            // Assert a condition in a template
+		"toJSON":      toJSON,
+		"toYAML":      toYAML,
+		"fullname":    korrel8.FullName,
+		"urlquerymap": urlQueryMap,
+		"kvmap":       kvMap,
+	}
 }
 
 var errFailed = errors.New("failed")
@@ -44,8 +64,6 @@ func doAssert(ok bool, msg ...any) (int, error) {
 func toJSON(v any) (string, error) { b, err := json.Marshal(v); return string(b), err }
 func toYAML(v any) (string, error) { b, err := yaml.Marshal(v); return string(b), err }
 
-// urlQueryMap takes a map of any type and performs URL query encoding.
-// Map values are stringified with fmt "%v"
 func urlQueryMap(m any) string {
 	v := reflect.ValueOf(m)
 	if !v.IsValid() {
