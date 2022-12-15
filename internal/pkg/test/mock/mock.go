@@ -73,7 +73,7 @@ type Object string
 func (o Object) Class() Class { return Class(strings.Split(string(o), ":")[0]) }
 func (o Object) Data() string { return strings.Split(string(o), ":")[1] }
 
-func NewObjects(objectStrings ...string) []korrel8.Object {
+func Objects(objectStrings ...string) []korrel8.Object {
 	var ko []korrel8.Object
 	for _, o := range objectStrings {
 		ko = append(ko, Object(o))
@@ -119,24 +119,24 @@ func Rules(startGoal ...string) []korrel8.Rule {
 	return rules
 }
 
-type Store struct{}
+// Store is a map of query URI strings to sets of objects.
+type Store map[string][]korrel8.Object
 
-// Get treats the keys of q.Query as object strings, ignores the values
+// Get returns the objects associated with the query
 func (s Store) Get(_ context.Context, q *korrel8.Query, r korrel8.Result) error {
-	for o := range q.Query() {
-		r.Append(Object(o))
+	for _, o := range s[q.String()] {
+		r.Append(o)
 	}
 	return nil
 }
 
 func (s Store) URL(q *korrel8.Query) *url.URL { return q }
 
-func NewQuery(objects ...Object) *korrel8.Query {
-	v := url.Values{}
-	for _, o := range objects {
-		v[string(o)] = []string{""}
-	}
-	return &url.URL{RawQuery: v.Encode()}
+// NewQuery returns a query that will return the given objects.
+func (s Store) NewQuery(objs ...string) *korrel8.Query {
+	q := &korrel8.Query{Scheme: "mock", Path: strings.Join(objs, "&")}
+	s[q.String()] = Objects(objs...)
+	return q
 }
 
 var _ korrel8.Store = Store{} // Implements interface

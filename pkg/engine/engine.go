@@ -135,7 +135,7 @@ func (e *Engine) Follow(ctx context.Context, starters []korrel8.Object, c *korre
 			}
 		}
 		starters = result.List()
-		log.V(1).Info("follow: found objects, continuing", "count", len(starters))
+		log.V(1).Info("follow: found objects", "count", len(starters))
 	}
 	return queries.List, nil
 }

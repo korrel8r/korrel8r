@@ -27,6 +27,7 @@ func setup(t *testing.T, ruleFiles ...string) (client.Client, *engine.Engine) {
 	t.Helper()
 	e := engine.New("test")
 	c := fake.NewClientBuilder().WithRESTMapper(testrestmapper.TestOnlyStaticRESTMapper(k8s.Scheme)).Build()
+	// FIXME mock store
 	s, err := k8s.NewStore(c, &rest.Config{})
 	require.NoError(t, err)
 	e.AddDomain(k8s.Domain, s)
