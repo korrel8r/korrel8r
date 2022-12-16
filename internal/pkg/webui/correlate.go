@@ -7,10 +7,10 @@ import (
 	"net/url"
 	"strings"
 
-	merr "github.com/hashicorp/go-multierror"
 	"github.com/korrel8/korrel8/internal/pkg/openshift/console"
 	"github.com/korrel8/korrel8/pkg/korrel8"
 	"github.com/korrel8/korrel8/pkg/unique"
+	"go.uber.org/multierr"
 )
 
 type correlateValues struct {
@@ -98,7 +98,7 @@ func (h *correlateHandler) update(req *http.Request) {
 	h.correlateValues = correlateValues{}
 	h.Err = nil
 
-	addErr := func(err error) bool { h.Err = merr.Append(h.Err, err); return h.Err != nil }
+	addErr := func(err error) bool { h.Err = multierr.Append(h.Err, err); return h.Err != nil }
 
 	query, err := url.Parse(h.Params.Get("query"))
 	addErr(err)
