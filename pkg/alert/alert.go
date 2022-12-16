@@ -55,11 +55,11 @@ func NewStore(host string, rt http.RoundTripper) (*Store, error) {
 // Get implements the korrel8.Store interface.
 // The query URL "query" parameter is a PromQL label matcher expression with the wrapping
 // `{` and `}` being optional, e.g.  `namespace="default",pod=~"myapp-.+"`.
-func (s Store) Get(ctx context.Context, query *korrel8.Query, result korrel8.Result) error {
+func (s Store) Get(ctx context.Context, query korrel8.Query, result korrel8.Result) error {
 	// TODO: allow to filter on alert state (pending/firing)?
 	// TODO: support sorting order (e.g. most recent/oldest, severity)?
 	// TODO: allow grouping (all alerts related to podX grouped together)?
-	promQL := query.Query().Get("query")
+	promQL := query.Values().Get("query")
 	matchers, err := labels.ParseMatchers(promQL)
 	if err != nil {
 		return fmt.Errorf("%v: %w: %v", Domain, err, query)
@@ -77,7 +77,7 @@ func (s Store) Get(ctx context.Context, query *korrel8.Query, result korrel8.Res
 	return nil
 }
 
-func (s Store) URL(q *korrel8.Query) *url.URL {
+func (s Store) URL(q korrel8.Query) *url.URL {
 	u := url.URL{Scheme: "https", Host: s.host}
-	return u.ResolveReference(q)
+	return u.ResolveReference(q.URL())
 }

@@ -83,7 +83,7 @@ func Objects(objectStrings ...string) []korrel8.Object {
 
 var _ korrel8.Object = Object("") // Implements interface
 
-type ApplyFunc = func(korrel8.Object, *korrel8.Constraint) (*korrel8.Query, error)
+type ApplyFunc = func(korrel8.Object, *korrel8.Constraint) (korrel8.Query, error)
 
 type Rule struct {
 	name        string
@@ -94,7 +94,7 @@ type Rule struct {
 func (r Rule) Start() korrel8.Class { return r.start }
 func (r Rule) Goal() korrel8.Class  { return r.goal }
 func (r Rule) String() string       { return r.name }
-func (r Rule) Apply(start korrel8.Object, c *korrel8.Constraint) (*korrel8.Query, error) {
+func (r Rule) Apply(start korrel8.Object, c *korrel8.Constraint) (korrel8.Query, error) {
 	return r.apply(start, c)
 }
 
@@ -123,18 +123,18 @@ func Rules(startGoal ...string) []korrel8.Rule {
 type Store map[string][]korrel8.Object
 
 // Get returns the objects associated with the query
-func (s Store) Get(_ context.Context, q *korrel8.Query, r korrel8.Result) error {
+func (s Store) Get(_ context.Context, q korrel8.Query, r korrel8.Result) error {
 	for _, o := range s[q.String()] {
 		r.Append(o)
 	}
 	return nil
 }
 
-func (s Store) URL(q *korrel8.Query) *url.URL { return q }
+func (s Store) URL(q korrel8.Query) *url.URL { return q.URL() }
 
 // NewQuery returns a query that will return the given objects.
-func (s Store) NewQuery(objs ...string) *korrel8.Query {
-	q := &korrel8.Query{Scheme: "mock", Path: strings.Join(objs, "&")}
+func (s Store) NewQuery(objs ...string) korrel8.Query {
+	q := korrel8.Query{Path: strings.Join(objs, "&")}
 	s[q.String()] = Objects(objs...)
 	return q
 }

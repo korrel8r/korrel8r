@@ -4,7 +4,6 @@ package engine
 import (
 	"context"
 	"fmt"
-	"net/url"
 	"strings"
 	"sync"
 
@@ -111,7 +110,7 @@ func (e *Engine) Follow(ctx context.Context, starters []korrel8.Object, c *korre
 	if !path.Valid() {
 		return nil, fmt.Errorf("invalid path: %v", path)
 	}
-	queries := unique.NewList[url.URL]()
+	queries := unique.NewList[korrel8.Query]()
 	for i, links := range path {
 		queries.List = queries.List[:0] // Clear previous queries
 		log.V(1).Info("follow: follow rule set", "rules", links, "start", links.Start(), "goal", links.Goal())
@@ -119,7 +118,7 @@ func (e *Engine) Follow(ctx context.Context, starters []korrel8.Object, c *korre
 			q := e.followEach(rule, starters, c)
 			queries.Append(q...)
 		}
-		log.V(1).Info("follow: got queries", "domain", links.Goal(), "queries", logging.URLs(queries.List))
+		log.V(1).Info("follow: got queries", "domain", links.Goal(), "queries", queries.List)
 		if i == len(path)-1 || len(queries.List) == 0 {
 			break
 		}
@@ -130,7 +129,7 @@ func (e *Engine) Follow(ctx context.Context, starters []korrel8.Object, c *korre
 		}
 		var result korrel8.ListResult
 		for _, q := range queries.List {
-			if err := store.Get(ctx, &q, &result); err != nil {
+			if err := store.Get(ctx, q, &result); err != nil {
 				log.V(1).Error(err, "get error in follow, skipping", "query", q)
 			}
 		}
@@ -169,12 +168,12 @@ func (f *Engine) followEach(rule korrel8.Rule, start []korrel8.Object, c *korrel
 		case err != nil:
 			log.V(1).Info("follow: error applying rule", "rule", rule, "error", err)
 			logContext()
-		case q == nil || *q == url.URL{}:
-			log.V(1).Info("follow: rule returned nil or empty query", "rule", rule)
+		case q == korrel8.Query{}:
+			log.V(1).Info("follow: rule returned empty query", "rule", rule)
 			logContext()
 		default:
 			log.V(2).Info("follow: rule returned query", "rule", rule, "query", q)
-			queries.Append(*q)
+			queries.Append(q)
 		}
 		merr = multierr.Append(merr, err)
 	}

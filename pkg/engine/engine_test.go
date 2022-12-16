@@ -43,26 +43,26 @@ func TestEngine_Follow(t *testing.T) {
 	path := graph.MultiPath{
 		graph.Links{
 			// Return 2 results, must follow both
-			mock.NewRule("ab", "a", "b", func(korrel8.Object, *korrel8.Constraint) (*korrel8.Query, error) {
+			mock.NewRule("ab", "a", "b", func(korrel8.Object, *korrel8.Constraint) (korrel8.Query, error) {
 				return s.NewQuery("b:1", "b:2"), nil
 			}),
 		},
 		graph.Links{
 			// 2 rules, must follow both. Incorporate data from stat object.
-			mock.NewRule("bc", "b", "c", func(start korrel8.Object, _ *korrel8.Constraint) (*korrel8.Query, error) {
+			mock.NewRule("bc", "b", "c", func(start korrel8.Object, _ *korrel8.Constraint) (korrel8.Query, error) {
 				return s.NewQuery("c:" + start.(mock.Object).Data()), nil
 			}),
-			mock.NewRule("bc2", "b", "c", func(start korrel8.Object, _ *korrel8.Constraint) (*korrel8.Query, error) {
+			mock.NewRule("bc2", "b", "c", func(start korrel8.Object, _ *korrel8.Constraint) (korrel8.Query, error) {
 				return s.NewQuery("c:x" + start.(mock.Object).Data()), nil
 			}),
 		},
 		graph.Links{
-			mock.NewRule("cz", "c", "z", func(start korrel8.Object, _ *korrel8.Constraint) (*korrel8.Query, error) {
+			mock.NewRule("cz", "c", "z", func(start korrel8.Object, _ *korrel8.Constraint) (korrel8.Query, error) {
 				return s.NewQuery("z:" + start.(mock.Object).Data()), nil
 			}),
 		},
 	}
-	want := []korrel8.Query{*s.NewQuery("z:1"), *s.NewQuery("z:2"), *s.NewQuery("z:x1"), *s.NewQuery("z:x2")}
+	want := []korrel8.Query{s.NewQuery("z:1"), s.NewQuery("z:2"), s.NewQuery("z:x1"), s.NewQuery("z:x2")}
 	e := New("")
 	e.AddDomain(mock.Domain(""), s)
 	queries, err := e.Follow(context.Background(), mock.Objects("foo:a"), nil, path)

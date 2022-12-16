@@ -16,7 +16,7 @@ import (
 type correlateValues struct {
 	Start, Goal           korrel8.Class
 	StartObjects          []korrel8.Object
-	Query                 *korrel8.Query
+	Query                 korrel8.Query
 	StartStore, GoalStore korrel8.Store
 	GoalURLs              []*url.URL
 	Diagram               string
@@ -100,15 +100,15 @@ func (h *correlateHandler) update(req *http.Request) {
 
 	addErr := func(err error) bool { h.Err = multierr.Append(h.Err, err); return h.Err != nil }
 
-	query, err := url.Parse(h.Params.Get("query"))
+	u, err := url.Parse(h.Params.Get("query"))
 	addErr(err)
 
 	pathFunc := h.UI.Engine.Graph().ShortestPaths
 	// FIXME brutal hack for demo, need URL recognizers and class from query. Sort out URL rewrite story.
-	if strings.HasPrefix(query.Host, "console") {
+	if strings.HasPrefix(u.Host, "console") {
 		h.Start, h.Query, err = console.ParseURL(h.Params.Get("query"))
 	} else {
-		h.Query = query
+		h.Query = korrel8.QueryFrom(u)
 		h.Start, err = h.UI.Engine.ParseClass(h.Params.Get("start"))
 		pathFunc = h.UI.Engine.Graph().AllPaths
 	}
@@ -132,7 +132,7 @@ func (h *correlateHandler) update(req *http.Request) {
 	starters := korrel8.NewSetResult(h.Start)
 	addErr(h.StartStore.Get(context.Background(), h.Query, starters))
 	h.StartObjects = starters.List()
-	queries := unique.NewList[url.URL]()
+	queries := unique.NewList[korrel8.Query]()
 	for _, path := range paths {
 		qs, err := h.UI.Engine.Follow(context.Background(), starters.List(), nil, path)
 		addErr(err)
@@ -140,7 +140,7 @@ func (h *correlateHandler) update(req *http.Request) {
 	}
 	h.GoalURLs = nil
 	for _, q := range queries.List {
-		u, err := console.FormatURL(h.UI.ConsoleURL, h.Goal, &q)
+		u, err := console.FormatURL(h.UI.ConsoleURL, h.Goal, q)
 		addErr(err)
 		h.GoalURLs = append(h.GoalURLs, u)
 	}

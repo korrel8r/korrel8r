@@ -124,10 +124,10 @@ func TestStore_Get(t *testing.T) {
 		// Field matches are not supported by the fake client.
 	} {
 		t.Run(x.query, func(t *testing.T) {
-			query, err := url.Parse(x.query)
+			q, err := korrel8.ParseQuery(x.query)
 			require.NoError(t, err)
 			var result korrel8.ListResult
-			err = store.Get(context.Background(), query, &result)
+			err = store.Get(context.Background(), q, &result)
 			require.NoError(t, err)
 			var got []types.NamespacedName
 			for _, v := range result {

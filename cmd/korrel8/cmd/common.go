@@ -143,22 +143,22 @@ func loadRules(e *engine.Engine, root string) error {
 }
 
 // queryFromArgs treats args[0] as the initial URI, and args[1:] as NAME=VALUE strings for query parameters.
-func queryFromArgs(args []string) (*korrel8.Query, error) {
+func queryFromArgs(args []string) (korrel8.Query, error) {
 	if len(args) == 0 {
-		return &korrel8.Query{}, nil
+		return korrel8.Query{}, nil
 	}
 	u, err := url.Parse(args[0])
 	if err != nil {
-		return nil, err
+		return korrel8.Query{}, err
 	}
 	q := u.Query()
 	for _, nv := range args[1:] {
 		n, v, ok := strings.Cut(nv, "=")
 		if !ok {
-			return nil, fmt.Errorf("not a name=value argument: %v", nv)
+			return korrel8.Query{}, fmt.Errorf("not a name=value argument: %v", nv)
 		}
 		q.Set(n, v)
 	}
 	u.RawQuery = q.Encode()
-	return u, err
+	return korrel8.QueryFrom(u), err
 }

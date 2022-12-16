@@ -2,7 +2,6 @@ package alert
 
 import (
 	"context"
-	"net/url"
 	"testing"
 
 	"github.com/korrel8/korrel8/internal/pkg/test"
@@ -16,6 +15,6 @@ func TestQuery_Alert(t *testing.T) {
 	store, err := NewOpenshiftAlertManagerStore(context.Background(), test.RESTConfig)
 	require.NoError(t, err)
 	result := korrel8.NewListResult()
-	require.NoError(t, store.Get(context.Background(), &url.URL{}, result))
+	require.NoError(t, store.Get(context.Background(), korrel8.Query{}, result))
 	require.NotEmpty(t, result.List())
 }

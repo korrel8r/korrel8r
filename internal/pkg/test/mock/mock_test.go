@@ -42,8 +42,8 @@ func TestObject(t *testing.T) {
 
 func TestStore_Get(t *testing.T) {
 	r := korrel8.NewListResult()
-	s := Store{"test": Objects("X/foo:x", "Y/bar.y", "foo:a", "bar:b", ":u", ":v")}
-	require.NoError(t, s.Get(context.Background(), &korrel8.Query{Path: "test"}, r))
+	s := Store{"test?": Objects("X/foo:x", "Y/bar.y", "foo:a", "bar:b", ":u", ":v")}
+	require.NoError(t, s.Get(context.Background(), korrel8.Query{Path: "test"}, r))
 	want := Objects("X/foo:x", "Y/bar.y", "foo:a", "bar:b", ":u", ":v")
 	assert.Equal(t, want, r.List())
 }

@@ -89,7 +89,7 @@ type Store struct {
 // NewStore creates a new store
 func NewStore(c client.Client, cfg *rest.Config) (*Store, error) { return &Store{c: c, cfg: cfg}, nil }
 
-func (s *Store) Get(ctx context.Context, query *korrel8.Query, result korrel8.Result) (err error) {
+func (s *Store) Get(ctx context.Context, query korrel8.Query, result korrel8.Result) (err error) {
 	defer func() {
 		if err != nil {
 			err = fmt.Errorf("%v query error: %w: query= %v", Domain, err, query)
@@ -102,13 +102,13 @@ func (s *Store) Get(ctx context.Context, query *korrel8.Query, result korrel8.Re
 	if nsName.Name != "" { // Request for single object.
 		return s.getObject(ctx, gvk, nsName, result)
 	} else {
-		return s.getList(ctx, gvk, nsName.Namespace, query.Query(), result)
+		return s.getList(ctx, gvk, nsName.Namespace, query.Values(), result)
 	}
 }
 
-func (s Store) URL(q *korrel8.Query) *url.URL {
+func (s Store) URL(q korrel8.Query) *url.URL {
 	u := url.URL{Scheme: "https", Host: s.cfg.Host}
-	return u.ResolveReference(q)
+	return u.ResolveReference(q.URL())
 }
 
 // parsing a REST URI into components then using client.Client to recreate the REST query.
@@ -218,7 +218,7 @@ const (
 )
 
 // ToConsole converts a k8s query to a console query
-func ToConsole(q *korrel8.Query) (*url.URL, error) {
+func ToConsole(q korrel8.Query) (*url.URL, error) {
 	parts := k8sPathRegex.FindStringSubmatch(q.Path)
 	if len(parts) != pCount {
 		return nil, fmt.Errorf("invalid k8s query: %v", q)

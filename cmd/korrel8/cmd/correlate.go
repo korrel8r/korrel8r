@@ -7,7 +7,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"net/url"
 	"os"
 
 	"github.com/korrel8/korrel8/internal/pkg/decoder"
@@ -58,7 +57,7 @@ var correlateCmd = &cobra.Command{
 				starters.Append(o)
 			}
 		}
-		queries := unique.NewList[url.URL]()
+		queries := unique.NewList[korrel8.Query]()
 		for _, path := range paths {
 			queries.Append(must(e.Follow(ctx, starters.List(), nil, path))...)
 		}
@@ -82,7 +81,7 @@ func printObjects(e *engine.Engine, goal korrel8.Class, queries []korrel8.Query)
 	check(err)
 	result := newPrinter(os.Stdout)
 	for _, q := range queries {
-		check(store.Get(context.Background(), &q, result))
+		check(store.Get(context.Background(), q, result))
 	}
 }
 

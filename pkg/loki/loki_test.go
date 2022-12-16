@@ -95,7 +95,7 @@ func TestStoreGet_Constraint(t *testing.T) {
 	require.NoError(t, err)
 
 	for n, x := range []struct {
-		query *korrel8.Query
+		query korrel8.Query
 		want  []korrel8.Object
 	}{
 		{

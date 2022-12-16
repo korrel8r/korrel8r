@@ -15,6 +15,6 @@ func TestQuery_Alert(t *testing.T) {
 	store, err := NewOpenshiftStore(context.Background(), test.RESTConfig)
 	require.NoError(t, err)
 	result := korrel8.NewListResult()
-	require.NoError(t, store.Get(context.Background(), &korrel8.Query{}, result))
+	require.NoError(t, store.Get(context.Background(), korrel8.Query{}, result))
 	require.NotEmpty(t, result.List())
 }

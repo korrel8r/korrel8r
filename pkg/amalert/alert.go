@@ -46,10 +46,10 @@ func NewStore(host string, hc *http.Client) *Store {
 
 // Query is an alertmanager REST URL, see:
 // https://petstore.swagger.io/?url=https://raw.githubusercontent.com/prometheus/alertmanager/master/api/v2/openapi.yaml
-func (s Store) Get(ctx context.Context, query *korrel8.Query, result korrel8.Result) error {
+func (s Store) Get(ctx context.Context, query korrel8.Query, result korrel8.Result) error {
 	params := alert.NewGetAlertsParamsWithContext(ctx)
 
-	if f := query.Query().Get("filter"); f != "" {
+	if f := query.Values().Get("filter"); f != "" {
 		params.WithFilter([]string{f})
 	}
 	resp, err := s.manager.Alert.GetAlerts(params)
@@ -62,4 +62,4 @@ func (s Store) Get(ctx context.Context, query *korrel8.Query, result korrel8.Res
 	return nil
 }
 
-func (s Store) URL(q *korrel8.Query) *url.URL { return s.base.ResolveReference(q) }
+func (s Store) URL(q korrel8.Query) *url.URL { return s.base.ResolveReference(q.URL()) }
