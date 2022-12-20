@@ -1,41 +1,91 @@
-**⚠ Experimental ⚠** This code may change or vanish. It may not work. It may not even make sense.
-
-- [Go API documentation on pkg.go.dev](https://pkg.go.dev/github.com/korrel8/korrel8/pkg/korrel8)
-
 # Overview
+
+**⚠ Warning: Experimental ⚠** This code may change or vanish. It may not work. It may not even make sense.\
+[API documentation is available at pkg.go.dev](https://pkg.go.dev/github.com/korrel8/korrel8/pkg/korrel8)
+
 
 A Kubernetes cluster generates many types of *observable signal*, including:
 
-|                   |                                                                                                                          |
-|-------------------|--------------------------------------------------------------------------------------------------------------------------|
-| Logs              | Application, infrastructure and audit logs from Pods and cluster nodes.                                                  |
-| Metrics           | Counts and measurements of system behavior.                                                                              |
-| Alerts            | Rules that fire when metrics cross important thresholds.                                                                 |
-| Traces            | Nested execution spans describing distributed requests.                                                                  |
-| Kubernetes Events | Describe significant events in a cluster.                                                                                |
-| Network Events    | TCP and IP level network information.                                                                                    |
-| Resources         | Spec and status information. Not traditionally considered signals, but often the starting point or goal for correlation. |
+|                   |                                                                         |
+|-------------------|-------------------------------------------------------------------------|
+| Metrics           | Counts and measurements of system behaviour.                            |
+| Alerts            | Rules that fire when metrics cross important thresholds.                |
+| Logs              | Application, infrastructure and audit logs from Pods and cluster nodes. |
+| Kubernetes Events | Describe significant events in a cluster.                               |
+| Traces            | Nested execution spans describing distributed requests.                 |
+| Network Events    | TCP and IP level network information.                                   |
 
-Different signal types use different vocabularies to identify the same things.
+A cluster also contains objects that are not usually considered "signals", but which can be correlated with signals and other objects:
+
+|                           |                                                 |
+|---------------------------+-------------------------------------------------|
+| k8s resource state        | Spec and status information.                    |
+| Run books                 | Problem solving guides associated with Alerts.  |
+| k8s liveness probes       | Information about resource state.               |
+| Operators                 | Operators control other resources.              |
+| `kubectl describe` output | Documentation about resources and their fields. |
+
+This project is a *correlation engine* which applies *rules* to correlate signals from different domains.
+Given a *start* object (e.g. an alert) and a *goal* (e.g. "find related logs") the engine follows rules to find a set of goal objects related to the start object.
+
+The engine encapsulates a common set of rules that can be re-used in many settings: graphical consoles, command line tools, offline data-processing and other services.
+
+The goals of this project include:
+
+- Encode domain knowledge from SREs and other experts as re-usable rules.
+- Automate navigation from symptoms to data that helps diagnose causes.
+- Reduce multiple-step manual procedures to fewer clicks or queries.
+- Help tools that gather and analyze diagnostic data to focus on relevant information.
+
+# Implentation Concepts
+
+The following concepts are represented by interfaces in the korrel8 package. Support for a new domain implements these interfaces:
+
+**Domain** \
+A family of signals or objects with common storage and representation.
+Examples: resource, alert, metric, log, trace
+
+**Store** \
+A source of signal data from some Domain.
+Examples: Loki, Prometheus, Kubernetes API server.
+
+**Query**  \
+A URI reference to fetch a set of signals from a Store
+
+**Class**  \
+A subset of signals in a Domain with a common schema (field definitions).
+Examples: Pod (k8s), Event(k8s), `KubeContainerWaiting` (alert), `log_logged_bytes_total` (metric)
+
+**Object** \
+An instance of a signal or other correlation object.
+
+**Rule**  \
+A Rule applies to an instance of a *start* Class, and generates one or more queries for a *goal* Class.
+Rules are written in terms of domain-specific objects and query languages, but the start and goal can be in different domains (e.g. k8s/Service → loki/log)
+Currently rules are defined using Go templates, see ./rules for examples.
+
+# Conflicting Vocabularies
+
+Different signal and object domains may use different vocabularies to identify the same things.
 For example:
 
--   `k8s.pod.name` (traces)
--   `pod` or `pod_name` (metrics)
--   `kubernetes.pod_name` (logs)
+- `k8s.pod.name` (traces)
+- `pod` or `pod_name` (metrics)
+- `kubernetes.pod_name` (logs)
 
-This project is a *correlation engine* which applies *rules* to correlate signals of different types and vocabularies.
-Given a starting point (e.g. an alert) and a goal (e.g. \`\`find logs'') the engine follows rules to find a set of goal signals that are related to the starting signal.
+The correlation problem would be simpler if there was a single vocabulary to describe signal attributes.
+The [Open Telemetry Project](https://opentelemetry.io/) aims to create such a standard vocabulary.
+Unfortunately, at least for now, we have to deal with multiple vocabularies in different domains.
 
-The engine encapsulates a common set of rules that can be used in many settings: graphical consoles, command line tools, offline data-processing and other services.
+For example, OpenShift tracing uses Open Telemetry notation. However, OpenShift logging and Prometheus metrics do not.
+They each use a different convention that was established before Open Telemetry existed.
+Historically, observability tools tended to develop in silos without standardization between domains.
+Different conventions adopted in each domain are now entrenched and difficult to change.
 
-Goals include:
+A single vocabulary may eventually become universal, but in the short to medium term we have to handle mixed signals.
+Korrle8 expresses rules in the native vocabulary of each domain, but allows rules to cross domains.
 
--   Encode domain knowledge from SREs and other experts as re-usable rules.
--   Automate navigation from symptoms to data that helps diagnose causes.
--   Reduce multiple-step manual procedures and ad-hoc scripts to a single click/query for the operator.
--   Help tools that gather and/or analyze diagnostic data to find and focus on useful data.
-
-# Request for Input
+# Request for Feedback
 
 If you work with OpenShift or kubernetes clusters, your experience can help to build a useful rule-base.
 If you are interested, please [create a GitHub issue](https://github.com/korrel8/korrel8/issues/new), following this template:
@@ -71,41 +121,3 @@ Examples:
 - These PVs are filling up, I want to see…
 - Cluster is using more storage than I expected, I want to see…
 
-# Implentation Concepts
-
-The following concepts are represented by interfaces in the korrel8 package. Support for a new domain implements these interfaces:
-
-**Domain** \
-A family of signals with common storage and representation.
-Examples: resource, alert, metric, trace
-
-**Store** \
-A source of signal data from some Domain.
-Examples: Loki, Prometheus, Kubernetes API server.
-
-**Query**  \
-A URL or URI reference to fetch a set of signals from a Store
-
-**Class**  \
-A subset of signals in a Domain with a common schema (field definitions).
-Examples: Pod (k8s), Event(k8s), `KubeContainerWaiting`(alert), log_logged_bytes_total(metric)
-
-**Object** \
-An instance of a signal.
-
-**Rule**  \
-Apply to an instance of a *start* Class, generate a query for a *goal* Class.
-Rules are written in terms of domain-specific objects and query languages, but the start and goal can be in different domains (e.g. k8s/Service.v1 → loki/log)
-Currently rules are defined as Go templates, see ./rules for examples.
-
-# Conflicting Vocabularies
-
-The correlation problem would be simpler if there was a single vocabulary to describe resource and signal attributes.
-The [Open Telemetry Project](https://opentelemetry.io/) aims to create such a standard vocabulary for observability.
-
-OpenShift tracing uses Open Telemetry notation. However, OpenShift logging and metrics do not.
-They each use a different convention that was established before Open Telemetry existed.
-
-Historically, observability tools have developed in "silos" without standardization.
-Different conventions adopted in each domain are now entrenched and difficult to change.
-A single vocabulary may eventually become universal, but in the medium term we have to handle mixed signals.
