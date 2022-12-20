@@ -52,7 +52,6 @@ func makeQuery(path string, keysAndValues ...string) korrel8.Query {
 }
 
 func testFollow(t *testing.T, e *engine.Engine, start, goal korrel8.Class, objs []korrel8.Object, want []korrel8.Query) {
-	t.Helper()
 	paths, err := e.Graph().ShortestPaths(start, goal)
 	require.NoError(t, err)
 	queries, err := e.FollowAll(ctx, objs, nil, paths)
@@ -66,7 +65,7 @@ func TestSelectorToPods(t *testing.T) {
 	labels := map[string]string{"test": "testme"}
 
 	podx := tk.Build(&corev1.Pod{}).NSName("ns", "x").Object()
-	podx.ObjectMeta = metav1.ObjectMeta{Labels: labels}
+	podx.ObjectMeta.Labels = labels
 	podx.Spec = corev1.PodSpec{
 		Containers: []corev1.Container{{
 			Name:    "testme",
@@ -74,7 +73,7 @@ func TestSelectorToPods(t *testing.T) {
 			Command: []string{"sh", "-c", "while true; do echo $(date) hello world; sleep 1; done"},
 		}}}
 
-	pody := podx
+	pody := podx.DeepCopy()
 	pody.ObjectMeta.Name = "y"
 
 	d := tk.Build(&appsv1.Deployment{}).NSName("ns", "x").Object()

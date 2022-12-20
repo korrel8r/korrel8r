@@ -6,12 +6,13 @@ import (
 	"fmt"
 	"net/url"
 	"reflect"
+	"strings"
 
 	"github.com/korrel8/korrel8/pkg/korrel8"
 	"sigs.k8s.io/yaml"
 )
 
-// Funcs that are available in all templates created by New.
+// Funcs that are available to all Rules.
 //
 //	constraint
 //	  Returns the korrel8.Constraint in force when applying a rule. May be nil.
@@ -28,6 +29,8 @@ import (
 //	urlQueryMap
 //	  Returns the URL query encoding of a map argument.
 //	  Map values are stringified with fmt "%v"
+//	selector
+//	  Takes a map arguments and returns a selector string of the form: "k1=value1,k2=value2 ..."
 //	kvmap
 //	  Returns a map formed from (key, value, key2, value2...) arguments.
 //	  Useful for passing multiple parameters to a template execution.
@@ -42,6 +45,7 @@ func init() {
 		"toYAML":      toYAML,
 		"fullname":    korrel8.FullName,
 		"urlquerymap": urlQueryMap,
+		"selector":    selector,
 		"kvmap":       kvMap,
 	}
 }
@@ -75,6 +79,21 @@ func urlQueryMap(m any) string {
 		p.Add(fmt.Sprintf("%v", i.Key()), fmt.Sprintf("%v", i.Value()))
 	}
 	return p.Encode()
+}
+
+func selector(m any) string {
+	v := reflect.ValueOf(m)
+	if !v.IsValid() {
+		return ""
+	}
+	b := &strings.Builder{}
+	i := v.MapRange()
+	sep := ""
+	for i.Next() {
+		fmt.Fprintf(b, "%v%v=%v", sep, i.Key(), i.Value())
+		sep = ","
+	}
+	return b.String()
 }
 
 func kvMap(keyValue ...any) map[any]any {

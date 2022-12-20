@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"net/url"
 	"path"
-	"reflect"
 	"regexp"
 	"strings"
 
@@ -179,22 +178,4 @@ func NewLokiStackQuery(class Class, logQL string, constraint *korrel8.Constraint
 	u := NewPlainQuery(logQL, constraint)
 	u.Path = path.Join("/api/logs/v1/", class.String(), u.Path)
 	return u
-}
-
-var templateFuncs = map[string]any{
-	"logqlmap": logQLMap,
-}
-
-func (d domain) TemplateFuncs() map[string]any { return templateFuncs }
-
-func logQLMap(m any, keyPrefix string) string {
-	b := &strings.Builder{}
-	v := reflect.ValueOf(m)
-	i := v.MapRange()
-	sep := ""
-	for i.Next() {
-		fmt.Fprintf(b, "%v%v%v=%#v", sep, keyPrefix, i.Key(), i.Value())
-		sep = ","
-	}
-	return b.String()
 }

@@ -20,21 +20,7 @@ goal:
   classes: [Pod.]
 result:
   uri: |-
-    /api/v1/namespaces/{{.Namespace}}/pods?labelSelector={{.Spec.Selector.MatchLabels | urlquerymap -}}
-# FIXME Broken rules
-# ---
-# name: SelectorToLogs
-# start:
-#   domain: k8s
-#   matches: ['{{has .Spec.Selector}}']
-# goal:
-#   domain: loki
-# result:
-#   uri: |-
-#     /api/logs/v1/{{ k8sLogType .ObjectMeta.Namespace }}/loki/api/v1/query_range?query=
-#     {{- printf "{kubernetes_namespace_name=%q" .ObjectMeta.Namespace | urlquery -}}
-#     {{- logqlmap .Spec.Selector.MatchLabels}}
-#   class: 'loki/{{ k8sLogType .ObjectMeta.Namespace }}'
+    /api/v1/namespaces/{{.Namespace}}/pods?labelSelector={{.Spec.Selector.MatchLabels | selector | urlquery -}}
 ---
 name: EventToObject
 start:

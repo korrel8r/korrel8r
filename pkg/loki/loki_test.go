@@ -114,12 +114,3 @@ func TestStoreGet_Constraint(t *testing.T) {
 		})
 	}
 }
-
-func TestLogQLMap(t *testing.T) {
-	assert.ElementsMatch(t,
-		[]string{`foo_a="x"`, `foo_b="y"`},
-		strings.Split(logQLMap(map[string]string{"a": "x", "b": "y"}, "foo_"), ","))
-	assert.ElementsMatch(t,
-		[]string{`foo_a=1`, `foo_b=2`},
-		strings.Split(logQLMap(map[string]int{"a": 1, "b": 2}, "foo_"), ","))
-}
