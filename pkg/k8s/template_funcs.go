@@ -42,7 +42,7 @@ var domainFuncs = map[string]any{
 	"k8sLogType": logType,
 }
 
-func (d domain) TemplateFuncs() map[string]any { return domainFuncs }
+func (_ domain) TemplateFuncs() map[string]any { return domainFuncs }
 
 var infraNamespace = regexp.MustCompile(`^(default|(openshift|kube)(-.*)?)$`)
 

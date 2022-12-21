@@ -11,6 +11,19 @@ result:
     {{- printf "{kubernetes_namespace_name=%q,kubernetes_pod_name=%q} | json" .ObjectMeta.Namespace .ObjectMeta.Name | urlquery -}}
   class: 'loki/{{ k8sLogType .ObjectMeta.Namespace }}'
 ---
+name: SelectorToLogs
+start:
+  domain: k8s
+  matches: ['{{has .Spec.Selector}}']
+goal:
+  domain: loki
+result:
+  uri: |-
+    /api/logs/v1/{{ k8sLogType .ObjectMeta.Namespace }}/loki/api/v1/query_range?query=
+    {{- printf "{kubernetes_namespace_name=%q} | json" .ObjectMeta.Namespace | urlquery -}}
+    {{- range $k, $v := .Spec.Selector.MatchLabels}}{{printf " | kubernetes_label_%v=\"%v\"" (lokiFixLabel $k) $v | urlquery -}}{{- end -}}
+  class: 'loki/{{ k8sLogType .ObjectMeta.Namespace }}'
+---
 name: SelectorToPods
 start:
   domain: k8s

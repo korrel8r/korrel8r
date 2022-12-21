@@ -8,17 +8,6 @@ import (
 )
 
 // Decoder decodes a stream of YAML docs or JSON objects.
-// In case of error Line() gives the current line.
-type Decoder struct {
-	reader  *LineCountReader
-	decoder *yaml.YAMLOrJSONDecoder
-}
+type Decoder interface{ Decode(into any) error }
 
-func New(r io.Reader) *Decoder {
-	lc := NewLineCountReader(r)
-	decoder := yaml.NewYAMLOrJSONDecoder(lc, 1024)
-	return &Decoder{reader: lc, decoder: decoder}
-}
-
-func (d *Decoder) Decode(into any) error { return d.decoder.Decode(into) }
-func (d *Decoder) Line() int             { return d.reader.Line }
+func New(r io.Reader) Decoder { return yaml.NewYAMLOrJSONDecoder(r, 1024) }

@@ -136,7 +136,7 @@ func loadRules(e *engine.Engine, root string) error {
 		defer f.Close()
 		d := decoder.New(f)
 		if err := templaterule.AddRules(d, e); err != nil {
-			return fmt.Errorf("%v:%v: error loading rules: %v", path, d.Line(), err)
+			return fmt.Errorf("%v: error loading rules: %v", path, err)
 		}
 		return nil
 	})
