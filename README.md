@@ -34,7 +34,7 @@ The goals of this project include:
 
 - Encode domain knowledge from SREs and other experts as re-usable rules.
 - Automate navigation from symptoms to data that helps diagnose causes.
-- Reduce multiple-step manual procedures to fewer clicks or queries.
+- Reduce multiple-step manual procedures to fewer clicks or references.
 - Help tools that gather and analyze diagnostic data to focus on relevant information.
 
 # Implentation Concepts
@@ -49,8 +49,9 @@ Examples: resource, alert, metric, log, trace
 A source of signal data from some Domain.
 Examples: Loki, Prometheus, Kubernetes API server.
 
-**Query**  \
-A URI reference to fetch a set of signals from a Store
+**Reference**  \
+A relative URI reference that selects a set of signals from some store.
+Most stores have REST APIs, but a URI reference is flexible enough to encode references to non-REST stores.
 
 **Class**  \
 A subset of signals in a Domain with a common schema (field definitions).
@@ -60,9 +61,10 @@ Examples: Pod (k8s), Event(k8s), `KubeContainerWaiting` (alert), `log_logged_byt
 An instance of a signal or other correlation object.
 
 **Rule**  \
-A Rule applies to an instance of a *start* Class, and generates one or more queries for a *goal* Class.
-Rules are written in terms of domain-specific objects and query languages, but the start and goal can be in different domains (e.g. k8s/Service → loki/log)
-Currently rules are defined using Go templates, see ./rules for examples.
+A Rule applies to an instance of a *start* Class, and generates one or more references for a *goal* Class.
+Rules are written in terms of domain-specific objects and query languages.
+The start and goal of a rule can be in different domains (e.g. k8s/Pod → loki/application)
+Rules are defined using Go templates, see ./rules for examples.
 
 # Conflicting Vocabularies
 

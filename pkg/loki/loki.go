@@ -1,4 +1,4 @@
-// package loki generates queries for logs stored in Loki or LokiStack
+// package loki generates qgueries for logs stored in Loki or LokiStack
 package loki
 
 import (
@@ -13,6 +13,7 @@ import (
 
 	"github.com/korrel8/korrel8/internal/pkg/openshift"
 	"github.com/korrel8/korrel8/pkg/korrel8"
+	"github.com/korrel8/korrel8/pkg/uri"
 	"golang.org/x/exp/slices"
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -26,16 +27,16 @@ func (d domain) String() string                  { return "loki" }
 func (d domain) Class(name string) korrel8.Class { return classMap[name] }
 func (d domain) Classes() []korrel8.Class        { return classes }
 
-// PlainQuery convert a LokiStack query to a plain Loki query
-func PlainQuery(q korrel8.Query) korrel8.Query {
-	return korrel8.Query{Path: lokiStackPath.ReplaceAllString(q.Path, ""), RawQuery: q.RawQuery}
+// Plain converts a LokiStack reference to a plain loki reference.
+func Plain(ref uri.Reference) uri.Reference {
+	return uri.Reference{Path: lokiStackPath.ReplaceAllString(ref.Path, ""), RawQuery: ref.RawQuery}
 }
 
-// ConsoleQuery converts a LokiStak query to a console query
-func ConsoleQuery(q korrel8.Query) *url.URL {
+// Console converts a LokiStak ref to a console URL
+func Console(ref uri.Reference) *url.URL {
 	v := url.Values{}
-	v.Add("q", q.Values().Get("query"))
-	m := lokiStackPath.FindStringSubmatch(q.Path)
+	v.Add("q", ref.Values().Get("query"))
+	m := lokiStackPath.FindStringSubmatch(ref.Path)
 	if len(m) == 2 {
 		v.Add("tenant", m[1])
 	}
@@ -78,8 +79,8 @@ func NewStore(baseURL *url.URL, c *http.Client) (*Store, error) {
 
 func (s *Store) String() string { return s.base.String() }
 
-func (s *Store) Get(ctx context.Context, q korrel8.Query, result korrel8.Result) error {
-	u := s.base.ResolveReference(q.URL())
+func (s *Store) Get(ctx context.Context, ref uri.Reference, result korrel8.Result) error {
+	u := s.base.ResolveReference(ref.URL())
 	resp, err := s.c.Get(u.String())
 	if err != nil {
 		return fmt.Errorf("%w: %v", err, u)
@@ -110,7 +111,7 @@ func (s *Store) Get(ctx context.Context, q korrel8.Query, result korrel8.Result)
 	return nil
 }
 
-func (s Store) URL(q korrel8.Query) *url.URL { return s.base.ResolveReference(q.URL()) }
+func (s Store) Resolve(ref uri.Reference) *url.URL { return ref.Resolve(&s.base) }
 
 // queryResponse is the response to a loki query.
 type queryResponse struct {
@@ -140,8 +141,8 @@ func NewPlainStore(baseURL *url.URL, c *http.Client) (PlainStore, error) {
 	return PlainStore{s}, err
 }
 
-func (s *PlainStore) Get(ctx context.Context, q korrel8.Query, result korrel8.Result) error {
-	return s.Store.Get(ctx, PlainQuery(q), result)
+func (s *PlainStore) Get(ctx context.Context, ref uri.Reference, result korrel8.Result) error {
+	return s.Store.Get(ctx, Plain(ref), result)
 }
 
 func NewOpenshiftLokiStackStore(ctx context.Context, c client.Client, cfg *rest.Config) (*Store, error) {
@@ -156,7 +157,7 @@ func NewOpenshiftLokiStackStore(ctx context.Context, c client.Client, cfg *rest.
 	return NewStore(&url.URL{Scheme: "https", Host: host}, hc)
 }
 
-func NewPlainQuery(logQL string, constraint *korrel8.Constraint) korrel8.Query {
+func NewPlainRef(logQL string, constraint *korrel8.Constraint) uri.Reference {
 	v := url.Values{}
 	v.Add("query", logQL)
 	v.Add("direction", "forward")
@@ -171,11 +172,11 @@ func NewPlainQuery(logQL string, constraint *korrel8.Constraint) korrel8.Query {
 			v.Add("end", fmt.Sprintf("%v", constraint.End.UnixNano()))
 		}
 	}
-	return korrel8.Query{Path: "/loki/api/v1/query_range", RawQuery: v.Encode()}
+	return uri.Reference{Path: "/loki/api/v1/query_range", RawQuery: v.Encode()}
 }
 
-func NewLokiStackQuery(class Class, logQL string, constraint *korrel8.Constraint) korrel8.Query {
-	u := NewPlainQuery(logQL, constraint)
+func NewLokiStackRef(class Class, logQL string, constraint *korrel8.Constraint) uri.Reference {
+	u := NewPlainRef(logQL, constraint)
 	u.Path = path.Join("/api/logs/v1/", class.String(), u.Path)
 	return u
 }

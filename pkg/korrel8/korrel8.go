@@ -5,10 +5,11 @@ package korrel8
 
 import (
 	"context"
-	"fmt"
 	"net/url"
 	"path"
 	"time"
+
+	"github.com/korrel8/korrel8/pkg/uri"
 )
 
 // Object represents an instance of a signal.
@@ -43,30 +44,13 @@ func FullName(c Class) string { return path.Join(c.Domain().String(), c.String()
 
 // Store is a source of signals belonging to a single domain.
 type Store interface {
-	// Get the objects selected by query in this store.
+	// Get the objects selected by reference in this store.
 	// Appends resulting objects to Result.
-	Get(ctx context.Context, query Query, result Result) error
+	Get(context.Context, uri.Reference, Result) error
 
-	// URL resolves a relative Query URI to a full URL for this store.
-	URL(query Query) *url.URL
+	// Resolve a relative URI reference to a REST Resolve for this store.
+	Resolve(uri.Reference) *url.URL
 }
-
-// Query is a relative URI reference with only path and query parts of a URL.
-// A Store will combine it with its base URL to get a full REST URL.
-// Query is comparable.
-type Query struct {
-	Path     string
-	RawQuery string
-}
-
-func (q Query) String() string     { return fmt.Sprintf("%v?%v", q.Path, q.RawQuery) }
-func (q Query) URL() *url.URL      { return &url.URL{Path: q.Path, RawQuery: q.RawQuery} }
-func (q Query) Values() url.Values { v, _ := url.ParseQuery(q.RawQuery); return v }
-func ParseQuery(s string) (Query, error) {
-	u, err := url.Parse(s)
-	return QueryFrom(u), err
-}
-func QueryFrom(u *url.URL) Query { return Query{Path: u.Path, RawQuery: u.RawQuery} }
 
 // Result gathers results from Store.Get calls.
 // See ListResult and SetResult.
@@ -81,14 +65,14 @@ type Rule interface {
 	Goal() Class
 	// Name of the rule
 	String() string
-	// Apply the rule to a start Object, return a Query for results.
-	// Optional Constraint (if non-nil) is included in the Query.
+	// Apply the rule to a start Object, return a Reference for results.
+	// Optional Constraint (if non-nil) is included in the Reference.
 	//
 	// FIXME: May optionally return a Constraint to be used by the next rule in the chain.
-	Apply(start Object, constraint *Constraint) (Query, error)
+	Apply(start Object, constraint *Constraint) (uri.Reference, error)
 }
 
-// Constraint included in a query to restrict the resulting objects.
+// Constraint included in a reference to restrict the resulting objects.
 type Constraint struct {
 	Limit *uint      `json:"limit,omitempty"` // Max number of entries to return
 	Start *time.Time `json:"start,omitempty"` // Include only results timestamped after this time.

@@ -14,13 +14,14 @@ import (
 	"github.com/korrel8/korrel8/pkg/graph"
 	"github.com/korrel8/korrel8/pkg/korrel8"
 	"github.com/korrel8/korrel8/pkg/unique"
+	"github.com/korrel8/korrel8/pkg/uri"
 	"github.com/spf13/cobra"
 )
 
 // correlateCmd represents the correlate command
 var correlateCmd = &cobra.Command{
-	Use:   "correlate START_CLASS GOAL_CLASS [QUERY_URL [NAME=VALUE...]]",
-	Short: "Correlate from START_CLASS to GOAL_CLASS. Use QUERY_URL if present, read object from stdin if not",
+	Use:   "correlate START_CLASS GOAL_CLASS [URI_REF [NAME=VALUE...]]",
+	Short: "Correlate from START_CLASS to GOAL_CLASS. Use URI_REF if present, read object from stdin if not",
 	Args:  cobra.MinimumNArgs(2),
 	Run: func(cmd *cobra.Command, args []string) {
 		e := newEngine()
@@ -40,7 +41,7 @@ var correlateCmd = &cobra.Command{
 		// FIXME include constraint
 
 		if len(args) >= 3 { // Get starters using query
-			query := must(queryFromArgs(args[2:]))
+			query := must(referenceArgs(args[2:]))
 			store, err := e.Store(start.Domain().String())
 			check(err)
 			check(store.Get(ctx, query, starters))
@@ -57,31 +58,31 @@ var correlateCmd = &cobra.Command{
 				starters.Append(o)
 			}
 		}
-		queries := unique.NewList[korrel8.Query]()
+		refs := unique.NewList[uri.Reference]()
 		for _, path := range paths {
-			queries.Append(must(e.Follow(ctx, starters.List(), nil, path))...)
+			refs.Append(must(e.Follow(ctx, starters.List(), nil, path))...)
 		}
 		if *getFlag {
-			printObjects(e, goal, queries.List)
+			printObjects(e, goal, refs.List)
 		} else {
-			printQueries(e, goal, queries.List)
+			printRefs(refs.List)
 		}
 	},
 }
 
-func printQueries(e *engine.Engine, goal korrel8.Class, queries []korrel8.Query) {
-	for _, q := range queries {
-		fmt.Println(&q)
+func printRefs(refs []uri.Reference) {
+	for _, ref := range refs {
+		fmt.Println(ref)
 	}
 }
 
-func printObjects(e *engine.Engine, goal korrel8.Class, queries []korrel8.Query) {
+func printObjects(e *engine.Engine, goal korrel8.Class, refs []uri.Reference) {
 	d := goal.Domain()
 	store, err := e.Store(d.String())
 	check(err)
 	result := newPrinter(os.Stdout)
-	for _, q := range queries {
-		check(store.Get(context.Background(), q, result))
+	for _, ref := range refs {
+		check(store.Get(context.Background(), ref, result))
 	}
 }
 

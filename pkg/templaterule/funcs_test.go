@@ -6,10 +6,10 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestURLQueryMap(t *testing.T) {
-	assert.Equal(t, "a=1&b=2", urlQueryMap(map[string]int{"a": 1, "b": 2}))
-	assert.Equal(t, "", urlQueryMap(nil))
-	assert.Equal(t, "", urlQueryMap(map[int]int{}))
+func TestUrlencode(t *testing.T) {
+	assert.Equal(t, "a=1&b=2", urlencode(map[string]int{"a": 1, "b": 2}))
+	assert.Equal(t, "", urlencode(nil))
+	assert.Equal(t, "", urlencode(map[int]int{}))
 }
 
 func TestSelector(t *testing.T) {

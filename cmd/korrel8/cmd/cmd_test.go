@@ -61,13 +61,15 @@ func TestCorrelate_Pods(t *testing.T) {
 		return pod.Status.Phase == corev1.PodRunning
 	})
 
-	logQL := fmt.Sprintf(`{kubernetes_namespace_name=%q,kubernetes_pod_name=%q} | json`, pod.Namespace, pod.Name)
+	logQL := fmt.Sprintf(`{kubernetes_namespace_name=%q} | json | kubernetes_label_test="testme"`, pod.Namespace)
 	want := "/api/logs/v1/application/loki/api/v1/query_range?query=" + url.QueryEscape(logQL)
 	var exitCode int
 	stdout, stderr := test.FakeMainStdin(test.JSONString(d), []string{"", "correlate", "k8s/Deployment", "loki/application", "--panic"}, func() {
 		exitCode = Execute()
 	})
 	require.Equal(t, 0, exitCode, stderr)
+	// FIXME verify --get results not just query.
+	// FIXME Separate test to verify correlation to pods?
 	require.Equal(t, want, strings.TrimSpace(stdout))
 }
 

@@ -8,6 +8,7 @@ import (
 	"net/url"
 
 	"github.com/korrel8/korrel8/pkg/korrel8"
+	"github.com/korrel8/korrel8/pkg/uri"
 	"github.com/prometheus/alertmanager/pkg/labels"
 	"github.com/prometheus/client_golang/api"
 	v1 "github.com/prometheus/client_golang/api/prometheus/v1"
@@ -53,16 +54,16 @@ func NewStore(host string, rt http.RoundTripper) (*Store, error) {
 }
 
 // Get implements the korrel8.Store interface.
-// The query URL "query" parameter is a PromQL label matcher expression with the wrapping
+// The  reference "query" parameter is a PromQL label matcher expression with the wrapping
 // `{` and `}` being optional, e.g.  `namespace="default",pod=~"myapp-.+"`.
-func (s Store) Get(ctx context.Context, query korrel8.Query, result korrel8.Result) error {
+func (s Store) Get(ctx context.Context, ref uri.Reference, result korrel8.Result) error {
 	// TODO: allow to filter on alert state (pending/firing)?
 	// TODO: support sorting order (e.g. most recent/oldest, severity)?
 	// TODO: allow grouping (all alerts related to podX grouped together)?
-	promQL := query.Values().Get("query")
+	promQL := ref.Values().Get("query")
 	matchers, err := labels.ParseMatchers(promQL)
 	if err != nil {
-		return fmt.Errorf("%v: %w: %v", Domain, err, query)
+		return fmt.Errorf("%v: %w: %v", Domain, err, ref)
 	}
 	resp, err := s.api.Alerts(ctx)
 	if err != nil {
@@ -77,7 +78,7 @@ func (s Store) Get(ctx context.Context, query korrel8.Query, result korrel8.Resu
 	return nil
 }
 
-func (s Store) URL(q korrel8.Query) *url.URL {
-	u := url.URL{Scheme: "https", Host: s.host}
-	return u.ResolveReference(q.URL())
+func (s Store) Resolve(r uri.Reference) *url.URL {
+	base := url.URL{Scheme: "https", Host: s.host}
+	return r.Resolve(&base)
 }

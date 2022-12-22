@@ -9,6 +9,7 @@ import (
 	openapiclient "github.com/go-openapi/runtime/client"
 	"github.com/go-openapi/strfmt"
 	"github.com/korrel8/korrel8/pkg/korrel8"
+	"github.com/korrel8/korrel8/pkg/uri"
 	"github.com/prometheus/alertmanager/api/v2/client"
 	"github.com/prometheus/alertmanager/api/v2/client/alert"
 	"github.com/prometheus/alertmanager/api/v2/models"
@@ -44,12 +45,12 @@ func NewStore(host string, hc *http.Client) *Store {
 	}
 }
 
-// Query is an alertmanager REST URL, see:
+// Get alerts for alertmanager URI reference, see:
 // https://petstore.swagger.io/?url=https://raw.githubusercontent.com/prometheus/alertmanager/master/api/v2/openapi.yaml
-func (s Store) Get(ctx context.Context, query korrel8.Query, result korrel8.Result) error {
+func (s Store) Get(ctx context.Context, ref uri.Reference, result korrel8.Result) error {
 	params := alert.NewGetAlertsParamsWithContext(ctx)
 
-	if f := query.Values().Get("filter"); f != "" {
+	if f := ref.Values().Get("filter"); f != "" {
 		params.WithFilter([]string{f})
 	}
 	resp, err := s.manager.Alert.GetAlerts(params)
@@ -62,4 +63,4 @@ func (s Store) Get(ctx context.Context, query korrel8.Query, result korrel8.Resu
 	return nil
 }
 
-func (s Store) URL(q korrel8.Query) *url.URL { return s.base.ResolveReference(q.URL()) }
+func (s Store) Resolve(r uri.Reference) *url.URL { return r.Resolve(s.base) }

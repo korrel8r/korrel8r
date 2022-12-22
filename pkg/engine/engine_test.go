@@ -7,6 +7,7 @@ import (
 	"github.com/korrel8/korrel8/internal/pkg/test/mock"
 	"github.com/korrel8/korrel8/pkg/graph"
 	"github.com/korrel8/korrel8/pkg/korrel8"
+	"github.com/korrel8/korrel8/pkg/uri"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -43,29 +44,29 @@ func TestEngine_Follow(t *testing.T) {
 	path := graph.MultiPath{
 		graph.Links{
 			// Return 2 results, must follow both
-			mock.NewRule("ab", "a", "b", func(korrel8.Object, *korrel8.Constraint) (korrel8.Query, error) {
-				return s.NewQuery("b:1", "b:2"), nil
+			mock.NewRule("ab", "a", "b", func(korrel8.Object, *korrel8.Constraint) (uri.Reference, error) {
+				return s.NewReference("b:1", "b:2"), nil
 			}),
 		},
 		graph.Links{
 			// 2 rules, must follow both. Incorporate data from stat object.
-			mock.NewRule("bc", "b", "c", func(start korrel8.Object, _ *korrel8.Constraint) (korrel8.Query, error) {
-				return s.NewQuery("c:" + start.(mock.Object).Data()), nil
+			mock.NewRule("bc", "b", "c", func(start korrel8.Object, _ *korrel8.Constraint) (uri.Reference, error) {
+				return s.NewReference("c:" + start.(mock.Object).Data()), nil
 			}),
-			mock.NewRule("bc2", "b", "c", func(start korrel8.Object, _ *korrel8.Constraint) (korrel8.Query, error) {
-				return s.NewQuery("c:x" + start.(mock.Object).Data()), nil
+			mock.NewRule("bc2", "b", "c", func(start korrel8.Object, _ *korrel8.Constraint) (uri.Reference, error) {
+				return s.NewReference("c:x" + start.(mock.Object).Data()), nil
 			}),
 		},
 		graph.Links{
-			mock.NewRule("cz", "c", "z", func(start korrel8.Object, _ *korrel8.Constraint) (korrel8.Query, error) {
-				return s.NewQuery("z:" + start.(mock.Object).Data()), nil
+			mock.NewRule("cz", "c", "z", func(start korrel8.Object, _ *korrel8.Constraint) (uri.Reference, error) {
+				return s.NewReference("z:" + start.(mock.Object).Data()), nil
 			}),
 		},
 	}
-	want := []korrel8.Query{s.NewQuery("z:1"), s.NewQuery("z:2"), s.NewQuery("z:x1"), s.NewQuery("z:x2")}
+	want := []uri.Reference{s.NewReference("z:1"), s.NewReference("z:2"), s.NewReference("z:x1"), s.NewReference("z:x2")}
 	e := New("")
 	e.AddDomain(mock.Domain(""), s)
-	queries, err := e.Follow(context.Background(), mock.Objects("foo:a"), nil, path)
+	references, err := e.Follow(context.Background(), mock.Objects("foo:a"), nil, path)
 	assert.NoError(t, err)
-	assert.Equal(t, want, queries)
+	assert.Equal(t, want, references)
 }

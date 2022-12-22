@@ -6,6 +6,7 @@ import (
 	"bytes"
 
 	"github.com/korrel8/korrel8/pkg/korrel8"
+	"github.com/korrel8/korrel8/pkg/uri"
 )
 
 // rule implements korrel8.Rule
@@ -21,12 +22,12 @@ func (r *rule) Goal() korrel8.Class  { return r.goal }
 // Apply the rule by applying the template.
 // The template will be executed with start as the "." context object.
 // A function "constraint" returns the constraint.
-func (r *rule) Apply(start korrel8.Object, c *korrel8.Constraint) (korrel8.Query, error) {
+func (r *rule) Apply(start korrel8.Object, c *korrel8.Constraint) (uri.Reference, error) {
 	b := &bytes.Buffer{}
 	if err := r.uri.Funcs(map[string]any{"constraint": func() *korrel8.Constraint { return c }}).Execute(b, start); err != nil {
-		return korrel8.Query{}, err
+		return uri.Reference{}, err
 	}
-	return korrel8.ParseQuery(b.String())
+	return uri.Parse(b.String())
 }
 
 var _ korrel8.Rule = &rule{}

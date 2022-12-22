@@ -9,6 +9,7 @@ import (
 	"regexp"
 
 	"github.com/korrel8/korrel8/pkg/korrel8"
+	"github.com/korrel8/korrel8/pkg/uri"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -89,34 +90,34 @@ type Store struct {
 // NewStore creates a new store
 func NewStore(c client.Client, cfg *rest.Config) (*Store, error) { return &Store{c: c, cfg: cfg}, nil }
 
-func (s *Store) Get(ctx context.Context, query korrel8.Query, result korrel8.Result) (err error) {
+func (s *Store) Get(ctx context.Context, ref uri.Reference, result korrel8.Result) (err error) {
 	defer func() {
 		if err != nil {
-			err = fmt.Errorf("%v query error: %w: query= %v", Domain, err, query)
+			err = fmt.Errorf("get %v: %w", ref, err)
 		}
 	}()
-	gvk, nsName, err := s.ParseQuery(query.Path)
+	gvk, nsName, err := s.parsePath(ref.Path)
 	if err != nil {
 		return err
 	}
 	if nsName.Name != "" { // Request for single object.
 		return s.getObject(ctx, gvk, nsName, result)
 	} else {
-		return s.getList(ctx, gvk, nsName.Namespace, query.Values(), result)
+		return s.getList(ctx, gvk, nsName.Namespace, ref.Values(), result)
 	}
 }
 
-func (s Store) URL(q korrel8.Query) *url.URL {
-	u := url.URL{Scheme: "https", Host: s.cfg.Host}
-	return u.ResolveReference(q.URL())
+func (s Store) Resolve(ref uri.Reference) *url.URL {
+	base := url.URL{Scheme: "https", Host: s.cfg.Host}
+	return ref.Resolve(&base)
 }
 
-// parsing a REST URI into components then using client.Client to recreate the REST query.
+// parsing a REST URI into components then using client.Client to recreate the REST URI.
 //
 // TODO revisit: this is weirdly indirect - parse an API path to make a Client call which re-creates the API path.
 // Should be able to use a REST client directly, but client.Client does REST client creation & caching
 // and manages schema and RESTMapper stuff which I'm not sure I understand yet.
-func (s *Store) ParseQuery(path string) (gvk schema.GroupVersionKind, nsName types.NamespacedName, err error) {
+func (s *Store) parsePath(path string) (gvk schema.GroupVersionKind, nsName types.NamespacedName, err error) {
 	parts := k8sPathRegex.FindStringSubmatch(path)
 	if len(parts) != pCount {
 		return gvk, nsName, fmt.Errorf("invalid k8s REST path: %v", path)
@@ -153,7 +154,7 @@ func (s *Store) getObject(ctx context.Context, gvk schema.GroupVersionKind, nsNa
 	return nil
 }
 
-func (s *Store) parseAPIQuery(q url.Values) (opts []client.ListOption, err error) {
+func (s *Store) getOpts(q url.Values) (opts []client.ListOption, err error) {
 	if s := q.Get("labelSelector"); s != "" {
 		selector, err := labels.Parse(s)
 		if err != nil {
@@ -181,7 +182,7 @@ func (s *Store) getList(ctx context.Context, gvk schema.GroupVersionKind, namesp
 	if list == nil {
 		return fmt.Errorf("invalid list object %T", o)
 	}
-	opts, err := s.parseAPIQuery(query)
+	opts, err := s.getOpts(query)
 	if err != nil {
 		return err
 	}
@@ -217,11 +218,11 @@ const (
 	pCount
 )
 
-// ToConsole converts a k8s query to a console query
-func ToConsole(q korrel8.Query) (*url.URL, error) {
-	parts := k8sPathRegex.FindStringSubmatch(q.Path)
+// ToConsole converts a k8s reference to a console URL
+func ToConsole(ref uri.Reference) (*url.URL, error) {
+	parts := k8sPathRegex.FindStringSubmatch(ref.Path)
 	if len(parts) != pCount {
-		return nil, fmt.Errorf("invalid k8s query: %v", q)
+		return nil, fmt.Errorf("invalid k8s query: %v", ref)
 	}
 	var ns string
 	if parts[pNamespace] != "" {

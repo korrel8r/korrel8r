@@ -7,6 +7,7 @@ import (
 	"net/url"
 
 	"github.com/korrel8/korrel8/pkg/korrel8"
+	"github.com/korrel8/korrel8/pkg/uri"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
@@ -84,7 +85,7 @@ func TestStore_ParseURI(t *testing.T) {
 		{"/apis/apiextensions.k8s.io/v1/namespaces/foo/customresourcedefinitions/bar", schema.GroupVersionKind{Group: "apiextensions.k8s.io", Version: "v1", Kind: "CustomResourceDefinition"}, types.NamespacedName{Namespace: "foo", Name: "bar"}},
 	} {
 		t.Run(x.path, func(t *testing.T) {
-			gvk, nsName, err := s.ParseQuery(x.path)
+			gvk, nsName, err := s.parsePath(x.path)
 			require.NoError(t, err)
 			assert.Equal(t, x.gvk, gvk)
 			assert.Equal(t, x.nsName, nsName)
@@ -114,8 +115,8 @@ func TestStore_Get(t *testing.T) {
 		wilma  = types.NamespacedName{Namespace: "y", Name: "wilma"}
 	)
 	for _, x := range []struct {
-		query string
-		want  []types.NamespacedName
+		s    string
+		want []types.NamespacedName
 	}{
 		{"/api/v1/namespaces/x/pods/fred", []types.NamespacedName{fred}},
 		{"/api/v1/namespaces/x/pods", []types.NamespacedName{fred, barney}},
@@ -123,11 +124,11 @@ func TestStore_Get(t *testing.T) {
 		{"/api/v1/pods?labelSelector=" + url.QueryEscape("app=foo"), []types.NamespacedName{fred, wilma}},
 		// Field matches are not supported by the fake client.
 	} {
-		t.Run(x.query, func(t *testing.T) {
-			q, err := korrel8.ParseQuery(x.query)
+		t.Run(x.s, func(t *testing.T) {
+			ref, err := uri.Parse(x.s)
 			require.NoError(t, err)
 			var result korrel8.ListResult
-			err = store.Get(context.Background(), q, &result)
+			err = store.Get(context.Background(), ref, &result)
 			require.NoError(t, err)
 			var got []types.NamespacedName
 			for _, v := range result {

@@ -12,6 +12,7 @@ import (
 
 	"github.com/korrel8/korrel8/internal/pkg/test"
 	"github.com/korrel8/korrel8/pkg/korrel8"
+	"github.com/korrel8/korrel8/pkg/uri"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
@@ -33,9 +34,9 @@ func TestStore_Get_PlainLoki(t *testing.T) {
 	for _, l := range lines {
 		want = append(want, Object(l))
 	}
-	query := NewPlainQuery(`{test="loki"}`, nil)
+	ref := NewPlainRef(`{test="loki"}`, nil)
 	result := korrel8.NewListResult()
-	require.NoError(t, s.Get(ctx, query, result))
+	require.NoError(t, s.Get(ctx, ref, result))
 	assert.Equal(t, want, result.List())
 }
 
@@ -58,13 +59,13 @@ func TestLokiStackStore_Get(t *testing.T) {
 	s, err := NewOpenshiftLokiStackStore(ctx, c, test.RESTConfig)
 	require.NoError(t, err)
 	logQL := fmt.Sprintf(`{kubernetes_pod_name="%v", kubernetes_namespace_name="%v"}`, pod.Name, pod.Namespace)
-	query := NewLokiStackQuery(Application, logQL, nil)
+	ref := NewLokiStackRef(Application, logQL, nil)
 	var result korrel8.ListResult
 	assert.Eventually(t, func() bool {
 		result = nil
-		err = s.Get(ctx, query, &result)
+		err = s.Get(ctx, ref, &result)
 		require.NoError(t, err)
-		t.Logf("waiting for 4 logs, got %v. %v%v", len(result), s, query)
+		t.Logf("waiting for 4 logs, got %v. %v%v", len(result), s, ref)
 		return len(result) >= 3
 	}, time.Minute, 5*time.Second)
 	var got []string
@@ -95,21 +96,21 @@ func TestStoreGet_Constraint(t *testing.T) {
 	require.NoError(t, err)
 
 	for n, x := range []struct {
-		query korrel8.Query
-		want  []korrel8.Object
+		ref  uri.Reference
+		want []korrel8.Object
 	}{
 		{
-			query: NewPlainQuery(`{test="loki"}`, &korrel8.Constraint{End: &t1}),
-			want:  []korrel8.Object{Object("much"), Object("too"), Object("early")},
+			ref:  NewPlainRef(`{test="loki"}`, &korrel8.Constraint{End: &t1}),
+			want: []korrel8.Object{Object("much"), Object("too"), Object("early")},
 		},
 		{
-			query: NewPlainQuery(`{test="loki"}`, &korrel8.Constraint{Start: &t1, End: &t2}),
-			want:  []korrel8.Object{Object("right"), Object("on"), Object("time")},
+			ref:  NewPlainRef(`{test="loki"}`, &korrel8.Constraint{Start: &t1, End: &t2}),
+			want: []korrel8.Object{Object("right"), Object("on"), Object("time")},
 		},
 	} {
 		t.Run(strconv.Itoa(n), func(t *testing.T) {
 			var result korrel8.ListResult
-			assert.NoError(t, s.Get(ctx, x.query, &result))
+			assert.NoError(t, s.Get(ctx, x.ref, &result))
 			assert.Equal(t, x.want, result.List())
 		})
 	}

@@ -13,10 +13,10 @@ import (
 
 // getCmd represents the get command
 var getCmd = &cobra.Command{
-	Use:   "get DOMAIN QUERY_URL [NAME=VALUE...]",
-	Short: "Execute QUERY_URL in the default store for DOMAIN and print the results",
+	Use:   "get DOMAIN URI_REF [NAME=VALUE...]",
+	Short: "Execute URI_REF in the default store for DOMAIN and print the results",
 	Long: `
-QUERY_URL is a valid URL query for this domain.
+URI_REF is a URI reference to select objects in this domain.
 Optional NAME=VALUE arguments are added to URL query.
 `,
 	Args: cobra.MinimumNArgs(2),
@@ -25,7 +25,7 @@ Optional NAME=VALUE arguments are added to URL query.
 		domainName, _, _ := strings.Cut(args[0], "/") // Allow a class name, extract the domain.
 		store, err := e.Store(domainName)
 		check(err)
-		u := must(queryFromArgs(args[1:]))
+		u := must(referenceArgs(args[1:]))
 		log.V(1).Info("getting", "query", u)
 		result := newPrinter(os.Stdout)
 		check(store.Get(context.Background(), u, result))

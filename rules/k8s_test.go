@@ -1,7 +1,7 @@
 // package rules is a test-only package to verify the rules.yaml files give expected results.
 //
-// Note these tests only verify that the engine generates the expected queries.
-// It does not verify that the queries yield expected results.
+// Note these tests only verify that the engine generates the expected references.
+// It does not verify that the references yield expected results.
 // For end-to-end tests see /home/aconway/src/korrel8/korrel8/cmd/korrel8/cmd/cmd_test.go
 package rules
 
@@ -18,6 +18,7 @@ import (
 	"github.com/korrel8/korrel8/pkg/korrel8"
 	"github.com/korrel8/korrel8/pkg/loki"
 	"github.com/korrel8/korrel8/pkg/templaterule"
+	"github.com/korrel8/korrel8/pkg/uri"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
@@ -47,42 +48,20 @@ func setup(t *testing.T, ruleFiles ...string) (client.Client, *engine.Engine) {
 	return c, e
 }
 
-func makeQuery(path string, keysAndValues ...string) korrel8.Query {
-	v := url.Values{}
-	for i := 0; i < len(keysAndValues); i += 2 {
-		v.Set(keysAndValues[i], keysAndValues[i+1])
-	}
-	return korrel8.Query{Path: path, RawQuery: v.Encode()}
-}
-
-// normalize queries in q - ensure query part is sorted.
-func normalize(q []korrel8.Query) error {
-	for i := range q {
-		var err error
-		if q[i], err = korrel8.ParseQuery(q[i].String()); err != nil {
-			if err != nil {
-				return err
-			}
-		}
-	}
-	return nil
-}
-
-func testFollow(t *testing.T, e *engine.Engine, start, goal korrel8.Class, objs []korrel8.Object, want []korrel8.Query) {
+func testFollow(t *testing.T, e *engine.Engine, start, goal korrel8.Class, objs []korrel8.Object, want []uri.Reference) {
+	t.Helper()
 	paths, err := e.Graph().ShortestPaths(start, goal)
 	require.NoError(t, err)
-	queries, err := e.FollowAll(ctx, objs, nil, paths)
+	references, err := e.FollowAll(ctx, objs, nil, paths)
 	require.NoError(t, err)
-	require.NoError(t, normalize(want))
-	require.NoError(t, normalize(queries))
-	assert.Equal(t, want, queries)
+	assert.Equal(t, want, references)
 }
 
 func TestPodToLogs(t *testing.T) {
 	c, e := setup(t, "k8s.yaml")
 	for _, x := range []struct {
 		pod  *corev1.Pod
-		want []korrel8.Query
+		want []uri.Reference
 	}{
 		{pod: k8s.New[corev1.Pod]("project", "application")},
 		{pod: k8s.New[corev1.Pod]("kube-something", "infrastructure")},
@@ -91,7 +70,7 @@ func TestPodToLogs(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			require.NoError(t, k8s.Create(c, x.pod))
 			testFollow(t, e, k8s.ClassOf(x.pod), loki.Domain.Class(name), []korrel8.Object{x.pod},
-				[]korrel8.Query{makeQuery(
+				[]uri.Reference{uri.Make(
 					fmt.Sprintf("/api/logs/v1/%v/loki/api/v1/query_range", name),
 					"query", fmt.Sprintf(`{kubernetes_namespace_name="%v",kubernetes_pod_name="%v"} | json`, ns, name)),
 				})
@@ -104,14 +83,14 @@ func TestSelectorToLogs(t *testing.T) {
 
 	d := k8s.New[appsv1.Deployment]("ns", "x")
 	d.Spec = appsv1.DeploymentSpec{
-		Selector: &metav1.LabelSelector{MatchLabels: map[string]string{"a.b": "x", "0c?": "y"}},
+		Selector: &metav1.LabelSelector{MatchLabels: map[string]string{"?a.b": "x"}},
 	}
 	require.NoError(t, k8s.Create(c, d))
-	testFollow(t, e, k8s.ClassOf(d), loki.Domain.Class("application"), []korrel8.Object{d},
-		[]korrel8.Query{makeQuery(
-			"/api/logs/v1/application/loki/api/v1/query_range",
-			"query", `{kubernetes_namespace_name="ns"} | json | kubernetes_label_a_b="b" | kubernetes_label__c_="d"`),
-		})
+	want := []uri.Reference{uri.Make(
+		"/api/logs/v1/application/loki/api/v1/query_range",
+		"query", `{kubernetes_namespace_name="ns"} | json | kubernetes_label__a_b="x"`),
+	}
+	testFollow(t, e, k8s.ClassOf(d), loki.Domain.Class("application"), []korrel8.Object{d}, want)
 }
 
 func TestSelectorToPods(t *testing.T) {
@@ -142,7 +121,7 @@ func TestSelectorToPods(t *testing.T) {
 	require.NoError(t, k8s.Create(c, d, podx, pody))
 
 	testFollow(t, e, k8s.ClassOf(d), k8s.ClassOf(podx), []korrel8.Object{d},
-		[]korrel8.Query{makeQuery("/api/v1/namespaces/ns/pods", "labelSelector", "test=testme")})
+		[]uri.Reference{uri.Make("/api/v1/namespaces/ns/pods", "labelSelector", "test=testme")})
 }
 
 func TestK8sEvent(t *testing.T) {
@@ -153,14 +132,14 @@ func TestK8sEvent(t *testing.T) {
 
 	t.Run("PodToEvent", func(t *testing.T) {
 		testFollow(t, e, k8s.ClassOf(pod), k8s.ClassOf(event), []korrel8.Object{pod},
-			[]korrel8.Query{{
+			[]uri.Reference{{
 				Path:     "/api/v1/events",
 				RawQuery: url.Values{"fieldSelector": []string{"involvedObject.name=foo,involvedObject.namespace=aNamespace"}}.Encode()}})
 	})
 
 	t.Run("EventToPod", func(t *testing.T) {
 		testFollow(t, e, k8s.ClassOf(event), k8s.ClassOf(pod), []korrel8.Object{event},
-			[]korrel8.Query{{Path: "/api/v1/namespaces/aNamespace/pods/foo"}})
+			[]uri.Reference{{Path: "/api/v1/namespaces/aNamespace/pods/foo"}})
 	})
 }
 

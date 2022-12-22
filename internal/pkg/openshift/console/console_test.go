@@ -20,9 +20,9 @@ func TestURLs(t *testing.T) {
 			query: "?filter=alertname%3DKubeDeploymentReplicasMismatch",
 		},
 	} {
-		c, q, err := ParseURL(x.url)
+		c, ref, err := ParseURL(x.url)
 		assert.NoError(t, err)
 		assert.Equal(t, x.class, c)
-		assert.Equal(t, x.query, q.String())
+		assert.Equal(t, x.query, ref.String())
 	}
 }

@@ -10,13 +10,14 @@ import (
 	"github.com/korrel8/korrel8/internal/pkg/openshift/console"
 	"github.com/korrel8/korrel8/pkg/korrel8"
 	"github.com/korrel8/korrel8/pkg/unique"
+	"github.com/korrel8/korrel8/pkg/uri"
 	"go.uber.org/multierr"
 )
 
 type correlateValues struct {
 	Start, Goal           korrel8.Class
 	StartObjects          []korrel8.Object
-	Query                 korrel8.Query
+	Ref                   uri.Reference
 	StartStore, GoalStore korrel8.Store
 	GoalURLs              []*url.URL
 	Diagram               string
@@ -39,8 +40,8 @@ func (h *correlateHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	page, err := h.Page().Parse(`
 {{define "content" -}}
 <form>
-  <label for="query">Query URL:</label>
-  <input type="text" id="query" name="query" value="{{.Params.Get "query" }}">
+  <label for="ref">URI Reference:</label>
+  <input type="text" id="ref" name="ref" value="{{.Params.Get "ref" }}">
   <br>
   <label for="start">Start Class:</label>
   <input type="text" id="start" name="start" value="{{.Params.Get "start" }}">
@@ -52,7 +53,7 @@ func (h *correlateHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 </form>
 
 {{with .GoalURLs -}}
-<p>Corrrelated {{$.Goal.Domain}}/{{$.Goal}} queries:
+<p>Corrrelated {{$.Goal.Domain}}/{{$.Goal}} references:
 <ul>
   {{range .}}<li><a href={{.}}>{{.}}</a></li>{{end}}
 </ul>
@@ -100,15 +101,15 @@ func (h *correlateHandler) update(req *http.Request) {
 
 	addErr := func(err error) bool { h.Err = multierr.Append(h.Err, err); return h.Err != nil }
 
-	u, err := url.Parse(h.Params.Get("query"))
+	u, err := url.Parse(h.Params.Get("ref"))
 	addErr(err)
 
 	pathFunc := h.UI.Engine.Graph().ShortestPaths
-	// FIXME brutal hack for demo, need URL recognizers and class from query. Sort out URL rewrite story.
+	// FIXME brutal hack for demo, need URL recognizers and class from Reference. Sort out URL rewrite story.
 	if strings.HasPrefix(u.Host, "console") {
-		h.Start, h.Query, err = console.ParseURL(h.Params.Get("query"))
+		h.Start, h.Ref, err = console.ParseURL(h.Params.Get("ref"))
 	} else {
-		h.Query = korrel8.QueryFrom(u)
+		h.Ref = uri.Extract(u)
 		h.Start, err = h.UI.Engine.ParseClass(h.Params.Get("start"))
 		pathFunc = h.UI.Engine.Graph().AllPaths
 	}
@@ -130,17 +131,17 @@ func (h *correlateHandler) update(req *http.Request) {
 
 	paths := must(pathFunc(h.Start, h.Goal))
 	starters := korrel8.NewSetResult(h.Start)
-	addErr(h.StartStore.Get(context.Background(), h.Query, starters))
+	addErr(h.StartStore.Get(context.Background(), h.Ref, starters))
 	h.StartObjects = starters.List()
-	queries := unique.NewList[korrel8.Query]()
+	refs := unique.NewList[uri.Reference]()
 	for _, path := range paths {
 		qs, err := h.UI.Engine.Follow(context.Background(), starters.List(), nil, path)
 		addErr(err)
-		queries.Append(qs...)
+		refs.Append(qs...)
 	}
 	h.GoalURLs = nil
-	for _, q := range queries.List {
-		u, err := console.FormatURL(h.UI.ConsoleURL, h.Goal, q)
+	for _, ref := range refs.List {
+		u, err := console.FormatURL(h.UI.ConsoleURL, h.Goal, ref)
 		addErr(err)
 		h.GoalURLs = append(h.GoalURLs, u)
 	}

@@ -6,10 +6,8 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
-	"net/url"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/korrel8/korrel8/internal/pkg/decoder"
 	"github.com/korrel8/korrel8/internal/pkg/logging"
@@ -19,6 +17,7 @@ import (
 	"github.com/korrel8/korrel8/pkg/korrel8"
 	"github.com/korrel8/korrel8/pkg/loki"
 	"github.com/korrel8/korrel8/pkg/templaterule"
+	"github.com/korrel8/korrel8/pkg/uri"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/util/flowcontrol"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -142,23 +141,11 @@ func loadRules(e *engine.Engine, root string) error {
 	})
 }
 
-// queryFromArgs treats args[0] as the initial URI, and args[1:] as NAME=VALUE strings for query parameters.
-func queryFromArgs(args []string) (korrel8.Query, error) {
+// referenceArgs treats args[0] as the initial URI, and args[1:] as NAME=VALUE strings for query parameters.
+func referenceArgs(args []string) (uri.Reference, error) {
 	if len(args) == 0 {
-		return korrel8.Query{}, nil
+		return uri.Reference{}, nil
 	}
-	u, err := url.Parse(args[0])
-	if err != nil {
-		return korrel8.Query{}, err
-	}
-	q := u.Query()
-	for _, nv := range args[1:] {
-		n, v, ok := strings.Cut(nv, "=")
-		if !ok {
-			return korrel8.Query{}, fmt.Errorf("not a name=value argument: %v", nv)
-		}
-		q.Set(n, v)
-	}
-	u.RawQuery = q.Encode()
-	return korrel8.QueryFrom(u), err
+	ref := uri.Make(args[0], args[1:]...)
+	return uri.Parse(ref.String()) // Make sure the path is valid for a URI reference
 }

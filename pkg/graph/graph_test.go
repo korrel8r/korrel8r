@@ -76,7 +76,9 @@ func TestGraph_ShortestPaths(t *testing.T) {
 			assert.NoError(t, err)
 			if assert.Equal(t, len(x.want), len(got)) {
 				for i := range got {
-					assert.ElementsMatch(t, x.want[i], got[i])
+					for j := range got[i] {
+						assert.ElementsMatch(t, x.want[i][j], got[i][j])
+					}
 				}
 			}
 		})

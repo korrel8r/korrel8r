@@ -26,9 +26,9 @@ import (
 //	  Marshals its argument as YAML and returns the string.
 //	fullname
 //	  Returns the domain qualified name of a korrel8.Class argument.
-//	urlQueryMap
+//	urlencode
 //	  Returns the URL query encoding of a map argument.
-//	  Map values are stringified with fmt "%v"
+//	  Map values are stringified as for fmt.Printf("%v", ...)
 //	selector
 //	  Takes a map arguments and returns a selector string of the form: "k1=value1,k2=value2 ..."
 //	kvmap
@@ -38,15 +38,15 @@ var Funcs map[string]any
 
 func init() {
 	Funcs = map[string]any{
-		"constraint":  func() *korrel8.Constraint { return nil },
-		"has":         func(_ ...any) bool { return true }, // Used for side-effect: evaluate arguments to detect errors
-		"assert":      doAssert,                            // Assert a condition in a template
-		"toJSON":      toJSON,
-		"toYAML":      toYAML,
-		"fullname":    korrel8.FullName,
-		"urlquerymap": urlQueryMap,
-		"selector":    selector,
-		"kvmap":       kvMap,
+		"constraint": func() *korrel8.Constraint { return nil },
+		"has":        func(_ ...any) bool { return true }, // Used for side-effect: evaluate arguments to detect errors
+		"assert":     doAssert,                            // Assert a condition in a template
+		"toJSON":     toJSON,
+		"toYAML":     toYAML,
+		"fullname":   korrel8.FullName,
+		"urlencode":  urlencode,
+		"selector":   selector,
+		"kvmap":      kvMap,
 	}
 }
 
@@ -68,7 +68,7 @@ func doAssert(ok bool, msg ...any) (int, error) {
 func toJSON(v any) (string, error) { b, err := json.Marshal(v); return string(b), err }
 func toYAML(v any) (string, error) { b, err := yaml.Marshal(v); return string(b), err }
 
-func urlQueryMap(m any) string {
+func urlencode(m any) string {
 	v := reflect.ValueOf(m)
 	if !v.IsValid() {
 		return ""
