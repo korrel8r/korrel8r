@@ -3,6 +3,25 @@
 **⚠ Warning: Experimental ⚠** This code may change or vanish. It may not work. It may not even make sense.\
 [API documentation is available at pkg.go.dev](https://pkg.go.dev/github.com/korrel8/korrel8/pkg/korrel8)
 
+This project is building a *correlation engine*.
+
+Given an initial staring context, korrel8 can find related data from multiple data stores in multiple domains.
+Korrel8 works by navigating between related *objects*, using a set of *rules* that define how objects are related.
+Given a *start* object (e.g. a cluster Alert) and a *goal* (e.g. "find related logs") the engine searches 
+for goal objects that are related to the start object by rules.
+
+The set of rules captures expert knowledge about troubleshooting in an executable form.
+The engine aims to provide common rule-base that can be re-used in many settings:
+as a service, embedded in graphical consoles or command line tools, or in offline data-processing systems.
+
+The goals of this project include:
+
+- Encode domain knowledge from SREs and other experts as re-usable rules.
+- Automate navigation from symptoms to data that helps diagnose causes.
+- Reduce multiple-step manual procedures to fewer clicks or references.
+- Help tools that gather and analyze diagnostic data to focus on relevant information.
+
+## Types of signals
 
 A Kubernetes cluster generates many types of *observable signal*, including:
 
@@ -15,31 +34,20 @@ A Kubernetes cluster generates many types of *observable signal*, including:
 | Traces            | Nested execution spans describing distributed requests.                 |
 | Network Events    | TCP and IP level network information.                                   |
 
-A cluster also contains objects that are not usually considered "signals", but which can be correlated with signals and other objects:
+A cluster also contains objects that are not usually considered "signals",
+but which can be correlated with signals and other objects:
 
 |                           |                                                 |
 |---------------------------+-------------------------------------------------|
-| k8s resource state        | Spec and status information.                    |
+| k8s resources             | Spec and status information.                    |
 | Run books                 | Problem solving guides associated with Alerts.  |
 | k8s liveness probes       | Information about resource state.               |
 | Operators                 | Operators control other resources.              |
-| `kubectl describe` output | Documentation about resources and their fields. |
-
-This project is a *correlation engine* which applies *rules* to correlate signals from different domains.
-Given a *start* object (e.g. an alert) and a *goal* (e.g. "find related logs") the engine follows rules to find a set of goal objects related to the start object.
-
-The engine encapsulates a common set of rules that can be re-used in many settings: graphical consoles, command line tools, offline data-processing and other services.
-
-The goals of this project include:
-
-- Encode domain knowledge from SREs and other experts as re-usable rules.
-- Automate navigation from symptoms to data that helps diagnose causes.
-- Reduce multiple-step manual procedures to fewer clicks or references.
-- Help tools that gather and analyze diagnostic data to focus on relevant information.
 
 # Implentation Concepts
 
-The following concepts are represented by interfaces in the korrel8 package. Support for a new domain implements these interfaces:
+The following concepts are represented by interfaces in the korrel8 package.
+Support for a new domain implements these interfaces:
 
 **Domain** \
 A family of signals or objects with common storage and representation.
@@ -50,8 +58,9 @@ A source of signal data from some Domain.
 Examples: Loki, Prometheus, Kubernetes API server.
 
 **Reference**  \
-A relative URI reference that selects a set of signals from some store.
-Most stores have REST APIs, but a URI reference is flexible enough to encode references to non-REST stores.
+A relative URI reference that selects a set of signals from a store.
+For stores with HTTP REST APIs, the URI reference can used directly with the store's base URL.
+If non-REST stores are added in future, the URI reference format is flexible enough to encode other queries.
 
 **Class**  \
 A subset of signals in a Domain with a common schema (field definitions).
