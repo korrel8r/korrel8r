@@ -103,7 +103,7 @@ func (s *Store) Get(ctx context.Context, ref uri.Reference, result korrel8.Resul
 	if nsName.Name != "" { // Request for single object.
 		return s.getObject(ctx, gvk, nsName, result)
 	} else {
-		return s.getList(ctx, gvk, nsName.Namespace, ref.Values(), result)
+		return s.getList(ctx, gvk, nsName.Namespace, ref.Query(), result)
 	}
 }
 

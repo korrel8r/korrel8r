@@ -46,8 +46,8 @@ func Extract(u *url.URL) Reference { return Reference{Path: u.Path, RawQuery: u.
 // Values is an alias for url.Values
 type Values = url.Values
 
-// Values behaves like url.URL.Values
-func (r Reference) Values() Values { v, _ := url.ParseQuery(r.RawQuery); return v }
+// Query behaves like url.URL.Query
+func (r Reference) Query() Values { v, _ := url.ParseQuery(r.RawQuery); return v }
 
 // URL creates a url.URL containing the reference.
 func (r Reference) URL() *url.URL { return &url.URL{Path: r.Path, RawQuery: r.RawQuery} }

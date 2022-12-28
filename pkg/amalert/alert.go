@@ -50,7 +50,7 @@ func NewStore(host string, hc *http.Client) *Store {
 func (s Store) Get(ctx context.Context, ref uri.Reference, result korrel8.Result) error {
 	params := alert.NewGetAlertsParamsWithContext(ctx)
 
-	if f := ref.Values().Get("filter"); f != "" {
+	if f := ref.Query().Get("filter"); f != "" {
 		params.WithFilter([]string{f})
 	}
 	resp, err := s.manager.Alert.GetAlerts(params)

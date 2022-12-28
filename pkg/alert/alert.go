@@ -59,7 +59,7 @@ func (s Store) Get(ctx context.Context, ref uri.Reference, result korrel8.Result
 	// TODO: allow to filter on alert state (pending/firing)?
 	// TODO: support sorting order (e.g. most recent/oldest, severity)?
 	// TODO: allow grouping (all alerts related to podX grouped together)?
-	promQL := ref.Values().Get("query")
+	promQL := ref.Query().Get("query")
 	matchers, err := labels.ParseMatchers(promQL)
 	if err != nil {
 		return fmt.Errorf("%v: %w: %v", Domain, err, ref)

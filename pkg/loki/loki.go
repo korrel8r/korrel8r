@@ -35,7 +35,7 @@ func Plain(ref uri.Reference) uri.Reference {
 // Console converts a LokiStak ref to a console URL
 func Console(ref uri.Reference) *url.URL {
 	v := url.Values{}
-	v.Add("q", ref.Values().Get("query"))
+	v.Add("q", ref.Query().Get("query"))
 	m := lokiStackPath.FindStringSubmatch(ref.Path)
 	if len(m) == 2 {
 		v.Add("tenant", m[1])
