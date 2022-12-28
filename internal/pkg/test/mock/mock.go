@@ -5,7 +5,6 @@ package mock
 import (
 	"context"
 	"fmt"
-	"net/url"
 	"regexp"
 	"strings"
 
@@ -130,8 +129,6 @@ func (s Store) Get(_ context.Context, ref uri.Reference, r korrel8.Result) error
 	}
 	return nil
 }
-
-func (s Store) Resolve(r uri.Reference) *url.URL { return r.URL() }
 
 // NewReference returns a query that will return the given objects.
 func (s Store) NewReference(objs ...string) uri.Reference {

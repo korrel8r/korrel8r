@@ -107,11 +107,6 @@ func (s *Store) Get(ctx context.Context, ref uri.Reference, result korrel8.Resul
 	}
 }
 
-func (s Store) Resolve(ref uri.Reference) *url.URL {
-	base := url.URL{Scheme: "https", Host: s.cfg.Host}
-	return ref.Resolve(&base)
-}
-
 // parsing a REST URI into components then using client.Client to recreate the REST URI.
 //
 // TODO revisit: this is weirdly indirect - parse an API path to make a Client call which re-creates the API path.

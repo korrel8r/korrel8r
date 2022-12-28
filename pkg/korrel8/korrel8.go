@@ -5,7 +5,6 @@ package korrel8
 
 import (
 	"context"
-	"net/url"
 	"path"
 	"time"
 
@@ -47,9 +46,6 @@ type Store interface {
 	// Get the objects selected by reference in this store.
 	// Appends resulting objects to Result.
 	Get(context.Context, uri.Reference, Result) error
-
-	// Resolve a relative URI reference to a REST Resolve for this store.
-	Resolve(uri.Reference) *url.URL
 }
 
 // Result gathers results from Store.Get calls.

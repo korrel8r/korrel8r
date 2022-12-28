@@ -62,5 +62,3 @@ func (s Store) Get(ctx context.Context, ref uri.Reference, result korrel8.Result
 	}
 	return nil
 }
-
-func (s Store) Resolve(r uri.Reference) *url.URL { return r.Resolve(s.base) }

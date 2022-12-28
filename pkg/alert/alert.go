@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"net/url"
 
 	"github.com/korrel8/korrel8/pkg/korrel8"
 	"github.com/korrel8/korrel8/pkg/uri"
@@ -76,9 +75,4 @@ func (s Store) Get(ctx context.Context, ref uri.Reference, result korrel8.Result
 		}
 	}
 	return nil
-}
-
-func (s Store) Resolve(r uri.Reference) *url.URL {
-	base := url.URL{Scheme: "https", Host: s.host}
-	return r.Resolve(&base)
 }

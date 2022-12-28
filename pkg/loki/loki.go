@@ -111,8 +111,6 @@ func (s *Store) Get(ctx context.Context, ref uri.Reference, result korrel8.Resul
 	return nil
 }
 
-func (s Store) Resolve(ref uri.Reference) *url.URL { return ref.Resolve(&s.base) }
-
 // queryResponse is the response to a loki query.
 type queryResponse struct {
 	Status string    `json:"status"`
