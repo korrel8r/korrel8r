@@ -45,7 +45,7 @@ func FormatURL(base *url.URL, c korrel8.Class, r uri.Reference) (*url.URL, error
 	case loki.Domain:
 		return base.ResolveReference(loki.Console(r)), nil
 	case k8s.Domain:
-		u, err := k8s.ToConsole(r)
+		u, err := k8s.RefToConsole(r)
 		return base.ResolveReference(u), err
 	default:
 		return nil, fmt.Errorf("cannot format console URLs for %v", c.Domain())

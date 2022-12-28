@@ -80,3 +80,21 @@ type Constraint struct {
 func (c *Constraint) Combine(other *Constraint) {
 	panic("FIXME constraint")
 }
+
+// TemplateFuncser may be implemented by Domain or Store to provide template helper functions.
+// See text/template.Template.Funcs
+type TemplateFuncser interface{ TemplateFuncs() map[string]any }
+
+// ConsoleRefConverter is optionally implemented by Store implementations that support console URLs.
+type ConsoleRefConverter interface {
+	// RefToConsole converts a store reference to an equivalent console reference.
+	RefToConsole(uri.Reference) (uri.Reference, error)
+	// RefFromConsole converts a console reference to an equivalent store reference.
+	RefFromConsole(uri.Reference) (uri.Reference, error)
+}
+
+// RefClasser is optionally implemented by a Store that can deduce the class from a reference.
+type RefClasser interface {
+	// RefClass gets the class of a URI reference, returns nil if reference is not recognized.
+	RefClass(uri.Reference) Class
+}

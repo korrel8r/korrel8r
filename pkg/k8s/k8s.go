@@ -107,7 +107,14 @@ func (s *Store) Get(ctx context.Context, ref uri.Reference, result korrel8.Resul
 	}
 }
 
-// parsing a REST URI into components then using client.Client to recreate the REST URI.
+func (s *Store) RefClass(ref uri.Reference) korrel8.Class {
+	if gvk, _, err := s.parsePath(ref.Path); err == nil {
+		return Class(gvk)
+	}
+	return nil
+}
+
+// Parsing a REST URI into components then using client.Client to recreate the REST URI.
 //
 // TODO revisit: this is weirdly indirect - parse an API path to make a Client call which re-creates the API path.
 // Should be able to use a REST client directly, but client.Client does REST client creation & caching
@@ -213,8 +220,8 @@ const (
 	pCount
 )
 
-// ToConsole converts a k8s reference to a console URL
-func ToConsole(ref uri.Reference) (*url.URL, error) {
+// RefToConsole converts a k8s reference to a console URL
+func RefToConsole(ref uri.Reference) (*url.URL, error) {
 	parts := k8sPathRegex.FindStringSubmatch(ref.Path)
 	if len(parts) != pCount {
 		return nil, fmt.Errorf("invalid k8s query: %v", ref)

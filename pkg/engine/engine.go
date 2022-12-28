@@ -66,7 +66,7 @@ func (e *Engine) AddDomain(d korrel8.Domain, s korrel8.Store) {
 	// Stores and Domains implement TemplateFuncser if they provide template helper functions
 	// for use by rules.
 	for _, v := range []any{d, s} {
-		if tf, ok := v.(TemplateFuncser); ok {
+		if tf, ok := v.(korrel8.TemplateFuncser); ok {
 			maps.Copy(e.templateFuncs, tf.TemplateFuncs())
 		}
 	}
@@ -190,10 +190,6 @@ func (e *Engine) Graph() *graph.Graph {
 	})
 	return e.graph
 }
-
-// TemplateFuncser is implemented by Domains or Stores that provide template helper functions.
-// See text/template.Template.Funcs
-type TemplateFuncser interface{ TemplateFuncs() map[string]any }
 
 // TemplateFuncs returns template helper functions for stores and domains known to this engine.
 // See text/template.Template.Funcs

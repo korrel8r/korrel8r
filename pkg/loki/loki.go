@@ -29,6 +29,7 @@ func (d domain) Classes() []korrel8.Class        { return classes }
 
 // Plain converts a LokiStack reference to a plain loki reference.
 func Plain(ref uri.Reference) uri.Reference {
+	// FIXME should add a log_type test to the plain query.
 	return uri.Reference{Path: lokiStackPath.ReplaceAllString(ref.Path, ""), RawQuery: ref.RawQuery}
 }
 
@@ -109,6 +110,31 @@ func (s *Store) Get(ctx context.Context, ref uri.Reference, result korrel8.Resul
 		result.Append(Object(tl[1]))
 	}
 	return nil
+}
+
+func (*Store) RefClass(ref uri.Reference) korrel8.Class {
+	m := lokiStackPath.FindStringSubmatch(ref.Path)
+	if len(m) == 2 {
+		return Class(m[1])
+	}
+	return nil
+}
+
+// RefToConsole converts a LokiStak ref to a console URL
+func (*Store) RefToConsole(ref uri.Reference) (uri.Reference, error) {
+	v := url.Values{}
+	v.Add("q", ref.Query().Get("query"))
+	m := lokiStackPath.FindStringSubmatch(ref.Path)
+	if len(m) == 2 {
+		v.Add("tenant", m[1])
+	}
+	return uri.Reference{Path: "/monitoring/logs", RawQuery: v.Encode()}, nil
+}
+
+func (*Store) RefFromConsole(ref uri.Reference) (uri.Reference, error) {
+	c := Class(ref.Query().Get("tenant"))
+	// FIXME Constraint
+	return NewLokiStackRef(c, ref.Query().Get("q"), nil), nil
 }
 
 // queryResponse is the response to a loki query.
