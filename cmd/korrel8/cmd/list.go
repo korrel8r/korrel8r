@@ -10,50 +10,23 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var domainsCmd = &cobra.Command{
-	Use:   "domains",
-	Short: "List known domains",
+var listCmd = &cobra.Command{
+	Use:   "list [DOMAIN]",
+	Short: "List domains, classes or rules.",
+	Args:  cobra.RangeArgs(0, 1),
 	Run: func(cmd *cobra.Command, args []string) {
 		e := newEngine()
-		w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-		for _, d := range e.Domains() {
-			fmt.Fprintln(w, d.String())
-		}
-		w.Flush()
-	},
-}
-
-var classesCmd = &cobra.Command{
-	Use:   "classes DOMAIN [REGEXP]",
-	Short: "List classes in DOMAIN with names matching REGEXP",
-	Args:  cobra.RangeArgs(1, 2),
-	Run: func(cmd *cobra.Command, args []string) {
-		e := newEngine()
-		d, err := e.Domain(args[0])
-		check(err)
-		var match = regexp.MustCompile("")
-		if len(args) > 1 {
-			match = must(regexp.Compile(args[1]))
-		}
-		for _, c := range d.Classes() {
-			if match.MatchString(c.String()) {
-				fmt.Println(c.String())
+		switch len(args) {
+		case 0:
+			w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+			defer w.Flush()
+			for _, d := range e.Domains() {
+				fmt.Fprintln(w, d.String())
 			}
-		}
-	},
-}
-
-var classCmd = &cobra.Command{
-	Use:   "class NAME [NAME...]",
-	Short: "Verify and expand class names",
-	Args:  cobra.RangeArgs(1, 2),
-	Run: func(cmd *cobra.Command, args []string) {
-		e := newEngine()
-		for _, name := range args {
-			c, err := e.ParseClass(name)
-			if err != nil {
-				fmt.Println(err)
-			} else {
+		case 1:
+			d, err := e.Domain(args[0])
+			check(err)
+			for _, c := range d.Classes() {
 				fmt.Println(c.String())
 			}
 		}
@@ -62,10 +35,11 @@ var classCmd = &cobra.Command{
 
 var rulesCmd = &cobra.Command{
 	Use:   "rules",
-	Short: "List all rules",
+	Short: "List rules by start, goal or name",
 	Run: func(cmd *cobra.Command, args []string) {
 		e := newEngine()
 		w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+		defer w.Flush()
 		var start, goal korrel8.Class
 		if *ruleStart != "" {
 			start = must(e.ParseClass(*ruleStart))
@@ -91,6 +65,6 @@ func init() {
 	ruleStart = rulesCmd.Flags().String("start", "", "show rules with this start class")
 	ruleGoal = rulesCmd.Flags().String("goal", "", "show rules with this goal class")
 	ruleName = rulesCmd.Flags().String("name", "", "show rules with name matching this regexp")
-
-	rootCmd.AddCommand(domainsCmd, classesCmd, classCmd, rulesCmd)
+	rootCmd.AddCommand(listCmd)
+	listCmd.AddCommand(rulesCmd)
 }
