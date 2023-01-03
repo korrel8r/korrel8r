@@ -20,7 +20,6 @@ var log = logging.Log()
 
 // Engine combines a set of domains and a set of rules, so it can perform correlation.
 type Engine struct {
-	name          string
 	stores        map[string]korrel8.Store
 	domains       map[string]korrel8.Domain
 	rules         []korrel8.Rule
@@ -30,16 +29,13 @@ type Engine struct {
 	templateFuncs map[string]any
 }
 
-func New(name string) *Engine {
+func New() *Engine {
 	return &Engine{
-		name:          name,
 		stores:        map[string]korrel8.Store{},
 		domains:       map[string]korrel8.Domain{},
 		templateFuncs: map[string]any{},
 	}
 }
-
-func (e *Engine) Name() string { return e.name }
 
 // Domain gets a named domain.
 func (e *Engine) Domain(name string) (korrel8.Domain, error) {
@@ -186,7 +182,7 @@ func (f *Engine) followEach(rule korrel8.Rule, start []korrel8.Object, c *korrel
 // On subsequent calls it returns the same graph, it is not re-computed.
 func (e *Engine) Graph() *graph.Graph {
 	e.graphOnce.Do(func() {
-		e.graph = graph.New(e.name, e.rules, e.classes)
+		e.graph = graph.New("korrel8", e.rules, e.classes)
 	})
 	return e.graph
 }

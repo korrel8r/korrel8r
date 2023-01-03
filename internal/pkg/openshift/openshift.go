@@ -16,7 +16,6 @@ const (
 	OpenshiftLogging    = "openshift-logging"
 	LoggingLoki         = "logging-loki"
 	OpenshiftConsole    = "openshift-console"
-	Console             = "console"
 	OpenshiftMonitoring = "openshift-monitoring"
 	ThanosQuerier       = "thanos-querier"
 	AlertmanagerMain    = "alertmanager-main"
@@ -24,7 +23,7 @@ const (
 
 var (
 	LokiStackNSName        = NamespacedName(OpenshiftLogging, LoggingLoki)
-	ConsoleNSName          = NamespacedName(OpenshiftConsole, Console)
+	ConsoleNSName          = NamespacedName(OpenshiftConsole, "console")
 	ThanosQuerierNSName    = NamespacedName(OpenshiftMonitoring, ThanosQuerier)
 	AlertmanagerMainNSName = NamespacedName(OpenshiftMonitoring, AlertmanagerMain)
 )

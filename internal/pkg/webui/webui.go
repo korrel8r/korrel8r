@@ -3,7 +3,6 @@ package webui
 
 import (
 	"net/http"
-	"net/url"
 	"os"
 	"text/template"
 
@@ -11,6 +10,7 @@ import (
 
 	"github.com/korrel8/korrel8/internal/pkg/logging"
 	"github.com/korrel8/korrel8/internal/pkg/openshift"
+	"github.com/korrel8/korrel8/internal/pkg/openshift/console"
 	"github.com/korrel8/korrel8/pkg/engine"
 	"github.com/korrel8/korrel8/pkg/templaterule"
 	"k8s.io/client-go/rest"
@@ -20,10 +20,10 @@ import (
 var log = logging.Log().WithName("webui")
 
 type WebUI struct {
-	Engine     *engine.Engine
-	ConsoleURL *url.URL
-	dir        string
-	handlers   map[string]http.Handler
+	Engine   *engine.Engine
+	Console  *console.Console
+	dir      string
+	handlers map[string]http.Handler
 }
 
 func New(e *engine.Engine, cfg *rest.Config, c client.Client) (*WebUI, error) {
@@ -33,9 +33,11 @@ func New(e *engine.Engine, cfg *rest.Config, c client.Client) (*WebUI, error) {
 		return nil, err
 	}
 	log.Info("working directory", "dir", ui.dir)
-	if ui.ConsoleURL, err = openshift.ConsoleURL(context.Background(), c); err != nil {
+	consoleURL, err := openshift.ConsoleURL(context.Background(), c)
+	if err != nil {
 		return nil, err
 	}
+	ui.Console = console.New(consoleURL, e)
 	ui.handlers = map[string]http.Handler{
 		"/":           http.HandlerFunc(ui.root),
 		"/correlate/": &correlateHandler{UI: ui},

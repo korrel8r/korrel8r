@@ -40,6 +40,7 @@ func (r Reference) String() string {
 	return fmt.Sprintf("%v?%v", r.Path, r.RawQuery)
 }
 
+// FIXME Relative
 // Extract extracts a Reference from a URL, ignoring other parts of the URL.
 func Extract(u *url.URL) Reference { return Reference{Path: u.Path, RawQuery: u.RawQuery} }
 

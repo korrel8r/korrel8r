@@ -68,10 +68,9 @@ func TestDomain_Class(t *testing.T) {
 
 func TestStore_ParseURI(t *testing.T) {
 	require.NoError(t, apiextensionsv1.AddToScheme(scheme.Scheme))
-	s, err := NewStore(fake.NewClientBuilder().
+	s := NewStore(fake.NewClientBuilder().
 		WithRESTMapper(testrestmapper.TestOnlyStaticRESTMapper(scheme.Scheme)).
-		Build(), nil)
-	require.NoError(t, err)
+		Build())
 	for _, x := range []struct {
 		path   string
 		gvk    schema.GroupVersionKind
@@ -107,8 +106,7 @@ func TestStore_Get(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{Name: "wilma", Namespace: "y", Labels: map[string]string{"app": "foo"}},
 			},
 		).Build()
-	store, err := NewStore(c, nil)
-	require.NoError(t, err)
+	store := NewStore(c)
 	var (
 		fred   = types.NamespacedName{Namespace: "x", Name: "fred"}
 		barney = types.NamespacedName{Namespace: "x", Name: "barney"}
@@ -142,10 +140,9 @@ func TestStore_Get(t *testing.T) {
 }
 
 func TestStore_RefToConsole(t *testing.T) {
-	s, err := NewStore(fake.NewClientBuilder().
+	s := NewStore(fake.NewClientBuilder().
 		WithRESTMapper(testrestmapper.TestOnlyStaticRESTMapper(scheme.Scheme)).
-		Build(), nil)
-	require.NoError(t, err)
+		Build())
 	for _, x := range [][2]string{
 		{"api/v1/namespaces/default/pods/foo", "k8s/ns/default/pods/foo"},
 		{"api/v1/namespaces/default/pods", "k8s/ns/default/pods"},
@@ -166,10 +163,9 @@ func TestStore_RefToConsole(t *testing.T) {
 }
 
 func TestStore_ConsoleToRef(t *testing.T) {
-	s, err := NewStore(fake.NewClientBuilder().
+	s := NewStore(fake.NewClientBuilder().
 		WithRESTMapper(testrestmapper.TestOnlyStaticRESTMapper(scheme.Scheme)).
-		Build(), nil)
-	require.NoError(t, err)
+		Build())
 	for _, x := range [][2]string{
 		{"k8s/ns/default/pods/foo", "api/v1/namespaces/default/pods/foo"},
 		{"k8s/ns/default/pods", "api/v1/namespaces/default/pods"},

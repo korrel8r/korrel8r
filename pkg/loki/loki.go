@@ -120,7 +120,7 @@ func (*Store) RefToConsole(ref uri.Reference) (uri.Reference, error) {
 	return uri.Reference{Path: "/monitoring/logs", RawQuery: v.Encode()}, nil
 }
 
-func (*Store) RefFromConsole(ref uri.Reference) (uri.Reference, error) {
+func (*Store) ConsoleToRef(ref uri.Reference) (uri.Reference, error) {
 	c := Class(ref.Query().Get("tenant"))
 	// FIXME Constraint
 	return NewLokiStackRef(c, ref.Query().Get("q"), nil), nil

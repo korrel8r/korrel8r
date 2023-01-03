@@ -26,7 +26,7 @@ func TestEngine_ParseClass(t *testing.T) {
 		{"bad/foo", nil, `domain not found: bad`},
 	} {
 		t.Run(x.name, func(t *testing.T) {
-			e := New("")
+			e := New()
 			e.AddDomain(mock.Domain("mock"), nil)
 			c, err := e.ParseClass(x.name)
 			if x.err == "" {
@@ -64,7 +64,7 @@ func TestEngine_Follow(t *testing.T) {
 		},
 	}
 	want := []uri.Reference{s.NewReference("z:1"), s.NewReference("z:2"), s.NewReference("z:x1"), s.NewReference("z:x2")}
-	e := New("")
+	e := New()
 	e.AddDomain(mock.Domain(""), s)
 	references, err := e.Follow(context.Background(), mock.Objects("foo:a"), nil, path)
 	assert.NoError(t, err)

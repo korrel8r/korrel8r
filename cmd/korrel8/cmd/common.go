@@ -56,12 +56,12 @@ func k8sClient(cfg *rest.Config) client.Client {
 
 func newEngine() *engine.Engine {
 	cfg := restConfig()
-	e := engine.New("korrel8")
+	e := engine.New()
 	for _, x := range []struct {
 		d      korrel8.Domain
 		create func() (korrel8.Store, error)
 	}{
-		{k8s.Domain, func() (korrel8.Store, error) { return k8s.NewStore(k8sClient(cfg), cfg) }},
+		{k8s.Domain, func() (korrel8.Store, error) { return k8s.NewStore(k8sClient(cfg)), nil }},
 		{alert.Domain, func() (korrel8.Store, error) { return alert.NewOpenshiftAlertManagerStore(ctx, cfg) }},
 		{loki.Domain, func() (korrel8.Store, error) { return loki.NewOpenshiftLokiStackStore(ctx, k8sClient(cfg), cfg) }},
 	} {

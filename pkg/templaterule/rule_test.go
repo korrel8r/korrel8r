@@ -27,7 +27,7 @@ func mockRules(k []korrel8.Rule) []mock.Rule {
 }
 
 func TestRule_Rules(t *testing.T) {
-	e := engine.New("")
+	e := engine.New()
 	foo := mock.Domain("foo a b c")
 	bar := mock.Domain("bar x y z")
 	e.AddDomain(foo, nil)

@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"net/url"
 
-	"github.com/korrel8/korrel8/internal/pkg/openshift/console"
 	"github.com/korrel8/korrel8/pkg/korrel8"
 	"github.com/korrel8/korrel8/pkg/unique"
 	"github.com/korrel8/korrel8/pkg/uri"
@@ -116,9 +115,9 @@ func (h *correlateHandler) update(req *http.Request) {
 	}
 	h.GoalURLs = nil
 	for _, ref := range refs.List {
-		u, err := console.FormatURL(h.UI.ConsoleURL, h.Goal, ref)
+		consoleRef, err := h.UI.Console.RefToConsole(ref)
 		addErr(err)
-		h.GoalURLs = append(h.GoalURLs, u)
+		h.GoalURLs = append(h.GoalURLs, consoleRef.Resolve(h.UI.Console.BaseURL))
 	}
 	var rules []korrel8.Rule
 	for _, m := range paths {

@@ -15,7 +15,6 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/rest"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -83,13 +82,10 @@ func (c Class) String() string { return fmt.Sprintf("%v.%v.%v", c.Kind, c.Versio
 type Object client.Object
 
 // Store implements the korrel8.Store interface as a k8s API client.
-type Store struct {
-	c   client.Client
-	cfg *rest.Config
-}
+type Store struct{ c client.Client }
 
 // NewStore creates a new store
-func NewStore(c client.Client, cfg *rest.Config) (*Store, error) { return &Store{c: c, cfg: cfg}, nil }
+func NewStore(c client.Client) *Store { return &Store{c: c} }
 
 func (s *Store) Get(ctx context.Context, ref uri.Reference, result korrel8.Result) (err error) {
 	defer func() {
@@ -246,17 +242,17 @@ const (
 	consoleName
 )
 
-func (s *Store) ConsoleToRef(ref uri.Reference) (uri.Reference, error) {
+func (s *Store) ConsoleToRef(ref uri.Reference) (korrel8.Class, uri.Reference, error) {
 	p := consolePath.FindStringSubmatch(ref.Path)
 	if p == nil {
-		return uri.Reference{}, fmt.Errorf("invalid k8s console reference: %v", ref)
+		return nil, uri.Reference{}, fmt.Errorf("invalid k8s console reference: %v", ref)
 	}
 	if p[consoleResource] == "projects" { // Openshift alias for namespace
 		p[consoleResource] = "namespaces"
 	}
 	gvks, err := s.c.RESTMapper().KindsFor(schema.GroupVersionResource{Resource: p[consoleResource]})
 	if err != nil {
-		return uri.Reference{}, fmt.Errorf("invalid resrouce in console reference: %v", ref)
+		return nil, uri.Reference{}, fmt.Errorf("invalid resrouce in console reference: %v", ref)
 	}
 	gvk := gvks[0]
 	prefix := "apis"
@@ -268,5 +264,5 @@ func (s *Store) ConsoleToRef(ref uri.Reference) (uri.Reference, error) {
 		r.Path = path.Join(r.Path, "namespaces", p[consoleNamepace])
 	}
 	r.Path = path.Join(r.Path, p[consoleResource], p[consoleName])
-	return r, nil
+	return Class(gvk), r, nil
 }

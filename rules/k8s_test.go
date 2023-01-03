@@ -25,7 +25,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta/testrestmapper"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
@@ -33,10 +32,8 @@ import (
 func setup(t *testing.T, ruleFiles ...string) (client.Client, *engine.Engine) {
 	t.Helper()
 	c := fake.NewClientBuilder().WithRESTMapper(testrestmapper.TestOnlyStaticRESTMapper(k8s.Scheme)).Build()
-	e := engine.New("test")
-	s, err := k8s.NewStore(c, &rest.Config{})
-	require.NoError(t, err)
-	e.AddDomain(k8s.Domain, s)
+	e := engine.New()
+	e.AddDomain(k8s.Domain, k8s.NewStore(c))
 	e.AddDomain(loki.Domain, nil)
 	for _, name := range ruleFiles {
 		f, err := os.Open(name)
