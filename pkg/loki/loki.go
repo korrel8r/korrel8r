@@ -33,17 +33,6 @@ func Plain(ref uri.Reference) uri.Reference {
 	return uri.Reference{Path: lokiStackPath.ReplaceAllString(ref.Path, ""), RawQuery: ref.RawQuery}
 }
 
-// Console converts a LokiStak ref to a console URL
-func Console(ref uri.Reference) *url.URL {
-	v := url.Values{}
-	v.Add("q", ref.Query().Get("query"))
-	m := lokiStackPath.FindStringSubmatch(ref.Path)
-	if len(m) == 2 {
-		v.Add("tenant", m[1])
-	}
-	return &url.URL{Path: "/monitoring/logs", RawQuery: v.Encode()}
-}
-
 type Class string
 
 func (c Class) Domain() korrel8.Domain   { return Domain }

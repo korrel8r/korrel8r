@@ -33,7 +33,7 @@ func TestParseURIRegexp(t *testing.T) {
 		{"/apis/GROUP/VERSION/namespaces/NAMESPACE/RESOURCETYPE/NAME", "GROUP", "VERSION", "NAMESPACE", "RESOURCETYPE", "NAME"},
 	} {
 		t.Run(path[0], func(t *testing.T) {
-			assert.Equal(t, path, k8sPathRegex.FindStringSubmatch(path[0]))
+			assert.Equal(t, path, apiPath.FindStringSubmatch(path[0]))
 		})
 	}
 }
@@ -139,4 +139,55 @@ func TestStore_Get(t *testing.T) {
 		})
 	}
 	// Need to validate labels and all get variations on fake client or env test...
+}
+
+func TestStore_RefToConsole(t *testing.T) {
+	s, err := NewStore(fake.NewClientBuilder().
+		WithRESTMapper(testrestmapper.TestOnlyStaticRESTMapper(scheme.Scheme)).
+		Build(), nil)
+	require.NoError(t, err)
+	for _, x := range [][2]string{
+		{"api/v1/namespaces/default/pods/foo", "k8s/ns/default/pods/foo"},
+		{"api/v1/namespaces/default/pods", "k8s/ns/default/pods"},
+		{"api/v1/namespaces/foo", "k8s/cluster/namespaces/foo"},
+		{"api/v1/namespaces", "k8s/cluster/namespaces"},
+		{"apis/GROUP/VERSION/RESOURCETYPE", "k8s/cluster/RESOURCETYPE"},
+		{"apis/GROUP/VERSION/RESOURCETYPE/NAME", "k8s/cluster/RESOURCETYPE/NAME"},
+		{"apis/GROUP/VERSION/namespaces/NAMESPACE/RESOURCETYPE", "k8s/ns/NAMESPACE/RESOURCETYPE"},
+		{"apis/GROUP/VERSION/namespaces/NAMESPACE/RESOURCETYPE/NAME", "k8s/ns/NAMESPACE/RESOURCETYPE/NAME"},
+	} {
+		t.Run(x[0], func(t *testing.T) {
+			ref, err := s.RefToConsole(uri.Reference{Path: x[0]})
+			if assert.NoError(t, err) {
+				assert.Equal(t, x[1], ref.String())
+			}
+		})
+	}
+}
+
+func TestStore_ConsoleToRef(t *testing.T) {
+	s, err := NewStore(fake.NewClientBuilder().
+		WithRESTMapper(testrestmapper.TestOnlyStaticRESTMapper(scheme.Scheme)).
+		Build(), nil)
+	require.NoError(t, err)
+	for _, x := range [][2]string{
+		{"k8s/ns/default/pods/foo", "api/v1/namespaces/default/pods/foo"},
+		{"k8s/ns/default/pods", "api/v1/namespaces/default/pods"},
+		{"k8s/cluster/nodes/foo", "api/v1/nodes/foo"},
+		{"k8s/cluster/namespaces/foo", "api/v1/namespaces/foo"},
+		{"k8s/cluster/projects/foo", "api/v1/namespaces/foo"},
+		{"k8s/cluster/namespaces", "api/v1/namespaces"},
+		{"k8s/cluster/projects", "api/v1/namespaces"},
+		{"k8s/cluster/customresourcedefinitions", "apis/apiextensions.k8s.io/v1/customresourcedefinitions"},
+		{"k8s/cluster/customresourcedefinitions/NAME", "apis/apiextensions.k8s.io/v1/customresourcedefinitions/NAME"},
+		{"k8s/ns/NAMESPACE/deployments", "apis/apps/v1/namespaces/NAMESPACE/deployments"},
+		{"k8s/ns/NAMESPACE/deployments/NAME", "apis/apps/v1/namespaces/NAMESPACE/deployments/NAME"},
+	} {
+		t.Run(x[0], func(t *testing.T) {
+			ref, err := s.ConsoleToRef(uri.Reference{Path: x[0]})
+			if assert.NoError(t, err) {
+				assert.Equal(t, x[1], ref.String())
+			}
+		})
+	}
 }

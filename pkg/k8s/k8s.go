@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"net/url"
+	"path"
 	"reflect"
 	"regexp"
 
@@ -120,13 +121,16 @@ func (s *Store) RefClass(ref uri.Reference) korrel8.Class {
 // Should be able to use a REST client directly, but client.Client does REST client creation & caching
 // and manages schema and RESTMapper stuff which I'm not sure I understand yet.
 func (s *Store) parsePath(path string) (gvk schema.GroupVersionKind, nsName types.NamespacedName, err error) {
-	parts := k8sPathRegex.FindStringSubmatch(path)
-	if len(parts) != pCount {
+	parts := apiPath.FindStringSubmatch(path)
+	if parts == nil {
 		return gvk, nsName, fmt.Errorf("invalid k8s REST path: %v", path)
 	}
-	nsName.Namespace, nsName.Name = parts[pNamespace], parts[pName]
-	gvr := schema.GroupVersionResource{Group: parts[pGroup], Version: parts[pVersion], Resource: parts[pResource]}
-	gvk, err = s.c.RESTMapper().KindFor(gvr)
+	nsName.Namespace, nsName.Name = parts[apiNamespace], parts[apiName]
+	gvr := schema.GroupVersionResource{Group: parts[apiGroup], Version: parts[apiVersion], Resource: parts[apiResource]}
+	gvks, err := s.c.RESTMapper().KindsFor(gvr)
+	if len(gvks) > 0 {
+		gvk = gvks[0]
+	}
 	return gvk, nsName, err
 }
 
@@ -208,27 +212,61 @@ func (s *Store) getList(ctx context.Context, gvk schema.GroupVersionKind, namesp
 
 // Parse a K8s API path into: group, version, namespace, resourcetype, name.
 // See: https://kubernetes.io/docs/reference/using-api/api-concepts/
-var k8sPathRegex = regexp.MustCompile(`^(?:(?:/apis/([^/]+)/)|(?:/api/))([^/]+)(?:/namespaces/([^/]+))?/([^/]+)(?:/([^/]+))?`)
+var apiPath = regexp.MustCompile(`(?:^|/)(?:(?:apis/([^/]+)/)|(?:api/))([^/]+)(?:/namespaces/([^/]+))?/([^/]+)(?:/([^/]+))?$`)
 
 // Indices for match results from k8sPathRegex
 const (
-	pGroup = iota + 1
-	pVersion
-	pNamespace
-	pResource
-	pName
-	pCount
+	apiGroup = iota + 1
+	apiVersion
+	apiNamespace
+	apiResource
+	apiName
 )
 
 // RefToConsole converts a k8s reference to a console URL
-func RefToConsole(ref uri.Reference) (*url.URL, error) {
-	parts := k8sPathRegex.FindStringSubmatch(ref.Path)
-	if len(parts) != pCount {
-		return nil, fmt.Errorf("invalid k8s query: %v", ref)
+func (s *Store) RefToConsole(ref uri.Reference) (uri.Reference, error) {
+	p := apiPath.FindStringSubmatch(ref.Path)
+	if p == nil {
+		return uri.Reference{}, fmt.Errorf("invalid k8s reference: %v", ref)
 	}
-	var ns string
-	if parts[pNamespace] != "" {
-		ns = "/ns/" + parts[pNamespace]
+	var r uri.Reference
+	if p[apiNamespace] != "" { // Namespaced resource
+		r.Path = path.Join("k8s", "ns", p[apiNamespace], p[apiResource], p[apiName])
+	} else { // Cluster resource
+		r.Path = path.Join("k8s", "cluster", p[apiResource], p[apiName])
 	}
-	return &url.URL{Path: fmt.Sprintf("/k8s/%v/%v/%v", ns, parts[pResource], parts[pName])}, nil
+	return r, nil
+}
+
+var consolePath = regexp.MustCompile(`(?:^|/)(?:k8s/ns/([^/]+)|cluster)/([^/]+)(?:/([^/]+))?$`)
+
+const (
+	consoleNamepace = iota + 1
+	consoleResource
+	consoleName
+)
+
+func (s *Store) ConsoleToRef(ref uri.Reference) (uri.Reference, error) {
+	p := consolePath.FindStringSubmatch(ref.Path)
+	if p == nil {
+		return uri.Reference{}, fmt.Errorf("invalid k8s console reference: %v", ref)
+	}
+	if p[consoleResource] == "projects" { // Openshift alias for namespace
+		p[consoleResource] = "namespaces"
+	}
+	gvks, err := s.c.RESTMapper().KindsFor(schema.GroupVersionResource{Resource: p[consoleResource]})
+	if err != nil {
+		return uri.Reference{}, fmt.Errorf("invalid resrouce in console reference: %v", ref)
+	}
+	gvk := gvks[0]
+	prefix := "apis"
+	if gvk.Group == "" {
+		prefix = "api"
+	}
+	r := uri.Reference{Path: path.Join(prefix, gvk.Group, gvk.Version)}
+	if p[consoleNamepace] != "" {
+		r.Path = path.Join(r.Path, "namespaces", p[consoleNamepace])
+	}
+	r.Path = path.Join(r.Path, p[consoleResource], p[consoleName])
+	return r, nil
 }

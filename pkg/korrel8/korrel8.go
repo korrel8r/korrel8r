@@ -90,7 +90,7 @@ type ConsoleRefConverter interface {
 	// RefToConsole converts a store reference to an equivalent console reference.
 	RefToConsole(uri.Reference) (uri.Reference, error)
 	// RefFromConsole converts a console reference to an equivalent store reference.
-	RefFromConsole(uri.Reference) (uri.Reference, error)
+	RefFromConsole(uri.Reference) (Class, uri.Reference, error)
 }
 
 // RefClasser is optionally implemented by a Store that can deduce the class from a reference.

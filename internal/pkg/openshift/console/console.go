@@ -6,8 +6,8 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/korrel8/korrel8/internal/pkg/openshift"
 	alert "github.com/korrel8/korrel8/pkg/amalert"
+	"github.com/korrel8/korrel8/pkg/engine"
 	"github.com/korrel8/korrel8/pkg/k8s"
 	"github.com/korrel8/korrel8/pkg/korrel8"
 	"github.com/korrel8/korrel8/pkg/loki"
@@ -16,11 +16,25 @@ import (
 	"golang.org/x/text/language"
 )
 
-// BaseURL gets base URL for openshift console.
-var BaseURL = openshift.ConsoleURL
+// Console manages references and URLs for an openshift console.
+type Console struct {
+	baseURL *url.URL
+	e *engine.Engine
+}
 
-// ParseURL parses an console URL to create a store query.
-func ParseURL(consoleURL string) (korrel8.Class, uri.Reference, error) {
+// ParseURL parses a console URL to create a store query.
+func (c *Console) (consoleURL string) (korrel8.Class, uri.Reference, error) {
+	for _, d := range e.Domains() {
+		s, _ := e.Store(d.String())
+		cl, _ := s.(korrel8.RefClasser)
+		cvt, _ := s.(korrel8.ConsoleRefConverter)
+		if cl != nil && cvt != nil {
+			cvt
+			if c != nil {
+
+			}
+		}
+	}
 	u, err := url.Parse(consoleURL)
 	if err != nil {
 		return nil, uri.Reference{}, err

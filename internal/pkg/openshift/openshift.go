@@ -45,7 +45,7 @@ func RouteHost(ctx context.Context, c client.Client, nn types.NamespacedName) (s
 	return r.Spec.Host, err
 }
 
-// ConsoleURL returns the base URL for the Openshift console.
+// ConsoleURL returns the base URL for the Openshift console on the current cluster.
 func ConsoleURL(ctx context.Context, c client.Client) (*url.URL, error) {
 	host, err := RouteHost(ctx, c, ConsoleNSName)
 	return &url.URL{
