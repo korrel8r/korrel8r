@@ -25,7 +25,7 @@ The goals of this project include:
 
 A Kubernetes cluster generates many types of *observable signal*, including:
 
-|                   |                                                                         |
+| Signal Type       | Description                                                             |
 |-------------------|-------------------------------------------------------------------------|
 | Metrics           | Counts and measurements of system behaviour.                            |
 | Alerts            | Rules that fire when metrics cross important thresholds.                |
@@ -37,12 +37,13 @@ A Kubernetes cluster generates many types of *observable signal*, including:
 A cluster also contains objects that are not usually considered "signals",
 but which can be correlated with signals and other objects:
 
-|                           |                                                 |
-|---------------------------+-------------------------------------------------|
-| k8s resources             | Spec and status information.                    |
-| Run books                 | Problem solving guides associated with Alerts.  |
-| k8s liveness probes       | Information about resource state.               |
-| Operators                 | Operators control other resources.              |
+| Object Type   | Description                                    |
+|---------------|------------------------------------------------|
+| k8s resources | Spec and status information.                   |
+| Run books     | Problem solving guides associated with Alerts. |
+| k8s probes    | Information about resource state.              |
+| Operators     | Operators control other resources.             |
+
 
 # Implentation Concepts
 
