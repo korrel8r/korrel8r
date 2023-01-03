@@ -2,11 +2,10 @@
 package webui
 
 import (
-	"html/template"
 	"net/http"
 	"net/url"
 	"os"
-	"path/filepath"
+	"text/template"
 
 	"context"
 
@@ -23,46 +22,44 @@ var log = logging.Log().WithName("webui")
 type WebUI struct {
 	Engine     *engine.Engine
 	ConsoleURL *url.URL
-
-	dir      string
-	handlers map[string]http.Handler
-	page     *template.Template
+	dir        string
+	handlers   map[string]http.Handler
 }
 
 func New(e *engine.Engine, cfg *rest.Config, c client.Client) (*WebUI, error) {
-	dir, err := os.MkdirTemp("", "korrel8_webui")
-	if err == nil {
-		err = os.Mkdir(filepath.Join(dir, "files"), 0777)
-	}
-	if err != nil {
+	ui := &WebUI{Engine: e}
+	var err error
+	if ui.dir, err = os.MkdirTemp("", "korrel8"); err != nil {
 		return nil, err
 	}
-	log.Info("working directory", "dir", dir)
-	ui := &WebUI{
-		dir:        dir,
-		Engine:     e,
-		ConsoleURL: must(openshift.ConsoleURL(context.Background(), c)),
-		page: template.Must(template.New("page").Funcs(templaterule.Funcs).Funcs(e.TemplateFuncs()).Parse(`
-{{block "header" . -}}
-<head>
-  <title>Korrel8 Web UI</title>
-</head>
-<body>
-{{end -}}
-
-{{block "content" . -}}{{end -}}
-
-{{block "footer" . -}}
-</body>
-{{end -}}
-`)),
+	log.Info("working directory", "dir", ui.dir)
+	if ui.ConsoleURL, err = openshift.ConsoleURL(context.Background(), c); err != nil {
+		return nil, err
 	}
 	ui.handlers = map[string]http.Handler{
-		"/":          http.HandlerFunc(ui.root),
-		"/correlate": &correlateHandler{UI: ui, Page: ui.clonePage},
-		"/files/":    http.FileServer(http.Dir(ui.dir)),
+		"/":           http.HandlerFunc(ui.root),
+		"/correlate/": &correlateHandler{UI: ui},
+		"/files/":     http.FileServer(http.Dir(ui.dir)),
 	}
 	return ui, nil
+}
+
+func (ui *WebUI) Page(name string) *template.Template {
+	return must(template.New(name).
+		Funcs(templaterule.Funcs).
+		Funcs(ui.Engine.TemplateFuncs()).
+		Parse(`<!DOCTYPE html PUBLIC " - //W3C//DTD xhtml 1.0 Strict//EN"	"http://www.w3.org/1999/xhtml">
+<head>
+{{block "head" . -}}
+  <title>Korrel8 Web UI</title>
+{{end -}}
+</head>
+<body>
+{{block "body" . -}}
+Nothing to see here.
+{{end -}}
+</body>
+`))
 }
 
 func (ui *WebUI) Close() {
@@ -77,14 +74,10 @@ func (ui *WebUI) HandlerFuncs(mux *http.ServeMux) {
 	}
 }
 
-func (ui *WebUI) clonePage() *template.Template { return must(ui.page.Clone()) }
-func (ui *WebUI) parseContent(content string) (*template.Template, error) {
-	return ui.clonePage().Parse(content)
-}
-
 func (ui *WebUI) root(w http.ResponseWriter, req *http.Request) {
-	t := must(ui.parseContent(`
-{{- define "content" -}}
+	t := ui.Page("root")
+	must(t.Parse(`
+{{- define "body" -}}
 Available Endpoints:
 <ul>
 {{ range $k,$v := . -}}
@@ -103,8 +96,6 @@ func check(err error) {
 }
 
 func must[T any](v T, err error) T {
-	if err != nil {
-		panic(err)
-	}
+	check(err)
 	return v
 }

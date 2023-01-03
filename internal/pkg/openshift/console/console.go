@@ -1,3 +1,4 @@
+// package console convert between console and store queries
 package console
 
 import (

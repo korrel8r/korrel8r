@@ -2,10 +2,8 @@ package webui
 
 import (
 	"context"
-	"html/template"
 	"net/http"
 	"net/url"
-	"strings"
 
 	"github.com/korrel8/korrel8/internal/pkg/openshift/console"
 	"github.com/korrel8/korrel8/pkg/korrel8"
@@ -26,8 +24,7 @@ type correlateValues struct {
 
 type correlateHandler struct {
 	// Constants
-	UI   *WebUI
-	Page func() *template.Template
+	UI *WebUI
 
 	// Request parameters
 	Params url.Values
@@ -37,8 +34,9 @@ type correlateHandler struct {
 func (h *correlateHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	defer req.Body.Close()
 	h.update(req)
-	page, err := h.Page().Parse(`
-{{define "content" -}}
+	t := h.UI.Page("correlate")
+	must(t.Parse(`
+{{define "body" -}}
 <form>
   <label for="ref">URI Reference:</label>
   <input type="text" id="ref" name="ref" value="{{.Params.Get "ref" }}">
@@ -72,25 +70,10 @@ func (h *correlateHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 </pre></p>
 {{end -}}
 {{end -}}
-
-{{with .Errors -}}
-<p>Errors:
-<ul>
-  {{range . -}}
-  <li>{{.}}</li>
-  {{end -}}
-</ul>
-</p>
+{{with .Err}}<p>Errors</p><pre>{{printf "%+v" .}}</pre>{{end -}}
 {{end -}}
-
-{{end -}}
-`)
-	if err == nil {
-		err = page.Execute(w, h)
-	}
-	if err != nil {
-		http.Error(w, err.Error(), 500)
-	}
+`))
+	check(t.Execute(w, h))
 }
 
 func (h *correlateHandler) update(req *http.Request) {
@@ -102,26 +85,18 @@ func (h *correlateHandler) update(req *http.Request) {
 	addErr := func(err error) bool { h.Err = multierr.Append(h.Err, err); return h.Err != nil }
 
 	u, err := url.Parse(h.Params.Get("ref"))
-	addErr(err)
-
-	pathFunc := h.UI.Engine.Graph().ShortestPaths
-	// FIXME brutal hack for demo, need URL recognizers and class from Reference. Sort out URL rewrite story.
-	if strings.HasPrefix(u.Host, "console") {
-		h.Start, h.Ref, err = console.ParseURL(h.Params.Get("ref"))
-	} else {
+	if !addErr(err) {
 		h.Ref = uri.Extract(u)
-		h.Start, err = h.UI.Engine.ParseClass(h.Params.Get("start"))
-		pathFunc = h.UI.Engine.Graph().AllPaths
 	}
+	h.Start, err = h.UI.Engine.ParseClass(h.Params.Get("start"))
 	addErr(err)
-
+	h.Goal, err = h.UI.Engine.ParseClass(h.Params.Get("goal"))
+	addErr(err)
 	if h.Err != nil {
 		return
 	}
-	h.Goal, err = h.UI.Engine.ParseClass(h.Params.Get("goal"))
-	if addErr(err) {
-		return
-	}
+
+	pathFunc := h.UI.Engine.Graph().AllPaths
 
 	h.StartStore, err = h.UI.Engine.Store(h.Start.Domain().String())
 	addErr(err)
@@ -152,6 +127,7 @@ func (h *correlateHandler) update(req *http.Request) {
 		}
 	}
 	if rules != nil {
-		h.Diagram = h.UI.Diagram("paths", rules)
+		h.UI.Diagram("paths", rules)
+		h.Diagram = "../files/paths.png"
 	}
 }
