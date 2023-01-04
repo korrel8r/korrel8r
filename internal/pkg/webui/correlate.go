@@ -85,7 +85,7 @@ func (h *correlateHandler) update(req *http.Request) {
 
 	u, err := url.Parse(h.Params.Get("ref"))
 	if !addErr(err) {
-		h.Ref = uri.Extract(u)
+		h.Ref = uri.Reference{Path: u.Path, RawQuery: u.RawQuery}
 	}
 	h.Start, err = h.UI.Engine.ParseClass(h.Params.Get("start"))
 	addErr(err)

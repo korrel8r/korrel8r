@@ -7,6 +7,8 @@ package uri
 import (
 	"fmt"
 	"net/url"
+	"path"
+	"strings"
 )
 
 // Reference implements the "path?query" part of a URL.
@@ -20,16 +22,14 @@ type Reference struct {
 	RawQuery string
 }
 
-// Parse a string URI reference.
+// Parse a URI string as a relative URI reference.
+// Only the path and query parts are used in the Reference, other parts are ignored.
 func Parse(s string) (Reference, error) {
 	u, err := url.Parse(s)
-	if err == nil && !IsReference(u) {
-		err = fmt.Errorf("URL is not a relative URI reference: %v", u)
-	}
 	if err != nil {
 		return Reference{}, err
 	}
-	return Extract(u), nil
+	return Reference{Path: u.Path, RawQuery: u.RawQuery}, nil
 }
 
 // String behaves like url.URL.String
@@ -40,21 +40,31 @@ func (r Reference) String() string {
 	return fmt.Sprintf("%v?%v", r.Path, r.RawQuery)
 }
 
-// FIXME Relative
-// Extract extracts a Reference from a URL, ignoring other parts of the URL.
-func Extract(u *url.URL) Reference { return Reference{Path: u.Path, RawQuery: u.RawQuery} }
-
 // Values is an alias for url.Values
 type Values = url.Values
 
 // Query behaves like url.URL.Query
 func (r Reference) Query() Values { v, _ := url.ParseQuery(r.RawQuery); return v }
 
-// URL creates a url.URL containing the reference.
+// URL creates a url.URL equivalent to the reference.
 func (r Reference) URL() *url.URL { return &url.URL{Path: r.Path, RawQuery: r.RawQuery} }
 
-// Resolve the Reference relative to a base URL.
+// Resolve the Reference relative to a base URL, see url.URL.ResolveReference.
 func (r Reference) Resolve(base *url.URL) *url.URL { return base.ResolveReference(r.URL()) }
+
+// TrimPrefix returns a relative URI with the removed from the front of the path.
+// Returns an error if r.Path does not start with basePath
+func (r Reference) RelativeTo(basePath string) (Reference, error) {
+	p, base := path.Join("/", r.Path), path.Join("/", basePath)
+	if base != "/" {
+		base = base + "/"
+	}
+	if !strings.HasPrefix(p, base) {
+		return Reference{}, fmt.Errorf("path %q is not reltive to %q", r.Path, basePath)
+	}
+	p = strings.TrimPrefix(p, base)
+	return Reference{Path: p, RawQuery: r.RawQuery}, nil
+}
 
 // IsReference is true if a URL contains only path?query parts.
 func IsReference(u *url.URL) bool { return u.Scheme == "" && u.Host == "" && u.Fragment == "" }

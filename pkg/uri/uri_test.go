@@ -30,29 +30,32 @@ func TestRoundTrip(t *testing.T) {
 func TestNotRoundTrip(t *testing.T) {
 	for _, x := range []struct{ s, want string }{
 		{"path/to/somewhere?", "path/to/somewhere"},
+		{"scheme:x", ""},
+		{"scheme:/x", "/x"},
+		{"scheme://host:3/abspath#fragment", "/abspath"},
+		{"//host:2/abspath", "/abspath"},
 	} {
 		t.Run(x.s, func(t *testing.T) {
 			r, err := uri.Parse(x.s)
 			if assert.NoError(t, err) {
-				assert.Equal(t, x.want, r.String())
+				assert.Equal(t, x.want, r.Path)
 			}
 		})
 	}
 }
 
-func TestBad(t *testing.T) {
-	for _, s := range []string{
-		"scheme:",
-		"scheme:x",
-		"scheme://abspath",
-		"//abspath",
-		"path#fragment",
-		"#fragment",
+func TestRelativeTo(t *testing.T) {
+	for _, x := range [][3]string{
+		{"/a/b/c", "/a/", "b/c"},
+		{"/a/b/c/", "a/b", "c"},
+		{"/a/b/c", "/a", "b/c"},
+		{"/a/b/c/", "a/b/", "c"},
 	} {
-		t.Run(s, func(t *testing.T) {
-			_, err := uri.Parse(s)
-			if assert.Error(t, err) {
-				assert.True(t, strings.HasSuffix(err.Error(), s))
+		t.Run(strings.Join(x[:], ":"), func(t *testing.T) {
+			ref, err := uri.Reference{Path: x[0], RawQuery: "a=b"}.RelativeTo(x[1])
+			if assert.NoError(t, err) {
+				assert.Equal(t, x[2], ref.Path)
+				assert.Equal(t, "a=b", ref.RawQuery)
 			}
 		})
 	}
