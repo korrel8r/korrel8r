@@ -139,7 +139,7 @@ func TestStore_Get(t *testing.T) {
 	// Need to validate labels and all get variations on fake client or env test...
 }
 
-func TestStore_RefToConsole(t *testing.T) {
+func TestStore_RefStoreToConsole(t *testing.T) {
 	s := NewStore(fake.NewClientBuilder().
 		WithRESTMapper(testrestmapper.TestOnlyStaticRESTMapper(scheme.Scheme)).
 		Build())
@@ -154,7 +154,7 @@ func TestStore_RefToConsole(t *testing.T) {
 		{"apis/GROUP/VERSION/namespaces/NAMESPACE/RESOURCETYPE/NAME", "k8s/ns/NAMESPACE/RESOURCETYPE/NAME"},
 	} {
 		t.Run(x[0], func(t *testing.T) {
-			ref, err := s.RefToConsole(uri.Reference{Path: x[0]})
+			ref, err := s.RefStoreToConsole(uri.Reference{Path: x[0]})
 			if assert.NoError(t, err) {
 				assert.Equal(t, x[1], ref.String())
 			}
@@ -162,7 +162,7 @@ func TestStore_RefToConsole(t *testing.T) {
 	}
 }
 
-func TestStore_ConsoleToRef(t *testing.T) {
+func TestStore_RefConsoleToStore(t *testing.T) {
 	s := NewStore(fake.NewClientBuilder().
 		WithRESTMapper(testrestmapper.TestOnlyStaticRESTMapper(scheme.Scheme)).
 		Build())
@@ -180,7 +180,7 @@ func TestStore_ConsoleToRef(t *testing.T) {
 		{"k8s/ns/NAMESPACE/deployments/NAME", "apis/apps/v1/namespaces/NAMESPACE/deployments/NAME"},
 	} {
 		t.Run(x[0], func(t *testing.T) {
-			_, ref, err := s.ConsoleToRef(uri.Reference{Path: x[0]})
+			_, ref, err := s.RefConsoleToStore(uri.Reference{Path: x[0]})
 			if assert.NoError(t, err) {
 				assert.Equal(t, x[1], ref.String())
 			}

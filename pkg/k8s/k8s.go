@@ -225,8 +225,8 @@ const (
 	apiName
 )
 
-// RefToConsole converts a k8s reference to a console URL
-func (s *Store) RefToConsole(ref uri.Reference) (uri.Reference, error) {
+// RefStoreToConsole converts a k8s reference to a console URL
+func (s *Store) RefStoreToConsole(ref uri.Reference) (uri.Reference, error) {
 	p := apiPath.FindStringSubmatch(ref.Path)
 	if p == nil {
 		return uri.Reference{}, fmt.Errorf("invalid k8s reference: %v", ref)
@@ -248,7 +248,7 @@ const (
 	consoleName
 )
 
-func (s *Store) ConsoleToRef(ref uri.Reference) (korrel8.Class, uri.Reference, error) {
+func (s *Store) RefConsoleToStore(ref uri.Reference) (korrel8.Class, uri.Reference, error) {
 	p := consolePath.FindStringSubmatch(ref.Path)
 	if p == nil {
 		return nil, uri.Reference{}, fmt.Errorf("invalid k8s console reference: %v", ref)

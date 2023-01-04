@@ -108,8 +108,8 @@ func (*Store) RefClass(ref uri.Reference) korrel8.Class {
 	return nil
 }
 
-// RefToConsole converts a LokiStak ref to a console URL
-func (*Store) RefToConsole(ref uri.Reference) (uri.Reference, error) {
+// RefStoreToConsole converts a LokiStak ref to a console URL
+func (*Store) RefStoreToConsole(ref uri.Reference) (uri.Reference, error) {
 	v := url.Values{}
 	v.Add("q", ref.Query().Get("query"))
 	m := lokiStackPath.FindStringSubmatch(ref.Path)
@@ -119,7 +119,7 @@ func (*Store) RefToConsole(ref uri.Reference) (uri.Reference, error) {
 	return uri.Reference{Path: "/monitoring/logs", RawQuery: v.Encode()}, nil
 }
 
-func (*Store) ConsoleToRef(ref uri.Reference) (uri.Reference, error) {
+func (*Store) RefConsoleToStore(ref uri.Reference) (uri.Reference, error) {
 	c := Class(ref.Query().Get("tenant"))
 	// FIXME Constraint
 	return NewLokiStackRef(c, ref.Query().Get("q"), nil), nil

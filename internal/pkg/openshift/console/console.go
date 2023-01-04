@@ -19,31 +19,31 @@ func New(baseURL *url.URL, e *engine.Engine) *Console {
 	return &Console{BaseURL: baseURL, e: e}
 }
 
-func (c *Console) converters() (converters []korrel8.ConsoleRefConverter) {
+func (c *Console) converters() (converters []korrel8.RefConverter) {
 	for _, d := range c.e.Domains() {
-		if cvt, ok := d.(korrel8.ConsoleRefConverter); ok {
+		if cvt, ok := d.(korrel8.RefConverter); ok {
 			converters = append(converters, cvt)
 		}
 		s, _ := c.e.Store(d.String())
-		if cvt, ok := s.(korrel8.ConsoleRefConverter); ok {
+		if cvt, ok := s.(korrel8.RefConverter); ok {
 			converters = append(converters, cvt)
 		}
 	}
 	return converters
 }
 
-func (c *Console) ConsoleToRef(consoleRef uri.Reference) (korrel8.Class, uri.Reference, error) {
+func (c *Console) RefConsoleToStore(consoleRef uri.Reference) (korrel8.Class, uri.Reference, error) {
 	for _, cvt := range c.converters() {
-		if class, ref, err := cvt.ConsoleToRef(consoleRef); err == nil {
+		if class, ref, err := cvt.RefConsoleToStore(consoleRef); err == nil {
 			return class, ref, err
 		}
 	}
 	return nil, uri.Reference{}, fmt.Errorf("cannot convert console URI: %v", consoleRef)
 }
 
-func (c *Console) RefToConsole(storeRef uri.Reference) (uri.Reference, error) {
+func (c *Console) RefStoreToConsole(storeRef uri.Reference) (uri.Reference, error) {
 	for _, cvt := range c.converters() {
-		if ref, err := cvt.RefToConsole(storeRef); err == nil {
+		if ref, err := cvt.RefStoreToConsole(storeRef); err == nil {
 			return ref, err
 		}
 	}

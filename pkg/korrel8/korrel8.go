@@ -89,16 +89,15 @@ func (c *Constraint) Combine(other *Constraint) {
 // See text/template.Template.Funcs
 type TemplateFuncser interface{ TemplateFuncs() map[string]any }
 
-// ConsoleRefConverter is optionally implemented by Store implementations that support console URLs.
-type ConsoleRefConverter interface {
-	// RefToConsole converts a store reference to an equivalent console reference.
-	RefToConsole(uri.Reference) (uri.Reference, error)
-	// ConsoleToRef converts a console reference to an equivalent store reference.
-
-	ConsoleToRef(uri.Reference) (Class, uri.Reference, error)
+// RefConverter may be implemented by Domain or Store implementations that support console URLs.
+type RefConverter interface {
+	// RefStoreToConsole converts a store reference to an equivalent console reference.
+	RefStoreToConsole(uri.Reference) (uri.Reference, error)
+	// RefConsoleToStore converts a console reference to an equivalent store reference.
+	RefConsoleToStore(uri.Reference) (Class, uri.Reference, error)
 }
 
-// RefClasser is optionally implemented by a Store that can deduce the class from a reference.
+// RefClasser may be implemented by Domain or Store implementations that can deduce the class from a reference.
 type RefClasser interface {
 	// RefClass gets the class of a URI reference, returns nil if reference is not recognized.
 	RefClass(uri.Reference) Class

@@ -27,7 +27,7 @@ func setup(t *testing.T) *Console {
 	return New(u, e)
 }
 
-func TestConsoleToRef(t *testing.T) {
+func TestRefConsoleToStore(t *testing.T) {
 	// FIXME add domains
 	console := setup(t)
 	for _, x := range []struct {
@@ -43,7 +43,7 @@ func TestConsoleToRef(t *testing.T) {
 	} {
 		t.Run(x.cref.Path, func(t *testing.T) {
 			// FIXME complete this test.
-			class, ref, err := console.ConsoleToRef(x.cref)
+			class, ref, err := console.RefConsoleToStore(x.cref)
 			if assert.NoError(t, err) {
 				assert.Equal(t, x.class, class)
 				assert.Equal(t, x.ref, ref)
@@ -52,7 +52,7 @@ func TestConsoleToRef(t *testing.T) {
 	}
 }
 
-func TestRefToConsole(t *testing.T) {
+func TestRefStoreToConsole(t *testing.T) {
 	console := setup(t)
 	for _, x := range []struct {
 		cref, ref uri.Reference
@@ -66,7 +66,7 @@ func TestRefToConsole(t *testing.T) {
 	} {
 		t.Run(x.cref.Path, func(t *testing.T) {
 			// FIXME complete this test.
-			cref, err := console.RefToConsole(x.ref)
+			cref, err := console.RefStoreToConsole(x.ref)
 			if assert.NoError(t, err) {
 				assert.Equal(t, x.cref, cref)
 			}

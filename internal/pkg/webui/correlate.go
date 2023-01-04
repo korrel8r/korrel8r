@@ -115,7 +115,7 @@ func (h *correlateHandler) update(req *http.Request) {
 	}
 	h.GoalURLs = nil
 	for _, ref := range refs.List {
-		consoleRef, err := h.UI.Console.RefToConsole(ref)
+		consoleRef, err := h.UI.Console.RefStoreToConsole(ref)
 		addErr(err)
 		h.GoalURLs = append(h.GoalURLs, consoleRef.Resolve(h.UI.Console.BaseURL))
 	}

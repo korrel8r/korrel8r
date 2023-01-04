@@ -58,7 +58,7 @@ func NewStore(host string, rt http.RoundTripper) (*Store, error) {
 }
 
 // Get implements the korrel8.Store interface.
-// The  reference "query" parameter is a PromQL label matcher expression with the wrapping
+// The ref has a "query" with a PromQL label matcher expression with the wrapping
 // `{` and `}` being optional, e.g.  `namespace="default",pod=~"myapp-.+"`.
 func (s Store) Get(ctx context.Context, ref uri.Reference, result korrel8.Appender) error {
 	// TODO: allow to filter on alert state (pending/firing)?

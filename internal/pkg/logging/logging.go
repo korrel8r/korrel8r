@@ -3,39 +3,33 @@ package logging
 
 import (
 	"encoding/json"
-	"fmt"
 	"log"
 	"net/url"
 	"os"
 	"strconv"
-	"sync"
 
 	"github.com/go-logr/logr"
 	"github.com/go-logr/stdr"
 )
 
-const env = "KORREL8_VERBOSE"
+const verboseEnv = "KORREL8_VERBOSE"
+
+var root logr.Logger
 
 // The root logger.
-func Log() logr.Logger {
-	once.Do(func() {
-		root = stdr.New(log.New(os.Stderr, "korrel8 ", log.Ltime))
-		if n, err := strconv.Atoi(os.Getenv(env)); err == nil {
-			stdr.SetVerbosity(n)
-		}
-	})
-	return root
-}
+func Log() logr.Logger { return root }
 
-var (
-	root logr.Logger
-	once sync.Once
-)
+func init() { // Use the env verbosity regardless if Init is called.
+	root = stdr.New(log.New(os.Stderr, "korrel8 ", log.Ltime))
+	if n, err := strconv.Atoi(os.Getenv(verboseEnv)); err == nil {
+		stdr.SetVerbosity(n)
+	}
+}
 
 // Init sets verbosity for the Root logger.
 func Init(verbosity int) {
-	if verbosity > 0 {
-		os.Setenv(env, fmt.Sprint(verbosity))
+	if verbosity != 0 { // If not set, let env verbosity stand
+		stdr.SetVerbosity(verbosity)
 	}
 }
 

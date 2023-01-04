@@ -128,7 +128,7 @@ func (e *Engine) Follow(ctx context.Context, starters []korrel8.Object, c *korre
 		var result korrel8.ListResult
 		for _, ref := range refs.List {
 			if err := store.Get(ctx, ref, &result); err != nil {
-				log.V(1).Error(err, "get error in follow, skipping", "query", ref)
+				log.V(1).Error(err, "get error in follow, skipping", "ref", ref)
 			}
 		}
 		starters = result.List()
@@ -170,7 +170,7 @@ func (f *Engine) followEach(rule korrel8.Rule, start []korrel8.Object, c *korrel
 			log.V(1).Info("follow: rule returned empty query", "rule", rule)
 			logContext()
 		default:
-			log.V(2).Info("follow: rule returned query", "rule", rule, "query", r)
+			log.V(2).Info("follow: rule returned query", "rule", rule, "ref", r)
 			refs.Append(r)
 		}
 		merr = multierr.Append(merr, err)
