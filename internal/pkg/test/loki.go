@@ -8,7 +8,6 @@ import (
 	"net/url"
 	"os"
 	"os/exec"
-	"path"
 	"strings"
 	"sync"
 	"testing"
@@ -66,7 +65,7 @@ func NewLokiServer() (server *LokiServer, err error) {
 }
 
 func (s *LokiServer) URL() *url.URL {
-	return &url.URL{Scheme: "http", Host: fmt.Sprintf("127.0.0.1:%v", s.Port), Path: "/loki/api/v1"}
+	return &url.URL{Scheme: "http", Host: fmt.Sprintf("127.0.0.1:%v", s.Port)}
 }
 
 func (s *LokiServer) Close() error {
@@ -77,7 +76,7 @@ func (s *LokiServer) Close() error {
 
 func (s *LokiServer) Push(labels map[string]string, lines ...string) error {
 	u := s.URL()
-	u.Path = path.Join(u.Path, "/push")
+	u.Path = "/loki/api/v1/push"
 	b, err := json.Marshal(map[string][]streamValues{"streams": {{Stream: labels, Values: makeValues(lines)}}})
 	if err != nil {
 		return err

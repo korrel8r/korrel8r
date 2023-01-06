@@ -8,6 +8,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/korrel8/korrel8/internal/pkg/must"
 	"github.com/spf13/cobra"
 )
 
@@ -23,12 +24,11 @@ Optional NAME=VALUE arguments are added to URL query.
 	Run: func(cmd *cobra.Command, args []string) {
 		e := newEngine()
 		domainName, _, _ := strings.Cut(args[0], "/") // Allow a class name, extract the domain.
-		store, err := e.Store(domainName)
-		check(err)
-		u := must(referenceArgs(args[1:]))
+		store := must.Must1(e.Store(domainName))
+		u := must.Must1(referenceArgs(args[1:]))
 		log.V(1).Info("getting", "query", u)
 		result := newPrinter(os.Stdout)
-		check(store.Get(context.Background(), u, result))
+		must.Must(store.Get(context.Background(), u, result))
 	},
 }
 

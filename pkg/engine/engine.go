@@ -49,7 +49,7 @@ func (e *Engine) Domains() (domains []korrel8.Domain) { return maps.Values(e.dom
 
 // Store for domain or nil if no store is available.
 func (e *Engine) Store(name string) (korrel8.Store, error) {
-	if s, ok := e.stores[name]; ok {
+	if s := e.stores[name]; s != nil {
 		return s, nil
 	}
 	return nil, fmt.Errorf("no store for domain: %v", name)
@@ -58,7 +58,9 @@ func (e *Engine) Store(name string) (korrel8.Store, error) {
 // AddDomain domain and corresponding store, store may be nil.
 func (e *Engine) AddDomain(d korrel8.Domain, s korrel8.Store) {
 	e.domains[d.String()] = d
-	e.stores[d.String()] = s
+	if s != nil {
+		e.stores[d.String()] = s
+	}
 	// Stores and Domains implement TemplateFuncser if they provide template helper functions
 	// for use by rules.
 	for _, v := range []any{d, s} {
@@ -158,20 +160,15 @@ func (f *Engine) followEach(rule korrel8.Rule, start []korrel8.Object, c *korrel
 		merr error
 	)
 	for _, s := range start {
-		r, err := rule.Apply(s, c)
-		logContext := func() {
-			log.V(3).Info("follow: start context", "object", s, "constraint", c)
-		}
+		ref, err := rule.Apply(s, c)
 		switch {
 		case err != nil:
-			log.V(1).Info("follow: error applying rule", "rule", rule, "error", err)
-			logContext()
-		case r == uri.Reference{}:
+			log.V(1).Error(err, "follow: applying rule", "rule", rule)
+		case ref == uri.Reference{}:
 			log.V(1).Info("follow: rule returned empty query", "rule", rule)
-			logContext()
 		default:
-			log.V(2).Info("follow: rule returned query", "rule", rule, "ref", r)
-			refs.Append(r)
+			log.V(2).Info("follow: rule returned query", "rule", rule, "ref", ref)
+			refs.Append(ref)
 		}
 		merr = multierr.Append(merr, err)
 	}

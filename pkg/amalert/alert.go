@@ -50,6 +50,8 @@ func NewStore(host string, hc *http.Client) *Store {
 	}
 }
 
+func (s *Store) Resolve(ref uri.Reference) *url.URL { return ref.Resolve(s.base) }
+
 // Get alerts for alertmanager URI reference, see:
 // https://petstore.swagger.io/?url=https://raw.githubusercontent.com/prometheus/alertmanager/master/api/v2/openapi.yaml
 func (s Store) Get(ctx context.Context, ref uri.Reference, result korrel8.Appender) error {

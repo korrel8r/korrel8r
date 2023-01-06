@@ -23,6 +23,7 @@ import (
 	"strings"
 
 	"github.com/korrel8/korrel8/internal/pkg/logging"
+	"github.com/korrel8/korrel8/internal/pkg/must"
 	"github.com/spf13/cobra"
 )
 
@@ -56,7 +57,7 @@ func Execute() (exitCode int) {
 			}
 		}
 	}()
-	check(rootCmd.Execute())
+	must.Must(rootCmd.Execute())
 	return 0
 }
 
@@ -65,7 +66,7 @@ func defaultRulePaths() []string {
 	for _, f := range []func() string{
 		func() string { return os.Getenv("KORREL8_RULE_DIR") },                                        // Environment directory
 		func() string { exe, _ := os.Executable(); return filepath.Join(filepath.Dir(exe), "rules") }, // Beside executable
-		func() string { // Check for source tree
+		func() string { // must.Must for source tree
 			_, path, _, _ := runtime.Caller(1)
 			if _, err := os.Stat(path); err == nil {
 				return filepath.Join(strings.TrimSuffix(path, "/cmd/korrel8/cmd/root.go"), "rules")

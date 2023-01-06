@@ -11,6 +11,7 @@ import (
 
 	"github.com/korrel8/korrel8/internal/pkg/decoder"
 	"github.com/korrel8/korrel8/internal/pkg/logging"
+	"github.com/korrel8/korrel8/internal/pkg/must"
 	alert "github.com/korrel8/korrel8/pkg/amalert"
 	"github.com/korrel8/korrel8/pkg/engine"
 	"github.com/korrel8/korrel8/pkg/k8s"
@@ -30,52 +31,41 @@ var (
 	ctx = context.Background()
 )
 
-func check(err error, format ...any) {
-	if err != nil {
-		if len(format) == 0 {
-			panic(err)
-		} else {
-			panic(fmt.Errorf(format[0].(string), format[1:]...))
-		}
-	}
-}
-
-func must[T any](v T, err error) T { check(err); return v }
-
 func restConfig() *rest.Config {
 	cfg, err := config.GetConfig()
 	if err == nil {
 		cfg.RateLimiter = flowcontrol.NewTokenBucketRateLimiter(100, 1000)
 	}
-	return must(cfg, err)
+	return must.Must1(cfg, err)
 }
 
 func k8sClient(cfg *rest.Config) client.Client {
-	return must(client.New(cfg, client.Options{}))
+	log.V(2).Info("create k8s client")
+	return must.Must1(client.New(cfg, client.Options{}))
 }
 
 func newEngine() *engine.Engine {
+	log.V(2).Info("create engine")
 	cfg := restConfig()
 	e := engine.New()
 	for _, x := range []struct {
 		d      korrel8.Domain
 		create func() (korrel8.Store, error)
 	}{
-		{k8s.Domain, func() (korrel8.Store, error) { return k8s.NewStore(k8sClient(cfg)), nil }},
+		{k8s.Domain, func() (korrel8.Store, error) { return k8s.NewStore(k8sClient(cfg), cfg) }},
 		{alert.Domain, func() (korrel8.Store, error) { return alert.NewOpenshiftAlertManagerStore(ctx, cfg) }},
 		{loki.Domain, func() (korrel8.Store, error) { return loki.NewOpenshiftLokiStackStore(ctx, k8sClient(cfg), cfg) }},
 	} {
+		log.V(2).Info("add domain", "domain", x.d)
 		s, err := x.create()
 		if err != nil {
 			log.Error(err, "error creating store", "domain", x.d)
-			e.AddDomain(x.d, nil)
-		} else {
-			e.AddDomain(x.d, s)
 		}
+		e.AddDomain(x.d, s)
 	}
 	// Load rules
 	for _, path := range *rulePaths {
-		check(loadRules(e, path))
+		must.Must(loadRules(e, path))
 	}
 	return e
 }
@@ -99,13 +89,13 @@ func newPrinter(w io.Writer) printer {
 	case "json-pretty":
 		encoder := json.NewEncoder(w)
 		encoder.SetIndent("", "  ")
-		return printer{print: func(o korrel8.Object) { check(encoder.Encode(o)) }}
+		return printer{print: func(o korrel8.Object) { must.Must(encoder.Encode(o)) }}
 
 	case "yaml":
-		return printer{print: func(o korrel8.Object) { fmt.Fprintf(w, "---\n%s", must(yaml.Marshal(&o))) }}
+		return printer{print: func(o korrel8.Object) { fmt.Fprintf(w, "---\n%s", must.Must1(yaml.Marshal(&o))) }}
 
 	default:
-		check(fmt.Errorf("invalid output type: %v", *output))
+		must.Must(fmt.Errorf("invalid output type: %v", *output))
 		return printer{}
 	}
 }

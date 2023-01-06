@@ -13,6 +13,8 @@ import (
 	"testing"
 
 	"github.com/korrel8/korrel8/internal/pkg/decoder"
+	"github.com/korrel8/korrel8/internal/pkg/test"
+	"github.com/korrel8/korrel8/pkg/alert"
 	"github.com/korrel8/korrel8/pkg/engine"
 	"github.com/korrel8/korrel8/pkg/k8s"
 	"github.com/korrel8/korrel8/pkg/korrel8"
@@ -25,6 +27,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta/testrestmapper"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
@@ -33,8 +36,9 @@ func setup(t *testing.T, ruleFiles ...string) (client.Client, *engine.Engine) {
 	t.Helper()
 	c := fake.NewClientBuilder().WithRESTMapper(testrestmapper.TestOnlyStaticRESTMapper(k8s.Scheme)).Build()
 	e := engine.New()
-	e.AddDomain(k8s.Domain, k8s.NewStore(c))
+	e.AddDomain(k8s.Domain, test.Must(k8s.NewStore(c, &rest.Config{})))
 	e.AddDomain(loki.Domain, nil)
+	e.AddDomain(alert.Domain, nil)
 	for _, name := range ruleFiles {
 		f, err := os.Open(name)
 		require.NoError(t, err)

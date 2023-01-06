@@ -15,6 +15,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/rest"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -88,10 +89,22 @@ func (c Class) String() string { return fmt.Sprintf("%v.%v.%v", c.Kind, c.Versio
 type Object client.Object
 
 // Store implements the korrel8.Store interface as a k8s API client.
-type Store struct{ c client.Client }
+type Store struct {
+	c    client.Client
+	base *url.URL
+}
 
 // NewStore creates a new store
-func NewStore(c client.Client) *Store { return &Store{c: c} }
+func NewStore(c client.Client, cfg *rest.Config) (*Store, error) {
+	host := cfg.Host
+	if host == "" {
+		host = "localhost"
+	}
+	base, _, err := rest.DefaultServerURL(host, cfg.APIPath, schema.GroupVersion{}, true)
+	return &Store{c: c, base: base}, err
+}
+
+func (s *Store) Resolve(ref uri.Reference) *url.URL { return ref.Resolve(s.base) }
 
 func (s *Store) Get(ctx context.Context, ref uri.Reference, result korrel8.Appender) (err error) {
 	defer func() {
@@ -99,7 +112,7 @@ func (s *Store) Get(ctx context.Context, ref uri.Reference, result korrel8.Appen
 			err = fmt.Errorf("get %v: %w", ref, err)
 		}
 	}()
-	gvk, nsName, err := s.parsePath(ref.Path)
+	gvk, _, nsName, err := s.parsePath(ref.Path)
 	if err != nil {
 		return err
 	}
@@ -110,30 +123,29 @@ func (s *Store) Get(ctx context.Context, ref uri.Reference, result korrel8.Appen
 	}
 }
 
-func (s *Store) RefClass(ref uri.Reference) korrel8.Class {
-	if gvk, _, err := s.parsePath(ref.Path); err == nil {
-		return Class(gvk)
+func (s *Store) RefClass(ref uri.Reference) (korrel8.Class, error) {
+	if gvk, _, _, err := s.parsePath(ref.Path); err == nil {
+		return Class(gvk), nil
 	}
-	return nil
+	return nil, fmt.Errorf("not a valid %d reference: %v", Domain, ref)
 }
 
 // Parsing a REST URI into components then using client.Client to recreate the REST URI.
 //
 // TODO revisit: this is weirdly indirect - parse an API path to make a Client call which re-creates the API path.
-// Should be able to use a REST client directly, but client.Client does REST client creation & caching
-// and manages schema and RESTMapper stuff which I'm not sure I understand yet.
-func (s *Store) parsePath(path string) (gvk schema.GroupVersionKind, nsName types.NamespacedName, err error) {
+// Review tools in package rest to build the request more reliably.
+func (s *Store) parsePath(path string) (gvk schema.GroupVersionKind, gvr schema.GroupVersionResource, nsName types.NamespacedName, err error) {
 	parts := apiPath.FindStringSubmatch(path)
 	if parts == nil {
-		return gvk, nsName, fmt.Errorf("invalid k8s REST path: %v", path)
+		return gvk, gvr, nsName, fmt.Errorf("invalid k8s REST path: %v", path)
 	}
 	nsName.Namespace, nsName.Name = parts[apiNamespace], parts[apiName]
-	gvr := schema.GroupVersionResource{Group: parts[apiGroup], Version: parts[apiVersion], Resource: parts[apiResource]}
+	gvr = schema.GroupVersionResource{Group: parts[apiGroup], Version: parts[apiVersion], Resource: parts[apiResource]}
 	gvks, err := s.c.RESTMapper().KindsFor(gvr)
-	if len(gvks) > 0 {
-		gvk = gvks[0]
+	if len(gvks) == 0 {
+		return gvk, gvr, nsName, fmt.Errorf("not a valid %d reference: %v", Domain, path)
 	}
-	return gvk, nsName, err
+	return gvks[0], gvr, nsName, err
 }
 
 func (s *Store) ClassFor(resource string) korrel8.Class {
@@ -226,18 +238,18 @@ const (
 )
 
 // RefStoreToConsole converts a k8s reference to a console URL
-func (s *Store) RefStoreToConsole(ref uri.Reference) (uri.Reference, error) {
-	p := apiPath.FindStringSubmatch(ref.Path)
-	if p == nil {
-		return uri.Reference{}, fmt.Errorf("invalid k8s reference: %v", ref)
+func (s *Store) RefStoreToConsole(storeRef uri.Reference) (korrel8.Class, uri.Reference, error) {
+	gvk, gvr, nsName, err := s.parsePath(storeRef.Path)
+	if err != nil {
+		return nil, uri.Reference{}, fmt.Errorf("invalid k8s reference: %v", storeRef)
 	}
-	var r uri.Reference
-	if p[apiNamespace] != "" { // Namespaced resource
-		r.Path = path.Join("k8s", "ns", p[apiNamespace], p[apiResource], p[apiName])
+	var consoleRef uri.Reference
+	if nsName.Namespace != "" { // Namespaced resource
+		consoleRef.Path = path.Join("k8s", "ns", nsName.Namespace, gvr.Resource, nsName.Name)
 	} else { // Cluster resource
-		r.Path = path.Join("k8s", "cluster", p[apiResource], p[apiName])
+		consoleRef.Path = path.Join("k8s", "cluster", gvr.Resource, nsName.Name)
 	}
-	return r, nil
+	return Class(gvk), consoleRef, nil
 }
 
 var consolePath = regexp.MustCompile(`(?:^|/)(?:k8s/ns/([^/]+)|cluster)/([^/]+)(?:/([^/]+))?$`)

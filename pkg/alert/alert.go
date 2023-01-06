@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"net/url"
 
 	"github.com/korrel8/korrel8/pkg/korrel8"
 	"github.com/korrel8/korrel8/pkg/uri"
@@ -40,12 +41,13 @@ type Object = *v1.Alert
 type Store struct {
 	api  v1.API
 	host string
+	base *url.URL
 }
 
 func NewStore(host string, rt http.RoundTripper) (*Store, error) {
-	host = fmt.Sprintf("https://%s", host)
+	base := &url.URL{Scheme: "https", Host: host}
 	client, err := api.NewClient(api.Config{
-		Address:      host,
+		Address:      base.String(),
 		RoundTripper: rt,
 	})
 	if err != nil {
@@ -56,6 +58,8 @@ func NewStore(host string, rt http.RoundTripper) (*Store, error) {
 		host: host,
 	}, nil
 }
+
+func (s *Store) Resolve(ref uri.Reference) *url.URL { return ref.Resolve(s.base) }
 
 // Get implements the korrel8.Store interface.
 // The ref has a "query" with a PromQL label matcher expression with the wrapping

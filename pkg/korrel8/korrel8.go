@@ -49,7 +49,7 @@ func FullName(c Class) string { return path.Join(c.Domain().String(), c.String()
 // Store is a source of signals belonging to a single domain.
 type Store interface {
 	// Get the objects selected by reference in this store.
-	// Appends resulting objects to Result.
+	// Appends resulting objects to Appender.
 	Get(context.Context, uri.Reference, Appender) error
 }
 
@@ -91,14 +91,15 @@ type TemplateFuncser interface{ TemplateFuncs() map[string]any }
 
 // RefConverter may be implemented by Domain or Store implementations that support console URLs.
 type RefConverter interface {
+	RefClasser
 	// RefStoreToConsole converts a store reference to an equivalent console reference.
-	RefStoreToConsole(uri.Reference) (uri.Reference, error)
+	RefStoreToConsole(uri.Reference) (Class, uri.Reference, error)
 	// RefConsoleToStore converts a console reference to an equivalent store reference.
 	RefConsoleToStore(uri.Reference) (Class, uri.Reference, error)
 }
 
 // RefClasser may be implemented by Domain or Store implementations that can deduce the class from a reference.
 type RefClasser interface {
-	// RefClass gets the class of a URI reference, returns nil if reference is not recognized.
-	RefClass(uri.Reference) Class
+	// RefClass gets the class of a URI reference.
+	RefClass(uri.Reference) (Class, error)
 }

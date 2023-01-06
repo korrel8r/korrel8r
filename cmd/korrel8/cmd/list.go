@@ -6,6 +6,7 @@ import (
 	"regexp"
 	"text/tabwriter"
 
+	"github.com/korrel8/korrel8/internal/pkg/must"
 	"github.com/korrel8/korrel8/pkg/korrel8"
 	"github.com/spf13/cobra"
 )
@@ -25,7 +26,7 @@ var listCmd = &cobra.Command{
 			}
 		case 1:
 			d, err := e.Domain(args[0])
-			check(err)
+			must.Must(err)
 			for _, c := range d.Classes() {
 				fmt.Println(c.String())
 			}
@@ -42,12 +43,12 @@ var rulesCmd = &cobra.Command{
 		defer w.Flush()
 		var start, goal korrel8.Class
 		if *ruleStart != "" {
-			start = must(e.ParseClass(*ruleStart))
+			start = must.Must1(e.ParseClass(*ruleStart))
 		}
 		if *ruleGoal != "" {
-			goal = must(e.ParseClass(*ruleGoal))
+			goal = must.Must1(e.ParseClass(*ruleGoal))
 		}
-		name := must(regexp.Compile(*ruleName))
+		name := must.Must1(regexp.Compile(*ruleName))
 		for _, r := range e.Rules() {
 			if (start == nil || r.Start() == start) &&
 				(goal == nil || r.Goal() == goal) &&

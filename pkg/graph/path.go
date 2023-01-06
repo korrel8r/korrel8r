@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/korrel8/korrel8/pkg/korrel8"
+	"golang.org/x/exp/slices"
 )
 
 // Links are a set of rules with the same Start() and Goal().
@@ -24,6 +25,11 @@ func (l Links) Valid() bool {
 	return true
 }
 
+// Sort into consistent order for comparison
+func (l Links) Sort() {
+	slices.SortFunc(l, func(a, b korrel8.Rule) bool { return a.String() < b.String() })
+}
+
 // MultiPath represents multiple paths from a Start to a Goal.
 type MultiPath []Links
 
@@ -37,6 +43,13 @@ func (path MultiPath) Valid() bool {
 		}
 	}
 	return true
+}
+
+// Sort link lists into consistent order for comparison of MultiPaths.
+func (mp MultiPath) Sort() {
+	for _, links := range mp {
+		links.Sort()
+	}
 }
 
 func (mp MultiPath) String() string {

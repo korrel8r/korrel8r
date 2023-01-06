@@ -110,8 +110,21 @@ func TestStoreGet_Constraint(t *testing.T) {
 	} {
 		t.Run(strconv.Itoa(n), func(t *testing.T) {
 			var result korrel8.ListResult
-			assert.NoError(t, s.Get(ctx, x.ref, &result))
-			assert.Equal(t, x.want, result.List())
+			if assert.NoError(t, s.Get(ctx, x.ref, &result)) {
+				assert.Equal(t, x.want, result.List())
+			}
 		})
 	}
+}
+
+func TestDomain_RefStoreToConsole(t *testing.T) {
+	ref, err := uri.Parse("/api/logs/v1/infrastructure/loki/api/v1/query_range?query=%7Bkubernetes_namespace_name%3D%22openshift-cluster-version%22%7D+%7C+json+%7C+kubernetes_label_k8s_app%3D%22cluster-version-operator%22")
+	require.NoError(t, err)
+	class, cref, err := Domain.RefStoreToConsole(ref)
+	require.NoError(t, err)
+	assert.Equal(t, Class("infrastructure"), class)
+	v := uri.Values{}
+	v.Set("q", ref.Query().Get("query"))
+	v.Set("tenant", "infrastructure")
+	assert.Equal(t, uri.Reference{Path: "monitoring/logs", RawQuery: v.Encode()}, cref)
 }
