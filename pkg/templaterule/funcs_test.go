@@ -13,7 +13,7 @@ func TestUrlencode(t *testing.T) {
 }
 
 func TestSelector(t *testing.T) {
-	assert.Equal(t, "a=1,b=2", selector(map[string]int{"a": 1, "b": 2}))
+	assert.Equal(t, "a=1,b=2,c=3", selector(map[string]int{"a": 1, "b": 2, "c": 3}))
 	assert.Equal(t, "", selector(nil))
 	assert.Equal(t, "", selector(map[int]int{}))
 }

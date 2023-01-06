@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/url"
 	"reflect"
+	"sort"
 	"strings"
 
 	"github.com/korrel8/korrel8/pkg/korrel8"
@@ -88,9 +89,14 @@ func selector(m any) string {
 	}
 	b := &strings.Builder{}
 	i := v.MapRange()
-	sep := ""
+	keys := make([]string, 0, v.Len())
 	for i.Next() {
-		fmt.Fprintf(b, "%v%v=%v", sep, i.Key(), i.Value())
+		keys = append(keys, i.Key().String())
+	}
+	sort.Strings(keys)
+	sep := ""
+	for _, k := range keys {
+		fmt.Fprintf(b, "%v%v=%v", sep, k, v.MapIndex(reflect.ValueOf(k)))
 		sep = ","
 	}
 	return b.String()
