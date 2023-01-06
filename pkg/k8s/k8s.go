@@ -68,8 +68,14 @@ func ClassOf(o client.Object) korrel8.Class {
 	return nil
 }
 
-func (c Class) Key(o korrel8.Object) any { return c }
-func (c Class) Domain() korrel8.Domain   { return Domain }
+func (c Class) ID(o korrel8.Object) any {
+	if o, _ := o.(client.Object); o != nil {
+		return client.ObjectKeyFromObject(o)
+	}
+	return nil
+}
+
+func (c Class) Domain() korrel8.Domain { return Domain }
 func (c Class) New() korrel8.Object {
 	if o, err := Scheme.New(schema.GroupVersionKind(c)); err == nil {
 		return o
@@ -87,7 +93,7 @@ type Store struct{ c client.Client }
 // NewStore creates a new store
 func NewStore(c client.Client) *Store { return &Store{c: c} }
 
-func (s *Store) Get(ctx context.Context, ref uri.Reference, result korrel8.Result) (err error) {
+func (s *Store) Get(ctx context.Context, ref uri.Reference, result korrel8.Appender) (err error) {
 	defer func() {
 		if err != nil {
 			err = fmt.Errorf("get %v: %w", ref, err)
@@ -138,7 +144,7 @@ func (s *Store) ClassFor(resource string) korrel8.Class {
 	return Class(gvks[0])
 }
 
-func (s *Store) getObject(ctx context.Context, gvk schema.GroupVersionKind, nsName types.NamespacedName, result korrel8.Result) error {
+func (s *Store) getObject(ctx context.Context, gvk schema.GroupVersionKind, nsName types.NamespacedName, result korrel8.Appender) error {
 	scheme := s.c.Scheme()
 	o, err := scheme.New(gvk)
 	if err != nil {
@@ -174,7 +180,7 @@ func (s *Store) getOpts(q url.Values) (opts []client.ListOption, err error) {
 	return opts, nil
 }
 
-func (s *Store) getList(ctx context.Context, gvk schema.GroupVersionKind, namespace string, query url.Values, result korrel8.Result) error {
+func (s *Store) getList(ctx context.Context, gvk schema.GroupVersionKind, namespace string, query url.Values, result korrel8.Appender) error {
 	gvk.Kind = gvk.Kind + "List"
 	o, err := s.c.Scheme().New(gvk)
 	if err != nil {

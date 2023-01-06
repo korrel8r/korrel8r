@@ -34,8 +34,13 @@ type Domain interface {
 type Class interface {
 	Domain() Domain // Domain of this class.
 	New() Object    // Return a new instance of the class, can be unmarshaled from JSON.
-	Key(Object) any // Comparable key for de-duplication or nil if object is not in this class.
 	String() string // Name of the class within the domain, e.g "Pod". See FullName()
+}
+
+// IDer is implemented by classes that have a meaningful identifier.
+// If a Class implements IDer then SetResult will eliminate the second and subsequent objects with same ID.
+type IDer interface {
+	ID(Object) any // Comparable ID for de-duplication.
 }
 
 // FullName is the qualified domain/name of a class, e.g. "k8s/Pod"
@@ -45,12 +50,11 @@ func FullName(c Class) string { return path.Join(c.Domain().String(), c.String()
 type Store interface {
 	// Get the objects selected by reference in this store.
 	// Appends resulting objects to Result.
-	Get(context.Context, uri.Reference, Result) error
+	Get(context.Context, uri.Reference, Appender) error
 }
 
-// Result gathers results from Store.Get calls.
-// See ListResult and SetResult.
-type Result interface{ Append(...Object) }
+// Appender gathers results from Store.Get calls.
+type Appender interface{ Append(...Object) }
 
 // Rule for finding correlated objects.
 // Rule implementations must be comparable.

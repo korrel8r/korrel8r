@@ -104,7 +104,7 @@ func (h *correlateHandler) update(req *http.Request) {
 	addErr(err)
 
 	paths := must(pathFunc(h.Start, h.Goal))
-	starters := korrel8.NewSetResult(h.Start)
+	starters := korrel8.NewResult(h.Start)
 	addErr(h.StartStore.Get(context.Background(), h.Ref, starters))
 	h.StartObjects = starters.List()
 	refs := unique.NewList[uri.Reference]()

@@ -35,10 +35,9 @@ func Plain(ref uri.Reference) uri.Reference {
 
 type Class string
 
-func (c Class) Domain() korrel8.Domain   { return Domain }
-func (c Class) String() string           { return string(c) }
-func (c Class) New() korrel8.Object      { return Object("") }
-func (c Class) Key(o korrel8.Object) any { return o }
+func (c Class) Domain() korrel8.Domain { return Domain }
+func (c Class) String() string         { return string(c) }
+func (c Class) New() korrel8.Object    { return Object("") }
 
 var _ korrel8.Class = Class("") // Implements interface.
 
@@ -69,7 +68,7 @@ func NewStore(baseURL *url.URL, c *http.Client) (*Store, error) {
 
 func (s *Store) String() string { return s.base.String() }
 
-func (s *Store) Get(ctx context.Context, ref uri.Reference, result korrel8.Result) error {
+func (s *Store) Get(ctx context.Context, ref uri.Reference, result korrel8.Appender) error {
 	u := s.base.ResolveReference(ref.URL())
 	resp, err := s.c.Get(u.String())
 	if err != nil {
@@ -154,7 +153,7 @@ func NewPlainStore(baseURL *url.URL, c *http.Client) (PlainStore, error) {
 	return PlainStore{s}, err
 }
 
-func (s *PlainStore) Get(ctx context.Context, ref uri.Reference, result korrel8.Result) error {
+func (s *PlainStore) Get(ctx context.Context, ref uri.Reference, result korrel8.Appender) error {
 	return s.Store.Get(ctx, Plain(ref), result)
 }
 

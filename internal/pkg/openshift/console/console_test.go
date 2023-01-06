@@ -24,7 +24,7 @@ func setup(t *testing.T) *Console {
 	e.AddDomain(k8s.Domain, k8s.NewStore(test.K8sClient))
 	u, err := openshift.ConsoleURL(context.Background(), test.K8sClient)
 	require.NoError(t, err)
-	return New(u, e) // FIXME drop engine name?)
+	return New(u, e)
 }
 
 func TestConsoleToRef(t *testing.T) {

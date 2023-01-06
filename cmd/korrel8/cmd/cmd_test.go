@@ -68,8 +68,6 @@ func TestCorrelate_Pods(t *testing.T) {
 		exitCode = Execute()
 	})
 	require.Equal(t, 0, exitCode, stderr)
-	// FIXME verify --get results not just query.
-	// FIXME Separate test to verify correlation to pods?
 	require.Equal(t, want, strings.TrimSpace(stdout))
 }
 

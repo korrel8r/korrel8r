@@ -23,10 +23,15 @@ func (d domain) Classes() []korrel8.Class   { return []korrel8.Class{Class{}} }
 
 type Class struct{} // Only one class
 
-func (c Class) Domain() korrel8.Domain   { return Domain }
-func (c Class) String() string           { return Domain.String() }
-func (c Class) New() korrel8.Object      { return &v1.Alert{} }
-func (c Class) Key(o korrel8.Object) any { return o.(Object).Labels["alertname"] }
+func (c Class) Domain() korrel8.Domain { return Domain }
+func (c Class) String() string         { return Domain.String() }
+func (c Class) New() korrel8.Object    { return &v1.Alert{} }
+func (c Class) ID(o korrel8.Object) any {
+	if o, _ := o.(Object); o != nil {
+		return o.Labels["alertname"]
+	}
+	return nil
+}
 
 var _ korrel8.Class = Class{}
 
@@ -55,7 +60,7 @@ func NewStore(host string, rt http.RoundTripper) (*Store, error) {
 // Get implements the korrel8.Store interface.
 // The  reference "query" parameter is a PromQL label matcher expression with the wrapping
 // `{` and `}` being optional, e.g.  `namespace="default",pod=~"myapp-.+"`.
-func (s Store) Get(ctx context.Context, ref uri.Reference, result korrel8.Result) error {
+func (s Store) Get(ctx context.Context, ref uri.Reference, result korrel8.Appender) error {
 	// TODO: allow to filter on alert state (pending/firing)?
 	// TODO: support sorting order (e.g. most recent/oldest, severity)?
 	// TODO: allow grouping (all alerts related to podX grouped together)?

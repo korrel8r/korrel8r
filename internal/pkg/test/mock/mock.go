@@ -62,8 +62,8 @@ func (c Class) String() string {
 	}
 }
 
-func (c Class) New() korrel8.Object      { return Object(fmt.Sprintf("%v:", string(c))) }
-func (c Class) Key(o korrel8.Object) any { return o }
+func (c Class) New() korrel8.Object     { return Object(fmt.Sprintf("%v:", string(c))) }
+func (c Class) ID(o korrel8.Object) any { return o }
 
 var _ korrel8.Class = Class("") // Implements interface
 
@@ -123,7 +123,7 @@ func Rules(startGoal ...string) []korrel8.Rule {
 type Store map[string][]korrel8.Object
 
 // Get returns the objects associated with the query
-func (s Store) Get(_ context.Context, ref uri.Reference, r korrel8.Result) error {
+func (s Store) Get(_ context.Context, ref uri.Reference, r korrel8.Appender) error {
 	for _, o := range s[ref.String()] {
 		r.Append(o)
 	}

@@ -36,7 +36,7 @@ var correlateCmd = &cobra.Command{
 			paths = must(e.Graph().ShortestPaths(start, goal))
 		}
 		log.V(1).Info("found paths", "paths", paths, "count", len(paths))
-		starters := korrel8.NewSetResult(start)
+		starters := korrel8.NewResult(start)
 
 		// FIXME include constraint
 

@@ -25,10 +25,15 @@ func (d domain) Classes() []korrel8.Class   { return []korrel8.Class{Class{}} }
 
 type Class struct{} // Only one class
 
-func (c Class) Domain() korrel8.Domain   { return Domain }
-func (c Class) String() string           { return Domain.String() }
-func (c Class) New() korrel8.Object      { return &models.GettableAlert{} }
-func (c Class) Key(o korrel8.Object) any { return o.(*models.GettableAlert).Labels["alertname"] }
+func (c Class) Domain() korrel8.Domain { return Domain }
+func (c Class) String() string         { return Domain.String() }
+func (c Class) New() korrel8.Object    { return &models.GettableAlert{} }
+func (c Class) ID(o korrel8.Object) any {
+	if o, _ := o.(*models.GettableAlert); o != nil {
+		return o.Labels["alertname"]
+	}
+	return nil
+}
 
 type Object *models.GettableAlert
 
@@ -47,7 +52,7 @@ func NewStore(host string, hc *http.Client) *Store {
 
 // Get alerts for alertmanager URI reference, see:
 // https://petstore.swagger.io/?url=https://raw.githubusercontent.com/prometheus/alertmanager/master/api/v2/openapi.yaml
-func (s Store) Get(ctx context.Context, ref uri.Reference, result korrel8.Result) error {
+func (s Store) Get(ctx context.Context, ref uri.Reference, result korrel8.Appender) error {
 	params := alert.NewGetAlertsParamsWithContext(ctx)
 
 	if f := ref.Query().Get("filter"); f != "" {
