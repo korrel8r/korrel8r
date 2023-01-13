@@ -31,7 +31,7 @@ func NewOpenshiftStore(ctx context.Context, cfg *rest.Config) (korrel8.Store, er
 	if err != nil {
 		return nil, err
 	}
-	host, err := openshift.RouteHost(ctx, c, openshift.ThanosQuerierNSName)
+	host, err := openshift.RouteHost(ctx, c, openshift.PrometheusK8sName)
 	if err != nil {
 		return nil, err
 	}

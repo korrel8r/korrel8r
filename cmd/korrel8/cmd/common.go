@@ -12,7 +12,7 @@ import (
 	"github.com/korrel8/korrel8/internal/pkg/decoder"
 	"github.com/korrel8/korrel8/internal/pkg/logging"
 	"github.com/korrel8/korrel8/internal/pkg/must"
-	alert "github.com/korrel8/korrel8/pkg/amalert"
+	"github.com/korrel8/korrel8/pkg/alert"
 	"github.com/korrel8/korrel8/pkg/engine"
 	"github.com/korrel8/korrel8/pkg/k8s"
 	"github.com/korrel8/korrel8/pkg/korrel8"
@@ -53,7 +53,7 @@ func newEngine() *engine.Engine {
 		create func() (korrel8.Store, error)
 	}{
 		{k8s.Domain, func() (korrel8.Store, error) { return k8s.NewStore(k8sClient(cfg), cfg) }},
-		{alert.Domain, func() (korrel8.Store, error) { return alert.NewOpenshiftAlertManagerStore(ctx, cfg) }},
+		{alert.Domain, func() (korrel8.Store, error) { return alert.NewOpenshiftStore(ctx, cfg) }},
 		{loki.Domain, func() (korrel8.Store, error) { return loki.NewOpenshiftLokiStackStore(ctx, k8sClient(cfg), cfg) }},
 	} {
 		log.V(2).Info("add domain", "domain", x.d)

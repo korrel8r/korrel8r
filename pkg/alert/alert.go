@@ -34,13 +34,15 @@ func (c Class) ID(o korrel8.Object) any {
 	return nil
 }
 
-var _ korrel8.Class = Class{}
+var (
+	_ korrel8.Class = Class{}
+	_ korrel8.IDer  = Class{}
+)
 
 type Object = *v1.Alert
 
 type Store struct {
 	api  v1.API
-	host string
 	base *url.URL
 }
 
@@ -53,10 +55,7 @@ func NewStore(host string, rt http.RoundTripper) (*Store, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Store{
-		api:  v1.NewAPI(client),
-		host: host,
-	}, nil
+	return &Store{api: v1.NewAPI(client), base: base}, nil
 }
 
 func (s *Store) Resolve(ref uri.Reference) *url.URL { return ref.Resolve(s.base) }
@@ -75,7 +74,7 @@ func (s Store) Get(ctx context.Context, ref uri.Reference, result korrel8.Append
 	}
 	resp, err := s.api.Alerts(ctx)
 	if err != nil {
-		return fmt.Errorf("%v: %w (%v)", Domain, err, s.host)
+		return fmt.Errorf("%v: %w (%v)", Domain, err, s.base.Host)
 	}
 
 	for _, a := range resp.Alerts {

@@ -25,6 +25,7 @@ var (
 	LokiStackNSName        = NamespacedName(OpenshiftLogging, LoggingLoki)
 	ConsoleNSName          = NamespacedName(OpenshiftConsole, "console")
 	ThanosQuerierNSName    = NamespacedName(OpenshiftMonitoring, ThanosQuerier)
+	PrometheusK8sName      = NamespacedName(OpenshiftMonitoring, "prometheus-k8s")
 	AlertmanagerMainNSName = NamespacedName(OpenshiftMonitoring, AlertmanagerMain)
 )
 
