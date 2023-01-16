@@ -74,8 +74,12 @@ func NewStore(baseURL *url.URL, c *http.Client) (*Store, error) {
 
 func (s *Store) String() string { return s.base.String() }
 
+func (s *Store) Resolve(ref uri.Reference) *url.URL {
+	return s.base.ResolveReference(ref.URL())
+}
+
 func (s *Store) Get(ctx context.Context, ref uri.Reference, result korrel8.Appender) error {
-	u := s.base.ResolveReference(ref.URL())
+	u := s.Resolve(ref)
 	resp, err := s.c.Get(u.String())
 	if err != nil {
 		return fmt.Errorf("%w: %v", err, u)

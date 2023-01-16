@@ -5,6 +5,7 @@ package korrel8
 
 import (
 	"context"
+	"net/url"
 	"path"
 	"time"
 
@@ -51,6 +52,8 @@ type Store interface {
 	// Get the objects selected by reference in this store.
 	// Appends resulting objects to Appender.
 	Get(context.Context, uri.Reference, Appender) error
+	// Resolve a URI reference relative to the store's base URL.
+	Resolve(uri.Reference) *url.URL
 }
 
 // Appender gathers results from Store.Get calls.
