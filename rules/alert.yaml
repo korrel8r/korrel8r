@@ -1,4 +1,5 @@
 ---
+# NOTE Rules are framed for the Alertmanager API.
 name: AlertToDeployment
 start:
   domain: alert
@@ -6,6 +7,38 @@ goal:
   domain: k8s
   classes: [Deployment.apps]
 result:
-  # NOTE this has been modified for the Alertmanager API.
   uri:  |-
     /api/v1/namespaces/{{.Alert.Labels.namespace}}/deployments/{{.Alert.Labels.deployment}}
+---
+name: AlertToNamespace
+start:
+  domain: alert
+goal:
+  domain: k8s
+  classes: [Namespace.]
+result:
+  # NOTE this has been modified for the Alertmanager API.
+  uri:  |-
+    /api/v1/namespaces/{{.Alert.Labels.namespace}}
+---
+name: AlertToPod
+start:
+  domain: alert
+goal:
+  domain: k8s
+  classes: [Pod.]
+result:
+  # NOTE this has been modified for the Alertmanager API.
+  uri:  |-
+    /api/v1/namespaces/{{.Alert.Labels.namespace}}/pods/{{.Alert.Labels.pod}}
+---
+name: AlertToDaemonSet
+start:
+  domain: alert
+goal:
+  domain: k8s
+  classes: [DaemonSet.]
+result:
+  # NOTE this has been modified for the Alertmanager API.
+  uri:  |-
+    /api/v1/namespaces/{{.Alert.Labels.namespace}}/daemonsets/{{.Alert.Labels.daemonset}}

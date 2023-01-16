@@ -187,3 +187,41 @@ func (e *Engine) Graph() *graph.Graph {
 // TemplateFuncs returns template helper functions for stores and domains known to this engine.
 // See text/template.Template.Funcs
 func (e *Engine) TemplateFuncs() map[string]any { return e.templateFuncs }
+
+// RefConverter checks if either the named domain or store is a RefConverter
+func (e *Engine) RefConverter(domain string) (korrel8.RefConverter, error) {
+	d, err := e.Domain(domain)
+	if err != nil {
+		return nil, err
+	}
+	if cvt, ok := d.(korrel8.RefConverter); ok {
+		return cvt, nil
+	}
+	s, err := e.Store(domain)
+	if err != nil {
+		return nil, err
+	}
+	if cvt, ok := s.(korrel8.RefConverter); ok {
+		return cvt, nil
+	}
+	return nil, fmt.Errorf("no reference converter for %v", domain)
+}
+
+// RefClasser checks if either the named domain or store is a RefClasser
+func (e *Engine) RefClasser(domain string) (korrel8.RefClasser, error) {
+	d, err := e.Domain(domain)
+	if err != nil {
+		return nil, err
+	}
+	if cvt, ok := d.(korrel8.RefClasser); ok {
+		return cvt, nil
+	}
+	s, err := e.Store(domain)
+	if err != nil {
+		return nil, err
+	}
+	if cvt, ok := s.(korrel8.RefClasser); ok {
+		return cvt, nil
+	}
+	return nil, fmt.Errorf("can't deduce reference class for %v", domain)
+}

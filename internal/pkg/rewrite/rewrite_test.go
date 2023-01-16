@@ -24,14 +24,13 @@ func setup(t *testing.T) *Rewriter {
 	e := engine.New()
 	// TODO test with more domains.
 	e.AddDomain(k8s.Domain, must.Must1(k8s.NewStore(test.K8sClient, test.RESTConfig)))
-	e.AddDomain(loki.Domain, nil) //  FIXME loki tests, rewriter on domain?
+	e.AddDomain(loki.Domain, nil)
 	u, err := openshift.ConsoleURL(context.Background(), test.K8sClient)
 	require.NoError(t, err)
 	return New(u, e)
 }
 
 func TestRewriter(t *testing.T) {
-	// FIXME add domains
 	rewriter := setup(t)
 	for _, x := range []struct {
 		cref, ref uri.Reference
@@ -54,16 +53,9 @@ func TestRewriter(t *testing.T) {
 			}
 		})
 		t.Run("RefStoreToConsole/"+x.ref.Path, func(t *testing.T) {
-			class, cref, err := rewriter.RefStoreToConsole(x.ref)
+			cref, err := rewriter.RefStoreToConsole(x.class, x.ref)
 			if assert.NoError(t, err) {
 				assert.Equal(t, x.cref, cref)
-				assert.Equal(t, x.class, class)
-			}
-		})
-		t.Run("RefClass/"+x.ref.Path, func(t *testing.T) {
-			class, err := rewriter.RefClass(x.ref)
-			if assert.NoError(t, err) {
-				assert.Equal(t, x.class, class)
 			}
 		})
 	}

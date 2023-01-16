@@ -160,7 +160,7 @@ func TestStore_RefStoreToConsole(t *testing.T) {
 		{"apis/apps/v1/namespaces/NAMESPACE/deployments/NAME", "k8s/ns/NAMESPACE/deployments/NAME"},
 	} {
 		t.Run(x[0], func(t *testing.T) {
-			_, ref, err := s.RefStoreToConsole(uri.Reference{Path: x[0]})
+			ref, err := s.RefStoreToConsole(nil, uri.Reference{Path: x[0]})
 			if assert.NoError(t, err) {
 				assert.Equal(t, x[1], ref.String())
 			}

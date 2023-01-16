@@ -19,22 +19,32 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-type domain struct{}
-
-var Domain domain
-
-func (d domain) String() string                  { return "loki" }
-func (d domain) Class(name string) korrel8.Class { return classMap[name] }
-func (d domain) Classes() []korrel8.Class        { return classes }
-
 var (
 	_ korrel8.Domain       = Domain
-	_ korrel8.RefConverter = Domain
+	_ korrel8.Store        = &Store{}
+	_ korrel8.RefClasser   = Domain
+	_ korrel8.RefConverter = &Store{}
 )
+
+var Domain = domain{}
+
+type domain struct{}
+
+func (domain) String() string                  { return "loki" }
+func (domain) Class(name string) korrel8.Class { return classMap[name] }
+func (domain) Classes() []korrel8.Class        { return classes }
+
+func (domain) RefClass(ref uri.Reference) (korrel8.Class, error) {
+	m := lokiStackPath.FindStringSubmatch(ref.Path)
+	if len(m) != 2 {
+		return nil, fmt.Errorf("not a valid %v reference: %v", Domain, ref)
+	}
+	return Class(m[1]), nil
+}
 
 // Plain converts a LokiStack reference to a plain loki reference.
 func Plain(ref uri.Reference) uri.Reference {
-	// FIXME should add a log_type test to the plain query.
+	// TODO add a log_type test to the plain query.
 	return uri.Reference{Path: lokiStackPath.ReplaceAllString(ref.Path, ""), RawQuery: ref.RawQuery}
 }
 
@@ -46,8 +56,7 @@ func (c Class) New() korrel8.Object    { return Object("") }
 
 var _ korrel8.Class = Class("") // Implements interface.
 
-type Object json.RawMessage     // Log record FIXME
-func (o Object) String() string { return string(o) }
+type Object string // Log record
 
 const (
 	Application    = "application"
@@ -66,20 +75,16 @@ type Store struct {
 	base url.URL
 }
 
-var _ korrel8.Store = &Store{}
-
 func NewStore(baseURL *url.URL, c *http.Client) (*Store, error) {
 	return &Store{c: c, base: *baseURL}, nil
 }
 
+func (s *Store) Resolve(ref uri.Reference) *url.URL { return ref.Resolve(&s.base) }
+
 func (s *Store) String() string { return s.base.String() }
 
-func (s *Store) Resolve(ref uri.Reference) *url.URL {
-	return s.base.ResolveReference(ref.URL())
-}
-
 func (s *Store) Get(ctx context.Context, ref uri.Reference, result korrel8.Appender) error {
-	u := s.Resolve(ref)
+	u := s.base.ResolveReference(ref.URL())
 	resp, err := s.c.Get(u.String())
 	if err != nil {
 		return fmt.Errorf("%w: %v", err, u)
@@ -111,24 +116,23 @@ func (s *Store) Get(ctx context.Context, ref uri.Reference, result korrel8.Appen
 }
 
 // RefStoreToConsole converts a LokiStak ref to a console URL
-func (d domain) RefStoreToConsole(ref uri.Reference) (korrel8.Class, uri.Reference, error) {
-	class, err := d.RefClass(ref)
+func (s *Store) RefStoreToConsole(c korrel8.Class, ref uri.Reference) (uri.Reference, error) {
+	rc, err := Domain.RefClass(ref)
 	if err != nil {
-		return nil, uri.Reference{}, err
-
+		return uri.Empty, err
+	}
+	if rc != c {
+		return uri.Empty, fmt.Errorf("class missmatch: expected %v in %v", korrel8.FullName(c), ref)
 	}
 	v := url.Values{}
 	v.Add("q", ref.Query().Get("query"))
-	v.Add("tenant", class.String())
-	return class, uri.Reference{Path: "monitoring/logs", RawQuery: v.Encode()}, nil
+	v.Add("tenant", c.String())
+	return uri.Reference{Path: "/monitoring/logs", RawQuery: v.Encode()}, nil
 }
 
-func (d domain) RefConsoleToStore(ref uri.Reference) (korrel8.Class, uri.Reference, error) {
-	c, err := d.RefClass(ref)
-	if err != nil {
-		return nil, uri.Reference{}, err
-	}
-	return c, NewLokiStackRef(c.(Class), ref.Query().Get("q"), nil), nil
+func (*Store) RefConsoleToStore(ref uri.Reference) (korrel8.Class, uri.Reference, error) {
+	c := Class(ref.Query().Get("tenant"))
+	return c, NewLokiStackRef(c, ref.Query().Get("q"), nil), nil
 }
 
 // queryResponse is the response to a loki query.
@@ -149,20 +153,7 @@ type streamValues struct {
 	Values [][]string        `json:"values"`
 }
 
-var (
-	lokiStackPath       = regexp.MustCompile(fmt.Sprintf("api/logs/v1/(%v)/", strings.Join(classNames, "|")))
-	plainPath           = "loki/api/v1"
-	plainPathQueryRange = plainPath + "/query_range"
-)
-
-func (domain) RefClass(ref uri.Reference) (korrel8.Class, error) {
-	// TODO only works for lokistack, for plain loki paths we need to parse the query to find the tenant.
-	m := lokiStackPath.FindStringSubmatch(ref.Path)
-	if len(m) != 2 {
-		return nil, fmt.Errorf("not a valid LokiStack reference: %v", ref)
-	}
-	return Class(m[1]), nil
-}
+var lokiStackPath = regexp.MustCompile(fmt.Sprintf("/api/logs/v1/(%v)", strings.Join(classNames, "|")))
 
 // PlainStore re-writes observatorium-style URIs as plain Loki URIs.
 type PlainStore struct{ *Store }
@@ -203,7 +194,7 @@ func NewPlainRef(logQL string, constraint *korrel8.Constraint) uri.Reference {
 			v.Add("end", fmt.Sprintf("%v", constraint.End.UnixNano()))
 		}
 	}
-	return uri.Reference{Path: plainPathQueryRange, RawQuery: v.Encode()}
+	return uri.Reference{Path: "/loki/api/v1/query_range", RawQuery: v.Encode()}
 }
 
 func NewLokiStackRef(class Class, logQL string, constraint *korrel8.Constraint) uri.Reference {

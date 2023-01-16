@@ -7,80 +7,101 @@ import (
 	"net/http"
 	"net/url"
 
+	openapiclient "github.com/go-openapi/runtime/client"
+	"github.com/go-openapi/strfmt"
 	"github.com/korrel8/korrel8/pkg/korrel8"
 	"github.com/korrel8/korrel8/pkg/uri"
-	"github.com/prometheus/alertmanager/pkg/labels"
-	"github.com/prometheus/client_golang/api"
-	v1 "github.com/prometheus/client_golang/api/prometheus/v1"
+	"github.com/prometheus/alertmanager/api/v2/client"
+	"github.com/prometheus/alertmanager/api/v2/client/alert"
+	"github.com/prometheus/alertmanager/api/v2/models"
 )
 
-var Domain korrel8.Domain = domain{}
+var (
+	_ korrel8.Domain = Domain
+	_ korrel8.Class  = Class{}
+	_ korrel8.Store  = &Store{}
+)
+
+var Domain = domain{}
 
 type domain struct{}
 
-func (d domain) String() string             { return "alert" }
-func (d domain) Class(string) korrel8.Class { return Class{} }
-func (d domain) Classes() []korrel8.Class   { return []korrel8.Class{Class{}} }
+func (domain) String() string                                    { return "alert" }
+func (domain) Class(string) korrel8.Class                        { return Class{} }
+func (domain) Classes() []korrel8.Class                          { return []korrel8.Class{Class{}} }
+func (domain) RefClass(ref uri.Reference) (korrel8.Class, error) { return Class{}, nil }
+
+func (domain) RefConsoleToStore(ref uri.Reference) (korrel8.Class, uri.Reference, error) {
+	return Class{}, MakeRef(ref.Query().Get("alertname")), nil
+}
+
+func MakeRef(alertname string) uri.Reference {
+	filter := fmt.Sprintf(`alertname="%v"`, alertname)
+	query := uri.Values{"filter": []string{filter}}
+	return uri.Reference{Path: "/api/v1/alerts", RawQuery: query.Encode()}
+}
+
+func (domain) RefStoreToConsole(class korrel8.Class, ref uri.Reference) (uri.Reference, error) {
+	return uri.Reference{}, fmt.Errorf("alert store URI to conosle not implemented: %v", ref)
+}
 
 type Class struct{} // Only one class
 
 func (c Class) Domain() korrel8.Domain { return Domain }
 func (c Class) String() string         { return Domain.String() }
-func (c Class) New() korrel8.Object    { return &v1.Alert{} }
+func (c Class) New() korrel8.Object    { return &models.GettableAlert{} }
 func (c Class) ID(o korrel8.Object) any {
-	if o, _ := o.(Object); o != nil {
+	if o, _ := o.(*models.GettableAlert); o != nil {
 		return o.Labels["alertname"]
 	}
 	return nil
 }
 
-var (
-	_ korrel8.Class = Class{}
-	_ korrel8.IDer  = Class{}
-)
+var _ korrel8.Class = Class{}
 
-type Object = *v1.Alert
+type Object *models.GettableAlert
 
 type Store struct {
-	api  v1.API
-	base *url.URL
+	manager *client.Alertmanager
+	base    *url.URL
 }
 
-func NewStore(host string, rt http.RoundTripper) (*Store, error) {
-	base := &url.URL{Scheme: "https", Host: host}
-	client, err := api.NewClient(api.Config{
-		Address:      base.String(),
-		RoundTripper: rt,
-	})
-	if err != nil {
-		return nil, err
+func NewStore(host string, hc *http.Client) *Store {
+	transport := openapiclient.NewWithClient(host, client.DefaultBasePath, []string{"https"}, hc)
+	return &Store{
+		manager: client.New(transport, strfmt.Default),
+		base:    &url.URL{Scheme: "https", Host: host, Path: client.DefaultBasePath},
 	}
-	return &Store{api: v1.NewAPI(client), base: base}, nil
 }
 
 func (s *Store) Resolve(ref uri.Reference) *url.URL { return ref.Resolve(s.base) }
 
-// Get implements the korrel8.Store interface.
-// The ref has a "query" with a PromQL label matcher expression with the wrapping
-// `{` and `}` being optional, e.g.  `namespace="default",pod=~"myapp-.+"`.
+// Get alerts for alertmanager URI reference, see:
+// https://petstore.swagger.io/?url=https://raw.githubusercontent.com/prometheus/alertmanager/master/api/v2/openapi.yaml
 func (s Store) Get(ctx context.Context, ref uri.Reference, result korrel8.Appender) error {
-	// TODO: allow to filter on alert state (pending/firing)?
-	// TODO: support sorting order (e.g. most recent/oldest, severity)?
-	// TODO: allow grouping (all alerts related to podX grouped together)?
-	promQL := ref.Query().Get("query")
-	matchers, err := labels.ParseMatchers(promQL)
-	if err != nil {
-		return fmt.Errorf("%v: %w: %v", Domain, err, ref)
-	}
-	resp, err := s.api.Alerts(ctx)
-	if err != nil {
-		return fmt.Errorf("%v: %w (%v)", Domain, err, s.base.Host)
-	}
+	params := alert.NewGetAlertsParamsWithContext(ctx)
 
-	for _, a := range resp.Alerts {
-		if labels.Matchers(matchers).Matches(a.Labels) {
-			result.Append(a)
-		}
+	if f := ref.Query()["filter"]; len(f) > 0 {
+		params.WithFilter(f)
+	}
+	resp, err := s.manager.Alert.GetAlerts(params)
+	if err != nil {
+		return err
+	}
+	for _, a := range resp.Payload {
+		result.Append(a)
 	}
 	return nil
 }
+
+func (Store) RefStoreToConsole(class korrel8.Class, ref uri.Reference) (uri.Reference, error) {
+	return Domain.RefStoreToConsole(class, ref)
+}
+
+func (Store) RefConsoleToStore(ref uri.Reference) (korrel8.Class, uri.Reference, error) {
+	return Domain.RefConsoleToStore(ref)
+}
+
+func (Store) RefClass(ref uri.Reference) (korrel8.Class, error) { return Domain.RefClass(ref) }
+
+var _ korrel8.RefConverter = &Store{}

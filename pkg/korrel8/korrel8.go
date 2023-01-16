@@ -70,8 +70,6 @@ type Rule interface {
 	String() string
 	// Apply the rule to a start Object, return a Reference for results.
 	// Optional Constraint (if non-nil) is included in the Reference.
-	//
-	// FIXME: May optionally return a Constraint to be used by the next rule in the chain.
 	Apply(start Object, constraint *Constraint) (uri.Reference, error)
 }
 
@@ -82,23 +80,16 @@ type Constraint struct {
 	End   *time.Time `json:"end,omitempty"`   // Include only results timestamped before this time.
 }
 
-// Combine this constraint with a new constraint.
-// Values that are not set in the original constraint
-func (c *Constraint) Combine(other *Constraint) {
-	panic("FIXME constraint")
-}
-
 // TemplateFuncser may be implemented by Domain or Store to provide template helper functions.
 // See text/template.Template.Funcs
 type TemplateFuncser interface{ TemplateFuncs() map[string]any }
 
 // RefConverter may be implemented by Domain or Store implementations that support console URLs.
 type RefConverter interface {
-	RefClasser
-	// RefStoreToConsole converts a store reference to an equivalent console reference.
-	RefStoreToConsole(uri.Reference) (Class, uri.Reference, error)
 	// RefConsoleToStore converts a console reference to an equivalent store reference.
 	RefConsoleToStore(uri.Reference) (Class, uri.Reference, error)
+	// RefStoreToConsole converts a store reference to an equivalent console reference.
+	RefStoreToConsole(Class, uri.Reference) (uri.Reference, error)
 }
 
 // RefClasser may be implemented by Domain or Store implementations that can deduce the class from a reference.

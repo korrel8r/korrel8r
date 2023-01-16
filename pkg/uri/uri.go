@@ -83,3 +83,5 @@ func Make(path string, keyValuePairs ...string) Reference {
 	}
 	return Reference{Path: path, RawQuery: v.Encode()}
 }
+
+var Empty = Reference{}

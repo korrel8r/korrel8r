@@ -20,6 +20,12 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+var (
+	_ korrel8.Domain       = Domain
+	_ korrel8.Class        = Class{}
+	_ korrel8.RefConverter = &Store{}
+)
+
 type domain struct{}
 
 func (d domain) String() string { return "k8s" }
@@ -238,10 +244,10 @@ const (
 )
 
 // RefStoreToConsole converts a k8s reference to a console URL
-func (s *Store) RefStoreToConsole(storeRef uri.Reference) (korrel8.Class, uri.Reference, error) {
-	gvk, gvr, nsName, err := s.parsePath(storeRef.Path)
+func (s *Store) RefStoreToConsole(_ korrel8.Class, storeRef uri.Reference) (uri.Reference, error) {
+	_, gvr, nsName, err := s.parsePath(storeRef.Path)
 	if err != nil {
-		return nil, uri.Reference{}, fmt.Errorf("invalid k8s reference: %v", storeRef)
+		return uri.Reference{}, fmt.Errorf("invalid k8s reference: %v", storeRef)
 	}
 	var consoleRef uri.Reference
 	if nsName.Namespace != "" { // Namespaced resource
@@ -249,7 +255,7 @@ func (s *Store) RefStoreToConsole(storeRef uri.Reference) (korrel8.Class, uri.Re
 	} else { // Cluster resource
 		consoleRef.Path = path.Join("k8s", "cluster", gvr.Resource, nsName.Name)
 	}
-	return Class(gvk), consoleRef, nil
+	return consoleRef, nil
 }
 
 var consolePath = regexp.MustCompile(`(?:^|/)(?:k8s/ns/([^/]+)|cluster)/([^/]+)(?:/([^/]+))?$`)

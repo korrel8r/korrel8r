@@ -39,8 +39,6 @@ var correlateCmd = &cobra.Command{
 		log.V(1).Info("found paths", "paths", paths, "count", len(paths))
 		starters := korrel8.NewResult(start)
 
-		// FIXME include constraint
-
 		if len(args) >= 3 { // Get starters using query
 			query := must.Must1(referenceArgs(args[2:]))
 			store, err := e.Store(start.Domain().String())
