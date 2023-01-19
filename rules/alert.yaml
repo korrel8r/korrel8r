@@ -17,7 +17,6 @@ goal:
   domain: k8s
   classes: [Namespace.]
 result:
-  # NOTE this has been modified for the Alertmanager API.
   uri:  |-
     /api/v1/namespaces/{{.Alert.Labels.namespace}}
 ---
@@ -28,7 +27,6 @@ goal:
   domain: k8s
   classes: [Pod.]
 result:
-  # NOTE this has been modified for the Alertmanager API.
   uri:  |-
     /api/v1/namespaces/{{.Alert.Labels.namespace}}/pods/{{.Alert.Labels.pod}}
 ---
@@ -39,6 +37,15 @@ goal:
   domain: k8s
   classes: [DaemonSet.]
 result:
-  # NOTE this has been modified for the Alertmanager API.
   uri:  |-
     /api/v1/namespaces/{{.Alert.Labels.namespace}}/daemonsets/{{.Alert.Labels.daemonset}}
+---
+name: AlertToStatefulSet
+start:
+  domain: alert
+goal:
+  domain: k8s
+  classes: [StatefulSet.]
+result:
+  uri:  |-
+    /api/v1/namespaces/{{.Alert.Labels.namespace}}/statefulsets/{{.Alert.Labels.statefulset}}

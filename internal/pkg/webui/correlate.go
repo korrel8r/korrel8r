@@ -9,14 +9,14 @@ import (
 	"os/exec"
 	"path"
 	"path/filepath"
-	"text/template"
 
+	"github.com/korrel8/korrel8/pkg/engine"
 	"github.com/korrel8/korrel8/pkg/graph"
 	"github.com/korrel8/korrel8/pkg/korrel8"
-	"github.com/korrel8/korrel8/pkg/unique"
 	"github.com/korrel8/korrel8/pkg/uri"
 	"go.uber.org/multierr"
 	"gonum.org/v1/gonum/graph/encoding/dot"
+	"gonum.org/v1/gonum/graph/topo"
 )
 
 // correlateFields are fields used by the page template.
@@ -29,10 +29,11 @@ type correlateFields struct {
 	StartClass, GoalClass korrel8.Class
 	StartRef              uri.Reference
 	StartObjects          []korrel8.Object
-	GoalRefs              []uri.Reference
-	GoalObjects           []korrel8.Object
+	Results               *engine.Results
 	Diagram               string
+	Topo                  []korrel8.Class
 	Err                   error
+	FollowErr             error
 }
 
 // addErr adds an error to the list. Display as much information as possible even with errors.
@@ -43,59 +44,7 @@ func (f *correlateFields) addErr(err error, msg ...any) bool {
 	return multierr.AppendInto(&f.Err, err)
 }
 
-const correlateTemplate = `
-{{define "body"}}
-    <form>
-        <input type="text" id="start" name="start" value="{{.Start}}">
-        <label for="start">Start Console URL</label>
-        <br>
-        <input type="text" id="goal" name="goal" value="{{.Goal}}">
-        <label for="goal">Goal Class</label>
-        <br>
-        <input type="submit" value="Submit">
-    </form>
-
-    {{with .Err}}
-        <hr>
-        <div>
-            Errors:<br>
-            <pre>{{printf "%+v" .}}</pre>
-        </div>
-    {{end}}
-
-    <hr>
-    <div>
-        Start Objects: {{.StartClass}}
-        {{if .StartObjects}}
-            <a href={{.Start}} target="_blank">Console</a>,
-            <a href="/stores/{{fullname .StartClass}}/{{.StartRef}}" target="_blank">Raw</a> ({{len .StartObjects}})
-        {{end}}
-    </div>
-
-    <hr>
-    <div>
-        Goal References: {{.GoalClass}} ({{len .GoalRefs}})
-        {{if .GoalRefs}}
-            <ul>
-                {{range .GoalRefs}}
-                    <li>
-                        <a href="{{refToConsole $.GoalClass .}}" target="_blank">Console</a>,
-                        <a href="/stores/{{fullname $.GoalClass}}/{{.}}" target="_blank">Raw</a>
-                {{end}}
-            </ul>
-        {{end}}
-    </div>
-
-    {{with .Diagram}}
-        <hr>
-        <div>
-           <img src="{{.}}">
-        </div>
-     {{end}}
-
-{{end}}
-`
-
+// Reset the fields to contain only URL query parameters
 func (f *correlateFields) Reset(params url.Values) {
 	*f = correlateFields{
 		Start: params.Get("start"),
@@ -103,6 +52,7 @@ func (f *correlateFields) Reset(params url.Values) {
 	}
 }
 
+// Params returns the URL query parameters from form fields
 func (f *correlateFields) Params() url.Values {
 	v := url.Values{}
 	v.Set("start", f.Start)
@@ -115,20 +65,24 @@ type correlateHandler struct {
 	f  correlateFields
 }
 
+func (h *correlateHandler) refToConsole(c korrel8.Class, r uri.Reference) *url.URL {
+	cref, err := h.ui.Rewriter.RefStoreToConsoleURL(c, r)
+	if err != nil {
+		cref = &url.URL{Path: "/error", RawQuery: uri.Values{"err": []string{err.Error()}}.Encode()}
+	}
+	return cref
+}
+
 func (h *correlateHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	log.V(4).Info("correlation page")
 	defer req.Body.Close()
 	h.update(req)
-	t := h.ui.Page("correlate").Funcs(map[string]any{
-		"refToConsole": func(c korrel8.Class, r uri.Reference) *url.URL {
-			cref, err := h.ui.Rewriter.RefStoreToConsoleURL(c, r)
-			if err != nil {
-				cref = &url.URL{Path: "/error", RawQuery: uri.Values{"err": []string{err.Error()}}.Encode()}
-			}
-			return cref
-		}})
-	if err := template.Must(t.Parse(correlateTemplate)).Execute(w, h.f); err != nil {
-		http.Error(w, fmt.Sprintf("can't generate page: %v", err), 505)
+	if h.f.Err != nil {
+		log.Error(h.f.Err, "page errors")
+	}
+	t, err := h.ui.Page("correlate").Funcs(map[string]any{"refToConsole": h.refToConsole}).Parse(correlateTemplate)
+	if !httpError(w, err, http.StatusInternalServerError) {
+		httpError(w, t.Execute(w, h.f), http.StatusInternalServerError)
 	}
 }
 
@@ -144,7 +98,7 @@ func (h *correlateHandler) update(req *http.Request) {
 			startStore, err := h.ui.Engine.Store(h.f.StartClass.Domain().String())
 			if !addErr(err) {
 				result := korrel8.NewResult(h.f.StartClass)
-				log.V(3).Info("get start", "ref", h.f.StartRef)
+				log.V(3).Info("get start", "url", startStore.Resolve(h.f.StartRef))
 				addErr(startStore.Get(context.Background(), h.f.StartRef, result))
 				h.f.StartObjects = result.List()
 			}
@@ -152,33 +106,24 @@ func (h *correlateHandler) update(req *http.Request) {
 	}
 	// Get correlated goal references, need start and goal
 	h.f.GoalClass, err = h.ui.Engine.ParseClass(h.f.Goal)
-	if addErr(err, "goal: %v", err) {
+	if addErr(err, "goal: %w", err) {
 		return
 	}
 
-	pathFunc := h.ui.Engine.Graph().ShortestPaths // FIXME - common settings with CLI
-	paths, err := pathFunc(h.f.StartClass, h.f.GoalClass)
+	paths, err := h.ui.Engine.Graph().ShortestPaths(h.f.StartClass, h.f.GoalClass)
 	if addErr(err) {
 		return
 	}
-	goalRefs := unique.NewList[uri.Reference]()
-	for _, path := range paths {
-		refs, err := h.ui.Engine.Follow(context.Background(), h.f.StartObjects, nil, path)
-		if !addErr(err) {
-			goalRefs.Append(refs...)
-		}
-	}
-	h.f.GoalRefs = goalRefs.List
 
-	// Try to get goal objects
-	goalStore, err := h.ui.Engine.Store(h.f.GoalClass.Domain().String())
-	if !addErr(err) {
-		result := korrel8.NewResult(h.f.GoalClass)
-		for _, ref := range goalRefs.List {
-			addErr(goalStore.Get(context.Background(), ref, result))
-		}
-		h.f.GoalObjects = result.List()
-	}
+	// Collect results, including start and goal results
+	results := engine.NewResults()
+	first := results.Get(h.f.StartClass)
+	first.References.Append(h.f.StartRef)
+	first.Objects.Append(h.f.StartObjects...)
+	h.f.FollowErr = h.ui.Engine.FollowAll(context.Background(), h.f.StartObjects, nil, paths, results)
+	multierr.AppendInto(&h.f.FollowErr, h.ui.Engine.GetLast(context.Background(), results))
+	h.f.Results = results.Prune() // Keep only results with objects
+
 	// Generate a rule diagram
 	h.diagram(paths)
 }
@@ -197,6 +142,19 @@ func (h *correlateHandler) diagram(multipaths []graph.MultiPath) {
 	}
 	name := "rule_graph"
 	g := graph.New(name, rules, nil)
+
+	// Decorate the graph to show results
+	for _, result := range h.f.Results.List {
+		attrs := g.NodeForClass(result.Class).Attrs
+		attrs["fillcolor"] = "green"
+		if len(result.References.List) > 0 {
+			// TODO Pop-up for multiple refs?
+			attrs["URL"] = h.refToConsole(result.Class, result.References.List[0]).String()
+			attrs["target"] = "_blank"
+		}
+		attrs["xlabel"] = fmt.Sprintf("%v", len(result.Objects.List()))
+	}
+
 	// Write the graphViz dot file
 	gv, err := dot.MarshalMulti(g, "", "", "  ")
 	if addErr(err) {
@@ -215,4 +173,12 @@ func (h *correlateHandler) diagram(multipaths []graph.MultiPath) {
 		return
 	}
 	h.f.Diagram = path.Join("files", filepath.Base(imageFile))
+
+	// TODO Experimental topological sort.
+	order, err := topo.Sort(g)
+	if !addErr(err, "topological sort: %v", err) {
+		for _, n := range order {
+			h.f.Topo = append(h.f.Topo, n.(*graph.Node).Class)
+		}
+	}
 }

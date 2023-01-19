@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"regexp"
 
-	"github.com/korrel8/korrel8/internal/pkg/must"
 	"github.com/korrel8/korrel8/pkg/korrel8"
 	"github.com/korrel8/korrel8/pkg/uri"
 )
@@ -23,12 +22,12 @@ func (h *storeHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	}
 	d, c, p := m[1], m[2], m[3]
 	store, err := h.ui.Engine.Store(d)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusNotFound)
+	if httpError(w, err, http.StatusNotFound) {
+		return
 	}
 	domain, err := h.ui.Engine.Domain(d)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusNotFound)
+	if httpError(w, err, http.StatusNotFound) {
+		return
 	}
 	ref := uri.Reference{Path: p, RawQuery: req.URL.RawQuery}
 	class := domain.Class(c)
@@ -44,7 +43,7 @@ func (h *storeHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		"err":    err,
 		"result": result.List(),
 	}
-	t := must.Must1(h.ui.Page("stores").Parse(`
+	t, err := h.ui.Page("stores").Parse(`
 {{define "body"}}
     Request {{.class}}: {{.ref}}<br>
     <hr>
@@ -56,6 +55,8 @@ func (h *storeHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
         </pre>
     {{end}}
 {{end}}
-    `))
-	must.Must(t.Execute(w, data))
+    `)
+	if !httpError(w, err, http.StatusInternalServerError) {
+		httpError(w, t.Execute(w, data), http.StatusInternalServerError)
+	}
 }

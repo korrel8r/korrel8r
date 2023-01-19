@@ -26,10 +26,10 @@ func newRuleBuilder(r *Rule, e *engine.Engine) (*ruleBuilder, error) {
 		rb.name = fmt.Sprintf("%v_to_%v", r.Start, r.Goal)
 	}
 	if rb.start, err = rb.expand(&r.Start, "start"); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("expanding start of %v: %w", r.Name, err)
 	}
 	if rb.goal, err = rb.expand(&r.Goal, "goal"); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("expanding goal of %v: %w", r.Name, err)
 	}
 	if r.Result.URI == "" {
 		return nil, fmt.Errorf("template is empty: %v.result.uri", rb.name)
@@ -39,7 +39,7 @@ func newRuleBuilder(r *Rule, e *engine.Engine) (*ruleBuilder, error) {
 	}
 	c := r.Result.Class
 	if c == "" && r.Goal.single() {
-		c = korrel8.FullName(rb.goal[0])
+		c = korrel8.ClassName(rb.goal[0])
 	}
 	if c == "" {
 		return nil, fmt.Errorf("template is empty: %v.result.class ", rb.name)
@@ -54,12 +54,6 @@ func newRuleBuilder(r *Rule, e *engine.Engine) (*ruleBuilder, error) {
 }
 
 func (rb *ruleBuilder) expand(spec *ClassSpec, what string) (classes []korrel8.Class, err error) {
-	defer func() {
-		if err == nil && len(classes) == 0 {
-			err = fmt.Errorf("no %v classes for rule %v", what, rb.name)
-		}
-	}()
-
 	domain, err := rb.engine.Domain(spec.Domain)
 	if err != nil {
 		return nil, err
@@ -81,10 +75,9 @@ func (rb *ruleBuilder) expand(spec *ClassSpec, what string) (classes []korrel8.C
 			return nil, err
 		}
 		for _, c := range domain.Classes() {
-			if err := t.Execute(io.Discard, c.New()); err != nil {
-				log.V(4).Info("skip", "rule", rb.name, "error", err)
-			} else {
+			if err := t.Execute(io.Discard, c.New()); err == nil {
 				list.Append(c)
+				log.V(4).Info("match", "rule", rb.name, what, c)
 			}
 		}
 	}

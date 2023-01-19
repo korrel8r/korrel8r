@@ -64,6 +64,7 @@ func TestLokiStackStore_Get(t *testing.T) {
 	assert.Eventually(t, func() bool {
 		result = nil
 		err = s.Get(ctx, ref, &result)
+
 		require.NoError(t, err)
 		t.Logf("waiting for 4 logs, got %v. %v%v", len(result), s, ref)
 		return len(result) >= 3

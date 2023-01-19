@@ -48,7 +48,7 @@ func (domain) RefStoreToConsole(class korrel8.Class, ref uri.Reference) (uri.Ref
 type Class struct{} // Only one class
 
 func (c Class) Domain() korrel8.Domain { return Domain }
-func (c Class) String() string         { return Domain.String() }
+func (c Class) String() string         { return "alert" }
 func (c Class) New() korrel8.Object    { return &models.GettableAlert{} }
 func (c Class) ID(o korrel8.Object) any {
 	if o, _ := o.(*models.GettableAlert); o != nil {

@@ -2,6 +2,7 @@
 package webui
 
 import (
+	"errors"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -10,7 +11,6 @@ import (
 	"context"
 
 	"github.com/korrel8/korrel8/internal/pkg/logging"
-	"github.com/korrel8/korrel8/internal/pkg/must"
 	"github.com/korrel8/korrel8/internal/pkg/openshift"
 	"github.com/korrel8/korrel8/internal/pkg/rewrite"
 	"github.com/korrel8/korrel8/pkg/engine"
@@ -49,47 +49,29 @@ func New(e *engine.Engine, cfg *rest.Config, c client.Client) (*WebUI, error) {
 	ui.Mux.Handle("/stores/", &storeHandler{ui: ui})
 	ui.Mux.HandleFunc("/error/", func(w http.ResponseWriter, req *http.Request) {
 		// So links that can't be generated can link to an error message.
-		msg := req.URL.Query().Get("err")
-		http.Error(w, "error: "+msg, http.StatusInternalServerError)
+		httpError(w, errors.New(req.URL.Query().Get("err")), http.StatusInternalServerError)
 	})
 	return ui, nil
 }
 
 func (ui *WebUI) Page(name string) *template.Template {
-	return must.Must1(template.New(name).
-		Funcs(templaterule.Funcs).
-		Funcs(ui.Engine.TemplateFuncs()).
-		Parse(`<!DOCTYPE html PUBLIC " - //W3C//DTD xhtml 1.0 Strict//EN"	"http://www.w3.org/1999/xhtml">
-<head>
-<style>
-html, body {
-    height: 100%;
-    margin: 0;
-    padding: 0;
-}
-
-img {
-    padding: 0;
-    display: block;
-    margin: 0 auto;
-    max-height: 100%;
-    max-width: 100%;
-}
-</style>
-{{block "head" . -}}
-  <title>Korrel8 Web UI</title>
-{{end -}}
-</head>
-<body>
-{{block "body" . -}}
-Nothing to see here.
-{{end -}}
-</body>
-`))
+	return template.Must(
+		template.New(name).
+			Funcs(templaterule.Funcs).
+			Funcs(ui.Engine.TemplateFuncs()).
+			Parse(basePageHTML))
 }
 
 func (ui *WebUI) Close() {
 	if err := os.RemoveAll(ui.dir); err != nil {
 		log.Error(err, "closing")
 	}
+}
+
+func httpError(w http.ResponseWriter, err error, status int) bool {
+	if err != nil {
+		log.Error(err, "http error")
+		http.Error(w, err.Error(), status)
+	}
+	return err != nil
 }

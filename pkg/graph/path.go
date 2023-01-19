@@ -33,6 +33,20 @@ func (l Links) Sort() {
 // MultiPath represents multiple paths from a Start to a Goal.
 type MultiPath []Links
 
+func (path MultiPath) Start() korrel8.Class {
+	if len(path) > 0 {
+		return path[0].Start()
+	}
+	return nil
+}
+
+func (path MultiPath) Goal() korrel8.Class {
+	if len(path) > 0 {
+		return path[len(path)-1].Goal()
+	}
+	return nil
+}
+
 func (path MultiPath) Valid() bool {
 	for i, links := range path {
 		if !links.Valid() {

@@ -5,6 +5,7 @@ package korrel8
 
 import (
 	"context"
+	"fmt"
 	"net/url"
 	"path"
 	"time"
@@ -44,8 +45,8 @@ type IDer interface {
 	ID(Object) any // Comparable ID for de-duplication.
 }
 
-// FullName is the qualified domain/name of a class, e.g. "k8s/Pod"
-func FullName(c Class) string { return path.Join(c.Domain().String(), c.String()) }
+// ClassName is the qualified domain/name of a class, e.g. "k8s/Pod"
+func ClassName(c Class) string { return path.Join(c.Domain().String(), c.String()) }
 
 // Store is a source of signals belonging to a single domain.
 type Store interface {
@@ -71,6 +72,11 @@ type Rule interface {
 	// Apply the rule to a start Object, return a Reference for results.
 	// Optional Constraint (if non-nil) is included in the Reference.
 	Apply(start Object, constraint *Constraint) (uri.Reference, error)
+}
+
+// RuleName is the full rule name including start and goal classes.
+func RuleName(r Rule) string {
+	return fmt.Sprintf("%v(%v->%v)", r, ClassName(r.Start()), ClassName(r.Goal()))
 }
 
 // Constraint included in a reference to restrict the resulting objects.

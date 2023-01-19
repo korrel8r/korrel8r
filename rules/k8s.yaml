@@ -1,19 +1,8 @@
 ---
-name: AlertToDeployment
-start:
-  domain: alert
-goal:
-  domain: k8s
-  classes: [Deployment.apps]
-result:
-  # NOTE this has been modified for the Alertmanager API.
-  uri:  |-
-    /api/v1/namespaces/{{.Alert.Labels.namespace}}/deployments/{{.Alert.Labels.deployment}}
----
 name: SelectorToLogs
 start:
   domain: k8s
-  matches: ['{{has .Spec.Selector}}']
+  matches: ['{{print .Spec.Selector}}']
 goal:
   domain: loki
 result:
@@ -38,7 +27,7 @@ result:
 name: SelectorToPods
 start:
   domain: k8s
-  matches: ['{{has .Spec.Selector}}']
+  matches: ['{{print .Spec.Selector}}']
 goal:
   domain: k8s
   classes: [Pod.]

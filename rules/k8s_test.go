@@ -20,6 +20,7 @@ import (
 	"github.com/korrel8/korrel8/pkg/korrel8"
 	"github.com/korrel8/korrel8/pkg/loki"
 	"github.com/korrel8/korrel8/pkg/templaterule"
+	"github.com/korrel8/korrel8/pkg/unique"
 	"github.com/korrel8/korrel8/pkg/uri"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -53,9 +54,10 @@ func testFollow(t *testing.T, e *engine.Engine, start, goal korrel8.Class, objs 
 	t.Helper()
 	paths, err := e.Graph().ShortestPaths(start, goal)
 	require.NoError(t, err)
-	references, err := e.FollowAll(ctx, objs, nil, paths)
+	results := engine.NewResults()
+	err = e.FollowAll(ctx, objs, nil, paths, results)
 	require.NoError(t, err)
-	assert.Equal(t, want, references)
+	assert.Equal(t, want, results.Get(goal).References.List)
 }
 
 func TestPodToLogs(t *testing.T) {
@@ -79,9 +81,41 @@ func TestPodToLogs(t *testing.T) {
 	}
 }
 
+func TestSelectorToLogsRules(t *testing.T) {
+	_, e := setup(t, "k8s.yaml")
+	// Verify rules selected the correct set of start classes
+	classes := unique.NewList[korrel8.Class]()
+	for _, r := range e.Rules() {
+		if r.String() == "SelectorToLogs" {
+			classes.Append(r.Start())
+		}
+	}
+	want := []korrel8.Class{
+		k8s.Class{Group: "", Version: "v1", Kind: "ReplicationController"},
+		k8s.Class{Group: "apps.openshift.io", Version: "v1", Kind: "DeploymentConfig"},
+		k8s.Class{Group: "extensions", Version: "v1beta1", Kind: "DaemonSet"},
+		k8s.Class{Group: "extensions", Version: "v1beta1", Kind: "Deployment"},
+		k8s.Class{Group: "apps", Version: "v1beta1", Kind: "StatefulSet"},
+		k8s.Class{Group: "", Version: "v1", Kind: "PersistentVolumeClaim"},
+		k8s.Class{Group: "", Version: "v1", Kind: "Service"},
+		k8s.Class{Group: "policy", Version: "v1beta1", Kind: "PodDisruptionBudget"},
+		k8s.Class{Group: "apps", Version: "v1", Kind: "Deployment"},
+		k8s.Class{Group: "apps", Version: "v1beta2", Kind: "StatefulSet"},
+		k8s.Class{Group: "batch", Version: "v1", Kind: "Job"},
+		k8s.Class{Group: "policy", Version: "v1", Kind: "PodDisruptionBudget"},
+		k8s.Class{Group: "apps", Version: "v1beta1", Kind: "Deployment"},
+		k8s.Class{Group: "apps", Version: "v1beta2", Kind: "ReplicaSet"},
+		k8s.Class{Group: "extensions", Version: "v1beta1", Kind: "ReplicaSet"},
+		k8s.Class{Group: "apps", Version: "v1", Kind: "StatefulSet"},
+		k8s.Class{Group: "apps", Version: "v1beta2", Kind: "DaemonSet"},
+		k8s.Class{Group: "apps", Version: "v1", Kind: "DaemonSet"},
+		k8s.Class{Group: "apps", Version: "v1beta2", Kind: "Deployment"},
+		k8s.Class{Group: "apps", Version: "v1", Kind: "ReplicaSet"}}
+	assert.ElementsMatch(t, want, classes.List, "%#v", classes.List)
+}
+
 func TestSelectorToLogs(t *testing.T) {
 	c, e := setup(t, "k8s.yaml")
-
 	d := k8s.New[appsv1.Deployment]("ns", "x")
 	d.Spec = appsv1.DeploymentSpec{
 		Selector: &metav1.LabelSelector{MatchLabels: map[string]string{"?a.b": "x"}},

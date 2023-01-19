@@ -40,11 +40,10 @@ var Funcs map[string]any
 func init() {
 	Funcs = map[string]any{
 		"constraint": func() *korrel8.Constraint { return nil },
-		"has":        func(_ ...any) bool { return true }, // Used for side-effect: evaluate arguments to detect errors
-		"assert":     doAssert,                            // Assert a condition in a template
+		"assert":     doAssert, // Assert a condition in a template
 		"toJSON":     toJSON,
 		"toYAML":     toYAML,
-		"fullname":   korrel8.FullName,
+		"fullname":   korrel8.ClassName,
 		"urlencode":  urlencode,
 		"selector":   selector,
 		"kvmap":      kvMap,

@@ -32,14 +32,14 @@ type ClassSpec struct {
 	// If both Classes and Matches are omitted, then all classes in the domain are selected.
 	Domain string `json:"domain"`
 
-	// Classes is a list of class names to b selected from the domain.
+	// Classes is a list of class names to be selected from the domain.
 	Classes []string `json:"classes,omitempty"`
 
 	// Matches is a list of templates to select classes from the domain.
 	// Each template is executed with an empty instance of each class in the domain.
 	// If the template executes without error, the class is selected.
 	// The result of the template is ignored.
-	Matches []string `json:"wildcards,omitempty"`
+	Matches []string `json:"matches,omitempty"`
 }
 
 // ResultSpec contains result templates.

@@ -63,10 +63,13 @@ func TestEngine_Follow(t *testing.T) {
 			}),
 		},
 	}
-	want := []uri.Reference{s.NewReference("z:1"), s.NewReference("z:2"), s.NewReference("z:x1"), s.NewReference("z:x2")}
+	want := NewResult(mock.Class("z"))
+	want.References.Append(s.NewReference("z:1"), s.NewReference("z:2"), s.NewReference("z:x1"), s.NewReference("z:x2"))
 	e := New()
 	e.AddDomain(mock.Domain(""), s)
-	references, err := e.Follow(context.Background(), mock.Objects("foo:a"), nil, path)
+	results := NewResults()
+	err := e.Follow(context.Background(), mock.Objects("foo:a"), nil, path, results)
 	assert.NoError(t, err)
-	assert.Equal(t, want, references)
+	last := results.List[len(results.List)-1]
+	assert.ElementsMatch(t, want.References.List, last.References.List)
 }

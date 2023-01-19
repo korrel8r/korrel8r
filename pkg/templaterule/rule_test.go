@@ -59,7 +59,7 @@ result: {uri: dummy, class: dummy}
 		{
 			rule: `
 name: "select-start"
-start: {domain: foo, matches: ['{{assert (ne .Class.String "b") "ignoring %v" .Class.String}}']}
+start: {domain: foo, matches: ['{{assert (ne .Class.String "b")}}']}
 goal:  {domain: bar, classes: [z]}
 result: {uri: dummy, class: dummy}
 `,

@@ -14,7 +14,6 @@ import (
 	"github.com/korrel8/korrel8/pkg/engine"
 	"github.com/korrel8/korrel8/pkg/graph"
 	"github.com/korrel8/korrel8/pkg/korrel8"
-	"github.com/korrel8/korrel8/pkg/unique"
 	"github.com/korrel8/korrel8/pkg/uri"
 	"github.com/spf13/cobra"
 )
@@ -29,8 +28,6 @@ var correlateCmd = &cobra.Command{
 		start, goal := must.Must1(e.ParseClass(args[0])), must.Must1(e.ParseClass(args[1]))
 		var paths []graph.MultiPath
 		switch {
-		case *allFlag:
-			paths = must.Must1(e.Graph().AllPaths(start, goal))
 		case *kFlag > 0:
 			paths = must.Must1(e.Graph().KShortestPaths(start, goal, *kFlag))
 		default:
@@ -57,14 +54,13 @@ var correlateCmd = &cobra.Command{
 				starters.Append(o)
 			}
 		}
-		refs := unique.NewList[uri.Reference]()
-		for _, path := range paths {
-			refs.Append(must.Must1(e.Follow(ctx, starters.List(), nil, path))...)
-		}
+		results := engine.NewResults()
+		must.Must(e.FollowAll(ctx, starters.List(), nil, paths, results))
+
 		if *getFlag {
-			printObjects(e, goal, refs.List)
+			printObjects(e, goal, results.FinalRefs())
 		} else {
-			printRefs(refs.List)
+			printRefs(results.FinalRefs())
 		}
 	},
 }
@@ -86,15 +82,14 @@ func printObjects(e *engine.Engine, goal korrel8.Class, refs []uri.Reference) {
 }
 
 var (
-	allFlag, getFlag *bool
-	kFlag            *int
-	endTime          TimeFlag
+	getFlag *bool
+	kFlag   *int
+	endTime TimeFlag
 )
 
 func init() {
 	rootCmd.AddCommand(correlateCmd)
 	correlateCmd.Flags().Var(&endTime, "time", "find results up to this time")
 	kFlag = correlateCmd.Flags().IntP("kshortest", "k", 0, "Use K-shortest paths")
-	allFlag = correlateCmd.Flags().BoolP("allpaths", "a", false, "Use all paths")
 	getFlag = correlateCmd.Flags().Bool("get", false, "Get objects from query")
 }

@@ -8,15 +8,11 @@ type List[T any] struct {
 
 func NewList[T any]() List[T] { return List[T]{seen: map[any]struct{}{}} }
 
-func (l *List[T]) Insert(v T) {
-	if _, ok := l.seen[v]; !ok {
-		l.seen[v] = struct{}{}
-		l.List = append(l.List, v)
-	}
-}
-
 func (l *List[T]) Append(values ...T) {
 	for _, v := range values {
-		l.Insert(v)
+		if _, ok := l.seen[v]; !ok {
+			l.seen[v] = struct{}{}
+			l.List = append(l.List, v)
+		}
 	}
 }

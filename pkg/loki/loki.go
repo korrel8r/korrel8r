@@ -122,7 +122,7 @@ func (s *Store) RefStoreToConsole(c korrel8.Class, ref uri.Reference) (uri.Refer
 		return uri.Empty, err
 	}
 	if rc != c {
-		return uri.Empty, fmt.Errorf("class missmatch: expected %v in %v", korrel8.FullName(c), ref)
+		return uri.Empty, fmt.Errorf("class missmatch: expected %v in %v", korrel8.ClassName(c), ref)
 	}
 	v := url.Values{}
 	v.Add("q", ref.Query().Get("query"))

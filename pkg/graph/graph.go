@@ -20,25 +20,32 @@ type Graph struct {
 	paths   path.AllShortest
 }
 
-// line is a graph edge, corresponds to a rule.
-type line struct {
+// Line is a graph edge, corresponds to a rule.
+type Line struct {
 	multi.Line
 	korrel8.Rule
+	Attrs map[string]string
 }
 
-func (l line) DOTID() string { return "" }
-func (l line) Attributes() []encoding.Attribute {
-	return []encoding.Attribute{{Key: "tooltip", Value: l.String()}}
+func attrs(m map[string]string) (attrs []encoding.Attribute) {
+	for k, v := range m {
+		attrs = append(attrs, encoding.Attribute{Key: k, Value: v})
+	}
+	return attrs
 }
 
-// node is a graph node, corresponds to a Class.
-type node struct {
+func (l *Line) DOTID() string                    { return l.Rule.String() }
+func (l *Line) Attributes() []encoding.Attribute { return attrs(l.Attrs) }
+
+// Node is a graph Node, corresponds to a Class.
+type Node struct {
 	multi.Node
 	korrel8.Class
+	Attrs map[string]string
 }
 
-func (n node) DOTID() string                    { return korrel8.FullName(n.Class) }
-func (n node) Attributes() []encoding.Attribute { return nil }
+func (n *Node) DOTID() string                    { return korrel8.ClassName(n.Class) }
+func (n *Node) Attributes() []encoding.Attribute { return attrs(n.Attrs) }
 
 // New graph: nodes are classes, rules are edges from start to goal.
 func New(name string, rules []korrel8.Rule, extra []korrel8.Class) *Graph {
@@ -47,11 +54,11 @@ func New(name string, rules []korrel8.Rule, extra []korrel8.Class) *Graph {
 		nodeID: map[korrel8.Class]int64{},
 	}
 	for i, r := range g.rules {
-		f, t := g.addClass(r.Start()), g.addClass(r.Goal())
-		g.SetLine(line{Line: multi.Line{F: f, T: t, UID: int64(i)}, Rule: r})
+		f, t := g.NodeForClass(r.Start()), g.NodeForClass(r.Goal())
+		g.SetLine(&Line{Line: multi.Line{F: f, T: t, UID: int64(i)}, Rule: r, Attrs: map[string]string{"tooltip": r.String()}})
 	}
 	for _, c := range extra { // Extra classes
-		g.addClass(c)
+		g.NodeForClass(c)
 	}
 	g.paths = path.DijkstraAllPaths(g.DirectedGraph)
 	return g
@@ -59,16 +66,17 @@ func New(name string, rules []korrel8.Rule, extra []korrel8.Class) *Graph {
 
 func (g *Graph) Name() string { return g.name }
 
-func (g *Graph) addClass(c korrel8.Class) graph.Node {
+// NodeForClass returns the node for class c, creating it if necessary.
+func (g *Graph) NodeForClass(c korrel8.Class) *Node {
 	id, ok := g.nodeID[c]
 	if !ok {
 		id = int64(len(g.classes))
 		g.classes = append(g.classes, c)
 		g.nodeID[c] = id
 		n, _ := g.NodeWithID(id)
-		g.AddNode(node{Node: n.(multi.Node), Class: c})
+		g.AddNode(&Node{Node: n.(multi.Node), Class: c, Attrs: map[string]string{}})
 	}
-	return g.Node(id)
+	return g.Node(id).(*Node)
 }
 
 func (g *Graph) findNodeID(c korrel8.Class) (int64, error) {
@@ -146,7 +154,7 @@ func newMultiPath(g graph.Multigraph, path []graph.Node) MultiPath {
 		var e Links
 		lines := g.Lines(path[i].ID(), path[i+1].ID())
 		for lines.Next() {
-			e = append(e, lines.Line().(line).Rule)
+			e = append(e, lines.Line().(*Line).Rule)
 		}
 		mp = append(mp, e)
 	}
