@@ -7,11 +7,11 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/korrel8/korrel8/internal/pkg/logging"
-	"github.com/korrel8/korrel8/pkg/graph"
-	"github.com/korrel8/korrel8/pkg/korrel8"
-	"github.com/korrel8/korrel8/pkg/unique"
-	"github.com/korrel8/korrel8/pkg/uri"
+	"github.com/korrel8r/korrel8r/internal/pkg/logging"
+	"github.com/korrel8r/korrel8r/pkg/graph"
+	"github.com/korrel8r/korrel8r/pkg/korrel8r"
+	"github.com/korrel8r/korrel8r/pkg/unique"
+	"github.com/korrel8r/korrel8r/pkg/uri"
 	"go.uber.org/multierr"
 	"golang.org/x/exp/maps"
 )
@@ -20,10 +20,10 @@ var log = logging.Log()
 
 // Engine combines a set of domains and a set of rules, so it can perform correlation.
 type Engine struct {
-	stores        map[string]korrel8.Store
-	domains       map[string]korrel8.Domain
-	rules         []korrel8.Rule
-	classes       []korrel8.Class
+	stores        map[string]korrel8r.Store
+	domains       map[string]korrel8r.Domain
+	rules         []korrel8r.Rule
+	classes       []korrel8r.Class
 	graph         *graph.Graph
 	graphOnce     sync.Once
 	templateFuncs map[string]any
@@ -31,24 +31,24 @@ type Engine struct {
 
 func New() *Engine {
 	return &Engine{
-		stores:        map[string]korrel8.Store{},
-		domains:       map[string]korrel8.Domain{},
+		stores:        map[string]korrel8r.Store{},
+		domains:       map[string]korrel8r.Domain{},
 		templateFuncs: map[string]any{},
 	}
 }
 
 // Domain gets a named domain.
-func (e *Engine) Domain(name string) (korrel8.Domain, error) {
+func (e *Engine) Domain(name string) (korrel8r.Domain, error) {
 	if d, ok := e.domains[name]; ok {
 		return d, nil
 	}
 	return nil, fmt.Errorf("domain not found: %v", name)
 }
 
-func (e *Engine) Domains() (domains []korrel8.Domain) { return maps.Values(e.domains) }
+func (e *Engine) Domains() (domains []korrel8r.Domain) { return maps.Values(e.domains) }
 
 // Store for domain or nil if no store is available.
-func (e *Engine) Store(name string) (korrel8.Store, error) {
+func (e *Engine) Store(name string) (korrel8r.Store, error) {
 	if s := e.stores[name]; s != nil {
 		return s, nil
 	}
@@ -56,7 +56,7 @@ func (e *Engine) Store(name string) (korrel8.Store, error) {
 }
 
 // AddDomain domain and corresponding store, store may be nil.
-func (e *Engine) AddDomain(d korrel8.Domain, s korrel8.Store) {
+func (e *Engine) AddDomain(d korrel8r.Domain, s korrel8r.Store) {
 	e.domains[d.String()] = d
 	if s != nil {
 		e.stores[d.String()] = s
@@ -64,14 +64,14 @@ func (e *Engine) AddDomain(d korrel8.Domain, s korrel8.Store) {
 	// Stores and Domains implement TemplateFuncser if they provide template helper functions
 	// for use by rules.
 	for _, v := range []any{d, s} {
-		if tf, ok := v.(korrel8.TemplateFuncser); ok {
+		if tf, ok := v.(korrel8r.TemplateFuncser); ok {
 			maps.Copy(e.templateFuncs, tf.TemplateFuncs())
 		}
 	}
 }
 
 // ParseClass parses a full 'domain/class' name and returns the class.
-func (e *Engine) ParseClass(name string) (korrel8.Class, error) {
+func (e *Engine) ParseClass(name string) (korrel8r.Class, error) {
 	d, c, ok := strings.Cut(name, "/")
 	if !ok || c == "" || d == "" {
 		return nil, fmt.Errorf("invalid class name: %v", name)
@@ -87,14 +87,14 @@ func (e *Engine) ParseClass(name string) (korrel8.Class, error) {
 	return class, nil
 }
 
-func (e *Engine) Rules() []korrel8.Rule { return e.rules }
+func (e *Engine) Rules() []korrel8r.Rule { return e.rules }
 
-func (e *Engine) AddRule(r korrel8.Rule) error {
+func (e *Engine) AddRule(r korrel8r.Rule) error {
 	e.rules = append(e.rules, r)
 	return nil
 }
 
-func (e *Engine) AddRules(rules ...korrel8.Rule) error {
+func (e *Engine) AddRules(rules ...korrel8r.Rule) error {
 	for _, r := range rules {
 		if err := e.AddRule(r); err != nil {
 			return err
@@ -105,7 +105,7 @@ func (e *Engine) AddRules(rules ...korrel8.Rule) error {
 
 // Follow rules in a multi-path, collect result.
 // Collects errors using multierr.Append
-func (e *Engine) Follow(ctx context.Context, starters []korrel8.Object, c *korrel8.Constraint, path graph.MultiPath, results *Results) error {
+func (e *Engine) Follow(ctx context.Context, starters []korrel8r.Object, c *korrel8r.Constraint, path graph.MultiPath, results *Results) error {
 	if !path.Valid() {
 		return fmt.Errorf("invalid path: %v", path)
 	}
@@ -122,7 +122,7 @@ func (e *Engine) Follow(ctx context.Context, starters []korrel8.Object, c *korre
 		if i == len(path)-1 || len(refs.List) == 0 {
 			break
 		}
-		var objects korrel8.ListResult
+		var objects korrel8r.ListResult
 		merr = multierr.Append(merr, e.GetAll(ctx, links.Goal(), refs.List, &objects))
 		starters = objects.List()
 		results.Get(links.Goal()).Objects.Append(starters...)
@@ -133,7 +133,7 @@ func (e *Engine) Follow(ctx context.Context, starters []korrel8.Object, c *korre
 
 // GetAll gets objects from all refs into result.
 // Collects errors using multierr.Append
-func (e *Engine) GetAll(ctx context.Context, class korrel8.Class, refs []uri.Reference, result korrel8.Result) error {
+func (e *Engine) GetAll(ctx context.Context, class korrel8r.Class, refs []uri.Reference, result korrel8r.Result) error {
 	store, err := e.Store(class.Domain().String())
 	if err != nil {
 		return err
@@ -160,7 +160,7 @@ func (e *Engine) GetLast(ctx context.Context, results *Results) error {
 
 // FollowAll collects results from following multiple paths.
 // Collects errors using multierr.Append
-func (e *Engine) FollowAll(ctx context.Context, starters []korrel8.Object, c *korrel8.Constraint, paths []graph.MultiPath, results *Results) error {
+func (e *Engine) FollowAll(ctx context.Context, starters []korrel8r.Object, c *korrel8r.Constraint, paths []graph.MultiPath, results *Results) error {
 	var merr error
 	log.V(2).Info("follow all", "paths", paths, "objects", len(starters))
 	// TODO: can we optimize multiple paths using topological sorting?
@@ -172,13 +172,13 @@ func (e *Engine) FollowAll(ctx context.Context, starters []korrel8.Object, c *ko
 
 // followEach calls r.Apply() for each start object and collects the resulting references.
 // Collects errors using multierr.Append
-func (f *Engine) followEach(rule korrel8.Rule, start []korrel8.Object, c *korrel8.Constraint, refs *unique.List[uri.Reference]) error {
+func (f *Engine) followEach(rule korrel8r.Rule, start []korrel8r.Object, c *korrel8r.Constraint, refs *unique.List[uri.Reference]) error {
 	var merr error
 	for _, s := range start {
 		ref, err := rule.Apply(s, c)
 		switch {
 		case err != nil:
-			merr = multierr.Append(merr, fmt.Errorf("error following %v: %w", korrel8.RuleName(rule), err))
+			merr = multierr.Append(merr, fmt.Errorf("error following %v: %w", korrel8r.RuleName(rule), err))
 		case ref == uri.Empty: // Ignore
 		default:
 			refs.Append(ref)
@@ -191,7 +191,7 @@ func (f *Engine) followEach(rule korrel8.Rule, start []korrel8.Object, c *korrel
 // On subsequent calls it returns the same graph, it is not re-computed.
 func (e *Engine) Graph() *graph.Graph {
 	e.graphOnce.Do(func() {
-		e.graph = graph.New("korrel8", e.rules, e.classes)
+		e.graph = graph.New("korrel8r", e.rules, e.classes)
 	})
 	return e.graph
 }
@@ -201,38 +201,38 @@ func (e *Engine) Graph() *graph.Graph {
 func (e *Engine) TemplateFuncs() map[string]any { return e.templateFuncs }
 
 // RefConverter checks if either the named domain or store is a RefConverter
-func (e *Engine) RefConverter(domain string) (korrel8.RefConverter, error) {
+func (e *Engine) RefConverter(domain string) (korrel8r.RefConverter, error) {
 	d, err := e.Domain(domain)
 	if err != nil {
 		return nil, err
 	}
-	if cvt, ok := d.(korrel8.RefConverter); ok {
+	if cvt, ok := d.(korrel8r.RefConverter); ok {
 		return cvt, nil
 	}
 	s, err := e.Store(domain)
 	if err != nil {
 		return nil, err
 	}
-	if cvt, ok := s.(korrel8.RefConverter); ok {
+	if cvt, ok := s.(korrel8r.RefConverter); ok {
 		return cvt, nil
 	}
 	return nil, fmt.Errorf("no reference converter for %v", domain)
 }
 
 // RefClasser checks if either the named domain or store is a RefClasser
-func (e *Engine) RefClasser(domain string) (korrel8.RefClasser, error) {
+func (e *Engine) RefClasser(domain string) (korrel8r.RefClasser, error) {
 	d, err := e.Domain(domain)
 	if err != nil {
 		return nil, err
 	}
-	if cvt, ok := d.(korrel8.RefClasser); ok {
+	if cvt, ok := d.(korrel8r.RefClasser); ok {
 		return cvt, nil
 	}
 	s, err := e.Store(domain)
 	if err != nil {
 		return nil, err
 	}
-	if cvt, ok := s.(korrel8.RefClasser); ok {
+	if cvt, ok := s.(korrel8r.RefClasser); ok {
 		return cvt, nil
 	}
 	return nil, fmt.Errorf("can't deduce reference class for %v", domain)

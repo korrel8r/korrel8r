@@ -4,10 +4,10 @@ import (
 	"context"
 	"testing"
 
-	"github.com/korrel8/korrel8/internal/pkg/test/mock"
-	"github.com/korrel8/korrel8/pkg/graph"
-	"github.com/korrel8/korrel8/pkg/korrel8"
-	"github.com/korrel8/korrel8/pkg/uri"
+	"github.com/korrel8r/korrel8r/internal/pkg/test/mock"
+	"github.com/korrel8r/korrel8r/pkg/graph"
+	"github.com/korrel8r/korrel8r/pkg/korrel8r"
+	"github.com/korrel8r/korrel8r/pkg/uri"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -15,7 +15,7 @@ import (
 func TestEngine_ParseClass(t *testing.T) {
 	for _, x := range []struct {
 		name string
-		want korrel8.Class
+		want korrel8r.Class
 		err  string
 	}{
 		{"mock/foo", mock.Domain("mock").Class("foo"), ""},
@@ -44,21 +44,21 @@ func TestEngine_Follow(t *testing.T) {
 	path := graph.MultiPath{
 		graph.Links{
 			// Return 2 results, must follow both
-			mock.NewRule("ab", "a", "b", func(korrel8.Object, *korrel8.Constraint) (uri.Reference, error) {
+			mock.NewRule("ab", "a", "b", func(korrel8r.Object, *korrel8r.Constraint) (uri.Reference, error) {
 				return s.NewReference("b:1", "b:2"), nil
 			}),
 		},
 		graph.Links{
 			// 2 rules, must follow both. Incorporate data from stat object.
-			mock.NewRule("bc", "b", "c", func(start korrel8.Object, _ *korrel8.Constraint) (uri.Reference, error) {
+			mock.NewRule("bc", "b", "c", func(start korrel8r.Object, _ *korrel8r.Constraint) (uri.Reference, error) {
 				return s.NewReference("c:" + start.(mock.Object).Data()), nil
 			}),
-			mock.NewRule("bc2", "b", "c", func(start korrel8.Object, _ *korrel8.Constraint) (uri.Reference, error) {
+			mock.NewRule("bc2", "b", "c", func(start korrel8r.Object, _ *korrel8r.Constraint) (uri.Reference, error) {
 				return s.NewReference("c:x" + start.(mock.Object).Data()), nil
 			}),
 		},
 		graph.Links{
-			mock.NewRule("cz", "c", "z", func(start korrel8.Object, _ *korrel8.Constraint) (uri.Reference, error) {
+			mock.NewRule("cz", "c", "z", func(start korrel8r.Object, _ *korrel8r.Constraint) (uri.Reference, error) {
 				return s.NewReference("z:" + start.(mock.Object).Data()), nil
 			}),
 		},

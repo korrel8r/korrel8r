@@ -10,9 +10,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/korrel8/korrel8/internal/pkg/test"
-	"github.com/korrel8/korrel8/pkg/korrel8"
-	"github.com/korrel8/korrel8/pkg/uri"
+	"github.com/korrel8r/korrel8r/internal/pkg/test"
+	"github.com/korrel8r/korrel8r/pkg/korrel8r"
+	"github.com/korrel8r/korrel8r/pkg/uri"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
@@ -30,12 +30,12 @@ func TestStore_Get_PlainLoki(t *testing.T) {
 	s, err := NewStore(l.URL(), http.DefaultClient)
 	require.NoError(t, err)
 
-	var want []korrel8.Object
+	var want []korrel8r.Object
 	for _, l := range lines {
 		want = append(want, Object(l))
 	}
 	ref := NewPlainRef(`{test="loki"}`, nil)
-	result := korrel8.NewListResult()
+	result := korrel8r.NewListResult()
 	require.NoError(t, s.Get(ctx, ref, result))
 	assert.Equal(t, want, result.List())
 }
@@ -60,7 +60,7 @@ func TestLokiStackStore_Get(t *testing.T) {
 	require.NoError(t, err)
 	logQL := fmt.Sprintf(`{kubernetes_pod_name="%v", kubernetes_namespace_name="%v"}`, pod.Name, pod.Namespace)
 	ref := NewLokiStackRef(Application, logQL, nil)
-	var result korrel8.ListResult
+	var result korrel8r.ListResult
 	assert.Eventually(t, func() bool {
 		result = nil
 		err = s.Get(ctx, ref, &result)
@@ -98,19 +98,19 @@ func TestStoreGet_Constraint(t *testing.T) {
 
 	for n, x := range []struct {
 		ref  uri.Reference
-		want []korrel8.Object
+		want []korrel8r.Object
 	}{
 		{
-			ref:  NewPlainRef(`{test="loki"}`, &korrel8.Constraint{End: &t1}),
-			want: []korrel8.Object{Object("much"), Object("too"), Object("early")},
+			ref:  NewPlainRef(`{test="loki"}`, &korrel8r.Constraint{End: &t1}),
+			want: []korrel8r.Object{Object("much"), Object("too"), Object("early")},
 		},
 		{
-			ref:  NewPlainRef(`{test="loki"}`, &korrel8.Constraint{Start: &t1, End: &t2}),
-			want: []korrel8.Object{Object("right"), Object("on"), Object("time")},
+			ref:  NewPlainRef(`{test="loki"}`, &korrel8r.Constraint{Start: &t1, End: &t2}),
+			want: []korrel8r.Object{Object("right"), Object("on"), Object("time")},
 		},
 	} {
 		t.Run(strconv.Itoa(n), func(t *testing.T) {
-			var result korrel8.ListResult
+			var result korrel8r.ListResult
 			assert.NoError(t, s.Get(ctx, x.ref, &result))
 			assert.Equal(t, x.want, result.List())
 		})

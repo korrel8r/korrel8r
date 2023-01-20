@@ -1,11 +1,11 @@
-// package templaterule implements korrel8.Rule using Go templates.
+// package templaterule implements korrel8r.Rule using Go templates.
 package templaterule
 
 import (
 	"fmt"
 
-	"github.com/korrel8/korrel8/pkg/engine"
-	"github.com/korrel8/korrel8/pkg/korrel8"
+	"github.com/korrel8r/korrel8r/pkg/engine"
+	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 )
 
 // Rule is a template rule specification that can be serialized as JSON.
@@ -53,14 +53,14 @@ type ResultSpec struct {
 	// If the Goal field contains a single, non-wildcard class, this field is optional.
 	Class string `json:"class,omitempty"`
 
-	// Constraint template is optional, it generates a korrel8.Constraint in JSON form.
+	// Constraint template is optional, it generates a korrel8r.Constraint in JSON form.
 	// This constraint is combined with the constraint already in force, if there is one.
 	// See Constraint.Combine
 	Constraint string `json:"constraint,omitempty"`
 }
 
-// Rules generates one or more korrel8.Rule from the template Rule.
-func (r *Rule) Rules(e *engine.Engine) (rules []korrel8.Rule, err error) {
+// Rules generates one or more korrel8r.Rule from the template Rule.
+func (r *Rule) Rules(e *engine.Engine) (rules []korrel8r.Rule, err error) {
 	rb, err := newRuleBuilder(r, e)
 	if err != nil {
 		return nil, err

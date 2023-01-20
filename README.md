@@ -1,12 +1,12 @@
 # Overview
 
 **⚠ Warning: Experimental ⚠** This code may change or vanish. It may not work. It may not even make sense.\
-[API documentation is available at pkg.go.dev](https://pkg.go.dev/github.com/korrel8/korrel8/pkg/korrel8)
+[API documentation is available at pkg.go.dev](https://pkg.go.dev/github.com/korrel8r/korrel8r/pkg/korrel8r)
 
 This project is building a *correlation engine*.
 
-Given an initial staring context, korrel8 can find related data from multiple data stores in multiple domains.
-Korrel8 works by navigating between related *objects*, using a set of *rules* that define how objects are related.
+Given an initial staring context, korrel8r can find related data from multiple data stores in multiple domains.
+Korrel8r works by navigating between related *objects*, using a set of *rules* that define how objects are related.
 Given a *start* object (e.g. a cluster Alert) and a *goal* (e.g. "find related logs") the engine searches 
 for goal objects that are related to the start object by rules.
 
@@ -47,7 +47,7 @@ but which can be correlated with signals and other objects:
 
 # Implentation Concepts
 
-The following concepts are represented by interfaces in the korrel8 package.
+The following concepts are represented by interfaces in the korrel8r package.
 Support for a new domain implements these interfaces:
 
 **Domain** \
@@ -100,7 +100,7 @@ Korrle8 expresses rules in the native vocabulary of each domain, but allows rule
 # Request for Feedback
 
 If you work with OpenShift or kubernetes clusters, your experience can help to build a useful rule-base.
-If you are interested, please [create a GitHub issue](https://github.com/korrel8/korrel8/issues/new), following this template:
+If you are interested, please [create a GitHub issue](https://github.com/korrel8r/korrel8r/issues/new), following this template:
 
 ## 1. When I am in this situation: ＿＿＿＿
 

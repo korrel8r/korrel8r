@@ -3,8 +3,8 @@ package cmd
 import (
 	"net/http"
 
-	"github.com/korrel8/korrel8/internal/pkg/must"
-	"github.com/korrel8/korrel8/internal/pkg/webui"
+	"github.com/korrel8r/korrel8r/internal/pkg/must"
+	"github.com/korrel8r/korrel8r/internal/pkg/webui"
 	"github.com/spf13/cobra"
 )
 

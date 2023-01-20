@@ -3,8 +3,8 @@ package templaterule
 import (
 	"io"
 
-	"github.com/korrel8/korrel8/internal/pkg/logging"
-	"github.com/korrel8/korrel8/pkg/engine"
+	"github.com/korrel8r/korrel8r/internal/pkg/logging"
+	"github.com/korrel8r/korrel8r/pkg/engine"
 )
 
 var log = logging.Log()

@@ -1,7 +1,7 @@
-// package korrel8 generic interfaces and algorithms to correlate objects between different domains.
+// package korrel8r generic interfaces and algorithms to correlate objects between different domains.
 //
 // Each domain needs an implementation of the interfaces here.
-package korrel8
+package korrel8r
 
 import (
 	"context"
@@ -10,7 +10,7 @@ import (
 	"path"
 	"time"
 
-	"github.com/korrel8/korrel8/pkg/uri"
+	"github.com/korrel8r/korrel8r/pkg/uri"
 )
 
 // Object represents an instance of a signal.

@@ -74,7 +74,7 @@ const basePageHTML = `<!DOCTYPE html PUBLIC " - //W3C//DTD xhtml 1.0 Strict//EN"
      }
     </style>
     {{block "head" . -}}
-	<title>Korrel8 Web UI</title>
+	<title>Korrel8r Web UI</title>
     {{end -}}
 </head>
 <body>

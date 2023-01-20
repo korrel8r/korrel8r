@@ -9,16 +9,16 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/korrel8/korrel8/internal/pkg/decoder"
-	"github.com/korrel8/korrel8/internal/pkg/logging"
-	"github.com/korrel8/korrel8/internal/pkg/must"
-	"github.com/korrel8/korrel8/pkg/alert"
-	"github.com/korrel8/korrel8/pkg/engine"
-	"github.com/korrel8/korrel8/pkg/k8s"
-	"github.com/korrel8/korrel8/pkg/korrel8"
-	"github.com/korrel8/korrel8/pkg/loki"
-	"github.com/korrel8/korrel8/pkg/templaterule"
-	"github.com/korrel8/korrel8/pkg/uri"
+	"github.com/korrel8r/korrel8r/internal/pkg/decoder"
+	"github.com/korrel8r/korrel8r/internal/pkg/logging"
+	"github.com/korrel8r/korrel8r/internal/pkg/must"
+	"github.com/korrel8r/korrel8r/pkg/alert"
+	"github.com/korrel8r/korrel8r/pkg/engine"
+	"github.com/korrel8r/korrel8r/pkg/k8s"
+	"github.com/korrel8r/korrel8r/pkg/korrel8r"
+	"github.com/korrel8r/korrel8r/pkg/loki"
+	"github.com/korrel8r/korrel8r/pkg/templaterule"
+	"github.com/korrel8r/korrel8r/pkg/uri"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/util/flowcontrol"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -49,12 +49,12 @@ func newEngine() *engine.Engine {
 	cfg := restConfig()
 	e := engine.New()
 	for _, x := range []struct {
-		d      korrel8.Domain
-		create func() (korrel8.Store, error)
+		d      korrel8r.Domain
+		create func() (korrel8r.Store, error)
 	}{
-		{k8s.Domain, func() (korrel8.Store, error) { return k8s.NewStore(k8sClient(cfg), cfg) }},
-		{alert.Domain, func() (korrel8.Store, error) { return alert.NewOpenshiftAlertManagerStore(ctx, cfg) }},
-		{loki.Domain, func() (korrel8.Store, error) { return loki.NewOpenshiftLokiStackStore(ctx, k8sClient(cfg), cfg) }},
+		{k8s.Domain, func() (korrel8r.Store, error) { return k8s.NewStore(k8sClient(cfg), cfg) }},
+		{alert.Domain, func() (korrel8r.Store, error) { return alert.NewOpenshiftAlertManagerStore(ctx, cfg) }},
+		{loki.Domain, func() (korrel8r.Store, error) { return loki.NewOpenshiftLokiStackStore(ctx, k8sClient(cfg), cfg) }},
 	} {
 		log.V(2).Info("add domain", "domain", x.d)
 		s, err := x.create()
@@ -78,21 +78,21 @@ func jsonString(v any) string {
 	return string(b)
 }
 
-type printer struct{ print func(o korrel8.Object) }
+type printer struct{ print func(o korrel8r.Object) }
 
 func newPrinter(w io.Writer) printer {
 	switch *output {
 
 	case "json":
-		return printer{print: func(o korrel8.Object) { fmt.Fprintln(w, jsonString(o)) }}
+		return printer{print: func(o korrel8r.Object) { fmt.Fprintln(w, jsonString(o)) }}
 
 	case "json-pretty":
 		encoder := json.NewEncoder(w)
 		encoder.SetIndent("", "  ")
-		return printer{print: func(o korrel8.Object) { must.Must(encoder.Encode(o)) }}
+		return printer{print: func(o korrel8r.Object) { must.Must(encoder.Encode(o)) }}
 
 	case "yaml":
-		return printer{print: func(o korrel8.Object) { fmt.Fprintf(w, "---\n%s", must.Must1(yaml.Marshal(&o))) }}
+		return printer{print: func(o korrel8r.Object) { fmt.Fprintf(w, "---\n%s", must.Must1(yaml.Marshal(&o))) }}
 
 	default:
 		must.Must(fmt.Errorf("invalid output type: %v", *output))
@@ -100,7 +100,7 @@ func newPrinter(w io.Writer) printer {
 	}
 }
 
-func (p printer) Append(objects ...korrel8.Object) {
+func (p printer) Append(objects ...korrel8r.Object) {
 	for _, o := range objects {
 		p.print(o)
 	}

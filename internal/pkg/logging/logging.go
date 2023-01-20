@@ -12,7 +12,7 @@ import (
 	"github.com/go-logr/stdr"
 )
 
-const verboseEnv = "KORREL8_VERBOSE"
+const verboseEnv = "KORREL8R_VERBOSE"
 
 var root logr.Logger
 
@@ -20,7 +20,7 @@ var root logr.Logger
 func Log() logr.Logger { return root }
 
 func init() { // Use the env verbosity regardless if Init is called.
-	root = stdr.New(log.New(os.Stderr, "korrel8 ", log.Ltime))
+	root = stdr.New(log.New(os.Stderr, "korrel8r ", log.Ltime))
 	if n, err := strconv.Atoi(os.Getenv(verboseEnv)); err == nil {
 		stdr.SetVerbosity(n)
 	}

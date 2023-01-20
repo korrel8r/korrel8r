@@ -4,14 +4,14 @@ import (
 	"context"
 	"testing"
 
-	"github.com/korrel8/korrel8/internal/pkg/must"
-	"github.com/korrel8/korrel8/internal/pkg/openshift"
-	"github.com/korrel8/korrel8/internal/pkg/test"
-	"github.com/korrel8/korrel8/pkg/engine"
-	"github.com/korrel8/korrel8/pkg/k8s"
-	"github.com/korrel8/korrel8/pkg/korrel8"
-	"github.com/korrel8/korrel8/pkg/loki"
-	"github.com/korrel8/korrel8/pkg/uri"
+	"github.com/korrel8r/korrel8r/internal/pkg/must"
+	"github.com/korrel8r/korrel8r/internal/pkg/openshift"
+	"github.com/korrel8r/korrel8r/internal/pkg/test"
+	"github.com/korrel8r/korrel8r/pkg/engine"
+	"github.com/korrel8r/korrel8r/pkg/k8s"
+	"github.com/korrel8r/korrel8r/pkg/korrel8r"
+	"github.com/korrel8r/korrel8r/pkg/loki"
+	"github.com/korrel8r/korrel8r/pkg/uri"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	appv1 "k8s.io/api/apps/v1"
@@ -34,7 +34,7 @@ func TestRewriter(t *testing.T) {
 	rewriter := setup(t)
 	for _, x := range []struct {
 		cref, ref uri.Reference
-		class     korrel8.Class
+		class     korrel8r.Class
 	}{
 		// k8s refs
 		{uri.Make("k8s/ns/default/pods/foo"), uri.Make("api/v1/namespaces/default/pods/foo"), k8s.ClassOf(&corev1.Pod{})},

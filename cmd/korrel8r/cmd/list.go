@@ -6,8 +6,8 @@ import (
 	"regexp"
 	"text/tabwriter"
 
-	"github.com/korrel8/korrel8/internal/pkg/must"
-	"github.com/korrel8/korrel8/pkg/korrel8"
+	"github.com/korrel8r/korrel8r/internal/pkg/must"
+	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"github.com/spf13/cobra"
 )
 
@@ -41,7 +41,7 @@ var rulesCmd = &cobra.Command{
 		e := newEngine()
 		w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
 		defer w.Flush()
-		var start, goal korrel8.Class
+		var start, goal korrel8r.Class
 		if *ruleStart != "" {
 			start = must.Must1(e.ParseClass(*ruleStart))
 		}

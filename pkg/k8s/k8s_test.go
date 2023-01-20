@@ -7,9 +7,9 @@ import (
 
 	"net/url"
 
-	"github.com/korrel8/korrel8/internal/pkg/must"
-	"github.com/korrel8/korrel8/pkg/korrel8"
-	"github.com/korrel8/korrel8/pkg/uri"
+	"github.com/korrel8r/korrel8r/internal/pkg/must"
+	"github.com/korrel8r/korrel8r/pkg/korrel8r"
+	"github.com/korrel8r/korrel8r/pkg/uri"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
@@ -45,7 +45,7 @@ func TestDomain_Class(t *testing.T) {
 	require.NoError(t, appsv1.AddToScheme(scheme.Scheme))
 	for _, x := range []struct {
 		name string
-		want korrel8.Class
+		want korrel8r.Class
 	}{
 		{"Pod", ClassOf(&corev1.Pod{})},                       // Kind only
 		{"Pod.", ClassOf(&corev1.Pod{})},                      // Kind and group (core group is named "")
@@ -131,7 +131,7 @@ func TestStore_Get(t *testing.T) {
 		t.Run(x.s, func(t *testing.T) {
 			ref, err := uri.Parse(x.s)
 			require.NoError(t, err)
-			var result korrel8.ListResult
+			var result korrel8r.ListResult
 			err = store.Get(context.Background(), ref, &result)
 			require.NoError(t, err)
 			var got []types.NamespacedName
@@ -201,7 +201,7 @@ func TestStore_RefClass(t *testing.T) {
 		Build(), &rest.Config{})
 	for _, x := range []struct {
 		ref   string
-		class korrel8.Class
+		class korrel8r.Class
 	}{
 		{"api/v1/namespaces/default/pods/foo", ClassOf(&corev1.Pod{})},
 		{"api/v1/namespaces/default/pods", ClassOf(&corev1.Pod{})},

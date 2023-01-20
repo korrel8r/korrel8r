@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/korrel8/korrel8/internal/pkg/test/mock"
+	"github.com/korrel8r/korrel8r/internal/pkg/test/mock"
 	"github.com/stretchr/testify/assert"
 )
 

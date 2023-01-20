@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/korrel8/korrel8/pkg/uri"
+	"github.com/korrel8r/korrel8r/pkg/uri"
 	"github.com/stretchr/testify/assert"
 )
 

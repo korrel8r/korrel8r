@@ -18,7 +18,7 @@ package main
 import (
 	"os"
 
-	"github.com/korrel8/korrel8/cmd/korrel8/cmd"
+	"github.com/korrel8r/korrel8r/cmd/korrel8r/cmd"
 )
 
 func main() {

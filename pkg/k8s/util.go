@@ -3,7 +3,7 @@ package k8s
 import (
 	"context"
 
-	"github.com/korrel8/korrel8/internal/pkg/test"
+	"github.com/korrel8r/korrel8r/internal/pkg/test"
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"

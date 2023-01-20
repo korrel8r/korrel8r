@@ -5,14 +5,14 @@ import (
 	"io"
 	"text/template"
 
-	"github.com/korrel8/korrel8/pkg/engine"
-	"github.com/korrel8/korrel8/pkg/korrel8"
-	"github.com/korrel8/korrel8/pkg/unique"
+	"github.com/korrel8r/korrel8r/pkg/engine"
+	"github.com/korrel8r/korrel8r/pkg/korrel8r"
+	"github.com/korrel8r/korrel8r/pkg/unique"
 )
 
 type ruleBuilder struct {
 	name                   string
-	start, goal            []korrel8.Class
+	start, goal            []korrel8r.Class
 	uri, class, constraint *template.Template
 	engine                 *engine.Engine
 }
@@ -39,7 +39,7 @@ func newRuleBuilder(r *Rule, e *engine.Engine) (*ruleBuilder, error) {
 	}
 	c := r.Result.Class
 	if c == "" && r.Goal.single() {
-		c = korrel8.ClassName(rb.goal[0])
+		c = korrel8r.ClassName(rb.goal[0])
 	}
 	if c == "" {
 		return nil, fmt.Errorf("template is empty: %v.result.class ", rb.name)
@@ -53,7 +53,7 @@ func newRuleBuilder(r *Rule, e *engine.Engine) (*ruleBuilder, error) {
 	return rb, nil
 }
 
-func (rb *ruleBuilder) expand(spec *ClassSpec, what string) (classes []korrel8.Class, err error) {
+func (rb *ruleBuilder) expand(spec *ClassSpec, what string) (classes []korrel8r.Class, err error) {
 	domain, err := rb.engine.Domain(spec.Domain)
 	if err != nil {
 		return nil, err
@@ -61,7 +61,7 @@ func (rb *ruleBuilder) expand(spec *ClassSpec, what string) (classes []korrel8.C
 	if len(spec.Classes) == 0 && len(spec.Matches) == 0 {
 		return domain.Classes(), nil // Default to all classes in domain
 	}
-	list := unique.NewList[korrel8.Class]()
+	list := unique.NewList[korrel8r.Class]()
 	for _, name := range spec.Classes {
 		c := domain.Class(name)
 		if c == nil {
@@ -92,7 +92,7 @@ func (rb *ruleBuilder) newTemplate(text, suffix string) (*template.Template, err
 		Parse(text)
 }
 
-func (rb *ruleBuilder) rules() (rules []korrel8.Rule, err error) {
+func (rb *ruleBuilder) rules() (rules []korrel8r.Rule, err error) {
 	for _, start := range rb.start {
 		for _, goal := range rb.goal {
 			rules = append(rules, &rule{

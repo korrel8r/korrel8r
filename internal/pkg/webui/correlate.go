@@ -10,10 +10,10 @@ import (
 	"path"
 	"path/filepath"
 
-	"github.com/korrel8/korrel8/pkg/engine"
-	"github.com/korrel8/korrel8/pkg/graph"
-	"github.com/korrel8/korrel8/pkg/korrel8"
-	"github.com/korrel8/korrel8/pkg/uri"
+	"github.com/korrel8r/korrel8r/pkg/engine"
+	"github.com/korrel8r/korrel8r/pkg/graph"
+	"github.com/korrel8r/korrel8r/pkg/korrel8r"
+	"github.com/korrel8r/korrel8r/pkg/uri"
 	"go.uber.org/multierr"
 	"gonum.org/v1/gonum/graph/encoding/dot"
 	"gonum.org/v1/gonum/graph/topo"
@@ -26,12 +26,12 @@ type correlateFields struct {
 	Goal  string // Starting class full name.
 
 	// Computed fields for display
-	StartClass, GoalClass korrel8.Class
+	StartClass, GoalClass korrel8r.Class
 	StartRef              uri.Reference
-	StartObjects          []korrel8.Object
+	StartObjects          []korrel8r.Object
 	Results               *engine.Results
 	Diagram               string
-	Topo                  []korrel8.Class
+	Topo                  []korrel8r.Class
 	Err                   error
 	FollowErr             error
 }
@@ -65,7 +65,7 @@ type correlateHandler struct {
 	f  correlateFields
 }
 
-func (h *correlateHandler) refToConsole(c korrel8.Class, r uri.Reference) *url.URL {
+func (h *correlateHandler) refToConsole(c korrel8r.Class, r uri.Reference) *url.URL {
 	cref, err := h.ui.Rewriter.RefStoreToConsoleURL(c, r)
 	if err != nil {
 		cref = &url.URL{Path: "/error", RawQuery: uri.Values{"err": []string{err.Error()}}.Encode()}
@@ -97,7 +97,7 @@ func (h *correlateHandler) update(req *http.Request) {
 			// Get start objects
 			startStore, err := h.ui.Engine.Store(h.f.StartClass.Domain().String())
 			if !addErr(err) {
-				result := korrel8.NewResult(h.f.StartClass)
+				result := korrel8r.NewResult(h.f.StartClass)
 				log.V(3).Info("get start", "url", startStore.Resolve(h.f.StartRef))
 				addErr(startStore.Get(context.Background(), h.f.StartRef, result))
 				h.f.StartObjects = result.List()
@@ -131,7 +131,7 @@ func (h *correlateHandler) update(req *http.Request) {
 // diagram the set of rules used in the given paths.
 func (h *correlateHandler) diagram(multipaths []graph.MultiPath) {
 	addErr := h.f.addErr
-	var rules []korrel8.Rule
+	var rules []korrel8r.Rule
 	for _, m := range multipaths {
 		for _, r := range m {
 			rules = append(rules, r...)

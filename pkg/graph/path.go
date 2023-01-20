@@ -4,16 +4,16 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/korrel8/korrel8/pkg/korrel8"
+	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"golang.org/x/exp/slices"
 )
 
 // Links are a set of rules with the same Start() and Goal().
 // They form one step on a MultiPath.
-type Links []korrel8.Rule
+type Links []korrel8r.Rule
 
-func (e Links) Start() korrel8.Class { return safeApply(e, 0, korrel8.Rule.Start) }
-func (e Links) Goal() korrel8.Class  { return safeApply(e, 0, korrel8.Rule.Goal) }
+func (e Links) Start() korrel8r.Class { return safeApply(e, 0, korrel8r.Rule.Start) }
+func (e Links) Goal() korrel8r.Class  { return safeApply(e, 0, korrel8r.Rule.Goal) }
 func (l Links) Valid() bool {
 	if len(l) > 1 {
 		for _, r := range l[1:] {
@@ -27,20 +27,20 @@ func (l Links) Valid() bool {
 
 // Sort into consistent order for comparison
 func (l Links) Sort() {
-	slices.SortFunc(l, func(a, b korrel8.Rule) bool { return a.String() < b.String() })
+	slices.SortFunc(l, func(a, b korrel8r.Rule) bool { return a.String() < b.String() })
 }
 
 // MultiPath represents multiple paths from a Start to a Goal.
 type MultiPath []Links
 
-func (path MultiPath) Start() korrel8.Class {
+func (path MultiPath) Start() korrel8r.Class {
 	if len(path) > 0 {
 		return path[0].Start()
 	}
 	return nil
 }
 
-func (path MultiPath) Goal() korrel8.Class {
+func (path MultiPath) Goal() korrel8r.Class {
 	if len(path) > 0 {
 		return path[len(path)-1].Goal()
 	}

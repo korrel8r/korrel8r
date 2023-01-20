@@ -1,30 +1,30 @@
 package engine
 
 import (
-	"github.com/korrel8/korrel8/pkg/korrel8"
-	"github.com/korrel8/korrel8/pkg/unique"
-	"github.com/korrel8/korrel8/pkg/uri"
+	"github.com/korrel8r/korrel8r/pkg/korrel8r"
+	"github.com/korrel8r/korrel8r/pkg/unique"
+	"github.com/korrel8r/korrel8r/pkg/uri"
 )
 
 // Result accumulates reference and object results for a single class in a correlation chain.
 type Result struct {
-	Class      korrel8.Class
-	Objects    korrel8.Result // Collect objects
+	Class      korrel8r.Class
+	Objects    korrel8r.Result // Collect objects
 	References unique.List[uri.Reference]
 }
 
-func NewResult(class korrel8.Class) Result {
-	return Result{Class: class, Objects: korrel8.NewResult(class), References: unique.NewList[uri.Reference]()}
+func NewResult(class korrel8r.Class) Result {
+	return Result{Class: class, Objects: korrel8r.NewResult(class), References: unique.NewList[uri.Reference]()}
 }
 
 // Results is a correlation sequence containing all references and objects leading to the final result.
 type Results struct {
-	classes map[korrel8.Class]int
+	classes map[korrel8r.Class]int
 	List    []Result
 }
 
 func NewResults() *Results {
-	return &Results{classes: map[korrel8.Class]int{}}
+	return &Results{classes: map[korrel8r.Class]int{}}
 }
 
 // Results aggregates results into a Result per class.
@@ -39,7 +39,7 @@ func (rs *Results) Append(stages ...Result) {
 
 // Get a pointer to the Result for class, one is created if necessary.
 // The returned pointer becomes invalid if List is modified (e.g. by calling Append).
-func (rs *Results) Get(class korrel8.Class) *Result {
+func (rs *Results) Get(class korrel8r.Class) *Result {
 	i, ok := rs.classes[class]
 	if !ok {
 		i = len(rs.List)

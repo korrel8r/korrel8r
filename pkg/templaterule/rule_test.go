@@ -4,21 +4,21 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/korrel8/korrel8/internal/pkg/test/mock"
-	"github.com/korrel8/korrel8/pkg/engine"
-	"github.com/korrel8/korrel8/pkg/korrel8"
+	"github.com/korrel8r/korrel8r/internal/pkg/test/mock"
+	"github.com/korrel8r/korrel8r/pkg/engine"
+	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v2"
 )
 
 // rule makes a mock rule
-func mockRule(name string, start, goal korrel8.Class) mock.Rule {
+func mockRule(name string, start, goal korrel8r.Class) mock.Rule {
 	return mock.NewRuleFromClasses(name, start, goal, nil)
 }
 
-// mockRules copies public parts of korrel8.Rule to a mock.Rule for easy comparison.
-func mockRules(k []korrel8.Rule) []mock.Rule {
+// mockRules copies public parts of korrel8r.Rule to a mock.Rule for easy comparison.
+func mockRules(k []korrel8r.Rule) []mock.Rule {
 	m := make([]mock.Rule, len(k))
 	for i := range k {
 		m[i] = mock.NewRuleFromClasses(k[i].String(), k[i].Start(), k[i].Goal(), nil)

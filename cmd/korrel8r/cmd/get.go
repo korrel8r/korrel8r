@@ -8,7 +8,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/korrel8/korrel8/internal/pkg/must"
+	"github.com/korrel8r/korrel8r/internal/pkg/must"
 	"github.com/spf13/cobra"
 )
 

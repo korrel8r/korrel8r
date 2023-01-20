@@ -9,14 +9,14 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/korrel8/korrel8/pkg/korrel8"
+	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"sigs.k8s.io/yaml"
 )
 
 // Funcs that are available to all Rules.
 //
 //	constraint
-//	  Returns the korrel8.Constraint in force when applying a rule. May be nil.
+//	  Returns the korrel8r.Constraint in force when applying a rule. May be nil.
 //	has
 //	  Evaluates its arguments for errors. Useful for asserting that fields exist in the context value.
 //	assert
@@ -26,7 +26,7 @@ import (
 //	toYAML
 //	  Marshals its argument as YAML and returns the string.
 //	fullname
-//	  Returns the domain qualified name of a korrel8.Class argument.
+//	  Returns the domain qualified name of a korrel8r.Class argument.
 //	urlencode
 //	  Returns the URL query encoding of a map argument.
 //	  Map values are stringified as for fmt.Printf("%v", ...)
@@ -39,11 +39,11 @@ var Funcs map[string]any
 
 func init() {
 	Funcs = map[string]any{
-		"constraint": func() *korrel8.Constraint { return nil },
+		"constraint": func() *korrel8r.Constraint { return nil },
 		"assert":     doAssert, // Assert a condition in a template
 		"toJSON":     toJSON,
 		"toYAML":     toYAML,
-		"fullname":   korrel8.ClassName,
+		"fullname":   korrel8r.ClassName,
 		"urlencode":  urlencode,
 		"selector":   selector,
 		"kvmap":      kvMap,

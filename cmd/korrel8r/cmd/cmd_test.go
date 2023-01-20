@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/korrel8/korrel8/internal/pkg/test"
-	"github.com/korrel8/korrel8/pkg/alert"
+	"github.com/korrel8r/korrel8r/internal/pkg/test"
+	"github.com/korrel8r/korrel8r/pkg/alert"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	appv1 "k8s.io/api/apps/v1"

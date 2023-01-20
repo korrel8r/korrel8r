@@ -7,9 +7,9 @@ import (
 	"path"
 	"strings"
 
-	"github.com/korrel8/korrel8/pkg/engine"
-	"github.com/korrel8/korrel8/pkg/korrel8"
-	"github.com/korrel8/korrel8/pkg/uri"
+	"github.com/korrel8r/korrel8r/pkg/engine"
+	"github.com/korrel8r/korrel8r/pkg/korrel8r"
+	"github.com/korrel8r/korrel8r/pkg/uri"
 )
 
 // Rewriter manages references and URLs for an openshift console.
@@ -22,8 +22,8 @@ func New(baseURL *url.URL, e *engine.Engine) *Rewriter {
 	return &Rewriter{BaseURL: baseURL, e: e}
 }
 
-func (rw *Rewriter) RefConsoleToStore(cref uri.Reference) (class korrel8.Class, sref uri.Reference, err error) {
-	var cvt korrel8.RefConverter
+func (rw *Rewriter) RefConsoleToStore(cref uri.Reference) (class korrel8r.Class, sref uri.Reference, err error) {
+	var cvt korrel8r.RefConverter
 	for _, x := range [][2]string{
 		{"/k8s", "k8s"},
 		{"/monitoring/alerts", "alert"},
@@ -42,7 +42,7 @@ func (rw *Rewriter) RefConsoleToStore(cref uri.Reference) (class korrel8.Class, 
 	return nil, uri.Reference{}, fmt.Errorf("cannot convert console ref: %v", cref)
 }
 
-func (rw *Rewriter) RefStoreToConsole(class korrel8.Class, sref uri.Reference) (cref uri.Reference, err error) {
+func (rw *Rewriter) RefStoreToConsole(class korrel8r.Class, sref uri.Reference) (cref uri.Reference, err error) {
 	cvt, err := rw.e.RefConverter(class.Domain().String())
 	if err != nil {
 		return uri.Reference{}, fmt.Errorf("%w: %v", err, sref)
@@ -51,7 +51,7 @@ func (rw *Rewriter) RefStoreToConsole(class korrel8.Class, sref uri.Reference) (
 }
 
 // RefConsoleToURL converts a store reference to a full console URL.
-func (rw *Rewriter) RefStoreToConsoleURL(class korrel8.Class, storeRef uri.Reference) (*url.URL, error) {
+func (rw *Rewriter) RefStoreToConsoleURL(class korrel8r.Class, storeRef uri.Reference) (*url.URL, error) {
 	consoleRef, err := rw.RefStoreToConsole(class, storeRef)
 	if err != nil {
 		return nil, err

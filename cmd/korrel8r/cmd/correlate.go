@@ -9,12 +9,12 @@ import (
 	"io"
 	"os"
 
-	"github.com/korrel8/korrel8/internal/pkg/decoder"
-	"github.com/korrel8/korrel8/internal/pkg/must"
-	"github.com/korrel8/korrel8/pkg/engine"
-	"github.com/korrel8/korrel8/pkg/graph"
-	"github.com/korrel8/korrel8/pkg/korrel8"
-	"github.com/korrel8/korrel8/pkg/uri"
+	"github.com/korrel8r/korrel8r/internal/pkg/decoder"
+	"github.com/korrel8r/korrel8r/internal/pkg/must"
+	"github.com/korrel8r/korrel8r/pkg/engine"
+	"github.com/korrel8r/korrel8r/pkg/graph"
+	"github.com/korrel8r/korrel8r/pkg/korrel8r"
+	"github.com/korrel8r/korrel8r/pkg/uri"
 	"github.com/spf13/cobra"
 )
 
@@ -34,7 +34,7 @@ var correlateCmd = &cobra.Command{
 			paths = must.Must1(e.Graph().ShortestPaths(start, goal))
 		}
 		log.V(1).Info("found paths", "paths", paths, "count", len(paths))
-		starters := korrel8.NewResult(start)
+		starters := korrel8r.NewResult(start)
 
 		if len(args) >= 3 { // Get starters using query
 			query := must.Must1(referenceArgs(args[2:]))
@@ -71,7 +71,7 @@ func printRefs(refs []uri.Reference) {
 	}
 }
 
-func printObjects(e *engine.Engine, goal korrel8.Class, refs []uri.Reference) {
+func printObjects(e *engine.Engine, goal korrel8r.Class, refs []uri.Reference) {
 	d := goal.Domain()
 	store, err := e.Store(d.String())
 	must.Must(err)

@@ -10,11 +10,11 @@ import (
 
 	"context"
 
-	"github.com/korrel8/korrel8/internal/pkg/logging"
-	"github.com/korrel8/korrel8/internal/pkg/openshift"
-	"github.com/korrel8/korrel8/internal/pkg/rewrite"
-	"github.com/korrel8/korrel8/pkg/engine"
-	"github.com/korrel8/korrel8/pkg/templaterule"
+	"github.com/korrel8r/korrel8r/internal/pkg/logging"
+	"github.com/korrel8r/korrel8r/internal/pkg/openshift"
+	"github.com/korrel8r/korrel8r/internal/pkg/rewrite"
+	"github.com/korrel8r/korrel8r/pkg/engine"
+	"github.com/korrel8r/korrel8r/pkg/templaterule"
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -31,7 +31,7 @@ type WebUI struct {
 func New(e *engine.Engine, cfg *rest.Config, c client.Client) (*WebUI, error) {
 	ui := &WebUI{Engine: e}
 	var err error
-	if ui.dir, err = os.MkdirTemp("", "korrel8"); err != nil {
+	if ui.dir, err = os.MkdirTemp("", "korrel8r"); err != nil {
 		return nil, err
 	}
 	if err := os.Mkdir(filepath.Join(ui.dir, "files"), 0700); err != nil {

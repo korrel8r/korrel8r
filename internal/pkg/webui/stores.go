@@ -6,8 +6,8 @@ import (
 	"net/http"
 	"regexp"
 
-	"github.com/korrel8/korrel8/pkg/korrel8"
-	"github.com/korrel8/korrel8/pkg/uri"
+	"github.com/korrel8r/korrel8r/pkg/korrel8r"
+	"github.com/korrel8r/korrel8r/pkg/uri"
 )
 
 type storeHandler struct{ ui *WebUI }
@@ -35,7 +35,7 @@ func (h *storeHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		http.Error(w, fmt.Sprintf("class not found %v/%v", d, c), http.StatusNotFound)
 		return
 	}
-	result := korrel8.NewResult(class)
+	result := korrel8r.NewResult(class)
 	err = store.Get(context.Background(), ref, result)
 	data := map[string]any{
 		"class":  class,

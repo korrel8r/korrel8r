@@ -1,4 +1,4 @@
-// package k8s is a Kubernetes implementation of the korrel8 interfaces
+// package k8s is a Kubernetes implementation of the korrel8r interfaces
 package k8s
 
 import (
@@ -9,8 +9,8 @@ import (
 	"reflect"
 	"regexp"
 
-	"github.com/korrel8/korrel8/pkg/korrel8"
-	"github.com/korrel8/korrel8/pkg/uri"
+	"github.com/korrel8r/korrel8r/pkg/korrel8r"
+	"github.com/korrel8r/korrel8r/pkg/uri"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -21,9 +21,9 @@ import (
 )
 
 var (
-	_ korrel8.Domain       = Domain
-	_ korrel8.Class        = Class{}
-	_ korrel8.RefConverter = &Store{}
+	_ korrel8r.Domain       = Domain
+	_ korrel8r.Class        = Class{}
+	_ korrel8r.RefConverter = &Store{}
 )
 
 type domain struct{}
@@ -31,7 +31,7 @@ type domain struct{}
 func (d domain) String() string { return "k8s" }
 
 // Class name in one of the forms: Kind,  Kind.Group,  Kind.Version.Group.
-func (d domain) Class(name string) korrel8.Class {
+func (d domain) Class(name string) korrel8r.Class {
 	tryGVK, tryGK := schema.ParseKindArg(name)
 	switch {
 	case tryGVK != nil && Scheme.Recognizes(*tryGVK): // Direct hit
@@ -52,14 +52,14 @@ func (d domain) Class(name string) korrel8.Class {
 	return nil
 }
 
-func (d domain) Classes() (classes []korrel8.Class) {
+func (d domain) Classes() (classes []korrel8r.Class) {
 	for gvk := range Scheme.AllKnownTypes() {
 		classes = append(classes, Class(gvk))
 	}
 	return classes
 }
 
-var Domain korrel8.Domain = domain{} // Implements interface
+var Domain korrel8r.Domain = domain{} // Implements interface
 
 // TODO the Class implementation assumes all objects are pointers to the generated API struct.
 // We could use scheme & GVK comparisons to generalize to untyped representations as well.
@@ -68,22 +68,22 @@ var Domain korrel8.Domain = domain{} // Implements interface
 type Class schema.GroupVersionKind
 
 // ClassOf returns the Class of o, which must be a pointer to a typed API resource struct.
-func ClassOf(o client.Object) korrel8.Class {
+func ClassOf(o client.Object) korrel8r.Class {
 	if gvks, _, err := Scheme.ObjectKinds(o); err == nil {
 		return Class(gvks[0])
 	}
 	return nil
 }
 
-func (c Class) ID(o korrel8.Object) any {
+func (c Class) ID(o korrel8r.Object) any {
 	if o, _ := o.(client.Object); o != nil {
 		return client.ObjectKeyFromObject(o)
 	}
 	return nil
 }
 
-func (c Class) Domain() korrel8.Domain { return Domain }
-func (c Class) New() korrel8.Object {
+func (c Class) Domain() korrel8r.Domain { return Domain }
+func (c Class) New() korrel8r.Object {
 	if o, err := Scheme.New(schema.GroupVersionKind(c)); err == nil {
 		return o
 	}
@@ -94,7 +94,7 @@ func (c Class) String() string { return fmt.Sprintf("%v.%v.%v", c.Kind, c.Versio
 
 type Object client.Object
 
-// Store implements the korrel8.Store interface as a k8s API client.
+// Store implements the korrel8r.Store interface as a k8s API client.
 type Store struct {
 	c    client.Client
 	base *url.URL
@@ -112,7 +112,7 @@ func NewStore(c client.Client, cfg *rest.Config) (*Store, error) {
 
 func (s *Store) Resolve(ref uri.Reference) *url.URL { return ref.Resolve(s.base) }
 
-func (s *Store) Get(ctx context.Context, ref uri.Reference, result korrel8.Appender) (err error) {
+func (s *Store) Get(ctx context.Context, ref uri.Reference, result korrel8r.Appender) (err error) {
 	defer func() {
 		if err != nil {
 			err = fmt.Errorf("get %v: %w", ref, err)
@@ -129,7 +129,7 @@ func (s *Store) Get(ctx context.Context, ref uri.Reference, result korrel8.Appen
 	}
 }
 
-func (s *Store) RefClass(ref uri.Reference) (korrel8.Class, error) {
+func (s *Store) RefClass(ref uri.Reference) (korrel8r.Class, error) {
 	if gvk, _, _, err := s.parsePath(ref.Path); err == nil {
 		return Class(gvk), nil
 	}
@@ -154,7 +154,7 @@ func (s *Store) parsePath(path string) (gvk schema.GroupVersionKind, gvr schema.
 	return gvks[0], gvr, nsName, err
 }
 
-func (s *Store) ClassFor(resource string) korrel8.Class {
+func (s *Store) ClassFor(resource string) korrel8r.Class {
 	gvks, err := s.c.RESTMapper().KindsFor(schema.GroupVersionResource{Resource: resource})
 	if err != nil || len(gvks) == 0 {
 		return nil
@@ -162,7 +162,7 @@ func (s *Store) ClassFor(resource string) korrel8.Class {
 	return Class(gvks[0])
 }
 
-func (s *Store) getObject(ctx context.Context, gvk schema.GroupVersionKind, nsName types.NamespacedName, result korrel8.Appender) error {
+func (s *Store) getObject(ctx context.Context, gvk schema.GroupVersionKind, nsName types.NamespacedName, result korrel8r.Appender) error {
 	scheme := s.c.Scheme()
 	o, err := scheme.New(gvk)
 	if err != nil {
@@ -198,7 +198,7 @@ func (s *Store) getOpts(q url.Values) (opts []client.ListOption, err error) {
 	return opts, nil
 }
 
-func (s *Store) getList(ctx context.Context, gvk schema.GroupVersionKind, namespace string, query url.Values, result korrel8.Appender) error {
+func (s *Store) getList(ctx context.Context, gvk schema.GroupVersionKind, namespace string, query url.Values, result korrel8r.Appender) error {
 	gvk.Kind = gvk.Kind + "List"
 	o, err := s.c.Scheme().New(gvk)
 	if err != nil {
@@ -244,7 +244,7 @@ const (
 )
 
 // RefStoreToConsole converts a k8s reference to a console URL
-func (s *Store) RefStoreToConsole(_ korrel8.Class, storeRef uri.Reference) (uri.Reference, error) {
+func (s *Store) RefStoreToConsole(_ korrel8r.Class, storeRef uri.Reference) (uri.Reference, error) {
 	_, gvr, nsName, err := s.parsePath(storeRef.Path)
 	if err != nil {
 		return uri.Reference{}, fmt.Errorf("invalid k8s reference: %v", storeRef)
@@ -266,7 +266,7 @@ const (
 	consoleName
 )
 
-func (s *Store) RefConsoleToStore(ref uri.Reference) (korrel8.Class, uri.Reference, error) {
+func (s *Store) RefConsoleToStore(ref uri.Reference) (korrel8r.Class, uri.Reference, error) {
 	p := consolePath.FindStringSubmatch(ref.Path)
 	if p == nil {
 		return nil, uri.Reference{}, fmt.Errorf("invalid k8s console reference: %v", ref)

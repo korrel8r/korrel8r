@@ -1,7 +1,7 @@
-package korrel8
+package korrel8r
 
 import (
-	"github.com/korrel8/korrel8/pkg/unique"
+	"github.com/korrel8r/korrel8r/pkg/unique"
 )
 
 // Result is an Appender that stores objects in order.

@@ -22,14 +22,14 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/korrel8/korrel8/internal/pkg/logging"
-	"github.com/korrel8/korrel8/internal/pkg/must"
+	"github.com/korrel8r/korrel8r/internal/pkg/logging"
+	"github.com/korrel8r/korrel8r/internal/pkg/must"
 	"github.com/spf13/cobra"
 )
 
 var (
 	rootCmd = &cobra.Command{
-		Use:     "korrel8",
+		Use:     "korrel8r",
 		Short:   "Command line correlation tool",
 		Version: "0.1.1",
 	}
@@ -64,12 +64,12 @@ func Execute() (exitCode int) {
 // defaultRulePaths looks for a default "rules" directory in a few places.
 func defaultRulePaths() []string {
 	for _, f := range []func() string{
-		func() string { return os.Getenv("KORREL8_RULE_DIR") },                                        // Environment directory
+		func() string { return os.Getenv("KORREL8R_RULE_DIR") },                                        // Environment directory
 		func() string { exe, _ := os.Executable(); return filepath.Join(filepath.Dir(exe), "rules") }, // Beside executable
 		func() string { // must.Must for source tree
 			_, path, _, _ := runtime.Caller(1)
 			if _, err := os.Stat(path); err == nil {
-				return filepath.Join(strings.TrimSuffix(path, "/cmd/korrel8/cmd/root.go"), "rules")
+				return filepath.Join(strings.TrimSuffix(path, "/cmd/korrel8r/cmd/root.go"), "rules")
 			}
 			return ""
 		},
