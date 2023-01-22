@@ -10,6 +10,14 @@ type Result interface {
 	List() []Object
 }
 
+// NewResult returns a SetResult if class implements IDer, a ListResult otherwise.
+func NewResult(class Class) Result {
+	if id, _ := class.(IDer); id != nil {
+		return NewSetResult(id)
+	}
+	return NewListResult()
+}
+
 // ListResult implements Collecter by simply appending to a slice.
 type ListResult []Object
 
@@ -17,7 +25,7 @@ func NewListResult() *ListResult               { return &ListResult{} }
 func (r *ListResult) Append(objects ...Object) { *r = append(*r, objects...) }
 func (r ListResult) List() []Object            { return []Object(r) }
 
-// SetResult ignores objects with duplicate IDs when appending.
+// SetResult de-duplicates the result using an IDer, it ignores second and subsequent objects with the same ID.
 type SetResult struct {
 	dedup unique.Deduplicator[any, Object]
 	list  []Object
@@ -31,12 +39,4 @@ func (r *SetResult) Append(objects ...Object) {
 			r.list = append(r.list, objects...)
 		}
 	}
-}
-
-// NewResult returns a SetResult class implements IDer, or a ListResult otherwise.
-func NewResult(class Class) Result {
-	if id, _ := class.(IDer); id != nil {
-		return NewSetResult(id)
-	}
-	return NewListResult()
 }

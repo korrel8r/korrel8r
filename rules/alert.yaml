@@ -7,8 +7,8 @@ goal:
   domain: k8s
   classes: [Deployment.apps]
 result:
-  uri:  |-
-    /api/v1/namespaces/{{.Alert.Labels.namespace}}/deployments/{{.Alert.Labels.deployment}}
+  query: |-
+    {"Namespace": "{{.Alert.Labels.namespace}}", "Name":"{{.Alert.Labels.deployment}}"}
 ---
 name: AlertToNamespace
 start:
@@ -17,8 +17,8 @@ goal:
   domain: k8s
   classes: [Namespace.]
 result:
-  uri:  |-
-    /api/v1/namespaces/{{.Alert.Labels.namespace}}
+  query:  |-
+    {"Namespace": "{{.Alert.Labels.namespace}}"}
 ---
 name: AlertToPod
 start:
@@ -27,8 +27,8 @@ goal:
   domain: k8s
   classes: [Pod.]
 result:
-  uri:  |-
-    /api/v1/namespaces/{{.Alert.Labels.namespace}}/pods/{{.Alert.Labels.pod}}
+  query:  |-
+    {"Namespace": "{{.Alert.Labels.namespace}}", "Name":"{{.Alert.Labels.pod}}"}
 ---
 name: AlertToDaemonSet
 start:
@@ -37,8 +37,8 @@ goal:
   domain: k8s
   classes: [DaemonSet.]
 result:
-  uri:  |-
-    /api/v1/namespaces/{{.Alert.Labels.namespace}}/daemonsets/{{.Alert.Labels.daemonset}}
+  query:  |-
+    {"Namespace": "{{.Alert.Labels.namespace}}", "Name":"{{.Alert.Labels.daemonset}}"}
 ---
 name: AlertToStatefulSet
 start:
@@ -47,5 +47,5 @@ goal:
   domain: k8s
   classes: [StatefulSet.]
 result:
-  uri:  |-
-    /api/v1/namespaces/{{.Alert.Labels.namespace}}/statefulsets/{{.Alert.Labels.statefulset}}
+  query:  |-
+    {"Namespace": "{{.Alert.Labels.namespace}}", "Name":"{{.Alert.Labels.statefulset}}"}

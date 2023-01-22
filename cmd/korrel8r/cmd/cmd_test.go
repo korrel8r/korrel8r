@@ -3,7 +3,6 @@ package cmd
 import (
 	"encoding/json"
 	"fmt"
-	"net/url"
 	"strings"
 	"testing"
 	"time"
@@ -61,14 +60,13 @@ func TestCorrelate_Pods(t *testing.T) {
 		return pod.Status.Phase == corev1.PodRunning
 	})
 
-	logQL := fmt.Sprintf(`{kubernetes_namespace_name=%q} | json | kubernetes_label_test="testme"`, pod.Namespace)
-	want := "/api/logs/v1/application/loki/api/v1/query_range?query=" + url.QueryEscape(logQL)
 	var exitCode int
 	stdout, stderr := test.FakeMainStdin(test.JSONString(d), []string{"", "correlate", "k8s/Deployment", "loki/application", "--panic"}, func() {
 		exitCode = Execute()
 	})
 	require.Equal(t, 0, exitCode, stderr)
-	require.Equal(t, want, strings.TrimSpace(stdout))
+	want := fmt.Sprintf(`{"LogQL":"{kubernetes_namespace_name=\"%v\"} | json | kubernetes_label_test=\"testme\"","Tenant":"application"}`, pod.Namespace)
+	require.JSONEq(t, want, stdout, "got: %v", stdout)
 }
 
 func TestList_Classes(t *testing.T) {

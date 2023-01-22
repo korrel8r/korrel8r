@@ -11,10 +11,10 @@ import (
 )
 
 type ruleBuilder struct {
-	name                   string
-	start, goal            []korrel8r.Class
-	uri, class, constraint *template.Template
-	engine                 *engine.Engine
+	name                     string
+	starts, goals            []korrel8r.Class
+	query, class, constraint *template.Template
+	engine                   *engine.Engine
 }
 
 func newRuleBuilder(r *Rule, e *engine.Engine) (*ruleBuilder, error) {
@@ -25,21 +25,21 @@ func newRuleBuilder(r *Rule, e *engine.Engine) (*ruleBuilder, error) {
 	if rb.name == "" {
 		rb.name = fmt.Sprintf("%v_to_%v", r.Start, r.Goal)
 	}
-	if rb.start, err = rb.expand(&r.Start, "start"); err != nil {
+	if rb.starts, err = rb.expand(&r.Start, "start"); err != nil {
 		return nil, fmt.Errorf("expanding start of %v: %w", r.Name, err)
 	}
-	if rb.goal, err = rb.expand(&r.Goal, "goal"); err != nil {
+	if rb.goals, err = rb.expand(&r.Goal, "goal"); err != nil {
 		return nil, fmt.Errorf("expanding goal of %v: %w", r.Name, err)
 	}
-	if r.Result.URI == "" {
-		return nil, fmt.Errorf("template is empty: %v.result.uri", rb.name)
+	if r.Result.Query == "" {
+		return nil, fmt.Errorf("template is empty: %v.result.query", rb.name)
 	}
-	if rb.uri, err = rb.newTemplate(r.Result.URI, ""); err != nil {
+	if rb.query, err = rb.newTemplate(r.Result.Query, ""); err != nil {
 		return nil, err
 	}
 	c := r.Result.Class
 	if c == "" && r.Goal.single() {
-		c = korrel8r.ClassName(rb.goal[0])
+		c = korrel8r.ClassName(rb.goals[0])
 	}
 	if c == "" {
 		return nil, fmt.Errorf("template is empty: %v.result.class ", rb.name)
@@ -54,7 +54,7 @@ func newRuleBuilder(r *Rule, e *engine.Engine) (*ruleBuilder, error) {
 }
 
 func (rb *ruleBuilder) expand(spec *ClassSpec, what string) (classes []korrel8r.Class, err error) {
-	domain, err := rb.engine.Domain(spec.Domain)
+	domain, err := rb.engine.DomainErr(spec.Domain)
 	if err != nil {
 		return nil, err
 	}
@@ -93,11 +93,13 @@ func (rb *ruleBuilder) newTemplate(text, suffix string) (*template.Template, err
 }
 
 func (rb *ruleBuilder) rules() (rules []korrel8r.Rule, err error) {
-	for _, start := range rb.start {
-		for _, goal := range rb.goal {
+	for _, start := range rb.starts {
+		for _, goal := range rb.goals {
 			rules = append(rules, &rule{
-				start: start, goal: goal,
-				uri: rb.uri, class: rb.class, constraint: rb.constraint,
+				start: start,
+				goal:  goal,
+				query: rb.query, class: rb.class,
+				constraint: rb.constraint,
 			})
 		}
 	}

@@ -3,6 +3,7 @@ package logging
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/url"
 	"os"
@@ -48,7 +49,7 @@ func (u URLs) MarshalLog() any {
 func JSONString(v any) string {
 	b, err := json.Marshal(v)
 	if err != nil {
-		return err.Error()
+		return fmt.Sprintf("%q", err.Error())
 	}
 	return string(b)
 }

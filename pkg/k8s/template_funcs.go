@@ -12,7 +12,8 @@ func (s *Store) TemplateFuncs() map[string]any {
 		"k8sResource": func(kind, apiVersion string) (string, error) {
 			return kindToResource(s.c.RESTMapper(), kind, apiVersion)
 		},
-		"k8sClass": kindToClass,
+		"k8sClass":   kindToClass,
+		"k8sLogType": logType,
 	}
 }
 
@@ -37,12 +38,6 @@ func kindToClass(kind, apiVersion string) (string, error) {
 	}
 	return Class(gv.WithKind(kind)).String(), nil
 }
-
-var domainFuncs = map[string]any{
-	"k8sLogType": logType,
-}
-
-func (_ domain) TemplateFuncs() map[string]any { return domainFuncs }
 
 var infraNamespace = regexp.MustCompile(`^(default|(openshift|kube)(-.*)?)$`)
 

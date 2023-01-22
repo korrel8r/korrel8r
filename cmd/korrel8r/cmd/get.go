@@ -6,7 +6,6 @@ package cmd
 import (
 	"context"
 	"os"
-	"strings"
 
 	"github.com/korrel8r/korrel8r/internal/pkg/must"
 	"github.com/spf13/cobra"
@@ -14,21 +13,20 @@ import (
 
 // getCmd represents the get command
 var getCmd = &cobra.Command{
-	Use:   "get DOMAIN URI_REF [NAME=VALUE...]",
-	Short: "Execute URI_REF in the default store for DOMAIN and print the results",
+	Use:   "get CLASS [QUERY]",
+	Short: "Execute QUERY for CLASS and print the results",
 	Long: `
-URI_REF is a URI reference to select objects in this domain.
-Optional NAME=VALUE arguments are added to URL query.
 `,
 	Args: cobra.MinimumNArgs(2),
 	Run: func(cmd *cobra.Command, args []string) {
 		e := newEngine()
-		domainName, _, _ := strings.Cut(args[0], "/") // Allow a class name, extract the domain.
-		store := must.Must1(e.Store(domainName))
-		u := must.Must1(referenceArgs(args[1:]))
-		log.V(1).Info("getting", "query", u)
+		c := must.Must1(e.Class(args[0]))
+		s := must.Must1(e.StoreErr(c.Domain().String()))
+		q := c.Domain().Query(c)
+
+		log.V(1).Info("get", "query", q, "class", c)
 		result := newPrinter(os.Stdout)
-		must.Must(store.Get(context.Background(), u, result))
+		must.Must(s.Get(context.Background(), q, result))
 	},
 }
 

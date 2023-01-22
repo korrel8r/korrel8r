@@ -1,20 +1,37 @@
-// mock implementation of korrel8r interfaces for testing.
-// Also serves as a handy template/reference when implementing a new  domain.
+// package mock is a mock implementation of a korrel8r domain for testing.
+//
+// Useful as a starting point when implementing a new domain.
 package mock
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/url"
 	"regexp"
 	"strings"
 
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
-	"github.com/korrel8r/korrel8r/pkg/uri"
 )
 
-// Domain string is "domain" or "domain class1 class2 ..." if Classes is needed.
+var (
+	// Validate implementation of interfaces.
+	_ korrel8r.Domain = Domain("")
+	_ korrel8r.Class  = Class("")
+	_ korrel8r.Query  = Query("")
+	_ korrel8r.Rule   = Rule{}
+	_ korrel8r.Store  = Store{}
+)
+
+var NoMockErr = errors.New("mock not implemented")
+
+// Domain implemented as a string.
+//
+// NOTE a korrel8r.Domain has just a single instance.
+// In most cases you would define a type called `domain`,  with a single instance variable called `Domain`
 type Domain string
+
+// FIXME clean up mocks over-use of parsed strings, e.g. list of classes etc.
 
 func (d Domain) String() string {
 	if f := strings.Fields(string(d)); len(f) > 0 {
@@ -43,9 +60,15 @@ func (d Domain) Classes() (classes []korrel8r.Class) {
 	return classes
 }
 
-var _ korrel8r.Domain = Domain("") // Implements interface
+func (Domain) Query(korrel8r.Class) korrel8r.Query { return Query("") }
 
-// Class string is domain/class
+// Query implemented as a string
+type Query string
+
+func (q Query) String() string        { return string(q) }
+func (q Query) Class() korrel8r.Class { panic(NoMockErr) }
+
+// Class implemented as a string of the form "domain/class"
 type Class string
 
 func (c Class) Domain() korrel8r.Domain {
@@ -66,8 +89,6 @@ func (c Class) String() string {
 func (c Class) New() korrel8r.Object     { return Object(fmt.Sprintf("%v:", string(c))) }
 func (c Class) ID(o korrel8r.Object) any { return o }
 
-var _ korrel8r.Class = Class("") // Implements interface
-
 // Object string is "class:data"
 type Object string
 
@@ -82,9 +103,7 @@ func Objects(objectStrings ...string) []korrel8r.Object {
 	return ko
 }
 
-var _ korrel8r.Object = Object("") // Implements interface
-
-type ApplyFunc = func(korrel8r.Object, *korrel8r.Constraint) (uri.Reference, error)
+type ApplyFunc = func(korrel8r.Object, *korrel8r.Constraint) (korrel8r.Query, error)
 
 type Rule struct {
 	name        string
@@ -94,12 +113,10 @@ type Rule struct {
 
 func (r Rule) Start() korrel8r.Class { return r.start }
 func (r Rule) Goal() korrel8r.Class  { return r.goal }
-func (r Rule) String() string       { return r.name }
-func (r Rule) Apply(start korrel8r.Object, c *korrel8r.Constraint) (uri.Reference, error) {
+func (r Rule) String() string        { return r.name }
+func (r Rule) Apply(start korrel8r.Object, c *korrel8r.Constraint) (korrel8r.Query, error) {
 	return r.apply(start, c)
 }
-
-var _ korrel8r.Rule = Rule{} // Implements interface
 
 func NewRule(name, start, goal string, apply ApplyFunc) Rule {
 	return NewRuleFromClasses(name, Class(start), Class(goal), apply)
@@ -120,24 +137,25 @@ func Rules(startGoal ...string) []korrel8r.Rule {
 	return rules
 }
 
-// Store is a map of query URI strings to sets of objects.
+// Store is a map of mock query strings to sets of objects.
 type Store map[string][]korrel8r.Object
 
+func (s Store) Domain() korrel8r.Domain { panic(NoMockErr) }
+
 // Get returns the objects associated with the query
-func (s Store) Get(_ context.Context, ref uri.Reference, r korrel8r.Appender) error {
-	for _, o := range s[ref.String()] {
+func (s Store) Get(_ context.Context, q korrel8r.Query, r korrel8r.Appender) error {
+	mq := q.(Query)
+	for _, o := range s[mq.String()] {
 		r.Append(o)
 	}
 	return nil
 }
 
-func (s Store) Resolve(uri.Reference) *url.URL { panic("not implemented") }
+func (s Store) Resolve(korrel8r.Query) *url.URL { panic("not implemented") }
 
-// NewReference returns a query that will return the given objects.
-func (s Store) NewReference(objs ...string) uri.Reference {
-	r := uri.Reference{Path: strings.Join(objs, "&")}
+// NewQuery returns a query that will return the given objects.
+func (s Store) NewQuery(objs ...string) korrel8r.Query {
+	r := Query(strings.Join(objs, "&"))
 	s[r.String()] = Objects(objs...)
 	return r
 }
-
-var _ korrel8r.Store = Store{} // Implements interface

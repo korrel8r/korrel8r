@@ -1,4 +1,4 @@
-// package decoder encapsulates the choice of YAML/JSON decoder and adds line numbering.
+// package decoder encapsulates the choice of YAML/JSON decoder.
 package decoder
 
 import (
@@ -10,4 +10,5 @@ import (
 // Decoder decodes a stream of YAML docs or JSON objects.
 type Decoder interface{ Decode(into any) error }
 
+// New Decoder
 func New(r io.Reader) Decoder { return yaml.NewYAMLOrJSONDecoder(r, 1024) }

@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
-	"github.com/korrel8r/korrel8r/pkg/uri"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -44,16 +43,16 @@ func TestObject(t *testing.T) {
 func TestStore_Get(t *testing.T) {
 	r := korrel8r.NewListResult()
 	s := Store{"test": Objects("X/foo:x", "Y/bar.y", "foo:a", "bar:b", ":u", ":v")}
-	require.NoError(t, s.Get(context.Background(), uri.Reference{Path: "test"}, r))
+	require.NoError(t, s.Get(context.Background(), Query("test"), r))
 	want := Objects("X/foo:x", "Y/bar.y", "foo:a", "bar:b", ":u", ":v")
 	assert.Equal(t, want, r.List())
 }
 
-func TestStore_NewReference(t *testing.T) {
+func TestStore_NewQuery(t *testing.T) {
 	r := korrel8r.NewListResult()
 	s := Store{}
-	ref := s.NewReference("X/foo:x", "Y/bar.y", "foo:a", "bar:b", ":u", ":v")
-	require.NoError(t, s.Get(context.Background(), ref, r))
+	q := s.NewQuery("X/foo:x", "Y/bar.y", "foo:a", "bar:b", ":u", ":v")
+	require.NoError(t, s.Get(context.Background(), q, r))
 	want := Objects("X/foo:x", "Y/bar.y", "foo:a", "bar:b", ":u", ":v")
 	assert.Equal(t, want, r.List())
 }

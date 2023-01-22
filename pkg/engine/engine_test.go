@@ -7,12 +7,11 @@ import (
 	"github.com/korrel8r/korrel8r/internal/pkg/test/mock"
 	"github.com/korrel8r/korrel8r/pkg/graph"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
-	"github.com/korrel8r/korrel8r/pkg/uri"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-func TestEngine_ParseClass(t *testing.T) {
+func TestEngine_Class(t *testing.T) {
 	for _, x := range []struct {
 		name string
 		want korrel8r.Class
@@ -28,7 +27,7 @@ func TestEngine_ParseClass(t *testing.T) {
 		t.Run(x.name, func(t *testing.T) {
 			e := New()
 			e.AddDomain(mock.Domain("mock"), nil)
-			c, err := e.ParseClass(x.name)
+			c, err := e.Class(x.name)
 			if x.err == "" {
 				require.NoError(t, err)
 			} else {
@@ -44,32 +43,32 @@ func TestEngine_Follow(t *testing.T) {
 	path := graph.MultiPath{
 		graph.Links{
 			// Return 2 results, must follow both
-			mock.NewRule("ab", "a", "b", func(korrel8r.Object, *korrel8r.Constraint) (uri.Reference, error) {
-				return s.NewReference("b:1", "b:2"), nil
+			mock.NewRule("ab", "a", "b", func(korrel8r.Object, *korrel8r.Constraint) (korrel8r.Query, error) {
+				return s.NewQuery("b:1", "b:2"), nil
 			}),
 		},
 		graph.Links{
 			// 2 rules, must follow both. Incorporate data from stat object.
-			mock.NewRule("bc", "b", "c", func(start korrel8r.Object, _ *korrel8r.Constraint) (uri.Reference, error) {
-				return s.NewReference("c:" + start.(mock.Object).Data()), nil
+			mock.NewRule("bc", "b", "c", func(start korrel8r.Object, _ *korrel8r.Constraint) (korrel8r.Query, error) {
+				return s.NewQuery("c:" + start.(mock.Object).Data()), nil
 			}),
-			mock.NewRule("bc2", "b", "c", func(start korrel8r.Object, _ *korrel8r.Constraint) (uri.Reference, error) {
-				return s.NewReference("c:x" + start.(mock.Object).Data()), nil
+			mock.NewRule("bc2", "b", "c", func(start korrel8r.Object, _ *korrel8r.Constraint) (korrel8r.Query, error) {
+				return s.NewQuery("c:x" + start.(mock.Object).Data()), nil
 			}),
 		},
 		graph.Links{
-			mock.NewRule("cz", "c", "z", func(start korrel8r.Object, _ *korrel8r.Constraint) (uri.Reference, error) {
-				return s.NewReference("z:" + start.(mock.Object).Data()), nil
+			mock.NewRule("cz", "c", "z", func(start korrel8r.Object, _ *korrel8r.Constraint) (korrel8r.Query, error) {
+				return s.NewQuery("z:" + start.(mock.Object).Data()), nil
 			}),
 		},
 	}
 	want := NewResult(mock.Class("z"))
-	want.References.Append(s.NewReference("z:1"), s.NewReference("z:2"), s.NewReference("z:x1"), s.NewReference("z:x2"))
+	want.Queries.Append(s.NewQuery("z:1"), s.NewQuery("z:2"), s.NewQuery("z:x1"), s.NewQuery("z:x2"))
 	e := New()
 	e.AddDomain(mock.Domain(""), s)
-	results := NewResults()
-	err := e.Follow(context.Background(), mock.Objects("foo:a"), nil, path, results)
+	var results Results
+	err := e.Follow(context.Background(), mock.Objects("foo:a"), nil, path, &results)
 	assert.NoError(t, err)
-	last := results.List[len(results.List)-1]
-	assert.ElementsMatch(t, want.References.List, last.References.List)
+	last := results.Last()
+	assert.ElementsMatch(t, want.Queries.List, last.Queries.List)
 }

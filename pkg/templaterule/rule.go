@@ -9,6 +9,7 @@ import (
 )
 
 // Rule is a template rule specification that can be serialized as JSON.
+// It generates korrel8r.Rules based on the JSON rule spec.
 type Rule struct {
 	// Name is a short, descriptive name.
 	// If omitted, a name is generated from Start and Goal.
@@ -44,11 +45,10 @@ type ClassSpec struct {
 
 // ResultSpec contains result templates.
 type ResultSpec struct {
-	// URI template generates a query URI (normally a relative URI reference) that can be resolved
-	// by a Store to retrieve objects.
-	URI string `json:"uri"`
+	// Query template generates a query object suitable for the goal store.
+	Query string `json:"query"`
 
-	// Class template generates the qualified class name for objects referenced by the URI.
+	// Class template generates the qualified class name for objects referenced by the Query.
 	// Must be a class name selected by the Goal field.
 	// If the Goal field contains a single, non-wildcard class, this field is optional.
 	Class string `json:"class,omitempty"`

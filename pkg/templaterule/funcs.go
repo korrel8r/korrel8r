@@ -10,7 +10,7 @@ import (
 	"strings"
 
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
-	"sigs.k8s.io/yaml"
+	"gopkg.in/yaml.v2"
 )
 
 // Funcs that are available to all Rules.
@@ -21,9 +21,9 @@ import (
 //	  Evaluates its arguments for errors. Useful for asserting that fields exist in the context value.
 //	assert
 //	  Exits with an error if its argument is false.
-//	toJSON
+//	json
 //	  Marshals its argument as JSON and returns the string.
-//	toYAML
+//	yaml
 //	  Marshals its argument as YAML and returns the string.
 //	fullname
 //	  Returns the domain qualified name of a korrel8r.Class argument.
@@ -41,8 +41,8 @@ func init() {
 	Funcs = map[string]any{
 		"constraint": func() *korrel8r.Constraint { return nil },
 		"assert":     doAssert, // Assert a condition in a template
-		"toJSON":     toJSON,
-		"toYAML":     toYAML,
+		"json":       toJSON,
+		"yaml":       toYAML,
 		"fullname":   korrel8r.ClassName,
 		"urlencode":  urlencode,
 		"selector":   selector,
@@ -93,18 +93,22 @@ func selector(m any) string {
 		keys = append(keys, i.Key().String())
 	}
 	sort.Strings(keys)
-	sep := ""
-	for _, k := range keys {
-		fmt.Fprintf(b, "%v%v=%v", sep, k, v.MapIndex(reflect.ValueOf(k)))
-		sep = ","
+	for i, k := range keys {
+		if i > 0 {
+			b.WriteString(",")
+		}
+		fmt.Fprintf(b, "%v=%v", k, v.MapIndex(reflect.ValueOf(k)))
 	}
 	return b.String()
 }
 
-func kvMap(keyValue ...any) map[any]any {
-	m := map[any]any{}
+func kvMap(keyValue ...any) map[string]any {
+	if len(keyValue) == 0 {
+		return nil
+	}
+	m := map[string]any{}
 	for i := 0; i < len(keyValue); i += 2 { // Will panic out of range on odd number
-		m[keyValue[i]] = keyValue[i+1]
+		m[keyValue[i].(string)] = keyValue[i+1]
 	}
 	return m
 }

@@ -2,44 +2,26 @@ package k8s
 
 import (
 	"context"
-	"strings"
-	"testing"
-
+	"encoding/json"
+	"fmt"
 	"net/url"
+	"testing"
 
 	"github.com/korrel8r/korrel8r/internal/pkg/must"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
-	"github.com/korrel8r/korrel8r/pkg/uri"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
+	appv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/apimachinery/pkg/api/meta/testrestmapper"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
-
-func TestParseURIRegexp(t *testing.T) {
-	for _, path := range [][]string{
-		{"/api/v1/namespaces/default/pods/foo", "", "v1", "default", "pods", "foo"},
-		{"/api/v1/namespaces/default/pods", "", "v1", "default", "pods", ""},
-		{"/api/v1/namespaces/foo", "", "v1", "", "namespaces", "foo"},
-		{"/api/v1/namespaces", "", "v1", "", "namespaces", ""},
-		{"/apis/GROUP/VERSION/RESOURCETYPE", "GROUP", "VERSION", "", "RESOURCETYPE", ""},
-		{"/apis/GROUP/VERSION/RESOURCETYPE/NAME", "GROUP", "VERSION", "", "RESOURCETYPE", "NAME"},
-		{"/apis/GROUP/VERSION/namespaces/NAMESPACE/RESOURCETYPE", "GROUP", "VERSION", "NAMESPACE", "RESOURCETYPE", ""},
-		{"/apis/GROUP/VERSION/namespaces/NAMESPACE/RESOURCETYPE/NAME", "GROUP", "VERSION", "NAMESPACE", "RESOURCETYPE", "NAME"},
-	} {
-		t.Run(path[0], func(t *testing.T) {
-			assert.Equal(t, path, apiPath.FindStringSubmatch(path[0]))
-		})
-	}
-}
 
 func TestDomain_Class(t *testing.T) {
 	require.NoError(t, appsv1.AddToScheme(scheme.Scheme))
@@ -69,34 +51,6 @@ func TestDomain_Class(t *testing.T) {
 	}
 }
 
-func TestStore_ParseURI(t *testing.T) {
-	require.NoError(t, apiextensionsv1.AddToScheme(scheme.Scheme))
-	s := must.Must1(NewStore(fake.NewClientBuilder().
-		WithRESTMapper(testrestmapper.TestOnlyStaticRESTMapper(scheme.Scheme)).
-		Build(), &rest.Config{}))
-	for _, x := range []struct {
-		path   string
-		gvk    schema.GroupVersionKind
-		nsName types.NamespacedName
-	}{
-		{"/api/v1/namespaces/default/pods/foo", schema.GroupVersionKind{Group: "", Version: "v1", Kind: "Pod"}, types.NamespacedName{Namespace: "default", Name: "foo"}},
-		{"/api/v1/namespaces/default/pods", schema.GroupVersionKind{Group: "", Version: "v1", Kind: "Pod"}, types.NamespacedName{Namespace: "default", Name: ""}},
-		{"/api/v1/namespaces/foo", schema.GroupVersionKind{Group: "", Version: "v1", Kind: "Namespace"}, types.NamespacedName{Namespace: "", Name: "foo"}},
-		{"/api/v1/namespaces", schema.GroupVersionKind{Group: "", Version: "v1", Kind: "Namespace"}, types.NamespacedName{Namespace: "", Name: ""}},
-		{"/apis/apiextensions.k8s.io/v1/customresourcedefinitions", schema.GroupVersionKind{Group: "apiextensions.k8s.io", Version: "v1", Kind: "CustomResourceDefinition"}, types.NamespacedName{Namespace: "", Name: ""}},
-		{"/apis/apiextensions.k8s.io/v1/namespaces/foo/customresourcedefinitions/bar", schema.GroupVersionKind{Group: "apiextensions.k8s.io", Version: "v1", Kind: "CustomResourceDefinition"}, types.NamespacedName{Namespace: "foo", Name: "bar"}},
-	} {
-		t.Run(x.path, func(t *testing.T) {
-			gvk, gvr, nsName, err := s.parsePath(x.path)
-			require.NoError(t, err)
-			assert.Equal(t, x.gvk, gvk)
-			assert.Equal(t, x.nsName, nsName)
-			wantGVR := x.gvk.GroupVersion().WithResource(strings.ToLower(x.gvk.Kind) + "s")
-			assert.Equal(t, wantGVR, gvr)
-		})
-	}
-}
-
 func TestStore_Get(t *testing.T) {
 	c := fake.NewClientBuilder().
 		WithRESTMapper(testrestmapper.TestOnlyStaticRESTMapper(scheme.Scheme)).
@@ -118,21 +72,19 @@ func TestStore_Get(t *testing.T) {
 		barney = types.NamespacedName{Namespace: "x", Name: "barney"}
 		wilma  = types.NamespacedName{Namespace: "y", Name: "wilma"}
 	)
+	podGVK := ClassOf(&corev1.Pod{}).GVK()
 	for _, x := range []struct {
-		s    string
+		q    Query
 		want []types.NamespacedName
 	}{
-		{"/api/v1/namespaces/x/pods/fred", []types.NamespacedName{fred}},
-		{"/api/v1/namespaces/x/pods", []types.NamespacedName{fred, barney}},
-		{"/api/v1/pods", []types.NamespacedName{fred, barney, wilma}},
-		{"/api/v1/pods?labelSelector=" + url.QueryEscape("app=foo"), []types.NamespacedName{fred, wilma}},
+		{Query{GroupVersionKind: podGVK, NamespacedName: fred}, []types.NamespacedName{fred}},
+		{Query{GroupVersionKind: podGVK, NamespacedName: types.NamespacedName{Namespace: "x"}}, []types.NamespacedName{fred, barney}},
+		{Query{GroupVersionKind: podGVK, Labels: client.MatchingLabels{"app": "foo"}}, []types.NamespacedName{fred, wilma}},
 		// Field matches are not supported by the fake client.
 	} {
-		t.Run(x.s, func(t *testing.T) {
-			ref, err := uri.Parse(x.s)
-			require.NoError(t, err)
+		t.Run(fmt.Sprintf("%#v", x.q), func(t *testing.T) {
 			var result korrel8r.ListResult
-			err = store.Get(context.Background(), ref, &result)
+			err = store.Get(context.Background(), &x.q, &result)
 			require.NoError(t, err)
 			var got []types.NamespacedName
 			for _, v := range result {
@@ -145,79 +97,69 @@ func TestStore_Get(t *testing.T) {
 	// Need to validate labels and all get variations on fake client or env test...
 }
 
-func TestStore_RefStoreToConsole(t *testing.T) {
-	s, err := NewStore(fake.NewClientBuilder().
-		WithRESTMapper(testrestmapper.TestOnlyStaticRESTMapper(scheme.Scheme)).
-		Build(), &rest.Config{})
-	for _, x := range [][2]string{
-		{"api/v1/namespaces/default/pods/foo", "k8s/ns/default/pods/foo"},
-		{"api/v1/namespaces/default/pods", "k8s/ns/default/pods"},
-		{"api/v1/namespaces/foo", "k8s/cluster/namespaces/foo"},
-		{"api/v1/namespaces", "k8s/cluster/namespaces"},
-		{"apis/apps/v1/deployments", "k8s/cluster/deployments"},
-		{"apis/apps/v1/deployments/NAME", "k8s/cluster/deployments/NAME"},
-		{"apis/apps/v1/namespaces/NAMESPACE/deployments", "k8s/ns/NAMESPACE/deployments"},
-		{"apis/apps/v1/namespaces/NAMESPACE/deployments/NAME", "k8s/ns/NAMESPACE/deployments/NAME"},
-	} {
-		t.Run(x[0], func(t *testing.T) {
-			ref, err := s.RefStoreToConsole(nil, uri.Reference{Path: x[0]})
-			if assert.NoError(t, err) {
-				assert.Equal(t, x[1], ref.String())
-			}
-		})
-	}
-	require.NoError(t, err)
-}
-
-func TestStore_RefConsoleToStore(t *testing.T) {
-	s := must.Must1(NewStore(fake.NewClientBuilder().
-		WithRESTMapper(testrestmapper.TestOnlyStaticRESTMapper(scheme.Scheme)).
-		Build(), &rest.Config{}))
-	for _, x := range [][2]string{
-		{"k8s/ns/default/pods/foo", "api/v1/namespaces/default/pods/foo"},
-		{"k8s/ns/default/pods", "api/v1/namespaces/default/pods"},
-		{"k8s/cluster/nodes/foo", "api/v1/nodes/foo"},
-		{"k8s/cluster/namespaces/foo", "api/v1/namespaces/foo"},
-		{"k8s/cluster/projects/foo", "api/v1/namespaces/foo"},
-		{"k8s/cluster/namespaces", "api/v1/namespaces"},
-		{"k8s/cluster/projects", "api/v1/namespaces"},
-		{"k8s/cluster/customresourcedefinitions", "apis/apiextensions.k8s.io/v1/customresourcedefinitions"},
-		{"k8s/cluster/customresourcedefinitions/NAME", "apis/apiextensions.k8s.io/v1/customresourcedefinitions/NAME"},
-		{"k8s/ns/NAMESPACE/deployments", "apis/apps/v1/namespaces/NAMESPACE/deployments"},
-		{"k8s/ns/NAMESPACE/deployments/NAME", "apis/apps/v1/namespaces/NAMESPACE/deployments/NAME"},
-	} {
-		t.Run(x[0], func(t *testing.T) {
-			_, ref, err := s.RefConsoleToStore(uri.Reference{Path: x[0]})
-			if assert.NoError(t, err) {
-				assert.Equal(t, x[1], ref.String())
-			}
-		})
-	}
-}
-
-func TestStore_RefClass(t *testing.T) {
+func TestStore_QueryToConsoleURL(t *testing.T) {
 	s, err := NewStore(fake.NewClientBuilder().
 		WithRESTMapper(testrestmapper.TestOnlyStaticRESTMapper(scheme.Scheme)).
 		Build(), &rest.Config{})
 	for _, x := range []struct {
-		ref   string
-		class korrel8r.Class
+		q Query
+		p string
 	}{
-		{"api/v1/namespaces/default/pods/foo", ClassOf(&corev1.Pod{})},
-		{"api/v1/namespaces/default/pods", ClassOf(&corev1.Pod{})},
-		{"api/v1/namespaces/foo", ClassOf(&corev1.Namespace{})},
-		{"api/v1/namespaces", ClassOf(&corev1.Namespace{})},
-		{"apis/apps/v1/deployments", ClassOf(&appsv1.Deployment{})},
-		{"apis/apps/v1/deployments/NAME", ClassOf(&appsv1.Deployment{})},
-		{"apis/apps/v1/namespaces/NAMESPACE/deployments", ClassOf(&appsv1.Deployment{})},
-		{"apis/apps/v1/namespaces/NAMESPACE/deployments/NAME", ClassOf(&appsv1.Deployment{})},
+		{query(ClassOf(&corev1.Pod{}), "default", "foo"), "k8s/ns/default/pods/foo"},
+		{query(ClassOf(&corev1.Pod{}), "default", ""), "k8s/ns/default/pods"},
+		{query(ClassOf(&corev1.Namespace{}), "", "foo"), "k8s/cluster/namespaces/foo"},
+		{query(ClassOf(&corev1.Namespace{}), "", ""), "k8s/cluster/namespaces"},
+		{query(ClassOf(&appv1.Deployment{}), "", ""), "k8s/cluster/deployments"},
+		{query(ClassOf(&appv1.Deployment{}), "NAMESPACE", ""), "k8s/ns/NAMESPACE/deployments"},
+		{query(ClassOf(&appv1.Deployment{}), "NAMESPACE", "NAME"), "k8s/ns/NAMESPACE/deployments/NAME"},
 	} {
-		t.Run(x.ref, func(t *testing.T) {
-			class, err := s.RefClass(uri.Reference{Path: x.ref})
+		t.Run(x.p, func(t *testing.T) {
+			u, err := s.QueryToConsoleURL(&x.q)
 			if assert.NoError(t, err) {
-				assert.Equal(t, x.class, class)
+				assert.Equal(t, x.p, u.Path)
 			}
 		})
 	}
 	require.NoError(t, err)
+}
+
+func query(c Class, namespace, name string) Query {
+	return Query{GroupVersionKind: c.GVK(), NamespacedName: types.NamespacedName{Namespace: namespace, Name: name}}
+}
+
+func TestStore_ConsoleURLToQuery(t *testing.T) {
+	s := must.Must1(NewStore(fake.NewClientBuilder().
+		WithRESTMapper(testrestmapper.TestOnlyStaticRESTMapper(scheme.Scheme)).
+		Build(), &rest.Config{}))
+	for _, x := range []struct {
+		p string
+		q Query
+	}{
+		{"/k8s/ns/default/pods/foo", query(ClassOf(&corev1.Pod{}), "default", "foo")},
+		{"/k8s/ns/default/pods", query(ClassOf(&corev1.Pod{}), "default", "")},
+		{"/k8s/cluster/namespaces/foo", query(ClassOf(&corev1.Namespace{}), "", "foo")},
+		{"/k8s/cluster/projects/foo", query(ClassOf(&corev1.Namespace{}), "", "foo")},
+	} {
+		t.Run(x.p, func(t *testing.T) {
+			u, _ := url.Parse(x.p)
+			q, err := s.ConsoleURLToQuery(u)
+			if assert.NoError(t, err) {
+				assert.Equal(t, &x.q, q)
+			}
+		})
+	}
+}
+
+func TestQuery_Marshal(t *testing.T) {
+	class := ClassOf(&corev1.Pod{})
+	q := NewQuery(class, "NAMESPACE", "NAME",
+		client.MatchingLabels{"label": "foo"}, client.MatchingFields{"field": "bar"})
+	b, err := json.Marshal(q)
+	require.NoError(t, err)
+	want := `{"Group":"","Version":"v1","Kind":"Pod","Namespace":"NAMESPACE","Name":"NAME","Labels":{"label":"foo"},"Fields":{"field":"bar"}}`
+	assert.Equal(t, want, string(b))
+	q2 := Domain.Query(nil)
+	err = json.Unmarshal(b, q2)
+	require.NoError(t, err)
+	assert.Equal(t, q, q2)
 }

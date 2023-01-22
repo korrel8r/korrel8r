@@ -12,7 +12,7 @@ import (
 
 	"github.com/korrel8r/korrel8r/internal/pkg/logging"
 	"github.com/korrel8r/korrel8r/internal/pkg/openshift"
-	"github.com/korrel8r/korrel8r/internal/pkg/rewrite"
+	"github.com/korrel8r/korrel8r/internal/pkg/openshift/console"
 	"github.com/korrel8r/korrel8r/pkg/engine"
 	"github.com/korrel8r/korrel8r/pkg/templaterule"
 	"k8s.io/client-go/rest"
@@ -22,10 +22,10 @@ import (
 var log = logging.Log()
 
 type WebUI struct {
-	Engine   *engine.Engine
-	Rewriter *rewrite.Rewriter
-	Mux      *http.ServeMux
-	dir      string
+	Engine  *engine.Engine
+	Console *console.Console
+	Mux     *http.ServeMux
+	dir     string
 }
 
 func New(e *engine.Engine, cfg *rest.Config, c client.Client) (*WebUI, error) {
@@ -42,9 +42,9 @@ func New(e *engine.Engine, cfg *rest.Config, c client.Client) (*WebUI, error) {
 	if err != nil {
 		return nil, err
 	}
-	ui.Rewriter = rewrite.New(consoleURL, e)
+	ui.Console = console.New(consoleURL, e)
 	ui.Mux = http.NewServeMux()
-	ui.Mux.Handle("/", &correlateHandler{ui: ui})
+	ui.Mux.Handle("/", &correlate{ui: ui})
 	ui.Mux.Handle("/files/", http.FileServer(http.Dir(ui.dir)))
 	ui.Mux.Handle("/stores/", &storeHandler{ui: ui})
 	ui.Mux.HandleFunc("/error/", func(w http.ResponseWriter, req *http.Request) {
@@ -68,10 +68,11 @@ func (ui *WebUI) Close() {
 	}
 }
 
-func httpError(w http.ResponseWriter, err error, status int) bool {
+// httpError if err != nil update the response and return true.
+func httpError(w http.ResponseWriter, err error, code int) bool {
 	if err != nil {
+		http.Error(w, err.Error(), code)
 		log.Error(err, "http error")
-		http.Error(w, err.Error(), status)
 	}
 	return err != nil
 }

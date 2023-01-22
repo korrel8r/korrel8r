@@ -18,7 +18,7 @@ func mockRule(name string, start, goal korrel8r.Class) mock.Rule {
 }
 
 // mockRules copies public parts of korrel8r.Rule to a mock.Rule for easy comparison.
-func mockRules(k []korrel8r.Rule) []mock.Rule {
+func mockRules(k ...korrel8r.Rule) []mock.Rule {
 	m := make([]mock.Rule, len(k))
 	for i := range k {
 		m[i] = mock.NewRuleFromClasses(k[i].String(), k[i].Start(), k[i].Goal(), nil)
@@ -43,7 +43,7 @@ func TestRule_Rules(t *testing.T) {
 name:   "simple"
 start:  {domain: "foo", classes: [a]}
 goal:   {domain: "bar", classes: [z]}
-result: {uri: dummy, class: dummy}
+result: {query: dummy, class: dummy}
 `,
 			want: []mock.Rule{mockRule("simple", a, z)},
 		},
@@ -52,7 +52,7 @@ result: {uri: dummy, class: dummy}
 name: "multistart"
 start: {domain: foo, classes: [a, b, c]}
 goal:  {domain: bar, classes: [z]}
-result: {uri: dummy, class: dummy}
+result: {query: dummy, class: dummy}
 `,
 			want: []mock.Rule{mockRule("multistart", a, z), mockRule("multistart", b, z), mockRule("multistart", c, z)},
 		},
@@ -61,7 +61,7 @@ result: {uri: dummy, class: dummy}
 name: "select-start"
 start: {domain: foo, matches: ['{{assert (ne .Class.String "b")}}']}
 goal:  {domain: bar, classes: [z]}
-result: {uri: dummy, class: dummy}
+result: {query: dummy, class: dummy}
 `,
 			want: []mock.Rule{mockRule("select-start", a, z), mockRule("select-start", c, z)},
 		},
@@ -70,7 +70,7 @@ result: {uri: dummy, class: dummy}
 name: "select-goal"
 start: {domain: foo, classes: [a]}
 goal: {domain: bar, matches: ['{{assert (eq .Class.String "x")}}']}
-result: {uri: dummy, class: dummy}
+result: {query: dummy, class: dummy}
 `,
 			want: []mock.Rule{mockRule("select-goal", a, x)},
 		},
@@ -79,7 +79,7 @@ result: {uri: dummy, class: dummy}
 name: "all-all"
 start: {domain: foo}
 goal: {domain: bar}
-result: {uri: dummy, class: dummy}
+result: {query: dummy, class: dummy}
 `,
 			want: func() []mock.Rule {
 				var rules []mock.Rule
@@ -97,7 +97,7 @@ result: {uri: dummy, class: dummy}
 			require.NoError(t, yaml.Unmarshal([]byte(x.rule), &rule))
 			got, err := rule.Rules(e)
 			if assert.NoError(t, err) {
-				assert.ElementsMatch(t, x.want, mockRules(got))
+				assert.ElementsMatch(t, x.want, mockRules(got...))
 			}
 		})
 	}
@@ -106,7 +106,7 @@ result: {uri: dummy, class: dummy}
 		r := Rule{
 			Start:  ClassSpec{Domain: "foo", Classes: []string{"a"}},
 			Goal:   ClassSpec{Domain: "bar", Classes: []string{"x"}},
-			Result: ResultSpec{URI: "dummy"},
+			Result: ResultSpec{Query: "dummy"},
 		}
 		rs, err := r.Rules(e)
 		require.NoError(t, err)

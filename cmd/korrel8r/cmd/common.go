@@ -18,7 +18,7 @@ import (
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"github.com/korrel8r/korrel8r/pkg/loki"
 	"github.com/korrel8r/korrel8r/pkg/templaterule"
-	"github.com/korrel8r/korrel8r/pkg/uri"
+
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/util/flowcontrol"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -70,29 +70,28 @@ func newEngine() *engine.Engine {
 	return e
 }
 
-func jsonString(v any) string {
-	b, err := json.Marshal(v)
-	if err != nil {
-		return err.Error()
-	}
-	return string(b)
-}
-
-type printer struct{ print func(o korrel8r.Object) }
+// printer prints in the format requested by --output
+type printer struct{ Print func(any) }
 
 func newPrinter(w io.Writer) printer {
 	switch *output {
 
 	case "json":
-		return printer{print: func(o korrel8r.Object) { fmt.Fprintln(w, jsonString(o)) }}
+		return printer{Print: func(v any) {
+			if b, err := json.Marshal(v); err != nil {
+				fmt.Fprintf(w, "%v\n", err)
+			} else {
+				fmt.Fprintf(w, "%v\n", string(b))
+			}
+		}}
 
 	case "json-pretty":
 		encoder := json.NewEncoder(w)
 		encoder.SetIndent("", "  ")
-		return printer{print: func(o korrel8r.Object) { must.Must(encoder.Encode(o)) }}
+		return printer{Print: func(v any) { must.Must(encoder.Encode(v)) }}
 
 	case "yaml":
-		return printer{print: func(o korrel8r.Object) { fmt.Fprintf(w, "---\n%s", must.Must1(yaml.Marshal(&o))) }}
+		return printer{Print: func(v any) { fmt.Fprintf(w, "---\n%s", must.Must1(yaml.Marshal(v))) }}
 
 	default:
 		must.Must(fmt.Errorf("invalid output type: %v", *output))
@@ -102,7 +101,7 @@ func newPrinter(w io.Writer) printer {
 
 func (p printer) Append(objects ...korrel8r.Object) {
 	for _, o := range objects {
-		p.print(o)
+		p.Print(o)
 	}
 }
 
@@ -125,17 +124,8 @@ func loadRules(e *engine.Engine, root string) error {
 		defer f.Close()
 		d := decoder.New(f)
 		if err := templaterule.AddRules(d, e); err != nil {
-			return fmt.Errorf("%v: error loading rules: %v", path, err)
+			return fmt.Errorf("%v:0 error loading rules: %v", path, err)
 		}
 		return nil
 	})
-}
-
-// referenceArgs treats args[0] as the initial URI, and args[1:] as NAME=VALUE strings for query parameters.
-func referenceArgs(args []string) (uri.Reference, error) {
-	if len(args) == 0 {
-		return uri.Reference{}, nil
-	}
-	ref := uri.Make(args[0], args[1:]...)
-	return uri.Parse(ref.String()) // Make sure the path is valid for a URI reference
 }

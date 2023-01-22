@@ -10,12 +10,8 @@ import (
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 )
 
-// Scheme including all known k8s types.
+// Scheme fro k8s types known to korrel8r.
 var Scheme = runtime.NewScheme()
-
-// TODO use generic types rather than struct types?
-// Class types are limited to what we load here.
-// What do generic types look like for templates? Are they typed (e.g. timestamps)
 
 func init() {
 	util.Must(clientgoscheme.AddToScheme(Scheme))

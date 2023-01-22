@@ -25,8 +25,7 @@ var listCmd = &cobra.Command{
 				fmt.Fprintln(w, d.String())
 			}
 		case 1:
-			d, err := e.Domain(args[0])
-			must.Must(err)
+			d := must.Must1(e.DomainErr(args[0]))
 			for _, c := range d.Classes() {
 				fmt.Println(c.String())
 			}
@@ -43,10 +42,10 @@ var rulesCmd = &cobra.Command{
 		defer w.Flush()
 		var start, goal korrel8r.Class
 		if *ruleStart != "" {
-			start = must.Must1(e.ParseClass(*ruleStart))
+			start = must.Must1(e.Class(*ruleStart))
 		}
 		if *ruleGoal != "" {
-			goal = must.Must1(e.ParseClass(*ruleGoal))
+			goal = must.Must1(e.Class(*ruleGoal))
 		}
 		name := must.Must1(regexp.Compile(*ruleName))
 		for _, r := range e.Rules() {

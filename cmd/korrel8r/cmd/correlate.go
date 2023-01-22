@@ -4,7 +4,7 @@ Copyright © 2022 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
-	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -12,34 +12,28 @@ import (
 	"github.com/korrel8r/korrel8r/internal/pkg/decoder"
 	"github.com/korrel8r/korrel8r/internal/pkg/must"
 	"github.com/korrel8r/korrel8r/pkg/engine"
-	"github.com/korrel8r/korrel8r/pkg/graph"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
-	"github.com/korrel8r/korrel8r/pkg/uri"
+
 	"github.com/spf13/cobra"
 )
 
 // correlateCmd represents the correlate command
 var correlateCmd = &cobra.Command{
-	Use:   "correlate START_CLASS GOAL_CLASS [URI_REF [NAME=VALUE...]]",
-	Short: "Correlate from START_CLASS to GOAL_CLASS. Use URI_REF if present, read object from stdin if not",
-	Args:  cobra.MinimumNArgs(2),
+	Use:   "correlate START_CLASS GOAL_CLASS [START_QUERY]",
+	Short: "Correlate from START_CLASS to GOAL_CLASS. Use START_QUERY if present, read start object from stdin if not",
+	Args:  cobra.RangeArgs(2, 3),
 	Run: func(cmd *cobra.Command, args []string) {
 		e := newEngine()
-		start, goal := must.Must1(e.ParseClass(args[0])), must.Must1(e.ParseClass(args[1]))
-		var paths []graph.MultiPath
-		switch {
-		case *kFlag > 0:
-			paths = must.Must1(e.Graph().KShortestPaths(start, goal, *kFlag))
-		default:
-			paths = must.Must1(e.Graph().ShortestPaths(start, goal))
-		}
+		start, goal := must.Must1(e.Class(args[0])), must.Must1(e.Class(args[1]))
+		paths := must.Must1(e.Graph().ShortestPaths(start, goal))
 		log.V(1).Info("found paths", "paths", paths, "count", len(paths))
-		starters := korrel8r.NewResult(start)
 
-		if len(args) >= 3 { // Get starters using query
-			query := must.Must1(referenceArgs(args[2:]))
-			store, err := e.Store(start.Domain().String())
-			must.Must(err)
+		starters := korrel8r.NewResult(start)
+		if len(args) > 2 { // Get starters using query
+			store := must.Must1(e.StoreErr(
+				start.Domain().String()))
+			query := start.Domain().Query(start)
+			must.Must(json.Unmarshal([]byte(args[2]), query))
 			must.Must(store.Get(ctx, query, starters))
 		} else { // Read starters from stdin
 			dec := decoder.New(os.Stdin)
@@ -54,42 +48,34 @@ var correlateCmd = &cobra.Command{
 				starters.Append(o)
 			}
 		}
-		results := engine.NewResults()
-		must.Must(e.FollowAll(ctx, starters.List(), nil, paths, results))
+		var results engine.Results
+		must.Must(e.FollowAll(ctx, starters.List(), nil, paths, &results))
 
-		if *getFlag {
-			printObjects(e, goal, results.FinalRefs())
+		result := results.Last()
+		if result == nil {
+			must.Must(fmt.Errorf("no results"))
+		}
+		printer := newPrinter(os.Stdout)
+		if *getFlag { // Get the objects and print those
+			store := must.Must1(e.StoreErr(goal.Domain().String()))
+			for _, q := range result.Queries.List {
+				must.Must(store.Get(ctx, q, printer))
+			}
 		} else {
-			printRefs(results.FinalRefs())
+			for _, q := range results.Last().Queries.List {
+				printer.Print(q)
+			}
 		}
 	},
 }
 
-func printRefs(refs []uri.Reference) {
-	for _, ref := range refs {
-		fmt.Println(ref)
-	}
-}
-
-func printObjects(e *engine.Engine, goal korrel8r.Class, refs []uri.Reference) {
-	d := goal.Domain()
-	store, err := e.Store(d.String())
-	must.Must(err)
-	result := newPrinter(os.Stdout)
-	for _, ref := range refs {
-		must.Must(store.Get(context.Background(), ref, result))
-	}
-}
-
 var (
 	getFlag *bool
-	kFlag   *int
 	endTime TimeFlag
 )
 
 func init() {
 	rootCmd.AddCommand(correlateCmd)
 	correlateCmd.Flags().Var(&endTime, "time", "find results up to this time")
-	kFlag = correlateCmd.Flags().IntP("kshortest", "k", 0, "Use K-shortest paths")
 	getFlag = correlateCmd.Flags().Bool("get", false, "Get objects from query")
 }

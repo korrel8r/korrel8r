@@ -55,7 +55,7 @@ func New(name string, rules []korrel8r.Rule, extra []korrel8r.Class) *Graph {
 	}
 	for i, r := range g.rules {
 		f, t := g.NodeForClass(r.Start()), g.NodeForClass(r.Goal())
-		g.SetLine(&Line{Line: multi.Line{F: f, T: t, UID: int64(i)}, Rule: r, Attrs: map[string]string{"tooltip": r.String()}})
+		g.SetLine(&Line{Line: multi.Line{F: f, T: t, UID: int64(i)}, Rule: r})
 	}
 	for _, c := range extra { // Extra classes
 		g.NodeForClass(c)
