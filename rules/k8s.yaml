@@ -11,7 +11,7 @@ result:
     {
       "Tenant": "{{$logType}}",
       "LogQL": "{kubernetes_namespace_name=\"{{.Namespace}}\"} | json
-        {{- range $k, $v := .Spec.Selector.MatchLabels}} | kubernetes_label_{{lokiFixLabel $k}}=\"{{$v}}\"{{end -}}"
+        {{- range $k, $v := .Spec.Selector.MatchLabels}} | kubernetes_labels_{{lokiFixLabel $k}}=\"{{$v}}\"{{end -}}"
     }
   class: 'loki/{{ k8sLogType .ObjectMeta.Namespace }}'
 ---

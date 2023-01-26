@@ -16,8 +16,8 @@ func NewResult(class korrel8r.Class) Result {
 	return Result{Class: class, Objects: korrel8r.NewResult(class), Queries: unique.NewList[korrel8r.Query]()}
 }
 
-// Empty is true if there are no objects and no queries.
-func (r Result) Empty() bool { return len(r.Objects.List()) == 0 && len(r.Queries.List) == 0 }
+// Empty is true if there are no objects in this result.
+func (r Result) Empty() bool { return r.Objects == nil || len(r.Objects.List()) == 0 }
 
 // Results is a correlation sequence containing all references and objects leading to the final result.
 type Results []Result

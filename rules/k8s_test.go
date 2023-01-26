@@ -123,7 +123,7 @@ func TestSelectorToLogs(t *testing.T) {
 	}
 	require.NoError(t, k8s.Create(c, d))
 	want := &loki.Query{
-		LogQL:  `{kubernetes_namespace_name="ns"} | json | kubernetes_label_a_b_c="x"`,
+		LogQL:  `{kubernetes_namespace_name="ns"} | json | kubernetes_labels_a_b_c="x"`,
 		Tenant: "application",
 	}
 	testFollow(t, e, k8s.ClassOf(d), loki.Domain.Class("application"), []korrel8r.Object{d}, want)

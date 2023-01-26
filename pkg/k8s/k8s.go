@@ -8,6 +8,7 @@ import (
 	"path"
 	"reflect"
 	"regexp"
+	"strings"
 
 	"github.com/korrel8r/korrel8r/internal/pkg/openshift/console"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
@@ -221,11 +222,20 @@ func (s *Store) QueryToConsoleURL(query korrel8r.Query) (*url.URL, error) {
 	if err != nil {
 		return nil, err
 	}
-	u := url.URL{}
-	if q.Namespace != "" { // Namespaced resource
-		u.Path = path.Join("k8s", "ns", q.Namespace, gvr.Resource, q.Name)
-	} else { // Cluster resource
-		u.Path = path.Join("k8s", "cluster", gvr.Resource, q.Name)
+	var u url.URL
+	if len(q.Labels) > 0 { // Label search
+		// Search using label selector
+		u.Path = path.Join("search", "ns", q.Namespace) // TODO non-namespaced searches?
+		v := url.Values{}
+		v.Add("kind", fmt.Sprintf("%v~%v~%v", q.Group, q.Version, q.Kind))
+		v.Add("q", SelectorString(q.Labels))
+		u.RawQuery = v.Encode()
+	} else { // Single named resource
+		if q.Namespace != "" { // Namespaced resource
+			u.Path = path.Join("k8s", "ns", q.Namespace, gvr.Resource, q.Name)
+		} else { // Cluster resource
+			u.Path = path.Join("k8s", "cluster", gvr.Resource, q.Name)
+		}
 	}
 	return &u, nil
 }
@@ -254,4 +264,15 @@ func (s *Store) ConsoleURLToQuery(u *url.URL) (korrel8r.Query, error) {
 		GroupVersionKind: gvks[0],
 		NamespacedName:   types.NamespacedName{Name: p[consoleName], Namespace: p[consoleNamepace]},
 	}, nil
+}
+
+func SelectorString(m map[string]string) string {
+	b := &strings.Builder{}
+	for k, v := range m {
+		if b.Len() > 0 {
+			b.WriteString(",")
+		}
+		fmt.Fprintf(b, "%v=%v", k, v)
+	}
+	return b.String()
 }

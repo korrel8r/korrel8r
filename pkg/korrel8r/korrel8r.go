@@ -7,7 +7,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"path"
 	"time"
 )
 
@@ -37,7 +36,7 @@ type Domain interface {
 type Class interface {
 	Domain() Domain // Domain of this class.
 	New() Object    // Return a new instance of the class, can be unmarshaled from JSON.
-	String() string // Name of the class within the domain, e.g "Pod". See FullName()
+	String() string // Name of the class within the domain, e.g "Pod". See ClassName()
 }
 
 // IDer is implemented by classes that have a meaningful identifier.
@@ -51,7 +50,7 @@ func ClassName(c Class) string {
 	if c == nil {
 		return "<nil>"
 	}
-	return path.Join(c.Domain().String(), c.String())
+	return fmt.Sprintf("%v/%v", c.Domain(), c)
 }
 
 // Query is query for a subset of Objects in a Domain.

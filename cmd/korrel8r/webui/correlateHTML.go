@@ -3,7 +3,7 @@ package webui
 const correlateHTML = `
 {{define "body"}}
     <form>
-        <input type="text" id="start" name="start" value="{{.Start}}">
+        <input type="text" id="start" name="start" value="{{.Start}}" accesskey="k">
         <label for="start">Start URL</label>
         <br>
         <input type="text" id="goal" name="goal" value="{{.Goal}}">
@@ -13,41 +13,31 @@ const correlateHTML = `
     </form>
 
     <p>
-	Start <mark>{{fullname .StartClass}}</mark> ({{len .StartObjects}} objects):
-        <a href={{.Start}} target="_blank">Console</a>/
-        <a href="/stores/{{fullname .StartClass}}/{{.StartQuery}}" target="_blank">Raw</a>
-    </p>
-
-    {{with .Err}}
-	<p>
-            Errors: <br>
-            <pre>{{printf "%+v" .}}</pre>
-	</p>
-    {{end}}
-
-    <p>
-	Goal {{template "result" .Results.Last}}
+	Start: <code>{{classname .StartClass}}</code> (found {{len .StartObjects}})
+	<br>
+	Goal: <code>{{classname .GoalClass}}</code>  (found {{with and .Results.Last .Results.Last.Objects}}{{len .List}}{{else}}0{{end}})
     </p>
 
     {{if .Diagram}}
 	<p>
-	    Rules traversed:
-	    <object type="image/svg+xml" data="{{.Diagram}}" border="4"></object>
+	    <object type="image/svg+xml" data="{{.Diagram}}" align="center"></object>
 	</p>
     {{end}}
 
-    <p>
-	Full results ({{len .Results}} stages):
-	<ul>
-	    {{range .Results}}<li>{{template "result" .}}</li>{{end}}
-	</ul>
-    </p>
+    {{with .Results}}
+	<p>
+	    Full results ({{len .}} stages):
+	    <ul>
+		{{range .}}<li>{{template "result" .}}</li>{{end}}
+	    </ul>
+	</p>
+    {{end}}
     <hr>
     <p><em>{{.Time}}</em></p>
 {{end}}
 
 {{define "result"}}
-    <mark>{{.Class}}</mark> ({{if .Objects}}{{len .Objects.List}}{{else}}0{{end}} objects)
+    <code>{{classname .Class}}</code> (found {{with .Objects}}{{len .List}}{{else}}0{{end}})
     <ul>
 	{{range .Queries.List}}
 	    <span style="white-space: nowrap;">

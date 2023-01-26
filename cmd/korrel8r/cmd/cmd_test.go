@@ -65,7 +65,7 @@ func TestCorrelate_Pods(t *testing.T) {
 		exitCode = Execute()
 	})
 	require.Equal(t, 0, exitCode, stderr)
-	want := fmt.Sprintf(`{"LogQL":"{kubernetes_namespace_name=\"%v\"} | json | kubernetes_label_test=\"testme\"","Tenant":"application"}`, pod.Namespace)
+	want := fmt.Sprintf(`{"LogQL":"{kubernetes_namespace_name=\"%v\"} | json | kubernetes_labels_test=\"testme\"","Tenant":"application"}`, pod.Namespace)
 	require.JSONEq(t, want, stdout, "got: %v", stdout)
 }
 

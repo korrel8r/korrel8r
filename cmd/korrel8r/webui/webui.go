@@ -45,6 +45,7 @@ func New(e *engine.Engine, cfg *rest.Config, c client.Client) (*WebUI, error) {
 	ui.Console = console.New(consoleURL, e)
 	ui.Mux = http.NewServeMux()
 	ui.Mux.Handle("/", &correlate{ui: ui})
+	ui.Mux.Handle("/correlate", &correlate{ui: ui})
 	ui.Mux.Handle("/files/", http.FileServer(http.Dir(ui.dir)))
 	ui.Mux.Handle("/stores/", &storeHandler{ui: ui})
 	ui.Mux.HandleFunc("/error/", func(w http.ResponseWriter, req *http.Request) {

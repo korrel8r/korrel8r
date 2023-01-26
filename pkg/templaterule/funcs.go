@@ -25,7 +25,7 @@ import (
 //	  Marshals its argument as JSON and returns the string.
 //	yaml
 //	  Marshals its argument as YAML and returns the string.
-//	fullname
+//	classname
 //	  Returns the domain qualified name of a korrel8r.Class argument.
 //	urlencode
 //	  Returns the URL query encoding of a map argument.
@@ -43,7 +43,7 @@ func init() {
 		"assert":     doAssert, // Assert a condition in a template
 		"json":       toJSON,
 		"yaml":       toYAML,
-		"fullname":   korrel8r.ClassName,
+		"classname":  korrel8r.ClassName,
 		"urlencode":  urlencode,
 		"selector":   selector,
 		"kvmap":      kvMap,
