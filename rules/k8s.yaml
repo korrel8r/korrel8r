@@ -7,13 +7,11 @@ goal:
   domain: logs
 result:
   query: |-
-    {{- $logType := k8sLogType .Namespace -}}
     {
       "LogType": "{{ k8sLogType .Namespace }}",
       "LogQL": "{kubernetes_namespace_name=\"{{.Namespace}}\"} | json
         {{- range $k, $v := .Spec.Selector.MatchLabels}} | kubernetes_labels_{{lokiFixLabel $k}}=\"{{$v}}\"{{end -}}"
     }
-  class: 'logs/{{ k8sLogType .ObjectMeta.Namespace }}'
 ---
 name: PodToLogs
 start:
@@ -23,12 +21,10 @@ goal:
   domain: logs
 result:
   query: |-
-    {{- $logType := k8sLogType .Namespace -}}
     {
       "LogType": "{{ k8sLogType .Namespace }}",
       "LogQL": "{kubernetes_namespace_name=\"{{.Namespace}}\",kubernetes_pod_name=\"{{.Name}}\"} | json"
     }
-  class: 'logs/{{ k8sLogType .ObjectMeta.Namespace }}'
 ---
 name: SelectorToPods
 start:

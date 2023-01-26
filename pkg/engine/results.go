@@ -19,7 +19,7 @@ func NewResult(class korrel8r.Class) Result {
 // Empty is true if there are no objects in this result.
 func (r Result) Empty() bool { return r.Objects == nil || len(r.Objects.List()) == 0 }
 
-// Results is a correlation sequence containing all references and objects leading to the final result.
+// Results is a correlation sequence containing all queries and objects leading to the final result.
 type Results []Result
 
 // Results collects a Result per class.

@@ -9,7 +9,7 @@ import (
 )
 
 // Rule is a template rule specification that can be serialized as JSON.
-// It generates korrel8r.Rules based on the JSON rule spec.
+// It generates one or more korrel8r.Rule.
 type Rule struct {
 	// Name is a short, descriptive name.
 	// If omitted, a name is generated from Start and Goal.
@@ -37,9 +37,12 @@ type ClassSpec struct {
 	Classes []string `json:"classes,omitempty"`
 
 	// Matches is a list of templates to select classes from the domain.
-	// Each template is executed with an empty instance of each class in the domain.
-	// If the template executes without error, the class is selected.
-	// The result of the template is ignored.
+	// A match templates is an optimization to remove uninteresting classes before getting objects.
+	// If the template executes against an empty instance of the class without error, the class is included.
+	// The output of the template is ignored.
+	//
+	// Typical match templates are just tests for field existence, for example:
+	//   {{ print .Spec.Selector}}
 	Matches []string `json:"matches,omitempty"`
 }
 
@@ -47,11 +50,6 @@ type ClassSpec struct {
 type ResultSpec struct {
 	// Query template generates a query object suitable for the goal store.
 	Query string `json:"query"`
-
-	// Class template generates the qualified class name for objects referenced by the Query.
-	// Must be a class name selected by the Goal field.
-	// If the Goal field contains a single, non-wildcard class, this field is optional.
-	Class string `json:"class,omitempty"`
 
 	// Constraint template is optional, it generates a korrel8r.Constraint in JSON form.
 	// This constraint is combined with the constraint already in force, if there is one.

@@ -1,7 +1,7 @@
 // package rules is a test-only package to verify the rules.yaml files give expected results.
 //
-// Note these tests only verify that the engine generates the expected references.
-// It does not verify that the references yield expected results.
+// Note these tests only verify that the engine generates the expected queries.
+// It does not verify that the queriees yield expected results.
 // For end-to-end tests see /home/aconway/src/korrel8r/korrel8r/cmd/korrel8r/cmd/cmd_test.go
 package rules
 

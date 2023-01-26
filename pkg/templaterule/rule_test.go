@@ -1,7 +1,6 @@
 package templaterule
 
 import (
-	"strings"
 	"testing"
 
 	"github.com/korrel8r/korrel8r/internal/pkg/test/mock"
@@ -101,18 +100,4 @@ result: {query: dummy, class: dummy}
 			}
 		})
 	}
-
-	t.Run("implied-goal", func(t *testing.T) {
-		r := Rule{
-			Start:  ClassSpec{Domain: "foo", Classes: []string{"a"}},
-			Goal:   ClassSpec{Domain: "bar", Classes: []string{"x"}},
-			Result: ResultSpec{Query: "dummy"},
-		}
-		rs, err := r.Rules(e)
-		require.NoError(t, err)
-		require.Len(t, rs, 1)
-		b := &strings.Builder{}
-		require.NoError(t, rs[0].(*rule).class.Execute(b, nil)) // Template should be a constant string.
-		assert.Equal(t, "bar/x", b.String())
-	})
 }

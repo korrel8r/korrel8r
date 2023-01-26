@@ -14,8 +14,8 @@ var _ korrel8r.Rule = &rule{}
 
 // rule implements korrel8r.Rule
 type rule struct {
-	query, class, constraint *template.Template
-	start, goal              korrel8r.Class
+	query, constraint *template.Template
+	start, goal       korrel8r.Class
 }
 
 func (r *rule) String() string        { return r.query.Name() }

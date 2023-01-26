@@ -17,7 +17,7 @@ The goals of this project include:
 
 - Encode domain knowledge from SREs and other experts as re-usable rules.
 - Automate navigation from symptoms to data that helps diagnose causes.
-- Reduce multiple-step manual procedures to fewer clicks or references.
+- Reduce multiple-step manual procedures to fewer clicks or queries.
 - Help tools that gather and analyze diagnostic data to focus on relevant information.
 - Bring together data that is held in different types of store.
 

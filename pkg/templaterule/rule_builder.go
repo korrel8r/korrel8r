@@ -11,10 +11,10 @@ import (
 )
 
 type ruleBuilder struct {
-	name                     string
-	starts, goals            []korrel8r.Class
-	query, class, constraint *template.Template
-	engine                   *engine.Engine
+	name              string
+	starts, goals     []korrel8r.Class
+	query, constraint *template.Template
+	engine            *engine.Engine
 }
 
 func newRuleBuilder(r *Rule, e *engine.Engine) (*ruleBuilder, error) {
@@ -35,16 +35,6 @@ func newRuleBuilder(r *Rule, e *engine.Engine) (*ruleBuilder, error) {
 		return nil, fmt.Errorf("template is empty: %v.result.query", rb.name)
 	}
 	if rb.query, err = rb.newTemplate(r.Result.Query, ""); err != nil {
-		return nil, err
-	}
-	c := r.Result.Class
-	if c == "" && r.Goal.single() {
-		c = korrel8r.ClassName(rb.goals[0])
-	}
-	if c == "" {
-		return nil, fmt.Errorf("template is empty: %v.result.class ", rb.name)
-	}
-	if rb.class, err = rb.newTemplate(c, "-class"); err != nil {
 		return nil, err
 	}
 	if rb.constraint, err = rb.newTemplate(r.Result.Constraint, "-constraint"); err != nil {
@@ -96,9 +86,9 @@ func (rb *ruleBuilder) rules() (rules []korrel8r.Rule, err error) {
 	for _, start := range rb.starts {
 		for _, goal := range rb.goals {
 			rules = append(rules, &rule{
-				start: start,
-				goal:  goal,
-				query: rb.query, class: rb.class,
+				start:      start,
+				goal:       goal,
+				query:      rb.query,
 				constraint: rb.constraint,
 			})
 		}
