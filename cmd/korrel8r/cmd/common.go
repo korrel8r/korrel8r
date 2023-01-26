@@ -12,11 +12,11 @@ import (
 	"github.com/korrel8r/korrel8r/internal/pkg/decoder"
 	"github.com/korrel8r/korrel8r/internal/pkg/logging"
 	"github.com/korrel8r/korrel8r/internal/pkg/must"
-	"github.com/korrel8r/korrel8r/pkg/alert"
+	"github.com/korrel8r/korrel8r/pkg/domains/alert"
+	"github.com/korrel8r/korrel8r/pkg/domains/k8s"
+	"github.com/korrel8r/korrel8r/pkg/domains/logs"
 	"github.com/korrel8r/korrel8r/pkg/engine"
-	"github.com/korrel8r/korrel8r/pkg/k8s"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
-	"github.com/korrel8r/korrel8r/pkg/loki"
 	"github.com/korrel8r/korrel8r/pkg/templaterule"
 
 	"k8s.io/client-go/rest"
@@ -54,7 +54,7 @@ func newEngine() *engine.Engine {
 	}{
 		{k8s.Domain, func() (korrel8r.Store, error) { return k8s.NewStore(k8sClient(cfg), cfg) }},
 		{alert.Domain, func() (korrel8r.Store, error) { return alert.NewOpenshiftAlertManagerStore(ctx, cfg) }},
-		{loki.Domain, func() (korrel8r.Store, error) { return loki.NewOpenshiftLokiStackStore(ctx, k8sClient(cfg), cfg) }},
+		{logs.Domain, func() (korrel8r.Store, error) { return logs.NewOpenshiftLokiStackStore(ctx, k8sClient(cfg), cfg) }},
 	} {
 		log.V(2).Info("add domain", "domain", x.d)
 		s, err := x.create()

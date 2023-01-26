@@ -1,4 +1,4 @@
-package loki
+package logs
 
 import (
 	"context"
@@ -58,7 +58,7 @@ func TestLokiStackStore_Get(t *testing.T) {
 	s, err := NewOpenshiftLokiStackStore(ctx, c, test.RESTConfig)
 	require.NoError(t, err)
 	logQL := fmt.Sprintf(`{kubernetes_pod_name="%v", kubernetes_namespace_name="%v"}`, pod.Name, pod.Namespace)
-	q := &Query{LogQL: logQL, Tenant: "application"}
+	q := &Query{LogQL: logQL, LogType: "application"}
 	var result korrel8r.ListResult
 	assert.Eventually(t, func() bool {
 		result = nil

@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/korrel8r/korrel8r/internal/pkg/test"
-	"github.com/korrel8r/korrel8r/pkg/alert"
+	"github.com/korrel8r/korrel8r/pkg/domains/alert"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	appv1 "k8s.io/api/apps/v1"
@@ -61,11 +61,11 @@ func TestCorrelate_Pods(t *testing.T) {
 	})
 
 	var exitCode int
-	stdout, stderr := test.FakeMainStdin(test.JSONString(d), []string{"", "correlate", "k8s/Deployment", "loki/application", "--panic"}, func() {
+	stdout, stderr := test.FakeMainStdin(test.JSONString(d), []string{"", "correlate", "k8s/Deployment", "logs/application", "--panic"}, func() {
 		exitCode = Execute()
 	})
 	require.Equal(t, 0, exitCode, stderr)
-	want := fmt.Sprintf(`{"LogQL":"{kubernetes_namespace_name=\"%v\"} | json | kubernetes_labels_test=\"testme\"","Tenant":"application"}`, pod.Namespace)
+	want := fmt.Sprintf(`{"LogQL":"{kubernetes_namespace_name=\"%v\"} | json | kubernetes_labels_test=\"testme\"","LogType":"application"}`, pod.Namespace)
 	require.JSONEq(t, want, stdout, "got: %v", stdout)
 }
 

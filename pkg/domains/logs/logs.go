@@ -1,5 +1,5 @@
 // package loki generates qgueries for logs stored in Loki or LokiStack
-package loki
+package logs
 
 import (
 	"context"
@@ -31,12 +31,12 @@ var Domain = domain{}
 
 type domain struct{}
 
-func (domain) String() string                   { return "loki" }
+func (domain) String() string                   { return "logs" }
 func (domain) Class(name string) korrel8r.Class { return classMap[name] }
 func (domain) Classes() []korrel8r.Class        { return classes }
 func (domain) Query(c korrel8r.Class) korrel8r.Query {
 	if cc, ok := c.(Class); ok {
-		return &Query{Tenant: string(cc)}
+		return &Query{LogType: string(cc)}
 	}
 	return &Query{}
 }
@@ -48,21 +48,21 @@ func (domain) QueryToConsoleURL(query korrel8r.Query) (*url.URL, error) {
 	}
 	v := url.Values{}
 	v.Add("q", q.LogQL)
-	v.Add("tenant", q.Tenant)
+	v.Add("tenant", q.LogType)
 	return &url.URL{Path: "/monitoring/logs", RawQuery: v.Encode()}, nil
 }
 
 func (domain) ConsoleURLToQuery(u *url.URL) (korrel8r.Query, error) {
-	if c, ok := classMap[u.Query().Get("tenant")]; ok {
+	if c, ok := classMap[u.Query().Get("logType")]; ok {
 		return &Query{
-			LogQL:  u.Query().Get("q"),
-			Tenant: c.String(),
+			LogQL:   u.Query().Get("q"),
+			LogType: c.String(),
 		}, nil
 	}
 	return nil, fmt.Errorf("not a valid Loki URL: %v", u)
 }
 
-// Class is the log_type name (aka tenant in lokistack)
+// Class is the log_type name (aka logType in lokistack)
 type Class string
 
 func (c Class) Domain() korrel8r.Domain { return Domain }
@@ -73,8 +73,8 @@ type Object string // Log record
 
 // Query is a LogQL query string
 type Query struct {
-	LogQL  string
-	Tenant string
+	LogQL   string // `json:"omitempty"`
+	LogType string // `json:"omitempty"`
 }
 
 const (
@@ -89,7 +89,7 @@ var (
 )
 
 func (q *Query) String() string        { return q.LogQL }
-func (q *Query) Class() korrel8r.Class { return Class(q.Tenant) }
+func (q *Query) Class() korrel8r.Class { return Class(q.LogType) }
 
 func (q *Query) plainURL() *url.URL {
 	v := url.Values{}
@@ -112,10 +112,10 @@ func (q *Query) plainURL() *url.URL {
 
 func (q *Query) lokiStackURL() *url.URL {
 	u := q.plainURL()
-	if q.Tenant == "" {
-		q.Tenant = Application
+	if q.LogType == "" {
+		q.LogType = Application
 	}
-	u.Path = path.Join("/api/logs/v1/", q.Tenant, u.Path)
+	u.Path = path.Join("/api/logs/v1/", q.LogType, u.Path)
 	return u
 }
 

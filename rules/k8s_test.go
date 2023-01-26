@@ -13,14 +13,13 @@ import (
 
 	"github.com/korrel8r/korrel8r/internal/pkg/decoder"
 	"github.com/korrel8r/korrel8r/internal/pkg/test"
-	"github.com/korrel8r/korrel8r/pkg/alert"
+	"github.com/korrel8r/korrel8r/pkg/domains/alert"
+	"github.com/korrel8r/korrel8r/pkg/domains/k8s"
+	"github.com/korrel8r/korrel8r/pkg/domains/logs"
 	"github.com/korrel8r/korrel8r/pkg/engine"
-	"github.com/korrel8r/korrel8r/pkg/k8s"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
-	"github.com/korrel8r/korrel8r/pkg/loki"
 	"github.com/korrel8r/korrel8r/pkg/templaterule"
 	"github.com/korrel8r/korrel8r/pkg/unique"
-
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
@@ -37,7 +36,7 @@ func setup(t *testing.T, ruleFiles ...string) (client.Client, *engine.Engine) {
 	c := fake.NewClientBuilder().WithRESTMapper(testrestmapper.TestOnlyStaticRESTMapper(k8s.Scheme)).Build()
 	e := engine.New()
 	e.AddDomain(k8s.Domain, test.Must(k8s.NewStore(c, &rest.Config{})))
-	e.AddDomain(loki.Domain, nil)
+	e.AddDomain(logs.Domain, nil)
 	e.AddDomain(alert.Domain, nil)
 	for _, name := range ruleFiles {
 		f, err := os.Open(name)
@@ -73,11 +72,11 @@ func TestPodToLogs(t *testing.T) {
 		ns, name := x.pod.Namespace, x.pod.Name
 		t.Run(name, func(t *testing.T) {
 			require.NoError(t, k8s.Create(c, x.pod))
-			want := &loki.Query{
-				Tenant: name,
-				LogQL:  fmt.Sprintf(`{kubernetes_namespace_name="%v",kubernetes_pod_name="%v"} | json`, ns, name),
+			want := &logs.Query{
+				LogType: name,
+				LogQL:   fmt.Sprintf(`{kubernetes_namespace_name="%v",kubernetes_pod_name="%v"} | json`, ns, name),
 			}
-			testFollow(t, e, k8s.ClassOf(x.pod), loki.Domain.Class(name), []korrel8r.Object{x.pod}, want)
+			testFollow(t, e, k8s.ClassOf(x.pod), logs.Domain.Class(name), []korrel8r.Object{x.pod}, want)
 		})
 	}
 }
@@ -122,11 +121,11 @@ func TestSelectorToLogs(t *testing.T) {
 		Selector: &metav1.LabelSelector{MatchLabels: map[string]string{"a.b/c": "x"}},
 	}
 	require.NoError(t, k8s.Create(c, d))
-	want := &loki.Query{
-		LogQL:  `{kubernetes_namespace_name="ns"} | json | kubernetes_labels_a_b_c="x"`,
-		Tenant: "application",
+	want := &logs.Query{
+		LogQL:   `{kubernetes_namespace_name="ns"} | json | kubernetes_labels_a_b_c="x"`,
+		LogType: "application",
 	}
-	testFollow(t, e, k8s.ClassOf(d), loki.Domain.Class("application"), []korrel8r.Object{d}, want)
+	testFollow(t, e, k8s.ClassOf(d), logs.Domain.Class("application"), []korrel8r.Object{d}, want)
 }
 
 func TestSelectorToPods(t *testing.T) {

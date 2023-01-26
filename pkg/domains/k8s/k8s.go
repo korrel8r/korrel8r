@@ -101,10 +101,10 @@ func (c Class) GVK() schema.GroupVersionKind { return schema.GroupVersionKind(c)
 type Object client.Object
 
 type Query struct {
-	schema.GroupVersionKind
-	types.NamespacedName
-	Labels client.MatchingLabels
-	Fields client.MatchingFields
+	schema.GroupVersionKind                       // `json:"omitempty"`
+	types.NamespacedName                          // `json:"omitempty"`
+	Labels                  client.MatchingLabels // `json:"omitempty"`
+	Fields                  client.MatchingFields // `json:"omitempty"`
 }
 
 func NewQuery(c Class, namespace, name string, labels, fields map[string]string) *Query {

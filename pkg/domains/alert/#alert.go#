@@ -1,5 +1,5 @@
 // package alert implements korrel8r interfaces on prometheus alerts.
-package alert
+alergpackage alert
 
 import (
 	"context"

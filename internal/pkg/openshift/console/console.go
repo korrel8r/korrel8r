@@ -42,7 +42,7 @@ func (c *Console) ConsoleURLToQuery(u *url.URL) (korrel8r.Query, error) {
 	for _, x := range [][2]string{
 		{"/k8s", "k8s"},
 		{"/monitoring/alerts", "alert"},
-		{"/monitoring/logs", "loki"},
+		{"/monitoring/logs", "logs"},
 		{"/monitoring/query-browser", "metric"},
 	} {
 		if strings.HasPrefix(path.Join("/", u.Path), x[0]) {

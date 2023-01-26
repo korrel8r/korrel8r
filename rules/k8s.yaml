@@ -4,31 +4,31 @@ start:
   domain: k8s
   matches: ['{{print .Spec.Selector}}']
 goal:
-  domain: loki
+  domain: logs
 result:
   query: |-
     {{- $logType := k8sLogType .Namespace -}}
     {
-      "Tenant": "{{$logType}}",
+      "LogType": "{{ k8sLogType .Namespace }}",
       "LogQL": "{kubernetes_namespace_name=\"{{.Namespace}}\"} | json
         {{- range $k, $v := .Spec.Selector.MatchLabels}} | kubernetes_labels_{{lokiFixLabel $k}}=\"{{$v}}\"{{end -}}"
     }
-  class: 'loki/{{ k8sLogType .ObjectMeta.Namespace }}'
+  class: 'logs/{{ k8sLogType .ObjectMeta.Namespace }}'
 ---
 name: PodToLogs
 start:
   domain: k8s
   classes: [Pod.]
 goal:
-  domain: loki
+  domain: logs
 result:
   query: |-
     {{- $logType := k8sLogType .Namespace -}}
     {
-      "Tenant": "{{$logType}}",
+      "LogType": "{{ k8sLogType .Namespace }}",
       "LogQL": "{kubernetes_namespace_name=\"{{.Namespace}}\",kubernetes_pod_name=\"{{.Name}}\"} | json"
     }
-  class: 'loki/{{ k8sLogType .ObjectMeta.Namespace }}'
+  class: 'logs/{{ k8sLogType .ObjectMeta.Namespace }}'
 ---
 name: SelectorToPods
 start:
