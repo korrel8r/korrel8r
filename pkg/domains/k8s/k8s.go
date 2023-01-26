@@ -7,7 +7,6 @@ import (
 	"net/url"
 	"path"
 	"reflect"
-	"regexp"
 	"strings"
 
 	"github.com/korrel8r/korrel8r/internal/pkg/openshift/console"
@@ -228,7 +227,7 @@ func (s *Store) QueryToConsoleURL(query korrel8r.Query) (*url.URL, error) {
 		u.Path = path.Join("search", "ns", q.Namespace) // TODO non-namespaced searches?
 		v := url.Values{}
 		v.Add("kind", fmt.Sprintf("%v~%v~%v", q.Group, q.Version, q.Kind))
-		v.Add("q", SelectorString(q.Labels))
+		v.Add("q", selectorString(q.Labels))
 		u.RawQuery = v.Encode()
 	} else { // Single named resource
 		if q.Namespace != "" { // Namespaced resource
@@ -240,39 +239,44 @@ func (s *Store) QueryToConsoleURL(query korrel8r.Query) (*url.URL, error) {
 	return &u, nil
 }
 
-var consolePath = regexp.MustCompile(`/k8s(?:/ns/([^/]+)|/cluster|/all-namespaces)/([^/]+)(?:/([^/]+))?$`)
-
-const (
-	consoleNamepace = iota + 1
-	consoleResource
-	consoleName
-)
-
 func (s *Store) ConsoleURLToQuery(u *url.URL) (korrel8r.Query, error) {
-	p := consolePath.FindStringSubmatch(u.Path)
-	if p == nil {
-		return nil, fmt.Errorf("invalid k8s console URL: %v", u)
-	}
-	if p[consoleResource] == "projects" { // Openshift alias for namespace
-		p[consoleResource] = "namespaces"
-	}
-	gvks, err := s.c.RESTMapper().KindsFor(schema.GroupVersionResource{Resource: p[consoleResource]})
+	namespace, resource, name, err := parsePath(u)
 	if err != nil {
 		return nil, err
 	}
-	return &Query{
-		GroupVersionKind: gvks[0],
-		NamespacedName:   types.NamespacedName{Name: p[consoleName], Namespace: p[consoleNamepace]},
-	}, nil
-}
-
-func SelectorString(m map[string]string) string {
-	b := &strings.Builder{}
-	for k, v := range m {
-		if b.Len() > 0 {
-			b.WriteString(",")
-		}
-		fmt.Fprintf(b, "%v=%v", k, v)
+	if resource == "projects" { // Openshift alias for namespace
+		resource = "namespaces"
 	}
-	return b.String()
+
+	uq := u.Query()
+	var gvk schema.GroupVersionKind
+	switch {
+	case strings.Contains(resource, "~"):
+		gvk = parseGVK(resource)
+	case resource != "":
+		gvks, err := s.c.RESTMapper().KindsFor(schema.GroupVersionResource{Resource: resource})
+		if err != nil {
+			return nil, err
+		}
+		gvk = gvks[0]
+	default:
+		gvk = parseGVK(uq.Get("kind"))
+	}
+	if gvk.Version == "" { // Fill in a partial GVK
+		rm, err := s.c.RESTMapper().RESTMapping(gvk.GroupKind(), gvk.Version)
+		if err != nil {
+			return nil, err
+		}
+		gvk = rm.GroupVersionKind
+		if err != nil {
+			return nil, err
+		}
+	}
+	q := Query{NamespacedName: types.NamespacedName{Namespace: namespace, Name: name}, GroupVersionKind: gvk}
+	if labels := uq.Get("q"); labels != "" {
+		if q.Labels, err = parseSelector(labels); err != nil {
+			return nil, err
+		}
+	}
+	return &q, nil
 }

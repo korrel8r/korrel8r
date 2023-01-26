@@ -12,6 +12,11 @@ const correlateHTML = `
         <input type="submit" value="Submit">
     </form>
 
+    <p style="white-space: pre-line; border-width:3px; border-style:solid; border-color:red; padding:1em">
+	{{- with .Err -}}
+	    {{- printf "%+v" . -}}
+	{{- end -}}
+    </p>
     <p>
 	Start: <code>{{classname .StartClass}}</code> (found {{len .StartObjects}})
 	<br>

@@ -105,13 +105,13 @@ func TestStore_QueryToConsoleURL(t *testing.T) {
 		q Query
 		p string
 	}{
-		{query(ClassOf(&corev1.Pod{}), "default", "foo"), "k8s/ns/default/pods/foo"},
-		{query(ClassOf(&corev1.Pod{}), "default", ""), "k8s/ns/default/pods"},
-		{query(ClassOf(&corev1.Namespace{}), "", "foo"), "k8s/cluster/namespaces/foo"},
-		{query(ClassOf(&corev1.Namespace{}), "", ""), "k8s/cluster/namespaces"},
-		{query(ClassOf(&appv1.Deployment{}), "", ""), "k8s/cluster/deployments"},
-		{query(ClassOf(&appv1.Deployment{}), "NAMESPACE", ""), "k8s/ns/NAMESPACE/deployments"},
-		{query(ClassOf(&appv1.Deployment{}), "NAMESPACE", "NAME"), "k8s/ns/NAMESPACE/deployments/NAME"},
+		{query(ClassOf(&corev1.Pod{}), "default", "foo", nil, nil), "k8s/ns/default/pods/foo"},
+		{query(ClassOf(&corev1.Pod{}), "default", "", nil, nil), "k8s/ns/default/pods"},
+		{query(ClassOf(&corev1.Namespace{}), "", "foo", nil, nil), "k8s/cluster/namespaces/foo"},
+		{query(ClassOf(&corev1.Namespace{}), "", "", nil, nil), "k8s/cluster/namespaces"},
+		{query(ClassOf(&appv1.Deployment{}), "", "", nil, nil), "k8s/cluster/deployments"},
+		{query(ClassOf(&appv1.Deployment{}), "NAMESPACE", "", nil, nil), "k8s/ns/NAMESPACE/deployments"},
+		{query(ClassOf(&appv1.Deployment{}), "NAMESPACE", "NAME", nil, nil), "k8s/ns/NAMESPACE/deployments/NAME"},
 	} {
 		t.Run(x.p, func(t *testing.T) {
 			u, err := s.QueryToConsoleURL(&x.q)
@@ -123,8 +123,13 @@ func TestStore_QueryToConsoleURL(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func query(c Class, namespace, name string) Query {
-	return Query{GroupVersionKind: c.GVK(), NamespacedName: types.NamespacedName{Namespace: namespace, Name: name}}
+func query(c Class, namespace, name string, labels, fields map[string]string) Query {
+	return Query{
+		GroupVersionKind: c.GVK(),
+		NamespacedName:   types.NamespacedName{Namespace: namespace, Name: name},
+		Labels:           labels,
+		Fields:           fields,
+	}
 }
 
 func TestStore_ConsoleURLToQuery(t *testing.T) {
@@ -135,10 +140,11 @@ func TestStore_ConsoleURLToQuery(t *testing.T) {
 		p string
 		q Query
 	}{
-		{"/k8s/ns/default/pods/foo", query(ClassOf(&corev1.Pod{}), "default", "foo")},
-		{"/k8s/ns/default/pods", query(ClassOf(&corev1.Pod{}), "default", "")},
-		{"/k8s/cluster/namespaces/foo", query(ClassOf(&corev1.Namespace{}), "", "foo")},
-		{"/k8s/cluster/projects/foo", query(ClassOf(&corev1.Namespace{}), "", "foo")},
+		{"/k8s/ns/default/pods/foo", query(ClassOf(&corev1.Pod{}), "default", "foo", nil, nil)},
+		{"/k8s/ns/default/pods", query(ClassOf(&corev1.Pod{}), "default", "", nil, nil)},
+		{"/k8s/cluster/namespaces/foo", query(ClassOf(&corev1.Namespace{}), "", "foo", nil, nil)},
+		{"/k8s/cluster/projects/foo", query(ClassOf(&corev1.Namespace{}), "", "foo", nil, nil)},
+		{"/k8s/ns/default?kind=Pod&q=name%3Dfoo%2Capp%3dbar", query(ClassOf(&corev1.Pod{}), "default", "", map[string]string{"name": "foo", "app": "bar"}, nil)},
 	} {
 		t.Run(x.p, func(t *testing.T) {
 			u, _ := url.Parse(x.p)
@@ -162,4 +168,36 @@ func TestQuery_Marshal(t *testing.T) {
 	err = json.Unmarshal(b, q2)
 	require.NoError(t, err)
 	assert.Equal(t, q, q2)
+}
+
+func Test_parsePath(t *testing.T) {
+	for _, x := range []struct {
+		path  string
+		match []string
+	}{
+		{`/k8s/ns/openshift-logging/operators.coreos.com~v1alpha1~ClusterServiceVersion/cluster-logging.v5.6.0`,
+			[]string{"openshift-logging", "operators.coreos.com~v1alpha1~ClusterServiceVersion", "cluster-logging.v5.6.0"},
+		},
+		{`/k8s/ns/openshift-logging/pods/foo`,
+			[]string{"openshift-logging", "pods", "foo"},
+		},
+		{`/k8s/all-namespaces/pods`,
+			[]string{"", "pods", ""},
+		},
+		{`/k8s/cluster/nodes/oscar7`,
+			[]string{"", "nodes", "oscar7"},
+		},
+		{`/search/ns/openshift-logging/pods`,
+			[]string{"openshift-logging", "pods", ""},
+		},
+	} {
+		t.Run(x.path, func(t *testing.T) {
+			got := make([]string, 3)
+			var err error
+			got[0], got[1], got[2], err = parsePath(&url.URL{Path: x.path})
+			if assert.NoError(t, err) {
+				assert.Equal(t, x.match, got)
+			}
+		})
+	}
 }
