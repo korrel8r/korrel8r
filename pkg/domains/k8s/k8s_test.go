@@ -32,7 +32,7 @@ func TestDomain_Class(t *testing.T) {
 		{"Pod", ClassOf(&corev1.Pod{})},                       // Kind only
 		{"Pod.", ClassOf(&corev1.Pod{})},                      // Kind and group (core group is named "")
 		{"Pod.v1.", ClassOf(&corev1.Pod{})},                   // Kind, version gand roup.
-		{"Deployment", ClassOf(&appsv1.Deployment{})},         // Kind only
+		{"Deployment.apps", ClassOf(&appsv1.Deployment{})},    // Kind only
 		{"Deployment.apps", ClassOf(&appsv1.Deployment{})},    // Kind and group
 		{"Deployment.v1.apps", ClassOf(&appsv1.Deployment{})}, // Kind, version and group
 	} {
@@ -80,7 +80,6 @@ func TestStore_Get(t *testing.T) {
 		{Query{GroupVersionKind: podGVK, NamespacedName: fred}, []types.NamespacedName{fred}},
 		{Query{GroupVersionKind: podGVK, NamespacedName: types.NamespacedName{Namespace: "x"}}, []types.NamespacedName{fred, barney}},
 		{Query{GroupVersionKind: podGVK, Labels: client.MatchingLabels{"app": "foo"}}, []types.NamespacedName{fred, wilma}},
-		// Field matches are not supported by the fake client.
 	} {
 		t.Run(fmt.Sprintf("%#v", x.q), func(t *testing.T) {
 			var result korrel8r.ListResult

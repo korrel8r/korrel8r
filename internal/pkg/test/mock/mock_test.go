@@ -26,12 +26,10 @@ func TestClass(t *testing.T) {
 	c := Class("d/c")
 	assert.Equal(t, Domain("d"), c.Domain())
 	assert.Equal(t, "c", c.String())
-	assert.Equal(t, Object("d/c:"), c.New())
 	assert.Equal(t, Object("d/c:foo"), c.ID(Object("d/c:foo")))
 
 	c = Class("c")
 	assert.Equal(t, Domain(""), c.Domain())
-	assert.Equal(t, Object("c:"), c.New())
 	assert.Equal(t, Object("c:foo"), c.ID(Object("c:foo")))
 }
 

@@ -2,7 +2,6 @@ package templaterule
 
 import (
 	"fmt"
-	"io"
 	"text/template"
 
 	"github.com/korrel8r/korrel8r/pkg/engine"
@@ -48,7 +47,7 @@ func (rb *ruleBuilder) expand(spec *ClassSpec, what string) (classes []korrel8r.
 	if err != nil {
 		return nil, err
 	}
-	if len(spec.Classes) == 0 && len(spec.Matches) == 0 {
+	if len(spec.Classes) == 0 {
 		return domain.Classes(), nil // Default to all classes in domain
 	}
 	list := unique.NewList[korrel8r.Class]()
@@ -58,18 +57,6 @@ func (rb *ruleBuilder) expand(spec *ClassSpec, what string) (classes []korrel8r.
 			return nil, fmt.Errorf("unknown class %v in domain %v", name, domain)
 		}
 		list.Append(c)
-	}
-	for _, s := range spec.Matches {
-		t, err := rb.newTemplate(s, "-matches")
-		if err != nil {
-			return nil, err
-		}
-		for _, c := range domain.Classes() {
-			if err := t.Execute(io.Discard, c.New()); err == nil {
-				list.Append(c)
-				log.V(4).Info("match", "rule", rb.name, what, c)
-			}
-		}
 	}
 	return list.List, nil
 }

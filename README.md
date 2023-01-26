@@ -66,7 +66,7 @@ The fields and values in a query depend on the type of store it will be used wit
 
 **Class**  \
 A subset of signals in a Domain with a common schema (the same field definitions).
-Examples: `k8s/Pod`, `alert/KubeContainerWaiting`, `metric/log_logged_bytes_total`
+Examples: `k8s/Pod`, `logs/audit`
 
 **Object** \
 An instance of a signal or other correlation object.

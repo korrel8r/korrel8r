@@ -32,7 +32,7 @@ func TestRule_Rules(t *testing.T) {
 	e.AddDomain(foo, nil)
 	e.AddDomain(bar, nil)
 	a, b, c := foo.Class("a"), foo.Class("b"), foo.Class("c")
-	x, _, z := bar.Class("x"), bar.Class("y"), bar.Class("z")
+	_, _, z := bar.Class("x"), bar.Class("y"), bar.Class("z")
 	for _, x := range []struct {
 		rule string
 		want []mock.Rule
@@ -54,24 +54,6 @@ goal:  {domain: bar, classes: [z]}
 result: {query: dummy, class: dummy}
 `,
 			want: []mock.Rule{mockRule("multistart", a, z), mockRule("multistart", b, z), mockRule("multistart", c, z)},
-		},
-		{
-			rule: `
-name: "select-start"
-start: {domain: foo, matches: ['{{assert (ne .Class.String "b")}}']}
-goal:  {domain: bar, classes: [z]}
-result: {query: dummy, class: dummy}
-`,
-			want: []mock.Rule{mockRule("select-start", a, z), mockRule("select-start", c, z)},
-		},
-		{
-			rule: `
-name: "select-goal"
-start: {domain: foo, classes: [a]}
-goal: {domain: bar, matches: ['{{assert (eq .Class.String "x")}}']}
-result: {query: dummy, class: dummy}
-`,
-			want: []mock.Rule{mockRule("select-goal", a, x)},
 		},
 		{
 			rule: `

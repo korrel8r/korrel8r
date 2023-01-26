@@ -2,50 +2,74 @@ groups:
   - name: workloads
     classes:
       - Pod
-      - Deployment
-      - DeploymentConfig
-      - StatefulSet
+      - Deployment.apps
+      - DeploymentConfig.apps.openshift.io
+      - StatefulSet.apps
       - Secret
       - ConfigMap
-      - CronJob
-      - Job
-      - DaemonSet
-      - ReplicaSet
+      - CronJob.batch
+      - Job.batch
+      - DaemonSet.apps
+      - ReplicaSet.apps
       - ReplicationController
-      - HorizontalPodAutoscaler
+      - HorizontalPodAutoscaler.autoscaling
 
   - name: networking
     classes:
       - Service
-      - Route
-      - Ingress
-      - NetworkPolicy
+      - Route.route.openshift.io
+      - Ingress.networking.k8s.io
+      - NetworkPolicy.networking.k8s.io
 
   - name: storage
     classes:
       - PersistentVolumeClaim
       - PersistentVolume
-      - StorageClass
-      - VolumeAttachment
+      - StorageClass.storage.k8s.io
+      - VolumeAttachment.storage.k8s.io
 
   - name: users
     classes:
-      - User
-      - Group
+#      - User.users.openshift.io
+#      - Group.users.openshift.io
       - ServiceAccount
-      - Role
-      - RoleBinding
-      - ClusterRole
-      - ClusterRoleBinding
+      - Role.rbac.authorization.k8s.io
+      - RoleBinding.rbac.authorization.k8s.io
+      - ClusterRole.rbac.authorization.k8s.io
+      - ClusterRoleBinding.rbac.authorization.k8s.io
 
   - name: all
     classes: [workloads, networking, storage, users]
+
+  - name: selectors
+    classes:
+      - PersistentVolumeClaim
+      - ReplicationController
+      - Service
+      - DaemonSet.apps
+      - Deployment.apps
+      - ReplicaSet.apps
+      - StatefulSet.apps
+      - DeploymentConfig.apps.openshift.io
+      - Job.batch
+      - PodDisruptionBudget.policy
+#      - ClusterOperator
+#      - MachineHealthCheck
+#      - MachineSet
+#      - PodMonitor
+#      - ServiceMonitor
+#      - ClusterServiceVersion
+#      - OperatorGroup
+#      - Operator
+#      - PackageManifest
+#      - AppliedClusterResourceQuota
+#      - ClusterResourceQuota
 
 rules:
    - name: SelectorToLogs
      start:
        domain: k8s
-       matches: ['{{print .Spec.Selector}}']
+       classes: [selectors]
      goal:
        domain: logs
      result:
@@ -58,7 +82,7 @@ rules:
    - name: PodToLogs
      start:
        domain: k8s
-       classes: [Pod.]
+       classes: [Pod]
      goal:
        domain: logs
      result:
@@ -70,17 +94,17 @@ rules:
    - name: SelectorToPods
      start:
        domain: k8s
-       matches: ['{{print .Spec.Selector}}']
+       classes: [selectors]
      goal:
        domain: k8s
-       classes: [Pod.]
+       classes: [Pod]
      result:
        query: |-
          {"Namespace":"{{.Namespace}}","Labels":{{ .Spec.Selector.MatchLabels | json -}} }
    - name: EventToAll
      start:
        domain: k8s
-       classes: [Event.]
+       classes: [Event]
      goal:
        domain: k8s
        classes: [all, Namespace]

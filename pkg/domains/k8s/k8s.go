@@ -34,22 +34,14 @@ type domain struct{}
 func (d domain) String() string { return "k8s" }
 
 // Class name in one of the forms: Kind,  Kind.Group,  Kind.Version.Group.
+// Group must be included, missing group implies core group.
 func (d domain) Class(name string) korrel8r.Class {
-	tryGVK, tryGK := schema.ParseKindArg(name)
-	switch {
-	case tryGVK != nil && Scheme.Recognizes(*tryGVK): // Direct hit
-		return Class(*tryGVK)
-	case tryGK.Group != "": // GroupKind, must find version
-		for _, gv := range Scheme.VersionsForGroupKind(tryGK) {
-			if gvk := tryGK.WithVersion(gv.Version); Scheme.Recognizes(gvk) {
-				return Class(gvk)
-			}
-		}
-	default: // Only have a Kind, search for group and version.
-		for _, gv := range Scheme.PreferredVersionAllGroups() {
-			if gvk := gv.WithKind(tryGK.Kind); Scheme.Recognizes(gvk) {
-				return Class(gvk)
-			}
+	gvk, gk := schema.ParseKindArg(name)
+	if gvk != nil && Scheme.Recognizes(*gvk) { // Direct hit
+		return Class(*gvk)
+	} else {
+		if vs := Scheme.VersionsForGroupKind(gk); len(vs) > 0 {
+			return Class(gk.WithVersion(vs[0].Version))
 		}
 	}
 	return nil

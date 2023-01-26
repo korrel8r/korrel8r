@@ -91,23 +91,13 @@ func TestSelectorToLogsRules(t *testing.T) {
 	want := []korrel8r.Class{
 		k8s.Class{Group: "", Version: "v1", Kind: "ReplicationController"},
 		k8s.Class{Group: "apps.openshift.io", Version: "v1", Kind: "DeploymentConfig"},
-		k8s.Class{Group: "extensions", Version: "v1beta1", Kind: "DaemonSet"},
-		k8s.Class{Group: "extensions", Version: "v1beta1", Kind: "Deployment"},
-		k8s.Class{Group: "apps", Version: "v1beta1", Kind: "StatefulSet"},
 		k8s.Class{Group: "", Version: "v1", Kind: "PersistentVolumeClaim"},
 		k8s.Class{Group: "", Version: "v1", Kind: "Service"},
-		k8s.Class{Group: "policy", Version: "v1beta1", Kind: "PodDisruptionBudget"},
 		k8s.Class{Group: "apps", Version: "v1", Kind: "Deployment"},
-		k8s.Class{Group: "apps", Version: "v1beta2", Kind: "StatefulSet"},
 		k8s.Class{Group: "batch", Version: "v1", Kind: "Job"},
 		k8s.Class{Group: "policy", Version: "v1", Kind: "PodDisruptionBudget"},
-		k8s.Class{Group: "apps", Version: "v1beta1", Kind: "Deployment"},
-		k8s.Class{Group: "apps", Version: "v1beta2", Kind: "ReplicaSet"},
-		k8s.Class{Group: "extensions", Version: "v1beta1", Kind: "ReplicaSet"},
 		k8s.Class{Group: "apps", Version: "v1", Kind: "StatefulSet"},
-		k8s.Class{Group: "apps", Version: "v1beta2", Kind: "DaemonSet"},
 		k8s.Class{Group: "apps", Version: "v1", Kind: "DaemonSet"},
-		k8s.Class{Group: "apps", Version: "v1beta2", Kind: "Deployment"},
 		k8s.Class{Group: "apps", Version: "v1", Kind: "ReplicaSet"}}
 	assert.ElementsMatch(t, want, classes.List, "%#v", classes.List)
 }

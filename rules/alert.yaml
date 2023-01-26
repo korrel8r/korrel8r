@@ -35,7 +35,7 @@ rules:
       domain: alert
     goal:
       domain: k8s
-      classes: [DaemonSet.]
+      classes: [DaemonSet.apps]
     result:
       query:  |-
         {"Namespace": "{{.Alert.Labels.namespace}}", "Name":"{{.Alert.Labels.daemonset}}"}
@@ -45,7 +45,7 @@ rules:
       domain: alert
     goal:
       domain: k8s
-      classes: [StatefulSet.]
+      classes: [StatefulSet.apps]
     result:
       query:  |-
         {"Namespace": "{{.Alert.Labels.namespace}}", "Name":"{{.Alert.Labels.statefulset}}"}

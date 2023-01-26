@@ -2,8 +2,6 @@
 package templaterule
 
 import (
-	"fmt"
-
 	"github.com/korrel8r/korrel8r/pkg/engine"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 )
@@ -30,20 +28,11 @@ type Rule struct {
 // ClassSpec specifies one or more classes.
 type ClassSpec struct {
 	// Domain is the domain for selected classes.
-	// If both Classes and Matches are omitted, then all classes in the domain are selected.
 	Domain string `json:"domain"`
 
 	// Classes is a list of class names to be selected from the domain.
+	// If absent, all classes in the domain are selected.
 	Classes []string `json:"classes,omitempty"`
-
-	// Matches is a list of templates to select classes from the domain.
-	// A match templates is an optimization to remove uninteresting classes before getting objects.
-	// If the template executes against an empty instance of the class without error, the class is included.
-	// The output of the template is ignored.
-	//
-	// Typical match templates are just tests for field existence, for example:
-	//   {{ print .Spec.Selector}}
-	Matches []string `json:"matches,omitempty"`
 }
 
 // ResultSpec contains result templates.
@@ -64,14 +53,4 @@ func (r *Rule) Rules(e *engine.Engine) (rules []korrel8r.Rule, err error) {
 		return nil, err
 	}
 	return rb.rules()
-}
-
-func (c ClassSpec) single() bool { return len(c.Matches) == 0 && len(c.Classes) == 1 }
-
-func (c ClassSpec) String() string {
-	if c.single() {
-		return fmt.Sprintf("%v/%v", c.Domain, c.Classes[0])
-	} else {
-		return fmt.Sprintf("%v/%v%v", c.Domain, c.Classes, c.Matches)
-	}
 }
