@@ -11,7 +11,6 @@ import (
 	"os"
 	"testing"
 
-	"github.com/korrel8r/korrel8r/internal/pkg/decoder"
 	"github.com/korrel8r/korrel8r/internal/pkg/test"
 	"github.com/korrel8r/korrel8r/pkg/domains/alert"
 	"github.com/korrel8r/korrel8r/pkg/domains/k8s"
@@ -42,8 +41,7 @@ func setup(t *testing.T, ruleFiles ...string) (client.Client, *engine.Engine) {
 		f, err := os.Open(name)
 		require.NoError(t, err)
 		defer f.Close()
-		d := decoder.New(f)
-		require.NoError(t, templaterule.AddRules(d, e), "decoding file %v", name)
+		require.NoError(t, templaterule.Decode(f, e), "decoding file %v", name)
 	}
 	return c, e
 }

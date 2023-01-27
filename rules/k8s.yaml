@@ -1,59 +1,100 @@
----
-name: SelectorToLogs
-start:
-  domain: k8s
-  matches: ['{{print .Spec.Selector}}']
-goal:
-  domain: logs
-result:
-  query: |-
-    {
-      "LogType": "{{ k8sLogType .Namespace }}",
-      "LogQL": "{kubernetes_namespace_name=\"{{.Namespace}}\"} | json
-        {{- range $k, $v := .Spec.Selector.MatchLabels}} | kubernetes_labels_{{lokiFixLabel $k}}=\"{{$v}}\"{{end -}}"
-    }
----
-name: PodToLogs
-start:
-  domain: k8s
-  classes: [Pod.]
-goal:
-  domain: logs
-result:
-  query: |-
-    {
-      "LogType": "{{ k8sLogType .Namespace }}",
-      "LogQL": "{kubernetes_namespace_name=\"{{.Namespace}}\",kubernetes_pod_name=\"{{.Name}}\"} | json"
-    }
----
-name: SelectorToPods
-start:
-  domain: k8s
-  matches: ['{{print .Spec.Selector}}']
-goal:
-  domain: k8s
-  classes: [Pod.]
-result:
-  query: |-
-    {"Namespace":"{{.Namespace}}","Labels":{{ .Spec.Selector.MatchLabels | json -}} }
----
-name: EventToObject
-start:
-  domain: k8s
-  classes: [Event.]
-goal:
-  domain: k8s
-result:
-  query: |-
-    {"Namespace":"{{.InvolvedObject.Namespace}}","Name": "{{.InvolvedObject.Name}}"}
-  class: '{{k8sClass .InvolvedObject.Kind .InvolvedObject.APIVersion}}'
----
-name: ObjectToEvent
-start:
-  domain: k8s
-goal:
-  domain: k8s
-  classes: [Event.]
-result:
-  query: |-
-    { "Fields": {{kvmap "involvedObject.namespace" .Namespace "involvedObject.name" .Name | json}} }
+groups:
+  - name: workloads
+    classes:
+      - Pod
+      - Deployment
+      - DeploymentConfig
+      - StatefulSet
+      - Secret
+      - ConfigMap
+      - CronJob
+      - Job
+      - DaemonSet
+      - ReplicaSet
+      - ReplicationController
+      - HorizontalPodAutoscaler
+
+  - name: networking
+    classes:
+      - Service
+      - Route
+      - Ingress
+      - NetworkPolicy
+
+  - name: storage
+    classes:
+      - PersistentVolumeClaim
+      - PersistentVolume
+      - StorageClass
+      - VolumeAttachment
+
+  - name: users
+    classes:
+      - User
+      - Group
+      - ServiceAccount
+      - Role
+      - RoleBinding
+      - ClusterRole
+      - ClusterRoleBinding
+
+  - name: all
+    classes: [workloads, networking, storage, users]
+
+rules:
+   - name: SelectorToLogs
+     start:
+       domain: k8s
+       matches: ['{{print .Spec.Selector}}']
+     goal:
+       domain: logs
+     result:
+       query: |-
+         {
+           "LogType": "{{ k8sLogType .Namespace }}",
+           "LogQL": "{kubernetes_namespace_name=\"{{.Namespace}}\"} | json
+             {{- range $k, $v := .Spec.Selector.MatchLabels}} | kubernetes_labels_{{lokiFixLabel $k}}=\"{{$v}}\"{{end -}}"
+         }
+   - name: PodToLogs
+     start:
+       domain: k8s
+       classes: [Pod.]
+     goal:
+       domain: logs
+     result:
+       query: |-
+         {
+           "LogType": "{{ k8sLogType .Namespace }}",
+           "LogQL": "{kubernetes_namespace_name=\"{{.Namespace}}\",kubernetes_pod_name=\"{{.Name}}\"} | json"
+         }
+   - name: SelectorToPods
+     start:
+       domain: k8s
+       matches: ['{{print .Spec.Selector}}']
+     goal:
+       domain: k8s
+       classes: [Pod.]
+     result:
+       query: |-
+         {"Namespace":"{{.Namespace}}","Labels":{{ .Spec.Selector.MatchLabels | json -}} }
+   - name: EventToAll
+     start:
+       domain: k8s
+       classes: [Event.]
+     goal:
+       domain: k8s
+       classes: [all, Namespace]
+     result:
+       query: |-
+         {"Namespace":"{{.InvolvedObject.Namespace}}","Name": "{{.InvolvedObject.Name}}"}
+       class: '{{k8sClass .InvolvedObject.Kind .InvolvedObject.APIVersion}}'
+   - name: AllToEvent
+     start:
+       domain: k8s
+       classes: [all, Namespace]
+     goal:
+       domain: k8s
+       classes: [Event.]
+     result:
+       query: |-
+         { "Fields": {{kvmap "involvedObject.namespace" .Namespace "involvedObject.name" .Name | json}} }

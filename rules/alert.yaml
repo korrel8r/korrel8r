@@ -1,51 +1,51 @@
----
 # NOTE Rules are framed for the Alertmanager API.
-name: AlertToDeployment
-start:
-  domain: alert
-goal:
-  domain: k8s
-  classes: [Deployment.apps]
-result:
-  query: |-
-    {"Namespace": "{{.Alert.Labels.namespace}}", "Name":"{{.Alert.Labels.deployment}}"}
----
-name: AlertToNamespace
-start:
-  domain: alert
-goal:
-  domain: k8s
-  classes: [Namespace.]
-result:
-  query:  |-
-    {"Namespace": "{{.Alert.Labels.namespace}}"}
----
-name: AlertToPod
-start:
-  domain: alert
-goal:
-  domain: k8s
-  classes: [Pod.]
-result:
-  query:  |-
-    {"Namespace": "{{.Alert.Labels.namespace}}", "Name":"{{.Alert.Labels.pod}}"}
----
-name: AlertToDaemonSet
-start:
-  domain: alert
-goal:
-  domain: k8s
-  classes: [DaemonSet.]
-result:
-  query:  |-
-    {"Namespace": "{{.Alert.Labels.namespace}}", "Name":"{{.Alert.Labels.daemonset}}"}
----
-name: AlertToStatefulSet
-start:
-  domain: alert
-goal:
-  domain: k8s
-  classes: [StatefulSet.]
-result:
-  query:  |-
-    {"Namespace": "{{.Alert.Labels.namespace}}", "Name":"{{.Alert.Labels.statefulset}}"}
+rules:
+  - name: AlertToDeployment
+    start:
+      domain: alert
+    goal:
+      domain: k8s
+      classes: [Deployment.apps]
+    result:
+      query: |-
+        {"Namespace": "{{.Alert.Labels.namespace}}", "Name":"{{.Alert.Labels.deployment}}"}
+
+  - name: AlertToNamespace
+    start:
+      domain: alert
+    goal:
+      domain: k8s
+      classes: [Namespace.]
+    result:
+      query:  |-
+        {"Namespace": "{{.Alert.Labels.namespace}}"}
+
+  - name: AlertToPod
+    start:
+      domain: alert
+    goal:
+      domain: k8s
+      classes: [Pod.]
+    result:
+      query:  |-
+        {"Namespace": "{{.Alert.Labels.namespace}}", "Name":"{{.Alert.Labels.pod}}"}
+
+  - name: AlertToDaemonSet
+    start:
+      domain: alert
+    goal:
+      domain: k8s
+      classes: [DaemonSet.]
+    result:
+      query:  |-
+        {"Namespace": "{{.Alert.Labels.namespace}}", "Name":"{{.Alert.Labels.daemonset}}"}
+
+  - name: AlertToStatefulSet
+    start:
+      domain: alert
+    goal:
+      domain: k8s
+      classes: [StatefulSet.]
+    result:
+      query:  |-
+        {"Namespace": "{{.Alert.Labels.namespace}}", "Name":"{{.Alert.Labels.statefulset}}"}

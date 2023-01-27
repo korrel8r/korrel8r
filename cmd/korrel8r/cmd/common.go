@@ -9,7 +9,6 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/korrel8r/korrel8r/internal/pkg/decoder"
 	"github.com/korrel8r/korrel8r/internal/pkg/logging"
 	"github.com/korrel8r/korrel8r/internal/pkg/must"
 	"github.com/korrel8r/korrel8r/pkg/domains/alert"
@@ -122,8 +121,7 @@ func loadRules(e *engine.Engine, root string) error {
 			return err
 		}
 		defer f.Close()
-		d := decoder.New(f)
-		if err := templaterule.AddRules(d, e); err != nil {
+		if err := templaterule.Decode(f, e); err != nil {
 			return fmt.Errorf("%v:0 error loading rules: %v", path, err)
 		}
 		return nil
