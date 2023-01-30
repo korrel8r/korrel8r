@@ -18,6 +18,7 @@ import (
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"github.com/korrel8r/korrel8r/pkg/templaterule"
 
+	"github.com/korrel8r/korrel8r/pkg/domains/metric"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/util/flowcontrol"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -54,6 +55,7 @@ func newEngine() *engine.Engine {
 		{k8s.Domain, func() (korrel8r.Store, error) { return k8s.NewStore(k8sClient(cfg), cfg) }},
 		{alert.Domain, func() (korrel8r.Store, error) { return alert.NewOpenshiftAlertManagerStore(ctx, cfg) }},
 		{logs.Domain, func() (korrel8r.Store, error) { return logs.NewOpenshiftLokiStackStore(ctx, k8sClient(cfg), cfg) }},
+		{metric.Domain, func() (korrel8r.Store, error) { return metric.NewOpenshiftStore(ctx, k8sClient(cfg), cfg) }},
 	} {
 		log.V(2).Info("add domain", "domain", x.d)
 		s, err := x.create()

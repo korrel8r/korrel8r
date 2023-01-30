@@ -19,7 +19,7 @@ import (
 var (
 	_ korrel8r.Domain = Domain
 	_ korrel8r.Class  = Class{}
-	_ korrel8r.Query  = Query{}
+	_ korrel8r.Query  = &Query{}
 	_ korrel8r.Store  = &Store{}
 )
 
@@ -33,7 +33,7 @@ func (domain) Classes() []korrel8r.Class           { return []korrel8r.Class{Cla
 func (domain) Query(korrel8r.Class) korrel8r.Query { return &Query{} }
 
 func (domain) ConsoleURLToQuery(u *url.URL) (korrel8r.Query, error) {
-	return Query{PromQL: fmt.Sprintf(`{alertname=%q}`, u.Query().Get("alertname"))}, nil
+	return &Query{PromQL: fmt.Sprintf(`{alertname=%q}`, u.Query().Get("alertname"))}, nil
 }
 
 func (domain) QueryToConsoleURL(q korrel8r.Query) (*url.URL, error) {
@@ -55,10 +55,12 @@ func (c Class) ID(o korrel8r.Object) any {
 
 type Object *models.GettableAlert
 
-type Query struct{ PromQL string }
+type Query struct {
+	PromQL string // `json:"omitempty"`
+}
 
-func (q Query) String() string        { return q.PromQL }
-func (q Query) Class() korrel8r.Class { return Class{} }
+func (q *Query) String() string        { return q.PromQL }
+func (q *Query) Class() korrel8r.Class { return Class{} }
 
 type Store struct {
 	manager *client.AlertmanagerAPI

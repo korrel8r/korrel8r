@@ -4,15 +4,17 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"path"
 
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 )
 
+// storeHandler serves JSON results from store GET calls.
 type storeHandler struct{ ui *WebUI }
 
 func (h *storeHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	params := req.URL.Query()
-	domain, err := h.ui.Engine.DomainErr("domain")
+	domain, err := h.ui.Engine.DomainErr(path.Base(req.URL.Path))
 	if httpError(w, err, http.StatusNotFound) {
 		return
 	}
@@ -22,7 +24,7 @@ func (h *storeHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	query := domain.Query(nil)
-	if httpError(w, json.Unmarshal([]byte(params.Get("query")), query), http.StatusNotFound) {
+	if httpError(w, json.Unmarshal([]byte(params.Get("query")), &query), http.StatusNotFound) {
 		return
 	}
 	result := korrel8r.NewResult(query.Class())
@@ -32,7 +34,10 @@ func (h *storeHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		"err":    err,
 		"result": result.List(),
 	}
-	t, err := h.ui.Page("stores").Parse(`
+	serveTemplate(w, h.ui.Page("stores"), storeHTML, data)
+}
+
+const storeHTML = `
 {{define "body"}}
     Query: {{.query}}<br>
     <hr>
@@ -44,8 +49,4 @@ func (h *storeHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
         </pre>
     {{end}}
 {{end}}
-    `)
-	if !httpError(w, err, http.StatusInternalServerError) {
-		httpError(w, t.Execute(w, data), http.StatusInternalServerError)
-	}
-}
+    `

@@ -107,18 +107,28 @@ rules:
        classes: [Event]
      goal:
        domain: k8s
-       classes: [all, Namespace]
+       classes: [all]
      result:
+       # FIXME Embed type in query.
        query: |-
          {"Namespace":"{{.InvolvedObject.Namespace}}","Name": "{{.InvolvedObject.Name}}"}
        class: '{{k8sClass .InvolvedObject.Kind .InvolvedObject.APIVersion}}'
    - name: AllToEvent
      start:
        domain: k8s
-       classes: [all, Namespace]
+       classes: [all]
      goal:
        domain: k8s
        classes: [Event.]
      result:
        query: |-
          { "Fields": {{kvmap "involvedObject.namespace" .Namespace "involvedObject.name" .Name | json}} }
+   - name: AllToMetric
+     start:
+       domain: k8s
+       classes: [all]
+     goal:
+       domain: metric
+     result:
+       query: |-
+         { "PromQL": "{ namespace=\"{{.Namespace}}\", {{tolower .Kind}}=\"{{.Name}}\" }" }

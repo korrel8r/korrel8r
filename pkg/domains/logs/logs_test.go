@@ -24,7 +24,7 @@ func TestStore_Get_PlainLoki(t *testing.T) {
 	t.Parallel()
 	l := test.RequireLokiServer(t)
 	lines := []string{"hello", "there", "mr. frog"}
-	err := l.Push(map[string]string{"test": "loki"}, lines...)
+	err := l.Push(map[string]string{"test": "logs"}, lines...)
 	require.NoError(t, err)
 	s, err := NewPlainLokiStore(l.URL(), http.DefaultClient)
 	require.NoError(t, err)
@@ -33,7 +33,7 @@ func TestStore_Get_PlainLoki(t *testing.T) {
 	for _, l := range lines {
 		want = append(want, Object(l))
 	}
-	q := &Query{LogQL: `{test="loki"}`}
+	q := &Query{LogQL: `{test="logs"}`}
 	result := korrel8r.NewListResult()
 	require.NoError(t, s.Get(ctx, q, result))
 	assert.Equal(t, want, result.List())
@@ -82,15 +82,15 @@ func TestStoreGet_Constraint(t *testing.T) {
 	t.Parallel()
 	l := test.RequireLokiServer(t)
 
-	err := l.Push(map[string]string{"test": "loki"}, "much", "too", "early")
+	err := l.Push(map[string]string{"test": "logs"}, "much", "too", "early")
 	require.NoError(t, err)
 
 	t1 := time.Now()
-	err = l.Push(map[string]string{"test": "loki"}, "right", "on", "time")
+	err = l.Push(map[string]string{"test": "logs"}, "right", "on", "time")
 	require.NoError(t, err)
 	t2 := time.Now()
 
-	err = l.Push(map[string]string{"test": "loki"}, "much", "too", "late")
+	err = l.Push(map[string]string{"test": "logs"}, "much", "too", "late")
 	require.NoError(t, err)
 	s, err := NewPlainLokiStore(l.URL(), http.DefaultClient)
 	require.NoError(t, err)
@@ -101,12 +101,12 @@ func TestStoreGet_Constraint(t *testing.T) {
 		want []korrel8r.Object
 	}{
 		{
-			q:    &Query{LogQL: `{test="loki"}`},
+			q:    &Query{LogQL: `{test="logs"}`},
 			c:    &korrel8r.Constraint{End: &t1},
 			want: []korrel8r.Object{Object("much"), Object("too"), Object("early")},
 		},
 		{
-			q:    &Query{LogQL: `{test="loki"}`},
+			q:    &Query{LogQL: `{test="logs"}`},
 			c:    &korrel8r.Constraint{Start: &t1, End: &t2},
 			want: []korrel8r.Object{Object("right"), Object("on"), Object("time")},
 		},

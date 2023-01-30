@@ -27,7 +27,7 @@ import (
 //	  Marshals its argument as YAML and returns the string.
 //	classname
 //	  Returns the domain qualified name of a korrel8r.Class argument.
-//	urlencode
+//	urlquerymap
 //	  Returns the URL query encoding of a map argument.
 //	  Map values are stringified as for fmt.Printf("%v", ...)
 //	selector
@@ -39,14 +39,15 @@ var Funcs map[string]any
 
 func init() {
 	Funcs = map[string]any{
-		"constraint": func() *korrel8r.Constraint { return nil },
-		"assert":     doAssert, // Assert a condition in a template
-		"json":       toJSON,
-		"yaml":       toYAML,
-		"classname":  korrel8r.ClassName,
-		"urlencode":  urlencode,
-		"selector":   selector,
-		"kvmap":      kvMap,
+		"constraint":  func() *korrel8r.Constraint { return nil },
+		"assert":      doAssert, // Assert a condition in a template
+		"json":        toJSON,
+		"yaml":        toYAML,
+		"classname":   korrel8r.ClassName,
+		"urlquerymap": urlquerymap,
+		"selector":    selector,
+		"kvmap":       kvMap,
+		"tolower":     strings.ToLower,
 	}
 }
 
@@ -68,17 +69,17 @@ func doAssert(ok bool, msg ...any) (int, error) {
 func toJSON(v any) (string, error) { b, err := json.Marshal(v); return string(b), err }
 func toYAML(v any) (string, error) { b, err := yaml.Marshal(v); return string(b), err }
 
-func urlencode(m any) string {
-	v := reflect.ValueOf(m)
-	if !v.IsValid() {
-		return ""
+func urlquerymap(m any) (string, error) {
+	rm := reflect.ValueOf(m)
+	if rm.Kind() != reflect.Map {
+		return "", fmt.Errorf("urlquerymap expected a map but got (%T)%v", m, m)
 	}
-	p := url.Values{}
-	i := v.MapRange()
+	v := url.Values{}
+	i := rm.MapRange()
 	for i.Next() {
-		p.Add(fmt.Sprintf("%v", i.Key()), fmt.Sprintf("%v", i.Value()))
+		v.Add(fmt.Sprintf("%v", i.Key()), fmt.Sprintf("%v", i.Value()))
 	}
-	return p.Encode()
+	return v.Encode(), nil
 }
 
 func selector(m any) string {

@@ -156,8 +156,9 @@ func (e *Engine) GetAll(ctx context.Context, class korrel8r.Class, queries []kor
 
 // GetLast gets the objects for the last result in results
 func (e *Engine) GetLast(ctx context.Context, results *Results) error {
-	result := results.Last()
-	if result != nil {
+	l := len(*results)
+	if l > 0 {
+		result := (*results)[l-1]
 		return e.GetAll(ctx, result.Class, result.Queries.List, result.Objects)
 	}
 	return nil

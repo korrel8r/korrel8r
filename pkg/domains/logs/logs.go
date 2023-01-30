@@ -1,4 +1,4 @@
-// package loki generates qgueries for logs stored in Loki or LokiStack
+// package logs generates qgueries for logs stored in Loki or LokiStack
 package logs
 
 import (

@@ -14,8 +14,8 @@ func TestConvert(t *testing.T) {
 	assert.Equal(t, mock.Domain("x"), d)
 
 	_, err = TypeAssert[korrel8r.Query](nil)
-	assert.EqualError(t, err, "wrong type: want korrel8r.Query, got <nil> = <nil>")
+	assert.EqualError(t, err, "wrong type: want korrel8r.Query, got (<nil>)(<nil>)")
 
 	_, err = TypeAssert[korrel8r.Query](d)
-	assert.EqualError(t, err, "wrong type: want korrel8r.Query, got mock.Domain = \"x\"")
+	assert.EqualError(t, err, "wrong type: want korrel8r.Query, got (mock.Domain)(\"x\")")
 }

@@ -32,7 +32,7 @@ func (r *rule) Apply(start korrel8r.Object, c *korrel8r.Constraint) (q korrel8r.
 		return nil, err
 	}
 	q = r.Goal().Domain().Query(r.Goal())
-	if err = json.Unmarshal(b.Bytes(), q); err != nil {
+	if err = json.Unmarshal(b.Bytes(), &q); err != nil {
 		return nil, fmt.Errorf("%w: %v", err, b)
 	}
 	return q, err

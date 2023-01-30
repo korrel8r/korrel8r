@@ -1,0 +1,105 @@
+// package metric is the domain of prometheus metrics.
+package metric
+
+import (
+	"context"
+	"fmt"
+	"net/url"
+	"strings"
+	"time"
+
+	"github.com/korrel8r/korrel8r/pkg/korrel8r"
+	"github.com/korrel8r/korrel8r/pkg/korrel8r/impl"
+	"github.com/korrel8r/korrel8r/pkg/openshift"
+	"github.com/prometheus/client_golang/api"
+	promv1 "github.com/prometheus/client_golang/api/prometheus/v1"
+	"github.com/prometheus/common/model"
+	"k8s.io/client-go/rest"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+)
+
+var (
+	Domain = domain{}
+	// Validate implementation of interfaces.
+	_ korrel8r.Domain = Domain
+	_ korrel8r.Class  = Class{}
+	_ korrel8r.Query  = &Query{}
+	_ korrel8r.Store  = &Store{}
+)
+
+type domain struct{}
+
+func (domain) String() string                      { return "metric" }
+func (domain) Class(name string) korrel8r.Class    { return Class{} }
+func (domain) Classes() []korrel8r.Class           { return []korrel8r.Class{Class{}} }
+func (domain) Query(korrel8r.Class) korrel8r.Query { return &Query{} }
+
+const (
+	consolePath = "/monitoring/query-browser"
+	promQLParam = "query0"
+)
+
+func (domain) ConsoleURLToQuery(u *url.URL) (korrel8r.Query, error) {
+	promQL := u.Query().Get(promQLParam)
+	if promQL == "" || !strings.HasPrefix(u.Path, consolePath) {
+		return nil, fmt.Errorf("not a metric console query: %v", u)
+	}
+	return &Query{PromQL: promQL}, nil
+}
+
+func (domain) QueryToConsoleURL(query korrel8r.Query) (*url.URL, error) {
+	q, err := impl.TypeAssert[*Query](query)
+	if err != nil {
+		return nil, err
+	}
+	v := url.Values{promQLParam: []string{q.PromQL}}
+	return &url.URL{Path: consolePath, RawQuery: v.Encode()}, nil
+}
+
+type Class struct{} // Singleton class
+
+func (c Class) Domain() korrel8r.Domain { return Domain }
+func (c Class) String() string          { return Domain.String() }
+
+type Object model.Value
+
+type Query struct {
+	PromQL string //  // `json:"omitempty"`
+}
+
+func (q *Query) String() string        { return q.PromQL }
+func (q *Query) Class() korrel8r.Class { return Class{} }
+
+type Store struct{ api promv1.API }
+
+func NewStore(urlStr string) (*Store, error) {
+	c, err := api.NewClient(api.Config{Address: "http://demo.robustperception.io:9090"})
+	if err != nil {
+		return nil, err
+	}
+	return &Store{promv1.NewAPI(c)}, nil
+}
+
+func (s *Store) Domain() korrel8r.Domain { return Domain }
+
+// FIXME metrics are goal only.
+func (s *Store) Get(ctx context.Context, query korrel8r.Query, result korrel8r.Appender) error {
+	q, err := impl.TypeAssert[*Query](query)
+	if err != nil {
+		return err
+	}
+	value, _, err := s.api.Query(ctx, q.PromQL, time.Now())
+	if err != nil {
+		return err
+	}
+	result.Append(value)
+	return nil
+}
+
+func NewOpenshiftStore(ctx context.Context, c client.Client, cfg *rest.Config) (*Store, error) {
+	host, err := openshift.RouteHost(ctx, c, openshift.LokiStackNSName)
+	if err != nil {
+		return nil, err
+	}
+	return NewStore("https://" + host)
+}

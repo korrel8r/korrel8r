@@ -9,20 +9,24 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/korrel8r/korrel8r/internal/pkg/must"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r/impl"
 	"github.com/korrel8r/korrel8r/pkg/openshift/console"
+	"golang.org/x/exp/slices"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/rest"
 
+	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 )
 
 var (
 	_ korrel8r.Domain   = Domain
 	_ korrel8r.Class    = Class{}
-	_ korrel8r.Query    = Query{}
+	_ korrel8r.Query    = &Query{}
 	_ console.Converter = &Store{}
 )
 
@@ -107,12 +111,13 @@ func NewQuery(c Class, namespace, name string, labels, fields map[string]string)
 	}
 }
 
-func (q Query) Class() korrel8r.Class { return Class(q.GroupVersionKind) }
+func (q *Query) Class() korrel8r.Class { return Class(q.GroupVersionKind) }
 
 // Store implements the korrel8r.Store interface as a k8s API client.
 type Store struct {
-	c    client.Client
-	base *url.URL
+	c      client.Client
+	base   *url.URL
+	groups []schema.GroupVersion
 }
 
 // NewStore creates a new store
@@ -122,7 +127,14 @@ func NewStore(c client.Client, cfg *rest.Config) (*Store, error) {
 		host = "localhost"
 	}
 	base, _, err := rest.DefaultServerURL(host, cfg.APIPath, schema.GroupVersion{}, true)
-	return &Store{c: c, base: base}, err
+
+	// TODO should be using discovery client?
+	groups := Scheme.PreferredVersionAllGroups()
+	slices.SortFunc(groups, func(a, b schema.GroupVersion) bool { // Move core and openshift to front.
+		return a.Group == "" || (strings.Contains(a.Group, ".openshift.io/") && b.Group != "")
+	})
+
+	return &Store{c: c, base: base, groups: groups}, err
 }
 
 func (Store) Domain() korrel8r.Domain { return Domain }
@@ -139,6 +151,12 @@ func (s *Store) Get(ctx context.Context, query korrel8r.Query, result korrel8r.A
 	}
 }
 
+func setMeta(o Object) Object {
+	gvk := must.Must1(apiutil.GVKForObject(o, scheme.Scheme))
+	o.GetObjectKind().SetGroupVersionKind(gvk)
+	return o
+}
+
 func (s *Store) getObject(ctx context.Context, q *Query, result korrel8r.Appender) error {
 	scheme := s.c.Scheme()
 	o, err := scheme.New(q.GroupVersionKind)
@@ -153,7 +171,7 @@ func (s *Store) getObject(ctx context.Context, q *Query, result korrel8r.Appende
 	if err != nil {
 		return err
 	}
-	result.Append(co)
+	result.Append(setMeta(co))
 	return nil
 }
 
@@ -188,7 +206,7 @@ func (s *Store) getList(ctx context.Context, q *Query, result korrel8r.Appender)
 	}()
 	items := reflect.ValueOf(list).Elem().FieldByName("Items")
 	for i := 0; i < items.Len(); i++ {
-		result.Append(items.Index(i).Addr().Interface().(client.Object))
+		result.Append(setMeta(items.Index(i).Addr().Interface().(client.Object)))
 	}
 	return nil
 }

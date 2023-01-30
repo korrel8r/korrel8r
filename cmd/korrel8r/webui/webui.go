@@ -2,6 +2,7 @@
 package webui
 
 import (
+	"bytes"
 	"errors"
 	"net/http"
 	"os"
@@ -49,7 +50,7 @@ func New(e *engine.Engine, cfg *rest.Config, c client.Client) (*WebUI, error) {
 	ui.Mux.Handle("/files/", http.FileServer(http.Dir(ui.dir)))
 	ui.Mux.Handle("/stores/", &storeHandler{ui: ui})
 	ui.Mux.HandleFunc("/error/", func(w http.ResponseWriter, req *http.Request) {
-		// So links that can't be generated can link to an error message.
+		// So links that can't be generated can link to the error message.
 		httpError(w, errors.New(req.URL.Query().Get("err")), http.StatusInternalServerError)
 	})
 	return ui, nil
@@ -76,4 +77,13 @@ func httpError(w http.ResponseWriter, err error, code int) bool {
 		log.Error(err, "http error")
 	}
 	return err != nil
+}
+
+func serveTemplate(w http.ResponseWriter, t *template.Template, text string, data any) {
+	b := bytes.Buffer{}
+	const code = http.StatusInternalServerError
+	t, err := t.Parse(text)
+	if !httpError(w, err, code) && !httpError(w, t.Execute(&b, data), code) {
+		_, _ = w.Write(b.Bytes())
+	}
 }

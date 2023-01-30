@@ -39,16 +39,17 @@ func (c *Console) converter(domain string) Converter {
 }
 
 func (c *Console) ConsoleURLToQuery(u *url.URL) (korrel8r.Query, error) {
-	for _, x := range [][2]string{
+	for _, x := range []struct{ prefix, domain string }{
 		{"/k8s", "k8s"},
 		{"/monitoring/alerts", "alert"},
 		{"/monitoring/logs", "logs"},
 		{"/monitoring/query-browser", "metric"},
 	} {
-		if strings.HasPrefix(path.Join("/", u.Path), x[0]) {
-			if qc := c.converter(x[1]); qc != nil {
+		if strings.HasPrefix(path.Join("/", u.Path), x.prefix) {
+			if qc := c.converter(x.domain); qc != nil {
 				return qc.ConsoleURLToQuery(u)
 			}
+			break
 		}
 	}
 	return nil, fmt.Errorf("cannot convert console URL to query: %v", u)
@@ -56,8 +57,11 @@ func (c *Console) ConsoleURLToQuery(u *url.URL) (korrel8r.Query, error) {
 
 func (c *Console) QueryToConsoleURL(q korrel8r.Query) (*url.URL, error) {
 	if qc := c.converter(q.Class().Domain().String()); qc != nil {
-		ref, err := qc.QueryToConsoleURL(q)
-		return c.BaseURL.ResolveReference(ref), err
+		u, err := qc.QueryToConsoleURL(q)
+		if err != nil {
+			return nil, err
+		}
+		return c.BaseURL.ResolveReference(u), nil
 	}
 	return nil, fmt.Errorf("cannot convert query to console URL: q")
 }

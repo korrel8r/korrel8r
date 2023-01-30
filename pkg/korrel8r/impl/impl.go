@@ -15,7 +15,7 @@ func TypeName[T any](v T) string { return reflect.TypeOf((*T)(nil)).Elem().Strin
 func TypeAssert[T any](x any) (v T, err error) {
 	v, ok := x.(T)
 	if !ok {
-		err = fmt.Errorf("wrong type: want %v, got %T = %#v", TypeName(v), x, x)
+		err = fmt.Errorf("wrong type: want %v, got (%T)(%#v)", TypeName(v), x, x)
 	}
 	return v, err
 }

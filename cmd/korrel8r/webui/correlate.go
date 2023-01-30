@@ -8,7 +8,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"text/template"
 	"time"
 
 	"github.com/korrel8r/korrel8r/pkg/engine"
@@ -46,10 +45,10 @@ func (c *correlate) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	if c.Err != nil {
 		log.Error(c.Err, "page errors")
 	}
-	t := template.Must(c.ui.Page("correlate").Funcs(map[string]any{
+	t := c.ui.Page("correlate").Funcs(map[string]any{
 		"queryToConsole": func(q korrel8r.Query) *url.URL { return c.checkURL(c.ui.Console.QueryToConsoleURL(q)) },
-	}).Parse(correlateHTML))
-	httpError(w, t.Execute(w, c), http.StatusInternalServerError)
+	})
+	serveTemplate(w, t, correlateHTML, c)
 }
 
 // reset the fields to contain only URL query parameters
@@ -93,6 +92,10 @@ func (c *correlate) update(req *http.Request) {
 				c.addErr(store.Get(context.Background(), c.StartQuery, result))
 				c.StartObjects = result.List()
 			}
+			// Include the start queries in the result for display
+			first := c.Results.Get(c.StartClass)
+			first.Queries.Append(c.StartQuery)
+			first.Objects.Append(c.StartObjects...)
 		}
 	}
 
@@ -100,15 +103,11 @@ func (c *correlate) update(req *http.Request) {
 	if !c.addErr(err, "goal: %v", err) {
 		paths, err := c.ui.Engine.Graph().ShortestPaths(c.StartClass, c.GoalClass)
 		if !c.addErr(err, "finding paths: %v", err) {
-			first := c.Results.Get(c.StartClass) // Include the start queries in the result.
-			first.Queries.Append(c.StartQuery)
-			first.Objects.Append(c.StartObjects...)
 			if !c.addErr(c.ui.Engine.FollowAll(context.Background(), c.StartObjects, nil, paths, &c.Results)) {
 				c.addErr(c.ui.Engine.GetLast(context.Background(), &c.Results))
 			}
-			c.Results.Prune()
-			c.diagram(paths, &c.Results)
 		}
+		c.diagram(paths, &c.Results)
 	}
 }
 

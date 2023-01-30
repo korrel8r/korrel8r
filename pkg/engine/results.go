@@ -56,12 +56,3 @@ func (rs Results) Last() *Result {
 	}
 	return nil
 }
-
-// Prune removes each Result for which r.Empty() is true.
-func (rs Results) Prune() {
-	for i := range rs {
-		if rs[i].Empty() {
-			rs = append((rs)[0:i], (rs)[i+1:]...)
-		}
-	}
-}

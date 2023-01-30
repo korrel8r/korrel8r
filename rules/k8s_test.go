@@ -15,6 +15,7 @@ import (
 	"github.com/korrel8r/korrel8r/pkg/domains/alert"
 	"github.com/korrel8r/korrel8r/pkg/domains/k8s"
 	"github.com/korrel8r/korrel8r/pkg/domains/logs"
+	"github.com/korrel8r/korrel8r/pkg/domains/metric"
 	"github.com/korrel8r/korrel8r/pkg/engine"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"github.com/korrel8r/korrel8r/pkg/templaterule"
@@ -37,6 +38,7 @@ func setup(t *testing.T, ruleFiles ...string) (client.Client, *engine.Engine) {
 	e.AddDomain(k8s.Domain, test.Must(k8s.NewStore(c, &rest.Config{})))
 	e.AddDomain(logs.Domain, nil)
 	e.AddDomain(alert.Domain, nil)
+	e.AddDomain(metric.Domain, nil)
 	for _, name := range ruleFiles {
 		f, err := os.Open(name)
 		require.NoError(t, err)
