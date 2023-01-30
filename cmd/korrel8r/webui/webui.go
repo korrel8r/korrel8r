@@ -11,9 +11,9 @@ import (
 	"context"
 
 	"github.com/korrel8r/korrel8r/internal/pkg/logging"
-	"github.com/korrel8r/korrel8r/internal/pkg/openshift"
-	"github.com/korrel8r/korrel8r/internal/pkg/openshift/console"
 	"github.com/korrel8r/korrel8r/pkg/engine"
+	"github.com/korrel8r/korrel8r/pkg/openshift"
+	"github.com/korrel8r/korrel8r/pkg/openshift/console"
 	"github.com/korrel8r/korrel8r/pkg/templaterule"
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"

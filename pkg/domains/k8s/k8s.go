@@ -9,9 +9,9 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/korrel8r/korrel8r/internal/pkg/openshift/console"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r/impl"
+	"github.com/korrel8r/korrel8r/pkg/openshift/console"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/rest"

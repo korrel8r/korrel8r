@@ -32,16 +32,14 @@ func (domain) Class(string) korrel8r.Class         { return Class{} }
 func (domain) Classes() []korrel8r.Class           { return []korrel8r.Class{Class{}} }
 func (domain) Query(korrel8r.Class) korrel8r.Query { return &Query{} }
 
-func (domain) ConsoleURLTo(u *url.URL) (korrel8r.Query, error) {
+func (domain) ConsoleURLToQuery(u *url.URL) (korrel8r.Query, error) {
 	return Query{PromQL: fmt.Sprintf(`{alertname=%q}`, u.Query().Get("alertname"))}, nil
 }
 
 func (domain) QueryToConsoleURL(q korrel8r.Query) (*url.URL, error) {
+	// FIXME starting point only
 	return nil, fmt.Errorf("alert query to conosle URL not implemented: %v", q)
 }
-
-// TODO consider separating classes by alertname, determines map schema.
-// Still would need wildcard class for all alerts.
 
 type Class struct{} // Only one class - "alert"
 
@@ -57,9 +55,7 @@ func (c Class) ID(o korrel8r.Object) any {
 
 type Object *models.GettableAlert
 
-type Query struct {
-	PromQL string
-}
+type Query struct{ PromQL string }
 
 func (q Query) String() string        { return q.PromQL }
 func (q Query) Class() korrel8r.Class { return Class{} }

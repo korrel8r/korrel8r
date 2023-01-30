@@ -9,10 +9,10 @@ import (
 	"net/url"
 	"path"
 
-	"github.com/korrel8r/korrel8r/internal/pkg/openshift"
-	"github.com/korrel8r/korrel8r/internal/pkg/openshift/console"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r/impl"
+	"github.com/korrel8r/korrel8r/pkg/openshift"
+	"github.com/korrel8r/korrel8r/pkg/openshift/console"
 	"golang.org/x/exp/slices"
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"

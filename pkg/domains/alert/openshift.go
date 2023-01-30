@@ -3,8 +3,8 @@ package alert
 import (
 	"context"
 
-	"github.com/korrel8r/korrel8r/internal/pkg/openshift"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
+	"github.com/korrel8r/korrel8r/pkg/openshift"
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
