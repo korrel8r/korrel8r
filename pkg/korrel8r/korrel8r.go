@@ -8,6 +8,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"time"
+
+	"sigs.k8s.io/yaml"
 )
 
 // Object represents an instance of a signal.
@@ -101,6 +103,14 @@ func RuleName(r Rule) string {
 // JSONString returns the JSON marshaled string from v, or the error message if marshal fails
 func JSONString(v any) string {
 	b, err := json.Marshal(v)
+	if err != nil {
+		return fmt.Sprintf("%q", err.Error())
+	}
+	return string(b)
+}
+
+func YAMLString(v any) string {
+	b, err := yaml.Marshal(v)
 	if err != nil {
 		return fmt.Sprintf("%q", err.Error())
 	}

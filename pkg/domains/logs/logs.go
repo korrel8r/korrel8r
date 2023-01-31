@@ -73,8 +73,8 @@ type Object string // Log record
 
 // Query is a LogQL query string
 type Query struct {
-	LogQL   string // `json:"omitempty"`
-	LogType string // `json:"omitempty"`
+	LogQL   string // `json:",omitempty"`
+	LogType string // `json:",omitempty"`
 }
 
 const (

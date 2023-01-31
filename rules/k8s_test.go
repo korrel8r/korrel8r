@@ -26,6 +26,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta/testrestmapper"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -53,11 +54,11 @@ func testFollow(t *testing.T, e *engine.Engine, start, goal korrel8r.Class, objs
 	paths, err := e.Graph().ShortestPaths(start, goal)
 	require.NoError(t, err)
 	var results engine.Results
-	err = e.FollowAll(ctx, objs, nil, paths, &results)
-	require.NoError(t, err)
+	e.FollowAll(ctx, objs, nil, paths, &results)
 	qs := results.Get(goal).Queries.List
-	assert.Len(t, qs, 1)
-	assert.Equal(t, want, qs[0])
+	if assert.Len(t, qs, 1) {
+		assert.Equal(t, want, qs[0])
+	}
 }
 
 func TestPodToLogs(t *testing.T) {
@@ -149,6 +150,8 @@ func TestSelectorToPods(t *testing.T) {
 		k8s.NewQuery(class, "ns", "", client.MatchingLabels{"test": "testme"}, nil))
 }
 
+var eventGVK = schema.GroupVersionKind{Group: "", Version: "v1", Kind: "Event"}
+
 func TestK8sEvent(t *testing.T) {
 	c, e := setup(t, "k8s.yaml")
 	pod := k8s.New[corev1.Pod]("aNamespace", "foo")
@@ -156,10 +159,12 @@ func TestK8sEvent(t *testing.T) {
 	require.NoError(t, k8s.Create(c, pod, event))
 
 	t.Run("PodToEvent", func(t *testing.T) {
-		testFollow(t, e, k8s.ClassOf(pod), k8s.ClassOf(event), []korrel8r.Object{pod},
-			k8s.NewQuery(k8s.ClassOf(&corev1.Event{}), "", "",
-				nil,
-				client.MatchingFields{"involvedObject.name": "foo", "involvedObject.namespace": "aNamespace"}))
+		want := k8s.NewQuery(
+			k8s.ClassOf(&corev1.Event{}), "", "", nil,
+			client.MatchingFields{
+				"involvedObject.apiVersion": "v1", "involvedObject.kind": "Pod",
+				"involvedObject.name": "foo", "involvedObject.namespace": "aNamespace"})
+		testFollow(t, e, k8s.ClassOf(pod), k8s.ClassOf(event), []korrel8r.Object{pod}, want)
 	})
 	t.Run("EventToPod", func(t *testing.T) {
 		testFollow(t, e, k8s.ClassOf(event), k8s.ClassOf(pod), []korrel8r.Object{event},

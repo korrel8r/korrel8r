@@ -10,8 +10,6 @@ import (
 	"github.com/korrel8r/korrel8r/internal/pkg/logging"
 	"github.com/korrel8r/korrel8r/pkg/graph"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
-	"github.com/korrel8r/korrel8r/pkg/unique"
-	"go.uber.org/multierr"
 	"golang.org/x/exp/maps"
 )
 
@@ -110,86 +108,59 @@ func (e *Engine) AddRules(rules ...korrel8r.Rule) error {
 	return nil
 }
 
-// Follow rules in a multi-path, collect result.
-// Collects errors using multierr.Append
-func (e *Engine) Follow(ctx context.Context, starters []korrel8r.Object, c *korrel8r.Constraint, path graph.MultiPath, results *Results) error {
-	if !path.Valid() {
-		return fmt.Errorf("invalid path: %v", path)
-	}
-	log.V(1).Info("follow path", "path", path)
-	var merr error
-	queries := unique.NewList[korrel8r.Query]()
+// Follow rules in a multi-path, collect results. Failure to apply a rule is not an error.
+// Following errors are logged but not returned.
+func (e *Engine) Follow(ctx context.Context, starters []korrel8r.Object, c *korrel8r.Constraint, path graph.MultiPath, results *Results) {
+	log.V(4).Info("follow", "path", path, "starters", len(starters))
 	for i, links := range path {
-		queries.List = queries.List[:0] // Clear previous references
-		log.V(1).Info("follow links", "links", links, "start", links.Start(), "goal", links.Goal())
+		log.V(4).Info("follow", "links", links)
+		result := results.Get(links.Goal()) // Accumulated results for the search
+		store, err := e.StoreErr(links.Goal().Domain().String())
+		if err != nil {
+			log.V(4).Error(err, "no store", "goal", links.Goal())
+			result.Errors.Add(fmt.Sprintf("no goal store for %v", korrel8r.ClassName(links.Goal())))
+			if i < len(path)-1 { // Don't skip the last links even with no store.
+				continue
+			}
+		}
+		stage := korrel8r.NewResult(links.Goal()) // Objects found at this stage of the search
 		for _, rule := range links {
-			merr = multierr.Append(merr, e.followEach(rule, starters, c, &queries))
+			for _, s := range starters {
+				q, err := rule.Apply(s, c)
+				if err != nil {
+					log.V(4).Error(err, "rule did not apply", "rule", rule)
+					result.Errors.Add(err.Error())
+					continue
+				}
+				if result.Queries.Add(q) {
+					log.V(4).Info("new query", "query", logging.JSON(q), "objects", len(stage.List()))
+					result.Rules = append(result.Rules, rule)
+				}
+				if store == nil {
+					continue
+				}
+				if err := store.Get(ctx, q, stage); err != nil {
+					log.V(4).Error(err, "query failed", "query", q, "store", store.Domain())
+					result.Errors.Add(err.Error())
+					continue
+				}
+			}
 		}
-		results.Get(links.Goal()).Queries.Append(queries.List...)
-		if i == len(path)-1 || len(queries.List) == 0 {
-			break
+		starters = stage.List()
+		result.Objects.Append(starters...)
+		if len(starters) == 0 || i == len(path)-1 { // Cannot continue
+			return
 		}
-		var objects korrel8r.ListResult
-		merr = multierr.Append(merr, e.GetAll(ctx, links.Goal(), queries.List, &objects))
-		starters = objects.List()
-		results.Get(links.Goal()).Objects.Append(starters...)
-		log.V(1).Info("follow got", "class", links.Goal(), "count", len(starters))
 	}
-	return merr
 }
 
-// GetAll gets objects from all queries into result.
-// Collects errors using multierr.Append
-func (e *Engine) GetAll(ctx context.Context, class korrel8r.Class, queries []korrel8r.Query, result korrel8r.Result) error {
-	store, err := e.StoreErr(class.Domain().String())
-	if err != nil {
-		return err
-	}
-	var merr error
-	for _, q := range queries {
-		if err := store.Get(ctx, q, result); err != nil {
-			merr = multierr.Append(merr, err)
-		}
-	}
-	return merr
-}
-
-// GetLast gets the objects for the last result in results
-func (e *Engine) GetLast(ctx context.Context, results *Results) error {
-	l := len(*results)
-	if l > 0 {
-		result := (*results)[l-1]
-		return e.GetAll(ctx, result.Class, result.Queries.List, result.Objects)
-	}
-	return nil
-}
-
-// FollowAll collects results from following multiple paths.
-// Collects errors using multierr.Append
-func (e *Engine) FollowAll(ctx context.Context, starters []korrel8r.Object, c *korrel8r.Constraint, paths []graph.MultiPath, results *Results) error {
+// FollowAll collects results from following multiple rule paths.
+// Following errors are logged but not returned.
+func (e *Engine) FollowAll(ctx context.Context, starters []korrel8r.Object, c *korrel8r.Constraint, paths []graph.MultiPath, results *Results) {
 	// TODO: can we optimize multiple paths using topological sorting?
-	var merr error
-	log.V(2).Info("follow all", "paths", paths, "objects", len(starters))
 	for _, p := range paths {
-		merr = multierr.Append(merr, multierr.Append(merr, e.Follow(ctx, starters, nil, p, results)))
+		e.Follow(ctx, starters, nil, p, results)
 	}
-	return merr
-}
-
-// followEach calls r.Apply() for each start object and collects the resulting references.
-// Collects errors using multierr.Append
-func (f *Engine) followEach(rule korrel8r.Rule, start []korrel8r.Object, c *korrel8r.Constraint, queries *unique.List[korrel8r.Query]) error {
-	var merr error
-	for _, s := range start {
-		q, err := rule.Apply(s, c)
-		switch {
-		case err != nil:
-			merr = multierr.Append(merr, fmt.Errorf("error following %v: %w", korrel8r.RuleName(rule), err))
-		default:
-			queries.Append(q)
-		}
-	}
-	return merr
 }
 
 // Graph computes the rule graph from e.Rules and e.Classes on the first call.

@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestGet(t *testing.T) {
+func FIXMETestGet(t *testing.T) {
 	// Dubious test, assumes there is an alert on the cluster.
 	test.SkipIfNoCluster(t)
 	store, err := NewOpenshiftAlertManagerStore(context.Background(), test.RESTConfig)

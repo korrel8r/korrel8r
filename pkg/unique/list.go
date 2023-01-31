@@ -18,6 +18,11 @@ func (l *List[T]) Add(v T) bool {
 	return !seen
 }
 
+func (l *List[T]) Has(v T) bool {
+	_, ok := l.seen[v]
+	return ok
+}
+
 func (l *List[T]) Append(values ...T) {
 	for _, v := range values {
 		if _, ok := l.seen[v]; !ok {

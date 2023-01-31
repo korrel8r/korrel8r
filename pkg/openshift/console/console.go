@@ -9,9 +9,12 @@ import (
 	"path"
 	"strings"
 
+	"github.com/korrel8r/korrel8r/internal/pkg/logging"
 	"github.com/korrel8r/korrel8r/pkg/engine"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 )
+
+var log = logging.Log()
 
 // Converter interface must be implemented by korrel8r.Domain and/or korrel8r.Store implementations
 // that support console URL conversion.
@@ -38,9 +41,15 @@ func (c *Console) converter(domain string) Converter {
 	return nil
 }
 
-func (c *Console) ConsoleURLToQuery(u *url.URL) (korrel8r.Query, error) {
+func (c *Console) ConsoleURLToQuery(u *url.URL) (q korrel8r.Query, err error) {
+	defer func() {
+		if err != nil {
+			log.V(3).Error(err, "console to query", "url", u)
+		}
+	}()
 	for _, x := range []struct{ prefix, domain string }{
 		{"/k8s", "k8s"},
+		{"/search", "k8s"},
 		{"/monitoring/alerts", "alert"},
 		{"/monitoring/logs", "logs"},
 		{"/monitoring/query-browser", "metric"},
@@ -55,7 +64,12 @@ func (c *Console) ConsoleURLToQuery(u *url.URL) (korrel8r.Query, error) {
 	return nil, fmt.Errorf("cannot convert console URL to query: %v", u)
 }
 
-func (c *Console) QueryToConsoleURL(q korrel8r.Query) (*url.URL, error) {
+func (c *Console) QueryToConsoleURL(q korrel8r.Query) (u *url.URL, err error) {
+	defer func() {
+		if err != nil {
+			log.V(3).Error(err, "query to console", "query", q)
+		}
+	}()
 	if qc := c.converter(q.Class().Domain().String()); qc != nil {
 		u, err := qc.QueryToConsoleURL(q)
 		if err != nil {

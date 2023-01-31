@@ -73,9 +73,9 @@ func (mp MultiPath) String() string {
 	b := &strings.Builder{}
 	b.WriteString(("["))
 	for _, links := range mp {
-		fmt.Fprintf(b, "<%v> %v ", links.Start(), links)
+		fmt.Fprintf(b, "%v %v ", links.Start(), links)
 	}
-	fmt.Fprintf(b, "<%v>", mp[len(mp)-1].Goal())
+	fmt.Fprintf(b, "%v", mp[len(mp)-1].Goal())
 	b.WriteString(("]"))
 	return b.String()
 }

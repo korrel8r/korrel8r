@@ -24,7 +24,7 @@ var getCmd = &cobra.Command{
 		s := must.Must1(e.StoreErr(c.Domain().String()))
 		q := c.Domain().Query(c)
 
-		log.V(1).Info("get", "query", q, "class", c)
+		log.V(3).Info("get", "query", q, "class", c)
 		result := newPrinter(os.Stdout)
 		must.Must(s.Get(context.Background(), q, result))
 	},

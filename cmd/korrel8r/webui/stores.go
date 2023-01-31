@@ -39,7 +39,7 @@ func (h *storeHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 const storeHTML = `
 {{define "body"}}
-    Query: {{.query}}<br>
+    Query: {{json .query}}<br>
     <hr>
     {{if .err}}
         Error: {{.err}}<br>

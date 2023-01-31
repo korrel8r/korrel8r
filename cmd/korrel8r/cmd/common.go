@@ -32,11 +32,9 @@ var (
 )
 
 func restConfig() *rest.Config {
-	cfg, err := config.GetConfig()
-	if err == nil {
-		cfg.RateLimiter = flowcontrol.NewTokenBucketRateLimiter(100, 1000)
-	}
-	return must.Must1(cfg, err)
+	cfg := must.Must1(config.GetConfig())
+	cfg.RateLimiter = flowcontrol.NewTokenBucketRateLimiter(100, 1000)
+	return cfg
 }
 
 func k8sClient(cfg *rest.Config) client.Client {
@@ -57,7 +55,7 @@ func newEngine() *engine.Engine {
 		{logs.Domain, func() (korrel8r.Store, error) { return logs.NewOpenshiftLokiStackStore(ctx, k8sClient(cfg), cfg) }},
 		{metric.Domain, func() (korrel8r.Store, error) { return metric.NewOpenshiftStore(ctx, k8sClient(cfg), cfg) }},
 	} {
-		log.V(2).Info("add domain", "domain", x.d)
+		log.V(3).Info("add domain", "domain", x.d)
 		s, err := x.create()
 		if err != nil {
 			log.Error(err, "error creating store", "domain", x.d)
@@ -108,7 +106,7 @@ func (p printer) Append(objects ...korrel8r.Object) {
 
 // loadRules from a file or walk a directory to find files.
 func loadRules(e *engine.Engine, root string) error {
-	log.V(3).Info("loading rules from", "root", root)
+	log.V(2).Info("loading rules from", "root", root)
 	return filepath.WalkDir(root, func(path string, info fs.DirEntry, err error) error {
 		if err != nil {
 			return err

@@ -132,7 +132,6 @@ func (g *Graph) DOTAttributers() (graph, node, edge encoding.Attributer) {
 			{Key: "fontname", Value: "Helvetica"},
 			{Key: "shape", Value: "box"},
 			{Key: "style", Value: "rounded,filled"},
-			{Key: "fillcolor", Value: "cyan"},
 			{Key: "margin", Value: ".1"},
 			{Key: "width", Value: ".1"},
 			{Key: "height", Value: ".1"},
@@ -140,6 +139,7 @@ func (g *Graph) DOTAttributers() (graph, node, edge encoding.Attributer) {
 		&encoding.Attributes{
 			{Key: "fontname", Value: "Helvetica-Oblique"},
 			{Key: "fontsize", Value: "10"},
+			{Key: "penwidth", Value: "2"},
 		}
 }
 

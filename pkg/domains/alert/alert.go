@@ -32,15 +32,6 @@ func (domain) Class(string) korrel8r.Class         { return Class{} }
 func (domain) Classes() []korrel8r.Class           { return []korrel8r.Class{Class{}} }
 func (domain) Query(korrel8r.Class) korrel8r.Query { return &Query{} }
 
-func (domain) ConsoleURLToQuery(u *url.URL) (korrel8r.Query, error) {
-	return &Query{PromQL: fmt.Sprintf(`{alertname=%q}`, u.Query().Get("alertname"))}, nil
-}
-
-func (domain) QueryToConsoleURL(q korrel8r.Query) (*url.URL, error) {
-	// FIXME starting point only
-	return nil, fmt.Errorf("alert query to conosle URL not implemented: %v", q)
-}
-
 type Class struct{} // Only one class - "alert"
 
 func (c Class) Domain() korrel8r.Domain { return Domain }
@@ -48,19 +39,42 @@ func (c Class) String() string          { return "alert" }
 func (c Class) New() korrel8r.Object    { return &models.GettableAlert{} }
 func (c Class) ID(o korrel8r.Object) any {
 	if o, _ := o.(*models.GettableAlert); o != nil {
-		return o.Labels["alertname"]
+		return o.Labels[alertname]
 	}
 	return nil
 }
 
+const alertname = "alertname"
+
 type Object *models.GettableAlert
 
-type Query struct {
-	PromQL string // `json:"omitempty"`
+type Query struct{ Labels map[string]string }
+
+func (q *Query) Class() korrel8r.Class { return Class{} }
+
+func (domain) ConsoleURLToQuery(u *url.URL) (korrel8r.Query, error) {
+	m := map[string]string{}
+	uq := u.Query()
+	for k := range uq {
+		m[k] = uq.Get(k)
+	}
+	return &Query{Labels: m}, nil
 }
 
-func (q *Query) String() string        { return q.PromQL }
-func (q *Query) Class() korrel8r.Class { return Class{} }
+func (domain) QueryToConsoleURL(query korrel8r.Query) (*url.URL, error) {
+	q, err := impl.TypeAssert[*Query](query)
+	if err != nil {
+		return nil, err
+	}
+	uq := url.Values{}
+	for k, v := range q.Labels {
+		uq.Add(k, v)
+	}
+	return &url.URL{
+		Path:     "/monitoring/alerts",
+		RawQuery: uq.Encode(),
+	}, nil
+}
 
 type Store struct {
 	manager *client.AlertmanagerAPI
@@ -84,11 +98,11 @@ func (s Store) Get(ctx context.Context, query korrel8r.Query, result korrel8r.Ap
 	}
 	// See https://petstore.swagger.io/?url=https://raw.githubusercontent.com/prometheus/alertmanager/master/api/v2/openapi.yaml
 
-	params := alert.NewGetAlertsParamsWithContext(ctx)
-	if q.PromQL != "" {
-		params.WithFilter([]string{q.PromQL})
+	var filters []string
+	for k, v := range q.Labels {
+		filters = append(filters, fmt.Sprintf("%v=%v", k, v))
 	}
-	resp, err := s.manager.Alert.GetAlerts(params)
+	resp, err := s.manager.Alert.GetAlerts(alert.NewGetAlertsParamsWithContext(ctx).WithFilter(filters))
 	if err != nil {
 		return err
 	}

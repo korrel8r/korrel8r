@@ -96,10 +96,10 @@ func (c Class) GVK() schema.GroupVersionKind { return schema.GroupVersionKind(c)
 type Object client.Object
 
 type Query struct {
-	schema.GroupVersionKind                       // `json:"omitempty"`
-	types.NamespacedName                          // `json:"omitempty"`
-	Labels                  client.MatchingLabels // `json:"omitempty"`
-	Fields                  client.MatchingFields // `json:"omitempty"`
+	schema.GroupVersionKind                       // `json:",omitempty"`
+	types.NamespacedName                          // `json:",omitempty"`
+	Labels                  client.MatchingLabels // `json:",omitempty"`
+	Fields                  client.MatchingFields // `json:",omitempty"`
 }
 
 func NewQuery(c Class, namespace, name string, labels, fields map[string]string) *Query {
@@ -232,14 +232,17 @@ func (s *Store) QueryToConsoleURL(query korrel8r.Query) (*url.URL, error) {
 		return nil, err
 	}
 	var u url.URL
-	if len(q.Labels) > 0 { // Label search
+	switch {
+	case q.GroupVersionKind == eventGVK && len(q.Fields) != 0:
+		return s.eventQueryToConsoleURL(q) // Special case
+	case len(q.Labels) > 0: // Label search
 		// Search using label selector
 		u.Path = path.Join("search", "ns", q.Namespace) // TODO non-namespaced searches?
 		v := url.Values{}
 		v.Add("kind", fmt.Sprintf("%v~%v~%v", q.Group, q.Version, q.Kind))
 		v.Add("q", selectorString(q.Labels))
 		u.RawQuery = v.Encode()
-	} else { // Single named resource
+	default: // Named resource
 		if q.Namespace != "" { // Namespaced resource
 			u.Path = path.Join("k8s", "ns", q.Namespace, gvr.Resource, q.Name)
 		} else { // Cluster resource
@@ -249,8 +252,34 @@ func (s *Store) QueryToConsoleURL(query korrel8r.Query) (*url.URL, error) {
 	return &u, nil
 }
 
+const (
+	// Event.involvedObject field names
+	iKind       = "involvedObject.kind"
+	iName       = "involvedObject.name"
+	iNamespace  = "involvedObject.namespace"
+	iAPIVersion = "involvedObject.apiVersion"
+)
+
+func (s *Store) eventQueryToConsoleURL(q *Query) (*url.URL, error) {
+	gv, err := schema.ParseGroupVersion(q.Fields[iAPIVersion])
+	if err != nil {
+		return nil, err
+	}
+	u, err := s.QueryToConsoleURL(&Query{ // URL for involved object
+		GroupVersionKind: gv.WithKind(q.Fields[iKind]),
+		NamespacedName:   NamespacedName(q.Fields[iNamespace], q.Fields[iName]),
+	})
+	if err != nil {
+		return nil, err
+	}
+	u.Path = path.Join(u.Path, "events")
+	return u, nil
+}
+
+var eventGVK = schema.GroupVersionKind{Version: "v1", Kind: "Event"}
+
 func (s *Store) ConsoleURLToQuery(u *url.URL) (korrel8r.Query, error) {
-	namespace, resource, name, err := parsePath(u)
+	namespace, resource, name, events, err := parsePath(u)
 	if err != nil {
 		return nil, err
 	}
@@ -278,15 +307,28 @@ func (s *Store) ConsoleURLToQuery(u *url.URL) (korrel8r.Query, error) {
 			return nil, err
 		}
 		gvk = rm.GroupVersionKind
-		if err != nil {
-			return nil, err
-		}
 	}
-	q := Query{NamespacedName: types.NamespacedName{Namespace: namespace, Name: name}, GroupVersionKind: gvk}
-	if labels := uq.Get("q"); labels != "" {
-		if q.Labels, err = parseSelector(labels); err != nil {
-			return nil, err
+	if events { // Query events involving the object, not the object itself
+		q := &Query{
+			GroupVersionKind: eventGVK,
+			Fields: map[string]string{
+				iNamespace:  namespace,
+				iName:       name,
+				iAPIVersion: gvk.GroupVersion().String(),
+				iKind:       gvk.Kind,
+			}}
+		return q, nil
+	} else {
+		q := Query{NamespacedName: NamespacedName(namespace, name), GroupVersionKind: gvk}
+		if labels := uq.Get("q"); labels != "" {
+			if q.Labels, err = parseSelector(labels); err != nil {
+				return nil, err
+			}
 		}
+		return &q, nil
 	}
-	return &q, nil
+}
+
+func NamespacedName(namespace, name string) types.NamespacedName {
+	return types.NamespacedName{Namespace: namespace, Name: name}
 }

@@ -31,3 +31,9 @@ func TestList(t *testing.T) {
 	l.Append(1, 2, 3, 1, 4, 3, 5, 5, 5, 6)
 	assert.Equal(t, []int{1, 2, 3, 4, 5, 6}, l.List)
 }
+
+func TestJSONList(t *testing.T) {
+	l := unique.NewJSONList[[]int]()
+	l.Append([]int{1}, []int{2}, []int{1}, []int{4}, []int{3})
+	assert.Equal(t, [][]int{{1}, {2}, {4}, {3}}, l.List)
+}

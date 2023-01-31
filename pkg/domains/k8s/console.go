@@ -10,14 +10,14 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
-var consolePathRe = regexp.MustCompile(`(?:/k8s|/search)(?:(?:/ns/([^/]+))|/cluster|/all-namespaces)(?:/([^/]+)(?:/([^/]+))?)?`)
+var consolePathRe = regexp.MustCompile(`(?:/k8s|/search)(?:(?:/ns/([^/]+))|/cluster|/all-namespaces)(?:/([^/]+)(?:/([^/]+)(/events)?)?)?/?$`)
 
-func parsePath(u *url.URL) (namespace, resource, name string, err error) {
+func parsePath(u *url.URL) (namespace, resource, name string, events bool, err error) {
 	m := consolePathRe.FindStringSubmatch(u.Path)
 	if m == nil {
-		return "", "", "", fmt.Errorf("invalid k8s console URL: %q", u)
+		return "", "", "", false, fmt.Errorf("invalid k8s console URL: %q", u)
 	}
-	return m[1], m[2], m[3], nil
+	return m[1], m[2], m[3], m[4] != "", nil
 }
 
 // Parse a group~version~Kind string

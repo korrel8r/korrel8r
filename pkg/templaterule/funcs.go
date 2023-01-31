@@ -1,7 +1,6 @@
 package templaterule
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net/url"
@@ -10,7 +9,6 @@ import (
 	"strings"
 
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
-	"gopkg.in/yaml.v2"
 )
 
 // Funcs that are available to all Rules.
@@ -41,9 +39,10 @@ func init() {
 	Funcs = map[string]any{
 		"constraint":  func() *korrel8r.Constraint { return nil },
 		"assert":      doAssert, // Assert a condition in a template
-		"json":        toJSON,
-		"yaml":        toYAML,
+		"json":        korrel8r.JSONString,
+		"yaml":        korrel8r.YAMLString,
 		"classname":   korrel8r.ClassName,
+		"rulename":    korrel8r.RuleName,
 		"urlquerymap": urlquerymap,
 		"selector":    selector,
 		"kvmap":       kvMap,
@@ -65,9 +64,6 @@ func doAssert(ok bool, msg ...any) (int, error) {
 	}
 	return 0, nil
 }
-
-func toJSON(v any) (string, error) { b, err := json.Marshal(v); return string(b), err }
-func toYAML(v any) (string, error) { b, err := yaml.Marshal(v); return string(b), err }
 
 func urlquerymap(m any) (string, error) {
 	rm := reflect.ValueOf(m)

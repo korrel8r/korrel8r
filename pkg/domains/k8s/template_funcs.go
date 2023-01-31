@@ -14,6 +14,7 @@ func (s *Store) TemplateFuncs() map[string]any {
 			return kindToResource(s.c.RESTMapper(), kind, apiVersion)
 		},
 		"k8sClass":           kindToClass,
+		"k8sGroupVersion":    schema.ParseGroupVersion,
 		"k8sLogType":         logType,
 		"k8sMetricLabelKind": s.metricLabelKind,
 	}

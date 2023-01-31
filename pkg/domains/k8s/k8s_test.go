@@ -171,32 +171,52 @@ func TestQuery_Marshal(t *testing.T) {
 
 func Test_parsePath(t *testing.T) {
 	for _, x := range []struct {
-		path  string
-		match []string
+		path      string
+		match     []string
+		tryEvents bool
 	}{
 		{`/k8s/ns/openshift-logging/operators.coreos.com~v1alpha1~ClusterServiceVersion/cluster-logging.v5.6.0`,
 			[]string{"openshift-logging", "operators.coreos.com~v1alpha1~ClusterServiceVersion", "cluster-logging.v5.6.0"},
+			true,
 		},
 		{`/k8s/ns/openshift-logging/pods/foo`,
 			[]string{"openshift-logging", "pods", "foo"},
+			true,
 		},
 		{`/k8s/all-namespaces/pods`,
 			[]string{"", "pods", ""},
+			false,
 		},
 		{`/k8s/cluster/nodes/oscar7`,
 			[]string{"", "nodes", "oscar7"},
+			false,
 		},
 		{`/search/ns/openshift-logging/pods`,
 			[]string{"openshift-logging", "pods", ""},
+			false,
 		},
 	} {
+
+		var (
+			got    = make([]string, 3)
+			err    error
+			events bool
+		)
 		t.Run(x.path, func(t *testing.T) {
-			got := make([]string, 3)
-			var err error
-			got[0], got[1], got[2], err = parsePath(&url.URL{Path: x.path})
+			got[0], got[1], got[2], events, err = parsePath(&url.URL{Path: x.path})
 			if assert.NoError(t, err) {
 				assert.Equal(t, x.match, got)
+				assert.False(t, events)
 			}
 		})
+		if x.tryEvents {
+			t.Run(x.path+"/events", func(t *testing.T) {
+				got[0], got[1], got[2], events, err = parsePath(&url.URL{Path: x.path + "/events"})
+				if assert.NoError(t, err) {
+					assert.Equal(t, x.match, got)
+					assert.True(t, events)
+				}
+			})
+		}
 	}
 }

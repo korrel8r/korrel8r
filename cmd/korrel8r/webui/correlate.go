@@ -21,16 +21,15 @@ import (
 type correlate struct {
 	// URL Query parameter fields
 	Start string // Starting point, console URL
-	Goal  string // Starting class full name.
+	Goal  string // Goal class full name.
+	Goals string // Goal radio choice
+	Full  bool   // Full diagram
 
 	// Computed fields used by page template.
 	Time                  time.Time
 	StartClass, GoalClass korrel8r.Class
-	StartQuery            korrel8r.Query
-	StartObjects          []korrel8r.Object
 	Results               engine.Results
 	Diagram               string
-	Topo                  []korrel8r.Class
 
 	// Accumulated errors displayed on page
 	Err error
@@ -57,6 +56,8 @@ func (c *correlate) reset(params url.Values) {
 	*c = correlate{ // Overwrite
 		Start: params.Get("start"),
 		Goal:  params.Get("goal"),
+		Goals: params.Get("goals"),
+		Full:  params.Get("full") == "true",
 		Time:  time.Now(),
 	}
 	c.ui = ui
@@ -80,60 +81,84 @@ func (c *correlate) checkURL(u *url.URL, err error) *url.URL {
 
 func (c *correlate) update(req *http.Request) {
 	c.reset(req.URL.Query())
-
-	start, err := url.Parse(c.Start)
-	if !c.addErr(err, "start: %v", err) {
-		if c.StartQuery, err = c.ui.Console.ConsoleURLToQuery(start); !c.addErr(err) {
-			c.StartClass = c.StartQuery.Class()
-			store, err := c.ui.Engine.StoreErr(c.StartClass.Domain().String())
-			if !c.addErr(err) {
-				result := korrel8r.NewResult(c.StartClass)
-				log.V(3).Info("get start", "query", c.StartQuery)
-				c.addErr(store.Get(context.Background(), c.StartQuery, result))
-				c.StartObjects = result.List()
+	if c.Start == "" {
+		c.addErr(fmt.Errorf("missing start URL"))
+	} else {
+		start, err := url.Parse(c.Start)
+		if !c.addErr(err, "start: %v", err) {
+			if query, err := c.ui.Console.ConsoleURLToQuery(start); !c.addErr(err) {
+				c.StartClass = query.Class()
+				// Include the start queries in the result for display
+				result := c.Results.Get(c.StartClass)
+				result.Queries.Append(query)
+				store, err := c.ui.Engine.StoreErr(c.StartClass.Domain().String())
+				if !c.addErr(err) {
+					c.addErr(store.Get(context.Background(), query, result.Objects))
+				}
 			}
-			// Include the start queries in the result for display
-			first := c.Results.Get(c.StartClass)
-			first.Queries.Append(c.StartQuery)
-			first.Objects.Append(c.StartObjects...)
 		}
 	}
+	switch c.Goals {
+	case "logs":
+		c.Goal = "logs/infrastructure"
+	case "metrics":
+		c.Goal = "metric/metric"
+	case "events":
+		c.Goal = "k8s/Event"
+	}
+	if c.Goal == "" {
+		c.addErr(fmt.Errorf("missing goal class"))
+	} else {
+		var err error
+		c.GoalClass, err = c.ui.Engine.Class(c.Goal)
+		c.addErr(err, "goal: %v", err)
+	}
 
-	c.GoalClass, err = c.ui.Engine.Class(c.Goal)
-	if !c.addErr(err, "goal: %v", err) {
-		paths, err := c.ui.Engine.Graph().ShortestPaths(c.StartClass, c.GoalClass)
+	if c.StartClass != nil && c.GoalClass != nil {
+		paths, err := c.ui.Engine.Graph().AllPaths(c.StartClass, c.GoalClass)
 		if !c.addErr(err, "finding paths: %v", err) {
-			if !c.addErr(c.ui.Engine.FollowAll(context.Background(), c.StartObjects, nil, paths, &c.Results)) {
-				c.addErr(c.ui.Engine.GetLast(context.Background(), &c.Results))
-			}
+			starters := c.Results.Get(c.StartClass).Objects.List()
+			c.ui.Engine.FollowAll(context.Background(), starters, nil, paths, &c.Results)
+			c.diagram(paths, &c.Results)
 		}
-		c.diagram(paths, &c.Results)
 	}
 }
 
 // diagram the set of rules used in the given paths.
 func (c *correlate) diagram(multipaths []graph.MultiPath, results *engine.Results) {
 	var rules []korrel8r.Rule
-	for _, m := range multipaths {
-		m.Sort() // Predictable order
-		for _, r := range m {
-			rules = append(rules, r...)
+	if c.Full {
+		for _, mp := range multipaths {
+			for _, links := range mp {
+				rules = append(rules, links...)
+			}
+		}
+	} else {
+		for _, result := range *results {
+			rules = append(rules, result.Rules...)
 		}
 	}
-	g := graph.New("rule_graph", rules, nil)
+	g := graph.New("Korrel8r Path", rules, []korrel8r.Class{c.GoalClass})
 
 	// Decorate the graph to show results
-	for _, result := range *results {
-		attrs := g.NodeForClass(result.Class).Attrs
-		if result.Objects != nil && len(result.Objects.List()) > 0 {
-			attrs["fillcolor"] = "green"
-			attrs["xlabel"] = fmt.Sprintf("%v", len(result.Objects.List()))
+	for i, result := range *results {
+		if len(result.Rules) == 0 && i > 0 { // First stage has no rules.
+			continue
 		}
+		g.NodeForClass(c.GoalClass).Attrs["rank"] = "last"
+		attrs := g.NodeForClass(result.Class).Attrs
 		if len(result.Queries.List) > 0 {
-			q := result.Queries.List[0] // TODO handle multiple queries
-			attrs["URL"] = c.checkURL(c.ui.Console.QueryToConsoleURL(q)).String()
+			attrs["xlabel"] = fmt.Sprintf("%v", len(result.Objects.List()))
+			switch result.Class {
+			case c.StartClass:
+				attrs["fillcolor"] = "lightgreen"
+			case c.GoalClass:
+				attrs["fillcolor"] = "pink"
+			default:
+				attrs["fillcolor"] = "cyan"
+			}
+			attrs["URL"] = c.checkURL(c.ui.Console.QueryToConsoleURL(result.Queries.List[0])).String()
 			attrs["target"] = "_blank"
-			attrs["tooltip"] = fmt.Sprintf("first of %v queries: %v", len(result.Queries.List), korrel8r.JSONString(q))
 		}
 	}
 

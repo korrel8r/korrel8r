@@ -4,6 +4,7 @@ package metric
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"net/url"
 	"strings"
 	"time"
@@ -64,7 +65,7 @@ func (c Class) String() string          { return Domain.String() }
 type Object model.Value
 
 type Query struct {
-	PromQL string //  // `json:"omitempty"`
+	PromQL string // `json:",omitempty"`
 }
 
 func (q *Query) String() string        { return q.PromQL }
@@ -72,8 +73,8 @@ func (q *Query) Class() korrel8r.Class { return Class{} }
 
 type Store struct{ api promv1.API }
 
-func NewStore(urlStr string) (*Store, error) {
-	c, err := api.NewClient(api.Config{Address: "http://demo.robustperception.io:9090"})
+func NewStore(base *url.URL, hc *http.Client) (*Store, error) {
+	c, err := api.NewClient(api.Config{Address: base.String(), RoundTripper: hc.Transport})
 	if err != nil {
 		return nil, err
 	}
@@ -92,14 +93,24 @@ func (s *Store) Get(ctx context.Context, query korrel8r.Query, result korrel8r.A
 	if err != nil {
 		return err
 	}
-	result.Append(value)
+	if values, ok := value.(model.Vector); ok {
+		for _, v := range values {
+			result.Append(v)
+		}
+	} else {
+		result.Append(value)
+	}
 	return nil
 }
 
 func NewOpenshiftStore(ctx context.Context, c client.Client, cfg *rest.Config) (*Store, error) {
-	host, err := openshift.RouteHost(ctx, c, openshift.LokiStackNSName)
+	host, err := openshift.RouteHost(ctx, c, openshift.ThanosQuerierNSName)
 	if err != nil {
 		return nil, err
 	}
-	return NewStore("https://" + host)
+	hc, err := rest.HTTPClientFor(cfg)
+	if err != nil {
+		return nil, err
+	}
+	return NewStore(&url.URL{Scheme: "https", Host: host}, hc)
 }
