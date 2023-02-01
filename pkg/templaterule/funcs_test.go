@@ -26,8 +26,8 @@ func TestSelector(t *testing.T) {
 	assert.Equal(t, "", selector(map[int]int{}))
 }
 
-func TestKVMap(t *testing.T) {
-	assert.Equal(t, map[string]any{"a": 1, "b": 2, "c": 3}, kvMap("a", 1, "b", 2, "c", 3))
-	assert.Panics(t, func() { kvMap("x") })
-	assert.Equal(t, map[string]any(nil), kvMap())
+func TestMkmap(t *testing.T) {
+	assert.Equal(t, map[string]any{"a": 1, "b": 2, "c": 3}, mkmap("a", 1, "b", 2, "c", 3))
+	assert.Panics(t, func() { mkmap("x") })
+	assert.Equal(t, map[string]any(nil), mkmap())
 }

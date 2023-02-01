@@ -15,15 +15,18 @@ import (
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"go.uber.org/multierr"
 	"gonum.org/v1/gonum/graph/encoding/dot"
+	"sigs.k8s.io/yaml"
 )
 
 // correlate web page handler.
 type correlate struct {
 	// URL Query parameter fields
-	Start string // Starting point, console URL
-	Goal  string // Goal class full name.
-	Goals string // Goal radio choice
-	Full  bool   // Full diagram
+	Start       string // Starting point, console URL or query string.
+	StartIs     string // "console"or "query"
+	StartDomain string
+	Goal        string // Goal class full name.
+	Goals       string // Goal radio choice
+	Full        bool   // Full diagram
 
 	// Computed fields used by page template.
 	Time                  time.Time
@@ -54,18 +57,31 @@ func (c *correlate) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 func (c *correlate) reset(params url.Values) {
 	ui := c.ui      // Save
 	*c = correlate{ // Overwrite
-		Start: params.Get("start"),
-		Goal:  params.Get("goal"),
-		Goals: params.Get("goals"),
-		Full:  params.Get("full") == "true",
-		Time:  time.Now(),
+		Start:       params.Get("start"),
+		StartIs:     params.Get("startis"),
+		StartDomain: params.Get("domain"),
+		Goal:        params.Get("goal"),
+		Goals:       params.Get("goals"),
+		Full:        params.Get("full") == "true",
+		Time:        time.Now(),
+	}
+	// Default missing values
+	if c.StartIs == "" {
+		c.StartIs = "console"
 	}
 	c.ui = ui
 }
 
 // addErr adds an error to be displayed on the page.
 func (c *correlate) addErr(err error, msg ...any) bool {
-	if len(msg) > 0 && err != nil {
+	if err == nil {
+		return false
+	}
+	switch len(msg) {
+	case 0: // Use err unmodified
+	case 1: // Use bare msg string as prefix
+		err = fmt.Errorf("%v: %w", msg[0], err)
+	default: // Treat msg as printf format
 		err = fmt.Errorf(msg[0].(string), msg[1:])
 	}
 	return multierr.AppendInto(&c.Err, err)
@@ -81,23 +97,57 @@ func (c *correlate) checkURL(u *url.URL, err error) *url.URL {
 
 func (c *correlate) update(req *http.Request) {
 	c.reset(req.URL.Query())
-	if c.Start == "" {
-		c.addErr(fmt.Errorf("missing start URL"))
-	} else {
-		start, err := url.Parse(c.Start)
-		if !c.addErr(err, "start: %v", err) {
-			if query, err := c.ui.Console.ConsoleURLToQuery(start); !c.addErr(err) {
-				c.StartClass = query.Class()
-				// Include the start queries in the result for display
-				result := c.Results.Get(c.StartClass)
-				result.Queries.Append(query)
-				store, err := c.ui.Engine.StoreErr(c.StartClass.Domain().String())
-				if !c.addErr(err) {
-					c.addErr(store.Get(context.Background(), query, result.Objects))
-				}
-			}
+	c.addErr(c.updateStart(), "start")
+	c.addErr(c.updateGoal(), "goal")
+	if c.StartClass != nil && c.GoalClass != nil {
+		paths, err := c.ui.Engine.Graph().AllPaths(c.StartClass, c.GoalClass)
+		if !c.addErr(err, "finding paths: %v", err) {
+			starters := c.Results.Get(c.StartClass).Objects.List()
+			c.ui.Engine.FollowAll(context.Background(), starters, nil, paths, &c.Results)
+			c.diagram(paths, &c.Results)
 		}
 	}
+}
+
+func (c *correlate) updateStart() error {
+	var query korrel8r.Query
+	switch {
+	case c.Start == "":
+		return fmt.Errorf("missing")
+
+	case c.StartIs == "query":
+		domain, err := c.ui.Engine.DomainErr(c.StartDomain)
+		if err != nil {
+			return err
+		}
+		query = domain.Query(nil)
+		err = yaml.Unmarshal([]byte(c.Start), &query)
+		if err != nil {
+			return err
+		}
+
+	default: // Console URL
+		u, err := url.Parse(c.Start)
+		if err != nil {
+			return err
+		}
+		query, err = c.ui.Console.ConsoleURLToQuery(u)
+		if err != nil {
+			return err
+		}
+	}
+	c.StartClass = query.Class()
+	// Get start objects, save in c.Results
+	result := c.Results.Get(c.StartClass)
+	result.Queries.Append(query)
+	store, err := c.ui.Engine.StoreErr(c.StartClass.Domain().String())
+	if err != nil {
+		return err
+	}
+	return store.Get(context.Background(), query, result.Objects)
+}
+
+func (c *correlate) updateGoal() error {
 	switch c.Goals {
 	case "logs":
 		c.Goal = "logs/infrastructure"
@@ -107,21 +157,11 @@ func (c *correlate) update(req *http.Request) {
 		c.Goal = "k8s/Event"
 	}
 	if c.Goal == "" {
-		c.addErr(fmt.Errorf("missing goal class"))
-	} else {
-		var err error
-		c.GoalClass, err = c.ui.Engine.Class(c.Goal)
-		c.addErr(err, "goal: %v", err)
+		return fmt.Errorf("missing")
 	}
-
-	if c.StartClass != nil && c.GoalClass != nil {
-		paths, err := c.ui.Engine.Graph().AllPaths(c.StartClass, c.GoalClass)
-		if !c.addErr(err, "finding paths: %v", err) {
-			starters := c.Results.Get(c.StartClass).Objects.List()
-			c.ui.Engine.FollowAll(context.Background(), starters, nil, paths, &c.Results)
-			c.diagram(paths, &c.Results)
-		}
-	}
+	var err error
+	c.GoalClass, err = c.ui.Engine.Class(c.Goal)
+	return err
 }
 
 // diagram the set of rules used in the given paths.
@@ -138,7 +178,7 @@ func (c *correlate) diagram(multipaths []graph.MultiPath, results *engine.Result
 			rules = append(rules, result.Rules...)
 		}
 	}
-	g := graph.New("Korrel8r Path", rules, []korrel8r.Class{c.GoalClass})
+	g := graph.New("Korrel8r Path", rules, c.GoalClass)
 
 	// Decorate the graph to show results
 	for i, result := range *results {

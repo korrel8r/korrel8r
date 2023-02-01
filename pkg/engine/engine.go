@@ -167,7 +167,7 @@ func (e *Engine) FollowAll(ctx context.Context, starters []korrel8r.Object, c *k
 // On subsequent calls it returns the same graph, it is not re-computed.
 func (e *Engine) Graph() *graph.Graph {
 	e.graphOnce.Do(func() {
-		e.graph = graph.New("korrel8r", e.rules, e.classes)
+		e.graph = graph.New("korrel8r", e.rules, e.classes...)
 	})
 	return e.graph
 }

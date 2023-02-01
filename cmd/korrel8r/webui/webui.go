@@ -1,13 +1,14 @@
-// package webui is an experimental HTML server for browsers.
+// package webui is an experimental HTML UI server for browsers.
 package webui
 
 import (
 	"bytes"
+	"embed"
 	"errors"
+	"html/template"
 	"net/http"
 	"os"
 	"path/filepath"
-	"text/template"
 
 	"context"
 
@@ -21,6 +22,9 @@ import (
 )
 
 var log = logging.Log()
+
+//go:embed static
+var static embed.FS // Static resources
 
 type WebUI struct {
 	Engine  *engine.Engine
@@ -48,6 +52,7 @@ func New(e *engine.Engine, cfg *rest.Config, c client.Client) (*WebUI, error) {
 	ui.Mux.Handle("/", &correlate{ui: ui})
 	ui.Mux.Handle("/correlate", &correlate{ui: ui})
 	ui.Mux.Handle("/files/", http.FileServer(http.Dir(ui.dir)))
+	ui.Mux.Handle("/static/", http.FileServer(http.FS(static)))
 	ui.Mux.Handle("/stores/", &storeHandler{ui: ui})
 	ui.Mux.HandleFunc("/error/", func(w http.ResponseWriter, req *http.Request) {
 		// So links that can't be generated can link to the error message.
@@ -56,11 +61,16 @@ func New(e *engine.Engine, cfg *rest.Config, c client.Client) (*WebUI, error) {
 	return ui, nil
 }
 
+var funcs = map[string]any{
+	"asHTML": func(s string) template.HTML { return template.HTML(s) },
+}
+
 func (ui *WebUI) Page(name string) *template.Template {
 	return template.Must(
 		template.New(name).
 			Funcs(templaterule.Funcs).
 			Funcs(ui.Engine.TemplateFuncs()).
+			Funcs(funcs).
 			Parse(basePageHTML))
 }
 

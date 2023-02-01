@@ -30,9 +30,12 @@ import (
 //	  Map values are stringified as for fmt.Printf("%v", ...)
 //	selector
 //	  Takes a map arguments and returns a selector string of the form: "k1=value1,k2=value2 ..."
-//	kvmap
-//	  Returns a map formed from (key, value, key2, value2...) arguments.
-//	  Useful for passing multiple parameters to a template execution.
+//	mkslice
+//	  Returns a []any slice of its arguments.
+//	  Useful for passing parameters to a nested template.
+//	mkmap
+//	  Returns a map[any]any formed from (key, value, key2, value2...) argument pairs.
+//	  Useful for passing parameters to a nested template.
 var Funcs map[string]any
 
 func init() {
@@ -45,7 +48,8 @@ func init() {
 		"rulename":    korrel8r.RuleName,
 		"urlquerymap": urlquerymap,
 		"selector":    selector,
-		"kvmap":       kvMap,
+		"mkslice":     mkslice,
+		"mkmap":       mkmap,
 		"tolower":     strings.ToLower,
 	}
 }
@@ -99,7 +103,9 @@ func selector(m any) string {
 	return b.String()
 }
 
-func kvMap(keyValue ...any) map[string]any {
+func mkslice(values ...any) []any { return values }
+
+func mkmap(keyValue ...any) map[string]any {
 	if len(keyValue) == 0 {
 		return nil
 	}

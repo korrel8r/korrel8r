@@ -20,7 +20,7 @@ type Graph struct {
 	paths   path.AllShortest
 }
 
-// Line is a graph edge, corresponds to a rule.
+// Line is one line in a multi-graph edge, corresponds to a rule.
 type Line struct {
 	multi.Line
 	korrel8r.Rule
@@ -48,7 +48,7 @@ func (n *Node) DOTID() string                    { return korrel8r.ClassName(n.C
 func (n *Node) Attributes() []encoding.Attribute { return attrs(n.Attrs) }
 
 // New graph: nodes are classes, rules are edges from start to goal.
-func New(name string, rules []korrel8r.Rule, extra []korrel8r.Class) *Graph {
+func New(name string, rules []korrel8r.Rule, extra ...korrel8r.Class) *Graph {
 	g := &Graph{name: name, DirectedGraph: multi.NewDirectedGraph(),
 		rules:  rules,
 		nodeID: map[korrel8r.Class]int64{},

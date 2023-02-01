@@ -26,7 +26,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta/testrestmapper"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -149,8 +148,6 @@ func TestSelectorToPods(t *testing.T) {
 	testFollow(t, e, k8s.ClassOf(d), class, []korrel8r.Object{d},
 		k8s.NewQuery(class, "ns", "", client.MatchingLabels{"test": "testme"}, nil))
 }
-
-var eventGVK = schema.GroupVersionKind{Group: "", Version: "v1", Kind: "Event"}
 
 func TestK8sEvent(t *testing.T) {
 	c, e := setup(t, "k8s.yaml")

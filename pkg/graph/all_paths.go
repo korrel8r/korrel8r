@@ -1,8 +1,29 @@
 package graph
 
 import (
+	"fmt"
+
+	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"gonum.org/v1/gonum/graph"
 )
+
+// AllPathsGraph returns a sub-graph of rules that are on any path from u to v
+func AllPathsGraph(g *Graph, u, v korrel8r.Class) *Graph {
+	paths := AllPaths(g, g.NodeForClass(u).ID(), g.NodeForClass(v).ID())
+	// Collect all rules that are on any path
+	var rules []korrel8r.Rule
+	for _, path := range paths {
+		for i := 0; i < len(path)-1; i++ {
+			if lines := g.Lines(path[i].ID(), path[i+1].ID()); lines != nil {
+				for lines.Next() {
+					rules = append(rules, lines.Line().(*Line).Rule)
+				}
+			}
+		}
+	}
+	name := fmt.Sprintf("Paths %v -> %v", korrel8r.ClassName(u), korrel8r.ClassName(v))
+	return New(name, rules)
+}
 
 // AllPaths returns all simple paths fro u to v.
 func AllPaths(g graph.Graph, u, v int64) [][]graph.Node {
