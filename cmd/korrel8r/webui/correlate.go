@@ -15,7 +15,6 @@ import (
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"go.uber.org/multierr"
 	"gonum.org/v1/gonum/graph/encoding/dot"
-	"sigs.k8s.io/yaml"
 )
 
 // correlate web page handler.
@@ -120,8 +119,7 @@ func (c *correlate) updateStart() error {
 		if err != nil {
 			return err
 		}
-		query = domain.Query(nil)
-		err = yaml.Unmarshal([]byte(c.Start), &query)
+		query, err = domain.UnmarshalQuery([]byte(c.Start))
 		if err != nil {
 			return err
 		}

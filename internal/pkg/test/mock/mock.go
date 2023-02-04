@@ -60,7 +60,7 @@ func (d Domain) Classes() (classes []korrel8r.Class) {
 	return classes
 }
 
-func (Domain) Query(korrel8r.Class) korrel8r.Query { return Query("") }
+func (Domain) UnmarshalQuery(b []byte) (korrel8r.Query, error) { panic(NoMockErr) }
 
 // Query implemented as a string
 type Query string

@@ -163,8 +163,7 @@ func TestQuery_Marshal(t *testing.T) {
 	require.NoError(t, err)
 	want := `{"Group":"","Version":"v1","Kind":"Pod","Namespace":"NAMESPACE","Name":"NAME","Labels":{"label":"foo"},"Fields":{"field":"bar"}}`
 	assert.Equal(t, want, string(b))
-	q2 := Domain.Query(nil)
-	err = json.Unmarshal(b, q2)
+	q2, err := Domain.UnmarshalQuery(b)
 	require.NoError(t, err)
 	assert.Equal(t, q, q2)
 }

@@ -2,7 +2,6 @@ package webui
 
 import (
 	"context"
-	"encoding/json"
 	"net/http"
 	"path"
 
@@ -23,8 +22,8 @@ func (h *storeHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	if httpError(w, err, http.StatusNotFound) {
 		return
 	}
-	query := domain.Query(nil)
-	if httpError(w, json.Unmarshal([]byte(params.Get("query")), &query), http.StatusNotFound) {
+	query, err := domain.UnmarshalQuery([]byte(params.Get("query")))
+	if httpError(w, err, http.StatusNotFound) {
 		return
 	}
 	result := korrel8r.NewResult(query.Class())

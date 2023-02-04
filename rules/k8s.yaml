@@ -100,7 +100,7 @@ rules:
        classes: [Pod]
      result:
        query: |-
-         {"Namespace":"{{.Namespace}}","Labels":{{ .Spec.Selector.MatchLabels | json -}} }
+         { Version: v1, Kind: Pod, Namespace: {{.Namespace}}, Labels: {{ .Spec.Selector.MatchLabels | json }} }
    - name: EventToAll
      start:
        domain: k8s
@@ -112,7 +112,7 @@ rules:
        query: |-
          {{- with .InvolvedObject -}}
          {{- $gv := k8sGroupVersion .APIVersion -}}
-         {"Namespace":"{{.Namespace}}","Name":"{{.Name}}","Group":"{{$gv.Group}}","Version":"{{$gv.Version}}","Kind":"{{.Kind}}"}
+         {Namespace: {{.Namespace}},Name: {{.Name}},Group: {{$gv.Group}},Version: {{$gv.Version}},Kind: {{.Kind}}}
          {{- end -}}
    - name: AllToEvent
      start:
@@ -123,7 +123,8 @@ rules:
        classes: [Event.]
      result:
        query: |-
-         { "Fields": {"involvedObject.namespace":"{{.Namespace}}",
+         { "Version":"v1", "Kind":"Event", "Fields": {
+                      "involvedObject.namespace":"{{.Namespace}}",
                       "involvedObject.name": "{{.Name}}",
                       "involvedObject.kind": "{{.Kind}}",
                       "involvedObject.apiVersion": "{{.APIVersion}}"} }

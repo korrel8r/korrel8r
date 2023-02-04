@@ -1,7 +1,6 @@
 package templaterule
 
 import (
-	"encoding/json"
 	"fmt"
 	"text/template"
 
@@ -31,12 +30,12 @@ func (r *rule) Apply(start korrel8r.Object, c *korrel8r.Constraint) (q korrel8r.
 	if err != nil {
 		return nil, err
 	}
-	q = r.Goal().Domain().Query(r.Goal())
-	if err = json.Unmarshal(b.Bytes(), &q); err != nil {
+	q, err = r.Goal().Domain().UnmarshalQuery(b.Bytes())
+	if err != nil {
 		return nil, fmt.Errorf("%w: %v", err, b.String())
 	}
 	if q.Class() != r.Goal() {
-		return nil, fmt.Errorf("wrong result class for %v, got %v: ", korrel8r.RuleName(r), q.Class())
+		return nil, fmt.Errorf("wrong query class; want %v, got %v: %+v ", korrel8r.ClassName(r.Goal()), korrel8r.ClassName(q.Class()), q)
 	}
 	return q, err
 }

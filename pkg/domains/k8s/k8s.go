@@ -58,11 +58,8 @@ func (d domain) Classes() (classes []korrel8r.Class) {
 	return classes
 }
 
-func (domain) Query(c korrel8r.Class) korrel8r.Query {
-	if cc, ok := c.(Class); ok {
-		return &Query{GroupVersionKind: cc.GVK()}
-	}
-	return &Query{}
+func (domain) UnmarshalQuery(r []byte) (korrel8r.Query, error) {
+	return impl.UnmarshalQuery(r, &Query{})
 }
 
 // Class implements korrel8r.Class

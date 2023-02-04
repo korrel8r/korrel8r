@@ -117,7 +117,7 @@ func (e *Engine) Follow(ctx context.Context, starters []korrel8r.Object, c *korr
 		result := results.Get(links.Goal()) // Accumulated results for the search
 		store, err := e.StoreErr(links.Goal().Domain().String())
 		if err != nil {
-			log.V(4).Error(err, "no store", "goal", links.Goal())
+			log.V(4).Error(err, "no store", "goal", korrel8r.ClassName(links.Goal()))
 			result.Errors.Add(fmt.Sprintf("no goal store for %v", korrel8r.ClassName(links.Goal())))
 			if i < len(path)-1 { // Don't skip the last links even with no store.
 				continue
@@ -128,7 +128,7 @@ func (e *Engine) Follow(ctx context.Context, starters []korrel8r.Object, c *korr
 			for _, s := range starters {
 				q, err := rule.Apply(s, c)
 				if err != nil {
-					log.V(4).Error(err, "rule did not apply", "rule", rule)
+					log.V(4).Error(err, "did not apply", "rule", rule)
 					result.Errors.Add(err.Error())
 					continue
 				}

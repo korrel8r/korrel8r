@@ -30,10 +30,12 @@ var (
 
 type domain struct{}
 
-func (domain) String() string                      { return "metric" }
-func (domain) Class(name string) korrel8r.Class    { return Class{} }
-func (domain) Classes() []korrel8r.Class           { return []korrel8r.Class{Class{}} }
-func (domain) Query(korrel8r.Class) korrel8r.Query { return &Query{} }
+func (domain) String() string                   { return "metric" }
+func (domain) Class(name string) korrel8r.Class { return Class{} }
+func (domain) Classes() []korrel8r.Class        { return []korrel8r.Class{Class{}} }
+func (domain) UnmarshalQuery(r []byte) (korrel8r.Query, error) {
+	return impl.UnmarshalQuery(r, &Query{})
+}
 
 const (
 	consolePath = "/monitoring/query-browser"

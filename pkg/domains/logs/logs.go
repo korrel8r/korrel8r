@@ -34,11 +34,8 @@ type domain struct{}
 func (domain) String() string                   { return "logs" }
 func (domain) Class(name string) korrel8r.Class { return classMap[name] }
 func (domain) Classes() []korrel8r.Class        { return classes }
-func (domain) Query(c korrel8r.Class) korrel8r.Query {
-	if cc, ok := c.(Class); ok {
-		return &Query{LogType: string(cc)}
-	}
-	return &Query{}
+func (domain) UnmarshalQuery(r []byte) (korrel8r.Query, error) {
+	return impl.UnmarshalQuery(r, &Query{})
 }
 
 func (domain) QueryToConsoleURL(query korrel8r.Query) (*url.URL, error) {

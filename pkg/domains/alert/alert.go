@@ -27,10 +27,12 @@ var Domain = domain{}
 
 type domain struct{}
 
-func (domain) String() string                      { return "alert" }
-func (domain) Class(string) korrel8r.Class         { return Class{} }
-func (domain) Classes() []korrel8r.Class           { return []korrel8r.Class{Class{}} }
-func (domain) Query(korrel8r.Class) korrel8r.Query { return &Query{} }
+func (domain) String() string              { return "alert" }
+func (domain) Class(string) korrel8r.Class { return Class{} }
+func (domain) Classes() []korrel8r.Class   { return []korrel8r.Class{Class{}} }
+func (domain) UnmarshalQuery(r []byte) (korrel8r.Query, error) {
+	return impl.UnmarshalQuery(r, &Query{})
+}
 
 type Class struct{} // Only one class - "alert"
 

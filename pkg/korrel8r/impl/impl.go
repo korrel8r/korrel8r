@@ -6,6 +6,7 @@ import (
 	"reflect"
 
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
+	"sigs.k8s.io/yaml"
 )
 
 // TypeName returns the name of the static type of its argument, which may be an interface.
@@ -26,4 +27,12 @@ func GetClass(domain korrel8r.Domain, name string) (korrel8r.Class, error) {
 		return v, nil
 	}
 	return nil, fmt.Errorf("class not found: %v/%v", domain, name)
+}
+
+func UnmarshalQuery(b []byte, q korrel8r.Query) (korrel8r.Query, error) {
+	err := yaml.Unmarshal(b, q)
+	if q.Class() == nil {
+		return nil, fmt.Errorf("query has no class: %+v", q)
+	}
+	return q, err
 }

@@ -27,9 +27,8 @@ type Domain interface {
 	Classes() []Class
 	// String returns the name of the domain
 	String() string
-	// Query returns a query for the given class. Class can be nil, which gives a blank Query.
-	// Query types must support JSON marshal/unmarshal.
-	Query(Class) Query
+	// UnmarshalQuery decodes a query.
+	UnmarshalQuery([]byte) (Query, error)
 }
 
 // Class identifies a subset of objects from the same domain with the same schema.

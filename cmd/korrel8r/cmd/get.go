@@ -8,23 +8,24 @@ import (
 	"os"
 
 	"github.com/korrel8r/korrel8r/internal/pkg/must"
+	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"github.com/spf13/cobra"
 )
 
 // getCmd represents the get command
 var getCmd = &cobra.Command{
-	Use:   "get CLASS [QUERY]",
-	Short: "Execute QUERY for CLASS and print the results",
+	Use:   "get DOMAIN QUERY",
+	Short: "Execute QUERY in DOMAIN and print the results",
 	Long: `
 `,
-	Args: cobra.MinimumNArgs(2),
+	Args: cobra.ExactArgs(2),
 	Run: func(cmd *cobra.Command, args []string) {
 		e := newEngine()
-		c := must.Must1(e.Class(args[0]))
-		s := must.Must1(e.StoreErr(c.Domain().String()))
-		q := c.Domain().Query(c)
+		d := must.Must1(e.DomainErr(args[0]))
+		q := must.Must1(d.UnmarshalQuery([]byte(args[1])))
+		s := must.Must1(e.StoreErr(d.String()))
 
-		log.V(3).Info("get", "query", q, "class", c)
+		log.V(3).Info("get", "query", q, "class", korrel8r.ClassName(q.Class()))
 		result := newPrinter(os.Stdout)
 		must.Must(s.Get(context.Background(), q, result))
 	},
