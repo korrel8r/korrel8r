@@ -1,6 +1,7 @@
 package k8s
 
 import (
+	"fmt"
 	"regexp"
 	"strings"
 
@@ -8,15 +9,22 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
+// TODO document
+
 func (s *Store) TemplateFuncs() map[string]any {
 	return map[string]any{
+		"k8sMetricLabelKind": s.metricLabelKind,
 		"k8sResource": func(kind, apiVersion string) (string, error) {
 			return kindToResource(s.c.RESTMapper(), kind, apiVersion)
-		},
-		"k8sClass":           kindToClass,
-		"k8sGroupVersion":    schema.ParseGroupVersion,
-		"k8sLogType":         logType,
-		"k8sMetricLabelKind": s.metricLabelKind,
+		}}
+}
+
+func (domain) TemplateFuncs() map[string]any {
+	return map[string]any{
+		"k8sClass":        k8sClass,
+		"k8sQueryClass":   k8sQueryClass,
+		"k8sGroupVersion": schema.ParseGroupVersion,
+		"k8sLogType":      logType,
 	}
 }
 
@@ -34,12 +42,25 @@ func kindToResource(restMapper meta.RESTMapper, kind string, apiVersion string) 
 	return rm.Resource.Resource, nil
 }
 
-func kindToClass(kind, apiVersion string) (string, error) {
+func k8sClass(kind, apiVersion string) (Class, error) {
 	gv, err := schema.ParseGroupVersion(apiVersion)
 	if err != nil {
-		return "", err
+		return Class{}, err
 	}
-	return Class(gv.WithKind(kind)).String(), nil
+	return Class(gv.WithKind(kind)), nil
+}
+
+func k8sQueryClass(classOrName any) (string, error) {
+	var c Class
+	switch classOrName := classOrName.(type) {
+	case Class:
+		c = classOrName
+	case string:
+		c = Domain.Class(classOrName).(Class)
+	default:
+		return "", fmt.Errorf("not a k8s class: %v", classOrName)
+	}
+	return fmt.Sprintf(`"Group": %q, "Version": %q, "Kind": %q`, c.Group, c.Version, c.Kind), nil
 }
 
 var infraNamespace = regexp.MustCompile(`^(default|(openshift|kube)(-.*)?)$`)

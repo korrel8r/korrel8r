@@ -27,7 +27,7 @@ type Domain interface {
 	Classes() []Class
 	// String returns the name of the domain
 	String() string
-	// UnmarshalQuery decodes a query.
+	// UnmarshalQuery decodes a query, which must have a Class.
 	UnmarshalQuery([]byte) (Query, error)
 }
 
@@ -37,7 +37,7 @@ type Domain interface {
 // Class implementations must be comparable.
 type Class interface {
 	Domain() Domain // Domain of this class.
-	String() string // Name of the class within the domain, e.g "Pod". See ClassName()
+	String() string // String name of the class within the domain, e.g "Pod". See ClassName()
 }
 
 // IDer is implemented by classes that have a meaningful identifier.

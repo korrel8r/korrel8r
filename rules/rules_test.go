@@ -1,7 +1,7 @@
 // package rules is a test-only package to verify the rules.yaml files give expected results.
 //
 // Note these tests only verify that the engine generates the expected queries.
-// It does not verify that the queriees yield expected results.
+// It does not verify that the queries yield expected results.
 // For end-to-end tests see /home/aconway/src/korrel8r/korrel8r/cmd/korrel8r/cmd/cmd_test.go
 package rules
 
@@ -9,6 +9,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/korrel8r/korrel8r/internal/pkg/test"
@@ -31,58 +32,52 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
-func setup(t *testing.T, ruleFiles ...string) (client.Client, *engine.Engine) {
+func setup(t *testing.T) *engine.Engine {
 	t.Helper()
-	c := fake.NewClientBuilder().WithRESTMapper(testrestmapper.TestOnlyStaticRESTMapper(k8s.Scheme)).Build()
 	e := engine.New()
+	c := fake.NewClientBuilder().WithRESTMapper(testrestmapper.TestOnlyStaticRESTMapper(k8s.Scheme)).Build()
 	e.AddDomain(k8s.Domain, test.Must(k8s.NewStore(c, &rest.Config{})))
-	e.AddDomain(logs.Domain, nil)
-	e.AddDomain(alert.Domain, nil)
-	e.AddDomain(metric.Domain, nil)
-	for _, name := range ruleFiles {
+	for _, d := range []korrel8r.Domain{logs.Domain, alert.Domain, metric.Domain} {
+		e.AddDomain(d, nil)
+	}
+	names, err := filepath.Glob("*.yaml")
+	require.NoError(t, err)
+	for _, name := range names {
 		f, err := os.Open(name)
 		require.NoError(t, err)
 		defer f.Close()
 		require.NoError(t, templaterule.Decode(f, e), "decoding file %v", name)
 	}
-	return c, e
+	return e
 }
 
-func testFollow(t *testing.T, e *engine.Engine, start, goal korrel8r.Class, objs []korrel8r.Object, want korrel8r.Query) {
+func testTraverse(t *testing.T, e *engine.Engine, start, goal korrel8r.Class, objs []korrel8r.Object, want []korrel8r.Query) {
 	t.Helper()
-	paths, err := e.Graph().ShortestPaths(start, goal)
-	require.NoError(t, err)
-	var results engine.Results
-	e.FollowAll(ctx, objs, nil, paths, &results)
-	qs := results.Get(goal).Queries.List
-	if assert.Len(t, qs, 1) {
-		assert.Equal(t, want, qs[0])
-	}
+	full := e.Graph()
+	paths := full.PathGraph(full.ShortestPaths(start, goal))
+	assert.NoError(t, e.Traverse(ctx, objs, nil, paths))
+	r := paths.NodeForClass(goal).Result
+	assert.Equal(t, want, r.Queries.List)
 }
 
 func TestPodToLogs(t *testing.T) {
-	c, e := setup(t, "k8s.yaml")
-	for _, x := range []struct {
-		pod  *corev1.Pod
-		want []korrel8r.Query
-	}{
-		{pod: k8s.New[corev1.Pod]("project", "application")},
-		{pod: k8s.New[corev1.Pod]("kube-something", "infrastructure")},
+	e := setup(t)
+	for _, pod := range []*corev1.Pod{
+		k8s.New[corev1.Pod]("project", "application"),
+		k8s.New[corev1.Pod]("kube-something", "infrastructure"),
 	} {
-		ns, name := x.pod.Namespace, x.pod.Name
-		t.Run(name, func(t *testing.T) {
-			require.NoError(t, k8s.Create(c, x.pod))
-			want := &logs.Query{
-				LogType: name,
-				LogQL:   fmt.Sprintf(`{kubernetes_namespace_name="%v",kubernetes_pod_name="%v"} | json`, ns, name),
-			}
-			testFollow(t, e, k8s.ClassOf(x.pod), logs.Domain.Class(name), []korrel8r.Object{x.pod}, want)
+		t.Run(pod.Name, func(t *testing.T) {
+			want := []korrel8r.Query{&logs.Query{
+				LogType: pod.Name,
+				LogQL:   fmt.Sprintf(`{kubernetes_namespace_name="%v",kubernetes_pod_name="%v"} | json`, pod.Namespace, pod.Name),
+			}}
+			testTraverse(t, e, k8s.ClassOf(pod), logs.Domain.Class(pod.Name), []korrel8r.Object{pod}, want)
 		})
 	}
 }
 
 func TestSelectorToLogsRules(t *testing.T) {
-	_, e := setup(t, "k8s.yaml")
+	e := setup(t)
 	// Verify rules selected the correct set of start classes
 	classes := unique.NewList[korrel8r.Class]()
 	for _, r := range e.Rules() {
@@ -105,21 +100,20 @@ func TestSelectorToLogsRules(t *testing.T) {
 }
 
 func TestSelectorToLogs(t *testing.T) {
-	c, e := setup(t, "k8s.yaml")
+	e := setup(t)
 	d := k8s.New[appsv1.Deployment]("ns", "x")
 	d.Spec = appsv1.DeploymentSpec{
 		Selector: &metav1.LabelSelector{MatchLabels: map[string]string{"a.b/c": "x"}},
 	}
-	require.NoError(t, k8s.Create(c, d))
-	want := &logs.Query{
+	want := []korrel8r.Query{&logs.Query{
 		LogQL:   `{kubernetes_namespace_name="ns"} | json | kubernetes_labels_a_b_c="x"`,
 		LogType: "application",
-	}
-	testFollow(t, e, k8s.ClassOf(d), logs.Domain.Class("application"), []korrel8r.Object{d}, want)
+	}}
+	testTraverse(t, e, k8s.ClassOf(d), logs.Domain.Class("application"), []korrel8r.Object{d}, want)
 }
 
 func TestSelectorToPods(t *testing.T) {
-	c, e := setup(t, "k8s.yaml")
+	e := setup(t)
 
 	// Deployment
 	labels := map[string]string{"test": "testme"}
@@ -143,17 +137,15 @@ func TestSelectorToPods(t *testing.T) {
 			ObjectMeta: podx.ObjectMeta,
 			Spec:       podx.Spec,
 		}}
-	require.NoError(t, k8s.Create(c, d, podx, pody))
 	class := k8s.ClassOf(podx)
-	testFollow(t, e, k8s.ClassOf(d), class, []korrel8r.Object{d},
-		k8s.NewQuery(class, "ns", "", client.MatchingLabels{"test": "testme"}, nil))
+	testTraverse(t, e, k8s.ClassOf(d), class, []korrel8r.Object{d},
+		[]korrel8r.Query{k8s.NewQuery(class, "ns", "", client.MatchingLabels{"test": "testme"}, nil)})
 }
 
 func TestK8sEvent(t *testing.T) {
-	c, e := setup(t, "k8s.yaml")
+	e := setup(t)
 	pod := k8s.New[corev1.Pod]("aNamespace", "foo")
 	event := k8s.EventFor(pod, "a")
-	require.NoError(t, k8s.Create(c, pod, event))
 
 	t.Run("PodToEvent", func(t *testing.T) {
 		want := k8s.NewQuery(
@@ -161,13 +153,20 @@ func TestK8sEvent(t *testing.T) {
 			client.MatchingFields{
 				"involvedObject.apiVersion": "v1", "involvedObject.kind": "Pod",
 				"involvedObject.name": "foo", "involvedObject.namespace": "aNamespace"})
-		testFollow(t, e, k8s.ClassOf(pod), k8s.ClassOf(event), []korrel8r.Object{pod}, want)
+		testTraverse(t, e, k8s.ClassOf(pod), k8s.ClassOf(event), []korrel8r.Object{pod}, []korrel8r.Query{want})
 	})
 	t.Run("EventToPod", func(t *testing.T) {
-		testFollow(t, e, k8s.ClassOf(event), k8s.ClassOf(pod), []korrel8r.Object{event},
-			k8s.NewQuery(k8s.ClassOf(pod), "aNamespace", "foo", nil, nil))
+		testTraverse(t, e, k8s.ClassOf(event), k8s.ClassOf(pod), []korrel8r.Object{event},
+			[]korrel8r.Query{k8s.NewQuery(k8s.ClassOf(pod), "aNamespace", "foo", nil, nil)})
 
 	})
+}
+
+func TestK8sAllToMetric(t *testing.T) {
+	e := setup(t)
+	pod := k8s.New[corev1.Pod]("aNamespace", "foo")
+	want := &metric.Query{PromQL: "{ namespace=\"aNamespace\", pod=\"foo\" }"}
+	testTraverse(t, e, k8s.ClassOf(pod), metric.Class{}, []korrel8r.Object{pod}, []korrel8r.Query{want})
 }
 
 var ctx = context.Background()

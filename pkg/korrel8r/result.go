@@ -40,3 +40,14 @@ func (r *SetResult) Append(objects ...Object) {
 		}
 	}
 }
+
+type CountResult struct {
+	Count int
+	Result
+}
+
+func NewCountResult(r Result) *CountResult { return &CountResult{Result: r} }
+func (c *CountResult) Append(objects ...Object) {
+	c.Count += len(objects)
+	c.Result.Append(objects...)
+}

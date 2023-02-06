@@ -10,11 +10,12 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/korrel8r/korrel8r/pkg/engine"
 	"github.com/korrel8r/korrel8r/pkg/graph"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"go.uber.org/multierr"
+	ggraph "gonum.org/v1/gonum/graph"
 	"gonum.org/v1/gonum/graph/encoding/dot"
+	"gonum.org/v1/gonum/graph/multi"
 )
 
 // correlate web page handler.
@@ -26,12 +27,13 @@ type correlate struct {
 	Goal        string // Goal class full name.
 	Goals       string // Goal radio choice
 	Full        bool   // Full diagram
+	All         bool   // All paths
 
 	// Computed fields used by page template.
 	Time                  time.Time
 	StartClass, GoalClass korrel8r.Class
-	Results               engine.Results
 	Diagram               string
+	Results               []*graph.Result
 
 	// Accumulated errors displayed on page
 	Err error
@@ -42,6 +44,7 @@ type correlate struct {
 
 func (c *correlate) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	defer req.Body.Close()
+	log.V(2).Info("serving correlate page", "uri", req.URL.RequestURI())
 	c.update(req)
 	if c.Err != nil {
 		log.Error(c.Err, "page errors")
@@ -62,6 +65,7 @@ func (c *correlate) reset(params url.Values) {
 		Goal:        params.Get("goal"),
 		Goals:       params.Get("goals"),
 		Full:        params.Get("full") == "true",
+		All:         params.Get("all") == "true",
 		Time:        time.Now(),
 	}
 	// Default missing values
@@ -96,53 +100,64 @@ func (c *correlate) checkURL(u *url.URL, err error) *url.URL {
 
 func (c *correlate) update(req *http.Request) {
 	c.reset(req.URL.Query())
-	c.addErr(c.updateStart(), "start")
+	starters := korrel8r.NewResult(c.StartClass)
+	startQuery, err := c.updateStart(starters)
+	c.addErr(err, "start")
 	c.addErr(c.updateGoal(), "goal")
-	if c.StartClass != nil && c.GoalClass != nil {
-		paths, err := c.ui.Engine.Graph().AllPaths(c.StartClass, c.GoalClass)
-		if !c.addErr(err, "finding paths: %v", err) {
-			starters := c.Results.Get(c.StartClass).Objects.List()
-			c.ui.Engine.FollowAll(context.Background(), starters, nil, paths, &c.Results)
-			c.diagram(paths, &c.Results)
+	if c.StartClass == nil || c.GoalClass == nil || len(starters.List()) == 0 {
+		return
+	}
+	full := c.ui.Engine.Graph()
+	var paths [][]ggraph.Node
+	if c.All {
+		paths = graph.AllPaths(full, full.NodeForClass(c.StartClass).ID(), full.NodeForClass(c.GoalClass).ID())
+	} else {
+		paths = full.ShortestPaths(c.StartClass, c.GoalClass)
+	}
+	pathGraph := full.PathGraph(paths)
+	if !c.addErr(c.ui.Engine.Traverse(context.Background(), starters.List(), nil, pathGraph)) {
+		nodes := pathGraph.Nodes()
+		for nodes.Next() {
+			n := nodes.Node().(*graph.Node)
+			r := n.Result
+			c.Results = append(c.Results, r)
+			if len(r.Queries.List) == 0 && n.Class != c.StartClass && n.Class != c.GoalClass && !c.Full {
+				pathGraph.RemoveNode(n.ID())
+			}
 		}
 	}
+	c.diagram(pathGraph, startQuery, starters.List())
 }
 
-func (c *correlate) updateStart() error {
+func (c *correlate) updateStart(result korrel8r.Result) (korrel8r.Query, error) {
 	var query korrel8r.Query
 	switch {
 	case c.Start == "":
-		return fmt.Errorf("missing")
+		return nil, fmt.Errorf("missing")
 
 	case c.StartIs == "query":
 		domain, err := c.ui.Engine.DomainErr(c.StartDomain)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		query, err = domain.UnmarshalQuery([]byte(c.Start))
 		if err != nil {
-			return err
+			return nil, err
 		}
 
 	default: // Console URL
 		u, err := url.Parse(c.Start)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		query, err = c.ui.Console.ConsoleURLToQuery(u)
 		if err != nil {
-			return err
+			return nil, err
 		}
 	}
 	c.StartClass = query.Class()
 	// Get start objects, save in c.Results
-	result := c.Results.Get(c.StartClass)
-	result.Queries.Append(query)
-	store, err := c.ui.Engine.StoreErr(c.StartClass.Domain().String())
-	if err != nil {
-		return err
-	}
-	return store.Get(context.Background(), query, result.Objects)
+	return query, c.ui.Engine.Get(c.StartClass, context.Background(), query, result)
 }
 
 func (c *correlate) updateGoal() error {
@@ -163,47 +178,41 @@ func (c *correlate) updateGoal() error {
 }
 
 // diagram the set of rules used in the given paths.
-func (c *correlate) diagram(multipaths []graph.MultiPath, results *engine.Results) {
-	var rules []korrel8r.Rule
-	if c.Full {
-		for _, mp := range multipaths {
-			for _, links := range mp {
-				rules = append(rules, links...)
-			}
-		}
-	} else {
-		for _, result := range *results {
-			rules = append(rules, result.Rules...)
+func (c *correlate) diagram(g *graph.Graph, startQuery korrel8r.Query, starters []korrel8r.Object) {
+	// Decorate the graph to show results
+	start := g.NodeForClass(c.StartClass)
+	start.Result.Queries.Add(startQuery)
+	start.Result.Objects = len(starters)
+	start.Attrs["rank"] = "first"
+	start.Attrs["shape"] = "oval"
+
+	goal := g.NodeForClass(c.GoalClass)
+	goal.Attrs["rank"] = "last"
+	goal.Attrs["shape"] = "oval"
+
+	edges := g.Edges()
+	for edges.Next() {
+		lines := edges.Edge().(multi.Edge)
+		for lines.Next() {
+			l := lines.Line().(*graph.Line)
+			l.Attrs["xlabel"] = l.Rule.String()
+			c.resultAttrs(l.Result, l.Attrs)
 		}
 	}
-	g := graph.New("Korrel8r Path", rules, c.GoalClass)
-
-	// Decorate the graph to show results
-	for i, result := range *results {
-		if len(result.Rules) == 0 && i > 0 { // First stage has no rules.
-			continue
+	nodes := g.Nodes()
+	for nodes.Next() {
+		node := nodes.Node().(*graph.Node)
+		r, a := node.Result, node.Attrs
+		if r.Objects > 0 {
+			a["xlabel"] = fmt.Sprintf("%v/%v", len(r.Queries.List), r.Objects)
 		}
-		g.NodeForClass(c.GoalClass).Attrs["rank"] = "last"
-		attrs := g.NodeForClass(result.Class).Attrs
-		if len(result.Queries.List) > 0 {
-			attrs["xlabel"] = fmt.Sprintf("%v", len(result.Objects.List()))
-			switch result.Class {
-			case c.StartClass:
-				attrs["fillcolor"] = "lightgreen"
-			case c.GoalClass:
-				attrs["fillcolor"] = "pink"
-			default:
-				attrs["fillcolor"] = "cyan"
-			}
-			attrs["URL"] = c.checkURL(c.ui.Console.QueryToConsoleURL(result.Queries.List[0])).String()
-			attrs["target"] = "_blank"
-		}
+		c.resultAttrs(r, a)
 	}
 
 	// Write the graph files
-	baseName := filepath.Join(c.ui.dir, "files", g.Name())
+	baseName := filepath.Join(c.ui.dir, "files", "korrel8r")
 	if gv, err := dot.MarshalMulti(g, "", "", "  "); !c.addErr(err) {
-		gvFile := baseName + ".gv"
+		gvFile := baseName + ".txt"
 		if !c.addErr(os.WriteFile(gvFile, gv, 0664)) {
 			// Render and write the graph image
 			imageFile := baseName + ".svg"
@@ -214,5 +223,15 @@ func (c *correlate) diagram(multipaths []graph.MultiPath, results *engine.Result
 				c.addErr(err)
 			}
 		}
+	}
+}
+
+func (c *correlate) resultAttrs(r *graph.Result, a graph.Attrs) {
+	a["tooltip"] = r.String()
+	if r.Objects > 0 {
+		a["fillcolor"] = "cyan"
+		a["color"] = "green"
+		a["URL"] = c.checkURL(c.ui.Console.QueryToConsoleURL(r.Queries.List[0])).String()
+		a["target"] = "_blank"
 	}
 }

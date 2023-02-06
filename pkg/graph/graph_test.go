@@ -1,86 +1,100 @@
 package graph
 
 import (
+	"fmt"
+	"strconv"
 	"testing"
 
 	"github.com/korrel8r/korrel8r/internal/pkg/test/mock"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"github.com/stretchr/testify/assert"
+	"golang.org/x/exp/slices"
+	"gonum.org/v1/gonum/graph"
+	"gonum.org/v1/gonum/graph/iterator"
+	"gonum.org/v1/gonum/graph/multi"
 )
 
-var r = mock.QuickRule
-
-func nr(name, start, goal string) korrel8r.Rule { return mock.NewRule(name, start, goal, nil) }
-
-func l(startGoal ...string) Links { return append(Links{}, mock.Rules(startGoal...)...) }
-
-func AssertMultiPathEqual(t *testing.T, a, b MultiPath) bool {
-	if !assert.Equal(t, len(a), len(b), "lengths not equal") {
-		return false
-	}
-	for i := range a {
-		if !assert.ElementsMatch(t, a[i], b[i]) {
-			return false
-		}
-	}
-	return true
-}
-
-func TestGraph_ShortestPaths(t *testing.T) {
+func TestSubGraph(t *testing.T) {
 	for _, x := range []struct {
-		name  string
-		rules []korrel8r.Rule
-		want  []MultiPath
+		name    string
+		graph   []korrel8r.Rule
+		include []int
+		want    []korrel8r.Rule
 	}{
 		{
-			name:  "simple",
-			rules: []korrel8r.Rule{r("a", "b"), r("b", "c"), r("c", "z")},
-			want:  []MultiPath{{l("a", "b"), l("b", "c"), l("c", "z")}},
+			name:    "one",
+			graph:   []korrel8r.Rule{r(1, 2), r(1, 3), r(3, 11), r(3, 12), r(12, 13)},
+			include: []int{1, 3, 12},
+			want:    []korrel8r.Rule{r(1, 3), r(3, 12)},
 		},
 		{
-			name:  "shortest",
-			rules: []korrel8r.Rule{r("a", "b"), r("b", "c"), r("c", "d"), r("d", "z"), r("c", "z"), r("a", "z")},
-			want:  []MultiPath{{l("a", "z")}},
+			name:    "two",
+			graph:   []korrel8r.Rule{r(1, 2), r(1, 3), r(3, 11), r(3, 12), r(12, 13)},
+			include: []int{1},
+			want:    nil,
 		},
-		{
-			name:  "none",
-			rules: []korrel8r.Rule{r("a", "b"), r("c", "z")},
-			want:  nil,
-		},
-		{
-			name:  "multi-pick-shortest",
-			rules: []korrel8r.Rule{r("a", "b"), r("b", "c"), r("a", "c"), r("c", "z")},
-			want:  []MultiPath{{links("a", "c"), links("c", "z")}},
-		},
-		{
-			name:  "multi-shortest",
-			rules: []korrel8r.Rule{r("a", "b"), r("b", "c"), r("b", "y"), r("y", "z"), r("c", "z")},
-			want: []MultiPath{
-				{links("a", "b"), links("b", "c"), links("c", "z")},
-				{links("a", "b"), links("b", "y"), links("y", "z")},
-			},
-		},
-		{
-			name:  "multi-link",
-			rules: []korrel8r.Rule{r("a", "c"), nr("cz1", "c", "z"), nr("cz2", "c", "z")},
-			want:  []MultiPath{{links("a", "c"), links("c", "z", "cz1", "cz2")}},
-		},
-		{
-			name:  "multi-link-and-path",
-			rules: []korrel8r.Rule{r("a", "c"), nr("cz1", "c", "z"), nr("cz2", "c", "z")},
-			want:  []MultiPath{{links("a", "c"), links("c", "z", "cz1", "cz2")}}},
 	} {
 		t.Run(x.name, func(t *testing.T) {
-			g := New("test", x.rules, nil)
-			got, err := g.ShortestPaths(mock.Class("a"), mock.Class("z"))
-			assert.NoError(t, err)
-			if assert.Equal(t, len(x.want), len(got)) {
-				for i := range got {
-					x.want[i].Sort()
-					got[i].Sort()
-					assert.ElementsMatch(t, x.want, got)
-				}
+			g := New(x.graph...)
+			var nodes []graph.Node
+			for _, i := range x.include {
+				nodes = append(nodes, g.NodeForClass(class(i)))
 			}
+			sub := g.SubGraph(nodes)
+			assert.Equal(t, x.want, sub.rules.List)
 		})
 	}
+}
+
+var (
+	_ korrel8r.Class = class(0)
+	_ korrel8r.Rule  = rule{}
+)
+
+type class int64
+
+func (class) Domain() korrel8r.Domain { return mock.Domain("test") }
+func (c class) String() string        { return strconv.FormatInt(int64(c), 10) }
+
+type rule struct{ u, v class }
+
+func (l rule) Start() korrel8r.Class { return l.u }
+func (l rule) Goal() korrel8r.Class  { return l.v }
+func (l rule) String() string        { return fmt.Sprintf("(%v,%v)", l.u, l.v) }
+func (l rule) Apply(start korrel8r.Object, c *korrel8r.Constraint) (korrel8r.Query, error) {
+	return nil, nil
+}
+func r(u, v class) korrel8r.Rule { return rule{u, v} }
+
+func visitSort(edge multi.Edge, visit func(l graph.Line)) {
+	ls := edge.Lines.(graph.LineSlicer).LineSlice()
+	slices.SortFunc(ls, lineLess)
+	visitLines(iterator.NewOrderedLines(ls), visit)
+}
+
+func nodeInt(n graph.Node) int { return int(n.(*Node).Class.(class)) }
+
+func nodesToInts(nodes []graph.Node) []int {
+	var ints []int
+	for _, n := range nodes {
+		i := -1
+		if n != nil {
+			i = int(n.(*Node).Class.(class))
+		}
+		ints = append(ints, i)
+	}
+	return ints
+}
+
+func pathsToInts(paths [][]graph.Node) [][]int {
+	var intPaths [][]int
+	for _, p := range paths {
+		intPaths = append(intPaths, nodesToInts(p))
+	}
+	slices.SortFunc(intPaths, func(a, b []int) bool { return slices.Compare(a, b) < 0 })
+	return intPaths
+}
+
+func lineLess(a, b graph.Line) bool {
+	return nodeInt(a.From()) < nodeInt(b.From()) || nodeInt(a.To()) < nodeInt(b.To())
 }

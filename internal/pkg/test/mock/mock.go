@@ -31,8 +31,6 @@ var NoMockErr = errors.New("mock not implemented")
 // In most cases you would define a type called `domain`,  with a single instance variable called `Domain`
 type Domain string
 
-// FIXME clean up mocks over-use of parsed strings, e.g. list of classes etc.
-
 func (d Domain) String() string {
 	if f := strings.Fields(string(d)); len(f) > 0 {
 		return f[0]

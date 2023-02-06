@@ -5,12 +5,12 @@ import (
 	"context"
 	"fmt"
 	"strings"
-	"sync"
 
 	"github.com/korrel8r/korrel8r/internal/pkg/logging"
 	"github.com/korrel8r/korrel8r/pkg/graph"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"golang.org/x/exp/maps"
+	"gonum.org/v1/gonum/graph/multi"
 )
 
 var log = logging.Log()
@@ -20,9 +20,7 @@ type Engine struct {
 	stores        map[string]korrel8r.Store
 	domains       map[string]korrel8r.Domain
 	rules         []korrel8r.Rule
-	classes       []korrel8r.Class
 	graph         *graph.Graph
-	graphOnce     sync.Once
 	templateFuncs map[string]any
 }
 
@@ -108,70 +106,78 @@ func (e *Engine) AddRules(rules ...korrel8r.Rule) error {
 	return nil
 }
 
-// Follow rules in a multi-path, collect results. Failure to apply a rule is not an error.
-// Following errors are logged but not returned.
-func (e *Engine) Follow(ctx context.Context, starters []korrel8r.Object, c *korrel8r.Constraint, path graph.MultiPath, results *Results) {
-	log.V(4).Info("follow", "path", path, "starters", len(starters))
-	for i, links := range path {
-		log.V(4).Info("follow", "links", links)
-		result := results.Get(links.Goal()) // Accumulated results for the search
-		store, err := e.StoreErr(links.Goal().Domain().String())
-		if err != nil {
-			log.V(4).Error(err, "no store", "goal", korrel8r.ClassName(links.Goal()))
-			result.Errors.Add(fmt.Sprintf("no goal store for %v", korrel8r.ClassName(links.Goal())))
-			if i < len(path)-1 { // Don't skip the last links even with no store.
-				continue
-			}
+type results map[korrel8r.Class]korrel8r.Result
+
+func (r results) Result(c korrel8r.Class) korrel8r.Result {
+	if r[c] == nil {
+		r[c] = korrel8r.NewResult(c)
+	}
+	return r[c]
+}
+
+// Traverse a rule graph, accumulate results.
+// Failure to apply a rule is not an error.
+func (e *Engine) Traverse(ctx context.Context, initial []korrel8r.Object, c *korrel8r.Constraint, pathGraph *graph.Graph) error {
+	var objects results
+	return graph.Traverse(pathGraph, func(edge multi.Edge) {
+		start, goal := graph.ClassForNode(edge.From()), graph.ClassForNode(edge.To())
+		if objects == nil { // First edge
+			objects = results{}
+			objects.Result(start).Append(initial...)
 		}
-		stage := korrel8r.NewResult(links.Goal()) // Objects found at this stage of the search
-		for _, rule := range links {
+		starters := objects.Result(start).List()
+		if len(starters) == 0 {
+			log.V(3).Info("no starters", "start", korrel8r.ClassName(start), "goal", korrel8r.ClassName(goal))
+			return // Can't proceed without start objects
+		}
+		store, err := e.StoreErr(goal.Domain().String())
+		if err != nil { // Generate queries even if there is no store
+			log.V(2).Error(err, "no store", "goal", korrel8r.ClassName(goal))
+		}
+
+		for edge.Next() { // For each line in the edge
+			l := edge.Line().(*graph.Line)
 			for _, s := range starters {
-				q, err := rule.Apply(s, c)
+				r := l.Result                     // line result
+				to := l.To().(*graph.Node).Result // Target node result
+				q, err := l.Rule.Apply(s, c)
 				if err != nil {
-					log.V(4).Error(err, "did not apply", "rule", rule)
-					result.Errors.Add(err.Error())
+					log.V(3).Error(err, "did not apply", "rule", l.Rule)
 					continue
 				}
-				if result.Queries.Add(q) {
-					log.V(4).Info("new query", "query", logging.JSON(q), "objects", len(stage.List()))
-					result.Rules = append(result.Rules, rule)
-				}
-				if store == nil {
-					continue
-				}
-				if err := store.Get(ctx, q, stage); err != nil {
-					log.V(4).Error(err, "query failed", "query", q, "store", store.Domain())
-					result.Errors.Add(err.Error())
-					continue
+				to.Queries.Add(q)
+				if r.Queries.Add(q) && store != nil {
+					log.V(3).Info("added query", "query", logging.JSON(q), "rule", l.Rule)
+					counter := korrel8r.NewCountResult(objects.Result(goal))
+					if err := store.Get(ctx, q, counter); err != nil {
+						log.V(2).Error(err, "store get failed", "query", logging.JSON(q), "store", store.Domain())
+					}
+					if counter.Count > 0 {
+						r.Objects += counter.Count
+						to.Objects += counter.Count
+						log.V(3).Info("got objects", "rule", l.Rule, "class", korrel8r.ClassName(to.Class), "count", counter.Count, "total", to.Objects)
+					}
 				}
 			}
 		}
-		starters = stage.List()
-		result.Objects.Append(starters...)
-		if len(starters) == 0 || i == len(path)-1 { // Cannot continue
-			return
-		}
-	}
-}
-
-// FollowAll collects results from following multiple rule paths.
-// Following errors are logged but not returned.
-func (e *Engine) FollowAll(ctx context.Context, starters []korrel8r.Object, c *korrel8r.Constraint, paths []graph.MultiPath, results *Results) {
-	// TODO: can we optimize multiple paths using topological sorting?
-	for _, p := range paths {
-		e.Follow(ctx, starters, nil, p, results)
-	}
-}
-
-// Graph computes the rule graph from e.Rules and e.Classes on the first call.
-// On subsequent calls it returns the same graph, it is not re-computed.
-func (e *Engine) Graph() *graph.Graph {
-	e.graphOnce.Do(func() {
-		e.graph = graph.New("korrel8r", e.rules, e.classes...)
 	})
+}
+
+func (e *Engine) Graph() *graph.Graph {
+	if e.graph == nil {
+		e.graph = graph.New(e.rules...)
+	}
 	return e.graph
 }
 
 // TemplateFuncs returns template helper functions for stores and domains known to this engine.
 // See text/template.Template.Funcs
 func (e *Engine) TemplateFuncs() map[string]any { return e.templateFuncs }
+
+func (e *Engine) Get(class korrel8r.Class, ctx context.Context, query korrel8r.Query, result korrel8r.Appender) error {
+	store, err := e.StoreErr(class.Domain().String())
+	if err != nil {
+		return err
+	}
+	return store.Get(ctx, query, result)
+}
