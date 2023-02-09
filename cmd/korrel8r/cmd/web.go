@@ -9,8 +9,8 @@ import (
 )
 
 var webCmd = &cobra.Command{
-	Use:   "web",
-	Short: "Start a web UI server.",
+	Use:   "web [flags]",
+	Short: "Start a web server to interact with korrel8r from a browser.",
 	Run: func(_ *cobra.Command, args []string) {
 		e := newEngine()
 		cfg := restConfig()

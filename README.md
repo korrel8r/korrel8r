@@ -1,7 +1,21 @@
-# Overview
+# Signal Correlation for Kubernetes and Beyond
 
-**⚠ Warning: Experimental ⚠** This code may change or vanish. It may not work. It may not even make sense.\
+**⚠ Warning: Experimental ⚠**: This code may change without warning.
+
 [API documentation is available at pkg.go.dev](https://pkg.go.dev/github.com/korrel8r/korrel8r/pkg/korrel8r)
+
+## Quick Start ##
+
+You need to be logged in to an openshift cluster as an admin for this to work
+
+```bash
+go install github.com/korrel8r/korrel8r/cmd/korrel8r
+korrel8r web &
+xdg-open http://localhost:8080
+# Replace xdg-open with your preferred browser if it doesn't work on your system.
+```
+
+## Overview ##
 
 Korrel8r is a *correlation engine* that follows relationships to find related data in multiple heterogeneous stores.
 
@@ -21,7 +35,7 @@ The goals of this project include:
 - Help tools that gather and analyze diagnostic data to focus on relevant information.
 - Bring together data that is held in different types of store.
 
-# Signals and Objects
+## Signals and Objects ##
 
 A Kubernetes cluster generates many types of *observable signal*, including:
 
@@ -46,7 +60,7 @@ but which can be correlated with signals and other objects:
 
 Korrel8r uses the term "object" generically to refer to signals and objects.
 
-# Implentation Concepts
+## Implentation Concepts ##
 
 The following concepts are represented by interfaces in the korrel8r package.
 These interfaces are implemented for each distinct type of signal and store.
@@ -77,7 +91,7 @@ Rules are written in terms of domain-specific objects and query languages.
 The start and goal of a rule can be in different domains (e.g. k8s/Pod → log)
 Rules are defined using Go templates, see ./rules for examples.
 
-# Conflicting Vocabularies
+## Conflicting Vocabularies ##
 
 Different signal and object domains may use different vocabularies to identify the same things.
 For example:
@@ -93,12 +107,12 @@ Unfortunately, at least for now, multiple vocabularies are embedded in existing 
 A single vocabulary may eventually become universal, but in the short to medium term we have to handle mixed signals.
 Korrle8 expresses rules in the native vocabulary of each domain, but allows rules to cross domains.
 
-# Request for Feedback
+## Request for Feedback ##
 
 If you work with OpenShift or kubernetes clusters, your experience can help to build a useful rule-base.
 If you are interested, please [create a GitHub issue](https://github.com/korrel8r/korrel8r/issues/new), following this template:
 
-## 1. When I am in this situation: ＿＿＿＿
+### 1. When I am in this situation: ＿＿＿＿ ###
 
 Situations where:
 - you have some information, and want to use it to jump to related information
@@ -109,13 +123,13 @@ The context could be
 - building services that will run in a cluster to collect or analyze data.
 - out-of-cluster analysis of cluster data.
 
-## 2. And I am looking at: ＿＿＿＿
+### 2. And I am looking at: ＿＿＿＿ ###
 
 Any type of signal or cluster data: metrics, traces, logs alerts, k8s events, k8s resources, network events, add your own…
 
 The data could be viewed on a console, printed by command line tools, available from files or stores (loki, prometheus …)
 
-## 3. I would like to see: ＿＿＿＿
+### 3. I would like to see: ＿＿＿＿ ###
 
 Again types of information include: metrics, traces, logs alerts, k8s events, k8s resources, network events, add your own…
 

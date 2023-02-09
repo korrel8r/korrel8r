@@ -22,7 +22,7 @@ import (
 type correlate struct {
 	// URL Query parameter fields
 	Start       string // Starting point, console URL or query string.
-	StartIs     string // "console"or "query"
+	StartIs     string // "Openshift Console"or "korrel8r Query"
 	StartDomain string
 	Goal        string // Goal class full name.
 	Goals       string // Goal radio choice
@@ -34,7 +34,7 @@ type correlate struct {
 	StartClass, GoalClass korrel8r.Class
 	Diagram               string
 	Results               []*graph.Result
-
+	ConsoleURL            *url.URL
 	// Accumulated errors displayed on page
 	Err error
 
@@ -70,9 +70,13 @@ func (c *correlate) reset(params url.Values) {
 	}
 	// Default missing values
 	if c.StartIs == "" {
-		c.StartIs = "console"
+		c.StartIs = "Openshift Console"
+	}
+	if c.Goals == "" {
+		c.Goals = "logs"
 	}
 	c.ui = ui
+	c.ConsoleURL = c.ui.Console.BaseURL
 }
 
 // addErr adds an error to be displayed on the page.
