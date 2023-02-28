@@ -2,7 +2,10 @@
 help: ## Describe make targets
 	@grep '^[^: ]*: *.* *##' Makefile | sed 's/^\([^: ]*\): *.* *## \(.*\)$$/\1: \2/'
 
-all: generate lint test		## Generate code, lint, run all tests.
+all: generate lint test build		## Generate code, lint, run all tests and build.
+
+build:				## Build the binary.
+	go build -tags netgo ./cmd/korrel8r/.
 
 lint:				## Check for lint.
 	golangci-lint run
