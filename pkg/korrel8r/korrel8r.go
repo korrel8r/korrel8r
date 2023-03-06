@@ -82,6 +82,7 @@ type Constraint struct {
 type Appender interface{ Append(...Object) }
 
 // Rule describes a relationship for finding correlated objects.
+// Rule implementations must be comparable.
 type Rule interface {
 	// Apply the rule to a start Object, return a Query for results.
 	// Optional Constraint may be included in the Query.

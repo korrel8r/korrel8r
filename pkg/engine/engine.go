@@ -10,7 +10,6 @@ import (
 	"github.com/korrel8r/korrel8r/pkg/graph"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"golang.org/x/exp/maps"
-	"gonum.org/v1/gonum/graph/multi"
 )
 
 var log = logging.Log()
@@ -92,72 +91,37 @@ func (e *Engine) Class(name string) (korrel8r.Class, error) {
 
 func (e *Engine) Rules() []korrel8r.Rule { return e.rules }
 
-func (e *Engine) AddRule(r korrel8r.Rule) error {
-	e.rules = append(e.rules, r)
-	return nil
-}
+func (e *Engine) AddRules(rules ...korrel8r.Rule) { e.rules = append(e.rules, rules...) }
 
-func (e *Engine) AddRules(rules ...korrel8r.Rule) error {
-	for _, r := range rules {
-		if err := e.AddRule(r); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-type results map[korrel8r.Class]korrel8r.Result
-
-func (r results) Result(c korrel8r.Class) korrel8r.Result {
-	if r[c] == nil {
-		r[c] = korrel8r.NewResult(c)
-	}
-	return r[c]
-}
-
-// Traverse a rule graph, accumulate results.
+// Traverse a rule graph, generate queries, get data from stores, and accumulate results.
 // Failure to apply a rule is not an error.
-func (e *Engine) Traverse(ctx context.Context, initial []korrel8r.Object, c *korrel8r.Constraint, pathGraph *graph.Graph) error {
-	var objects results
-	return graph.Traverse(pathGraph, func(edge multi.Edge) {
-		start, goal := graph.ClassForNode(edge.From()), graph.ClassForNode(edge.To())
-		if objects == nil { // First edge
-			objects = results{}
-			objects.Result(start).Append(initial...)
-		}
-		starters := objects.Result(start).List()
+func (e *Engine) Traverse(ctx context.Context, starters []korrel8r.Object, c *korrel8r.Constraint, pathGraph *graph.Graph, results *Results) error {
+	return pathGraph.Traverse(func(edge graph.Edge) {
+		start, goal := edge.Start(), edge.Goal()
 		if len(starters) == 0 {
 			log.V(3).Info("no starters", "start", korrel8r.ClassName(start), "goal", korrel8r.ClassName(goal))
-			return // Can't proceed without start objects
+			return
 		}
 		store, err := e.StoreErr(goal.Domain().String())
-		if err != nil { // Generate queries even if there is no store
+		if err != nil { // No return, we want to generate queries even if there is no store
 			log.V(2).Error(err, "no store", "goal", korrel8r.ClassName(goal))
 		}
-
-		for edge.Next() { // For each line in the edge
-			l := edge.Line().(*graph.Line)
+		for edge.Next() { // For each line
+			l := edge.Line()
 			for _, s := range starters {
-				r := l.Result                     // line result
-				to := l.To().(*graph.Node).Result // Target node result
-				q, err := l.Rule.Apply(s, c)
+				query, err := l.Rule.Apply(s, c)
 				if err != nil {
 					log.V(3).Error(err, "did not apply", "rule", l.Rule)
 					continue
 				}
-				to.Queries.Add(q)
-				if r.Queries.Add(q) && store != nil {
-					log.V(3).Info("added query", "query", logging.JSON(q), "rule", l.Rule)
-					counter := korrel8r.NewCountResult(objects.Result(goal))
-					if err := store.Get(ctx, q, counter); err != nil {
-						log.V(2).Error(err, "store get failed", "query", logging.JSON(q), "store", store.Domain())
-					}
-					if counter.Count > 0 {
-						r.Objects += counter.Count
-						to.Objects += counter.Count
-						log.V(3).Info("got objects", "rule", l.Rule, "class", korrel8r.ClassName(to.Class), "count", counter.Count, "total", to.Objects)
+				result := korrel8r.NewResult(goal)
+				if store != nil {
+					if err := store.Get(ctx, query, result); err != nil {
+						log.V(2).Error(err, "store get failed", "query", query, "store", store.Domain())
 					}
 				}
+				results.Set(l, QueryResult{Query: query, Result: result})
+				log.V(3).Info("got objects", "rule", l.Rule, "class", korrel8r.ClassName(goal), "count", len(result.List()))
 			}
 		}
 	})
@@ -165,7 +129,7 @@ func (e *Engine) Traverse(ctx context.Context, initial []korrel8r.Object, c *kor
 
 func (e *Engine) Graph() *graph.Graph {
 	if e.graph == nil {
-		e.graph = graph.New(e.rules...)
+		e.graph = graph.New(e.rules)
 	}
 	return e.graph
 }
