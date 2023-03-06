@@ -3,21 +3,21 @@ package graph
 import (
 	"fmt"
 
-	"gonum.org/v1/gonum/graph/multi"
 	"gonum.org/v1/gonum/graph/path"
 	"gonum.org/v1/gonum/graph/topo"
 )
 
-// Traverse a path graph from u to v, visiting each line. The graph must satisfy:
+// Traverse follows each path in a path graph from start to goal, visiting the edges on the path.
 //
-//   - exactly one node (the "start") has no incoming edges.
-//   - exactly one node (the "goal") has no outgoing edges.
-//   - there is at least one path from start to goal
-//   - all nodes in the graph are on a path from start to goal.
+// A path graph must have:
 //
-// The graph is traversed in topological order where possible.
-// It follows all shortest paths to traverse a cycle, which may mean rules are traversed twice.
-func Traverse(g *Graph, visit func(multi.Edge)) error {
+//   - exactly one node (the "start") with no incoming edges.
+//   - exactly one node (the "goal") with no outgoing edges.
+//   - at least one path from start to goal
+//
+// The graph is traversed in topological order as far as possible.
+// Follows all shortest paths in a cycle, which may mean edges may be visited twice.
+func (g *Graph) Traverse(visit func(Edge)) error {
 	sorted, err := topo.Sort(g)
 	cycles, ok := err.(topo.Unorderable)
 	if err != nil && !ok {
@@ -39,9 +39,9 @@ func Traverse(g *Graph, visit func(multi.Edge)) error {
 			// Follow all shortest paths through a cycle.
 			// Note a cycle is never the first or last element in sorted path.
 			u, v := sorted[i-1], sorted[i+1]
-			sub := g.SubGraph(append(cycles[j], u, v))
+			sub := g.subGraphOf(append(cycles[j], u, v))
 			j++
-			uSub, vSub := sub.NodeForClass(ClassForNode(u)), sub.NodeForClass(ClassForNode(v))
+			uSub, vSub := sub.NodeFor(ClassForNode(u)), sub.NodeFor(ClassForNode(v))
 			paths, _ := path.DijkstraAllFrom(uSub, sub).AllTo(vSub.ID())
 			for _, path := range paths {
 				visitPath(sub, path, visit)

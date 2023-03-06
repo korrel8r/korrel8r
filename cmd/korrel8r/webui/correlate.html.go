@@ -77,10 +77,18 @@ const correlateHTML = `
     <p>
       Detailed Results:
       <ul>
-        {{range . -}}
-          {{if .Queries.List -}}
-            <li>{{template "result" . -}}</li>
-          {{end -}}
+        {{range $class, $queryResults := .ByClass -}}
+          <li>
+            <code>{{classname $class}}</code>
+            <ul>
+              {{range $queryResults}}
+                <li>
+                  <a href="{{queryToConsole .Query}}" target="_blank">Console</a> /
+                  <a href="/stores/{{$class.Domain}}?query={{json .Query | urlquery}}" target="_blank">Data</a>
+                </li>
+              {{end -}}
+            </ul>
+          </li>
         {{end -}}
       </ul>
     </p>
@@ -93,16 +101,7 @@ const correlateHTML = `
 {{end -}}
 
 {{define "result"}}
-  <code>{{classname .Class}}</code> (found {{.Objects}})
   {{with .Queries.List}}
-    <ul>
-      {{range .}}
-        <li>
-          <a href="{{queryToConsole .}}" target="_blank">Console</a> /
-          <a href="/stores/{{.Class.Domain}}?query={{json . | urlquery}}" target="_blank">Data</a>
-        </li>
-      {{end -}}
-    </ul>
   {{end -}}
 {{end -}}
 
