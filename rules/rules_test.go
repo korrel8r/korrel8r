@@ -51,13 +51,16 @@ func setup(t *testing.T) *engine.Engine {
 	return e
 }
 
-func testTraverse(t *testing.T, e *engine.Engine, start, goal korrel8r.Class, objs []korrel8r.Object, want []korrel8r.Query) {
+func testTraverse(t *testing.T, e *engine.Engine, start, goal korrel8r.Class, objs []korrel8r.Object, want korrel8r.Query) {
 	t.Helper()
 	full := e.Graph()
-	paths := full.PathGraph(full.ShortestPaths(start, goal))
-	assert.NoError(t, e.Traverse(ctx, objs, nil, paths))
-	r := paths.NodeForClass(goal).Result
-	assert.Equal(t, want, r.Queries.List)
+	paths := full.ShortestPaths(start, goal)
+	results := engine.NewResults()
+	assert.NoError(t, e.Traverse(ctx, objs, nil, paths, results))
+	qrs := results.ByClass()[goal]
+	if assert.NotEmpty(t, qrs) {
+		assert.Equal(t, test.JSONString(want), test.JSONString(qrs[0].Query))
+	}
 }
 
 func TestPodToLogs(t *testing.T) {
@@ -67,10 +70,10 @@ func TestPodToLogs(t *testing.T) {
 		k8s.New[corev1.Pod]("kube-something", "infrastructure"),
 	} {
 		t.Run(pod.Name, func(t *testing.T) {
-			want := []korrel8r.Query{&logs.Query{
+			want := &logs.Query{
 				LogType: pod.Name,
 				LogQL:   fmt.Sprintf(`{kubernetes_namespace_name="%v",kubernetes_pod_name="%v"} | json`, pod.Namespace, pod.Name),
-			}}
+			}
 			testTraverse(t, e, k8s.ClassOf(pod), logs.Domain.Class(pod.Name), []korrel8r.Object{pod}, want)
 		})
 	}
@@ -105,10 +108,10 @@ func TestSelectorToLogs(t *testing.T) {
 	d.Spec = appsv1.DeploymentSpec{
 		Selector: &metav1.LabelSelector{MatchLabels: map[string]string{"a.b/c": "x"}},
 	}
-	want := []korrel8r.Query{&logs.Query{
+	want := &logs.Query{
 		LogQL:   `{kubernetes_namespace_name="ns"} | json | kubernetes_labels_a_b_c="x"`,
 		LogType: "application",
-	}}
+	}
 	testTraverse(t, e, k8s.ClassOf(d), logs.Domain.Class("application"), []korrel8r.Object{d}, want)
 }
 
@@ -139,7 +142,7 @@ func TestSelectorToPods(t *testing.T) {
 		}}
 	class := k8s.ClassOf(podx)
 	testTraverse(t, e, k8s.ClassOf(d), class, []korrel8r.Object{d},
-		[]korrel8r.Query{k8s.NewQuery(class, "ns", "", client.MatchingLabels{"test": "testme"}, nil)})
+		k8s.NewQuery(class, "ns", "", client.MatchingLabels{"test": "testme"}, nil))
 }
 
 func TestK8sEvent(t *testing.T) {
@@ -153,11 +156,11 @@ func TestK8sEvent(t *testing.T) {
 			client.MatchingFields{
 				"involvedObject.apiVersion": "v1", "involvedObject.kind": "Pod",
 				"involvedObject.name": "foo", "involvedObject.namespace": "aNamespace"})
-		testTraverse(t, e, k8s.ClassOf(pod), k8s.ClassOf(event), []korrel8r.Object{pod}, []korrel8r.Query{want})
+		testTraverse(t, e, k8s.ClassOf(pod), k8s.ClassOf(event), []korrel8r.Object{pod}, want)
 	})
 	t.Run("EventToPod", func(t *testing.T) {
 		testTraverse(t, e, k8s.ClassOf(event), k8s.ClassOf(pod), []korrel8r.Object{event},
-			[]korrel8r.Query{k8s.NewQuery(k8s.ClassOf(pod), "aNamespace", "foo", nil, nil)})
+			k8s.NewQuery(k8s.ClassOf(pod), "aNamespace", "foo", nil, nil))
 
 	})
 }
@@ -166,7 +169,7 @@ func TestK8sAllToMetric(t *testing.T) {
 	e := setup(t)
 	pod := k8s.New[corev1.Pod]("aNamespace", "foo")
 	want := &metric.Query{PromQL: "{ namespace=\"aNamespace\", pod=\"foo\" }"}
-	testTraverse(t, e, k8s.ClassOf(pod), metric.Class{}, []korrel8r.Object{pod}, []korrel8r.Query{want})
+	testTraverse(t, e, k8s.ClassOf(pod), metric.Class{}, []korrel8r.Object{pod}, want)
 }
 
 var ctx = context.Background()

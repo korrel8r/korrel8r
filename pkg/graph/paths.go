@@ -2,19 +2,7 @@ package graph
 
 import (
 	"gonum.org/v1/gonum/graph"
-	"gonum.org/v1/gonum/graph/multi"
 )
-
-// AllPaths returns all simple paths fro u to v.
-func AllPaths(g graph.Graph, u, v int64) [][]graph.Node {
-	ap := allPaths{
-		g:       g,
-		visited: map[int64]bool{u: true},
-		path:    []graph.Node{g.Node(u)},
-	}
-	ap.run(u, v)
-	return ap.paths
-}
 
 // allPaths is the state of a backtracking depth-first-search
 type allPaths struct {
@@ -45,27 +33,23 @@ func (ap *allPaths) run(u, v int64) {
 	}
 }
 
-func visitPath(g *Graph, path []graph.Node, visit func(multi.Edge)) {
+// visitPath vists each rule connecting nodes in path.
+func visitPath(g *Graph, path []graph.Node, visit func(Edge)) {
 	for i := 1; i < len(path); i++ {
-		visit(g.Edge(path[i-1].ID(), path[i].ID()).(multi.Edge))
+		visit(WrapEdge(g.Edge(path[i-1].ID(), path[i].ID())))
 	}
 }
 
-func visitPaths(g *Graph, paths [][]graph.Node, visit func(multi.Edge)) {
+// visitPath vists each rule connecting nodes in path.
+func visitPaths(g *Graph, paths [][]graph.Node, visit func(Edge)) {
 	for _, path := range paths {
 		visitPath(g, path, visit)
 	}
 }
 
-func visitLines(lines graph.Lines, visit func(graph.Line)) {
-	for lines.Next() {
-		visit(lines.Line())
-	}
-}
-
-func visitTo(g *Graph, to graph.Node, visit func(multi.Edge)) {
-	from := g.To(to.ID())
-	for from.Next() {
-		visit(g.Edge(from.Node().ID(), to.ID()).(multi.Edge))
+func visitTo(g *Graph, to graph.Node, visit func(Edge)) {
+	in := g.To(to.ID())
+	for in.Next() {
+		visit(WrapEdge(g.Edge(in.Node().ID(), to.ID())))
 	}
 }
