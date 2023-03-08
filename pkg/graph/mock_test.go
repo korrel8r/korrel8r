@@ -7,7 +7,6 @@ import (
 	"github.com/korrel8r/korrel8r/internal/pkg/test/mock"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"golang.org/x/exp/slices"
-	"gonum.org/v1/gonum/graph"
 )
 
 // Mock graphs for tests.
@@ -47,6 +46,4 @@ func rules(g *Graph) []rule {
 	return rules
 }
 
-func ruleLess(a, b rule) bool       { return a.u < b.u || (a.u == b.u && a.v < b.v) }
-func nodeLess(a, b graph.Node) bool { return a.(*Node).Class.(class) < b.(*Node).Class.(class) }
-func testOrder(nodes []graph.Node)  { slices.SortFunc(nodes, nodeLess) }
+func ruleLess(a, b rule) bool { return a.u < b.u || (a.u == b.u && a.v < b.v) }

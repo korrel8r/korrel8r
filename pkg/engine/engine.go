@@ -91,11 +91,7 @@ func (e *Engine) Class(name string) (korrel8r.Class, error) {
 
 func (e *Engine) Rules() []korrel8r.Rule { return e.rules }
 
-func (e *Engine) AddRules(rules ...korrel8r.Rule) {
-	for _, r := range rules {
-		e.rules = append(e.rules, r)
-	}
-}
+func (e *Engine) AddRules(rules ...korrel8r.Rule) { e.rules = append(e.rules, rules...) }
 
 // Traverse a rule graph, generate queries, get data from stores, and accumulate results.
 // Failure to apply a rule is not an error.
