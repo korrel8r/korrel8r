@@ -58,9 +58,7 @@ func Decode(r io.Reader, e *engine.Engine) error {
 			return err
 		}
 		log.V(3).Info("adding template rules", "template", tr.Name, "expanded", len(krs))
-		if err := e.AddRules(krs...); err != nil {
-			return err
-		}
+		e.AddRules(krs...)
 	}
 	return nil
 }
