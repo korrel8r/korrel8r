@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strings"
 
 	openapiclient "github.com/go-openapi/runtime/client"
 	"github.com/go-openapi/strfmt"
@@ -83,12 +84,20 @@ type Store struct {
 	base    *url.URL
 }
 
-func NewStore(host string, hc *http.Client) *Store {
-	transport := openapiclient.NewWithClient(host, client.DefaultBasePath, []string{"https"}, hc)
+func NewStore(u *url.URL, hc *http.Client) (*Store, error) {
+	transport := openapiclient.NewWithClient(u.Host, client.DefaultBasePath, []string{u.Scheme}, hc)
+
+	// Append the "/api/v2" path if not already present.
+	path, err := url.JoinPath(strings.TrimSuffix(u.Path, client.DefaultBasePath), client.DefaultBasePath)
+	if err != nil {
+		return nil, err
+	}
+	u.Path = path
+
 	return &Store{
 		manager: client.New(transport, strfmt.Default),
-		base:    &url.URL{Scheme: "https", Host: host, Path: client.DefaultBasePath},
-	}
+		base:    u,
+	}, nil
 }
 
 func (Store) Domain() korrel8r.Domain { return Domain }

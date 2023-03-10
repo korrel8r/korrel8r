@@ -37,6 +37,9 @@ var (
 	output     *string
 	verbose    *int
 	rulePaths  *[]string
+	metricsAPI *string
+	alertsAPI  *string
+	logsAPI    *string
 	panicOnErr *bool
 )
 
@@ -45,6 +48,9 @@ func init() {
 	output = rootCmd.PersistentFlags().StringP("output", "o", "yaml", "Output format: json, json-pretty or yaml")
 	verbose = rootCmd.PersistentFlags().IntP("verbose", "v", 0, "Verbosity for logging")
 	rulePaths = rootCmd.PersistentFlags().StringArray("rules", defaultRulePaths(), "Files or directories containing rules.")
+	metricsAPI = rootCmd.PersistentFlags().StringP("metrics-url", "", "", "URL to the metrics API")
+	alertsAPI = rootCmd.PersistentFlags().StringP("alerts-url", "", "", "URL to the alerts API")
+	logsAPI = rootCmd.PersistentFlags().StringP("logs-url", "", "", "URL to the logs API")
 	cobra.OnInitialize(func() { logging.Init(*verbose) })
 }
 
@@ -64,7 +70,7 @@ func Execute() (exitCode int) {
 // defaultRulePaths looks for a default "rules" directory in a few places.
 func defaultRulePaths() []string {
 	for _, f := range []func() string{
-		func() string { return os.Getenv("KORREL8R_RULE_DIR") },                                        // Environment directory
+		func() string { return os.Getenv("KORREL8R_RULE_DIR") },                                       // Environment directory
 		func() string { exe, _ := os.Executable(); return filepath.Join(filepath.Dir(exe), "rules") }, // Beside executable
 		func() string { // must.Must for source tree
 			_, path, _, _ := runtime.Caller(1)

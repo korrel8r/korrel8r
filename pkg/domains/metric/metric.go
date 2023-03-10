@@ -76,7 +76,7 @@ func (q *Query) Class() korrel8r.Class { return Class{} }
 type Store struct{ api promv1.API }
 
 func NewStore(base *url.URL, hc *http.Client) (*Store, error) {
-	c, err := api.NewClient(api.Config{Address: base.String(), RoundTripper: hc.Transport})
+	c, err := api.NewClient(api.Config{Address: base.String(), Client: hc})
 	if err != nil {
 		return nil, err
 	}
