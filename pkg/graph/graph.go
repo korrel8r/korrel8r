@@ -2,8 +2,8 @@ package graph
 
 import (
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
-
 	"github.com/korrel8r/korrel8r/pkg/unique"
+
 	"gonum.org/v1/gonum/graph"
 	"gonum.org/v1/gonum/graph/encoding"
 	"gonum.org/v1/gonum/graph/multi"
@@ -17,7 +17,6 @@ type Graph struct {
 	GraphAttrs, NodeAttrs, EdgeAttrs Attrs
 
 	nodeID   map[korrel8r.Class]int64
-	rules    unique.List[korrel8r.Rule]
 	shortest *path.AllShortest
 }
 
@@ -62,7 +61,6 @@ func New(rules []korrel8r.Rule) *Graph {
 	g := &Graph{
 		DirectedGraph: multi.NewDirectedGraph(),
 		nodeID:        map[korrel8r.Class]int64{},
-		rules:         unique.NewList[korrel8r.Rule](),
 		GraphAttrs:    Attrs{},
 		NodeAttrs: Attrs{
 			"fontname": "Helvetica",
@@ -80,13 +78,11 @@ func New(rules []korrel8r.Rule) *Graph {
 // addRule adds a rule and its start/goal classes to the graph.
 func (g *Graph) addRule(r korrel8r.Rule) {
 	g.shortest = nil // Invalidated
-	if g.rules.Add(r) {
-		g.DirectedGraph.SetLine(&Line{
-			Line:  g.NewLine(g.NodeFor(r.Start()), g.NodeFor(r.Goal())),
-			Rule:  r,
-			Attrs: Attrs{},
-		})
-	}
+	g.DirectedGraph.SetLine(&Line{
+		Line:  g.NewLine(g.NodeFor(r.Start()), g.NodeFor(r.Goal())),
+		Rule:  r,
+		Attrs: Attrs{},
+	})
 }
 
 func (g *Graph) EachEdge(visit func(Edge)) {
@@ -172,11 +168,16 @@ func (g *Graph) subGraphOf(nodes []graph.Node) *Graph {
 	return sub
 }
 
+type edgeID [2]int64
+
 func (g *Graph) pathGraph(paths [][]graph.Node) *Graph {
 	sub := New(nil)
+	seen := unique.Set[[2]int64]{}
 	visitPaths(g, paths, func(e Edge) {
-		for e.Next() {
-			sub.addRule(e.Line().Rule)
+		if seen.Add(edgeID{e.F.ID(), e.T.ID()}) { // Added new
+			for e.Next() {
+				sub.addRule(e.Line().Rule)
+			}
 		}
 	})
 	return sub

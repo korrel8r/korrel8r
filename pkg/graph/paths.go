@@ -33,7 +33,7 @@ func (ap *allPaths) run(u, v int64) {
 	}
 }
 
-// visitPath vists each rule connecting nodes in path.
+// visitPath vists each edge in a path.
 func visitPath(g *Graph, path []graph.Node, visit func(Edge)) {
 	for i := 1; i < len(path); i++ {
 		visit(WrapEdge(g.Edge(path[i-1].ID(), path[i].ID())))
