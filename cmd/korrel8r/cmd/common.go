@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"net/url"
 	"os"
 	"path/filepath"
 
@@ -42,6 +43,17 @@ func k8sClient(cfg *rest.Config) client.Client {
 	return must.Must1(client.New(cfg, client.Options{}))
 }
 
+func parseURL(s string) (*url.URL, error) {
+	u, err := url.Parse(s)
+	if err != nil {
+		return nil, err
+	}
+	if u.Scheme != "http" && u.Scheme != "https" {
+		return nil, fmt.Errorf("%q: unsupported scheme", s)
+	}
+	return u, nil
+}
+
 func newEngine() *engine.Engine {
 	log.V(2).Info("create engine")
 	cfg := restConfig()
@@ -51,9 +63,45 @@ func newEngine() *engine.Engine {
 		create func() (korrel8r.Store, error)
 	}{
 		{k8s.Domain, func() (korrel8r.Store, error) { return k8s.NewStore(k8sClient(cfg), cfg) }},
-		{alert.Domain, func() (korrel8r.Store, error) { return alert.NewOpenshiftAlertManagerStore(ctx, cfg) }},
-		{logs.Domain, func() (korrel8r.Store, error) { return logs.NewOpenshiftLokiStackStore(ctx, k8sClient(cfg), cfg) }},
-		{metric.Domain, func() (korrel8r.Store, error) { return metric.NewOpenshiftStore(ctx, k8sClient(cfg), cfg) }},
+		{alert.Domain, func() (korrel8r.Store, error) {
+			if *alertsAPI != "" {
+				log.V(1).Info("using user-specified alerts API", "url", *alertsAPI)
+				u, err := parseURL(*alertsAPI)
+				if err != nil {
+					return nil, err
+				}
+
+				return alert.NewStore(u, nil)
+			}
+
+			return alert.NewOpenshiftAlertManagerStore(ctx, cfg)
+		}},
+		{logs.Domain, func() (korrel8r.Store, error) {
+			if *logsAPI != "" {
+				log.V(1).Info("using user-specified logs API", "url", *alertsAPI)
+				u, err := parseURL(*logsAPI)
+				if err != nil {
+					return nil, err
+				}
+
+				return logs.NewLokiStackStore(u, nil)
+			}
+
+			return logs.NewOpenshiftLokiStackStore(ctx, k8sClient(cfg), cfg)
+		}},
+		{metric.Domain, func() (korrel8r.Store, error) {
+			if *metricsAPI != "" {
+				log.V(1).Info("using user-specified metrics API", "url", *metricsAPI)
+				u, err := parseURL(*metricsAPI)
+				if err != nil {
+					return nil, err
+				}
+
+				return metric.NewStore(u, nil)
+			}
+
+			return metric.NewOpenshiftStore(ctx, k8sClient(cfg), cfg)
+		}},
 	} {
 		log.V(3).Info("add domain", "domain", x.d)
 		s, err := x.create()
@@ -62,6 +110,7 @@ func newEngine() *engine.Engine {
 		}
 		e.AddDomain(x.d, s)
 	}
+
 	// Load rules
 	for _, path := range *rulePaths {
 		must.Must(loadRules(e, path))
