@@ -32,10 +32,10 @@ func (r *rule) Apply(start korrel8r.Object, c *korrel8r.Constraint) (q korrel8r.
 	}
 	q, err = r.Goal().Domain().UnmarshalQuery(b.Bytes())
 	if err != nil {
-		return nil, fmt.Errorf("%w: %v", err, b.String())
+		return nil, fmt.Errorf("apply: unmarshal error: %w", err)
 	}
 	if q.Class() != r.Goal() {
-		return nil, fmt.Errorf("wrong query class; want %v, got %v: %+v ", korrel8r.ClassName(r.Goal()), korrel8r.ClassName(q.Class()), q)
+		return nil, fmt.Errorf("apply: wrong goal: %v", korrel8r.ClassName(q.Class()))
 	}
 	return q, err
 }

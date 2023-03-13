@@ -38,38 +38,3 @@ func (l *JSONList[T]) Append(values ...T) {
 		l.Add(v)
 	}
 }
-
-// JSONMap of uses the JSON form of the key type K as keys.
-type JSONMap[K, V any] map[string]V
-
-func (m JSONMap[K, V]) Get(k K) (v V, ok bool) { v, ok = m[JSONString(k)]; return v, ok }
-func (m JSONMap[K, V]) Set(k K, v V)           { m[JSONString(k)] = v }
-func (m JSONMap[K, V]) Len() int               { return len(m) }
-func (m JSONMap[K, V]) Delete(k K)             { delete(m, JSONString(k)) }
-func (m JSONMap[K, V]) Range(f func(K, V)) {
-	for k, v := range m {
-		f(JSONValue[K](k), v)
-	}
-}
-func (m JSONMap[K, V]) Values(f func(V)) {
-	for _, v := range m {
-		f(v)
-	}
-}
-
-func JSONString(v any) string {
-	b, err := json.Marshal(v)
-	if err != nil {
-		panic(err)
-	}
-	return string(b)
-}
-
-func JSONValue[T any](s string) T {
-	var v T
-	err := json.Unmarshal([]byte(s), &v)
-	if err != nil {
-		panic(err)
-	}
-	return v
-}

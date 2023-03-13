@@ -6,22 +6,21 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestAllPaths(t *testing.T) {
+func Test_allPaths(t *testing.T) {
 	for _, x := range []struct {
 		name        string
 		graph, want []rule
 	}{
-		// FIXME
-		// {
-		// 	name:  "simple",
-		// 	graph: []rule{r(1, 2), r(1, 3), r(3, 11), r(3, 12), r(12, 13)},
-		// 	want:  []rule{r(1, 3), r(3, 12), r(12, 13)},
-		// },
-		// {
-		// 	name:  "multiple",
-		// 	graph: []rule{r(1, 2), r(1, 3), r(3, 11), r(2, 12), r(3, 12), r(12, 13)},
-		// 	want:  []rule{r(1, 2), r(1, 3), r(2, 12), r(3, 12), r(12, 13)},
-		// },
+		{
+			name:  "simple",
+			graph: []rule{r(1, 2), r(1, 3), r(3, 11), r(3, 12), r(12, 13)},
+			want:  []rule{r(1, 3), r(3, 12), r(12, 13)},
+		},
+		{
+			name:  "multiple",
+			graph: []rule{r(1, 2), r(1, 3), r(3, 11), r(2, 12), r(3, 12), r(12, 13)},
+			want:  []rule{r(1, 2), r(1, 3), r(2, 12), r(3, 12), r(12, 13)},
+		},
 		{
 			name:  "lengths",
 			graph: []rule{r(1, 2), r(1, 3), r(1, 13), r(2, 12), r(3, 12), r(12, 13)},
@@ -36,7 +35,7 @@ func TestAllPaths(t *testing.T) {
 		t.Run(x.name, func(t *testing.T) {
 			g := testGraph(x.graph)
 			paths := g.AllPaths(class(1), class(13))
-			assert.Equal(t, x.want, rules(paths))
+			assert.Equal(t, x.want, graphRules(paths))
 		})
 	}
 }

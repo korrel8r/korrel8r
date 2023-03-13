@@ -20,7 +20,7 @@ var root logr.Logger
 // The root logger.
 func Log() logr.Logger { return root }
 
-func init() { // Use the env verbosity regardless if Init is called.
+func init() { // Set env verbosity on init, Init() can over-ride.
 	root = stdr.New(log.New(os.Stderr, "korrel8r ", log.Ltime))
 	if n, err := strconv.Atoi(os.Getenv(verboseEnv)); err == nil {
 		stdr.SetVerbosity(n)

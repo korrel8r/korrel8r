@@ -1,4 +1,6 @@
 // package metric is the domain of prometheus metrics.
+//
+// FIXME metrics are only usable as goals
 package metric
 
 import (
@@ -85,7 +87,6 @@ func NewStore(base *url.URL, hc *http.Client) (*Store, error) {
 
 func (s *Store) Domain() korrel8r.Domain { return Domain }
 
-// FIXME metrics are goal only.
 func (s *Store) Get(ctx context.Context, query korrel8r.Query, result korrel8r.Appender) error {
 	q, err := impl.TypeAssert[*Query](query)
 	if err != nil {

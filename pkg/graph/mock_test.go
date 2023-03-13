@@ -3,9 +3,11 @@ package graph
 import (
 	"fmt"
 	"strconv"
+	"testing"
 
 	"github.com/korrel8r/korrel8r/internal/pkg/test/mock"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
+	"github.com/stretchr/testify/assert"
 	"golang.org/x/exp/slices"
 )
 
@@ -29,21 +31,43 @@ func (l rule) String() string        { return fmt.Sprintf("(%v,%v)", l.u, l.v) }
 func (l rule) Apply(start korrel8r.Object, c *korrel8r.Constraint) (korrel8r.Query, error) {
 	return nil, nil
 }
-func r(u, v class) rule { return rule{u, v} }
 
-func testGraph(mockRules []rule) *Graph {
-	rules := make([]korrel8r.Rule, len(mockRules))
-	for i := range mockRules {
-		rules[i] = mockRules[i]
+func r(u, v class) rule             { return rule{u, v} }
+func ruleLess(a, b rule) bool       { return a.u < b.u || (a.u == b.u && a.v < b.v) }
+func sortRules(rules []rule) []rule { slices.SortFunc(rules, ruleLess); return rules }
+
+func testGraph(rules []rule) *Graph {
+	d := NewData()
+	for _, r := range rules {
+		d.AddRule(r)
 	}
-	return New(rules)
+	return d.NewGraph()
 }
 
-func rules(g *Graph) []rule {
+func graphRules(g *Graph) []rule {
 	var rules []rule
 	g.EachLine(func(l *Line) { rules = append(rules, l.Rule.(rule)) })
-	slices.SortFunc(rules, ruleLess)
+	sortRules(rules)
 	return rules
 }
 
-func ruleLess(a, b rule) bool { return a.u < b.u || (a.u == b.u && a.v < b.v) }
+// assertComponentOrder components is a list of sets of rules that may be in any order.
+// this asserts that the rules list is in an order that is compatible with components
+func assertComponentOrder(t *testing.T, components [][]rule, rules []rule) bool {
+	msg := "out of order\nrules:      %v\ncomponents: %v\n"
+	t.Helper()
+	j := 0 // rules index
+	for i, c := range components {
+		if !assert.LessOrEqual(t, j+len(c), len(rules), "rule[%v], component[%v] len %v\n"+msg, j, i, len(c), rules, components) {
+			return false
+		}
+		if !assert.Equal(t, sortRules(c), sortRules(rules[j:j+len(c)]), msg, rules, components) {
+			return false
+		}
+		j += len(c)
+		if j >= len(rules) {
+			break
+		}
+	}
+	return true
+}

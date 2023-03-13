@@ -11,16 +11,6 @@ rules:
       query: |-
         { {{k8sQueryClass "Deployment.apps"}}, "Namespace": "{{.Alert.Labels.namespace}}", "Name":"{{.Alert.Labels.deployment}}"}
 
-  - name: AlertToNamespace
-    start:
-      domain: alert
-    goal:
-      domain: k8s
-      classes: [Namespace.]
-    result:
-      query:  |-
-        { {{k8sQueryClass "Namespace"}}, "Namespace": "{{.Alert.Labels.namespace}}"}
-
   - name: AlertToPod
     start:
       domain: alert

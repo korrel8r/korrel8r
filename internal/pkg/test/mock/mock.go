@@ -64,7 +64,7 @@ func (Domain) UnmarshalQuery(b []byte) (korrel8r.Query, error) { panic(NoMockErr
 type Query string
 
 func (q Query) String() string        { return string(q) }
-func (q Query) Class() korrel8r.Class { panic(NoMockErr) }
+func (q Query) Class() korrel8r.Class { return Class(strings.Split(string(q), ":")[0]) }
 
 // Class implemented as a string of the form "domain/class"
 type Class string
