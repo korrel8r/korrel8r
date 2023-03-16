@@ -1,0 +1,17 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: logging-web
+  namespace: logging
+spec:
+  rules:
+  - host: loki.127.0.0.1.nip.io
+    http:
+      paths:
+      - backend:
+          service:
+            name: lokistack-dev-query-frontend-http
+            port:
+              number: 3100
+        path: /
+        pathType: Prefix

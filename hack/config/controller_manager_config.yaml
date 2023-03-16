@@ -1,0 +1,30 @@
+apiVersion: config.loki.grafana.com/v1
+kind: ProjectConfig
+health:
+  healthProbeBindAddress: :8081
+metrics:
+  bindAddress: :8080
+webhook:
+  port: 9443
+leaderElection:
+  leaderElect: false
+builtInCertManagement:
+  enabled: true
+featureGates:
+  #
+  # Encryption feature gates
+  #
+  httpEncryption: false
+  grpcEncryption: false
+  #
+  # Component feature gates
+  #
+  lokiStackGateway: false
+  runtimeSeccompProfile: true
+  #
+  # Webhook feature gates
+  #
+  lokiStackWebhook: false
+  alertingRuleWebhook: false
+  recordingRuleWebhook: false
+  rulerConfigWebhook: false
