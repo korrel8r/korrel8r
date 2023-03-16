@@ -1,0 +1,24 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  labels:
+    component: kube-controller-manager
+  name: kube-controller-manager
+  namespace: monitoring
+spec:
+  jobLabel: component
+  namespaceSelector:
+    matchNames:
+    - kube-system
+  podMetricsEndpoints:
+  - bearerTokenSecret:
+      key: token
+      name: prometheus-k8s-token
+    interval: 30s
+    port: https-metrics
+    scheme: https
+    tlsConfig:
+      insecureSkipVerify: true
+  selector:
+    matchLabels:
+      component: kube-controller-manager
