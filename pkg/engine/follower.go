@@ -26,7 +26,6 @@ func (v *Follower) Traverse(l *graph.Line) {
 	if len(starters) == 0 {
 		return
 	}
-
 	store := v.Engine.Store(rule.Goal().Domain().String())
 	if store == nil {
 		log.V(2).Info("no store for goal")
@@ -40,14 +39,10 @@ func (v *Follower) Traverse(l *graph.Line) {
 		}
 		log := log.WithValues("query", logging.JSON(query))
 		if _, ok := goalNode.QueryCounts.Get(query); ok {
-			log.V(2).Error(err, "skip duplicate query")
+			log.V(3).Info("skip duplicate query")
 			continue
 		}
 		result := korrel8r.NewCountResult(goalNode.Result)
-		defer func() { // After Get when Count is set.
-			l.QueryCounts.Put(query, result.Count)
-			goalNode.QueryCounts.Put(query, result.Count)
-		}()
 		if store != nil {
 			if err := store.Get(v.Context, query, result); err != nil {
 				// FIXME should report this error, but causing a test failure, investigate.
@@ -55,5 +50,8 @@ func (v *Follower) Traverse(l *graph.Line) {
 				log.Error(err, "store get error")
 			}
 		}
+		l.QueryCounts.Put(query, result.Count)
+		goalNode.QueryCounts.Put(query, result.Count)
+		log.V(3).Info("query results", "count", result.Count)
 	}
 }
