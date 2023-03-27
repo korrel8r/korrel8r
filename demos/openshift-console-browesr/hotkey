@@ -1,0 +1,13 @@
+#!/bin/sh
+
+# Define key codes from /usr/include/linux/input-event-codes.h as shell variables.
+eval $(grep '^#define KEY_[A-Z0-9]*	*[0-9]*$' /usr/include/linux/input-event-codes.h | sed 's/#define // ; s/		*/=/')
+
+press() { for K in $*; do echo $K:1 $K:0 ; done ; }
+with() { MOD=${1:-nomod}; shift; echo $MOD:1; echo $*; echo $MOD:0 ; }
+
+# Copy URL from browser navigation bar to korrel8r start field.
+pgrep ydotoold || { sudo ydotoold & sleep 0.1; }
+sudo ydotool key $(with $KEY_LEFTCTRL $(press $KEY_L $KEY_C)) $(press $KEY_TAB $KEY_TAB $KEY_TAB $KEY_TAB $KEY_TAB $KEY_TAB $KEY_TAB)
+sudo ydotool key $(with $KEY_LEFTSHIFT $(with $KEY_LEFTALT $(press $KEY_K)))
+sudo ydotool key $(with $KEY_LEFTCTRL $(press $KEY_V)) $(press $KEY_ENTER)
