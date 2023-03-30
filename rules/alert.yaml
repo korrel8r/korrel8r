@@ -1,4 +1,3 @@
-# NOTE Rules are framed for the Alertmanager API.
 # FIXME wildcard these
 rules:
   - name: AlertToDeployment
@@ -9,7 +8,7 @@ rules:
       classes: [Deployment.apps]
     result:
       query: |-
-        { {{k8sQueryClass "Deployment.apps"}}, "Namespace": "{{.Alert.Labels.namespace}}", "Name":"{{.Alert.Labels.deployment}}"}
+        { {{k8sQueryClass "Deployment.apps"}}, "Namespace": "{{.Labels.namespace}}", "Name":"{{.Labels.deployment}}"}
 
   - name: AlertToPod
     start:
@@ -19,7 +18,7 @@ rules:
       classes: [Pod.]
     result:
       query:  |-
-        { {{k8sQueryClass "Pod"}}, "Namespace": "{{.Alert.Labels.namespace}}", "Name":"{{.Alert.Labels.pod}}"}
+        { {{k8sQueryClass "Pod"}}, "Namespace": "{{.Labels.namespace}}", "Name":"{{.Labels.pod}}"}
 
   - name: AlertToDaemonSet
     start:
@@ -29,7 +28,7 @@ rules:
       classes: [DaemonSet.apps]
     result:
       query:  |-
-        { {{k8sQueryClass "DaemonSet.apps"}}, "Namespace": "{{.Alert.Labels.namespace}}", "Name":"{{.Alert.Labels.daemonset}}"}
+        { {{k8sQueryClass "DaemonSet.apps"}}, "Namespace": "{{.Labels.namespace}}", "Name":"{{.Labels.daemonset}}"}
 
   - name: AlertToStatefulSet
     start:
@@ -39,4 +38,4 @@ rules:
       classes: [StatefulSet.apps]
     result:
       query:  |-
-        { {{k8sQueryClass "StatefulSet.apps"}}, "Namespace": "{{.Alert.Labels.namespace}}", "Name":"{{.Alert.Labels.statefulset}}"}
+        { {{k8sQueryClass "StatefulSet.apps"}}, "Namespace": "{{.Labels.namespace}}", "Name":"{{.Labels.statefulset}}"}
