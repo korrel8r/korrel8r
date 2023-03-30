@@ -25,7 +25,7 @@ const correlateHTML = `
       <br>
       <input type="radio" name="goal" id="neighbours" value="neighbours" {{if eq .Goal "neighbours"}}checked{{end}}>
       <label for="neighbours"> <b>Neighbours</b>
-        <input type="text" name="neighbours" id="neighboursText" value="{{.Neighbours}}" size="4">
+        <input type="text" name="neighbours" id="neighboursText" value="{{.Depth}}" size="4">
       </label>
     </p>
     <p>
@@ -45,60 +45,79 @@ const correlateHTML = `
    <!-- Show spinner while waiting -->
    function validate(form) {
      document.getElementById("submit").style.display="none";
+     document.getElementById("results").style.display="none";
      document.getElementById("waiting").style.display="";
      return true;
    }
   </script>
 
-  {{with .Err}}
-    <hr>
-    <h3>Errors</h3>
-    <div style="white-space: pre-line; border-width:2px; border-style:solid; border-color:red"> {{printf "%+v" .}}</div>
-  {{end}}
+  <div id="results">
+    {{with .Err}}
+      <hr>
+      <h3>Errors</h3>
+      <div style="white-space: pre-line; border-width:2px; border-style:solid; border-color:red"> {{printf "%+v" .}}</div>
+    {{end}}
 
-  {{if .Diagram}}
-    <hr>
-    <h3>Diagram</h3>
-    <p align="center">
-      <object type="image/svg+xml" data="{{.Diagram}}"></object><br>
-      <a href="{{.DiagramImg}}" target="_blank">Image</a>
-      <a href="{{.DiagramTxt}}" target="_blank">Source</a>
-    </p>
-  {{end}}
+    {{if .Diagram}}
+      <hr>
+      <h3>Diagram</h3>
+      <p align="center">
+        <object type="image/svg+xml" data="{{.Diagram}}"></object><br>
+        <a href="{{.DiagramImg}}" target="_blank">Image</a>
+        <a href="{{.DiagramTxt}}" target="_blank">Source</a>
+      </p>
+    {{end}}
 
-  <hr>
-  <h3> Detailed Results </h3>
-  <p>
-    <ul>
-      {{with .StartClass}}<li>Start: {{classname .}}</li>{{end}}
-      {{with .Depth}}<li>Depth: {{.}}</li>{{end}}
-      {{with .GoalClass}}<li>Goal: {{classname .}}</li>{{end}}
-    </ul>
-    <ul>
-      {{range $node := (and .Graph .Graph.AllNodes)}}
-        {{if $node.Result.List}}
-          <li><code><b>{{classname $node.Class}}</b> ({{len $node.Result.List}})</code>
-            <ul>
-              {{range ($.Graph.LinesTo .)}}
-                {{if .QueryCounts}}
-                  <li><code>{{rulename .Rule}}</code></li>
-                  <ul>
-                    {{range $qc := .QueryCounts.Sort}}
-                      <li>
-                        <a href="{{queryToConsole $qc.Query}}" target="_blank">Console</a> /
-                        <a href="/stores/{{$node.Class}}?query={{json $qc.Query | urlquery}}" target="_blank">Data</a>
-                        ({{$qc.Count}})
-                        <pre>{{$qc.Query | json}}</pre>
-                      </li>
-                    {{end}}
-                  </ul>
+    <hr>
+    <h3> Detailed Results </h3>
+    <p>
+      Update time: {{.UpdateTime}} ({{len .Graph.AllNodes}} nodes, {{len .Graph.AllLines}} lines)<br>
+      {{with .StartClass}}Start: <code>{{classname .}}</code><br>{{end}}
+      {{with .GoalClass}}Goal: <code>{{classname .}}</code><br>{{end}}
+      {{with .Depth}}Neighbourhood depth: {{.}}<br>{{end}}
+      <ul>
+        {{range $node := (and .Graph .Graph.AllNodes)}}
+          {{if $node.Result.List}}
+            <li><code><b>{{classname $node.Class}}</b> ({{len $node.Result.List}})</code>
+              <ul>
+                {{range ($.Graph.LinesTo .)}}
+                  {{if .QueryCounts}}
+                    <li><code>{{rulename .Rule}}</code></li>
+                    <ul>
+                      {{range $qc := .QueryCounts.Sort}}
+                        <li>
+                          <a href="{{queryToConsole $qc.Query}}" target="_blank">Console</a> /
+                          <a href="/stores/{{$node.Class}}?query={{json $qc.Query | urlquery}}" target="_blank">Data</a>
+                          ({{$qc.Count}})
+                          <pre>{{$qc.Query | json}}</pre>
+                        </li>
+                      {{end}}
+                    </ul>
+                  {{end}}
                 {{end}}
-              {{end}}
-            </ul>
-          </li>
+                {{if not ($.Graph.LinesTo .)}}
+                  {{/* No incoming lines, must be the start node. */}}
+                  {{template "querycounts" $node.QueryCounts}}
+                {{end}}
+              </ul>
+            </li>
+          {{end}}
         {{end}}
-      {{end}}
-    </ul>
-  </p>
+      </ul>
+    </p>
+  </div>
+{{end}}
+
+{{define "querycounts"}}
+  {{/* Context is a QueryCount value. Geneates list items, expects to be inside a HTML list. */}}
+  {{range $qc := .Sort}}
+    <li>
+      <a href="{{queryToConsole $qc.Query}}" target="_blank">Console</a> /
+      <a href="/stores/{{$qc.Query.Class}}?query={{json $qc.Query | urlquery}}" target="_blank">Data</a>
+      ({{$qc.Count}})
+      <pre>{{$qc.Query | json}}</pre>
+    </li>
+  {{end}}
+
 {{end}}
 `

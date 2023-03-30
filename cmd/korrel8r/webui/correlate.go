@@ -35,13 +35,13 @@ type correlate struct {
 	Goals []struct{ Value, Label string }
 
 	// Computed fields used by page template.
-	Time                            time.Time
 	StartQuery                      korrel8r.Query
 	StartClass, GoalClass           korrel8r.Class
 	Depth                           int
 	Graph                           *graph.Graph
 	Diagram, DiagramTxt, DiagramImg string
 	ConsoleURL                      *url.URL
+	UpdateTime                      time.Duration
 	// Accumulated errors displayed on page
 	Err error
 
@@ -60,7 +60,6 @@ func (c *correlate) reset(params url.Values) {
 		Neighbours:  params.Get("neighbours"),
 		ShortPaths:  params.Get("short") == "true",
 		RuleGraph:   params.Get("rules") == "true",
-		Time:        time.Now(),
 	}
 	c.Goals = []struct{ Value, Label string }{
 		{"logs/infrastructure", "Logs"}, // FIXME wildcard
@@ -113,6 +112,11 @@ func (c *correlate) checkURL(u *url.URL, err error) *url.URL {
 }
 
 func (c *correlate) update(req *http.Request) {
+	updateStart := time.Now()
+	defer func() {
+		c.UpdateTime = time.Since(updateStart)
+		log.V(2).Info("update complete", "duration", c.UpdateTime)
+	}()
 	c.reset(req.URL.Query())
 	if !c.addErr(c.updateStart(), "start") {
 		// Prime the start node with initial results
@@ -157,7 +161,6 @@ func (c *correlate) update(req *http.Request) {
 	c.addClassNode(c.GoalClass)
 
 	c.updateDiagram()
-	log.V(2).Info("update complete")
 }
 
 func (c *correlate) updateStart() (err error) {
@@ -190,7 +193,7 @@ func (c *correlate) updateGoal() (err error) {
 	case "neighbours":
 		c.Depth, _ = strconv.Atoi(c.Neighbours)
 		if c.Depth <= 0 {
-			c.Depth = 99
+			c.Depth = 1
 		}
 		return nil
 	case "other":
@@ -264,10 +267,14 @@ func (c *correlate) updateDiagram() {
 
 	var layout string
 	if c.GoalClass != nil {
-		a := g.NodeFor(c.GoalClass).Attrs
+		goal := g.NodeFor(c.GoalClass)
+		a := goal.Attrs
 		a["shape"] = "diamond"
 		a["fillcolor"] = goalColor
 		layout = "dot"
+		if len(goal.Result.List()) == 0 {
+			a["fillcolor"] = emptyColor
+		}
 	} else {
 		layout = "twopi"
 	}

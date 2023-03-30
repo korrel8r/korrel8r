@@ -51,8 +51,8 @@ func graphRules(g *Graph) []rule {
 	return rules
 }
 
-// assertComponentOrder components is a list of sets of rules that may be in any order.
-// this asserts that the rules list is in an order that is compatible with components
+// assertComponentOrder components is an ordered list of unordered sets of rules.
+// Asserts that the rules list is in an order that is compatible with components
 func assertComponentOrder(t *testing.T, components [][]rule, rules []rule) bool {
 	msg := "out of order\nrules:      %v\ncomponents: %v\n"
 	t.Helper()

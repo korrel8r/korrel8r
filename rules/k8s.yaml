@@ -108,7 +108,7 @@ rules:
            "LogQL": "{kubernetes_namespace_name=\"{{.Namespace}}\",kubernetes_pod_name=\"{{.Name}}\"} | json"
          }
 
-   - name: NamespacedResourceToNamespace
+   - name: ResourceToNamespace
      start:
        domain: k8s
        classes: [namespacedResources]
@@ -118,6 +118,18 @@ rules:
      result:
        query: |-
          { Version: v1, Kind: Namespace, Name: {{.Namespace}} }
+
+   - name: NamespaceToResource
+     start:
+       domain: k8s
+       classes: [Namespace]
+     goal:
+       domain: k8s
+       classes: [namespacedResources]
+     result:
+       query: |-
+         {{$goal := rule.Goal}}
+         {Namespace: {{.Name}}, Group: {{$goal.Group}}, Version: {{$goal.Version}}, Kind: {{$goal.Kind}} }
 
    - name: NamespaceToAlert
      start:

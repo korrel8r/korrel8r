@@ -3,12 +3,9 @@ package templaterule
 import (
 	"io"
 
-	"github.com/korrel8r/korrel8r/internal/pkg/logging"
 	"github.com/korrel8r/korrel8r/pkg/engine"
 	"k8s.io/apimachinery/pkg/util/yaml"
 )
-
-var log = logging.Log()
 
 type Group struct {
 	Name    string   `json:"name"`
@@ -57,7 +54,6 @@ func Decode(r io.Reader, e *engine.Engine) error {
 		if err != nil {
 			return err
 		}
-		log.V(3).Info("adding template rules", "template", tr.Name, "expanded", len(krs))
 		e.AddRules(krs...)
 	}
 	return nil
