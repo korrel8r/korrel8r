@@ -64,30 +64,36 @@ func newEngine() *engine.Engine {
 	}{
 		{k8s.Domain, func() (korrel8r.Store, error) { return k8s.NewStore(k8sClient(cfg), cfg) }},
 		{alert.Domain, func() (korrel8r.Store, error) {
-			if *alertsAPI != "" {
-				log.V(1).Info("using user-specified alerts API", "url", *alertsAPI)
-				u, err := parseURL(*alertsAPI)
-				if err != nil {
-					return nil, err
-				}
-
-				return alert.NewStore(u, nil)
+			if *alertmanagerAPI == "" && *metricsAPI == "" {
+				return alert.NewOpenshiftStore(ctx, cfg)
 			}
 
-			return alert.NewOpenshiftAlertManagerStore(ctx, cfg)
+			log.V(1).Info("using user-specified Alertmanager API", "url", *alertmanagerAPI)
+			alertmanagerURL, err := parseURL(*alertmanagerAPI)
+			if err != nil {
+				return nil, err
+			}
+
+			log.V(1).Info("using user-specified metrics API", "url", *metricsAPI)
+			prometheusURL, err := parseURL(*metricsAPI)
+			if err != nil {
+				return nil, err
+			}
+
+			return alert.NewStore(alertmanagerURL, prometheusURL, nil)
 		}},
 		{logs.Domain, func() (korrel8r.Store, error) {
-			if *logsAPI != "" {
-				log.V(1).Info("using user-specified logs API", "url", *alertsAPI)
-				u, err := parseURL(*logsAPI)
-				if err != nil {
-					return nil, err
-				}
-
-				return logs.NewLokiStackStore(u, nil)
+			if *logsAPI == "" {
+				return logs.NewOpenshiftLokiStackStore(ctx, k8sClient(cfg), cfg)
 			}
 
-			return logs.NewOpenshiftLokiStackStore(ctx, k8sClient(cfg), cfg)
+			log.V(1).Info("using user-specified logs API", "url", *logsAPI)
+			u, err := parseURL(*logsAPI)
+			if err != nil {
+				return nil, err
+			}
+
+			return logs.NewLokiStackStore(u, nil)
 		}},
 		{metric.Domain, func() (korrel8r.Store, error) {
 			if *metricsAPI != "" {

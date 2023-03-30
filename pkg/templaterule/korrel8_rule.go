@@ -24,18 +24,22 @@ func (r *rule) Goal() korrel8r.Class  { return r.goal }
 // Apply the rule by applying the template.
 // The template will be executed with start as the "." context object.
 // A function "constraint" returns the constraint.
-func (r *rule) Apply(start korrel8r.Object, c *korrel8r.Constraint) (q korrel8r.Query, err error) {
+func (r *rule) Apply(start korrel8r.Object, c *korrel8r.Constraint) (korrel8r.Query, error) {
 	b := &bytes.Buffer{}
-	err = r.query.Funcs(map[string]any{"constraint": func() *korrel8r.Constraint { return c }}).Execute(b, start)
+
+	err := r.query.Funcs(map[string]any{"constraint": func() *korrel8r.Constraint { return c }}).Execute(b, start)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("apply: %s", err)
 	}
-	q, err = r.Goal().Domain().UnmarshalQuery(b.Bytes())
+
+	q, err := r.Goal().Domain().UnmarshalQuery(b.Bytes())
 	if err != nil {
 		return nil, fmt.Errorf("apply: unmarshal error: %w", err)
 	}
+
 	if q.Class() != r.Goal() {
 		return nil, fmt.Errorf("apply: wrong goal: %v", korrel8r.ClassName(q.Class()))
 	}
-	return q, err
+
+	return q, nil
 }

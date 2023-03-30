@@ -10,7 +10,7 @@
 
 1. Log into an openshift cluster with openshift logging and Loki log store installed (Operator Hub)
 
-1. Generate bad deployments to create alerts. **Note**: takes up to 15 minutes for alerts to start firing.
+1. Generate bad deployments to create alerts. **Note**: it should take at most 60s for alerts to become pending.
 
     ```oc apply -f bad-config-deployment.yaml -f bad-image-deployment.yaml```
 
@@ -29,7 +29,7 @@
 
 The basic procedure for the demo is:
 - Navigate to an interesting object in the openshift console.
-- Press F1 to copy the console URL to the korrel8r `start`field and update korrel8r.
+- Press F1 to copy the console URL to the korrel8r `start` field and click the `Update graph` button in the korrel8r UI.
 - Click in korrel8r side-view to open openshift links in the main window.
 
 This creates the impression that we are using korrel8r to navigate within the console.
@@ -48,7 +48,7 @@ Project URL: https://github.com/korrel8r/korrel8r
 ### First Scenario - Alerts to Logs
 
 Looking at an alert, the operator wants to find related logs.
-- Openshift home screen, find ** alert, click view details, press F1
+- Openshift home screen, find ** alert, filter by pending and firing alert states, find the `KubeDeploymentReplicasMismatch` alert in the list and click the link to view the details, press F1
 - Korrel8r displays path to logs. Click logs node.
 - Logs open in openshift, filter with select/error: root cause is now obvious - missing configuration file.
 
@@ -56,6 +56,7 @@ Note: we could navigate alert - deployment - pod - logs with existing console li
 Korrel8r provides a faster, more direct link - and a graphical overview of the related objects.
 
 ### Second Scenario - Alerts to Events
+
 Now we will show another type of correlation...
 - Return to openshift home screen, find `KubeContainerWaiting` alert, click details press F1
 - Note: the korrel8r diagram has no logs because there are none, we need to try something else.
@@ -65,12 +66,13 @@ Now we will show another type of correlation...
 ### Third Scenario - neighbourhood
 
 What if I don't know what to look for? The Neighbourhood feature shows all related objects:
-- Back to openshift home, open ** alert again, F1 for korrel8r.
+- Back to openshift home, open the `KubeDeploymentReplicasMismatch` alert again, F1 for korrel8r.
 - Korrel8r select "neighbourhood" and update.
-- Note: Graph shows events, logs, deployment, pod - all connected to the Alert.
+- Note: Graph shows events, logs, deployment, pod and metrics - all connected to the Alert.
 - Click several nodes to show we can jump to any of them in the console.
 
 ### How it works
+
 Korrel8r has a collection of rules relating different types of objects.
 The rules form a static graph of all possible paths between related types of object.
 - Korrel8r select "Rules", update
@@ -81,6 +83,7 @@ Rules generate *queries* for various data stores, the queries retrieve live obje
 - Deselect "Rules" to go back to graph of live data.
 
 ### Wrap up
+
 - Rules express relationships, open ended set of data types: k8s objects, metrics, logs, alerts ...
 - Need to build a richer rule base, capture SRE debugging know-how.
 - Need UI expertise to provide better presentations, integrated with consoles: sidebar? quick links? menus?
