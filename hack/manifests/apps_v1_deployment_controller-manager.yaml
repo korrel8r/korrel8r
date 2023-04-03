@@ -1,0 +1,75 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app.kubernetes.io/instance: loki-operator-v0.0.1
+    app.kubernetes.io/name: loki-operator
+    app.kubernetes.io/part-of: loki-operator
+    app.kubernetes.io/version: 0.0.1
+    control-plane: controller-manager
+  name: controller-manager
+  namespace: logging
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: loki-operator
+      app.kubernetes.io/part-of: loki-operator
+      name: loki-operator-controller-manager
+  template:
+    metadata:
+      annotations:
+        kubectl.kubernetes.io/default-container: manager
+      labels:
+        app.kubernetes.io/name: loki-operator
+        app.kubernetes.io/part-of: loki-operator
+        name: loki-operator-controller-manager
+    spec:
+      containers:
+      - args:
+        - --config=controller_manager_config.yaml
+        command:
+        - /manager
+        env:
+        - name: RELATED_IMAGE_LOKI
+          value: docker.io/grafana/loki:2.7.3
+        - name: RELATED_IMAGE_GATEWAY
+          value: quay.io/observatorium/api:latest
+        image: docker.io/grafana/loki-operator:main-39f2856
+        imagePullPolicy: Always
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 8081
+          initialDelaySeconds: 15
+          periodSeconds: 20
+        name: manager
+        ports:
+        - containerPort: 8080
+          name: metrics
+        readinessProbe:
+          httpGet:
+            path: /readyz
+            port: 8081
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+        volumeMounts:
+        - mountPath: /controller_manager_config.yaml
+          name: manager-config
+          subPath: controller_manager_config.yaml
+      nodeSelector:
+        kubernetes.io/os: linux
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      terminationGracePeriodSeconds: 10
+      volumes:
+      - configMap:
+          name: manager-config
+        name: manager-config

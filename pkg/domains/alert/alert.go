@@ -97,10 +97,15 @@ func (domain) QueryToConsoleURL(query korrel8r.Query) (*url.URL, error) {
 	if err != nil {
 		return nil, err
 	}
-	uq := url.Values{}
-	for k, v := range q.Labels {
-		uq.Add(k, v)
+	uq := url.Values{
+		"rowFilter-alert-state": []string{}, // do not filter by alert state.
 	}
+	alertFilter := make([]string, 0, len(q.Labels))
+	for k, v := range q.Labels {
+		alertFilter = append(alertFilter, fmt.Sprintf("%s=%s", k, v))
+	}
+	uq.Add("alerts", strings.Join(alertFilter, ","))
+
 	return &url.URL{
 		Path:     "/monitoring/alerts",
 		RawQuery: uq.Encode(),
