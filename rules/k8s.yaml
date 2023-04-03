@@ -65,6 +65,22 @@ groups:
 #      - AppliedClusterResourceQuota
 #      - ClusterResourceQuota
 
+  - name: namespacedResources
+    classes:
+      - Pod
+      - Deployment.apps
+      - DeploymentConfig.apps.openshift.io
+      - StatefulSet.apps
+      - CronJob.batch
+      - Job.batch
+      - DaemonSet.apps
+      - ReplicaSet.apps
+      - ReplicationController
+      - PersistentVolumeClaim
+      - Service
+      - Route.route.openshift.io
+      - Ingress.networking.k8s.io
+
 rules:
    - name: SelectorToLogs
      start:
@@ -91,6 +107,49 @@ rules:
            "LogType": "{{ k8sLogType .Namespace }}",
            "LogQL": "{kubernetes_namespace_name=\"{{.Namespace}}\",kubernetes_pod_name=\"{{.Name}}\"} | json"
          }
+
+   - name: NamespacedResourceToNamespace
+     start:
+       domain: k8s
+       classes: [namespacedResources]
+     goal:
+       domain: k8s
+       classes: [Namespace]
+     result:
+       query: |-
+         { Version: v1, Kind: Namespace, Name: {{.Namespace}} }
+
+   - name: NamespaceToAlert
+     start:
+       domain: k8s
+       classes: [Namespace]
+     goal:
+       domain: alert
+     result:
+       query: |-
+         {
+           "Labels":
+           {
+             "namespace": "{{.Name}}"
+           }
+         }
+
+   - name: PodToAlert
+     start:
+       domain: k8s
+       classes: [Pod]
+     goal:
+       domain: alert
+     result:
+       query: |-
+         {
+           "Labels":
+           {
+             "namespace": "{{.Namespace}}",
+             "pod": "{{.Name}}"
+           }
+         }
+
    - name: SelectorToPods
      start:
        domain: k8s
