@@ -2,8 +2,8 @@ package graph
 
 import (
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
-
 	"github.com/korrel8r/korrel8r/pkg/unique"
+
 	"gonum.org/v1/gonum/graph"
 	"gonum.org/v1/gonum/graph/encoding"
 	"gonum.org/v1/gonum/graph/multi"
@@ -14,94 +14,53 @@ import (
 // Nodes and lines carry attributes for rendering by GraphViz.
 type Graph struct {
 	*multi.DirectedGraph
+	Data                             *Data
 	GraphAttrs, NodeAttrs, EdgeAttrs Attrs
-
-	nodeID   map[korrel8r.Class]int64
-	rules    unique.List[korrel8r.Rule]
-	shortest *path.AllShortest
+	shortest                         *path.AllShortest
 }
 
-// Node is a graph Node, corresponds to a Class.
-type Node struct {
-	graph.Node
-	Attrs // GraphViz Attributer
-	Class korrel8r.Class
-}
-
-func ClassForNode(n graph.Node) korrel8r.Class { return n.(*Node).Class }
-
-func (n *Node) String() string { return korrel8r.ClassName(n.Class) }
-func (n *Node) DOTID() string  { return n.String() }
-
-// Line is one line in a multi-graph edge, corresponds to a rule.
-type Line struct {
-	graph.Line
-	Attrs // GraphViz Attributer
-	Rule  korrel8r.Rule
-}
-
-func (l *Line) DOTID() string            { return l.Rule.String() }
-func RuleFor(l graph.Line) korrel8r.Rule { return l.(*Line).Rule }
-
-// Edge is a type-safe wrapper for a multi.Edge.
-type Edge struct{ multi.Edge }
-
-// WrapEdge wraps an edge and resets its iterator.
-func WrapEdge(e graph.Edge) Edge {
-	me := e.(multi.Edge)
-	me.Reset()
-	return Edge{me}
-}
-
-func (e Edge) Start() korrel8r.Class { return ClassForNode(e.From()) }
-func (e Edge) Goal() korrel8r.Class  { return ClassForNode(e.To()) }
-func (e Edge) Line() *Line           { return e.Edge.Line().(*Line) }
-
-// New graph is immutable.
-func New(rules []korrel8r.Rule) *Graph {
-	g := &Graph{
+// New empty graph based on Data
+func New(data *Data) *Graph {
+	return &Graph{
 		DirectedGraph: multi.NewDirectedGraph(),
-		nodeID:        map[korrel8r.Class]int64{},
-		rules:         unique.NewList[korrel8r.Rule](),
-		GraphAttrs:    Attrs{},
+		Data:          data,
+		GraphAttrs: Attrs{
+			"fontname":        "Helvetica",
+			"fontsize":        "12",
+			"center":          "true",
+			"splines":         "spline",
+			"overlap":         "prism",
+			"overlap_scaling": "-2",
+			"sep":             "+8",
+		},
 		NodeAttrs: Attrs{
 			"fontname": "Helvetica",
+			"fontsize": "12",
 			"shape":    "box",
-			"style":    "rounded,filled",
 		},
-		EdgeAttrs: Attrs{},
-	}
-	for _, r := range rules {
-		g.addRule(r)
-	}
-	return g
-}
-
-// addRule adds a rule and its start/goal classes to the graph.
-func (g *Graph) addRule(r korrel8r.Rule) {
-	g.shortest = nil // Invalidated
-	if g.rules.Add(r) {
-		g.DirectedGraph.SetLine(&Line{
-			Line:  g.NewLine(g.NodeFor(r.Start()), g.NodeFor(r.Goal())),
-			Rule:  r,
-			Attrs: Attrs{},
-		})
+		EdgeAttrs: Attrs{
+			"fontname": "Helvetica",
+			"fontsize": "12",
+		},
 	}
 }
 
-func (g *Graph) EachEdge(visit func(Edge)) {
-	edges := g.Edges()
-	for edges.Next() {
-		visit(WrapEdge(edges.Edge()))
-	}
-}
+func (g *Graph) NodeFor(c korrel8r.Class) *Node { return g.Data.NodeFor(c) }
 
 func (g *Graph) EachLine(visit func(*Line)) {
-	g.EachEdge(func(e Edge) {
-		for e.Next() {
-			visit(e.Line())
+	edges := g.Edges()
+	for edges.Next() {
+		lines := edges.Edge().(multi.Edge)
+		for lines.Next() {
+			visit(lines.Line().(*Line))
 		}
-	})
+	}
+}
+
+func (g *Graph) AllLines() []*Line {
+	var lines []*Line
+	g.EachLine(func(l *Line) { lines = append(lines, l) })
+	return lines
 }
 
 func (g *Graph) EachNode(visit func(*Node)) {
@@ -111,60 +70,55 @@ func (g *Graph) EachNode(visit func(*Node)) {
 	}
 }
 
-// NodeFor returns the Node for class c, creating it if necessary.
-func (g *Graph) NodeFor(c korrel8r.Class) *Node {
-	id, ok := g.nodeID[c]
-	if !ok {
-		n := g.NewNode()
-		id = n.ID()
-		g.nodeID[c] = id
-		g.AddNode(&Node{Node: n, Class: c, Attrs: Attrs{}})
-	}
-	return g.Node(id).(*Node)
+func (g *Graph) AllNodes() []*Node {
+	var nodes []*Node
+	g.EachNode(func(n *Node) { nodes = append(nodes, n) })
+	return nodes
 }
 
-func (g *Graph) DOTID() string { return g.GraphAttrs["name"] }
-
-func (g *Graph) DOTAttributers() (graph, node, edge encoding.Attributer) {
-	return g.GraphAttrs, g.NodeAttrs, g.EdgeAttrs
-}
-
-// Attributes for nodes and lines rendered by Graphviz.
-type Attrs map[string]string
-
-var (
-	_ encoding.Attributer = Attrs{}
-	_ encoding.Attributer = Node{}
-	_ encoding.Attributer = Line{}
-)
-
-func (a Attrs) Attributes() (enc []encoding.Attribute) {
-	for k, v := range a {
-		enc = append(enc, encoding.Attribute{Key: k, Value: v})
-	}
-	return enc
-}
-
-// SubGraph new graph of rules from lines where keep() returns true
-func (g *Graph) SubGraph(keep func(*Line) bool) *Graph {
-	sub := New(nil)
-	g.EachLine(func(l *Line) {
-		if keep(l) {
-			sub.addRule(l.Rule)
+func (g *Graph) EachLineTo(v *Node, traverse func(*Line)) {
+	u := g.To(v.ID())
+	for u.Next() {
+		l := g.Lines(u.Node().ID(), v.ID())
+		for l.Next() {
+			traverse(l.Line().(*Line))
 		}
-	})
+	}
+}
+
+func (g *Graph) LinesTo(v *Node) (lines []*Line) {
+	g.EachLineTo(v, func(l *Line) { lines = append(lines, l) })
+	return lines
+}
+
+// newPaths returns a sub-graph of g containing only lines on the paths.
+func (g *Graph) newPaths(paths [][]graph.Node) *Graph {
+	sub := g.Data.EmptyGraph()
+	for _, path := range paths {
+		for i := 1; i < len(path); i++ {
+			lines := g.Lines(path[i-1].ID(), path[i].ID())
+			for lines.Next() {
+				sub.SetLine(lines.Line())
+			}
+		}
+	}
 	return sub
 }
 
-// subGraphOf constructs the sub-graph containing nodes and all edges between them.
-func (g *Graph) subGraphOf(nodes []graph.Node) *Graph {
-	sub := New(nil)
-	for _, u := range nodes {
-		for _, v := range nodes {
-			if u != v {
-				lines := g.Lines(u.ID(), v.ID())
+// NodesSubgraph returns a new graph containing nodes and all lines between them.
+func (g *Graph) NodesSubgraph(nodes []graph.Node) *Graph {
+	sub := g.Data.EmptyGraph()
+	nodeSet := unique.Set[int64]{}
+	for _, n := range nodes {
+		nodeSet.Add(n.ID())
+	}
+	for _, n := range nodes {
+		to := g.From(n.ID())
+		for to.Next() {
+			if nodeSet.Has(to.Node().ID()) {
+				lines := g.Lines(n.ID(), to.Node().ID())
 				for lines.Next() {
-					sub.addRule(lines.Line().(*Line).Rule)
+					sub.SetLine(lines.Line())
 				}
 			}
 		}
@@ -172,14 +126,30 @@ func (g *Graph) subGraphOf(nodes []graph.Node) *Graph {
 	return sub
 }
 
-func (g *Graph) pathGraph(paths [][]graph.Node) *Graph {
-	sub := New(nil)
-	visitPaths(g, paths, func(e Edge) {
-		for e.Next() {
-			sub.addRule(e.Line().Rule)
+// Select creates a sub-graph of all lines where keep(line) is true.
+func (g *Graph) Select(keep func(l *Line) bool) *Graph {
+	sub := g.Data.EmptyGraph()
+	g.EachLine(func(l *Line) {
+		if keep(l) {
+			sub.SetLine(l)
 		}
 	})
 	return sub
+}
+
+func (g *Graph) DOTID() string { return g.GraphAttrs["name"] }
+func (g *Graph) DOTAttributers() (graph, node, edge encoding.Attributer) {
+	return g.GraphAttrs, g.NodeAttrs, g.EdgeAttrs
+}
+
+// ShortestPaths returns a new sub-graph containing all shortest paths between start and goal.
+func (g *Graph) ShortestPaths(start, goal korrel8r.Class) *Graph {
+	if g.shortest == nil {
+		shortest := path.DijkstraAllPaths(g)
+		g.shortest = &shortest
+	}
+	paths, _ := g.shortest.AllBetween(g.NodeFor(start).ID(), g.NodeFor(goal).ID())
+	return g.newPaths(paths)
 }
 
 // AllPaths returns a new sub-graph containing all paths between start and goal.
@@ -191,21 +161,34 @@ func (g *Graph) AllPaths(start, goal korrel8r.Class) *Graph {
 		path:    []graph.Node{u},
 	}
 	ap.run(u.ID(), v.ID())
-	return g.pathGraph(ap.paths)
+	return g.newPaths(ap.paths)
 }
 
-// ShortestPaths returns a new sub-graph containing all paths between start and goal.
-func (g *Graph) ShortestPaths(start, goal korrel8r.Class) *Graph {
-	if g.shortest == nil {
-		shortest := path.DijkstraAllPaths(g)
-		g.shortest = &shortest
+// allPaths is the state of a backtracking depth-first-search
+type allPaths struct {
+	g       graph.Graph
+	visited map[int64]bool
+	path    []graph.Node
+	paths   [][]graph.Node
+}
+
+func (ap *allPaths) run(u, v int64) {
+	iter := ap.g.From(u)
+	for iter.Next() {
+		n := iter.Node()
+		if ap.visited[n.ID()] {
+			continue
+		}
+		ap.path = append(ap.path, n)
+		if n.ID() == v { // Complete path
+			path := make([]graph.Node, len(ap.path))
+			copy(path, ap.path)
+			ap.paths = append(ap.paths, path)
+		} else { // Continue search
+			ap.visited[n.ID()] = true
+			ap.run(n.ID(), v)
+			ap.visited[n.ID()] = false
+		}
+		ap.path = ap.path[0 : len(ap.path)-1] // Backtrack and continue search.
 	}
-	paths, _ := g.shortest.AllBetween(g.NodeFor(start).ID(), g.NodeFor(goal).ID())
-	return g.pathGraph(paths)
-}
-
-func (g *Graph) Clone() *Graph {
-	g2 := New(nil)
-	g.EachLine(func(l *Line) { g2.addRule(l.Rule) })
-	return g2
 }

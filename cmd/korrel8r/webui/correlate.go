@@ -2,15 +2,18 @@ package webui
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"math"
 	"net/http"
 	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
+	"strings"
 	"time"
 
-	"github.com/korrel8r/korrel8r/pkg/engine"
 	"github.com/korrel8r/korrel8r/pkg/graph"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"go.uber.org/multierr"
@@ -21,24 +24,56 @@ import (
 type correlate struct {
 	// URL Query parameter fields
 	Start       string // Starting point, console URL or query string.
-	StartIs     string // "Openshift Console"or "korrel8r Query"
 	StartDomain string
-	Goal        string // Goal class full name.
-	Goals       string // Goal radio choice
-	Full        bool   // Full diagram
-	All         bool   // All paths
+	Goal        string
+	Other       string
+	Neighbours  string
+
+	ShortPaths bool // All paths
+	RuleGraph  bool // Rules graph without results
+	// Goals to list as radio options, map[value]id
+	Goals []struct{ Value, Label string }
 
 	// Computed fields used by page template.
-	Time                  time.Time
-	StartClass, GoalClass korrel8r.Class
-	Diagram               string
-	Results               *engine.Results
-	ConsoleURL            *url.URL
+	Time                            time.Time
+	StartQuery                      korrel8r.Query
+	StartClass, GoalClass           korrel8r.Class
+	Depth                           int
+	Graph                           *graph.Graph
+	Diagram, DiagramTxt, DiagramImg string
+	ConsoleURL                      *url.URL
 	// Accumulated errors displayed on page
 	Err error
 
 	// Parent
 	ui *WebUI
+}
+
+// reset the fields to contain only URL query parameters
+func (c *correlate) reset(params url.Values) {
+	ui := c.ui      // Save
+	*c = correlate{ // Overwrite
+		Start:       params.Get("start"),
+		StartDomain: params.Get("domain"),
+		Goal:        params.Get("goal"),
+		Other:       params.Get("other"),
+		Neighbours:  params.Get("neighbours"),
+		ShortPaths:  params.Get("short") == "true",
+		RuleGraph:   params.Get("rules") == "true",
+		Time:        time.Now(),
+	}
+	c.Goals = []struct{ Value, Label string }{
+		{"logs/infrastructure", "Logs"}, // FIXME wildcard
+		{"k8s/Event", "Events"},
+		{"metric/metric", "Metrics"},
+	}
+	c.ui = ui
+	c.ConsoleURL = c.ui.Console.BaseURL
+	c.Graph = c.ui.Engine.Graph()
+	// Defaults
+	if c.Goal == "" {
+		c.Goal = "neighbours"
+	}
 }
 
 func (c *correlate) ServeHTTP(w http.ResponseWriter, req *http.Request) {
@@ -52,31 +87,6 @@ func (c *correlate) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		"queryToConsole": func(q korrel8r.Query) *url.URL { return c.checkURL(c.ui.Console.QueryToConsoleURL(q)) },
 	})
 	serveTemplate(w, t, correlateHTML, c)
-}
-
-// reset the fields to contain only URL query parameters
-func (c *correlate) reset(params url.Values) {
-	ui := c.ui      // Save
-	*c = correlate{ // Overwrite
-		Start:       params.Get("start"),
-		StartIs:     params.Get("startis"),
-		StartDomain: params.Get("domain"),
-		Goal:        params.Get("goal"),
-		Goals:       params.Get("goals"),
-		Full:        params.Get("full") == "true",
-		All:         params.Get("all") == "true",
-		Time:        time.Now(),
-		Results:     engine.NewResults(),
-	}
-	// Default missing values
-	if c.StartIs == "" {
-		c.StartIs = "Openshift Console"
-	}
-	if c.Goals == "" {
-		c.Goals = "logs"
-	}
-	c.ui = ui
-	c.ConsoleURL = c.ui.Console.BaseURL
 }
 
 // addErr adds an error to be displayed on the page.
@@ -104,118 +114,163 @@ func (c *correlate) checkURL(u *url.URL, err error) *url.URL {
 
 func (c *correlate) update(req *http.Request) {
 	c.reset(req.URL.Query())
-	starters := korrel8r.NewResult(c.StartClass)
-	startQuery, err := c.updateStart(starters)
-	c.addErr(err, "start")
+	if !c.addErr(c.updateStart(), "start") {
+		// Prime the start node with initial results
+		start := c.Graph.NodeFor(c.StartClass)
+		if c.addErr(c.ui.Engine.Get(context.Background(), c.StartClass, c.StartQuery, start.Result)) {
+			return
+		}
+		start.QueryCounts.Put(c.StartQuery, len(start.Result.List()))
+	}
 	c.addErr(c.updateGoal(), "goal")
-	if c.StartClass == nil || c.GoalClass == nil || len(starters.List()) == 0 {
+	if c.Err != nil {
 		return
 	}
-	full := c.ui.Engine.Graph()
-	var paths *graph.Graph
-	if c.All {
-		paths = full.AllPaths(c.StartClass, c.GoalClass)
+	follower := c.ui.Engine.Follower(context.Background())
+
+	if c.GoalClass != nil { // Paths from start to goal.
+		if c.ShortPaths {
+			c.Graph = c.Graph.ShortestPaths(c.StartClass, c.GoalClass)
+		} else {
+			c.Graph = c.Graph.AllPaths(c.StartClass, c.GoalClass)
+		}
 	} else {
-		paths = full.ShortestPaths(c.StartClass, c.GoalClass)
+		// Find Neighbours
+		traverse := follower.Traverse
+		if c.RuleGraph {
+			traverse = nil
+		}
+		c.Graph = c.Graph.Neighbours(c.StartClass, c.Depth, traverse)
 	}
-	// Traverse and collect results
-	if !c.addErr(c.ui.Engine.Traverse(context.Background(), starters.List(), nil, paths, c.Results)) {
-		// Only keep rules that yielded results.
-		paths = paths.SubGraph(func(l *graph.Line) bool {
-			qr, ok := c.Results.Get(l)
-			return ok && len(qr.Result.List()) > 0
-			// FIXME combine traverse and subgraph for efficiency?
+	if !c.RuleGraph {
+		c.addErr(c.Graph.Traverse(follower.Traverse))
+		c.Graph = c.Graph.Select(func(l *graph.Line) bool { // Remove lines with no queries
+			return l.QueryCounts.Total() > 0
 		})
+		if c.GoalClass != nil {
+			// Only include start->goal paths, remove dead-ends.
+			c.Graph = c.Graph.AllPaths(c.StartClass, c.GoalClass)
+		}
 	}
-	c.diagram(paths, startQuery, starters.List())
+	// Add start/goal nodes even if empty.
+	c.addClassNode(c.StartClass)
+	c.addClassNode(c.GoalClass)
+
+	c.updateDiagram()
+	log.V(2).Info("update complete")
 }
 
-func (c *correlate) updateStart(result korrel8r.Result) (korrel8r.Query, error) {
-	var query korrel8r.Query
-	switch {
-	case c.Start == "":
-		return nil, fmt.Errorf("missing")
-
-	case c.StartIs == "query":
-		domain, err := c.ui.Engine.DomainErr(c.StartDomain)
-		if err != nil {
-			return nil, err
-		}
-		query, err = domain.UnmarshalQuery([]byte(c.Start))
-		if err != nil {
-			return nil, err
-		}
-
-	default: // Console URL
-		u, err := url.Parse(c.Start)
-		if err != nil {
-			return nil, err
-		}
-		query, err = c.ui.Console.ConsoleURLToQuery(u)
-		if err != nil {
-			return nil, err
-		}
+func (c *correlate) updateStart() (err error) {
+	if c.Start == "" {
+		return errors.New("empty")
 	}
-	c.StartClass = query.Class()
-	// Get start objects, save in c.Results
-	return query, c.ui.Engine.Get(c.StartClass, context.Background(), query, result)
+	if c.StartClass, err = c.ui.Engine.Class(c.Start); err == nil {
+		return nil
+	}
+	if u, err := url.Parse(c.Start); err == nil {
+		if c.StartQuery, err = c.ui.Console.ConsoleURLToQuery(u); err != nil {
+			return err
+		}
+		c.StartClass = c.StartQuery.Class()
+		return nil
+	}
+	domain, err := c.ui.Engine.DomainErr(c.StartDomain)
+	if err != nil {
+		return err
+	}
+	if c.StartQuery, err = domain.UnmarshalQuery([]byte(c.Start)); err != nil {
+		return err
+	}
+	c.StartClass = c.StartQuery.Class()
+	return nil
 }
 
-func (c *correlate) updateGoal() error {
-	switch c.Goals {
-	case "logs":
-		c.Goal = "logs/infrastructure"
-	case "metrics":
-		c.Goal = "metric/metric"
-	case "events":
-		c.Goal = "k8s/Event"
+func (c *correlate) updateGoal() (err error) {
+	switch c.Goal {
+	case "neighbours":
+		c.Depth, _ = strconv.Atoi(c.Neighbours)
+		if c.Depth <= 0 {
+			c.Depth = 99
+		}
+		return nil
+	case "other":
+		c.GoalClass, err = c.ui.Engine.Class(c.Other)
+	default:
+		c.GoalClass, err = c.ui.Engine.Class(c.Goal)
 	}
-	if c.Goal == "" {
-		return fmt.Errorf("missing")
-	}
-	var err error
-	c.GoalClass, err = c.ui.Engine.Class(c.Goal)
 	return err
 }
 
-func (c *correlate) queryURL(a graph.Attrs, q korrel8r.Query) {
-	a["URL"] = c.checkURL(c.ui.Console.QueryToConsoleURL(q)).String()
-	a["target"] = "_blank"
+func (c *correlate) addClassNode(class korrel8r.Class) {
+	if class != nil {
+		n := c.Graph.NodeFor(class)
+		if c.Graph.Node(n.ID()) == nil {
+			c.Graph.AddNode(n)
+		}
+	}
 }
 
-// diagram the set of rules used in the given paths.
-func (c *correlate) diagram(g *graph.Graph, startQuery korrel8r.Query, starters []korrel8r.Object) {
-	// Decorate the graph to show results
-	a := g.NodeFor(c.StartClass).Attrs
-	a["rank"] = "first"
-	a["shape"] = "oval"
-	c.queryURL(a, startQuery)
+func (c *correlate) queryURLAttrs(a graph.Attrs, qcs graph.QueryCounts) {
+	if len(qcs) > 0 {
+		a["URL"] = c.checkURL(c.ui.Console.QueryToConsoleURL(qcs.Sort()[0].Query)).String()
+		a["target"] = "_blank"
+	}
+}
 
-	a = g.NodeFor(c.GoalClass).Attrs
-	a["rank"] = "last"
-	a["shape"] = "oval"
+const (
+	startColor = "green2"
+	goalColor  = "pink"
+	fullColor  = "wheat"
+	emptyColor = "white"
+)
+
+// updateDiagram generates an SVG diagram via graphviz.
+func (c *correlate) updateDiagram() {
+	g := c.Graph
+	g.EachNode(func(n *graph.Node) {
+		a := n.Attrs
+		a["label"] = fmt.Sprintf("%v/%v", n.Class.Domain(), korrel8r.ShortString(n.Class))
+		a["tooltip"] = fmt.Sprintf("%v (%v)\n", korrel8r.ClassName(n.Class), len(n.Result.List()))
+		a["style"] = "rounded,filled"
+		if count := len(n.Result.List()); count > 0 {
+			a["label"] = fmt.Sprintf("%v\n(%v)", a["label"], count)
+			a["style"] = strings.Join([]string{a["style"], "bold"}, ",")
+			a["fillcolor"] = fullColor
+			c.queryURLAttrs(a, n.QueryCounts)
+		} else {
+			a["fillcolor"] = emptyColor
+		}
+	})
 
 	g.EachLine(func(l *graph.Line) {
 		a := l.Attrs
-		a["xlabel"] = l.Rule.String()
-		if qr, ok := c.Results.Get(l); ok {
-			if count := len(qr.Result.List()); count > 0 {
-				// Decorate the rule arrow
-				a["tooltip"] = fmt.Sprintf("%v : %v", korrel8r.ClassName(l.Rule.Goal()), count)
-				a["color"] = "green"
-				c.queryURL(a, qr.Query)
-				a["target"] = "_blank"
-
-				// Decorate the goal node
-				n := l.To().(*graph.Node)
-				a := n.Attrs
-				// TODO handle multiple incoming lines to a single node.
-				a["xlabel"] = fmt.Sprintf("%v", count)
-				a["fillcolor"] = "cyan"
-				c.queryURL(a, qr.Query)
-			}
+		a["tooltip"] = fmt.Sprintf("%v (%v)\n", korrel8r.RuleName(l.Rule), l.QueryCounts.Total())
+		if count := l.QueryCounts.Total(); count > 0 {
+			a["arrowsize"] = fmt.Sprintf("%v", math.Min(0.3+float64(count)*0.05, 1))
+			a["style"] = "bold"
+			c.queryURLAttrs(a, l.QueryCounts)
+		} else {
+			a["style"] = "dashed"
+			a["color"] = "gray"
 		}
 	})
+
+	if c.StartClass != nil {
+		a := g.NodeFor(c.StartClass).Attrs
+		a["shape"] = "oval"
+		a["fillcolor"] = startColor
+		a["root"] = "true"
+	}
+
+	var layout string
+	if c.GoalClass != nil {
+		a := g.NodeFor(c.GoalClass).Attrs
+		a["shape"] = "diamond"
+		a["fillcolor"] = goalColor
+		layout = "dot"
+	} else {
+		layout = "twopi"
+	}
 
 	// Write the graph files
 	baseName := filepath.Join(c.ui.dir, "files", "korrel8r")
@@ -223,13 +278,21 @@ func (c *correlate) diagram(g *graph.Graph, startQuery korrel8r.Query, starters 
 		gvFile := baseName + ".txt"
 		if !c.addErr(os.WriteFile(gvFile, gv, 0664)) {
 			// Render and write the graph image
-			imageFile := baseName + ".svg"
-			cmd := exec.Command("dot", "-x", "-Tsvg", "-o", imageFile, gvFile)
-			cmd.Stdout, cmd.Stderr = os.Stdout, os.Stderr
-			if !c.addErr(cmd.Run()) {
-				c.Diagram, err = filepath.Rel(c.ui.dir, imageFile) // URL path is relative to root
-				c.addErr(err)
+			svgFile := baseName + ".svg"
+			if !c.addErr(runDot("dot", "-v", "-K", layout, "-Tsvg", "-o", svgFile, gvFile)) {
+				c.Diagram, _ = filepath.Rel(c.ui.dir, svgFile)
+				c.DiagramTxt, _ = filepath.Rel(c.ui.dir, gvFile)
+			}
+			pngFile := baseName + ".png"
+			if !c.addErr(runDot("dot", "-v", "-K", layout, "-Tpng", "-o", pngFile, gvFile)) {
+				c.DiagramImg, _ = filepath.Rel(c.ui.dir, pngFile)
 			}
 		}
 	}
+}
+
+func runDot(cmdName string, args ...string) error {
+	cmd := exec.Command(cmdName, args[1:]...)
+	cmd.Stdout, cmd.Stderr = os.Stdout, os.Stderr
+	return cmd.Run()
 }

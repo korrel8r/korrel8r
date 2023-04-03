@@ -1,0 +1,17 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bad-config-deployment
+  namespace: default
+spec:
+  selector:
+    matchLabels:
+      app: bad-config-deployment
+  template:
+    metadata:
+      labels:
+        app: bad-config-deployment
+    spec:
+      containers:
+      - image: quay.io/openshift-logging/vector:0.23-rh
+        name: bad-config-deployment

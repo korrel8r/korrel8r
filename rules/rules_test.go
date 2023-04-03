@@ -18,6 +18,7 @@ import (
 	"github.com/korrel8r/korrel8r/pkg/domains/logs"
 	"github.com/korrel8r/korrel8r/pkg/domains/metric"
 	"github.com/korrel8r/korrel8r/pkg/engine"
+	"github.com/korrel8r/korrel8r/pkg/graph"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"github.com/korrel8r/korrel8r/pkg/templaterule"
 	"github.com/korrel8r/korrel8r/pkg/unique"
@@ -51,16 +52,17 @@ func setup(t *testing.T) *engine.Engine {
 	return e
 }
 
-func testTraverse(t *testing.T, e *engine.Engine, start, goal korrel8r.Class, objs []korrel8r.Object, want korrel8r.Query) {
+func testTraverse(t *testing.T, e *engine.Engine, start, goal korrel8r.Class, starters []korrel8r.Object, wantQuery korrel8r.Query) {
 	t.Helper()
-	full := e.Graph()
-	paths := full.ShortestPaths(start, goal)
-	results := engine.NewResults()
-	assert.NoError(t, e.Traverse(ctx, objs, nil, paths, results))
-	qrs := results.ByClass()[goal]
-	if assert.NotEmpty(t, qrs) {
-		assert.Equal(t, test.JSONString(want), test.JSONString(qrs[0].Query))
-	}
+	paths := e.Graph().ShortestPaths(start, goal)
+	paths.NodeFor(start).Result.Append(starters...)
+	f := e.Follower(context.Background())
+	assert.NoError(t, paths.Traverse(f.Traverse))
+	assert.NoError(t, f.Err)
+	n := paths.NodeFor(goal)
+	want := graph.QueryCounts{}
+	want.Put(wantQuery, 0)
+	assert.Equal(t, want, n.QueryCounts)
 }
 
 func TestPodToLogs(t *testing.T) {
@@ -171,5 +173,3 @@ func TestK8sAllToMetric(t *testing.T) {
 	want := &metric.Query{PromQL: "{ namespace=\"aNamespace\", pod=\"foo\" }"}
 	testTraverse(t, e, k8s.ClassOf(pod), metric.Class{}, []korrel8r.Object{pod}, want)
 }
-
-var ctx = context.Background()

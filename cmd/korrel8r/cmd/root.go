@@ -34,13 +34,13 @@ var (
 		Version: "0.1.1",
 	}
 	// Flags
-	output     *string
-	verbose    *int
-	rulePaths  *[]string
-	metricsAPI *string
-	alertsAPI  *string
-	logsAPI    *string
-	panicOnErr *bool
+	output          *string
+	verbose         *int
+	rulePaths       *[]string
+	metricsAPI      *string
+	alertmanagerAPI *string
+	logsAPI         *string
+	panicOnErr      *bool
 )
 
 func init() {
@@ -49,7 +49,7 @@ func init() {
 	verbose = rootCmd.PersistentFlags().IntP("verbose", "v", 0, "Verbosity for logging")
 	rulePaths = rootCmd.PersistentFlags().StringArray("rules", defaultRulePaths(), "Files or directories containing rules.")
 	metricsAPI = rootCmd.PersistentFlags().StringP("metrics-url", "", "", "URL to the metrics API")
-	alertsAPI = rootCmd.PersistentFlags().StringP("alerts-url", "", "", "URL to the alerts API")
+	alertmanagerAPI = rootCmd.PersistentFlags().StringP("alertmanager-url", "", "", "URL to the Alertmanager API")
 	logsAPI = rootCmd.PersistentFlags().StringP("logs-url", "", "", "URL to the logs API")
 	cobra.OnInitialize(func() { logging.Init(*verbose) })
 }

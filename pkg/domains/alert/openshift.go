@@ -10,19 +10,19 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-const (
-	MonitoringNS     = "openshift-monitoring"
-	AlertmanagerMain = "alertmanager-main"
-)
-
-// OpenshiftManagerStore creates a store client for the in-cluster OpenShift Alertmanager's route.
-func NewOpenshiftAlertManagerStore(ctx context.Context, cfg *rest.Config) (korrel8r.Store, error) {
+// OpenshifStore creates a store client for the in-cluster OpenShift monitoring stack.
+func NewOpenshiftStore(ctx context.Context, cfg *rest.Config) (korrel8r.Store, error) {
 	c, err := client.New(cfg, client.Options{})
 	if err != nil {
 		return nil, err
 	}
 
-	host, err := openshift.RouteHost(ctx, c, openshift.AlertmanagerMainNSName)
+	alertmanagerHost, err := openshift.RouteHost(ctx, c, openshift.AlertmanagerMainNSName)
+	if err != nil {
+		return nil, err
+	}
+
+	prometheusHost, err := openshift.RouteHost(ctx, c, openshift.ThanosQuerierNSName)
 	if err != nil {
 		return nil, err
 	}
@@ -32,10 +32,9 @@ func NewOpenshiftAlertManagerStore(ctx context.Context, cfg *rest.Config) (korre
 		return nil, err
 	}
 
-	u := &url.URL{
-		Scheme: "https",
-		Host:   host,
-	}
-
-	return NewStore(u, hc)
+	return NewStore(
+		&url.URL{Scheme: "https", Host: alertmanagerHost},
+		&url.URL{Scheme: "https", Host: prometheusHost},
+		hc,
+	)
 }

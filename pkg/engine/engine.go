@@ -6,20 +6,16 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/korrel8r/korrel8r/internal/pkg/logging"
 	"github.com/korrel8r/korrel8r/pkg/graph"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"golang.org/x/exp/maps"
 )
-
-var log = logging.Log()
 
 // Engine combines a set of domains and a set of rules, so it can perform correlation.
 type Engine struct {
 	stores        map[string]korrel8r.Store
 	domains       map[string]korrel8r.Domain
 	rules         []korrel8r.Rule
-	graph         *graph.Graph
 	templateFuncs map[string]any
 }
 
@@ -93,55 +89,20 @@ func (e *Engine) Rules() []korrel8r.Rule { return e.rules }
 
 func (e *Engine) AddRules(rules ...korrel8r.Rule) { e.rules = append(e.rules, rules...) }
 
-// Traverse a rule graph, generate queries, get data from stores, and accumulate results.
-// Failure to apply a rule is not an error.
-func (e *Engine) Traverse(ctx context.Context, starters []korrel8r.Object, c *korrel8r.Constraint, pathGraph *graph.Graph, results *Results) error {
-	return pathGraph.Traverse(func(edge graph.Edge) {
-		start, goal := edge.Start(), edge.Goal()
-		if len(starters) == 0 {
-			log.V(3).Info("no starters", "start", korrel8r.ClassName(start), "goal", korrel8r.ClassName(goal))
-			return
-		}
-		store, err := e.StoreErr(goal.Domain().String())
-		if err != nil { // No return, we want to generate queries even if there is no store
-			log.V(2).Error(err, "no store", "goal", korrel8r.ClassName(goal))
-		}
-		for edge.Next() { // For each line
-			l := edge.Line()
-			for _, s := range starters {
-				query, err := l.Rule.Apply(s, c)
-				if err != nil {
-					log.V(3).Error(err, "did not apply", "rule", l.Rule)
-					continue
-				}
-				result := korrel8r.NewResult(goal)
-				if store != nil {
-					if err := store.Get(ctx, query, result); err != nil {
-						log.V(2).Error(err, "store get failed", "query", query, "store", store.Domain())
-					}
-				}
-				results.Set(l, QueryResult{Query: query, Result: result})
-				log.V(3).Info("got objects", "rule", l.Rule, "class", korrel8r.ClassName(goal), "count", len(result.List()))
-			}
-		}
-	})
-}
-
-func (e *Engine) Graph() *graph.Graph {
-	if e.graph == nil {
-		e.graph = graph.New(e.rules)
-	}
-	return e.graph
-}
+// Graph creates a new graph of the rules and classes of this engine.
+func (e *Engine) Graph() *graph.Graph { return graph.NewData(e.rules...).NewGraph() }
 
 // TemplateFuncs returns template helper functions for stores and domains known to this engine.
 // See text/template.Template.Funcs
 func (e *Engine) TemplateFuncs() map[string]any { return e.templateFuncs }
 
-func (e *Engine) Get(class korrel8r.Class, ctx context.Context, query korrel8r.Query, result korrel8r.Appender) error {
+// Get finds the store for the query.Class() and gets into result.
+func (e *Engine) Get(ctx context.Context, class korrel8r.Class, query korrel8r.Query, result korrel8r.Appender) error {
 	store, err := e.StoreErr(class.Domain().String())
 	if err != nil {
 		return err
 	}
 	return store.Get(ctx, query, result)
 }
+
+func (e *Engine) Follower(ctx context.Context) *Follower { return &Follower{Engine: e, Context: ctx} }

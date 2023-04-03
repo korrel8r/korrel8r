@@ -40,6 +40,19 @@ type Class interface {
 	String() string // String name of the class within the domain, e.g "Pod". See ClassName()
 }
 
+// ShortStringer optionally implemented for class that have a short-form sting.
+type ShortStringer interface {
+	ShortString() string
+}
+
+// ShortString returns ShortString() if value is a ShortStringer, String() otherwise.
+func ShortString(v any) string {
+	if v, ok := v.(ShortStringer); ok {
+		return v.ShortString()
+	}
+	return fmt.Sprintf("%v", v)
+}
+
 // IDer is implemented by classes that have a meaningful identifier.
 // Classes that implement IDer can be de-duplicated when collected in a Result.
 type IDer interface {
@@ -97,7 +110,7 @@ type Rule interface {
 
 // RuleName returns a string including the rule name with full start and goal class names.
 func RuleName(r Rule) string {
-	return fmt.Sprintf("%v(%v->%v)", r, ClassName(r.Start()), ClassName(r.Goal()))
+	return fmt.Sprintf("%v [%v]->[%v]", r, ClassName(r.Start()), ClassName(r.Goal()))
 }
 
 // JSONString returns the JSON marshaled string from v, or the error message if marshal fails

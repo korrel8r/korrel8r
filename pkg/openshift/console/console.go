@@ -44,7 +44,7 @@ func (c *Console) converter(domain string) Converter {
 func (c *Console) ConsoleURLToQuery(u *url.URL) (q korrel8r.Query, err error) {
 	defer func() {
 		if err != nil {
-			log.V(3).Error(err, "console to query", "url", u)
+			log.V(2).Error(err, "console to query", "url", u)
 		}
 	}()
 	for _, x := range []struct{ prefix, domain string }{
@@ -67,7 +67,7 @@ func (c *Console) ConsoleURLToQuery(u *url.URL) (q korrel8r.Query, err error) {
 func (c *Console) QueryToConsoleURL(q korrel8r.Query) (u *url.URL, err error) {
 	defer func() {
 		if err != nil {
-			log.V(3).Error(err, "query to console", "query", q)
+			log.V(2).Error(err, "query to console", "query", q)
 		}
 	}()
 	if qc := c.converter(q.Class().Domain().String()); qc != nil {

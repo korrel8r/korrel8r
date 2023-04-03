@@ -13,7 +13,7 @@ func TestList_Classes(t *testing.T) {
 	test.SkipIfNoCluster(t)
 	// List all k8s classes
 	var exitCode int
-	stdout, stderr := test.FakeMain([]string{"", "list", "k8s"}, func() {
+	stdout, stderr := test.FakeMain([]string{"", "list", "k8s", "--panic"}, func() {
 		exitCode = Execute()
 	})
 	require.Equal(t, 0, exitCode, stderr)

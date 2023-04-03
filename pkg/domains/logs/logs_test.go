@@ -31,7 +31,7 @@ func TestStore_Get_PlainLoki(t *testing.T) {
 
 	var want []korrel8r.Object
 	for _, l := range lines {
-		want = append(want, Object(l))
+		want = append(want, NewObject(l))
 	}
 	q := &Query{LogQL: `{test="logs"}`}
 	result := korrel8r.NewListResult()
@@ -66,11 +66,12 @@ func TestLokiStackStore_Get(t *testing.T) {
 		require.NoError(t, err)
 		t.Logf("waiting for 4 logs, got %v. %v%v", len(result), s, q)
 		return len(result) >= 3
-	}, time.Minute, 5*time.Second)
+	}, 30*time.Second, 1*time.Second)
 	var got []string
+
 	for _, obj := range result {
 		var m map[string]any
-		line := string(obj.(Object))
+		line := obj.(Object).Entry
 		assert.NoError(t, json.Unmarshal([]byte(line), &m), line)
 		got = append(got, m["message"].(string))
 	}
@@ -103,12 +104,12 @@ func TestStoreGet_Constraint(t *testing.T) {
 		{
 			q:    &Query{LogQL: `{test="logs"}`},
 			c:    &korrel8r.Constraint{End: &t1},
-			want: []korrel8r.Object{Object("much"), Object("too"), Object("early")},
+			want: []korrel8r.Object{NewObject("much"), NewObject("too"), NewObject("early")},
 		},
 		{
 			q:    &Query{LogQL: `{test="logs"}`},
 			c:    &korrel8r.Constraint{Start: &t1, End: &t2},
-			want: []korrel8r.Object{Object("right"), Object("on"), Object("time")},
+			want: []korrel8r.Object{NewObject("right"), NewObject("on"), NewObject("time")},
 		},
 	} {
 		t.Run(strconv.Itoa(n), func(t *testing.T) {

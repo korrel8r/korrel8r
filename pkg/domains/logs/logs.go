@@ -50,7 +50,7 @@ func (domain) QueryToConsoleURL(query korrel8r.Query) (*url.URL, error) {
 }
 
 func (domain) ConsoleURLToQuery(u *url.URL) (korrel8r.Query, error) {
-	if c, ok := classMap[u.Query().Get("logType")]; ok {
+	if c, ok := classMap[u.Query().Get("tenant")]; ok {
 		return &Query{
 			LogQL:   u.Query().Get("q"),
 			LogType: c.String(),
@@ -64,9 +64,22 @@ type Class string
 
 func (c Class) Domain() korrel8r.Domain { return Domain }
 func (c Class) String() string          { return string(c) }
-func (c Class) New() korrel8r.Object    { return Object("") }
+func (c Class) New() korrel8r.Object    { return Object{} }
 
-type Object string // Log record
+type Object struct {
+	Entry string          // Log entry as a string.
+	json  *map[string]any // Decoded as a JSON Object. Empty if failed.
+}
+
+func NewObject(entry string) Object { return Object{Entry: entry} }
+
+func (o Object) JSON() any {
+	if o.json == nil {
+		o.json = new(map[string]any)
+		_ = json.Unmarshal([]byte(o.Entry), o.json)
+	}
+	return *o.json
+}
 
 // Query is a LogQL query string
 type Query struct {
@@ -75,15 +88,21 @@ type Query struct {
 }
 
 const (
-	Application    = "application"
-	Infrastructure = "infrastructure"
-	Audit          = "audit"
+	Application    Class = "application"
+	Infrastructure Class = "infrastructure"
+	Audit          Class = "audit"
 )
 
 var (
-	classes  = []korrel8r.Class{Class(Application), Class(Infrastructure), Class(Audit)}
-	classMap = map[string]Class{Application: Class(Application), Infrastructure: Class(Infrastructure), Audit: Class(Audit)}
+	classes  = []korrel8r.Class{Application, Infrastructure, Audit}
+	classMap = map[string]korrel8r.Class{}
 )
+
+func init() {
+	for _, c := range classes {
+		classMap[string(c.(Class))] = c
+	}
+}
 
 func (q *Query) String() string        { return q.LogQL }
 func (q *Query) Class() korrel8r.Class { return Class(q.LogType) }
@@ -110,7 +129,7 @@ func (q *Query) plainURL() *url.URL {
 func (q *Query) lokiStackURL() *url.URL {
 	u := q.plainURL()
 	if q.LogType == "" {
-		q.LogType = Application
+		q.LogType = Application.String()
 	}
 	u.Path = path.Join("/api/logs/v1/", q.LogType, u.Path)
 	return u
@@ -166,7 +185,7 @@ func (s *Store) Get(ctx context.Context, query korrel8r.Query, result korrel8r.A
 	}
 	slices.SortStableFunc(logs, func(a, b []string) bool { return a[0] < b[0] })
 	for _, tl := range logs { // tl is [time, line]
-		result.Append(Object(tl[1]))
+		result.Append(NewObject(tl[1]))
 	}
 	return nil
 }

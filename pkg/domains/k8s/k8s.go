@@ -88,6 +88,7 @@ func (c Class) New() korrel8r.Object {
 	return nil
 }
 func (c Class) String() string               { return fmt.Sprintf("%v.%v.%v", c.Kind, c.Version, c.Group) }
+func (c Class) ShortString() string          { return c.Kind }
 func (c Class) GVK() schema.GroupVersionKind { return schema.GroupVersionKind(c) }
 
 type Object client.Object

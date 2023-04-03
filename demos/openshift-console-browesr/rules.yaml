@@ -1,0 +1,142 @@
+# Demo rule set, crafted to avoid unresolved issues with wildcard rules in korrel8r.
+groups:
+  - name: workloads
+    classes:
+      - Pod
+      - Deployment.apps
+      - DeploymentConfig.apps.openshift.io
+      - StatefulSet.apps
+      - Secret
+      - ConfigMap
+      - CronJob.batch
+      - Job.batch
+      - DaemonSet.apps
+      - ReplicaSet.apps
+      - ReplicationController
+      - HorizontalPodAutoscaler.autoscaling
+
+  - name: networking
+    classes:
+      - Service
+      - Route.route.openshift.io
+      - Ingress.networking.k8s.io
+      - NetworkPolicy.networking.k8s.io
+
+  - name: storage
+    classes:
+      - PersistentVolumeClaim
+      - PersistentVolume
+      - StorageClass.storage.k8s.io
+      - VolumeAttachment.storage.k8s.io
+
+  - name: users
+    classes:
+#      - User.users.openshift.io
+#      - Group.users.openshift.io
+      - ServiceAccount
+      - Role.rbac.authorization.k8s.io
+      - RoleBinding.rbac.authorization.k8s.io
+      - ClusterRole.rbac.authorization.k8s.io
+      - ClusterRoleBinding.rbac.authorization.k8s.io
+
+  - name: all
+    classes: [workloads, networking, storage, users]
+
+  - name: selectors
+    classes:
+      - PersistentVolumeClaim
+      - ReplicationController
+      - Service
+      - DaemonSet.apps
+      - Deployment.apps
+      - ReplicaSet.apps
+      - StatefulSet.apps
+      - DeploymentConfig.apps.openshift.io
+      - Job.batch
+      - PodDisruptionBudget.policy
+#      - ClusterOperator
+#      - MachineHealthCheck
+#      - MachineSet
+#      - PodMonitor
+#      - ServiceMonitor
+#      - ClusterServiceVersion
+#      - OperatorGroup
+#      - Operator
+#      - PackageManifest
+#      - AppliedClusterResourceQuota
+#      - ClusterResourceQuota
+
+rules:
+   - name: SelectorToLogs
+     start:
+       domain: k8s
+       classes: [selectors]
+     goal:
+       domain: logs
+     result:
+       query: |-
+         {
+           "LogType": "{{ k8sLogType .Namespace }}",
+           "LogQL": "{kubernetes_namespace_name=\"{{.Namespace}}\"} | json
+             {{- range $k, $v := .Spec.Selector.MatchLabels}} | kubernetes_labels_{{lokiFixLabel $k}}=\"{{$v}}\"{{end -}}"
+         }
+   - name: PodToLogs
+     start:
+       domain: k8s
+       classes: [Pod]
+     goal:
+       domain: logs
+     result:
+       query: |-
+         {
+           "LogType": "{{ k8sLogType .Namespace }}",
+           "LogQL": "{kubernetes_namespace_name=\"{{.Namespace}}\",kubernetes_pod_name=\"{{.Name}}\"} | json"
+         }
+   - name: SelectorToPods
+     start:
+       domain: k8s
+       classes: [selectors]
+     goal:
+       domain: k8s
+       classes: [Pod]
+     result:
+       query: |-
+         {"Namespace":"{{.Namespace}}","Labels":{{ .Spec.Selector.MatchLabels | json -}} }
+   - name: EventToAll
+     start:
+       domain: k8s
+       classes: [Event]
+     goal:
+       domain: k8s
+       classes: [all]
+     result:
+       query: |-
+         {{- with .InvolvedObject -}}
+         {{- $gv := k8sGroupVersion .APIVersion -}}
+         {"Namespace":"{{.Namespace}}","Name":"{{.Name}}","Group":"{{$gv.Group}}","Version":"{{$gv.Version}}","Kind":"{{.Kind}}"}
+         {{- end -}}
+   - name: AllToEvent
+     start:
+       domain: k8s
+       classes: [all, Namespace.]
+     goal:
+       domain: k8s
+       classes: [Event.]
+     result:
+       query: |-
+         { "Fields": {
+            "involvedObject.namespace": "Namespace",
+             "involvedObject.name": ".Name",
+             "involvedObject.Kind", "{{.Kind}}",
+             "involvedObject.apiVersion, "{{.APIVersion}}"
+          }
+         }
+   - name: AllToMetric
+     start:
+       domain: k8s
+       classes: [all]
+     goal:
+       domain: metric
+     result:
+       query: |-
+         { "PromQL": "{ namespace=\"{{.Namespace}}\", {{tolower .Kind}}=\"{{.Name}}\" }" }
