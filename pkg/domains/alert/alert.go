@@ -48,8 +48,13 @@ func (c Class) ID(o korrel8r.Object) any {
 		// The identity of an alert is defined by its labels.
 		return o.Fingerprint
 	}
-
 	return nil
+}
+func (c Class) Preview(o korrel8r.Object) string {
+	if o, _ := o.(*Object); o != nil {
+		return o.Labels["alertname"]
+	}
+	return ""
 }
 
 type Object struct {

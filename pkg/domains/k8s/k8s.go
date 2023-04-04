@@ -14,6 +14,7 @@ import (
 	"github.com/korrel8r/korrel8r/pkg/korrel8r/impl"
 	"github.com/korrel8r/korrel8r/pkg/openshift/console"
 	"golang.org/x/exp/slices"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/rest"
@@ -77,6 +78,15 @@ func (c Class) ID(o korrel8r.Object) any {
 		return client.ObjectKeyFromObject(o)
 	}
 	return nil
+}
+
+func (c Class) Preview(o korrel8r.Object) string {
+	switch o := o.(type) {
+	case *corev1.Event:
+		return o.Message
+	default:
+		return fmt.Sprintf("%v", c.ID(o))
+	}
 }
 
 func (c Class) Domain() korrel8r.Domain { return Domain }

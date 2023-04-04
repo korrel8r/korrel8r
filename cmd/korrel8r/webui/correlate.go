@@ -193,7 +193,7 @@ func (c *correlate) updateGoal() (err error) {
 	case "neighbours":
 		c.Depth, _ = strconv.Atoi(c.Neighbours)
 		if c.Depth <= 0 {
-			c.Depth = 1
+			c.Depth = 99
 		}
 		return nil
 	case "other":
@@ -233,15 +233,27 @@ func (c *correlate) updateDiagram() {
 	g.EachNode(func(n *graph.Node) {
 		a := n.Attrs
 		a["label"] = fmt.Sprintf("%v/%v", n.Class.Domain(), korrel8r.ShortString(n.Class))
-		a["tooltip"] = fmt.Sprintf("%v (%v)\n", korrel8r.ClassName(n.Class), len(n.Result.List()))
+		a["tooltip"] = fmt.Sprintf("%v (%v)", korrel8r.ClassName(n.Class), len(n.Result.List()))
 		a["style"] = "rounded,filled"
-		if count := len(n.Result.List()); count > 0 {
-			a["label"] = fmt.Sprintf("%v\n(%v)", a["label"], count)
-			a["style"] = strings.Join([]string{a["style"], "bold"}, ",")
-			a["fillcolor"] = fullColor
-			c.queryURLAttrs(a, n.QueryCounts)
-		} else {
+		result := n.Result.List()
+		if len(result) == 0 {
 			a["fillcolor"] = emptyColor
+		} else {
+			a["label"] = fmt.Sprintf("%v\n(%v)", a["label"], len(result))
+			a["fillcolor"] = fullColor
+			a["style"] = strings.Join([]string{a["style"], "bold"}, ",")
+			c.queryURLAttrs(a, n.QueryCounts)
+			previewer, _ := n.Class.(korrel8r.Previewer)
+			if previewer != nil {
+				const limit = 10
+				for i, o := range result {
+					a["tooltip"] = fmt.Sprintf("%v\n- %v", a["tooltip"], previewer.Preview(o))
+					if i == limit {
+						a["tooltip"] = fmt.Sprintf("%v\n%v", a["tooltip"], "...")
+						break
+					}
+				}
+			}
 		}
 	})
 
