@@ -48,11 +48,12 @@ var rulesCmd = &cobra.Command{
 			goal = must.Must1(e.Class(*ruleGoal))
 		}
 		name := must.Must1(regexp.Compile(*ruleName))
+		fmt.Fprintln(w, "RULE\tSTART\tGOAL")
 		for _, r := range e.Rules() {
 			if (start == nil || r.Start() == start) &&
 				(goal == nil || r.Goal() == goal) &&
 				name.MatchString(r.String()) {
-				fmt.Fprintf(w, "%v\t%v\t%v\n", r, r.Start(), r.Goal())
+				fmt.Fprintf(w, "%v\t%v/%v\t%v/%v\n", r, r.Start().Domain(), r.Start(), r.Goal().Domain(), r.Goal())
 			}
 		}
 		w.Flush()
