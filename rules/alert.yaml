@@ -17,7 +17,7 @@ rules:
       domain: k8s
       classes: [Pod.]
     result:
-      query:  |-
+      query: |-
         { {{k8sQueryClass "Pod"}}, "Namespace": "{{.Labels.namespace}}", "Name":"{{.Labels.pod}}"}
 
   - name: AlertToDaemonSet
@@ -27,7 +27,7 @@ rules:
       domain: k8s
       classes: [DaemonSet.apps]
     result:
-      query:  |-
+      query: |-
         { {{k8sQueryClass "DaemonSet.apps"}}, "Namespace": "{{.Labels.namespace}}", "Name":"{{.Labels.daemonset}}"}
 
   - name: AlertToStatefulSet
@@ -37,5 +37,14 @@ rules:
       domain: k8s
       classes: [StatefulSet.apps]
     result:
-      query:  |-
+      query: |-
         { {{k8sQueryClass "StatefulSet.apps"}}, "Namespace": "{{.Labels.namespace}}", "Name":"{{.Labels.statefulset}}"}
+
+  - name: AlertToMetric
+    start:
+      domain: alert
+    goal:
+      domain: metric
+    result:
+      query: |-
+        { "PromQL": {{ .Expression | json }} }

@@ -60,8 +60,9 @@ type Object struct {
 	Status      string // inactive|pending|firing|suppressed
 
 	// Prometheus fields.
-	Value    string
-	ActiveAt time.Time `json:"activeAt"`
+	Value      string
+	ActiveAt   time.Time `json:"activeAt"`
+	Expression string    `json:"expression"`
 
 	// Alertmanager fields.
 	StartsAt     time.Time  `json:"startsAt"`
@@ -171,7 +172,7 @@ func convertLabelSetToMap(m model.LabelSet) map[string]string {
 }
 
 // matches returns true if the alert matches the korrel8r query.
-func (q *Query) matches(a v1.Alert) bool {
+func (q *Query) matches(a *v1.Alert) bool {
 	for k, v := range q.Labels {
 		v2 := string(a.Labels[model.LabelName(k)])
 		if v != v2 {
@@ -189,30 +190,39 @@ func (s Store) Get(ctx context.Context, query korrel8r.Query, result korrel8r.Ap
 	}
 
 	// Gather matching alerts from the Prometheus Alerts API.
-	// TODO(simonpasquier): use the Rules API to get the PromQL query.
-	alertsResult, err := s.prometheusAPI.Alerts(ctx)
+	rulesResult, err := s.prometheusAPI.Rules(ctx)
 	if err != nil {
-		return fmt.Errorf("failed to query alerts from Prometheus API: %w", err)
+		return fmt.Errorf("failed to query rules from Prometheus API: %w", err)
 	}
 
 	var (
 		alerts       = []*Object{}
 		fingerprints = map[string]int{}
 	)
-	for i, a := range alertsResult.Alerts {
-		if !q.matches(a) {
-			continue
+	for _, rg := range rulesResult.Groups {
+		for _, r := range rg.Rules {
+			ar, ok := r.(v1.AlertingRule)
+			if !ok {
+				continue
+			}
+
+			for _, a := range ar.Alerts {
+				if !q.matches(a) {
+					continue
+				}
+
+				alerts = append(alerts, &Object{
+					Labels:      convertLabelSetToMap(a.Labels),
+					Annotations: convertLabelSetToMap(a.Annotations),
+					Status:      string(a.State),
+					Value:       a.Value,
+					ActiveAt:    a.ActiveAt,
+					Expression:  ar.Query,
+				})
+
+				fingerprints[a.Labels.Fingerprint().String()] = len(alerts) - 1
+			}
 		}
-
-		alerts = append(alerts, &Object{
-			Labels:      convertLabelSetToMap(a.Labels),
-			Annotations: convertLabelSetToMap(a.Annotations),
-			Status:      string(a.State),
-			Value:       a.Value,
-			ActiveAt:    a.ActiveAt,
-		})
-
-		fingerprints[a.Labels.Fingerprint().String()] = i
 	}
 
 	// Gather matching alerts from the Alertmanager API and merge with the existing alerts.
