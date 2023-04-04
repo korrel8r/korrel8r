@@ -62,7 +62,9 @@ func (c *correlate) reset(params url.Values) {
 		RuleGraph:   params.Get("rules") == "true",
 	}
 	c.Goals = []struct{ Value, Label string }{
-		{"logs/infrastructure", "Logs"}, // FIXME wildcard
+		{"logs/application", "Logs(application)"},       // FIXME wildcard
+		{"logs/infrastructure", "Logs(infrastructure)"}, // FIXME wildcard
+		{"logs/audit", "Logs(audit)"},                   // FIXME wildcard
 		{"k8s/Event", "Events"},
 		{"metric/metric", "Metrics"},
 	}
@@ -142,7 +144,7 @@ func (c *correlate) update(req *http.Request) {
 		// Find Neighbours
 		traverse := follower.Traverse
 		if c.RuleGraph {
-			traverse = nil
+			traverse = func(l *graph.Line) {}
 		}
 		c.Graph = c.Graph.Neighbours(c.StartClass, c.Depth, traverse)
 	}
@@ -193,7 +195,7 @@ func (c *correlate) updateGoal() (err error) {
 	case "neighbours":
 		c.Depth, _ = strconv.Atoi(c.Neighbours)
 		if c.Depth <= 0 {
-			c.Depth = 99
+			c.Depth = 2
 		}
 		return nil
 	case "other":

@@ -13,6 +13,8 @@ import (
 
 // Funcs that are available to all Rules.
 //
+//	rule
+//	  Returns the korrel8r.Rule being applied.
 //	constraint
 //	  Returns the korrel8r.Constraint in force when applying a rule. May be nil.
 //	has
@@ -40,6 +42,7 @@ var Funcs map[string]any
 
 func init() {
 	Funcs = map[string]any{
+		"rule":        func() korrel8r.Rule { return nil },
 		"constraint":  func() *korrel8r.Constraint { return nil },
 		"assert":      doAssert, // Assert a condition in a template
 		"json":        korrel8r.JSONString,

@@ -1,4 +1,3 @@
-# FIXME wildcard these
 rules:
   - name: AlertToDeployment
     start:

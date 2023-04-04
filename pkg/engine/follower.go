@@ -45,9 +45,7 @@ func (f *Follower) Traverse(l *graph.Line) {
 		result := korrel8r.NewCountResult(goalNode.Result)
 		if store != nil {
 			if err := store.Get(f.Context, query, result); err != nil {
-				// FIXME should report this error, but causing a test failure, investigate.
-				// v.Err = multierr.Append(v.Err, err)
-				log.Error(err, "store get error")
+				log.Error(err, "get error")
 			}
 		}
 		l.QueryCounts.Put(query, result.Count)
