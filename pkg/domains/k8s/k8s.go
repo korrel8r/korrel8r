@@ -128,7 +128,7 @@ type Store struct {
 }
 
 // NewStore creates a new store
-func NewStore(c client.Client, cfg *rest.Config) (*Store, error) {
+func NewStore(c client.Client, cfg *rest.Config) (korrel8r.Store, error) {
 	host := cfg.Host
 	if host == "" {
 		host = "localhost"

@@ -123,7 +123,7 @@ type Store struct {
 	prometheusAPI   v1.API
 }
 
-func NewStore(alertmanagerURL *url.URL, prometheusURL *url.URL, hc *http.Client) (*Store, error) {
+func NewStore(alertmanagerURL *url.URL, prometheusURL *url.URL, hc *http.Client) (korrel8r.Store, error) {
 	alertmanagerAPI, err := newAlertmanagerClient(alertmanagerURL, hc)
 	if err != nil {
 		return nil, err

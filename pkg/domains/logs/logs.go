@@ -144,12 +144,12 @@ type Store struct {
 func (Store) Domain() korrel8r.Domain { return Domain }
 
 // NewLokiStackStore returns a store that uses a LokiStack observatorium-style URLs.
-func NewLokiStackStore(base *url.URL, c *http.Client) (*Store, error) {
+func NewLokiStackStore(base *url.URL, c *http.Client) (korrel8r.Store, error) {
 	return &Store{c: c, base: base, queryURL: (*Query).lokiStackURL}, nil
 }
 
 // NewPlainLokiStore returns a store that uses plain Loki URLs.
-func NewPlainLokiStore(base *url.URL, c *http.Client) (*Store, error) {
+func NewPlainLokiStore(base *url.URL, c *http.Client) (korrel8r.Store, error) {
 	return &Store{c: c, base: base, queryURL: (*Query).plainURL}, nil
 }
 
@@ -208,7 +208,7 @@ type streamValues struct {
 	Values [][]string        `json:"values"`
 }
 
-func NewOpenshiftLokiStackStore(ctx context.Context, c client.Client, cfg *rest.Config) (*Store, error) {
+func NewOpenshiftLokiStackStore(ctx context.Context, c client.Client, cfg *rest.Config) (korrel8r.Store, error) {
 	host, err := openshift.RouteHost(ctx, c, openshift.LokiStackNSName)
 	if err != nil {
 		return nil, err
