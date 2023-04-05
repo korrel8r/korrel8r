@@ -40,7 +40,7 @@ type Class interface {
 	String() string // String name of the class within the domain, e.g "Pod". See ClassName()
 }
 
-// ShortStringer optionally implemented for class that have a short-form sting.
+// ShortStringer optionally implemented by classes and objects that have a short-form readable string.
 type ShortStringer interface {
 	ShortString() string
 }
@@ -57,6 +57,12 @@ func ShortString(v any) string {
 // Classes that implement IDer can be de-duplicated when collected in a Result.
 type IDer interface {
 	ID(Object) any // Comparable ID for de-duplication.
+}
+
+// Previewer is implemented by classes that can show a short "preview" string from the object.
+// Could be a name or a message.
+type Previewer interface {
+	Preview(Object) string
 }
 
 // ClassName returns the fully qualified domain/name of a class, e.g. "k8s/Pod.v1."

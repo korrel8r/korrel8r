@@ -27,7 +27,10 @@ func (r *rule) Goal() korrel8r.Class  { return r.goal }
 func (r *rule) Apply(start korrel8r.Object, c *korrel8r.Constraint) (korrel8r.Query, error) {
 	b := &bytes.Buffer{}
 
-	err := r.query.Funcs(map[string]any{"constraint": func() *korrel8r.Constraint { return c }}).Execute(b, start)
+	err := r.query.Funcs(map[string]any{
+		"constraint": func() *korrel8r.Constraint { return c },
+		"rule":       func() korrel8r.Rule { return r },
+	}).Execute(b, start)
 	if err != nil {
 		return nil, fmt.Errorf("apply: %s", err)
 	}
@@ -38,7 +41,8 @@ func (r *rule) Apply(start korrel8r.Object, c *korrel8r.Constraint) (korrel8r.Qu
 	}
 
 	if q.Class() != r.Goal() {
-		return nil, fmt.Errorf("apply: wrong goal: %v", korrel8r.ClassName(q.Class()))
+		return nil, fmt.Errorf("apply: wrong goal: %v != %v; in %#+v",
+			korrel8r.ClassName(r.Goal()), korrel8r.ClassName(q.Class()), q)
 	}
 
 	return q, nil
