@@ -5,7 +5,7 @@ a Kind cluster.
 
 The following tools need to be installed in your path:
 * kubectl
-* kind
+* kind (e.g. `go install sigs.k8s.io/kind@latest`)
 * helm
 
 ## Getting started
