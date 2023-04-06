@@ -116,7 +116,7 @@ func TestStore_QueryToConsoleURL(t *testing.T) {
 		{query(ClassOf(&appv1.Deployment{}), "NAMESPACE", "NAME", nil, nil), "k8s/ns/NAMESPACE/deployments/NAME"},
 	} {
 		t.Run(x.p, func(t *testing.T) {
-			u, err := s.QueryToConsoleURL(&x.q)
+			u, err := s.(*Store).QueryToConsoleURL(&x.q)
 			if assert.NoError(t, err) {
 				assert.Equal(t, x.p, u.Path)
 			}
@@ -150,7 +150,7 @@ func TestStore_ConsoleURLToQuery(t *testing.T) {
 	} {
 		t.Run(x.p, func(t *testing.T) {
 			u, _ := url.Parse(x.p)
-			q, err := s.ConsoleURLToQuery(u)
+			q, err := s.(*Store).ConsoleURLToQuery(u)
 			if assert.NoError(t, err) {
 				assert.Equal(t, &x.q, q)
 			}

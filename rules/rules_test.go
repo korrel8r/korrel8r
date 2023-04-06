@@ -54,7 +54,7 @@ func setup(t *testing.T) *engine.Engine {
 
 func testTraverse(t *testing.T, e *engine.Engine, start, goal korrel8r.Class, starters []korrel8r.Object, wantQuery korrel8r.Query) {
 	t.Helper()
-	paths := e.Graph().ShortestPaths(start, goal)
+	paths := e.Graph().AllPaths(start, goal)
 	paths.NodeFor(start).Result.Append(starters...)
 	f := e.Follower(context.Background())
 	assert.NoError(t, paths.Traverse(f.Traverse))
@@ -172,4 +172,19 @@ func TestK8sAllToMetric(t *testing.T) {
 	pod := k8s.New[corev1.Pod]("aNamespace", "foo")
 	want := &metric.Query{PromQL: "{ namespace=\"aNamespace\", pod=\"foo\" }"}
 	testTraverse(t, e, k8s.ClassOf(pod), metric.Class{}, []korrel8r.Object{pod}, want)
+}
+
+func TestNamespace(t *testing.T) {
+	e := setup(t)
+	ns := k8s.New[corev1.Namespace]("", "ns")
+	poda, podb := k8s.New[corev1.Pod]("ns", "a"), k8s.New[corev1.Pod]("ns", "b")
+	t.Run("PodToNamespace", func(t *testing.T) {
+		want := k8s.NewQuery(k8s.ClassOf(ns), "", "ns", nil, nil)
+		testTraverse(t, e, k8s.ClassOf(poda), k8s.ClassOf(ns), []korrel8r.Object{poda, podb}, want)
+	})
+
+	t.Run("NamespaceToPods", func(t *testing.T) {
+		want := k8s.NewQuery(k8s.ClassOf(poda), "ns", "", nil, nil)
+		testTraverse(t, e, k8s.ClassOf(ns), k8s.ClassOf(poda), []korrel8r.Object{ns}, want)
+	})
 }

@@ -66,7 +66,7 @@ type Class struct{} // Singleton class
 func (c Class) Domain() korrel8r.Domain { return Domain }
 func (c Class) String() string          { return Domain.String() }
 
-type Object model.Value
+type Object *model.Sample
 
 type Query struct {
 	PromQL string // `json:",omitempty"`
@@ -77,7 +77,7 @@ func (q *Query) Class() korrel8r.Class { return Class{} }
 
 type Store struct{ api promv1.API }
 
-func NewStore(base *url.URL, hc *http.Client) (*Store, error) {
+func NewStore(base *url.URL, hc *http.Client) (korrel8r.Store, error) {
 	c, err := api.NewClient(api.Config{Address: base.String(), Client: hc})
 	if err != nil {
 		return nil, err
@@ -106,7 +106,7 @@ func (s *Store) Get(ctx context.Context, query korrel8r.Query, result korrel8r.A
 	return nil
 }
 
-func NewOpenshiftStore(ctx context.Context, c client.Client, cfg *rest.Config) (*Store, error) {
+func NewOpenshiftStore(ctx context.Context, c client.Client, cfg *rest.Config) (korrel8r.Store, error) {
 	host, err := openshift.RouteHost(ctx, c, openshift.ThanosQuerierNSName)
 	if err != nil {
 		return nil, err

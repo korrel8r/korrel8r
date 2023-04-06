@@ -14,11 +14,11 @@ import (
 	"github.com/korrel8r/korrel8r/pkg/korrel8r/impl"
 	"github.com/korrel8r/korrel8r/pkg/openshift/console"
 	"golang.org/x/exp/slices"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/rest"
 
-	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 )
@@ -80,6 +80,15 @@ func (c Class) ID(o korrel8r.Object) any {
 	return nil
 }
 
+func (c Class) Preview(o korrel8r.Object) string {
+	switch o := o.(type) {
+	case *corev1.Event:
+		return o.Message
+	default:
+		return fmt.Sprintf("%v", c.ID(o))
+	}
+}
+
 func (c Class) Domain() korrel8r.Domain { return Domain }
 func (c Class) New() korrel8r.Object {
 	if o, err := Scheme.New(schema.GroupVersionKind(c)); err == nil {
@@ -119,7 +128,7 @@ type Store struct {
 }
 
 // NewStore creates a new store
-func NewStore(c client.Client, cfg *rest.Config) (*Store, error) {
+func NewStore(c client.Client, cfg *rest.Config) (korrel8r.Store, error) {
 	host := cfg.Host
 	if host == "" {
 		host = "localhost"
@@ -150,14 +159,13 @@ func (s *Store) Get(ctx context.Context, query korrel8r.Query, result korrel8r.A
 }
 
 func setMeta(o Object) Object {
-	gvk := must.Must1(apiutil.GVKForObject(o, scheme.Scheme))
+	gvk := must.Must1(apiutil.GVKForObject(o, Scheme))
 	o.GetObjectKind().SetGroupVersionKind(gvk)
 	return o
 }
 
 func (s *Store) getObject(ctx context.Context, q *Query, result korrel8r.Appender) error {
-	scheme := s.c.Scheme()
-	o, err := scheme.New(q.GroupVersionKind)
+	o, err := Scheme.New(q.GroupVersionKind)
 	if err != nil {
 		return err
 	}
@@ -176,7 +184,7 @@ func (s *Store) getObject(ctx context.Context, q *Query, result korrel8r.Appende
 func (s *Store) getList(ctx context.Context, q *Query, result korrel8r.Appender) error {
 	gvk := q.GroupVersionKind
 	gvk.Kind = gvk.Kind + "List"
-	o, err := s.c.Scheme().New(gvk)
+	o, err := Scheme.New(gvk)
 	if err != nil {
 		return err
 	}
