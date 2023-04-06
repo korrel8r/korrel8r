@@ -59,18 +59,17 @@ func (c Class) Preview(o korrel8r.Object) string {
 
 type Object struct {
 	// Common fields.
-	Labels      map[string]string
-	Annotations map[string]string
-	Fingerprint string `json:"fingerprint"`
-	Status      string // inactive|pending|firing|suppressed
+	Labels      map[string]string `json:"labels"`
+	Annotations map[string]string `json:"annotations"`
+	Status      string            `json:"status"` // inactive|pending|firing|suppressed
+	StartsAt    time.Time         `json:"startsAt"`
 
 	// Prometheus fields.
-	Value      string
-	ActiveAt   time.Time `json:"activeAt"`
-	Expression string    `json:"expression"`
+	Value       string `json:"value"`
+	Expression  string `json:"expression"`
+	Fingerprint string `json:"fingerprint"`
 
 	// Alertmanager fields.
-	StartsAt     time.Time  `json:"startsAt"`
 	EndsAt       time.Time  `json:"endsAt"`
 	UpdatedAt    time.Time  `json:"updatedAt"`
 	Receivers    []Receiver `json:"receivers"`
@@ -176,7 +175,7 @@ func convertLabelSetToMap(m model.LabelSet) map[string]string {
 	return res
 }
 
-// matches returns true if the alert matches the korrel8r query.
+// matches returns true if the Prometheus alert matches the korrel8r query.
 func (q *Query) matches(a *v1.Alert) bool {
 	for k, v := range q.Labels {
 		v2 := string(a.Labels[model.LabelName(k)])
@@ -194,16 +193,13 @@ func (s Store) Get(ctx context.Context, query korrel8r.Query, result korrel8r.Ap
 		return err
 	}
 
-	// Gather matching alerts from the Prometheus Alerts API.
+	// Gather matching alerts from the Prometheus Rules API.
 	rulesResult, err := s.prometheusAPI.Rules(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to query rules from Prometheus API: %w", err)
 	}
 
-	var (
-		alerts       = []*Object{}
-		fingerprints = map[string]int{}
-	)
+	var alerts = []*Object{}
 	for _, rg := range rulesResult.Groups {
 		for _, r := range rg.Rules {
 			ar, ok := r.(v1.AlertingRule)
@@ -221,11 +217,10 @@ func (s Store) Get(ctx context.Context, query korrel8r.Query, result korrel8r.Ap
 					Annotations: convertLabelSetToMap(a.Annotations),
 					Status:      string(a.State),
 					Value:       a.Value,
-					ActiveAt:    a.ActiveAt,
+					StartsAt:    a.ActiveAt,
 					Expression:  ar.Query,
+					Fingerprint: a.Labels.Fingerprint().String(),
 				})
-
-				fingerprints[a.Labels.Fingerprint().String()] = len(alerts) - 1
 			}
 		}
 	}
@@ -241,18 +236,33 @@ func (s Store) Get(ctx context.Context, query korrel8r.Query, result korrel8r.Ap
 	}
 
 	for _, a := range resp.Payload {
-		i, found := fingerprints[*a.Fingerprint]
-		if !found {
-			o := &Object{
-				Labels:      a.Alert.Labels,
-				Annotations: a.Annotations,
+		// We can't perform an exact label comparison because alerts from
+		// Alertmanager may have more labels than Prometheus alerts (due to
+		// external labels for instance).
+		// We consider an Alertmanager alert to be the same as a Prometheus
+		// alert if the Alertmanager labels are a super-set of the Prometheus
+		// labels.
+		var o *Object
+		for _, pa := range alerts {
+			found := true
+			for k, v := range pa.Labels {
+				if a.Labels[k] != v {
+					found = false
+					break
+				}
 			}
 
-			i = len(alerts)
-			alerts = append(alerts, o)
+			if found {
+				o = pa
+				break
+			}
 		}
 
-		o := alerts[i]
+		// If the alert doesn't exist in Prometheus, skip it.
+		if o == nil {
+			break
+		}
+
 		o.StartsAt = time.Time(*a.StartsAt)
 		o.EndsAt = time.Time(*a.EndsAt)
 		o.GeneratorURL = a.Alert.GeneratorURL.String()
