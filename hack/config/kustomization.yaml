@@ -12,4 +12,37 @@ configMapGenerator:
   - controller_manager_config.yaml
   behavior: replace
   name: manager-config
-  namespace: logging
+
+patches:
+  # Patch the Loki operator & Loki images
+  - patch: |-
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: controller-manager
+      spec:
+        template:
+          spec:
+            containers:
+              - name: manager
+                env:
+                - name: RELATED_IMAGE_LOKI
+                  value: docker.io/grafana/loki:2.7.4
+                image: docker.io/grafana/loki-operator:2.7.4-amd64
+  - patch: |-
+      - op: remove
+        path: /metadata/labels/app.kubernetes.io~1managed-by
+    target:
+      kind: .*
+  - patch: |-
+      - op: remove
+        path: /spec/selector/matchLabels/app.kubernetes.io~1managed-by
+      - op: remove
+        path: /spec/template/metadata/labels/app.kubernetes.io~1managed-by
+    target:
+      kind: Deployment
+  - patch: |-
+      - op: remove
+        path: /spec/selector/app.kubernetes.io~1managed-by
+    target:
+      kind: Service

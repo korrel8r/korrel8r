@@ -9,10 +9,6 @@ metadata:
     app.kubernetes.io/version: 0.0.1
   name: lokistack-manager
 rules:
-- nonResourceURLs:
-  - /api/v2/alerts
-  verbs:
-  - create
 - apiGroups:
   - ""
   resources:
@@ -20,7 +16,6 @@ rules:
   - endpoints
   - nodes
   - pods
-  - secrets
   - serviceaccounts
   - services
   verbs:
@@ -65,7 +60,6 @@ rules:
   resources:
   - apiservers
   - dnses
-  - proxies
   verbs:
   - get
   - list

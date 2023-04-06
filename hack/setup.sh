@@ -10,7 +10,7 @@ wait_ready() {
 }
 
 create_kind() {
-	kind create cluster --config="${SCRIPT_DIR}/kind_config.yaml"
+	kind create cluster --name "${CLUSTER_NAME:-korrel8r}" --config="${SCRIPT_DIR}/kind_config.yaml"
 	wait_ready
 }
 
@@ -26,8 +26,10 @@ service:
   type: NodePort
 ports:
   web:
+    expose: true
     nodePort: 30000
   websecure:
+    expose: true
     nodePort: 30001
 nodeSelector:
   ingress-ready: 'true'
