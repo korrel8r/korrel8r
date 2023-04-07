@@ -1,5 +1,6 @@
-//-*-web-*-
+// -*-web-*-
 package webui
+
 const correlateHTML = `
 {{define "body"}}
   <h1>Correlation Graph</h1>
@@ -87,7 +88,7 @@ const correlateHTML = `
                       {{range $qc := .QueryCounts.Sort}}
                         <li>
                           <a href="{{queryToConsole $qc.Query}}" target="_blank">Console</a> /
-                          <a href="/stores/{{$node.Class}}?query={{json $qc.Query | urlquery}}" target="_blank">Data</a>
+                          <a href="/stores/{{$node.Class.Domain}}?query={{json $qc.Query | urlquery}}" target="_blank">Data</a>
                           ({{$qc.Count}})
                           <pre>{{$qc.Query | json}}</pre>
                         </li>
@@ -113,7 +114,7 @@ const correlateHTML = `
   {{range $qc := .Sort}}
     <li>
       <a href="{{queryToConsole $qc.Query}}" target="_blank">Console</a> /
-      <a href="/stores/{{$qc.Query.Class}}?query={{json $qc.Query | urlquery}}" target="_blank">Data</a>
+      <a href="/stores/{{$qc.Query.Class.Domain}}?query={{json $qc.Query | urlquery}}" target="_blank">Data</a>
       ({{$qc.Count}})
       <pre>{{$qc.Query | json}}</pre>
     </li>

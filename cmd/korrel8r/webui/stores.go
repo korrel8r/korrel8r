@@ -12,20 +12,26 @@ import (
 type storeHandler struct{ ui *WebUI }
 
 func (h *storeHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	params := req.URL.Query()
-	domain, err := h.ui.Engine.DomainErr(path.Base(req.URL.Path))
+	path := path.Base(req.URL.Path)
+	log.V(2).Info("store handler", "path", path, "query", req.URL.RawQuery)
+
+	domain, err := h.ui.Engine.DomainErr(path)
 	if httpError(w, err, http.StatusNotFound) {
 		return
 	}
+
 	store, err := h.ui.Engine.StoreErr(
 		domain.String())
 	if httpError(w, err, http.StatusNotFound) {
 		return
 	}
+
+	params := req.URL.Query()
 	query, err := domain.UnmarshalQuery([]byte(params.Get("query")))
 	if httpError(w, err, http.StatusNotFound) {
 		return
 	}
+
 	result := korrel8r.NewResult(query.Class())
 	err = store.Get(context.Background(), query, result)
 	data := map[string]any{
