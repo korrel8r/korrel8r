@@ -37,6 +37,18 @@ EOF
 	wait_ready
 }
 
+create_dashboard() {
+       helm repo add kubernetes-dashboard https://kubernetes.github.io/dashboard/
+       cat <<EOF | helm install dashboard kubernetes-dashboard/kubernetes-dashboard -f - -n kubernetes-dashboard --create-namespace
+protocolHttp: true
+service:
+  externalPort: 8080
+rbac:
+  clusterReadOnlyRole: true
+EOF
+	wait_ready
+}
+
 apply() {
 	kubectl apply --server-side --force-conflicts -f "${SCRIPT_DIR}/manifests/setup"
 	kubectl apply --server-side --force-conflicts -f "${SCRIPT_DIR}/manifests/"
@@ -47,6 +59,7 @@ case ${1:-"help"} in
 create)
 	create_kind
 	create_ingress
+	create_dashboard
 	;;
 
 apply)

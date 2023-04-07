@@ -29,6 +29,7 @@ The following services are accessible via ingress:
 * `http://alertmanager.127.0.0.1.nip.io:8000`
 * `http://grafana.127.0.0.1.nip.io:8000`
 * `http://loki.127.0.0.1.nip.io:8000`
+* `http://dashboard.127.0.0.1.nip.io:8000`
 
 ## Using with korrel8r
 

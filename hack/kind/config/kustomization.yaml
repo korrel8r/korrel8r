@@ -5,7 +5,7 @@ namespace: logging
 
 resources:
 - https://github.com/grafana/loki/operator/config/overlays/development?ref=v2.7.4&timeout=600s
-#- ../../../../grafana/loki/operator/config/overlays/development/
+#- ../../../../../grafana/loki/operator/config/overlays/development/
 
 configMapGenerator:
 - files:
