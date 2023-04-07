@@ -103,7 +103,7 @@ func (domain) QueryToConsoleURL(query korrel8r.Query) (*url.URL, error) {
 		return nil, err
 	}
 	uq := url.Values{
-		"rowFilter-alert-state": []string{}, // do not filter by alert state.
+		"rowFilter-alert-state": []string{""}, // do not filter by alert state.
 	}
 	alertFilter := make([]string, 0, len(q.Labels))
 	for k, v := range q.Labels {

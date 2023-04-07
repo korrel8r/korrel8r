@@ -32,10 +32,10 @@ spec:
         - /manager
         env:
         - name: RELATED_IMAGE_LOKI
-          value: docker.io/grafana/loki:2.7.3
+          value: docker.io/grafana/loki:2.7.4
         - name: RELATED_IMAGE_GATEWAY
           value: quay.io/observatorium/api:latest
-        image: docker.io/grafana/loki-operator:main-39f2856
+        image: docker.io/grafana/loki-operator:2.7.4-amd64
         imagePullPolicy: Always
         livenessProbe:
           httpGet:

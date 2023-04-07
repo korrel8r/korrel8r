@@ -15,7 +15,7 @@ spec:
       key: token
       name: prometheus-k8s-token
     interval: 30s
-    port: https-metrics
+    port: https
     scheme: https
     tlsConfig:
       insecureSkipVerify: true
