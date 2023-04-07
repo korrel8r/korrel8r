@@ -48,4 +48,18 @@ local rule(host, service, port) = {
       ],
     },
   },
+
+  dashboard: {
+    apiVersion: 'networking.k8s.io/v1',
+    kind: 'Ingress',
+    metadata: {
+      name: 'dashboard',
+      namespace: 'kubernetes-dashboard',
+    },
+    spec: {
+      rules: [
+        rule('dashboard.127.0.0.1.nip.io', 'dashboard-kubernetes-dashboard', 8080),
+      ],
+    },
+  },
 }

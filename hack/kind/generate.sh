@@ -10,6 +10,8 @@ set -o pipefail
 rm -rf manifests
 mkdir -p manifests/setup
 
+(cd jsonnet && jb install)
+
 # Calling gojsontoyaml is optional, but we would like to generate yaml, not json
 jsonnet -J jsonnet/vendor -m manifests jsonnet/main.jsonnet | xargs -I{} sh -c 'cat {} | gojsontoyaml > {}.yaml' -- {}
 
