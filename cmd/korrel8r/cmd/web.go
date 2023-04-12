@@ -17,7 +17,7 @@ var webCmd = &cobra.Command{
 		ui := must.Must1(webui.New(e, cfg, k8sClient(cfg)))
 		defer ui.Close()
 		log.Info("web ui listening", "addr", *httpAddr)
-		must.Must(http.ListenAndServe(*httpAddr, ui.Mux))
+		must.Must(http.ListenAndServe(*httpAddr, nil))
 	},
 }
 

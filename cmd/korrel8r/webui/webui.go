@@ -12,6 +12,8 @@ import (
 
 	"context"
 
+	_ "net/http/pprof"
+
 	"github.com/korrel8r/korrel8r/internal/pkg/logging"
 	"github.com/korrel8r/korrel8r/pkg/engine"
 	"github.com/korrel8r/korrel8r/pkg/openshift"
@@ -29,7 +31,6 @@ var static embed.FS // Static resources
 type WebUI struct {
 	Engine  *engine.Engine
 	Console *console.Console
-	Mux     *http.ServeMux
 	dir     string
 }
 
@@ -48,13 +49,13 @@ func New(e *engine.Engine, cfg *rest.Config, c client.Client) (*WebUI, error) {
 		return nil, err
 	}
 	ui.Console = console.New(consoleURL, e)
-	ui.Mux = http.NewServeMux()
-	ui.Mux.Handle("/", &correlate{ui: ui})
-	ui.Mux.Handle("/correlate", &correlate{ui: ui})
-	ui.Mux.Handle("/files/", http.FileServer(http.Dir(ui.dir)))
-	ui.Mux.Handle("/static/", http.FileServer(http.FS(static)))
-	ui.Mux.Handle("/stores/", &storeHandler{ui: ui})
-	ui.Mux.HandleFunc("/error/", func(w http.ResponseWriter, req *http.Request) {
+
+	http.Handle("/", http.RedirectHandler("/correlate", http.StatusMovedPermanently))
+	http.Handle("/correlate", &correlate{ui: ui})
+	http.Handle("/files/", http.FileServer(http.Dir(ui.dir)))
+	http.Handle("/static/", http.FileServer(http.FS(static)))
+	http.Handle("/stores/", &storeHandler{ui: ui})
+	http.HandleFunc("/error/", func(w http.ResponseWriter, req *http.Request) {
 		// So links that can't be generated can link to the error message.
 		httpError(w, errors.New(req.URL.Query().Get("err")), http.StatusInternalServerError)
 	})

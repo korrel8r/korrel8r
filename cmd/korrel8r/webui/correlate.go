@@ -279,18 +279,17 @@ func (c *correlate) updateDiagram() {
 		a["root"] = "true"
 	}
 
-	var layout string
 	if c.GoalClass != nil {
+		g.GraphAttrs["layout"] = "dot"
 		goal := g.NodeFor(c.GoalClass)
 		a := goal.Attrs
 		a["shape"] = "diamond"
 		a["fillcolor"] = goalColor
-		layout = "dot"
 		if len(goal.Result.List()) == 0 {
 			a["fillcolor"] = emptyColor
 		}
 	} else {
-		layout = "twopi"
+		g.GraphAttrs["layout"] = "twopi"
 	}
 
 	// Write the graph files
@@ -300,12 +299,12 @@ func (c *correlate) updateDiagram() {
 		if !c.addErr(os.WriteFile(gvFile, gv, 0664)) {
 			// Render and write the graph image
 			svgFile := baseName + ".svg"
-			if !c.addErr(runDot("dot", "-v", "-K", layout, "-Tsvg", "-o", svgFile, gvFile)) {
+			if !c.addErr(runDot("dot", "-v", "-Tsvg", "-o", svgFile, gvFile)) {
 				c.Diagram, _ = filepath.Rel(c.ui.dir, svgFile)
 				c.DiagramTxt, _ = filepath.Rel(c.ui.dir, gvFile)
 			}
 			pngFile := baseName + ".png"
-			if !c.addErr(runDot("dot", "-v", "-K", layout, "-Tpng", "-o", pngFile, gvFile)) {
+			if !c.addErr(runDot("dot", "-v", "-Tpng", "-o", pngFile, gvFile)) {
 				c.DiagramImg, _ = filepath.Rel(c.ui.dir, pngFile)
 			}
 		}
@@ -314,6 +313,7 @@ func (c *correlate) updateDiagram() {
 
 func runDot(cmdName string, args ...string) error {
 	cmd := exec.Command(cmdName, args[1:]...)
+	log.V(1).Info("run", "cmd", cmdName, "args", args)
 	cmd.Stdout, cmd.Stderr = os.Stdout, os.Stderr
 	return cmd.Run()
 }
