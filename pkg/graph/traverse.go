@@ -51,6 +51,9 @@ func (g *Graph) Neighbours(start korrel8r.Class, depth int, travers func(l *Line
 	sub := g.Data.EmptyGraph()
 	bf := traverse.BreadthFirst{}
 	bf.Traverse = func(e graph.Edge) bool {
+		if sub.Edge(e.To().ID(), e.From().ID()) != nil {
+			return false // Already traversed the other way, don't backtrack
+		}
 		g.traverseLines(e.(multi.Edge), func(l *Line) { sub.SetLine(l); travers(l) })
 		return true
 	}

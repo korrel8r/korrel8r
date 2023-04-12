@@ -72,7 +72,7 @@ const correlateHTML = `
     <hr>
     <h3> Detailed Results </h3>
     <p>
-      Update time: {{.UpdateTime}} ({{len .Graph.AllNodes}} nodes, {{len .Graph.AllLines}} lines)<br>
+      Update time: {{.UpdateTime}} ({{.Graph.Nodes.Len}} nodes, {{len .Graph.AllLines}} lines)<br>
       {{with .StartClass}}Start: <code>{{classname .}}</code><br>{{end}}
       {{with .GoalClass}}Goal: <code>{{classname .}}</code><br>{{end}}
       {{with .Depth}}Neighbourhood depth: {{.}}<br>{{end}}
