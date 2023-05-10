@@ -1,7 +1,8 @@
-package webui
+package browser
 
 import (
 	"context"
+	_ "embed"
 	"errors"
 	"fmt"
 	"math"
@@ -18,6 +19,11 @@ import (
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"go.uber.org/multierr"
 	"gonum.org/v1/gonum/graph/encoding/dot"
+)
+
+var (
+	//go:embed correlate.html.tmpl
+	correlateHTML string
 )
 
 // correlate web page handler.
@@ -46,12 +52,12 @@ type correlate struct {
 	Err error
 
 	// Parent
-	ui *WebUI
+	app *App
 }
 
 // reset the fields to contain only URL query parameters
 func (c *correlate) reset(params url.Values) {
-	ui := c.ui      // Save
+	app := c.app    // Save
 	*c = correlate{ // Overwrite
 		Start:       params.Get("start"),
 		StartDomain: params.Get("domain"),
@@ -62,18 +68,23 @@ func (c *correlate) reset(params url.Values) {
 		RuleGraph:   params.Get("rules") == "true",
 	}
 	c.Goals = []struct{ Value, Label string }{
-		{"logs/application", "Logs(application)"},       // FIXME wildcard
-		{"logs/infrastructure", "Logs(infrastructure)"}, // FIXME wildcard
-		{"logs/audit", "Logs(audit)"},                   // FIXME wildcard
+		{"logs/infrastructure", "Logs (infrastructure)"}, // FIXME wildcard for logs, multi-goal.
 		{"k8s/Event", "Events"},
 		{"metric/metric", "Metrics"},
 	}
-	c.ui = ui
-	c.ConsoleURL = c.ui.Console.BaseURL
-	c.Graph = c.ui.Engine.Graph()
+	c.app = app
+	c.ConsoleURL = c.app.Console.BaseURL
+	c.Graph = c.app.Engine.Graph()
 	// Defaults
 	if c.Goal == "" {
 		c.Goal = "neighbours"
+	}
+	if c.Goal == "neighbours" {
+		c.Depth, _ = strconv.Atoi(c.Neighbours)
+		if c.Depth <= 0 {
+			c.Depth = 9 // Invalid use default
+		}
+		c.Neighbours = strconv.Itoa(c.Depth)
 	}
 }
 
@@ -84,8 +95,8 @@ func (c *correlate) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	if c.Err != nil {
 		log.Error(c.Err, "page errors")
 	}
-	t := c.ui.Page("correlate").Funcs(map[string]any{
-		"queryToConsole": func(q korrel8r.Query) *url.URL { return c.checkURL(c.ui.Console.QueryToConsoleURL(q)) },
+	t := c.app.page("correlate").Funcs(map[string]any{
+		"queryToConsole": func(q korrel8r.Query) *url.URL { return c.checkURL(c.app.Console.QueryToConsoleURL(q)) },
 	})
 	serveTemplate(w, t, correlateHTML, c)
 }
@@ -123,7 +134,7 @@ func (c *correlate) update(req *http.Request) {
 	if !c.addErr(c.updateStart(), "start") {
 		// Prime the start node with initial results
 		start := c.Graph.NodeFor(c.StartClass)
-		if c.addErr(c.ui.Engine.Get(context.Background(), c.StartClass, c.StartQuery, start.Result)) {
+		if c.addErr(c.app.Engine.Get(context.Background(), c.StartClass, c.StartQuery, start.Result)) {
 			return
 		}
 		start.QueryCounts.Put(c.StartQuery, len(start.Result.List()))
@@ -132,7 +143,7 @@ func (c *correlate) update(req *http.Request) {
 	if c.Err != nil {
 		return
 	}
-	follower := c.ui.Engine.Follower(context.Background())
+	follower := c.app.Engine.Follower(context.Background())
 
 	if c.GoalClass != nil { // Paths from start to goal.
 		if c.ShortPaths {
@@ -169,17 +180,17 @@ func (c *correlate) updateStart() (err error) {
 	if c.Start == "" {
 		return errors.New("empty")
 	}
-	if c.StartClass, err = c.ui.Engine.Class(c.Start); err == nil {
+	if c.StartClass, err = c.app.Engine.Class(c.Start); err == nil {
 		return nil
 	}
 	if u, err := url.Parse(c.Start); err == nil {
-		if c.StartQuery, err = c.ui.Console.ConsoleURLToQuery(u); err != nil {
+		if c.StartQuery, err = c.app.Console.ConsoleURLToQuery(u); err != nil {
 			return err
 		}
 		c.StartClass = c.StartQuery.Class()
 		return nil
 	}
-	domain, err := c.ui.Engine.DomainErr(c.StartDomain)
+	domain, err := c.app.Engine.DomainErr(c.StartDomain)
 	if err != nil {
 		return err
 	}
@@ -193,15 +204,11 @@ func (c *correlate) updateStart() (err error) {
 func (c *correlate) updateGoal() (err error) {
 	switch c.Goal {
 	case "neighbours":
-		c.Depth, _ = strconv.Atoi(c.Neighbours)
-		if c.Depth <= 0 {
-			c.Depth = 2
-		}
-		return nil
+		return nil // No goal, depth is set.
 	case "other":
-		c.GoalClass, err = c.ui.Engine.Class(c.Other)
+		c.GoalClass, err = c.app.Engine.Class(c.Other)
 	default:
-		c.GoalClass, err = c.ui.Engine.Class(c.Goal)
+		c.GoalClass, err = c.app.Engine.Class(c.Goal)
 	}
 	return err
 }
@@ -217,7 +224,7 @@ func (c *correlate) addClassNode(class korrel8r.Class) {
 
 func (c *correlate) queryURLAttrs(a graph.Attrs, qcs graph.QueryCounts) {
 	if len(qcs) > 0 {
-		a["URL"] = c.checkURL(c.ui.Console.QueryToConsoleURL(qcs.Sort()[0].Query)).String()
+		a["URL"] = c.checkURL(c.app.Console.QueryToConsoleURL(qcs.Sort()[0].Query)).String()
 		a["target"] = "_blank"
 	}
 }
@@ -280,7 +287,6 @@ func (c *correlate) updateDiagram() {
 	}
 
 	if c.GoalClass != nil {
-		g.GraphAttrs["layout"] = "dot"
 		goal := g.NodeFor(c.GoalClass)
 		a := goal.Attrs
 		a["shape"] = "diamond"
@@ -288,24 +294,22 @@ func (c *correlate) updateDiagram() {
 		if len(goal.Result.List()) == 0 {
 			a["fillcolor"] = emptyColor
 		}
-	} else {
-		g.GraphAttrs["layout"] = "twopi"
 	}
 
 	// Write the graph files
-	baseName := filepath.Join(c.ui.dir, "files", "korrel8r")
+	baseName := filepath.Join(c.app.dir, "files", "korrel8r")
 	if gv, err := dot.MarshalMulti(g, "", "", "  "); !c.addErr(err) {
 		gvFile := baseName + ".txt"
 		if !c.addErr(os.WriteFile(gvFile, gv, 0664)) {
 			// Render and write the graph image
 			svgFile := baseName + ".svg"
 			if !c.addErr(runDot("dot", "-v", "-Tsvg", "-o", svgFile, gvFile)) {
-				c.Diagram, _ = filepath.Rel(c.ui.dir, svgFile)
-				c.DiagramTxt, _ = filepath.Rel(c.ui.dir, gvFile)
+				c.Diagram, _ = filepath.Rel(c.app.dir, svgFile)
+				c.DiagramTxt, _ = filepath.Rel(c.app.dir, gvFile)
 			}
 			pngFile := baseName + ".png"
 			if !c.addErr(runDot("dot", "-v", "-Tpng", "-o", pngFile, gvFile)) {
-				c.DiagramImg, _ = filepath.Rel(c.ui.dir, pngFile)
+				c.DiagramImg, _ = filepath.Rel(c.app.dir, pngFile)
 			}
 		}
 	}

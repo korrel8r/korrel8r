@@ -1,9 +1,5 @@
-// -*-web-*-
-package webui
-
-const correlateHTML = `
 {{define "body"}}
-  <h1>Correlation Graph</h1>
+  <h1>Korrel8r</h1>
   <hr>
   <form onsubmit="return validate()">
     <div style="white-space: nowrap">
@@ -18,6 +14,7 @@ const correlateHTML = `
       {{range .Goals}}
         <input type="radio" name="goal" id="{{.Label}}" value="{{.Value}}" {{if eq $.Goal .Value}}checked{{end}}>
         <lable for="{{.Label}}">{{.Label}}</lable>
+        <br>
       {{end}}
       <input type="radio" name="goal" id="other" value="other" {{if eq .Goal "other"}}checked{{end}}>
       <label for="other"> Other
@@ -38,7 +35,7 @@ const correlateHTML = `
     </p>
     <p>
       <input type="submit" id="submit" value="Update Graph">
-      <span id="waiting" style="display:none;"><img src="static/gears.gif" id="loading"></span>
+      <span id="waiting" style="display:none;"><img src="images/gears.gif" id="loading"></span>
     </p>
   </form>
 
@@ -121,4 +118,3 @@ const correlateHTML = `
   {{end}}
 
 {{end}}
-`

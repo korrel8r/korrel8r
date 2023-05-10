@@ -108,16 +108,20 @@ rules:
            "LogQL": "{kubernetes_namespace_name=\"{{.Namespace}}\",kubernetes_pod_name=\"{{.Name}}\"} | json"
          }
 
-   - name: ResourceToNamespace
-     start:
-       domain: k8s
-       classes: [namespacedResources]
-     goal:
-       domain: k8s
-       classes: [Namespace]
-     result:
-       query: |-
-         { Version: v1, Kind: Namespace, Name: {{.Namespace}} }
+   # FIXME This rule is a little to "eager", it connects all resources in the same nameppace.
+   # which in turn connect to all kinds of other stuff.
+   # Do we need a "priority" or "cost" for rules, to choose broad vs focused results?
+   #
+   # - name: ResourceToNamespace
+   #   start:
+   #     domain: k8s
+   #     classes: [namespacedResources]
+   #   goal:
+   #     domain: k8s
+   #     classes: [Namespace]
+   #   result:
+   #     query: |-
+   #       { Version: v1, Kind: Namespace, Name: {{.Namespace}} }
 
    - name: NamespaceToResource
      start:
