@@ -108,7 +108,9 @@ rules:
            "LogQL": "{kubernetes_namespace_name=\"{{.Namespace}}\",kubernetes_pod_name=\"{{.Name}}\"} | json"
          }
 
-   # FIXME This rule is a little to "eager", it connects all resources in the same nameppace.
+   # TODO see  https://github.com/korrel8r/korrel8r/issues/52
+   #
+   # This rule is a little to "eager", it connects all resources in the same nameppace.
    # which in turn connect to all kinds of other stuff.
    # Do we need a "priority" or "cost" for rules, to choose broad vs focused results?
    #

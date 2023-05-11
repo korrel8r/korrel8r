@@ -52,7 +52,7 @@ type correlate struct {
 	Err error
 
 	// Parent
-	app *App
+	app *Browser
 }
 
 // reset the fields to contain only URL query parameters
@@ -73,8 +73,8 @@ func (c *correlate) reset(params url.Values) {
 		{"metric/metric", "Metrics"},
 	}
 	c.app = app
-	c.ConsoleURL = c.app.Console.BaseURL
-	c.Graph = c.app.Engine.Graph()
+	c.ConsoleURL = c.app.console.BaseURL
+	c.Graph = c.app.engine.Graph()
 	// Defaults
 	if c.Goal == "" {
 		c.Goal = "neighbours"
@@ -96,7 +96,7 @@ func (c *correlate) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		log.Error(c.Err, "page errors")
 	}
 	t := c.app.page("correlate").Funcs(map[string]any{
-		"queryToConsole": func(q korrel8r.Query) *url.URL { return c.checkURL(c.app.Console.QueryToConsoleURL(q)) },
+		"queryToConsole": func(q korrel8r.Query) *url.URL { return c.checkURL(c.app.console.QueryToConsoleURL(q)) },
 	})
 	serveTemplate(w, t, correlateHTML, c)
 }
@@ -134,7 +134,7 @@ func (c *correlate) update(req *http.Request) {
 	if !c.addErr(c.updateStart(), "start") {
 		// Prime the start node with initial results
 		start := c.Graph.NodeFor(c.StartClass)
-		if c.addErr(c.app.Engine.Get(context.Background(), c.StartClass, c.StartQuery, start.Result)) {
+		if c.addErr(c.app.engine.Get(context.Background(), c.StartClass, c.StartQuery, start.Result)) {
 			return
 		}
 		start.QueryCounts.Put(c.StartQuery, len(start.Result.List()))
@@ -143,7 +143,7 @@ func (c *correlate) update(req *http.Request) {
 	if c.Err != nil {
 		return
 	}
-	follower := c.app.Engine.Follower(context.Background())
+	follower := c.app.engine.Follower(context.Background())
 
 	if c.GoalClass != nil { // Paths from start to goal.
 		if c.ShortPaths {
@@ -180,17 +180,17 @@ func (c *correlate) updateStart() (err error) {
 	if c.Start == "" {
 		return errors.New("empty")
 	}
-	if c.StartClass, err = c.app.Engine.Class(c.Start); err == nil {
+	if c.StartClass, err = c.app.engine.Class(c.Start); err == nil {
 		return nil
 	}
 	if u, err := url.Parse(c.Start); err == nil {
-		if c.StartQuery, err = c.app.Console.ConsoleURLToQuery(u); err != nil {
+		if c.StartQuery, err = c.app.console.ConsoleURLToQuery(u); err != nil {
 			return err
 		}
 		c.StartClass = c.StartQuery.Class()
 		return nil
 	}
-	domain, err := c.app.Engine.DomainErr(c.StartDomain)
+	domain, err := c.app.engine.DomainErr(c.StartDomain)
 	if err != nil {
 		return err
 	}
@@ -206,9 +206,9 @@ func (c *correlate) updateGoal() (err error) {
 	case "neighbours":
 		return nil // No goal, depth is set.
 	case "other":
-		c.GoalClass, err = c.app.Engine.Class(c.Other)
+		c.GoalClass, err = c.app.engine.Class(c.Other)
 	default:
-		c.GoalClass, err = c.app.Engine.Class(c.Goal)
+		c.GoalClass, err = c.app.engine.Class(c.Goal)
 	}
 	return err
 }
@@ -224,7 +224,7 @@ func (c *correlate) addClassNode(class korrel8r.Class) {
 
 func (c *correlate) queryURLAttrs(a graph.Attrs, qcs graph.QueryCounts) {
 	if len(qcs) > 0 {
-		a["URL"] = c.checkURL(c.app.Console.QueryToConsoleURL(qcs.Sort()[0].Query)).String()
+		a["URL"] = c.checkURL(c.app.console.QueryToConsoleURL(qcs.Sort()[0].Query)).String()
 		a["target"] = "_blank"
 	}
 }

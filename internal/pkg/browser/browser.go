@@ -1,4 +1,4 @@
-// package browser is an experimental BROWSER UI server for browsers.
+// package browser implements an HTML UI for web browsers.
 package browser
 
 import (
@@ -29,73 +29,65 @@ var (
 	log = logging.Log()
 
 	//go:embed images
-	static embed.FS
-
+	images embed.FS
 	//go:embed basepage.html.tmpl
 	basePageHTML string
 )
 
-// App is the HTML browser webapp for human users.
-type App struct {
-	Engine  *engine.Engine
-	Console *console.Console
+// Browser implements HTTP handlers for web browsers.
+type Browser struct {
+	engine  *engine.Engine
+	console *console.Console
 	dir     string
 }
 
-// Register handlers to serve the HTML browser UI with a http.Handler.
-// Including a "/" default handler.
-// Returns a closer to clean up on exit.
-func New(e *engine.Engine, cfg *rest.Config, c client.Client) (*App, error) {
-	app := &App{Engine: e}
+func New(e *engine.Engine, cfg *rest.Config, c client.Client) (*Browser, error) {
+	b := &Browser{engine: e}
 	var err error
-	if app.dir, err = os.MkdirTemp("", "korrel8r"); err != nil {
+	if b.dir, err = os.MkdirTemp("", "korrel8r"); err != nil {
 		return nil, err
 	}
-	if err := os.Mkdir(filepath.Join(app.dir, "files"), 0700); err != nil {
+	if err := os.Mkdir(filepath.Join(b.dir, "files"), 0700); err != nil {
 		return nil, err
 	}
-	log.Info("working directory", "dir", app.dir)
+	log.Info("working directory", "dir", b.dir)
 	consoleURL, err := openshift.ConsoleURL(context.Background(), c)
 	if err != nil {
 		return nil, err
 	}
-	app.Console = console.New(consoleURL, e)
-	return app, nil
+	b.console = console.New(consoleURL, e)
+	return b, nil
 }
 
-// Register handlers with a http.Handler, including a default "/" handler.
-func (app *App) Register(mux *http.ServeMux) {
+// Register handlers with a http.ServeMux, including a default "/" redirect handler.
+func (b *Browser) Register(mux *http.ServeMux) {
 	mux.Handle("/", http.RedirectHandler("/correlate", http.StatusMovedPermanently))
-	mux.Handle("/correlate", &correlate{app: app})
-	mux.Handle("/files/", http.FileServer(http.Dir(app.dir)))
-	mux.Handle("/images/", http.FileServer(http.FS(static)))
-	mux.HandleFunc("/stores/", app.stores)
+	mux.Handle("/correlate", &correlate{app: b})
+	mux.Handle("/files/", http.FileServer(http.Dir(b.dir)))
+	mux.Handle("/images/", http.FileServer(http.FS(images)))
+	mux.HandleFunc("/stores/", b.stores)
 	mux.HandleFunc("/error/", func(w http.ResponseWriter, req *http.Request) {
-		// Handler that returns an error message, used when a link can't be generated due to error.
+		// Handler that returns an error message from the URL, used when a link can't be generated due to error.
 		httpError(w, errors.New(req.URL.Query().Get("err")), http.StatusInternalServerError)
 	})
 }
 
-// Close should be called on shutdown to clean up external resources (temporary files etc.)
-func (app *App) Close() {
-	if err := os.RemoveAll(app.dir); err != nil {
+// Close should be called on shutdown to clean up external resources.
+func (b *Browser) Close() {
+	if err := os.RemoveAll(b.dir); err != nil {
 		log.Error(err, "closing")
 	}
 }
 
-// FIXME privatize and clean up
-
-var funcs = map[string]any{
-	"asHTML": func(s string) template.HTML { return template.HTML(s) },
-}
-
 // page tempate for all pages.
-func (app *App) page(name string) *template.Template {
+func (app *Browser) page(name string) *template.Template {
 	return template.Must(
 		template.New(name).
 			Funcs(templaterule.Funcs).
-			Funcs(app.Engine.TemplateFuncs()).
-			Funcs(funcs).
+			Funcs(app.engine.TemplateFuncs()).
+			Funcs(map[string]any{
+				"asHTML": func(s string) template.HTML { return template.HTML(s) },
+			}).
 			Parse(basePageHTML))
 }
 
@@ -112,32 +104,29 @@ func serveTemplate(w http.ResponseWriter, t *template.Template, text string, dat
 	b := bytes.Buffer{}
 	const code = http.StatusInternalServerError
 	t, err := t.Parse(text)
-	if !httpError(w, err, code) && !httpError(w, t.Execute(&b, data), code) {
-		_, _ = w.Write(b.Bytes())
+	if httpError(w, err, code) || httpError(w, t.Execute(&b, data), code) {
+		return
 	}
+	_, _ = w.Write(b.Bytes())
 }
 
-func (b *App) stores(w http.ResponseWriter, req *http.Request) {
+func (b *Browser) stores(w http.ResponseWriter, req *http.Request) {
 	path := path.Base(req.URL.Path)
 	log.V(2).Info("store handler", "path", path, "query", req.URL.RawQuery)
 
-	domain, err := b.Engine.DomainErr(path)
+	domain, err := b.engine.DomainErr(path)
 	if httpError(w, err, http.StatusNotFound) {
 		return
 	}
-
-	store, err := b.Engine.StoreErr(
-		domain.String())
+	store, err := b.engine.StoreErr(domain.String())
 	if httpError(w, err, http.StatusNotFound) {
 		return
 	}
-
 	params := req.URL.Query()
 	query, err := domain.UnmarshalQuery([]byte(params.Get("query")))
 	if httpError(w, err, http.StatusNotFound) {
 		return
 	}
-
 	result := korrel8r.NewResult(query.Class())
 	err = store.Get(context.Background(), query, result)
 	data := map[string]any{

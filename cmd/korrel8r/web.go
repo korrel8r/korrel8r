@@ -1,9 +1,9 @@
-package cmd
+package main
 
 import (
 	"net/http"
 
-	"github.com/korrel8r/korrel8r/cmd/korrel8r/webapp/browser"
+	"github.com/korrel8r/korrel8r/internal/pkg/browser"
 	"github.com/korrel8r/korrel8r/internal/pkg/must"
 	"github.com/spf13/cobra"
 )
@@ -14,12 +14,15 @@ var webCmd = &cobra.Command{
 	Run: func(_ *cobra.Command, args []string) {
 		e := newEngine()
 		cfg := restConfig()
-		browser := must.Must1(browser.New(e, cfg, k8sClient(cfg)))
-		browser.Register(http.DefaultServeMux)
-		defer browser.Close()
-		// FIXME
-		// rest := must.Must1(rest.New(e, cfg, k8sClient(cfg)))
-		log.Info("web ui listening", "addr", *httpAddr)
+		if *serveHTML {
+			browser := must.Must1(browser.New(e, cfg, k8sClient(cfg)))
+			browser.Register(http.DefaultServeMux)
+			defer browser.Close()
+		}
+		if *serveREST {
+			_ = 0 // FIXME rest := must.Must1(rest.New(e, cfg, k8sClient(cfg)))
+		}
+		log.Info("listening for http", "addr", *httpAddr)
 		must.Must(http.ListenAndServe(*httpAddr, nil))
 	},
 }

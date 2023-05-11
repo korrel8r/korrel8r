@@ -23,7 +23,7 @@ type LokiServer struct {
 }
 
 const (
-	lokiImage = "grafana/loki:2.5.0"
+	lokiImage = "docker.io/grafana/loki:2.5.0"
 )
 
 var (
@@ -32,20 +32,13 @@ var (
 
 func NewLokiServer() (server *LokiServer, err error) {
 	defer func() {
-		if r := recover(); r != nil {
-			err = fmt.Errorf("error starting loki server: %w", err)
+		if exitErr, ok := err.(*exec.ExitError); ok {
+			err = fmt.Errorf("loki server exit: %w\n%v", exitErr, string(exitErr.Stderr))
 		}
 	}()
-	pullLokiOnce.Do(func() {
-		if _, err = exec.LookPath("podman"); err != nil {
-			return
-		}
-		if err = exec.Command("podman", "pull", lokiImage).Run(); err != nil {
-			return
-		}
-	})
+	pullLokiOnce.Do(func() { err = exec.Command("podman", "pull", lokiImage).Run() })
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("pull %v failed: %w", lokiImage, err)
 	}
 
 	server = &LokiServer{}
@@ -58,7 +51,7 @@ func NewLokiServer() (server *LokiServer, err error) {
 	cmd.Stderr = os.Stderr
 	id, err := cmd.Output()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("run %v failed: %w", cmd, err)
 	}
 	server.ContainerID = strings.TrimSpace(string(id))
 	return server, nil

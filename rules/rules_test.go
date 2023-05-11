@@ -2,7 +2,6 @@
 //
 // Note these tests only verify that the engine generates the expected queries.
 // It does not verify that the queries yield expected results.
-// For end-to-end tests see /home/aconway/src/korrel8r/korrel8r/cmd/korrel8r/cmd/cmd_test.go
 package rules
 
 import (
@@ -177,11 +176,13 @@ func TestK8sAllToMetric(t *testing.T) {
 func TestNamespace(t *testing.T) {
 	e := setup(t)
 	ns := k8s.New[corev1.Namespace]("", "ns")
-	poda, podb := k8s.New[corev1.Pod]("ns", "a"), k8s.New[corev1.Pod]("ns", "b")
-	t.Run("PodToNamespace", func(t *testing.T) {
-		want := k8s.NewQuery(k8s.ClassOf(ns), "", "ns", nil, nil)
-		testTraverse(t, e, k8s.ClassOf(poda), k8s.ClassOf(ns), []korrel8r.Object{poda, podb}, want)
-	})
+	poda := k8s.New[corev1.Pod]("ns", "a")
+
+	// TODO this rule is disabled, see TODO comment in k8s.yaml
+	// t.Run("PodToNamespace", func(t *testing.T) {
+	// 	want := k8s.NewQuery(k8s.ClassOf(ns), "", "ns", nil, nil)
+	// 	testTraverse(t, e, k8s.ClassOf(poda), k8s.ClassOf(ns), []korrel8r.Object{poda, podb}, want)
+	// })
 
 	t.Run("NamespaceToPods", func(t *testing.T) {
 		want := k8s.NewQuery(k8s.ClassOf(poda), "ns", "", nil, nil)
