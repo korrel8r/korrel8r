@@ -1,3 +1,5 @@
+// Copyright: This file is part of korrel8r, released under https://github.com/korrel8r/korrel8r/blob/main/LICENSE
+
 // package mock is a mock implementation of a korrel8r domain for testing.
 //
 // Useful as a starting point when implementing a new domain.

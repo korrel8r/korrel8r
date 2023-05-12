@@ -1,3 +1,5 @@
+// Copyright: This file is part of korrel8r, released under https://github.com/korrel8r/korrel8r/blob/main/LICENSE
+
 // package console helps convert queries to and from console  URLs.
 //
 // The Query type for domains that support console URLs must implement the Query interface
