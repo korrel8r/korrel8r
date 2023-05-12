@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	"github.com/korrel8r/korrel8r/internal/pkg/test/mock"
-	"github.com/korrel8r/korrel8r/pkg/engine"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -26,11 +25,8 @@ func mockRules(k ...korrel8r.Rule) []mock.Rule {
 }
 
 func TestRule_Rules(t *testing.T) {
-	e := engine.New()
 	foo := mock.Domain("foo a b c")
 	bar := mock.Domain("bar x y z")
-	e.AddDomain(foo, nil)
-	e.AddDomain(bar, nil)
 	a, b, c := foo.Class("a"), foo.Class("b"), foo.Class("c")
 	_, _, z := bar.Class("x"), bar.Class("y"), bar.Class("z")
 	for _, x := range []struct {
@@ -76,7 +72,7 @@ result: {query: dummy, class: dummy}
 		t.Run(x.rule, func(t *testing.T) {
 			var rule Rule
 			require.NoError(t, yaml.Unmarshal([]byte(x.rule), &rule))
-			got, err := rule.Rules(e)
+			got, err := rule.Rules(map[string]korrel8r.Domain{"foo": foo, "bar": bar}, nil)
 			if assert.NoError(t, err) {
 				assert.ElementsMatch(t, x.want, mockRules(got...))
 			}

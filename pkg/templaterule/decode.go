@@ -2,8 +2,9 @@ package templaterule
 
 import (
 	"io"
+	"text/template"
 
-	"github.com/korrel8r/korrel8r/pkg/engine"
+	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"k8s.io/apimachinery/pkg/util/yaml"
 )
 
@@ -39,22 +40,23 @@ type RuleFile struct {
 	Rules  []Rule
 }
 
-// Decode template rules and add them to an engine.
-func Decode(r io.Reader, e *engine.Engine) error {
+// Decode and expand template rules from a file.
+func Decode(r io.Reader, domains map[string]korrel8r.Domain, funcs template.FuncMap) ([]korrel8r.Rule, error) {
 	d := yaml.NewYAMLOrJSONDecoder(r, 1024)
 	var rf RuleFile
 	if err := d.Decode(&rf); err != nil {
-		return err
+		return nil, err
 	}
+	rules := make([]korrel8r.Rule, 0, len(rf.Rules))
 	groups := NewGroups(rf.Groups)
 	for _, tr := range rf.Rules {
 		tr.Start.Classes = groups.Expand(tr.Start.Classes)
 		tr.Goal.Classes = groups.Expand(tr.Goal.Classes)
-		krs, err := tr.Rules(e)
+		krs, err := tr.Rules(domains, funcs)
 		if err != nil {
-			return err
+			return nil, err
 		}
-		e.AddRules(krs...)
+		rules = append(rules, krs...)
 	}
-	return nil
+	return rules, nil
 }

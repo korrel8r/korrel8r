@@ -8,6 +8,7 @@ import (
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/exp/maps"
 )
 
 func TestEngine_Class(t *testing.T) {
@@ -45,7 +46,7 @@ func TestEngine_Domains(t *testing.T) {
 		e.AddDomain(d, nil)
 		want = append(want, d)
 	}
-	assert.ElementsMatch(t, want, e.Domains())
+	assert.ElementsMatch(t, want, maps.Values(e.Domains()))
 
 }
 

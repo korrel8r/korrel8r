@@ -50,11 +50,8 @@ func Test_Web(t *testing.T) {
 	var resp *http.Response
 	require.Eventually(t, func() bool {
 		resp, err = http.Get(u)
-		if err != nil {
-			t.Logf("retry %v: %v", cmd, err)
-		}
 		return err == nil
-	}, 10*time.Second, time.Second)
+	}, 10*time.Second, time.Second, "Time out: %v: %v", cmd, err)
 	b, err := io.ReadAll(resp.Body)
 	assert.Contains(t, string(b), "Korrel8r")
 }

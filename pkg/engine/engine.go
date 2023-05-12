@@ -4,10 +4,14 @@ package engine
 import (
 	"context"
 	"fmt"
+	"io/fs"
+	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/korrel8r/korrel8r/pkg/graph"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
+	"github.com/korrel8r/korrel8r/pkg/templaterule"
 	"golang.org/x/exp/maps"
 )
 
@@ -28,16 +32,14 @@ func New() *Engine {
 }
 
 // Domain returns the named domain or nil if not found.
-func (e *Engine) Domain(name string) korrel8r.Domain { return e.domains[name] }
+func (e *Engine) Domain(name string) korrel8r.Domain  { return e.domains[name] }
+func (e *Engine) Domains() map[string]korrel8r.Domain { return e.domains }
 func (e *Engine) DomainErr(name string) (korrel8r.Domain, error) {
 	if d := e.Domain(name); d != nil {
 		return d, nil
 	}
 	return nil, fmt.Errorf("domain not found: %v", name)
 }
-
-// Domains returns a list of known domains.
-func (e *Engine) Domains() (domains []korrel8r.Domain) { return maps.Values(e.domains) }
 
 // Store returns the default store for domain, or nil if not found.
 func (e *Engine) Store(name string) korrel8r.Store { return e.stores[name] }
@@ -106,3 +108,29 @@ func (e *Engine) Get(ctx context.Context, class korrel8r.Class, query korrel8r.Q
 }
 
 func (e *Engine) Follower(ctx context.Context) *Follower { return &Follower{Engine: e, Context: ctx} }
+
+// LoadRules from a file or walk a directory to find and load rule files.
+func (e *Engine) LoadRules(path string) error {
+	log.V(2).Info("loading rules from", "path", path)
+	return filepath.WalkDir(path, func(path string, info fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		ext := filepath.Ext(path)
+		if !info.Type().IsRegular() || (ext != ".yaml" && ext != ".yml" && ext != ".json") {
+			return nil // Skip unknown file
+		}
+		log.V(3).Info("loading rules", "path", path)
+		f, err := os.Open(path)
+		if err != nil {
+			return err
+		}
+		defer f.Close()
+		rules, err := templaterule.Decode(f, e.Domains(), e.TemplateFuncs())
+		if err != nil {
+			return fmt.Errorf("%v:0 error loading rules: %v", path, err)
+		}
+		e.AddRules(rules...)
+		return nil
+	})
+}

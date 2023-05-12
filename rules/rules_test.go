@@ -46,7 +46,9 @@ func setup(t *testing.T) *engine.Engine {
 		f, err := os.Open(name)
 		require.NoError(t, err)
 		defer f.Close()
-		require.NoError(t, templaterule.Decode(f, e), "decoding file %v", name)
+		rules, err := templaterule.Decode(f, e.Domains(), e.TemplateFuncs())
+		require.NoError(t, err, "decoding file %v", name)
+		e.AddRules(rules...)
 	}
 	return e
 }

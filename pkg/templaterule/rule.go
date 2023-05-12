@@ -2,7 +2,8 @@
 package templaterule
 
 import (
-	"github.com/korrel8r/korrel8r/pkg/engine"
+	"text/template"
+
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 )
 
@@ -47,8 +48,8 @@ type ResultSpec struct {
 }
 
 // Rules generates one or more korrel8r.Rule from the template Rule.
-func (r *Rule) Rules(e *engine.Engine) (rules []korrel8r.Rule, err error) {
-	rb, err := newRuleBuilder(r, e)
+func (r *Rule) Rules(domains map[string]korrel8r.Domain, funcs template.FuncMap) (rules []korrel8r.Rule, err error) {
+	rb, err := newRuleBuilder(r, domains, funcs)
 	if err != nil {
 		return nil, err
 	}

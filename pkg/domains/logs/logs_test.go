@@ -65,8 +65,8 @@ func TestLokiStackStore_Get(t *testing.T) {
 		err = s.Get(ctx, q, &result)
 		require.NoError(t, err)
 		t.Logf("waiting for 4 logs, got %v. %v%v", len(result), s, q)
-		return len(result) >= 3
-	}, 30*time.Second, 1*time.Second)
+		return len(result) > 3
+	}, 30*time.Second, 5*time.Second)
 	var got []string
 
 	for _, obj := range result {

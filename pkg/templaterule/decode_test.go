@@ -5,15 +5,14 @@ import (
 	"testing"
 
 	"github.com/korrel8r/korrel8r/internal/pkg/test/mock"
-	"github.com/korrel8r/korrel8r/pkg/engine"
+	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestDecode(t *testing.T) {
-	e := engine.New()
 	foo := mock.Domain("foo a z")
-	e.AddDomain(foo, nil)
+	domains := map[string]korrel8r.Domain{"foo": foo}
 	a, z := foo.Class("a"), foo.Class("z")
 
 	r := strings.NewReader(`
@@ -31,9 +30,10 @@ rules:
     result: {query: dummy, class: dummy}
 `)
 
-	require.NoError(t, Decode(r, e))
+	rules, err := Decode(r, domains, nil)
+	require.NoError(t, err)
 	want := []mock.Rule{mockRule("one", a, z), mockRule("two", a, z)}
-	assert.Equal(t, want, mockRules(e.Rules()...))
+	assert.Equal(t, want, mockRules(rules...))
 }
 
 func TestExpand(t *testing.T) {

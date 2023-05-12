@@ -87,16 +87,16 @@ func RequireLokiServer(t *testing.T) *LokiServer {
 	s, err := NewLokiServer()
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = s.Close() })
+	var resp *http.Response
 	require.Eventually(t, func() bool {
 		u := s.URL()
 		u.Path = "/ready"
-		resp, err := http.Get(u.String())
-		t.Logf("waiting for Loki on port %v, retry: %v: %v", s.Port, resp.Status, err)
+		resp, err = http.Get(u.String())
 		if err == nil {
 			resp.Body.Close()
 		}
 		return err == nil && resp.StatusCode/100 == 2
-	}, time.Minute, time.Second, "timed out waiting for Loki: %v", s.URL())
+	}, time.Minute, time.Second, "timed out waiting for Loki: %v: %v", s.URL(), err)
 	return s
 }
 
