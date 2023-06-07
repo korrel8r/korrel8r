@@ -38,7 +38,7 @@ func (r SetResult) List() []Object    { return r.list }
 func (r *SetResult) Append(objects ...Object) {
 	for _, o := range objects {
 		if r.dedup.Unique(o) {
-			r.list = append(r.list, objects...)
+			r.list = append(r.list, o)
 		}
 	}
 }

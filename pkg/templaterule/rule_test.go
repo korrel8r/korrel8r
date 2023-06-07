@@ -13,22 +13,20 @@ import (
 )
 
 // rule makes a mock rule
-func mockRule(name string, start, goal korrel8r.Class) mock.Rule {
-	return mock.NewRuleFromClasses(name, start, goal, nil)
-}
+var mockRule = mock.NewRule
 
 // mockRules copies public parts of korrel8r.Rule to a mock.Rule for easy comparison.
 func mockRules(k ...korrel8r.Rule) []mock.Rule {
 	m := make([]mock.Rule, len(k))
 	for i := range k {
-		m[i] = mock.NewRuleFromClasses(k[i].String(), k[i].Start(), k[i].Goal(), nil)
+		m[i] = mockRule(k[i].Start(), k[i].Goal())
 	}
 	return m
 }
 
 func TestRule_Rules(t *testing.T) {
-	foo := mock.Domain("foo a b c")
-	bar := mock.Domain("bar x y z")
+	foo := mock.Domain("foo")
+	bar := mock.Domain("bar")
 	a, b, c := foo.Class("a"), foo.Class("b"), foo.Class("c")
 	_, _, z := bar.Class("x"), bar.Class("y"), bar.Class("z")
 	for _, x := range []struct {
@@ -42,7 +40,7 @@ start:  {domain: "foo", classes: [a]}
 goal:   {domain: "bar", classes: [z]}
 result: {query: dummy, class: dummy}
 `,
-			want: []mock.Rule{mockRule("simple", a, z)},
+			want: []mock.Rule{mockRule(a, z)},
 		},
 		{
 			rule: `
@@ -51,7 +49,7 @@ start: {domain: foo, classes: [a, b, c]}
 goal:  {domain: bar, classes: [z]}
 result: {query: dummy, class: dummy}
 `,
-			want: []mock.Rule{mockRule("multistart", a, z), mockRule("multistart", b, z), mockRule("multistart", c, z)},
+			want: []mock.Rule{mockRule(a, z), mockRule(b, z), mockRule(c, z)},
 		},
 		{
 			rule: `
@@ -64,7 +62,7 @@ result: {query: dummy, class: dummy}
 				var rules []mock.Rule
 				for _, foo := range foo.Classes() {
 					for _, bar := range bar.Classes() {
-						rules = append(rules, mockRule("all-all", foo, bar))
+						rules = append(rules, mockRule(foo, bar))
 					}
 				}
 				return rules

@@ -33,7 +33,7 @@ func TestNodesSubGraph(t *testing.T) {
 			g := testGraph(x.graph)
 			var nodes []graph.Node
 			for _, i := range x.include {
-				nodes = append(nodes, g.NodeFor(class(i)))
+				nodes = append(nodes, g.NodeFor(c(i)))
 			}
 			sub := g.NodesSubgraph(nodes)
 			assert.Equal(t, x.want, graphRules(sub))
@@ -64,7 +64,7 @@ func TestGraph_NodesSubGraph(t *testing.T) {
 			g := testGraph(x.graph)
 			var nodes []graph.Node
 			for _, i := range x.include {
-				nodes = append(nodes, g.NodeFor(class(i)))
+				nodes = append(nodes, g.NodeFor(c(i)))
 			}
 			sub := g.NodesSubgraph(nodes)
 			assert.Equal(t, x.want, graphRules(sub))
@@ -81,7 +81,7 @@ func TestGraph_Select(t *testing.T) {
 		{
 			name:  "one",
 			graph: []rule{r(1, 2), r(1, 3), r(3, 11), r(3, 12), r(12, 13)},
-			pick:  func(l *Line) bool { return unique.Set[rule]{r(1, 3): {}, r(3, 11): {}}.Has(l.Rule.(rule)) },
+			pick:  func(l *Line) bool { return unique.Set[rule]{r(1, 3): {}, r(3, 11): {}}.Has(l.Rule) },
 			want:  []rule{r(1, 3), r(3, 11)},
 		},
 		{

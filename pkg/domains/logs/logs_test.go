@@ -22,6 +22,8 @@ import (
 
 var ctx = context.Background()
 
+// FIXME identify and/or separate tests that have external dependencies.
+
 func TestStore_Get_PlainLoki(t *testing.T) {
 	t.Parallel()
 	l := test.RequireLokiServer(t)

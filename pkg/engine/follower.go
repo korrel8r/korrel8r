@@ -40,10 +40,6 @@ func (f *Follower) Traverse(l *graph.Line) {
 			continue
 		}
 		log := log.WithValues("query", logging.JSON(query))
-		if _, ok := goalNode.QueryCounts.Get(query); ok {
-			log.V(3).Info("skip duplicate")
-			continue
-		}
 		result := korrel8r.NewCountResult(goalNode.Result)
 		if store != nil {
 			if err := store.Get(f.Context, query, result); err != nil {

@@ -8,7 +8,7 @@ import (
 )
 
 // QueryCounts is a set of queries and a count of objects they returned.
-// Map is indexed by the JSON form of the query.
+// Map is indexed by the JSON form of the query and it's starting object.
 type QueryCounts map[string]QueryCount
 
 // QueryCount is a query and a count of the data items it returned.

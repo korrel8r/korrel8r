@@ -10,10 +10,12 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+var domain = mock.Domain("x")
+
 func TestConvert(t *testing.T) {
-	d, err := TypeAssert[korrel8r.Domain](mock.Domain("x"))
+	d, err := TypeAssert[korrel8r.Domain](domain)
 	assert.NoError(t, err)
-	assert.Equal(t, mock.Domain("x"), d)
+	assert.Equal(t, domain, d)
 
 	_, err = TypeAssert[korrel8r.Query](nil)
 	assert.EqualError(t, err, "wrong type: want korrel8r.Query, got (<nil>)(<nil>)")
@@ -27,7 +29,7 @@ type dummyQuery struct {
 	Bar int
 }
 
-func (*dummyQuery) Class() korrel8r.Class { return mock.Class("x") }
+func (*dummyQuery) Class() korrel8r.Class { return domain.Class("x") }
 
 func TestUnmarshalQuery(t *testing.T) {
 	var q dummyQuery

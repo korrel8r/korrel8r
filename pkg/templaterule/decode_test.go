@@ -13,7 +13,7 @@ import (
 )
 
 func TestDecode(t *testing.T) {
-	foo := mock.Domain("foo a z")
+	foo := mock.Domain("foo")
 	domains := map[string]korrel8r.Domain{"foo": foo}
 	a, z := foo.Class("a"), foo.Class("z")
 
@@ -34,7 +34,7 @@ rules:
 
 	rules, err := Decode(r, domains, nil)
 	require.NoError(t, err)
-	want := []mock.Rule{mockRule("one", a, z), mockRule("two", a, z)}
+	want := []mock.Rule{mockRule(a, z), mockRule(a, z)}
 	assert.Equal(t, want, mockRules(rules...))
 }
 

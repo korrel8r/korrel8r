@@ -103,7 +103,6 @@ type Constraint struct {
 type Appender interface{ Append(...Object) }
 
 // Rule describes a relationship for finding correlated objects.
-// Rule implementations must be comparable.
 type Rule interface {
 	// Apply the rule to a start Object, return a Query for results.
 	// Optional Constraint may be included in the Query.
@@ -137,3 +136,7 @@ func YAMLString(v any) string {
 	}
 	return string(b)
 }
+
+// Domains is a map of known domains by name.
+// Packages that implement domains should add their domain to this map in init()
+var Domains map[string]Domain

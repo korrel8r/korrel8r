@@ -36,7 +36,7 @@ func Test_allPaths(t *testing.T) {
 		}} {
 		t.Run(x.name, func(t *testing.T) {
 			g := testGraph(x.graph)
-			paths := g.AllPaths(class(1), class(13))
+			paths := g.AllPaths(c(1), c(13))
 			assert.Equal(t, x.want, graphRules(paths))
 		})
 	}
