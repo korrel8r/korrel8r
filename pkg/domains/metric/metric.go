@@ -45,6 +45,25 @@ func (domain) UnmarshalQuery(r []byte) (korrel8r.Query, error) {
 	return impl.UnmarshalQuery(r, &Query{})
 }
 
+const StoreKeyMetricURL = "metric"
+
+func (domain) Store(sc korrel8r.StoreConfig) (korrel8r.Store, error) {
+	uStr := sc[StoreKeyMetricURL]
+	if uStr == "" { // Use cluster store
+		cfg, client, err := impl.StoreConfig(sc).GetConfigClient()
+		if err != nil {
+			return nil, err
+		}
+		return NewOpenshiftStore(context.Background(), client, cfg)
+	} else {
+		u, err := url.Parse(uStr)
+		if err != nil {
+			return nil, err
+		}
+		return NewStore(u, nil)
+	}
+}
+
 const (
 	consolePath = "/monitoring/query-browser"
 	promQLParam = "query0"

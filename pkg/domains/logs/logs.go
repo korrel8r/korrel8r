@@ -44,6 +44,37 @@ func (domain) UnmarshalQuery(r []byte) (korrel8r.Query, error) {
 	return impl.UnmarshalQuery(r, &Query{})
 }
 
+const (
+	StoreKeyLoki      korrel8r.StoreKey = "loki"
+	StoreKeyLokiStack korrel8r.StoreKey = "lokiStack"
+)
+
+func (domain) Store(sc korrel8r.StoreConfig) (korrel8r.Store, error) {
+	loki, lokiStack := sc[StoreKeyLoki], sc[StoreKeyLokiStack]
+	if loki != "" && lokiStack != "" {
+		return nil, fmt.Errorf("can't create a store with both loki and lokiStack URLs")
+	}
+	if loki == "" && lokiStack == "" {
+		cfg, c, err := impl.StoreConfig(sc).GetConfigClient()
+		if err != nil {
+			return nil, err
+		}
+		return NewOpenshiftLokiStackStore(context.Background(), c, cfg)
+	}
+	s := loki
+	if s == "" {
+		s = lokiStack
+	}
+	u, err := url.Parse(s)
+	if err != nil {
+		return nil, err
+	}
+	if lokiStack != "" {
+		return NewLokiStackStore(u, nil)
+	}
+	return NewPlainLokiStore(u, nil)
+}
+
 func (domain) QueryToConsoleURL(query korrel8r.Query) (*url.URL, error) {
 	q, err := impl.TypeAssert[*Query](query)
 	if err != nil {

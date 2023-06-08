@@ -25,10 +25,11 @@ var (
 
 type Domain string
 
-func (d Domain) String() string                                  { return string(d) }
-func (d Domain) Class(name string) korrel8r.Class                { return Class{name: name, domain: d} }
-func (d Domain) Classes() (classes []korrel8r.Class)             { return nil }
-func (d Domain) UnmarshalQuery(b []byte) (korrel8r.Query, error) { panic("not implemented") }
+func (d Domain) String() string                                     { return string(d) }
+func (d Domain) Class(name string) korrel8r.Class                   { return Class{name: name, domain: d} }
+func (d Domain) Classes() (classes []korrel8r.Class)                { return nil }
+func (d Domain) UnmarshalQuery(b []byte) (korrel8r.Query, error)    { panic("not implemented") }
+func (d Domain) Store(korrel8r.StoreConfig) (korrel8r.Store, error) { return NewStore(d), nil }
 
 type Class struct {
 	name   string

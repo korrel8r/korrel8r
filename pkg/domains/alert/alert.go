@@ -44,6 +44,32 @@ func (domain) UnmarshalQuery(r []byte) (korrel8r.Query, error) {
 	return impl.UnmarshalQuery(r, &Query{})
 }
 
+// FIXME need to document & advertize these StoreKeys
+const (
+	StoreKeyMetrics      korrel8r.StoreKey = "metrics"
+	StoreKeyAlertmanager korrel8r.StoreKey = "alertmanager"
+)
+
+func (domain) Store(sc korrel8r.StoreConfig) (korrel8r.Store, error) {
+	metrics, alertmanager := sc[StoreKeyMetrics], sc[StoreKeyAlertmanager]
+	if metrics == "" && alertmanager == "" {
+		cfg, err := impl.StoreConfig(sc).GetConfig()
+		if err != nil {
+			return nil, err
+		}
+		return NewOpenshiftStore(context.Background(), cfg)
+	}
+	metricsURL, err := url.Parse(metrics)
+	if err != nil {
+		return nil, err
+	}
+	alertmanagerURL, err := url.Parse(alertmanager)
+	if err != nil {
+		return nil, err
+	}
+	return NewStore(alertmanagerURL, metricsURL, nil)
+}
+
 type Class struct{} // Only one class - "alert"
 
 func (c Class) Domain() korrel8r.Domain { return Domain }

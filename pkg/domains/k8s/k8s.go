@@ -20,7 +20,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/rest"
-
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 )
@@ -42,6 +41,14 @@ func init() {
 type domain struct{}
 
 func (d domain) String() string { return "k8s" }
+
+func (d domain) Store(sc korrel8r.StoreConfig) (s korrel8r.Store, err error) {
+	cfg, client, err := impl.StoreConfig(sc).GetConfigClient()
+	if err != nil {
+		return nil, err
+	}
+	return NewStore(client, cfg)
+}
 
 // Class name in one of the forms: Kind,  Kind.Group,  Kind.Version.Group.
 // Group must be included, missing group implies core group.

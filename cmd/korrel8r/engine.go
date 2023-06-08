@@ -47,6 +47,7 @@ func parseURL(s string) (*url.URL, error) {
 	return u, nil
 }
 
+// FIXEM Replace with config file.
 func newEngine() *engine.Engine {
 	log.V(2).Info("create engine")
 	cfg := restConfig()
