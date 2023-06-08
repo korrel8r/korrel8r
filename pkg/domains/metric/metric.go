@@ -32,6 +32,10 @@ var (
 	_ korrel8r.Store  = &Store{}
 )
 
+func init() {
+	korrel8r.Domains["metric"] = Domain
+}
+
 type domain struct{}
 
 func (domain) String() string                   { return "metric" }

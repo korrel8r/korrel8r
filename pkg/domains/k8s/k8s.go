@@ -35,6 +35,10 @@ var (
 // Domain is a korrel8r.Domain.
 var Domain = domain{}
 
+func init() {
+	korrel8r.Domains["k8s"] = Domain
+}
+
 type domain struct{}
 
 func (d domain) String() string { return "k8s" }
