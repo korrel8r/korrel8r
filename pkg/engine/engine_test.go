@@ -28,8 +28,7 @@ func TestEngine_Class(t *testing.T) {
 		{"bad/foo", nil, `domain not found: bad`},
 	} {
 		t.Run(x.name, func(t *testing.T) {
-			e := New()
-			e.AddDomain(domain, nil)
+			e := New(domain)
 			c, err := e.Class(x.name)
 			if x.err == "" {
 				require.NoError(t, err)
@@ -43,19 +42,16 @@ func TestEngine_Class(t *testing.T) {
 
 func TestEngine_Domains(t *testing.T) {
 	domains := []korrel8r.Domain{mock.Domain("a"), mock.Domain("b"), mock.Domain("c")}
-	e := New()
-	for _, d := range domains {
-		e.AddDomain(d, nil)
-	}
+	e := New(domains...)
 	assert.ElementsMatch(t, domains, maps.Values(e.Domains()))
 }
 
 func TestFollower_Traverse(t *testing.T) {
 	d := mock.Domain("mock")
 	s := mock.NewStore(d)
-	e := New()
+	e := New(d)
 	a, b, c, z := d.Class("a"), d.Class("b"), d.Class("c"), d.Class("z")
-	e.AddDomain(d, s) // FIXME add store includes domain...
+	require.NoError(t, e.AddStore(s))
 	e.AddRules(
 		// Return 2 results, must follow both
 		mock.NewApplyRule(a, b, func(korrel8r.Object, *korrel8r.Constraint) (korrel8r.Query, error) {

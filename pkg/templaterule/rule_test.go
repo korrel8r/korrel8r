@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/korrel8r/korrel8r/internal/pkg/test/mock"
+	"github.com/korrel8r/korrel8r/pkg/api"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -13,7 +14,7 @@ import (
 )
 
 // rule makes a mock rule
-var mockRule = mock.NewRule
+var mockRule = func(s, g korrel8r.Class) mock.Rule { return mock.NewRule("", s, g) }
 
 // mockRules copies public parts of korrel8r.Rule to a mock.Rule for easy comparison.
 func mockRules(k ...korrel8r.Rule) []mock.Rule {
@@ -25,8 +26,8 @@ func mockRules(k ...korrel8r.Rule) []mock.Rule {
 }
 
 func TestRule_Rules(t *testing.T) {
-	foo := mock.Domain("foo")
-	bar := mock.Domain("bar")
+	foo := mock.NewDomainWithClasses("foo", "a", "b", "c")
+	bar := mock.NewDomainWithClasses("bar", "x", "y", "z")
 	a, b, c := foo.Class("a"), foo.Class("b"), foo.Class("c")
 	_, _, z := bar.Class("x"), bar.Class("y"), bar.Class("z")
 	for _, x := range []struct {
@@ -70,9 +71,10 @@ result: {query: dummy, class: dummy}
 		},
 	} {
 		t.Run(x.rule, func(t *testing.T) {
-			var rule Rule
-			require.NoError(t, yaml.Unmarshal([]byte(x.rule), &rule))
-			got, err := rule.Rules(map[string]korrel8r.Domain{"foo": foo, "bar": bar}, nil)
+			f := NewFactory(map[string]korrel8r.Domain{"foo": foo, "bar": bar}, nil)
+			var r api.Rule
+			require.NoError(t, yaml.Unmarshal([]byte(x.rule), &r))
+			got, err := f.Rules(r)
 			if assert.NoError(t, err) {
 				assert.ElementsMatch(t, x.want, mockRules(got...))
 			}

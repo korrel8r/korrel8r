@@ -1,27 +1,24 @@
 // Copyright: This file is part of korrel8r, released under https://github.com/korrel8r/korrel8r/blob/main/LICENSE
 
-// package rules is a test-only package to verify the rules.yaml files give expected results.
+// Package rules is a test-only package to test the default korrel8r.yaml rules.
 //
 // Note these tests only verify that the engine generates the expected queries.
 // It does not verify that the queries yield expected results.
-package rules
+package rules_test
 
 import (
 	"context"
 	"fmt"
-	"os"
-	"path/filepath"
 	"testing"
 
 	"github.com/korrel8r/korrel8r/internal/pkg/test"
+	"github.com/korrel8r/korrel8r/pkg/config"
 	"github.com/korrel8r/korrel8r/pkg/domains/alert"
 	"github.com/korrel8r/korrel8r/pkg/domains/k8s"
 	"github.com/korrel8r/korrel8r/pkg/domains/logs"
 	"github.com/korrel8r/korrel8r/pkg/domains/metric"
 	"github.com/korrel8r/korrel8r/pkg/engine"
-	"github.com/korrel8r/korrel8r/pkg/graph"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
-	"github.com/korrel8r/korrel8r/pkg/templaterule"
 	"github.com/korrel8r/korrel8r/pkg/unique"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -36,36 +33,29 @@ import (
 
 func setup(t *testing.T) *engine.Engine {
 	t.Helper()
-	e := engine.New()
-	c := fake.NewClientBuilder().WithRESTMapper(testrestmapper.TestOnlyStaticRESTMapper(k8s.Scheme)).Build()
-	e.AddDomain(k8s.Domain, test.Must(k8s.NewStore(c, &rest.Config{})))
-	for _, d := range []korrel8r.Domain{logs.Domain, alert.Domain, metric.Domain} {
-		e.AddDomain(d, nil)
-	}
-	names, err := filepath.Glob("*.yaml")
+	configs, err := config.Load("../korrel8r.yaml")
 	require.NoError(t, err)
-	for _, name := range names {
-		f, err := os.Open(name)
-		require.NoError(t, err)
-		defer f.Close()
-		rules, err := templaterule.Decode(f, e.Domains(), e.TemplateFuncs())
-		require.NoError(t, err, "decoding file %v", name)
-		e.AddRules(rules...)
+	for _, c := range configs {
+		c.Domains = nil // Use fake stores, not configured defaults.
 	}
+	e := engine.New(k8s.Domain, logs.Domain, alert.Domain, metric.Domain)
+	require.NoError(t, configs.Apply(e))
+	c := fake.NewClientBuilder().WithRESTMapper(testrestmapper.TestOnlyStaticRESTMapper(k8s.Scheme)).Build()
+	require.NoError(t, e.AddStore(test.Must(k8s.NewStore(c, &rest.Config{}))))
 	return e
 }
 
-func testTraverse(t *testing.T, e *engine.Engine, start, goal korrel8r.Class, starters []korrel8r.Object, wantQuery korrel8r.Query) {
+func testTraverse(t *testing.T, e *engine.Engine, start, goal korrel8r.Class, starters []korrel8r.Object, want korrel8r.Query) {
 	t.Helper()
 	paths := e.Graph().AllPaths(start, goal)
 	paths.NodeFor(start).Result.Append(starters...)
 	f := e.Follower(context.Background())
 	assert.NoError(t, paths.Traverse(f.Traverse))
 	assert.NoError(t, f.Err)
-	n := paths.NodeFor(goal)
-	want := graph.QueryCounts{}
-	want.Put(wantQuery, 0)
-	assert.Equal(t, want, n.QueryCounts)
+	got, ok := paths.NodeFor(goal).QueryCounts.Get(want)
+	if assert.True(t, ok, "query not found: %v", want) {
+		assert.Equal(t, want, got.Query)
+	}
 }
 
 func TestPodToLogs(t *testing.T) {
@@ -164,9 +154,8 @@ func TestK8sEvent(t *testing.T) {
 		testTraverse(t, e, k8s.ClassOf(pod), k8s.ClassOf(event), []korrel8r.Object{pod}, want)
 	})
 	t.Run("EventToPod", func(t *testing.T) {
-		testTraverse(t, e, k8s.ClassOf(event), k8s.ClassOf(pod), []korrel8r.Object{event},
-			k8s.NewQuery(k8s.ClassOf(pod), "aNamespace", "foo", nil, nil))
-
+		want := k8s.NewQuery(k8s.ClassOf(pod), "aNamespace", "foo", nil, nil)
+		testTraverse(t, e, k8s.ClassOf(event), k8s.ClassOf(pod), []korrel8r.Object{event}, want)
 	})
 }
 

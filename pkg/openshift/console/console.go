@@ -32,9 +32,14 @@ func New(baseURL *url.URL, e *engine.Engine) *Console {
 }
 
 func (c *Console) converter(domain string) Converter {
-	for _, a := range []any{c.e.Domain(domain), c.e.Store(domain)} {
-		if qc, ok := a.(Converter); ok {
-			return qc
+	if d := c.e.Domain(domain); d != nil {
+		if converter, ok := d.(Converter); ok {
+			return converter
+		}
+		for _, s := range c.e.StoresFor(d) {
+			if converter, ok := s.(Converter); ok {
+				return converter
+			}
 		}
 	}
 	return nil

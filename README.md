@@ -6,7 +6,11 @@
 
 ## Quick Start ##
 
-You need to be logged in to an openshift cluster as an admin for this to work
+Set up your cluster to run tests, there are scripts and examples in:
+- `hack/openshift`
+- `hack/kind`
+
+You need to be logged in to an cluster as an admin for korrel8r to work:
 
 ```bash
 go install github.com/korrel8r/korrel8r/cmd/korrel8r

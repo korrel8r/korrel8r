@@ -13,6 +13,7 @@ import (
 
 	openapiclient "github.com/go-openapi/runtime/client"
 	"github.com/go-openapi/strfmt"
+	"github.com/korrel8r/korrel8r/pkg/config"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r/impl"
 	"github.com/prometheus/alertmanager/api/v2/client"
@@ -31,10 +32,6 @@ var (
 
 var Domain = domain{}
 
-func init() {
-	korrel8r.Domains["alert"] = Domain
-}
-
 type domain struct{}
 
 func (domain) String() string              { return "alert" }
@@ -44,20 +41,19 @@ func (domain) UnmarshalQuery(r []byte) (korrel8r.Query, error) {
 	return impl.UnmarshalQuery(r, &Query{})
 }
 
-// FIXME need to document & advertize these StoreKeys
 const (
-	StoreKeyMetrics      korrel8r.StoreKey = "metrics"
-	StoreKeyAlertmanager korrel8r.StoreKey = "alertmanager"
+	StoreKeyMetrics      = "metrics"
+	StoreKeyAlertmanager = "alertmanager"
 )
 
 func (domain) Store(sc korrel8r.StoreConfig) (korrel8r.Store, error) {
 	metrics, alertmanager := sc[StoreKeyMetrics], sc[StoreKeyAlertmanager]
 	if metrics == "" && alertmanager == "" {
-		cfg, err := impl.StoreConfig(sc).GetConfig()
+		c, cfg, err := config.Store(sc).K8sClient()
 		if err != nil {
 			return nil, err
 		}
-		return NewOpenshiftStore(context.Background(), cfg)
+		return NewOpenshiftStore(context.Background(), c, cfg)
 	}
 	metricsURL, err := url.Parse(metrics)
 	if err != nil {

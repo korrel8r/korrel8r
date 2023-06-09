@@ -1,0 +1,10 @@
+# Configuration for korrel8r
+
+stores:                         # Load default stores
+  - domain: k8s
+  - domain: alert
+  - domain: logs
+
+more:                           # Load rules
+  - rules/alert.yaml
+  - rules/k8s.yaml

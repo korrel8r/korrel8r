@@ -21,8 +21,6 @@ import (
 // Object implementations must support JSON marshal and unmarshal.
 type Object any
 
-// FIXME revisit need for Classes (replaced by configured class groups?) and UnmarshalQuery
-
 // Domain is a collection of classes describing signals in the same family.
 type Domain interface {
 	// Class finds  a class by name, return nil if not found.
@@ -36,6 +34,9 @@ type Domain interface {
 	// Store returns a new store for this domain.
 	Store(StoreConfig) (Store, error)
 }
+
+// StoreConfig name:value attributes to connect to a store.
+type StoreConfig = map[string]string
 
 // Class identifies a subset of objects from the same domain with the same schema.
 // For example Pod is a class in the k8s domain.
@@ -140,7 +141,3 @@ func YAMLString(v any) string {
 	}
 	return string(b)
 }
-
-// Domains is a map of known domains by name.
-// Packages that implement domains should add their domain to this map in init()
-var Domains = map[string]Domain{}

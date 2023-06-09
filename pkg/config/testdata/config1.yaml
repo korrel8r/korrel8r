@@ -1,0 +1,10 @@
+rules:
+  - name: rule1
+    start:
+      domain: foo
+      classes: [a,b,g]
+    goal:
+      domain: bar
+      classes: [z]
+    result:
+      query: what?

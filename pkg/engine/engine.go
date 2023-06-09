@@ -6,31 +6,35 @@ package engine
 import (
 	"context"
 	"fmt"
-	"io/fs"
-	"os"
-	"path/filepath"
 	"strings"
 
+	"github.com/korrel8r/korrel8r/internal/pkg/logging"
 	"github.com/korrel8r/korrel8r/pkg/graph"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
-	"github.com/korrel8r/korrel8r/pkg/templaterule"
 	"golang.org/x/exp/maps"
 )
 
+var log = logging.Log()
+
 // Engine combines a set of domains and a set of rules, so it can perform correlation.
 type Engine struct {
-	stores        map[string]korrel8r.Store
 	domains       map[string]korrel8r.Domain
+	stores        map[string][]korrel8r.Store
 	rules         []korrel8r.Rule
 	templateFuncs map[string]any
 }
 
-func New() *Engine {
-	return &Engine{
-		stores:        map[string]korrel8r.Store{},
+func New(domains ...korrel8r.Domain) *Engine {
+	e := &Engine{
 		domains:       map[string]korrel8r.Domain{},
+		stores:        map[string][]korrel8r.Store{},
 		templateFuncs: map[string]any{},
 	}
+	for _, d := range domains {
+		e.domains[d.String()] = d
+		e.addTemplateFuncs(d)
+	}
+	return e
 }
 
 // Domain returns the named domain or nil if not found.
@@ -40,16 +44,19 @@ func (e *Engine) DomainErr(name string) (korrel8r.Domain, error) {
 	if d := e.Domain(name); d != nil {
 		return d, nil
 	}
-	return nil, fmt.Errorf("domain not found: %v", name)
+	return nil, korrel8r.DomainNotFoundErr{Domain: name}
 }
 
-// Store returns the default store for domain, or nil if not found.
-func (e *Engine) Store(name string) korrel8r.Store { return e.stores[name] }
-func (e *Engine) StoreErr(name string) (korrel8r.Store, error) {
-	if s := e.Store(name); s != nil {
-		return s, nil
+// StoresFor returns the known stores for a domain.
+func (e *Engine) StoresFor(d korrel8r.Domain) []korrel8r.Store { return e.stores[d.String()] }
+
+// StoreErr returns the default (first) store for domain, or an error.
+func (e *Engine) StoreErr(d korrel8r.Domain) (korrel8r.Store, error) {
+	stores := e.StoresFor(d)
+	if len(stores) == 0 {
+		return nil, korrel8r.StoreNotFoundErr{Domain: d}
 	}
-	return nil, fmt.Errorf("store not found: %v", name)
+	return stores[0], nil
 }
 
 // TemplateFuncser can be implemented by Domain or Store implementations to contribute
@@ -57,18 +64,21 @@ func (e *Engine) StoreErr(name string) (korrel8r.Store, error) {
 // See text/template.Template.Funcs for details.
 type TemplateFuncser interface{ TemplateFuncs() map[string]any }
 
-// AddDomain domain and corresponding store, store may be nil.
-func (e *Engine) AddDomain(d korrel8r.Domain, s korrel8r.Store) {
-	e.domains[d.String()] = d
-	if s != nil {
-		e.stores[d.String()] = s
+// AddStore adds a store. Error if the stores Domain is not registered with the engine.
+func (e *Engine) AddStore(s korrel8r.Store) error {
+	domain := s.Domain().String()
+	if _, err := e.DomainErr(domain); err != nil {
+		return err
 	}
-	// Stores and Domains implement TemplateFuncser if they provide template helper functions
-	// for use by rules.
-	for _, v := range []any{d, s} {
-		if tf, ok := v.(TemplateFuncser); ok {
-			maps.Copy(e.templateFuncs, tf.TemplateFuncs())
-		}
+	e.stores[domain] = append(e.stores[domain], s)
+	e.addTemplateFuncs(s)
+	return nil
+}
+
+func (e *Engine) addTemplateFuncs(v any) {
+	// Stores and Domains may implement TemplateFuncser if they provide template helper functions for rules
+	if tf, ok := v.(TemplateFuncser); ok {
+		maps.Copy(e.templateFuncs, tf.TemplateFuncs())
 	}
 }
 
@@ -102,37 +112,12 @@ func (e *Engine) TemplateFuncs() map[string]any { return e.templateFuncs }
 
 // Get finds the store for the query.Class() and gets into result.
 func (e *Engine) Get(ctx context.Context, class korrel8r.Class, query korrel8r.Query, result korrel8r.Appender) error {
-	store, err := e.StoreErr(class.Domain().String())
-	if err != nil {
-		return err
+	for _, store := range e.StoresFor(class.Domain()) {
+		if err := store.Get(ctx, query, result); err != nil {
+			return err
+		}
 	}
-	return store.Get(ctx, query, result)
+	return nil
 }
 
 func (e *Engine) Follower(ctx context.Context) *Follower { return &Follower{Engine: e, Context: ctx} }
-
-// LoadRules from a file or walk a directory to find and load rule files.
-func (e *Engine) LoadRules(path string) error {
-	log.V(2).Info("loading rules from", "path", path)
-	return filepath.WalkDir(path, func(path string, info fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		ext := filepath.Ext(path)
-		if !info.Type().IsRegular() || (ext != ".yaml" && ext != ".yml" && ext != ".json") {
-			return nil // Skip unknown file
-		}
-		log.V(3).Info("loading rules", "path", path)
-		f, err := os.Open(path)
-		if err != nil {
-			return err
-		}
-		defer f.Close()
-		rules, err := templaterule.Decode(f, e.Domains(), e.TemplateFuncs())
-		if err != nil {
-			return fmt.Errorf("%v:0 error loading rules: %v", path, err)
-		}
-		e.AddRules(rules...)
-		return nil
-	})
-}

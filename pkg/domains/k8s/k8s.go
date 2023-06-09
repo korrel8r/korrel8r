@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/korrel8r/korrel8r/internal/pkg/must"
+	"github.com/korrel8r/korrel8r/pkg/config"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r/impl"
 	"github.com/korrel8r/korrel8r/pkg/openshift/console"
@@ -34,16 +35,12 @@ var (
 // Domain is a korrel8r.Domain.
 var Domain = domain{}
 
-func init() {
-	korrel8r.Domains["k8s"] = Domain
-}
-
 type domain struct{}
 
 func (d domain) String() string { return "k8s" }
 
 func (d domain) Store(sc korrel8r.StoreConfig) (s korrel8r.Store, err error) {
-	cfg, client, err := impl.StoreConfig(sc).GetConfigClient()
+	client, cfg, err := config.Store(sc).K8sClient() // Rename getk8sconf
 	if err != nil {
 		return nil, err
 	}
@@ -157,7 +154,8 @@ func NewStore(c client.Client, cfg *rest.Config) (korrel8r.Store, error) {
 	return &Store{c: c, base: base, groups: groups}, err
 }
 
-func (Store) Domain() korrel8r.Domain { return Domain }
+func (s Store) Domain() korrel8r.Domain { return Domain }
+func (s Store) Client() client.Client   { return s.c }
 
 func (s *Store) Get(ctx context.Context, query korrel8r.Query, result korrel8r.Appender) (err error) {
 	q, err := impl.TypeAssert[*Query](query)

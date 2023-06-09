@@ -13,12 +13,7 @@ import (
 )
 
 // OpenshifStore creates a store client for the in-cluster OpenShift monitoring stack.
-func NewOpenshiftStore(ctx context.Context, cfg *rest.Config) (korrel8r.Store, error) {
-	c, err := client.New(cfg, client.Options{})
-	if err != nil {
-		return nil, err
-	}
-
+func NewOpenshiftStore(ctx context.Context, c client.Client, cfg *rest.Config) (korrel8r.Store, error) {
 	alertmanagerHost, err := openshift.RouteHost(ctx, c, openshift.AlertmanagerMainNSName)
 	if err != nil {
 		return nil, err

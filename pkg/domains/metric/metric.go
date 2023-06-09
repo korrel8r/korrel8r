@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/korrel8r/korrel8r/pkg/config"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r/impl"
 	"github.com/korrel8r/korrel8r/pkg/openshift"
@@ -32,10 +33,6 @@ var (
 	_ korrel8r.Store  = &Store{}
 )
 
-func init() {
-	korrel8r.Domains["metric"] = Domain
-}
-
 type domain struct{}
 
 func (domain) String() string                   { return "metric" }
@@ -50,7 +47,7 @@ const StoreKeyMetricURL = "metric"
 func (domain) Store(sc korrel8r.StoreConfig) (korrel8r.Store, error) {
 	uStr := sc[StoreKeyMetricURL]
 	if uStr == "" { // Use cluster store
-		cfg, client, err := impl.StoreConfig(sc).GetConfigClient()
+		client, cfg, err := config.Store(sc).K8sClient()
 		if err != nil {
 			return nil, err
 		}

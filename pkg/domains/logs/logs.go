@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"path"
 
+	"github.com/korrel8r/korrel8r/pkg/config"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r/impl"
 	"github.com/korrel8r/korrel8r/pkg/openshift"
@@ -31,10 +32,6 @@ var (
 
 var Domain = domain{}
 
-func init() {
-	korrel8r.Domains["logs"] = Domain
-}
-
 type domain struct{}
 
 func (domain) String() string                   { return "logs" }
@@ -45,8 +42,8 @@ func (domain) UnmarshalQuery(r []byte) (korrel8r.Query, error) {
 }
 
 const (
-	StoreKeyLoki      korrel8r.StoreKey = "loki"
-	StoreKeyLokiStack korrel8r.StoreKey = "lokiStack"
+	StoreKeyLoki      = "loki"
+	StoreKeyLokiStack = "lokiStack"
 )
 
 func (domain) Store(sc korrel8r.StoreConfig) (korrel8r.Store, error) {
@@ -55,7 +52,7 @@ func (domain) Store(sc korrel8r.StoreConfig) (korrel8r.Store, error) {
 		return nil, fmt.Errorf("can't create a store with both loki and lokiStack URLs")
 	}
 	if loki == "" && lokiStack == "" {
-		cfg, c, err := impl.StoreConfig(sc).GetConfigClient()
+		c, cfg, err := config.Store(sc).K8sClient()
 		if err != nil {
 			return nil, err
 		}

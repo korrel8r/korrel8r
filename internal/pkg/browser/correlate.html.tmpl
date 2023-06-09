@@ -9,11 +9,11 @@
       <input type="text" id="domain" name="domain" value="{{.StartDomain}}">
     </div>
     <div style="white-space: nowrap">
-      <b>Goal: </b>
+      <b>Goals: </b>
       <br>
       {{range .Goals}}
-        <input type="radio" name="goal" id="{{.Label}}" value="{{.Value}}" {{if eq $.Goal .Value}}checked{{end}}>
-        <lable for="{{.Label}}">{{.Label}}</lable>
+        <input type="radio" name="goal" id="{{.}}" value="{{.}}" {{if eq $.Goal .}}checked{{end}}>
+        <lable for="{{.}}">{{.}}</lable>
         <br>
       {{end}}
       <input type="radio" name="goal" id="other" value="other" {{if eq .Goal "other"}}checked{{end}}>
@@ -71,7 +71,7 @@
     <p>
       Update time: {{.UpdateTime}} ({{.Graph.Nodes.Len}} nodes, {{len .Graph.AllLines}} lines)<br>
       {{with .StartClass}}Start: <code>{{classname .}}</code><br>{{end}}
-      {{with .GoalClass}}Goal: <code>{{classname .}}</code><br>{{end}}
+      {{if .GoalClasses}}Goals: <code>{{range .GoalClasses}}{{classname .}} {{end}}</code><br>{{end}}
       {{with .Depth}}Neighbourhood depth: {{.}}<br>{{end}}
       <ul>
         {{range $node := (and .Graph .Graph.AllNodes)}}
