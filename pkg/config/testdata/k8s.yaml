@@ -1,3 +1,4 @@
+# Testing config file format only, not the current rules.
 groups:
   - name: workloads
     domain: k8s
@@ -7,13 +8,6 @@ groups:
       - DeploymentConfig.apps.openshift.io
       - StatefulSet.apps
       - Secret
-      - ConfigMap
-      - CronJob.batch
-      - Job.batch
-      - DaemonSet.apps
-      - ReplicaSet.apps
-      - ReplicationController
-      - HorizontalPodAutoscaler.autoscaling
 
   - name: networking
     domain: k8s
@@ -34,8 +28,6 @@ groups:
   - name: users
     domain: k8s
     classes:
-#      - User.users.openshift.io
-#      - Group.users.openshift.io
       - ServiceAccount
       - Role.rbac.authorization.k8s.io
       - RoleBinding.rbac.authorization.k8s.io
@@ -59,17 +51,6 @@ groups:
       - DeploymentConfig.apps.openshift.io
       - Job.batch
       - PodDisruptionBudget.policy
-#      - ClusterOperator
-#      - MachineHealthCheck
-#      - MachineSet
-#      - PodMonitor
-#      - ServiceMonitor
-#      - ClusterServiceVersion
-#      - OperatorGroup
-#      - Operator
-#      - PackageManifest
-#      - AppliedClusterResourceQuota
-#      - ClusterResourceQuota
 
   - name: namespacedResources
     domain: k8s
@@ -115,23 +96,6 @@ rules:
            "LogQL": "{kubernetes_namespace_name=\"{{.Namespace}}\",kubernetes_pod_name=\"{{.Name}}\"} | json"
          }
 
-   # TODO see  https://github.com/korrel8r/korrel8r/issues/52
-   #
-   # This rule is a little to "eager", it connects all resources in the same nameppace.
-   # which in turn connect to all kinds of other stuff.
-   # Do we need a "priority" or "cost" for rules, to choose broad vs focused results?
-   #
-   # - name: ResourceToNamespace
-   #   start:
-   #     domain: k8s
-   #     classes: [namespacedResources]
-   #   goal:
-   #     domain: k8s
-   #     classes: [Namespace]
-   #   result:
-   #     query: |-
-   #       { Version: v1, Kind: Namespace, Name: {{.Namespace}} }
-
    - name: NamespaceToResource
      start:
        domain: k8s
@@ -175,51 +139,3 @@ rules:
            }
          }
 
-   - name: SelectorToPods
-     start:
-       domain: k8s
-       classes: [selectors]
-     goal:
-       domain: k8s
-       classes: [Pod]
-     result:
-       query: |-
-         { Version: v1, Kind: Pod, Namespace: {{.Namespace}}, Labels: {{ .Spec.Selector.MatchLabels | json }} }
-   - name: EventToAll
-     start:
-       domain: k8s
-       classes: [Event]
-     goal:
-       domain: k8s
-       classes: [all]
-     result:
-       query: |-
-         {{- with .InvolvedObject -}}
-         {{- $gv := k8sGroupVersion .APIVersion -}}
-         {Namespace: {{.Namespace}},Name: {{.Name}},Group: {{$gv.Group}},Version: {{$gv.Version}},Kind: {{.Kind}}}
-         {{- end -}}
-   - name: AllToEvent
-     start:
-       domain: k8s
-       classes: [all]
-     goal:
-       domain: k8s
-       classes: [Event.]
-     result:
-       query: |-
-         { "Version":"v1", "Kind":"Event", "Fields": {
-                      "involvedObject.namespace":"{{.Namespace}}",
-                      "involvedObject.name": "{{.Name}}",
-                      "involvedObject.kind": "{{.Kind}}",
-                      "involvedObject.apiVersion": "{{.APIVersion}}"} }
-# https://console-openshift-console.apps.snoflake.my.test/k8s/ns/default/deployments/bad-image-deployment/events
-# https://console-openshift-console.apps.snoflake.my.test/k8s/ns/default/deployments/bad-image-deployment/events
-   - name: AllToMetric
-     start:
-       domain: k8s
-       classes: [all]
-     goal:
-       domain: metric
-     result:
-       query: |-
-         { "PromQL": "{ namespace=\"{{.Namespace}}\", {{tolower .Kind}}=\"{{.Name}}\" }" }

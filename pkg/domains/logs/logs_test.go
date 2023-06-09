@@ -22,21 +22,23 @@ import (
 
 var ctx = context.Background()
 
-// FIXME identify and/or separate tests that have external dependencies.
+func makeLines(line string, n int) (lines []string, objects []korrel8r.Object) {
+	for i := 0; i < n; i++ {
+		line := fmt.Sprintf("%v: %v", i, line)
+		lines = append(lines, line)
+		objects = append(objects, NewObject(line))
+	}
+	return lines, objects
+}
 
-func TestStore_Get_PlainLoki(t *testing.T) {
+func TestPlainLokiStore_Get(t *testing.T) {
 	t.Parallel()
+	lines, want := makeLines(t.Name(), 10)
 	l := test.RequireLokiServer(t)
-	lines := []string{"hello", "there", "mr. frog"}
 	err := l.Push(map[string]string{"test": "logs"}, lines...)
 	require.NoError(t, err)
 	s, err := NewPlainLokiStore(l.URL(), http.DefaultClient)
 	require.NoError(t, err)
-
-	var want []korrel8r.Object
-	for _, l := range lines {
-		want = append(want, NewObject(l))
-	}
 	q := &Query{LogQL: `{test="logs"}`}
 	result := korrel8r.NewListResult()
 	require.NoError(t, s.Get(ctx, q, result))
@@ -46,17 +48,16 @@ func TestStore_Get_PlainLoki(t *testing.T) {
 func TestLokiStackStore_Get(t *testing.T) {
 	t.Parallel()
 	test.SkipIfNoCluster(t)
+	lines, _ := makeLines(t.Name(), 10)
 	c := test.K8sClient
 	ns := test.TempNamespace(t, c)
-	want := []string{"hello", "there", "mr.", "frog"}
-
 	pod := corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{Name: "logger", Namespace: ns},
 		Spec: corev1.PodSpec{
 			Containers: []corev1.Container{{
 				Name:    "logger",
 				Image:   "quay.io/quay/busybox",
-				Command: []string{"sh", "-c", fmt.Sprintf("echo %v; sleep infinity", strings.Join(want, "; echo "))}}}},
+				Command: []string{"sh", "-c", fmt.Sprintf("echo %v; sleep infinity", strings.Join(lines, "; echo "))}}}},
 	}
 	require.NoError(t, c.Create(ctx, &pod))
 	s, err := NewOpenshiftLokiStackStore(ctx, c, test.RESTConfig)
@@ -68,18 +69,17 @@ func TestLokiStackStore_Get(t *testing.T) {
 		result = nil
 		err = s.Get(ctx, q, &result)
 		require.NoError(t, err)
-		t.Logf("waiting for 4 logs, got %v. %v%v", len(result), s, q)
-		return len(result) > 3
+		t.Logf("waiting for %v logs, got %v. %v%v", len(lines), len(result), s, q)
+		return len(result) >= len(lines)
 	}, 30*time.Second, 5*time.Second)
 	var got []string
-
 	for _, obj := range result {
 		var m map[string]any
 		line := obj.(Object).Entry
 		assert.NoError(t, json.Unmarshal([]byte(line), &m), line)
 		got = append(got, m["message"].(string))
 	}
-	assert.Equal(t, want, got)
+	assert.Equal(t, lines, got)
 }
 
 func TestStoreGet_Constraint(t *testing.T) {

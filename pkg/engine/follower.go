@@ -10,8 +10,6 @@ import (
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 )
 
-var log = logging.Log()
-
 // Follower provide a Traverse() method to follow rules and collect results in a graph.
 type Follower struct {
 	Engine  *Engine
@@ -28,23 +26,16 @@ func (f *Follower) Traverse(l *graph.Line) {
 	if len(starters) == 0 {
 		return
 	}
-	store := f.Engine.Store(rule.Goal().Domain().String())
-	if store == nil {
-		log.V(3).Info("no store for goal")
-		// Don't return, we want to generate final queries even if there is no store.
-	}
 	for _, s := range starters {
 		query, err := rule.Apply(s, nil)
 		if err != nil {
-			log.V(3).Info("did not apply", "error", err)
+			log.V(4).Info("did not apply", "error", err)
 			continue
 		}
 		log := log.WithValues("query", logging.JSON(query))
 		result := korrel8r.NewCountResult(goalNode.Result)
-		if store != nil {
-			if err := store.Get(f.Context, query, result); err != nil {
-				log.Error(err, "get error")
-			}
+		if err := f.Engine.Get(f.Context, goalNode.Class, query, result); err != nil {
+			log.Error(err, "get failed")
 		}
 		l.QueryCounts.Put(query, result.Count)
 		goalNode.QueryCounts.Put(query, result.Count)

@@ -16,16 +16,16 @@ import (
 // Nodes and lines carry attributes for rendering by GraphViz.
 type Graph struct {
 	*multi.DirectedGraph
-	Data                             *Data
 	GraphAttrs, NodeAttrs, EdgeAttrs Attrs
-	shortest                         *path.AllShortest
+
+	data     *Data
+	shortest *path.AllShortest
 }
 
 // New empty graph based on Data
 func New(data *Data) *Graph {
 	return &Graph{
 		DirectedGraph: multi.NewDirectedGraph(),
-		Data:          data,
 		GraphAttrs: Attrs{
 			"fontname": "Helvetica",
 			"fontsize": "12",
@@ -44,10 +44,29 @@ func New(data *Data) *Graph {
 			"fontname": "Helvetica",
 			"fontsize": "12",
 		},
+		data: data,
 	}
 }
 
-func (g *Graph) NodeFor(c korrel8r.Class) *Node { return g.Data.NodeFor(c) }
+func (g *Graph) NodeFor(c korrel8r.Class) *Node { return g.data.NodeFor(c) }
+func (g *Graph) NodesFor(classes ...korrel8r.Class) (nodes []*Node) {
+	for _, c := range classes {
+		nodes = append(nodes, g.NodeFor(c))
+	}
+	return nodes
+}
+
+func (g *Graph) EachNode(visit func(*Node)) {
+	nodes := g.Nodes()
+	for nodes.Next() {
+		visit(nodes.Node().(*Node))
+	}
+}
+
+func (g *Graph) AllNodes() (nodes []*Node) {
+	g.EachNode(func(n *Node) { nodes = append(nodes, n) })
+	return nodes
+}
 
 func (g *Graph) EachLine(visit func(*Line)) {
 	edges := g.Edges()
@@ -59,43 +78,33 @@ func (g *Graph) EachLine(visit func(*Line)) {
 	}
 }
 
-func (g *Graph) AllLines() []*Line {
-	var lines []*Line
-	g.EachLine(func(l *Line) { lines = append(lines, l) })
+func (g *Graph) AllLines() (lines []*Line) {
+	g.EachLine(func(n *Line) { lines = append(lines, n) })
 	return lines
 }
 
-func (g *Graph) EachNode(visit func(*Node)) {
-	nodes := g.Nodes()
-	for nodes.Next() {
-		visit(nodes.Node().(*Node))
-	}
-}
-
-func (g *Graph) AllNodes() []*Node {
-	var nodes []*Node
-	g.EachNode(func(n *Node) { nodes = append(nodes, n) })
-	return nodes
-}
-
-func (g *Graph) EachLineTo(v *Node, traverse func(*Line)) {
+func (g *Graph) LinesTo(v *Node) (lines []*Line) {
 	u := g.To(v.ID())
 	for u.Next() {
 		l := g.Lines(u.Node().ID(), v.ID())
 		for l.Next() {
-			traverse(l.Line().(*Line))
+			lines = append(lines, l.Line().(*Line))
 		}
 	}
+	return lines
 }
 
-func (g *Graph) LinesTo(v *Node) (lines []*Line) {
-	g.EachLineTo(v, func(l *Line) { lines = append(lines, l) })
+func (g *Graph) LinesBetween(u, v *Node) (lines []*Line) {
+	l := g.Lines(u.ID(), v.ID())
+	for l.Next() {
+		lines = append(lines, l.Line().(*Line))
+	}
 	return lines
 }
 
 // newPaths returns a sub-graph of g containing only lines on the paths.
 func (g *Graph) newPaths(paths [][]graph.Node) *Graph {
-	sub := g.Data.EmptyGraph()
+	sub := g.data.EmptyGraph()
 	for _, path := range paths {
 		for i := 1; i < len(path); i++ {
 			lines := g.Lines(path[i-1].ID(), path[i].ID())
@@ -109,7 +118,7 @@ func (g *Graph) newPaths(paths [][]graph.Node) *Graph {
 
 // NodesSubgraph returns a new graph containing nodes and all lines between them.
 func (g *Graph) NodesSubgraph(nodes []graph.Node) *Graph {
-	sub := g.Data.EmptyGraph()
+	sub := g.data.EmptyGraph()
 	nodeSet := unique.Set[int64]{}
 	for _, n := range nodes {
 		nodeSet.Add(n.ID())
@@ -130,7 +139,7 @@ func (g *Graph) NodesSubgraph(nodes []graph.Node) *Graph {
 
 // Select creates a sub-graph of all lines where keep(line) is true.
 func (g *Graph) Select(keep func(l *Line) bool) *Graph {
-	sub := g.Data.EmptyGraph()
+	sub := g.data.EmptyGraph()
 	g.EachLine(func(l *Line) {
 		if keep(l) {
 			sub.SetLine(l)
@@ -144,25 +153,33 @@ func (g *Graph) DOTAttributers() (graph, node, edge encoding.Attributer) {
 	return g.GraphAttrs, g.NodeAttrs, g.EdgeAttrs
 }
 
-// ShortestPaths returns a new sub-graph containing all shortest paths between start and goal.
-func (g *Graph) ShortestPaths(start, goal korrel8r.Class) *Graph {
+// ShortestPaths returns a new sub-graph containing all shortest paths between start and goals.
+func (g *Graph) ShortestPaths(start korrel8r.Class, goals ...korrel8r.Class) *Graph {
 	if g.shortest == nil {
 		shortest := path.DijkstraAllPaths(g)
 		g.shortest = &shortest
 	}
-	paths, _ := g.shortest.AllBetween(g.NodeFor(start).ID(), g.NodeFor(goal).ID())
+	var paths [][]graph.Node
+	for _, goal := range goals {
+		p, _ := g.shortest.AllBetween(g.NodeFor(start).ID(), g.NodeFor(goal).ID())
+		paths = append(paths, p...)
+	}
 	return g.newPaths(paths)
 }
 
 // AllPaths returns a new sub-graph containing all paths between start and goal.
-func (g *Graph) AllPaths(start, goal korrel8r.Class) *Graph {
-	u, v := g.NodeFor(start), g.NodeFor(goal)
+func (g *Graph) AllPaths(start korrel8r.Class, goals ...korrel8r.Class) *Graph {
+	u := g.NodeFor(start)
 	ap := allPaths{
 		g:       g,
 		visited: map[int64]bool{u.ID(): true},
 		path:    []graph.Node{u},
+		v:       unique.Set[int64]{},
 	}
-	ap.run(u.ID(), v.ID())
+	for _, goal := range goals {
+		ap.v.Add(g.NodeFor(goal).ID())
+	}
+	ap.run(u.ID())
 	return g.newPaths(ap.paths)
 }
 
@@ -172,9 +189,10 @@ type allPaths struct {
 	visited map[int64]bool
 	path    []graph.Node
 	paths   [][]graph.Node
+	v       unique.Set[int64]
 }
 
-func (ap *allPaths) run(u, v int64) {
+func (ap *allPaths) run(u int64) {
 	iter := ap.g.From(u)
 	for iter.Next() {
 		n := iter.Node()
@@ -182,15 +200,14 @@ func (ap *allPaths) run(u, v int64) {
 			continue
 		}
 		ap.path = append(ap.path, n)
-		if n.ID() == v { // Complete path
+		if ap.v.Has(n.ID()) { // Found a path
 			path := make([]graph.Node, len(ap.path))
 			copy(path, ap.path)
 			ap.paths = append(ap.paths, path)
-		} else { // Continue search
-			ap.visited[n.ID()] = true
-			ap.run(n.ID(), v)
-			ap.visited[n.ID()] = false
 		}
+		ap.visited[n.ID()] = true
+		ap.run(n.ID())
+		ap.visited[n.ID()] = false
 		ap.path = ap.path[0 : len(ap.path)-1] // Backtrack and continue search.
 	}
 }

@@ -18,13 +18,13 @@ import (
 	_ "net/http/pprof"
 
 	"github.com/korrel8r/korrel8r/internal/pkg/logging"
+	"github.com/korrel8r/korrel8r/pkg/config"
 	"github.com/korrel8r/korrel8r/pkg/engine"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"github.com/korrel8r/korrel8r/pkg/openshift"
 	"github.com/korrel8r/korrel8r/pkg/openshift/console"
 	"github.com/korrel8r/korrel8r/pkg/templaterule"
-	"k8s.io/client-go/rest"
-	"sigs.k8s.io/controller-runtime/pkg/client"
+	"go.uber.org/multierr"
 )
 
 var (
@@ -43,7 +43,7 @@ type Browser struct {
 	dir     string
 }
 
-func New(e *engine.Engine, cfg *rest.Config, c client.Client) (*Browser, error) {
+func New(e *engine.Engine) (*Browser, error) {
 	b := &Browser{engine: e}
 	var err error
 	if b.dir, err = os.MkdirTemp("", "korrel8r"); err != nil {
@@ -53,7 +53,11 @@ func New(e *engine.Engine, cfg *rest.Config, c client.Client) (*Browser, error) 
 		return nil, err
 	}
 	log.Info("working directory", "dir", b.dir)
-	consoleURL, err := openshift.ConsoleURL(context.Background(), c)
+	kc, _, err := config.Store(nil).K8sClient()
+	if err != nil {
+		return nil, err
+	}
+	consoleURL, err := openshift.ConsoleURL(context.Background(), kc)
 	if err != nil {
 		return nil, err
 	}
@@ -120,8 +124,9 @@ func (b *Browser) stores(w http.ResponseWriter, req *http.Request) {
 	if httpError(w, err, http.StatusNotFound) {
 		return
 	}
-	store, err := b.engine.StoreErr(domain.String())
-	if httpError(w, err, http.StatusNotFound) {
+	stores := b.engine.StoresFor(domain)
+	if len(stores) == 0 {
+		httpError(w, korrel8r.StoreNotFoundErr{Domain: domain}, http.StatusNotFound)
 		return
 	}
 	params := req.URL.Query()
@@ -130,7 +135,9 @@ func (b *Browser) stores(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	result := korrel8r.NewResult(query.Class())
-	err = store.Get(context.Background(), query, result)
+	for _, store := range stores {
+		err = multierr.Append(err, store.Get(context.Background(), query, result))
+	}
 	data := map[string]any{
 		"query":  query,
 		"err":    err,
@@ -141,14 +148,8 @@ func (b *Browser) stores(w http.ResponseWriter, req *http.Request) {
 
 const storeHTML = `
 {{define "body"}}
-    Query: {{json .query}}<br>
-    <hr>
-    {{if .err}}
-        Error: {{.err}}<br>
-    {{else}}
-        Results ({{len .result}})<br>
-            {{range .result}}<hr><pre>{{yaml .}}</pre>{{end}}
-        </pre>
-    {{end}}
+    Query ({{len .result}} results): <pre>{{json .query}}</pre><br>
+    {{with .err}}Error: {{.err}}<br>{{end}}
+    {{range .result}}<hr><code>{{.}}</code>{{end}}
 {{end}}
     `

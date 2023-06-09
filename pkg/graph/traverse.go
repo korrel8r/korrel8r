@@ -50,7 +50,7 @@ func (g *Graph) Traverse(traverse func(l *Line)) error {
 
 // Neighbours creates a neighbourhood graph around start and traverses rules breadth-first.
 func (g *Graph) Neighbours(start korrel8r.Class, depth int, travers func(l *Line)) *Graph {
-	sub := g.Data.EmptyGraph()
+	sub := g.data.EmptyGraph()
 	bf := traverse.BreadthFirst{}
 	bf.Traverse = func(e graph.Edge) bool {
 		if sub.Edge(e.To().ID(), e.From().ID()) != nil {

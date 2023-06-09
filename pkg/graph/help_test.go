@@ -11,14 +11,27 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-var domain = mock.Domain("mock")
+var Domain = domain{}
 
-func c(i int) korrel8r.Class   { return domain.Class(fmt.Sprintf("%03v", i)) }
-func r(i, j int) korrel8r.Rule { return mock.NewRule(c(i), c(j)) }
+type domain struct{}
 
-type rule = korrel8r.Rule
+func (d domain) String() string                                     { return "graphmock" }
+func (d domain) Class(name string) korrel8r.Class                   { panic("not implemented") }
+func (d domain) Classes() (classes []korrel8r.Class)                { panic("not implemented") }
+func (d domain) UnmarshalQuery(b []byte) (korrel8r.Query, error)    { panic("not implemented") }
+func (d domain) Store(korrel8r.StoreConfig) (korrel8r.Store, error) { panic("not implemented") }
 
-func testGraph(rules []rule) *Graph {
+type Class int
+
+func c(i int) korrel8r.Class { return Class(i) }
+
+func (c Class) Domain() korrel8r.Domain  { return Domain }
+func (c Class) String() string           { return fmt.Sprintf("%v", int(c)) }
+func (c Class) ID(o korrel8r.Object) any { return int(c) }
+
+func r(i, j int) korrel8r.Rule { return mock.NewRule("", c(i), c(j)) }
+
+func testGraph(rules []korrel8r.Rule) *Graph {
 	d := NewData()
 	for _, r := range rules {
 		d.AddRule(r)
@@ -26,8 +39,7 @@ func testGraph(rules []rule) *Graph {
 	return d.NewGraph()
 }
 
-func graphRules(g *Graph) []rule {
-	var rules []rule
+func graphRules(g *Graph) (rules []korrel8r.Rule) {
 	g.EachLine(func(l *Line) { rules = append(rules, l.Rule) })
 	mock.SortRules(rules)
 	return rules
@@ -35,7 +47,7 @@ func graphRules(g *Graph) []rule {
 
 // assertComponentOrder components is an ordered list of unordered sets of rules.
 // Asserts that the rules list is in an order that is compatible with components
-func assertComponentOrder(t *testing.T, components [][]rule, rules []rule) bool {
+func assertComponentOrder(t *testing.T, components [][]korrel8r.Rule, rules []korrel8r.Rule) bool {
 	msg := "out of order\nrules:      %v\ncomponents: %v\n"
 	t.Helper()
 	j := 0 // rules index

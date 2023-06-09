@@ -25,8 +25,7 @@ var getCmd = &cobra.Command{
 		e := newEngine()
 		d := must.Must1(e.DomainErr(args[0]))
 		q := must.Must1(d.UnmarshalQuery([]byte(args[1])))
-		s := must.Must1(e.StoreErr(d.String()))
-
+		s := must.Must1(e.StoreErr(d))
 		log.V(3).Info("get", "query", q, "class", korrel8r.ClassName(q.Class()))
 		result := newPrinter(os.Stdout)
 		must.Must(s.Get(context.Background(), q, result))

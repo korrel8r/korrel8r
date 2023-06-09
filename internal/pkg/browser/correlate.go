@@ -37,14 +37,14 @@ type correlate struct {
 	Other       string
 	Neighbours  string
 
-	ShortPaths bool // All paths
-	RuleGraph  bool // Rules graph without results
-	// Goals to list as radio options, map[value]id
-	Goals []struct{ Value, Label string }
+	ShortPaths bool     // All paths
+	RuleGraph  bool     // Rules graph without results
+	Goals      []string // Goals for radio option
 
 	// Computed fields used by page template.
 	StartQuery                      korrel8r.Query
-	StartClass, GoalClass           korrel8r.Class
+	StartClass                      korrel8r.Class
+	GoalClasses                     []korrel8r.Class
 	Depth                           int
 	Graph                           *graph.Graph
 	Diagram, DiagramTxt, DiagramImg string
@@ -69,11 +69,7 @@ func (c *correlate) reset(params url.Values) {
 		ShortPaths:  params.Get("short") == "true",
 		RuleGraph:   params.Get("rules") == "true",
 	}
-	c.Goals = []struct{ Value, Label string }{
-		{"logs/infrastructure", "Logs (infrastructure)"}, // FIXME wildcard for logs, multi-goal.
-		{"k8s/Event", "Events"},
-		{"metric/metric", "Metrics"},
-	}
+	c.Goals = []string{"logs", "k8s/Event", "metric/metric"}
 	c.app = app
 	c.ConsoleURL = c.app.console.BaseURL
 	c.Graph = c.app.engine.Graph()
@@ -147,11 +143,11 @@ func (c *correlate) update(req *http.Request) {
 	}
 	follower := c.app.engine.Follower(context.Background())
 
-	if c.GoalClass != nil { // Paths from start to goal.
+	if c.GoalClasses != nil { // Paths from start to goal.
 		if c.ShortPaths {
-			c.Graph = c.Graph.ShortestPaths(c.StartClass, c.GoalClass)
+			c.Graph = c.Graph.ShortestPaths(c.StartClass, c.GoalClasses...)
 		} else {
-			c.Graph = c.Graph.AllPaths(c.StartClass, c.GoalClass)
+			c.Graph = c.Graph.AllPaths(c.StartClass, c.GoalClasses...)
 		}
 	} else {
 		// Find Neighbours
@@ -166,14 +162,16 @@ func (c *correlate) update(req *http.Request) {
 		c.Graph = c.Graph.Select(func(l *graph.Line) bool { // Remove lines with no queries
 			return l.QueryCounts.Total() > 0
 		})
-		if c.GoalClass != nil {
+		if c.GoalClasses != nil {
 			// Only include start->goal paths, remove dead-ends.
-			c.Graph = c.Graph.AllPaths(c.StartClass, c.GoalClass)
+			c.Graph = c.Graph.AllPaths(c.StartClass, c.GoalClasses...)
 		}
 	}
 	// Add start/goal nodes even if empty.
 	c.addClassNode(c.StartClass)
-	c.addClassNode(c.GoalClass)
+	for _, goal := range c.GoalClasses {
+		c.addClassNode(goal)
+	}
 
 	c.updateDiagram()
 }
@@ -208,11 +206,22 @@ func (c *correlate) updateGoal() (err error) {
 	case "neighbours":
 		return nil // No goal, depth is set.
 	case "other":
-		c.GoalClass, err = c.app.engine.Class(c.Other)
+		c.GoalClasses, err = c.goalClasses(c.Other)
 	default:
-		c.GoalClass, err = c.app.engine.Class(c.Goal)
+		c.GoalClasses, err = c.goalClasses(c.Goal)
 	}
 	return err
+}
+
+func (c *correlate) goalClasses(domainOrClass string) ([]korrel8r.Class, error) {
+	if d, err := c.app.engine.DomainErr(domainOrClass); err == nil {
+		return d.Classes(), nil // all in domain
+	}
+	if c, err := c.app.engine.Class(domainOrClass); err == nil {
+		return []korrel8r.Class{c}, nil
+	} else {
+		return nil, err
+	}
 }
 
 func (c *correlate) addClassNode(class korrel8r.Class) {
@@ -288,8 +297,8 @@ func (c *correlate) updateDiagram() {
 		a["root"] = "true"
 	}
 
-	if c.GoalClass != nil {
-		goal := g.NodeFor(c.GoalClass)
+	for _, class := range c.GoalClasses {
+		goal := g.NodeFor(class)
 		a := goal.Attrs
 		a["shape"] = "diamond"
 		a["fillcolor"] = goalColor

@@ -14,10 +14,8 @@ var webCmd = &cobra.Command{
 	Use:   "web [flags]",
 	Short: "Start a web server to interact with korrel8r from a browser.",
 	Run: func(_ *cobra.Command, args []string) {
-		e := newEngine()
-		cfg := restConfig()
 		if *serveHTML {
-			browser := must.Must1(browser.New(e, cfg, k8sClient(cfg)))
+			browser := must.Must1(browser.New(newEngine()))
 			browser.Register(http.DefaultServeMux)
 			defer browser.Close()
 		}

@@ -1,0 +1,15 @@
+groups:
+  - domain: foo
+    name: g
+    classes: [ d,e ]
+
+rules:
+   - name: rule2
+     start:
+       domain: foo
+       classes: [g]
+     goal:
+       domain: bar
+       classes: [q]
+     result:
+       query: blah

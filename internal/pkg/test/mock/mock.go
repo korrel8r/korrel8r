@@ -31,6 +31,29 @@ func (d Domain) Classes() (classes []korrel8r.Class)                { return nil
 func (d Domain) UnmarshalQuery(b []byte) (korrel8r.Query, error)    { panic("not implemented") }
 func (d Domain) Store(korrel8r.StoreConfig) (korrel8r.Store, error) { return NewStore(d), nil }
 
+type DomainWithClasses struct {
+	Domain
+	MClasses []korrel8r.Class
+}
+
+func NewDomainWithClasses(name string, classes ...string) *DomainWithClasses {
+	d := &DomainWithClasses{Domain: Domain(name)}
+	for _, c := range classes {
+		d.MClasses = append(d.MClasses, Class{name: c, domain: d})
+	}
+	return d
+}
+
+func (d DomainWithClasses) Class(name string) korrel8r.Class {
+	i := slices.IndexFunc(d.MClasses, func(c korrel8r.Class) bool { return c.String() == name })
+	if i < 0 {
+		return nil
+	}
+	return d.MClasses[i]
+}
+
+func (d DomainWithClasses) Classes() []korrel8r.Class { return d.MClasses }
+
 type Class struct {
 	name   string
 	domain korrel8r.Domain
@@ -40,9 +63,21 @@ func (c Class) Domain() korrel8r.Domain  { return c.domain }
 func (c Class) String() string           { return c.name }
 func (c Class) ID(o korrel8r.Object) any { return o }
 
-type Rule struct{ start, goal korrel8r.Class }
+type Rule struct {
+	name        string
+	start, goal korrel8r.Class
+}
 
-func NewRule(start, goal korrel8r.Class) Rule { return Rule{start: start, goal: goal} }
+func NewRule(name string, start, goal korrel8r.Class) Rule {
+	return Rule{name: name, start: start, goal: goal}
+}
+
+func NewRules(rules ...korrel8r.Rule) (mocks []Rule) {
+	for _, r := range rules {
+		mocks = append(mocks, NewRule(r.String(), r.Start(), r.Goal()))
+	}
+	return mocks
+}
 
 func (r Rule) Start() korrel8r.Class { return r.start }
 func (r Rule) Goal() korrel8r.Class  { return r.goal }
@@ -82,7 +117,7 @@ func NewStore(d korrel8r.Domain) Store { return Store{domain: d} }
 
 func (s Store) Domain() korrel8r.Domain { return s.domain }
 func (s Store) Get(_ context.Context, q korrel8r.Query, r korrel8r.Appender) error {
-	r.Append(q.(Query).results...)
+	r.Append(q.(Query).MResults...)
 	return nil
 }
 
@@ -90,12 +125,12 @@ func (s *Store) Resolve(korrel8r.Query) *url.URL { panic("not implemented") }
 
 // Query is a mock query string that contains the desired results.
 type Query struct {
-	QueryClass korrel8r.Class
-	results    []korrel8r.Object // FIXME not included in JSON query, causing missed queries!
+	MClass   korrel8r.Class
+	MResults []korrel8r.Object
 }
 
 func NewQuery(c korrel8r.Class, results ...korrel8r.Object) korrel8r.Query {
-	return Query{QueryClass: c, results: results}
+	return Query{MClass: c, MResults: results}
 }
 
-func (q Query) Class() korrel8r.Class { return q.QueryClass }
+func (q Query) Class() korrel8r.Class { return q.MClass }

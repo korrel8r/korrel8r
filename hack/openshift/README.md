@@ -2,7 +2,8 @@
 
 ## Pre-requisites
 
-Administrative login to an Openshift cluster with a storage class.
+- Administrative login to an Openshift cluster with a storage class.
+- Openshift Client `oc` installed in your path.
 
 ## Logs
 

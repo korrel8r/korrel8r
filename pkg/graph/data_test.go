@@ -20,7 +20,7 @@ func TestData_Graph(t *testing.T) {
 	rules := []korrel8r.Rule{r(1, 2), r(3, 4), r(1, 3), r(2, 4)}
 	d := NewData(rules...)
 	g := d.EmptyGraph()
-	assert.Equal(t, d, g.Data)
+	assert.Equal(t, d, g.data)
 	assert.Equal(t, 0, g.Nodes().Len())
 	assert.Equal(t, 0, g.Edges().Len())
 }
