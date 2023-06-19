@@ -1,6 +1,6 @@
 // Copyright: This file is part of korrel8r, released under https://github.com/korrel8r/korrel8r/blob/main/LICENSE
 
-package logs
+package log
 
 import (
 	"context"
@@ -35,11 +35,11 @@ func TestPlainLokiStore_Get(t *testing.T) {
 	t.Parallel()
 	lines, want := makeLines(t.Name(), 10)
 	l := test.RequireLokiServer(t)
-	err := l.Push(map[string]string{"test": "logs"}, lines...)
+	err := l.Push(map[string]string{"test": "log"}, lines...)
 	require.NoError(t, err)
 	s, err := NewPlainLokiStore(l.URL(), http.DefaultClient)
 	require.NoError(t, err)
-	q := &Query{LogQL: `{test="logs"}`}
+	q := &Query{LogQL: `{test="log"}`}
 	result := korrel8r.NewListResult()
 	require.NoError(t, s.Get(ctx, q, result))
 	assert.Equal(t, want, result.List())
@@ -87,15 +87,15 @@ func TestStoreGet_Constraint(t *testing.T) {
 	t.Parallel()
 	l := test.RequireLokiServer(t)
 
-	err := l.Push(map[string]string{"test": "logs"}, "much", "too", "early")
+	err := l.Push(map[string]string{"test": "log"}, "much", "too", "early")
 	require.NoError(t, err)
 
 	t1 := time.Now()
-	err = l.Push(map[string]string{"test": "logs"}, "right", "on", "time")
+	err = l.Push(map[string]string{"test": "log"}, "right", "on", "time")
 	require.NoError(t, err)
 	t2 := time.Now()
 
-	err = l.Push(map[string]string{"test": "logs"}, "much", "too", "late")
+	err = l.Push(map[string]string{"test": "log"}, "much", "too", "late")
 	require.NoError(t, err)
 	s, err := NewPlainLokiStore(l.URL(), http.DefaultClient)
 	require.NoError(t, err)
@@ -106,12 +106,12 @@ func TestStoreGet_Constraint(t *testing.T) {
 		want []korrel8r.Object
 	}{
 		{
-			q:    &Query{LogQL: `{test="logs"}`},
+			q:    &Query{LogQL: `{test="log"}`},
 			c:    &korrel8r.Constraint{End: &t1},
 			want: []korrel8r.Object{NewObject("much"), NewObject("too"), NewObject("early")},
 		},
 		{
-			q:    &Query{LogQL: `{test="logs"}`},
+			q:    &Query{LogQL: `{test="log"}`},
 			c:    &korrel8r.Constraint{Start: &t1, End: &t2},
 			want: []korrel8r.Object{NewObject("right"), NewObject("on"), NewObject("time")},
 		},

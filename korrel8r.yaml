@@ -3,7 +3,7 @@
 stores:                         # Load default stores
   - domain: k8s
   - domain: alert
-  - domain: logs
+  - domain: log
 
 more:                           # Load rules
   - rules/alert.yaml

@@ -1,7 +1,7 @@
 // Copyright: This file is part of korrel8r, released under https://github.com/korrel8r/korrel8r/blob/main/LICENSE
 
-// package logs generates qgueries for logs stored in Loki or LokiStack
-package logs
+// package log is a domain for openshift-logging logs stored in Loki or LokiStack
+package log
 
 import (
 	"context"
@@ -34,7 +34,7 @@ var Domain = domain{}
 
 type domain struct{}
 
-func (domain) String() string                   { return "logs" }
+func (domain) String() string                   { return "log" }
 func (domain) Class(name string) korrel8r.Class { return classMap[name] }
 func (domain) Classes() []korrel8r.Class        { return classes }
 func (domain) UnmarshalQuery(r []byte) (korrel8r.Query, error) {

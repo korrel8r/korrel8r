@@ -72,7 +72,7 @@ rules:
        domain: k8s
        classes: [selectors]
      goal:
-       domain: logs
+       domain: log
      result:
        query: |-
          {
@@ -85,7 +85,7 @@ rules:
        domain: k8s
        classes: [Pod]
      goal:
-       domain: logs
+       domain: log
      result:
        query: |-
          {

@@ -84,7 +84,7 @@ The fields and values in a query depend on the type of store it will be used wit
 
 **Class**  \
 A subset of signals in a Domain with a common schema (the same field definitions).
-Examples: `k8s/Pod`, `logs/audit`
+Examples: `k8s/Pod`, `log/audit`
 
 **Object** \
 An instance of a signal or other correlation object.
@@ -100,9 +100,9 @@ Rules are defined using Go templates, see ./rules for examples.
 Different signal and object domains may use different vocabularies to identify the same things.
 For example:
 
-- `k8s.pod.name` (traces)
-- `pod` or `pod_name` (metrics)
-- `kubernetes.pod_name` (logs)
+- `k8s.pod.name` (trace)
+- `pod` or `pod_name` (metric)
+- `kubernetes.pod_name` (log)
 
 The correlation problem would be simpler if there was a single vocabulary to describe signal attributes.
 The [Open Telemetry Project](https://opentelemetry.io/) aims to create such a standard vocabulary.
