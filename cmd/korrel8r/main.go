@@ -26,7 +26,7 @@ import (
 	"github.com/korrel8r/korrel8r/pkg/config"
 	"github.com/korrel8r/korrel8r/pkg/domains/alert"
 	"github.com/korrel8r/korrel8r/pkg/domains/k8s"
-	"github.com/korrel8r/korrel8r/pkg/domains/logs"
+	logdomain "github.com/korrel8r/korrel8r/pkg/domains/log"
 	"github.com/korrel8r/korrel8r/pkg/domains/metric"
 	"github.com/korrel8r/korrel8r/pkg/engine"
 	"github.com/spf13/cobra"
@@ -84,7 +84,7 @@ func main() {
 }
 
 func newEngine() *engine.Engine {
-	e := engine.New(k8s.Domain, logs.Domain, alert.Domain, metric.Domain)
+	e := engine.New(k8s.Domain, logdomain.Domain, alert.Domain, metric.Domain)
 	c := must.Must1(config.Load(*configuration))
 	must.Must(c.Apply(e))
 	return e

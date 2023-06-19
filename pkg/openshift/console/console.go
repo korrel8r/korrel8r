@@ -50,7 +50,7 @@ func (c *Console) ConsoleURLToQuery(u *url.URL) (q korrel8r.Query, err error) {
 		{"/k8s", "k8s"},
 		{"/search", "k8s"},
 		{"/monitoring/alerts", "alert"},
-		{"/monitoring/logs", "logs"},
+		{"/monitoring/logs", "log"},
 		{"/monitoring/query-browser", "metric"},
 	} {
 		if strings.HasPrefix(path.Join("/", u.Path), x.prefix) {

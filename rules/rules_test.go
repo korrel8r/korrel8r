@@ -15,7 +15,7 @@ import (
 	"github.com/korrel8r/korrel8r/pkg/config"
 	"github.com/korrel8r/korrel8r/pkg/domains/alert"
 	"github.com/korrel8r/korrel8r/pkg/domains/k8s"
-	"github.com/korrel8r/korrel8r/pkg/domains/logs"
+	"github.com/korrel8r/korrel8r/pkg/domains/log"
 	"github.com/korrel8r/korrel8r/pkg/domains/metric"
 	"github.com/korrel8r/korrel8r/pkg/engine"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
@@ -38,7 +38,7 @@ func setup(t *testing.T) *engine.Engine {
 	for _, c := range configs {
 		c.Domains = nil // Use fake stores, not configured defaults.
 	}
-	e := engine.New(k8s.Domain, logs.Domain, alert.Domain, metric.Domain)
+	e := engine.New(k8s.Domain, log.Domain, alert.Domain, metric.Domain)
 	require.NoError(t, configs.Apply(e))
 	c := fake.NewClientBuilder().WithRESTMapper(testrestmapper.TestOnlyStaticRESTMapper(k8s.Scheme)).Build()
 	require.NoError(t, e.AddStore(test.Must(k8s.NewStore(c, &rest.Config{}))))
@@ -65,11 +65,11 @@ func TestPodToLogs(t *testing.T) {
 		k8s.New[corev1.Pod]("kube-something", "infrastructure"),
 	} {
 		t.Run(pod.Name, func(t *testing.T) {
-			want := &logs.Query{
+			want := &log.Query{
 				LogType: pod.Name,
 				LogQL:   fmt.Sprintf(`{kubernetes_namespace_name="%v",kubernetes_pod_name="%v"} | json`, pod.Namespace, pod.Name),
 			}
-			testTraverse(t, e, k8s.ClassOf(pod), logs.Domain.Class(pod.Name), []korrel8r.Object{pod}, want)
+			testTraverse(t, e, k8s.ClassOf(pod), log.Domain.Class(pod.Name), []korrel8r.Object{pod}, want)
 		})
 	}
 }
@@ -103,11 +103,11 @@ func TestSelectorToLogs(t *testing.T) {
 	d.Spec = appsv1.DeploymentSpec{
 		Selector: &metav1.LabelSelector{MatchLabels: map[string]string{"a.b/c": "x"}},
 	}
-	want := &logs.Query{
+	want := &log.Query{
 		LogQL:   `{kubernetes_namespace_name="ns"} | json | kubernetes_labels_a_b_c="x"`,
 		LogType: "application",
 	}
-	testTraverse(t, e, k8s.ClassOf(d), logs.Domain.Class("application"), []korrel8r.Object{d}, want)
+	testTraverse(t, e, k8s.ClassOf(d), log.Domain.Class("application"), []korrel8r.Object{d}, want)
 }
 
 func TestSelectorToPods(t *testing.T) {
