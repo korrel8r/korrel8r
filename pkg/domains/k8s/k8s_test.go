@@ -4,7 +4,6 @@ package k8s
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/url"
 	"testing"
@@ -164,11 +163,9 @@ func TestQuery_Marshal(t *testing.T) {
 	class := ClassOf(&corev1.Pod{})
 	q := NewQuery(class, "NAMESPACE", "NAME",
 		client.MatchingLabels{"label": "foo"}, client.MatchingFields{"field": "bar"})
-	b, err := json.Marshal(q)
-	require.NoError(t, err)
 	want := `{"Group":"","Version":"v1","Kind":"Pod","Namespace":"NAMESPACE","Name":"NAME","Labels":{"label":"foo"},"Fields":{"field":"bar"}}`
-	assert.Equal(t, want, string(b))
-	q2, err := Domain.UnmarshalQuery(b)
+	assert.Equal(t, want, string(q.String()))
+	q2, err := Domain.Query(q.String())
 	require.NoError(t, err)
 	assert.Equal(t, q, q2)
 }

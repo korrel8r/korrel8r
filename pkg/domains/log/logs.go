@@ -34,12 +34,10 @@ var Domain = domain{}
 
 type domain struct{}
 
-func (domain) String() string                   { return "log" }
-func (domain) Class(name string) korrel8r.Class { return classMap[name] }
-func (domain) Classes() []korrel8r.Class        { return classes }
-func (domain) UnmarshalQuery(r []byte) (korrel8r.Query, error) {
-	return impl.UnmarshalQuery(r, &Query{})
-}
+func (domain) String() string                         { return "log" }
+func (domain) Class(name string) korrel8r.Class       { return classMap[name] }
+func (domain) Classes() []korrel8r.Class              { return classes }
+func (domain) Query(s string) (korrel8r.Query, error) { return impl.Query(s, &Query{}) }
 
 const (
 	StoreKeyLoki      = "loki"
@@ -138,8 +136,8 @@ func init() {
 	}
 }
 
-func (q *Query) String() string        { return q.LogQL }
 func (q *Query) Class() korrel8r.Class { return Class(q.LogType) }
+func (q *Query) String() string        { return korrel8r.JSONString(q) }
 
 func (q *Query) plainURL() *url.URL {
 	v := url.Values{}

@@ -29,8 +29,8 @@ type Domain interface {
 	Classes() []Class
 	// String returns the name of the domain
 	String() string
-	// UnmarshalQuery decodes a query, which must have a Class.
-	UnmarshalQuery([]byte) (Query, error)
+	// Query converts a query string to a Query object.
+	Query(string) (Query, error)
 	// Store returns a new store for this domain.
 	Store(StoreConfig) (Store, error)
 }
@@ -85,6 +85,8 @@ func ClassName(c Class) string {
 type Query interface {
 	// Class returned by this query.
 	Class() Class
+	// String form of the Query
+	String() string
 }
 
 // Store is a source of signal Objects belonging to a single domain.

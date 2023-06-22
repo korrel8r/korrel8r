@@ -37,7 +37,7 @@ func (r *rule) Apply(start korrel8r.Object, c *korrel8r.Constraint) (korrel8r.Qu
 		return nil, fmt.Errorf("apply: %s", err)
 	}
 
-	q, err := r.Goal().Domain().UnmarshalQuery(b.Bytes())
+	q, err := r.Goal().Domain().Query(b.String())
 	if err != nil {
 		return nil, fmt.Errorf("apply: unmarshal error: %w", err)
 	}

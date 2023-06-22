@@ -68,9 +68,7 @@ func (d domain) Classes() (classes []korrel8r.Class) {
 	return classes
 }
 
-func (domain) UnmarshalQuery(r []byte) (korrel8r.Query, error) {
-	return impl.UnmarshalQuery(r, &Query{})
-}
+func (domain) Query(s string) (korrel8r.Query, error) { return impl.Query(s, &Query{}) }
 
 // Class implements korrel8r.Class
 type Class schema.GroupVersionKind
@@ -129,6 +127,7 @@ func NewQuery(c Class, namespace, name string, labels, fields map[string]string)
 }
 
 func (q *Query) Class() korrel8r.Class { return Class(q.GroupVersionKind) }
+func (q *Query) String() string        { return korrel8r.JSONString(q) }
 
 // Store implements the korrel8r.Store interface as a k8s API client.
 type Store struct {

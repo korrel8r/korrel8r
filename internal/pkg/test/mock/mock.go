@@ -28,7 +28,7 @@ type Domain string
 func (d Domain) String() string                                     { return string(d) }
 func (d Domain) Class(name string) korrel8r.Class                   { return Class{name: name, domain: d} }
 func (d Domain) Classes() (classes []korrel8r.Class)                { return nil }
-func (d Domain) UnmarshalQuery(b []byte) (korrel8r.Query, error)    { panic("not implemented") }
+func (d Domain) Query(s string) (korrel8r.Query, error)             { panic("not implemented") }
 func (d Domain) Store(korrel8r.StoreConfig) (korrel8r.Store, error) { return NewStore(d), nil }
 
 type DomainWithClasses struct {
@@ -134,3 +134,4 @@ func NewQuery(c korrel8r.Class, results ...korrel8r.Object) korrel8r.Query {
 }
 
 func (q Query) Class() korrel8r.Class { return q.MClass }
+func (q Query) String() string        { return korrel8r.ClassName(q.MClass) }

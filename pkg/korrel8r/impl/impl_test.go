@@ -30,16 +30,17 @@ type dummyQuery struct {
 }
 
 func (*dummyQuery) Class() korrel8r.Class { return domain.Class("x") }
+func (d *dummyQuery) String() string      { return korrel8r.JSONString(d) }
 
-func TestUnmarshalQuery(t *testing.T) {
+func TestQuery(t *testing.T) {
 	var q dummyQuery
 	// JSON style
-	got, err := UnmarshalQuery([]byte(`{"Foo":"hello","Bar":3}`), &q)
+	got, err := Query(`{"Foo":"hello","Bar":3}`, &q)
 	assert.NoError(t, err)
 	assert.Equal(t, &dummyQuery{Foo: "hello", Bar: 3}, got)
 
 	// YAML style
-	got, err = UnmarshalQuery([]byte("{Foo:hello,Bar:3}"), &q)
+	got, err = Query("{Foo:hello,Bar:3}", &q)
 	assert.NoError(t, err)
 	assert.Equal(t, &dummyQuery{Foo: "hello", Bar: 3}, got)
 }

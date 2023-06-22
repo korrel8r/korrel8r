@@ -194,7 +194,7 @@ func (c *correlate) updateStart() (err error) {
 	if err != nil {
 		return err
 	}
-	if c.StartQuery, err = domain.UnmarshalQuery([]byte(c.Start)); err != nil {
+	if c.StartQuery, err = domain.Query(c.Start); err != nil {
 		return err
 	}
 	c.StartClass = c.StartQuery.Class()

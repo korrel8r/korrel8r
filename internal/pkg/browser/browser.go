@@ -130,7 +130,7 @@ func (b *Browser) stores(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	params := req.URL.Query()
-	query, err := domain.UnmarshalQuery([]byte(params.Get("query")))
+	query, err := domain.Query(params.Get("query"))
 	if httpError(w, err, http.StatusNotFound) {
 		return
 	}

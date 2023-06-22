@@ -34,12 +34,10 @@ var Domain = domain{}
 
 type domain struct{}
 
-func (domain) String() string              { return "alert" }
-func (domain) Class(string) korrel8r.Class { return Class{} }
-func (domain) Classes() []korrel8r.Class   { return []korrel8r.Class{Class{}} }
-func (domain) UnmarshalQuery(r []byte) (korrel8r.Query, error) {
-	return impl.UnmarshalQuery(r, &Query{})
-}
+func (domain) String() string                         { return "alert" }
+func (domain) Class(string) korrel8r.Class            { return Class{} }
+func (domain) Classes() []korrel8r.Class              { return []korrel8r.Class{Class{}} }
+func (domain) Query(r string) (korrel8r.Query, error) { return impl.Query(r, &Query{}) }
 
 const (
 	StoreKeyMetrics      = "metrics"
@@ -115,6 +113,7 @@ type Query struct {
 }
 
 func (q *Query) Class() korrel8r.Class { return Class{} }
+func (q *Query) String() string        { return korrel8r.JSONString(q.Labels) }
 
 func (domain) ConsoleURLToQuery(u *url.URL) (korrel8r.Query, error) {
 	m := map[string]string{}

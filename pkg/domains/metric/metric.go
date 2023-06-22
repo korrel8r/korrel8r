@@ -35,12 +35,10 @@ var (
 
 type domain struct{}
 
-func (domain) String() string                   { return "metric" }
-func (domain) Class(name string) korrel8r.Class { return Class{} }
-func (domain) Classes() []korrel8r.Class        { return []korrel8r.Class{Class{}} }
-func (domain) UnmarshalQuery(r []byte) (korrel8r.Query, error) {
-	return impl.UnmarshalQuery(r, &Query{})
-}
+func (domain) String() string                         { return "metric" }
+func (domain) Class(name string) korrel8r.Class       { return Class{} }
+func (domain) Classes() []korrel8r.Class              { return []korrel8r.Class{Class{}} }
+func (domain) Query(r string) (korrel8r.Query, error) { return impl.Query(r, &Query{}) }
 
 const StoreKeyMetricURL = "metric"
 
@@ -94,8 +92,8 @@ type Query struct {
 	PromQL string // `json:",omitempty"`
 }
 
-func (q *Query) String() string        { return q.PromQL }
-func (q *Query) Class() korrel8r.Class { return Class{} }
+func (q Query) Class() korrel8r.Class { return Class{} }
+func (q Query) String() string        { return korrel8r.JSONString(q) }
 
 type Store struct{ api promv1.API }
 

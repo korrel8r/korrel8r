@@ -139,4 +139,4 @@ rules:
        domain: metric
      result:
        query: |-
-         { "PromQL": "{ namespace=\"{{.Namespace}}\", {{tolower .Kind}}=\"{{.Name}}\" }" }
+         "{ namespace=\"{{.Namespace}}\", {{tolower .Kind}}=\"{{.Name}}\" }"

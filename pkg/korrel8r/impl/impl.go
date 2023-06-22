@@ -24,8 +24,8 @@ func TypeAssert[T any](x any) (v T, err error) {
 	return v, err
 }
 
-func UnmarshalQuery(b []byte, q korrel8r.Query) (korrel8r.Query, error) {
-	err := yaml.Unmarshal(b, q)
+func Query(s string, q korrel8r.Query) (korrel8r.Query, error) {
+	err := yaml.Unmarshal([]byte(s), q)
 	if q.Class() == nil {
 		return nil, fmt.Errorf("query has no class: %+v", q)
 	}
