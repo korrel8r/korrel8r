@@ -102,21 +102,19 @@ func (configs Configs) Apply(e *engine.Engine) (err error) {
 			}
 			e.AddRules(rules...)
 		}
-		for name, stores := range c.Domains {
-			d, err := e.DomainErr(name)
+		for _, sc := range c.Stores {
+			log.V(2).Info("configure store", "source", source, "config", logging.JSON(sc))
+			storeErr := func(err error) error { return fmt.Errorf("error creating store %v: %w", logging.JSONString(sc), err) }
+			d, err := e.DomainErr(sc[korrel8r.StoreKeyDomain])
 			if err != nil {
-				return err
+				return storeErr(err)
 			}
-			for _, storeConfig := range stores {
-				store, err := d.Store(storeConfig)
-				if err != nil {
-					return err
-				}
-				log.V(2).Info("configured store", "source", source, "domain", d, "config", logging.JSON(store))
-				err = e.AddStore(store)
-				if err != nil {
-					return err
-				}
+			store, err := d.Store(sc)
+			if err != nil {
+				return storeErr(err)
+			}
+			if err := e.AddStore(store); err != nil {
+				return storeErr(err)
 			}
 		}
 	}

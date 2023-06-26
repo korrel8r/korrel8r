@@ -36,7 +36,7 @@ func setup(t *testing.T) *engine.Engine {
 	configs, err := config.Load("../korrel8r.yaml")
 	require.NoError(t, err)
 	for _, c := range configs {
-		c.Domains = nil // Use fake stores, not configured defaults.
+		c.Stores = nil // Use fake stores, not configured defaults.
 	}
 	e := engine.New(k8s.Domain, log.Domain, alert.Domain, metric.Domain)
 	require.NoError(t, configs.Apply(e))

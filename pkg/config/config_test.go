@@ -3,9 +3,14 @@ package config_test
 import (
 	"testing"
 
+	"github.com/korrel8r/korrel8r/internal/pkg/test"
 	"github.com/korrel8r/korrel8r/internal/pkg/test/mock"
 	"github.com/korrel8r/korrel8r/pkg/api"
 	"github.com/korrel8r/korrel8r/pkg/config"
+	"github.com/korrel8r/korrel8r/pkg/domains/alert"
+	"github.com/korrel8r/korrel8r/pkg/domains/k8s"
+	"github.com/korrel8r/korrel8r/pkg/domains/log"
+	"github.com/korrel8r/korrel8r/pkg/domains/metric"
 	"github.com/korrel8r/korrel8r/pkg/engine"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -83,4 +88,13 @@ func TestMerge_SameGroupDifferentDomain(t *testing.T) {
 		mock.NewRule("r1", foo.Class("p"), bar.Class("bbq")),
 		mock.NewRule("r1", foo.Class("q"), bar.Class("bbq")),
 	}, mock.NewRules(e.Rules()...))
+}
+
+func TestLoad_Default(t *testing.T) {
+	test.SkipIfNoCluster(t)
+	config, err := config.Load("../../korrel8r.yaml")
+	require.NoError(t, err)
+	e := engine.New(k8s.Domain, alert.Domain, log.Domain, metric.Domain)
+	require.NoError(t, config.Apply(e))
+	assert.Len(t, e.StoresFor(k8s.Domain), 1)
 }

@@ -38,6 +38,10 @@ type Domain interface {
 // StoreConfig name:value attributes to connect to a store.
 type StoreConfig = map[string]string
 
+const (
+	StoreKeyDomain = "domain" // Required key for all store configurations.
+)
+
 // Class identifies a subset of objects from the same domain with the same schema.
 // For example Pod is a class in the k8s domain.
 //

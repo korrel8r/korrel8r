@@ -64,12 +64,9 @@ func (e *Engine) StoreErr(d korrel8r.Domain) (korrel8r.Store, error) {
 // See text/template.Template.Funcs for details.
 type TemplateFuncser interface{ TemplateFuncs() map[string]any }
 
-// AddStore adds a store. Error if the stores Domain is not registered with the engine.
+// AddStore adds a store to the engine.
 func (e *Engine) AddStore(s korrel8r.Store) error {
 	domain := s.Domain().String()
-	if _, err := e.DomainErr(domain); err != nil {
-		return err
-	}
 	e.stores[domain] = append(e.stores[domain], s)
 	e.addTemplateFuncs(s)
 	return nil
