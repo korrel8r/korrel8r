@@ -4,9 +4,12 @@ package main
 
 import (
 	"net/http"
+	"os"
 
+	"github.com/gin-gonic/gin"
 	"github.com/korrel8r/korrel8r/internal/pkg/browser"
 	"github.com/korrel8r/korrel8r/internal/pkg/must"
+	"github.com/korrel8r/korrel8r/pkg/api"
 	"github.com/spf13/cobra"
 )
 
@@ -14,16 +17,26 @@ var webCmd = &cobra.Command{
 	Use:   "web [flags]",
 	Short: "Start a web server to interact with korrel8r from a browser.",
 	Run: func(_ *cobra.Command, args []string) {
+		if os.Getenv(gin.EnvGinMode) == "" { // Don't override an explicit env setting.
+			gin.SetMode(gin.ReleaseMode)
+			if *verbose >= 3 { // Enable gin debug mode and logging
+				gin.SetMode(gin.DebugMode)
+			}
+		}
+		router := gin.New()
+		router.Use(gin.Recovery())
+		if *verbose > 1 {
+			router.Use(gin.Logger())
+		}
+		engine := newEngine()
 		if *serveHTML {
-			browser := must.Must1(browser.New(newEngine()))
-			browser.Register(http.DefaultServeMux)
-			defer browser.Close()
+			defer must.Must1(browser.New(engine, router)).Close()
 		}
 		if *serveREST {
-			_ = 0 // FIXME rest := must.Must1(rest.New(e, cfg, k8sClient(cfg)))
+			defer must.Must1(api.New(engine, router)).Close()
 		}
 		log.Info("listening for http", "addr", *httpAddr)
-		must.Must(http.ListenAndServe(*httpAddr, nil))
+		must.Must(http.ListenAndServe(*httpAddr, router))
 	},
 }
 

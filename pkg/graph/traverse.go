@@ -51,7 +51,7 @@ func (g *Graph) Traverse(traverse func(l *Line)) error {
 func (g *Graph) Neighbours(start korrel8r.Class, depth int, travers func(l *Line)) *Graph {
 	depths := map[int64]int{}
 	var nodes []graph.Node
-	sub := g.data.EmptyGraph()
+	sub := g.Data.EmptyGraph()
 	bf := traverse.BreadthFirst{Visit: func(n graph.Node) {
 		nodes = append(nodes, n)
 		sub.AddNode(n)

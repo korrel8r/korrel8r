@@ -17,8 +17,8 @@ import (
 type Graph struct {
 	*multi.DirectedGraph
 	GraphAttrs, NodeAttrs, EdgeAttrs Attrs
+	Data                             *Data
 
-	data     *Data
 	shortest *path.AllShortest
 }
 
@@ -43,11 +43,11 @@ func New(data *Data) *Graph {
 			"fontname": "Helvetica",
 			"fontsize": "12",
 		},
-		data: data,
+		Data: data,
 	}
 }
 
-func (g *Graph) NodeFor(c korrel8r.Class) *Node { return g.data.NodeFor(c) }
+func (g *Graph) NodeFor(c korrel8r.Class) *Node { return g.Data.NodeFor(c) }
 func (g *Graph) NodesFor(classes ...korrel8r.Class) (nodes []*Node) {
 	for _, c := range classes {
 		nodes = append(nodes, g.NodeFor(c))
@@ -103,7 +103,7 @@ func (g *Graph) LinesBetween(u, v *Node) (lines []*Line) {
 
 // newPaths returns a sub-graph of g containing only lines on the paths.
 func (g *Graph) newPaths(paths [][]graph.Node) *Graph {
-	sub := g.data.EmptyGraph()
+	sub := g.Data.EmptyGraph()
 	for _, path := range paths {
 		for i := 1; i < len(path); i++ {
 			lines := g.Lines(path[i-1].ID(), path[i].ID())
@@ -117,7 +117,7 @@ func (g *Graph) newPaths(paths [][]graph.Node) *Graph {
 
 // NodesSubgraph returns a new graph containing nodes and all lines between them.
 func (g *Graph) NodesSubgraph(nodes []graph.Node) *Graph {
-	sub := g.data.EmptyGraph()
+	sub := g.Data.EmptyGraph()
 	nodeSet := unique.Set[int64]{}
 	for _, n := range nodes {
 		nodeSet.Add(n.ID())
@@ -138,7 +138,7 @@ func (g *Graph) NodesSubgraph(nodes []graph.Node) *Graph {
 
 // Select creates a sub-graph of all lines where keep(line) is true.
 func (g *Graph) Select(keep func(l *Line) bool) *Graph {
-	sub := g.data.EmptyGraph()
+	sub := g.Data.EmptyGraph()
 	g.EachLine(func(l *Line) {
 		if keep(l) {
 			sub.SetLine(l)

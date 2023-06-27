@@ -10,7 +10,6 @@ import (
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"golang.org/x/exp/maps"
 )
 
 func TestEngine_Class(t *testing.T) {
@@ -25,7 +24,7 @@ func TestEngine_Class(t *testing.T) {
 		{"/x", nil, "invalid class name: /x"},
 		{"x", nil, "invalid class name: x"},
 		{"", nil, "invalid class name: "},
-		{"bad/foo", nil, `domain not found: bad`},
+		{"bad/foo", nil, `domain not found: "bad"`},
 	} {
 		t.Run(x.name, func(t *testing.T) {
 			e := New(domain)
@@ -43,7 +42,7 @@ func TestEngine_Class(t *testing.T) {
 func TestEngine_Domains(t *testing.T) {
 	domains := []korrel8r.Domain{mock.Domain("a"), mock.Domain("b"), mock.Domain("c")}
 	e := New(domains...)
-	assert.ElementsMatch(t, domains, maps.Values(e.Domains()))
+	assert.Equal(t, domains, e.Domains())
 }
 
 func TestFollower_Traverse(t *testing.T) {

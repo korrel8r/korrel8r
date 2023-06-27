@@ -1,4 +1,5 @@
-{{define "body"}}
+{{template "header.html.tmpl"}}
+<body>
   <h1>Korrel8r</h1>
   <hr>
   <form onsubmit="return validate()">
@@ -89,22 +90,22 @@
                           ({{$qc.Count}})
                           <pre>{{$qc.Query | json}}</pre>
                         </li>
-                      {{end}}
+			{{end}}
                     </ul>
-                  {{end}}
-                {{end}}
-                {{if not ($.Graph.LinesTo .)}}
-                  {{/* No incoming lines, must be the start node. */}}
-                  {{template "querycounts" $node.QueryCounts}}
-                {{end}}
+                    {{end}}
+                    {{end}}
+                    {{if not ($.Graph.LinesTo .)}}
+                    {{/* No incoming lines, must be the start node. */}}
+                    {{template "querycounts" $node.QueryCounts}}
+                    {{end}}
               </ul>
             </li>
-          {{end}}
-        {{end}}
+            {{end}}
+            {{end}}
       </ul>
     </p>
   </div>
-{{end}}
+</body>
 
 {{define "querycounts"}}
   {{/* Context is a QueryCount value. Geneates list items, expects to be inside a HTML list. */}}
@@ -116,5 +117,4 @@
       <pre>{{$qc.Query | json}}</pre>
     </li>
   {{end}}
-
 {{end}}

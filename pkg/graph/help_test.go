@@ -28,6 +28,7 @@ func c(i int) korrel8r.Class { return Class(i) }
 func (c Class) Domain() korrel8r.Domain  { return Domain }
 func (c Class) String() string           { return fmt.Sprintf("%v", int(c)) }
 func (c Class) ID(o korrel8r.Object) any { return int(c) }
+func (c Class) New() korrel8r.Object     { panic("not implemented") }
 
 func r(i, j int) korrel8r.Rule { return mock.NewRule("", c(i), c(j)) }
 

@@ -4,55 +4,62 @@
 package browser
 
 import (
-	"bytes"
 	"embed"
-	"errors"
 	"html/template"
+	"io/fs"
 	"net/http"
+	"net/url"
 	"os"
-	"path"
 	"path/filepath"
 
 	"context"
 
 	_ "net/http/pprof"
 
+	"github.com/gin-gonic/gin"
 	"github.com/korrel8r/korrel8r/internal/pkg/logging"
+	"github.com/korrel8r/korrel8r/internal/pkg/must"
 	"github.com/korrel8r/korrel8r/pkg/config"
 	"github.com/korrel8r/korrel8r/pkg/engine"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"github.com/korrel8r/korrel8r/pkg/openshift"
 	"github.com/korrel8r/korrel8r/pkg/openshift/console"
-	"github.com/korrel8r/korrel8r/pkg/templaterule"
+	"github.com/korrel8r/korrel8r/pkg/rules"
 	"go.uber.org/multierr"
 )
 
 var (
 	log = logging.Log()
-
+	//go:embed templates
+	templates embed.FS
 	//go:embed images
 	images embed.FS
-	//go:embed basepage.html.tmpl
-	basePageHTML string
 )
 
 // Browser implements HTTP handlers for web browsers.
 type Browser struct {
-	engine  *engine.Engine
-	console *console.Console
-	dir     string
+	engine     *engine.Engine
+	console    *console.Console
+	router     *gin.Engine
+	images     http.FileSystem
+	dir, files string
 }
 
-func New(e *engine.Engine) (*Browser, error) {
-	b := &Browser{engine: e}
+func New(e *engine.Engine, router *gin.Engine) (*Browser, error) {
+	b := &Browser{
+		engine: e,
+		router: router,
+		images: http.FS(must.Must1(fs.Sub(images, "images"))),
+	}
 	var err error
-	if b.dir, err = os.MkdirTemp("", "korrel8r"); err != nil {
+	if b.dir, err = os.MkdirTemp("", "korrel8r"); err == nil {
+		log.V(1).Info("working directory", "dir", b.dir)
+		b.files = filepath.Join(b.dir, "files")
+		err = os.Mkdir(b.files, 0700)
+	}
+	if err != nil {
 		return nil, err
 	}
-	if err := os.Mkdir(filepath.Join(b.dir, "files"), 0700); err != nil {
-		return nil, err
-	}
-	log.Info("working directory", "dir", b.dir)
 	kc, _, err := config.Store(nil).K8sClient()
 	if err != nil {
 		return nil, err
@@ -62,20 +69,23 @@ func New(e *engine.Engine) (*Browser, error) {
 		return nil, err
 	}
 	b.console = console.New(consoleURL, e)
-	return b, nil
-}
+	c := &correlate{browser: b}
 
-// Register handlers with a http.ServeMux, including a default "/" redirect handler.
-func (b *Browser) Register(mux *http.ServeMux) {
-	mux.Handle("/", http.RedirectHandler("/correlate", http.StatusMovedPermanently))
-	mux.Handle("/correlate", &correlate{app: b})
-	mux.Handle("/files/", http.FileServer(http.Dir(b.dir)))
-	mux.Handle("/images/", http.FileServer(http.FS(images)))
-	mux.HandleFunc("/stores/", b.stores)
-	mux.HandleFunc("/error/", func(w http.ResponseWriter, req *http.Request) {
-		// Handler that returns an error message from the URL, used when a link can't be generated due to error.
-		httpError(w, errors.New(req.URL.Query().Get("err")), http.StatusInternalServerError)
-	})
+	tmpl := template.Must(template.New("").
+		Funcs(rules.Funcs).
+		Funcs(b.engine.TemplateFuncs()).
+		Funcs(map[string]any{
+			"asHTML":         func(s string) template.HTML { return template.HTML(s) },
+			"queryToConsole": func(q korrel8r.Query) *url.URL { return c.checkURL(c.browser.console.QueryToConsoleURL(q)) },
+		}).
+		ParseFS(templates, "templates/*.tmpl"))
+	router.SetHTMLTemplate(tmpl)
+	router.GET("/", func(c *gin.Context) { c.Redirect(http.StatusMovedPermanently, "/correlate") })
+	router.GET("/correlate", c.HTML)
+	router.Static("/files", b.files)
+	router.StaticFS("/images", b.images)
+	router.GET("/stores/:domain", b.stores)
+	return b, nil
 }
 
 // Close should be called on shutdown to clean up external resources.
@@ -85,71 +95,32 @@ func (b *Browser) Close() {
 	}
 }
 
-// page tempate for all pages.
-func (app *Browser) page(name string) *template.Template {
-	return template.Must(
-		template.New(name).
-			Funcs(templaterule.Funcs).
-			Funcs(app.engine.TemplateFuncs()).
-			Funcs(map[string]any{
-				"asHTML": func(s string) template.HTML { return template.HTML(s) },
-			}).
-			Parse(basePageHTML))
-}
-
-// httpError if err != nil update the response and return true.
-func httpError(w http.ResponseWriter, err error, code int) bool {
-	if err != nil {
-		http.Error(w, err.Error(), code)
-		log.Error(err, "http error")
-	}
-	return err != nil
-}
-
-func serveTemplate(w http.ResponseWriter, t *template.Template, text string, data any) {
-	b := bytes.Buffer{}
-	const code = http.StatusInternalServerError
-	t, err := t.Parse(text)
-	if httpError(w, err, code) || httpError(w, t.Execute(&b, data), code) {
-		return
-	}
-	_, _ = w.Write(b.Bytes())
-}
-
-func (b *Browser) stores(w http.ResponseWriter, req *http.Request) {
-	path := path.Base(req.URL.Path)
-	log.V(2).Info("store handler", "path", path, "query", req.URL.RawQuery)
-
-	domain, err := b.engine.DomainErr(path)
-	if httpError(w, err, http.StatusNotFound) {
+func (b *Browser) stores(c *gin.Context) {
+	domain, err := b.engine.DomainErr(c.Param("domain"))
+	if httpError(c, err, http.StatusNotFound) {
 		return
 	}
 	stores := b.engine.StoresFor(domain)
 	if len(stores) == 0 {
-		httpError(w, korrel8r.StoreNotFoundErr{Domain: domain}, http.StatusNotFound)
+		_ = httpError(c, korrel8r.StoreNotFoundErr{Domain: domain}, http.StatusNotFound)
 		return
 	}
-	params := req.URL.Query()
-	query, err := domain.Query(params.Get("query"))
-	if httpError(w, err, http.StatusNotFound) {
+	query, err := domain.Query(c.Request.URL.Query().Get("query"))
+	if httpError(c, err, http.StatusNotFound) {
 		return
 	}
 	result := korrel8r.NewResult(query.Class())
 	for _, store := range stores {
 		err = multierr.Append(err, store.Get(context.Background(), query, result))
 	}
-	data := map[string]any{
-		"query":  query,
-		"err":    err,
-		"result": result.List(),
-	}
-	serveTemplate(w, b.page("stores"), storeHTML, data)
+	c.HTML(http.StatusOK, "stores.html.tmpl", map[string]any{"query": query, "err": err, "result": result.List()})
 }
 
-const storeHTML = `
-{{define "body"}}
-    Query ({{len .result}} results): <pre>{{json .query}}</pre><br>
-    {{with .err}}Error: {{.err}}<br>{{end}}
-    {{range .result}}<hr><code>{{.}}</code>{{end}}
-{{end}}
-    `
+func httpError(c *gin.Context, err error, code int) bool {
+	if err != nil {
+		_ = c.Error(err)
+		c.HTML(code, "error.html.tmpl", c)
+		log.Error(err, "page error")
+	}
+	return err != nil
+}

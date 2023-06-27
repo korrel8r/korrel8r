@@ -48,6 +48,7 @@ const (
 // Class implementations must be comparable.
 type Class interface {
 	Domain() Domain // Domain of this class.
+	New() Object    // Return a new instance of the class, can be unmarshaled from JSON.
 	String() string // String name of the class within the domain, e.g "Pod". See ClassName()
 }
 

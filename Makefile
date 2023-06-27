@@ -20,6 +20,4 @@ cover:
 
 generate:
 	go generate -x ./...
-
-web:
-	go run ./cmd/korrel8r web -v3
+	hack/copyright.sh

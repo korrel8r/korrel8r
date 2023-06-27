@@ -7,6 +7,7 @@ package mock
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/url"
 
@@ -28,8 +29,20 @@ type Domain string
 func (d Domain) String() string                                     { return string(d) }
 func (d Domain) Class(name string) korrel8r.Class                   { return Class{name: name, domain: d} }
 func (d Domain) Classes() (classes []korrel8r.Class)                { return nil }
-func (d Domain) Query(s string) (korrel8r.Query, error)             { panic("not implemented") }
 func (d Domain) Store(korrel8r.StoreConfig) (korrel8r.Store, error) { return NewStore(d), nil }
+func (d Domain) Query(s string) (korrel8r.Query, error) {
+	q := &query{}
+	err := json.Unmarshal([]byte(s), q)
+	return NewQuery(d.Class(q.Class), q.Results...), err
+}
+
+func Domains(names ...string) []korrel8r.Domain {
+	var domains []korrel8r.Domain
+	for _, name := range names {
+		domains = append(domains, Domain(name))
+	}
+	return domains
+}
 
 type DomainWithClasses struct {
 	Domain
@@ -62,6 +75,7 @@ type Class struct {
 func (c Class) Domain() korrel8r.Domain  { return c.domain }
 func (c Class) String() string           { return c.name }
 func (c Class) ID(o korrel8r.Object) any { return o }
+func (c Class) New() korrel8r.Object     { return "" }
 
 type Rule struct {
 	name        string
@@ -83,7 +97,7 @@ func (r Rule) Start() korrel8r.Class { return r.start }
 func (r Rule) Goal() korrel8r.Class  { return r.goal }
 func (r Rule) String() string        { return fmt.Sprintf("%v->%v", r.start, r.goal) }
 func (r Rule) Apply(start korrel8r.Object, c *korrel8r.Constraint) (korrel8r.Query, error) {
-	panic("not implemented")
+	panic("not implemented") // See ApplyRule
 }
 
 // RuleLess orders rules.
@@ -106,11 +120,17 @@ type ApplyRule struct {
 func NewApplyRule(start, goal korrel8r.Class, apply ApplyFunc) ApplyRule {
 	return ApplyRule{Rule: Rule{start: start, goal: goal}, apply: apply}
 }
+
+func NewQueryRule(start korrel8r.Class, query korrel8r.Query) ApplyRule {
+	return NewApplyRule(start, query.Class(), func(korrel8r.Object, *korrel8r.Constraint) (korrel8r.Query, error) {
+		return query, nil
+	})
+}
 func (r ApplyRule) Apply(start korrel8r.Object, c *korrel8r.Constraint) (korrel8r.Query, error) {
 	return r.apply(start, c)
 }
 
-// Store is a mock store, it creates mock queries with desired results.
+// Store is a mock store, use with [Query]
 type Store struct{ domain korrel8r.Domain }
 
 func NewStore(d korrel8r.Domain) Store { return Store{domain: d} }
@@ -123,7 +143,7 @@ func (s Store) Get(_ context.Context, q korrel8r.Query, r korrel8r.Appender) err
 
 func (s *Store) Resolve(korrel8r.Query) *url.URL { panic("not implemented") }
 
-// Query is a mock query string that contains the desired results.
+// Query is a mock query that contains the desired results.
 type Query struct {
 	MClass   korrel8r.Class
 	MResults []korrel8r.Object
@@ -132,6 +152,14 @@ type Query struct {
 func NewQuery(c korrel8r.Class, results ...korrel8r.Object) korrel8r.Query {
 	return Query{MClass: c, MResults: results}
 }
-
 func (q Query) Class() korrel8r.Class { return q.MClass }
-func (q Query) String() string        { return korrel8r.ClassName(q.MClass) }
+func (q Query) String() string {
+	b, _ := json.Marshal(query{q.MClass.String(), q.MResults})
+	return string(b)
+}
+
+// query for marshal/unmarhsal
+type query struct {
+	Class   string            `json:"class"`
+	Results []korrel8r.Object `json:"results"`
+}

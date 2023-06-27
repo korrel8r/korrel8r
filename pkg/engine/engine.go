@@ -12,34 +12,39 @@ import (
 	"github.com/korrel8r/korrel8r/pkg/graph"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"golang.org/x/exp/maps"
+	"golang.org/x/exp/slices"
 )
 
 var log = logging.Log()
 
 // Engine combines a set of domains and a set of rules, so it can perform correlation.
 type Engine struct {
-	domains       map[string]korrel8r.Domain
+	domains       []korrel8r.Domain
+	domainMap     map[string]korrel8r.Domain
 	stores        map[string][]korrel8r.Store
+	storeConfigs  map[string][]korrel8r.StoreConfig
 	rules         []korrel8r.Rule
 	templateFuncs map[string]any
 }
 
 func New(domains ...korrel8r.Domain) *Engine {
 	e := &Engine{
-		domains:       map[string]korrel8r.Domain{},
+		domains:       slices.Clone(domains), // Predicatable order for Domains()
+		domainMap:     map[string]korrel8r.Domain{},
 		stores:        map[string][]korrel8r.Store{},
+		storeConfigs:  map[string][]korrel8r.StoreConfig{},
 		templateFuncs: map[string]any{},
 	}
 	for _, d := range domains {
-		e.domains[d.String()] = d
+		e.domainMap[d.String()] = d
 		e.addTemplateFuncs(d)
 	}
 	return e
 }
 
 // Domain returns the named domain or nil if not found.
-func (e *Engine) Domain(name string) korrel8r.Domain  { return e.domains[name] }
-func (e *Engine) Domains() map[string]korrel8r.Domain { return e.domains }
+func (e *Engine) Domain(name string) korrel8r.Domain { return e.domainMap[name] }
+func (e *Engine) Domains() []korrel8r.Domain         { return e.domains }
 func (e *Engine) DomainErr(name string) (korrel8r.Domain, error) {
 	if d := e.Domain(name); d != nil {
 		return d, nil
@@ -49,6 +54,11 @@ func (e *Engine) DomainErr(name string) (korrel8r.Domain, error) {
 
 // StoresFor returns the known stores for a domain.
 func (e *Engine) StoresFor(d korrel8r.Domain) []korrel8r.Store { return e.stores[d.String()] }
+
+// StoreConfigsFor returns store configurations added with AddStoreConfig
+func (e *Engine) StoreConfigsFor(d korrel8r.Domain) []korrel8r.StoreConfig {
+	return e.storeConfigs[d.String()]
+}
 
 // StoreErr returns the default (first) store for domain, or an error.
 func (e *Engine) StoreErr(d korrel8r.Domain) (korrel8r.Store, error) {
@@ -72,6 +82,28 @@ func (e *Engine) AddStore(s korrel8r.Store) error {
 	return nil
 }
 
+// AddStoreConfig creates a store from configuration and adds it to the engine.
+func (e *Engine) AddStoreConfig(sc korrel8r.StoreConfig) (err error) {
+	defer func() {
+		if err != nil {
+			err = fmt.Errorf("error creating store %v: %w", logging.JSONString(sc), err)
+		}
+	}()
+	d, err := e.DomainErr(sc[korrel8r.StoreKeyDomain])
+	if err != nil {
+		return err
+	}
+	store, err := d.Store(sc)
+	if err != nil {
+		return err
+	}
+	if err := e.AddStore(store); err != nil {
+		return err
+	}
+	e.storeConfigs[d.String()] = append(e.storeConfigs[d.String()], sc)
+	return nil
+}
+
 func (e *Engine) addTemplateFuncs(v any) {
 	// Stores and Domains may implement TemplateFuncser if they provide template helper functions for rules
 	if tf, ok := v.(TemplateFuncser); ok {
@@ -85,15 +117,19 @@ func (e *Engine) Class(name string) (korrel8r.Class, error) {
 	if !ok || c == "" || d == "" {
 		return nil, fmt.Errorf("invalid class name: %v", name)
 	}
-	domain, err := e.DomainErr(d)
+	return e.DomainClass(d, c)
+}
+
+func (e *Engine) DomainClass(domain, class string) (korrel8r.Class, error) {
+	d, err := e.DomainErr(domain)
 	if err != nil {
 		return nil, err
 	}
-	class := domain.Class(c)
-	if class == nil {
-		return nil, fmt.Errorf("unknown class in domain %v: %v", d, c)
+	c := d.Class(class)
+	if c == nil {
+		return nil, korrel8r.ClassNotFoundErr{Class: class, Domain: d}
 	}
-	return class, nil
+	return c, nil
 }
 
 func (e *Engine) Rules() []korrel8r.Rule { return e.rules }

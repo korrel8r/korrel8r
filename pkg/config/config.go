@@ -1,3 +1,5 @@
+// Copyright: This file is part of korrel8r, released under https://github.com/korrel8r/korrel8r/blob/main/LICENSE
+
 package config
 
 import (
@@ -9,10 +11,8 @@ import (
 	"path/filepath"
 
 	"github.com/korrel8r/korrel8r/internal/pkg/logging"
-	"github.com/korrel8r/korrel8r/pkg/api"
 	"github.com/korrel8r/korrel8r/pkg/engine"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
-	"github.com/korrel8r/korrel8r/pkg/templaterule"
 	"golang.org/x/exp/maps"
 	"golang.org/x/exp/slices"
 	"k8s.io/client-go/rest"
@@ -24,7 +24,7 @@ import (
 var log = logging.Log()
 
 // Configs is a map of config files by their source file/url.
-type Configs map[string]*api.Config
+type Configs map[string]*Config
 
 // Load loads all configurations from a file or URL.
 // If a configuration has a "More" section, also loads all referenced configurations.
@@ -42,7 +42,7 @@ func load(source string, configs Configs) (err error) {
 	if err != nil {
 		return fmt.Errorf("%v: %w", source, err)
 	}
-	c := &api.Config{}
+	c := &Config{}
 	if err := yaml.Unmarshal(b, c); err != nil {
 		return fmt.Errorf("%v: %w", source, err)
 	}
@@ -55,6 +55,7 @@ func load(source string, configs Configs) (err error) {
 	return nil
 }
 
+// Apply normalized configurations to an engine.
 func (configs Configs) Apply(e *engine.Engine) (err error) {
 	var source string
 	defer func() {
@@ -96,25 +97,14 @@ func (configs Configs) Apply(e *engine.Engine) (err error) {
 		for _, r := range c.Rules {
 			r.Start.Classes = groupMap.Expand(r.Start.Domain, r.Start.Classes)
 			r.Goal.Classes = groupMap.Expand(r.Goal.Domain, r.Goal.Classes)
-			rules, err := templaterule.NewFactory(e.Domains(), e.TemplateFuncs()).Rules(r)
-			if err != nil {
+			if err := addRules(e, r); err != nil {
 				return err
 			}
-			e.AddRules(rules...)
 		}
 		for _, sc := range c.Stores {
 			log.V(2).Info("configure store", "source", source, "config", logging.JSON(sc))
-			storeErr := func(err error) error { return fmt.Errorf("error creating store %v: %w", logging.JSONString(sc), err) }
-			d, err := e.DomainErr(sc[korrel8r.StoreKeyDomain])
-			if err != nil {
-				return storeErr(err)
-			}
-			store, err := d.Store(sc)
-			if err != nil {
-				return storeErr(err)
-			}
-			if err := e.AddStore(store); err != nil {
-				return storeErr(err)
+			if err := e.AddStoreConfig(sc); err != nil {
+				return err
 			}
 		}
 	}
@@ -124,7 +114,7 @@ func (configs Configs) Apply(e *engine.Engine) (err error) {
 // map of domain names to group names with class name lists
 type groupMap map[string]map[string][]string
 
-func (gm groupMap) Add(g api.Group) bool {
+func (gm groupMap) Add(g Group) bool {
 	if gm[g.Domain][g.Name] != nil {
 		return false // Already present, can't add.
 	}

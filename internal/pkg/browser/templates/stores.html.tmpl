@@ -1,0 +1,5 @@
+{{define "body"}}
+    Query ({{len .result}} results): <pre>{{json .query}}</pre><br>
+    {{with .err}}Error: {{.err}}<br>{{end}}
+    {{range .result}}<hr><code>{{.}}</code>{{end}}
+{{end}}

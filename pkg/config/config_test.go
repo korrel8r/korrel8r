@@ -1,23 +1,18 @@
-package config_test
+// Copyright: This file is part of korrel8r, released under https://github.com/korrel8r/korrel8r/blob/main/LICENSE
+
+package config
 
 import (
 	"testing"
 
-	"github.com/korrel8r/korrel8r/internal/pkg/test"
 	"github.com/korrel8r/korrel8r/internal/pkg/test/mock"
-	"github.com/korrel8r/korrel8r/pkg/api"
-	"github.com/korrel8r/korrel8r/pkg/config"
-	"github.com/korrel8r/korrel8r/pkg/domains/alert"
-	"github.com/korrel8r/korrel8r/pkg/domains/k8s"
-	"github.com/korrel8r/korrel8r/pkg/domains/log"
-	"github.com/korrel8r/korrel8r/pkg/domains/metric"
 	"github.com/korrel8r/korrel8r/pkg/engine"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestLoad_More(t *testing.T) {
-	c, err := config.Load("testdata/config.json")
+	c, err := Load("testdata/config.json")
 	require.NoError(t, err)
 	foo, bar := mock.Domain("foo"), mock.Domain("bar")
 	e := engine.New(foo, bar)
@@ -33,19 +28,19 @@ func TestLoad_More(t *testing.T) {
 }
 
 func TestMerge_ExpandGroups(t *testing.T) {
-	configs := config.Configs{
-		"test": &api.Config{
-			Groups: []api.Group{
+	configs := Configs{
+		"test": &Config{
+			Groups: []Group{
 				{Name: "x", Domain: "foo", Classes: []string{"p", "q"}},
 				{Name: "y", Domain: "foo", Classes: []string{"x", "a"}},
 				{Name: "z", Domain: "foo", Classes: []string{"u", "v"}},
 			},
-			Rules: []api.Rule{
+			Rules: []Rule{
 				{
 					Name:   "r",
-					Start:  api.ClassSpec{Domain: "foo", Classes: []string{"y"}},
-					Goal:   api.ClassSpec{Domain: "foo", Classes: []string{"z"}},
-					Result: api.ResultSpec{Query: "dummy"},
+					Start:  ClassSpec{Domain: "foo", Classes: []string{"y"}},
+					Goal:   ClassSpec{Domain: "foo", Classes: []string{"z"}},
+					Result: ResultSpec{Query: "dummy"},
 				},
 			},
 		},
@@ -64,18 +59,18 @@ func TestMerge_ExpandGroups(t *testing.T) {
 }
 
 func TestMerge_SameGroupDifferentDomain(t *testing.T) {
-	configs := config.Configs{
-		"test": &api.Config{
-			Groups: []api.Group{
+	configs := Configs{
+		"test": &Config{
+			Groups: []Group{
 				{Name: "x", Domain: "foo", Classes: []string{"p", "q"}},
 				{Name: "x", Domain: "bar", Classes: []string{"bbq"}},
 			},
-			Rules: []api.Rule{
+			Rules: []Rule{
 				{
 					Name:   "r1",
-					Start:  api.ClassSpec{Domain: "foo", Classes: []string{"a", "x"}},
-					Goal:   api.ClassSpec{Domain: "bar", Classes: []string{"x"}},
-					Result: api.ResultSpec{Query: "help"},
+					Start:  ClassSpec{Domain: "foo", Classes: []string{"a", "x"}},
+					Goal:   ClassSpec{Domain: "bar", Classes: []string{"x"}},
+					Result: ResultSpec{Query: "help"},
 				},
 			},
 		},
@@ -88,13 +83,4 @@ func TestMerge_SameGroupDifferentDomain(t *testing.T) {
 		mock.NewRule("r1", foo.Class("p"), bar.Class("bbq")),
 		mock.NewRule("r1", foo.Class("q"), bar.Class("bbq")),
 	}, mock.NewRules(e.Rules()...))
-}
-
-func TestLoad_Default(t *testing.T) {
-	test.SkipIfNoCluster(t)
-	config, err := config.Load("../../korrel8r.yaml")
-	require.NoError(t, err)
-	e := engine.New(k8s.Domain, alert.Domain, log.Domain, metric.Domain)
-	require.NoError(t, config.Apply(e))
-	assert.Len(t, e.StoresFor(k8s.Domain), 1)
 }

@@ -1,6 +1,6 @@
 // Copyright: This file is part of korrel8r, released under https://github.com/korrel8r/korrel8r/blob/main/LICENSE
 
-package templaterule
+package rules
 
 import (
 	"errors"
@@ -13,13 +13,14 @@ import (
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 )
 
-// Funcs that are available to all Rules.
+// Funcs available to templates used in rules.
+// Additional funcs may be made available by the [engine.Engine] that applies the rules.
 //
 //	rule
 //	  Returns the korrel8r.Rule being applied.
 //	constraint
 //	  Returns the korrel8r.Constraint in force when applying a rule. May be nil.
-//	has
+//	has(r.Name, r.Result.Query)
 //	  Evaluates its arguments for errors. Useful for asserting that fields exist in the context value.
 //	assert
 //	  Exits with an error if its argument is false.

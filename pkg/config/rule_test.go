@@ -1,12 +1,12 @@
 // Copyright: This file is part of korrel8r, released under https://github.com/korrel8r/korrel8r/blob/main/LICENSE
 
-package templaterule
+package config
 
 import (
 	"testing"
 
 	"github.com/korrel8r/korrel8r/internal/pkg/test/mock"
-	"github.com/korrel8r/korrel8r/pkg/api"
+	"github.com/korrel8r/korrel8r/pkg/engine"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -32,7 +32,7 @@ func TestRule_Rules(t *testing.T) {
 	_, _, z := bar.Class("x"), bar.Class("y"), bar.Class("z")
 	for _, x := range []struct {
 		rule string
-		want []mock.Rule
+		want []korrel8r.Rule
 	}{
 		{
 			rule: `
@@ -41,7 +41,7 @@ start:  {domain: "foo", classes: [a]}
 goal:   {domain: "bar", classes: [z]}
 result: {query: dummy, class: dummy}
 `,
-			want: []mock.Rule{mockRule(a, z)},
+			want: []korrel8r.Rule{mockRule(a, z)},
 		},
 		{
 			rule: `
@@ -50,7 +50,7 @@ start: {domain: foo, classes: [a, b, c]}
 goal:  {domain: bar, classes: [z]}
 result: {query: dummy, class: dummy}
 `,
-			want: []mock.Rule{mockRule(a, z), mockRule(b, z), mockRule(c, z)},
+			want: []korrel8r.Rule{mockRule(a, z), mockRule(b, z), mockRule(c, z)},
 		},
 		{
 			rule: `
@@ -59,8 +59,7 @@ start: {domain: foo}
 goal: {domain: bar}
 result: {query: dummy, class: dummy}
 `,
-			want: func() []mock.Rule {
-				var rules []mock.Rule
+			want: func() (rules []korrel8r.Rule) {
 				for _, foo := range foo.Classes() {
 					for _, bar := range bar.Classes() {
 						rules = append(rules, mockRule(foo, bar))
@@ -71,13 +70,11 @@ result: {query: dummy, class: dummy}
 		},
 	} {
 		t.Run(x.rule, func(t *testing.T) {
-			f := NewFactory(map[string]korrel8r.Domain{"foo": foo, "bar": bar}, nil)
-			var r api.Rule
+			var r Rule
 			require.NoError(t, yaml.Unmarshal([]byte(x.rule), &r))
-			got, err := f.Rules(r)
-			if assert.NoError(t, err) {
-				assert.ElementsMatch(t, x.want, mockRules(got...))
-			}
+			e := engine.New(foo, bar)
+			require.NoError(t, addRules(e, r))
+			assert.ElementsMatch(t, mockRules(x.want...), mockRules(e.Rules()...))
 		})
 	}
 }
