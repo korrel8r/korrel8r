@@ -53,11 +53,11 @@ func TestNeighbours(t *testing.T) {
 		},
 		{
 			depth: 2,
-			want:  [][]rule{{r(1, 11), r(1, 12), r(1, 13)}, {r(11, 22), r(12, 22), r(12, 13)}},
+			want:  [][]rule{{r(1, 11), r(1, 12), r(1, 13)}, {r(11, 22), r(12, 22)}},
 		},
 		{
 			depth: 3,
-			want:  [][]rule{{r(1, 11), r(1, 12), r(1, 13)}, {r(11, 22), r(12, 22), r(12, 13)}, {r(22, 99)}},
+			want:  [][]rule{{r(1, 11), r(1, 12), r(1, 13)}, {r(11, 22), r(12, 22)}, {r(22, 99)}},
 		},
 	} {
 		t.Run(fmt.Sprintf("depth=%v", x.depth), func(t *testing.T) {

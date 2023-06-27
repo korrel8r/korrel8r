@@ -250,6 +250,9 @@ const (
 // updateDiagram generates an SVG diagram via graphviz.
 func (c *correlate) updateDiagram() {
 	g := c.Graph
+	if c.Goal == "neighbours" {
+		c.Graph.GraphAttrs["layout"] = "twopi"
+	}
 	g.EachNode(func(n *graph.Node) {
 		a := n.Attrs
 		a["label"] = fmt.Sprintf("%v/%v", n.Class.Domain(), korrel8r.ShortString(n.Class))

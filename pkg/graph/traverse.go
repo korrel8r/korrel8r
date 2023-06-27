@@ -6,7 +6,6 @@ import (
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"github.com/korrel8r/korrel8r/pkg/unique"
 	"gonum.org/v1/gonum/graph"
-	"gonum.org/v1/gonum/graph/multi"
 	"gonum.org/v1/gonum/graph/topo"
 	"gonum.org/v1/gonum/graph/traverse"
 )
@@ -50,28 +49,50 @@ func (g *Graph) Traverse(traverse func(l *Line)) error {
 
 // Neighbours creates a neighbourhood graph around start and traverses rules breadth-first.
 func (g *Graph) Neighbours(start korrel8r.Class, depth int, travers func(l *Line)) *Graph {
+	depths := map[int64]int{}
+	var nodes []graph.Node
 	sub := g.data.EmptyGraph()
-	bf := traverse.BreadthFirst{}
-	bf.Traverse = func(e graph.Edge) bool {
-		if sub.Edge(e.To().ID(), e.From().ID()) != nil {
-			return false // Already traversed the other way, don't backtrack
+	bf := traverse.BreadthFirst{Visit: func(n graph.Node) {
+		nodes = append(nodes, n)
+		sub.AddNode(n)
+	}}
+	bf.Walk(g, g.NodeFor(start), func(n graph.Node, d int) bool {
+		if d > depth {
+			return true
 		}
-		g.traverseLines(e.(multi.Edge), func(l *Line) { sub.SetLine(l); travers(l) })
-		return true
+		if d2, ok := depths[n.ID()]; !ok || d2 > d { // Record shortest path depth to n
+			depths[n.ID()] = d
+		}
+		return false
+	})
+	for _, n := range nodes {
+		g.traverseTo(n, func(l *Line) { // Add lines from lesser to greater depth
+			if depths[l.From().ID()] < depths[l.To().ID()] {
+				sub.SetLine(l)
+				travers(l)
+			}
+		})
 	}
-	bf.Walk(g, g.NodeFor(start), func(n graph.Node, d int) bool { return d == depth })
 	return sub
 }
 
-// traverseFrom traverses each edge from node, returns true if any edge returns true.
+// traverseFrom traverses each edge from node.
 func (g *Graph) traverseFrom(node graph.Node, traverse func(l *Line)) {
-	goals := g.From(node.ID())
-	for goals.Next() {
-		g.traverseLines(g.Edge(node.ID(), goals.Node().ID()).(multi.Edge), traverse)
+	to := g.From(node.ID())
+	for to.Next() {
+		g.traverseLines(g.Lines(node.ID(), to.Node().ID()), traverse)
 	}
 }
 
-// traverseLines traverses each line, returns true if any line returns true.
+// traverseTo traverses each edge to node.
+func (g *Graph) traverseTo(node graph.Node, traverse func(l *Line)) {
+	from := g.To(node.ID())
+	for from.Next() {
+		g.traverseLines(g.Lines(from.Node().ID(), node.ID()), traverse)
+	}
+}
+
+// traverseLines calls travers on each line.
 func (g *Graph) traverseLines(lines graph.Lines, traverse func(l *Line)) {
 	for lines.Next() {
 		traverse(lines.Line().(*Line))

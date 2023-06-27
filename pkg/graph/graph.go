@@ -27,13 +27,12 @@ func New(data *Data) *Graph {
 	return &Graph{
 		DirectedGraph: multi.NewDirectedGraph(),
 		GraphAttrs: Attrs{
-			"fontname": "Helvetica",
-			"fontsize": "12",
-			"center":   "true",
-			"splines":  "spline",
-			"overlap":  "prism",
-			"sep":      "+8",
-			"layout":   "dot",
+			"fontname":        "Helvetica",
+			"fontsize":        "10",
+			"splines":         "true",
+			"overlap":         "prism",
+			"overlap_scaling": "-2",
+			"layout":          "dot",
 		},
 		NodeAttrs: Attrs{
 			"fontname": "Helvetica",
