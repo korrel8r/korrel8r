@@ -18,10 +18,11 @@ type QueryCount struct {
 }
 
 func (qcs QueryCounts) Get(q korrel8r.Query) (QueryCount, bool) {
-	qc, ok := qcs[korrel8r.JSONString(q)]
+	qc, ok := qcs[q.String()]
 	return qc, ok
 }
-func (qcs QueryCounts) Put(q korrel8r.Query, c int) { qcs[korrel8r.JSONString(q)] = QueryCount{q, c} }
+
+func (qcs QueryCounts) Put(q korrel8r.Query, c int) { qcs[q.String()] = QueryCount{q, c} }
 
 // Total the counts
 func (qcs QueryCounts) Total() int {
