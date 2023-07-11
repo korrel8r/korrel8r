@@ -13,7 +13,6 @@ require (
 	github.com/prometheus/common v0.38.0
 	github.com/spf13/cobra v1.6.1
 	github.com/stretchr/testify v1.8.3
-	github.com/swaggo/swag v1.16.1
 	go.uber.org/multierr v1.9.0
 	golang.org/x/exp v0.0.0-20230127193734-31bee513bff7
 	gonum.org/v1/gonum v0.12.0
@@ -25,7 +24,6 @@ require (
 )
 
 require (
-	github.com/KyleBanks/depth v1.2.1 // indirect
 	github.com/blang/semver/v4 v4.0.0 // indirect
 	github.com/bytedance/sonic v1.9.2 // indirect
 	github.com/chenzhuoyu/base64x v0.0.0-20221115062448-fe3a3abad311 // indirect
@@ -45,7 +43,6 @@ require (
 	github.com/ugorji/go/codec v1.2.11 // indirect
 	golang.org/x/arch v0.3.0 // indirect
 	golang.org/x/crypto v0.10.0 // indirect
-	golang.org/x/tools v0.10.0 // indirect
 )
 
 require (
@@ -83,8 +80,6 @@ require (
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
-	github.com/swaggo/files v1.0.1
-	github.com/swaggo/gin-swagger v1.6.0
 	go.mongodb.org/mongo-driver v1.11.1 // indirect
 	go.opentelemetry.io/otel v1.11.2 // indirect
 	go.opentelemetry.io/otel/trace v1.11.2 // indirect

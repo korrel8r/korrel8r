@@ -7,7 +7,7 @@ build:				## Build the binary.
 	go build -tags netgo ./cmd/korrel8r/.
 
 lint:				## Check for lint.
-	golangci-lint run
+	golangci-lint run --fix
 
 .PHONY: test
 
@@ -21,3 +21,12 @@ cover:
 generate:
 	go generate -x ./...
 	hack/copyright.sh
+
+tag:	     ## Create a version tag on the current branch.
+	@$(if $(TAG),echo "tagging $(TAG)",(error "Set TAG=vX.Y.Z"))
+	@echo -e 'package main\nfunc Version() string { return "$(TAG)"; }' > cmd/korrel8r/version.go
+	go mod tidy
+	git add go.mod go.sum cmd/korrel8r/version.go
+	$(MAKE)
+	git commit -m "changes for $(TAG)"
+	git tag $(TAG)  -m "version $(TAG)"

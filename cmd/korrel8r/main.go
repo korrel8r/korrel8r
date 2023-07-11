@@ -37,7 +37,7 @@ var (
 	rootCmd = &cobra.Command{
 		Use:     "korrel8r",
 		Short:   "Command line correlation tool",
-		Version: "0.1.1",
+		Version: Version(),
 	}
 	log = logging.Log()
 
