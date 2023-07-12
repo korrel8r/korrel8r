@@ -36,7 +36,7 @@ type Domain interface {
 }
 
 // StoreConfig name:value attributes to connect to a store.
-type StoreConfig = map[string]string
+type StoreConfig map[string]string
 
 const (
 	StoreKeyDomain = "domain" // Required key for all store configurations.

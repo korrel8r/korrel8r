@@ -69,6 +69,3 @@ type Group struct {
 	// Classes are the names of classes in this group.
 	Classes []string `json:"classes"`
 }
-
-// StoreConfig name:value attributes to connect to a store.
-type StoreConfig = korrel8r.StoreConfig
