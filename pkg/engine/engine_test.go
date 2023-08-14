@@ -20,6 +20,7 @@ func TestEngine_Class(t *testing.T) {
 		err  string
 	}{
 		{"mock/foo", domain.Class("foo"), ""},
+		{"foo.mock", domain.Class("foo"), ""},
 		{"x/", nil, "invalid class name: x/"},
 		{"/x", nil, "invalid class name: /x"},
 		{"x", nil, "invalid class name: x"},
