@@ -1,0 +1,224 @@
+basePath: /api/v1alpha1
+consumes:
+- application/json
+definitions:
+  api.Edge:
+    properties:
+      goal:
+        description: Goal is the class name of the goal node.
+        example: class.domain
+        type: string
+      rules:
+        description: Rules is the set of rules followed along this edge (optional).
+        items:
+          $ref: '#/definitions/api.Rule'
+        type: array
+      start:
+        description: Start is the class name of the start node.
+        type: string
+    type: object
+  api.GoalsRequest:
+    description: Starting point for a goals search.
+    properties:
+      goals:
+        description: Goal classes for correlation.
+        example:
+        - class.domain
+        items:
+          type: string
+        type: array
+      start:
+        allOf:
+        - $ref: '#/definitions/api.Start'
+        description: Start of correlation search.
+    type: object
+  api.Graph:
+    description: Graph resulting from a correlation search.
+    properties:
+      edges:
+        items:
+          $ref: '#/definitions/api.Edge'
+        type: array
+      nodes:
+        items:
+          $ref: '#/definitions/api.Node'
+        type: array
+    type: object
+  api.NeighboursRequest:
+    description: Starting point for a neighbours search.
+    properties:
+      depth:
+        description: Max depth of neighbours graph.
+        type: integer
+      start:
+        allOf:
+        - $ref: '#/definitions/api.Start'
+        description: Start of correlation search.
+    type: object
+  api.Node:
+    properties:
+      class:
+        description: Class is the full name of the class in "CLASS.DOMAIN" form.
+        example: class.domain
+        type: string
+      count:
+        description: Count of results found for this class, after de-duplication.
+        type: integer
+      queries:
+        allOf:
+        - $ref: '#/definitions/api.Queries'
+        description: Queries yielding results for this class.
+        example:
+          querystring: 10
+    type: object
+  api.Queries:
+    additionalProperties:
+      type: integer
+    description: A set of query strings with counts of results found by the query.
+      Value of -1 means the query was not run so result count is unknown.
+    type: object
+  api.Rule:
+    properties:
+      name:
+        description: Name is an optional descriptive name.
+        type: string
+      queries:
+        allOf:
+        - $ref: '#/definitions/api.Queries'
+        description: Queries generated while following this rule.
+        example:
+          querystring: 10
+    type: object
+  api.Start:
+    description: Starting point for correlation.
+    properties:
+      class:
+        description: Class of starting objects
+        example: class.domain
+        type: string
+      objects:
+        description: Objects in JSON form
+        type: object
+      query:
+        description: Queries for starting objects
+        items:
+          type: string
+        type: array
+    type: object
+  api.StoreConfig:
+    additionalProperties:
+      type: string
+    type: object
+info:
+  contact:
+    url: https://github.com/korrel8r/korrel8r
+  title: REST API for korrel8r
+  version: v1alpha1
+paths:
+  /domains:
+    get:
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              type: string
+            type: array
+      summary: List all korrel8r domain names.
+      tags:
+      - configuration
+  /graph/goals:
+    post:
+      parameters:
+      - description: include rules in graph edges
+        in: query
+        name: withRules
+        type: boolean
+      - description: search from start to goal classes
+        in: body
+        name: start
+        required: true
+        schema:
+          $ref: '#/definitions/api.GoalsRequest'
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.Graph'
+      summary: Create a correlation graph from start objects to goal queries.
+      tags:
+      - search
+  /graph/neighbours:
+    post:
+      parameters:
+      - description: include rules in graph edges
+        in: query
+        name: withRules
+        type: boolean
+      - description: search from neighbours
+        in: body
+        name: start
+        required: true
+        schema:
+          $ref: '#/definitions/api.NeighboursRequest'
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.Graph'
+      summary: Create a correlation graph of neighbours of a start object to a given
+        depth.
+      tags:
+      - search
+  /list/goals:
+    post:
+      parameters:
+      - description: search from start to goal classes
+        in: body
+        name: start
+        required: true
+        schema:
+          $ref: '#/definitions/api.GoalsRequest'
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/api.Node'
+            type: array
+      summary: Generate a list of goal nodes related to a starting point.
+      tags:
+      - search
+  /stores:
+    get:
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/api.StoreConfig'
+            type: array
+      summary: List of all store configurations objects.
+      tags:
+      - configuration
+  /stores/{domain}:
+    get:
+      parameters:
+      - description: "domain\tname"
+        in: path
+        name: domain
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/api.StoreConfig'
+            type: array
+      summary: List of all store configurations objects for a specific domain.
+      tags:
+      - configuration
+produces:
+- application/json
+swagger: "2.0"

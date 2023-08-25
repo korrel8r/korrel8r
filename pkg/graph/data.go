@@ -116,3 +116,14 @@ type Line struct {
 func (l *Line) String() string           { return korrel8r.RuleName(l.Rule) }
 func (l *Line) DOTID() string            { return l.Rule.String() }
 func RuleFor(l graph.Line) korrel8r.Rule { return l.(*Line).Rule }
+
+type Edge multi.Edge
+
+func (e *Edge) Start() *Node { return e.F.(*Node) }
+func (e *Edge) Goal() *Node  { return e.T.(*Node) }
+func (e *Edge) EachLine(visit func(*Line)) {
+	lines := e.Lines
+	for lines.Next() {
+		visit(lines.Line().(*Line))
+	}
+}

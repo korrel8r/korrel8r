@@ -3,75 +3,89 @@
 package main
 
 import (
-	"fmt"
+	"bytes"
 	"io"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
 	"os/exec"
 	"path"
+	"strconv"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/korrel8r/korrel8r/internal/pkg/test"
+	"github.com/korrel8r/korrel8r/pkg/api"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-func command(args ...string) *exec.Cmd {
-	return exec.Command("go", append([]string{"run", ".", "-c", "testdata/korrel8r.yaml"}, args...)...)
+func command(t *testing.T, args ...string) *exec.Cmd {
+	cmd := exec.Command("go", append([]string{"run", ".", "-v9", "-c", "testdata/korrel8r.yaml"}, args...)...)
+	cmd.Stderr = os.Stderr
+
+	return cmd
 }
 
 func TestMain_list(t *testing.T) {
-	out, err := command("list").Output()
+	out, err := command(t, "list").Output()
 	require.NoError(t, test.ExecError(err))
 	assert.Equal(t, "k8s\nlog\nalert\nmetric\nmock\n", string(out))
 }
 
 func TestMain_list_domain(t *testing.T) {
-	out, err := command("list", "log").Output()
+	out, err := command(t, "list", "log").Output()
 	require.NoError(t, test.ExecError(err))
 	assert.Equal(t, "application\ninfrastructure\naudit\n", string(out))
 }
 
 func TestMain_get(t *testing.T) {
-	out, err := command("get", "-o", "json", "mock", `{"class":"foo", "results":["hello"]}`).Output()
+	out, err := command(t, "get", "-o", "json", "mock", `{"class":"foo", "results":["hello"]}`).Output()
 	require.NoError(t, test.ExecError(err))
 	assert.Equal(t, "\"hello\"\n", string(out))
 }
 
-func start(t *testing.T) string {
+func start(t *testing.T) *url.URL {
 	t.Helper()
 	port, err := test.ListenPort()
 	require.NoError(t, err)
-	addr := fmt.Sprintf(":%v", port)
-	cmd := command("web", "--http", addr)
-	cmd.Stderr = os.Stderr
+	addr := net.JoinHostPort("localhost", strconv.Itoa(port))
+	cmd := command(t, "web", "--http", addr)
+	stderr := &bytes.Buffer{}
+	cmd.Stderr = stderr
 	require.NoError(t, cmd.Start())
-	t.Cleanup(func() { _ = cmd.Process.Kill(); _ = cmd.Wait() })
-	return addr
+	// Wait till HTTP server is available.
+	require.Eventually(t, func() bool {
+		_, err := http.Get("http://" + path.Join(addr, "/api"))
+		return err == nil
+	}, 10*time.Second, time.Second/10, "timeout error: %v", err)
+	t.Cleanup(func() {
+		_ = cmd.Process.Kill()
+		if t.Failed() {
+			t.Logf("... stderr: %v\n%v\n---", cmd, stderr)
+		}
+	})
+	return &url.URL{Scheme: "http", Host: addr, Path: api.BasePath}
 }
 
-func get(t *testing.T, addr, urlPath string) string {
-	var (
-		err error
-		r   *http.Response
-	)
-	require.Eventually(t, func() bool {
-		r, err = http.Get("http://" + path.Join(addr, "/api/v1alpha1", urlPath))
-		return err == nil
-	}, 10*time.Second, time.Second/10)
+func assertDo(t *testing.T, want, method, url, body string) {
+	t.Helper()
+	req, err := http.NewRequest(method, url, strings.NewReader(body))
 	require.NoError(t, err)
-	b, err := io.ReadAll(r.Body)
+	res, err := http.DefaultClient.Do(req)
 	require.NoError(t, err)
-	return string(b)
+	b, err := io.ReadAll(res.Body)
+	require.NoError(t, err)
+	assert.Equal(t, want, string(b))
 }
 
 func TestMain_web_api(t *testing.T) {
-	addr := start(t)
-	assert.Equal(t, `["k8s","log","alert","metric","mock"]`, get(t, addr, "/domains"))
-	assert.Equal(t, `[{"domain":"mock"}]`, get(t, addr, "/stores"))
-	q := url.QueryEscape(`{"class":"foo", "results":["hello"]}`)
-	assert.Equal(t, `[{"class":{"domain":"mock","class":"foo"}}]`,
-		get(t, addr, "/goals?start=mock+foo&query="+q+"&goal=mock+foo"))
+	base := start(t)
+	u := func(path string) string { return base.String() + path }
+	assertDo(t, `["k8s","log","alert","metric","mock"]`, "GET", u("/domains"), "")
+	assertDo(t, `[{"domain":"mock"}]`, "GET", u("/stores"), "")
+	// FIXME result should not be empty?
+	assertDo(t, `{"nodes":[]}`, "POST", u("/graph/goals?withRules=true"), `{"goals":["bar.mock"],"start":{"class":"foo.mock","objects":["x"]}}`)
 }

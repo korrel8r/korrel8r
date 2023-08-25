@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/korrel8r/korrel8r/internal/pkg/test/mock"
+	"github.com/korrel8r/korrel8r/pkg/graph"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -54,17 +55,17 @@ func TestFollower_Traverse(t *testing.T) {
 	require.NoError(t, e.AddStore(s))
 	e.AddRules(
 		// Return 2 results, must follow both
-		mock.NewApplyRule(a, b, func(korrel8r.Object, *korrel8r.Constraint) (korrel8r.Query, error) {
+		mock.NewApplyRule("ab", a, b, func(korrel8r.Object, *korrel8r.Constraint) (korrel8r.Query, error) {
 			return mock.NewQuery(b, 1, 2), nil
 		}),
 		// 2 rules, must follow both. Incorporate data from start object.
-		mock.NewApplyRule(b, c, func(start korrel8r.Object, _ *korrel8r.Constraint) (korrel8r.Query, error) {
+		mock.NewApplyRule("bc1", b, c, func(start korrel8r.Object, _ *korrel8r.Constraint) (korrel8r.Query, error) {
 			return mock.NewQuery(c, start), nil
 		}),
-		mock.NewApplyRule(b, c, func(start korrel8r.Object, _ *korrel8r.Constraint) (korrel8r.Query, error) {
+		mock.NewApplyRule("bc2", b, c, func(start korrel8r.Object, _ *korrel8r.Constraint) (korrel8r.Query, error) {
 			return mock.NewQuery(c, start.(int)+10), nil
 		}),
-		mock.NewApplyRule(c, z, func(start korrel8r.Object, _ *korrel8r.Constraint) (korrel8r.Query, error) {
+		mock.NewApplyRule("cz", c, z, func(start korrel8r.Object, _ *korrel8r.Constraint) (korrel8r.Query, error) {
 			return mock.NewQuery(z, start), nil
 		}))
 	g := e.Graph()
@@ -72,8 +73,44 @@ func TestFollower_Traverse(t *testing.T) {
 	f := e.Follower(context.Background())
 	assert.NoError(t, g.Traverse(f.Traverse))
 	assert.NoError(t, f.Err)
+	// Check node results
 	assert.ElementsMatch(t, []korrel8r.Object{0}, g.NodeFor(a).Result.List())
 	assert.ElementsMatch(t, []korrel8r.Object{1, 2}, g.NodeFor(b).Result.List())
 	assert.ElementsMatch(t, []korrel8r.Object{1, 2, 11, 12}, g.NodeFor(c).Result.List())
 	assert.ElementsMatch(t, []korrel8r.Object{1, 2, 11, 12}, g.NodeFor(z).Result.List())
+	// Check line results
+	g.EachLine(func(l *graph.Line) {
+		switch l.Rule.String() {
+		case "ab":
+			q, err := l.Rule.Apply(0, nil)
+			require.NoError(t, err)
+			assert.Equal(t, graph.QueryCounts{q.String(): graph.QueryCount{Query: q, Count: 2}}, l.QueryCounts)
+		case "bc1", "bc2":
+			q1, err := l.Rule.Apply(1, nil)
+			require.NoError(t, err)
+			q2, err := l.Rule.Apply(2, nil)
+			require.NoError(t, err)
+			assert.Equal(t, graph.QueryCounts{
+				q1.String(): graph.QueryCount{Query: q1, Count: 1},
+				q2.String(): graph.QueryCount{Query: q2, Count: 1},
+			}, l.QueryCounts)
+		case "cz":
+			q1, err := l.Rule.Apply(1, nil)
+			require.NoError(t, err)
+			q2, err := l.Rule.Apply(2, nil)
+			require.NoError(t, err)
+			q3, err := l.Rule.Apply(11, nil)
+			require.NoError(t, err)
+			q4, err := l.Rule.Apply(12, nil)
+			require.NoError(t, err)
+			assert.Equal(t, graph.QueryCounts{
+				q1.String(): graph.QueryCount{Query: q1, Count: 1},
+				q2.String(): graph.QueryCount{Query: q2, Count: 1},
+				q3.String(): graph.QueryCount{Query: q3, Count: 1},
+				q4.String(): graph.QueryCount{Query: q4, Count: 1},
+			}, l.QueryCounts)
+		default:
+			t.Fatalf("unexpected rule: %v", korrel8r.RuleName(l.Rule))
+		}
+	})
 }

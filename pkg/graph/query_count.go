@@ -7,6 +7,7 @@ import (
 	"golang.org/x/exp/slices"
 )
 
+// FIXME simplify query counts in line with API: map[string]QueryCounts
 // QueryCounts is a set of queries and a count of objects they returned.
 // Map is indexed by the JSON form of the query and it's starting object.
 type QueryCounts map[string]QueryCount

@@ -12,10 +12,10 @@ lint:				## Check for lint.
 .PHONY: test
 
 test:				## Run all the tests, requires a cluster.
-	TEST_NO_SKIP=1 go test -cover -race ./...
+	TEST_NO_SKIP=1 go test -timeout=1m -race ./...
 
 cover:
-	go test -coverprofile=test.cov  -race ./...
+	go test -coverprofile=test.cov ./...
 	go tool cover --html test.cov; sleep 2 # Sleep required to let browser start up.
 
 generate:
@@ -30,3 +30,8 @@ tag:	     ## Create a version tag on the current branch, set TAG=vX.Y.Z.
 	git add go.mod go.sum cmd/korrel8r/version.go
 	git commit -m "changes for $(TAG)"
 	git tag $(TAG)  -m "version $(TAG)"
+
+tools:
+	go install \
+		github.com/go-swagger/go-swagger/cmd/swagger@latest \
+		github.com/swaggo/swag/cmd/swag@latest
