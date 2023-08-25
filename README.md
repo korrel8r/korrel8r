@@ -2,7 +2,8 @@
 
 **⚠ Warning: Experimental ⚠**: This code may change without warning.
 
-[API documentation is available at pkg.go.dev](https://pkg.go.dev/github.com/korrel8r/korrel8r/pkg/korrel8r)
+- [Go API documentation](https://pkg.go.dev/github.com/korrel8r/korrel8r/pkg/korrel8r)
+- [REST API documentation](pkg/api/docs/swagger.md)
 
 ## Quick Start ##
 
@@ -10,13 +11,23 @@ Set up your cluster to run tests, there are scripts and examples in:
 - `hack/openshift`
 - `hack/kind`
 
-You need to be logged in to an cluster as an admin for korrel8r to work:
+You may need to be logged in to an cluster as kubeadmin for korrel8r to work.
 
 ```bash
 go install github.com/korrel8r/korrel8r/cmd/korrel8r
-korrel8r web &
-xdg-open http://localhost:8080
-# Replace xdg-open with your preferred browser if it doesn't work on your system.
+korrel8r web -http :8080 & # Start korrel8r with web server
+```
+
+With korrel8r running, you can open the following URLs:
+
+- http://localhost:8080     # Interactive browser interface for humans.
+- http://localhost:8080/api # REST API documentation
+
+Here's an example of using the REST API queries for logs associated with a namespace: 
+
+``` bash
+REQUEST='{"start":{"class":"Namespace.k8s","queries":[{"kind":"Namespace","name":"openshift-apiserver"}]},"goals":["log/application","log/infrastructure","log/audit"]}'
+curl -w"\n" -X POST -H 'Content-Type: application/json' -d "$REQUEST" http://localhost:8080/api/v1alpha1/lists/goals
 ```
 
 ## Overview ##

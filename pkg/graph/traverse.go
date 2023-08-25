@@ -52,14 +52,13 @@ func (g *Graph) Neighbours(start korrel8r.Class, depth int, travers func(l *Line
 	depths := map[int64]int{}
 	var nodes []graph.Node
 	sub := g.Data.EmptyGraph()
-	bf := traverse.BreadthFirst{Visit: func(n graph.Node) {
-		nodes = append(nodes, n)
-		sub.AddNode(n)
-	}}
+	bf := traverse.BreadthFirst{}
 	bf.Walk(g, g.NodeFor(start), func(n graph.Node, d int) bool {
 		if d > depth {
 			return true
 		}
+		nodes = append(nodes, n)
+		sub.AddNode(n)
 		if d2, ok := depths[n.ID()]; !ok || d2 > d { // Record shortest path depth to n
 			depths[n.ID()] = d
 		}

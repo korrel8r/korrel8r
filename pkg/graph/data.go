@@ -104,6 +104,7 @@ func ClassFor(n graph.Node) korrel8r.Class { return n.(*Node).Class }
 
 func (n *Node) String() string { return korrel8r.ClassName(n.Class) }
 func (n *Node) DOTID() string  { return korrel8r.ClassName(n.Class) }
+func (n *Node) Empty() bool    { return len(n.Result.List()) == 0 }
 
 // Line is one line in a multi-graph edge, corresponds to a rule.
 type Line struct {
@@ -116,3 +117,14 @@ type Line struct {
 func (l *Line) String() string           { return korrel8r.RuleName(l.Rule) }
 func (l *Line) DOTID() string            { return l.Rule.String() }
 func RuleFor(l graph.Line) korrel8r.Rule { return l.(*Line).Rule }
+
+type Edge multi.Edge
+
+func (e *Edge) Start() *Node { return e.F.(*Node) }
+func (e *Edge) Goal() *Node  { return e.T.(*Node) }
+func (e *Edge) EachLine(visit func(*Line)) {
+	lines := e.Lines
+	for lines.Next() {
+		visit(lines.Line().(*Line))
+	}
+}

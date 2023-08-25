@@ -8,6 +8,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/korrel8r/korrel8r/internal/pkg/browser"
+	"github.com/korrel8r/korrel8r/internal/pkg/logging"
 	"github.com/korrel8r/korrel8r/internal/pkg/must"
 	"github.com/korrel8r/korrel8r/pkg/api"
 	"github.com/spf13/cobra"
@@ -17,6 +18,7 @@ var webCmd = &cobra.Command{
 	Use:   "web [flags]",
 	Short: "Start a web server to interact with korrel8r from a browser.",
 	Run: func(_ *cobra.Command, args []string) {
+		gin.DefaultWriter = logging.LogWriter()
 		if os.Getenv(gin.EnvGinMode) == "" { // Don't override an explicit env setting.
 			gin.SetMode(gin.ReleaseMode)
 			if *verbose >= 3 { // Enable gin debug mode and logging
@@ -25,7 +27,7 @@ var webCmd = &cobra.Command{
 		}
 		router := gin.New()
 		router.Use(gin.Recovery())
-		if *verbose > 1 {
+		if *verbose >= 2 {
 			router.Use(gin.Logger())
 		}
 		engine := newEngine()

@@ -67,14 +67,16 @@ func (g *Graph) AllNodes() (nodes []*Node) {
 	return nodes
 }
 
-func (g *Graph) EachLine(visit func(*Line)) {
+func (g *Graph) EachEdge(visit func(*Edge)) {
 	edges := g.Edges()
 	for edges.Next() {
-		lines := edges.Edge().(multi.Edge)
-		for lines.Next() {
-			visit(lines.Line().(*Line))
-		}
+		edge := Edge(edges.Edge().(multi.Edge))
+		visit(&edge)
 	}
+}
+
+func (g *Graph) EachLine(visit func(*Line)) {
+	g.EachEdge(func(e *Edge) { e.EachLine(visit) })
 }
 
 func (g *Graph) AllLines() (lines []*Line) {

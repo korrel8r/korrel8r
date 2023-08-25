@@ -35,8 +35,9 @@ func (f *Follower) Traverse(l *graph.Line) {
 		log := log.WithValues("query", logging.JSON(query))
 		result := korrel8r.NewCountResult(goalNode.Result)
 		if err := f.Engine.Get(f.Context, goalNode.Class, query, result); err != nil {
-			log.Error(err, "get failed")
+			log.Error(err, "get failed", "class", goalNode.Class, "query", query.String())
 		}
+		// TODO get rid of duplication of query counts, simplify code?
 		l.QueryCounts.Put(query, result.Count)
 		goalNode.QueryCounts.Put(query, result.Count)
 		log.V(3).Info("results", "count", result.Count)

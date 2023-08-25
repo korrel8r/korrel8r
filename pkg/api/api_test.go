@@ -9,7 +9,6 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"net/url"
 	"strings"
 	"testing"
 
@@ -20,7 +19,95 @@ import (
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/exp/slices"
 )
+
+func TestAPI_GetStores(t *testing.T) {
+	a := newTestAPI(mock.Domains("foo", "bar")...)
+	require.NoError(t, a.Engine.AddStoreConfig(korrel8r.StoreConfig{"domain": "foo", "a": "1"}))
+	require.NoError(t, a.Engine.AddStoreConfig(korrel8r.StoreConfig{"domain": "foo", "b": "2"}))
+	require.NoError(t, a.Engine.AddStoreConfig(korrel8r.StoreConfig{"domain": "bar", "x": "y"}))
+
+	assertDo(t, a, "GET", "/api/v1alpha1/stores/foo", nil, 200, []StoreConfig{{"domain": "foo", "a": "1"}, {"domain": "foo", "b": "2"}})
+	assertDo(t, a, "GET", "/api/v1alpha1/stores/bar", nil, 200, []StoreConfig{{"domain": "bar", "x": "y"}})
+	assertDo(t, a, "GET", "/api/v1alpha1/stores", nil, 200, []StoreConfig{{"domain": "foo", "a": "1"}, {"domain": "foo", "b": "2"}, {"domain": "bar", "x": "y"}})
+	assertDo(t, a, "GET", "/api/v1alpha1/stores/bad", nil, 404, gin.H{"error": `domain not found: "bad"`})
+}
+
+func TestAPI_ListGoals(t *testing.T) {
+	a, x, y, _ := apiWithRules()
+	assertDo(t, a, "POST", "/api/v1alpha1/lists/goals",
+		GoalsRequest{
+			Start: Start{
+				Class:   classname(x),
+				Queries: []string{mock.NewQuery(x, "a").String()},
+				Objects: []json.RawMessage{[]byte(`"b"`)},
+			},
+			Goals: []string{classname(y)},
+		},
+		200, []Node{
+			{
+				Class: "y.bar",
+				Count: 2,
+				Queries: Queries{
+					mock.NewQuery(y, "aa").String(): 1,
+					mock.NewQuery(y, "bb").String(): 1,
+				},
+			},
+		})
+}
+
+func TestAPI_GraphGoals_withRules(t *testing.T) {
+	a, x, y, z := apiWithRules()
+	yQueries := Queries{mock.NewQuery(y, "aa").String(): 1, mock.NewQuery(y, "bb").String(): 1}
+	zQueries := Queries{mock.NewQuery(z, "c").String(): 1}
+	xQuery := mock.NewQuery(x, "a").String()
+	assertDo(t, a, "POST", "/api/v1alpha1/graphs/goals?withRules=true",
+		GoalsRequest{
+			Start: Start{
+				Class:   classname(x),
+				Queries: []string{xQuery},
+				Objects: []json.RawMessage{[]byte(`"b"`)},
+			},
+			Goals: []string{classname(z)},
+		},
+		200,
+		Graph{
+			Nodes: []Node{
+				{Class: "x.foo", Count: 2, Queries: Queries{xQuery: 1}},
+				{Class: "y.bar", Count: 2, Queries: yQueries},
+				{Class: "z.bar", Count: 1, Queries: zQueries},
+			},
+			Edges: []Edge{
+				{Start: "x.foo", Goal: "y.bar", Rules: []Rule{{Name: "x->y", Queries: yQueries}}},
+				{Start: "y.bar", Goal: "z.bar", Rules: []Rule{{Name: "y->z", Queries: zQueries}}},
+			},
+		})
+}
+
+func TestAPI_PostNeighbours_noRules(t *testing.T) {
+	a, x, y, _ := apiWithRules()
+	yQueries := Queries{mock.NewQuery(y, "aa").String(): 1}
+	assertDo(t, a, "POST", "/api/v1alpha1/graphs/neighbours",
+		NeighboursRequest{
+			Start: Start{
+				Class:   classname(x),
+				Objects: []json.RawMessage{[]byte(`"a"`)},
+			},
+			Depth: 1,
+		},
+		200,
+		Graph{
+			Nodes: []Node{
+				{Class: "x.foo", Count: 1},
+				{Class: "y.bar", Count: 1, Queries: yQueries},
+			},
+			Edges: []Edge{
+				{Start: "x.foo", Goal: "y.bar"},
+			},
+		},
+	)
+}
 
 func ginEngine() *gin.Engine {
 	gin.SetMode(gin.ReleaseMode)
@@ -34,159 +121,77 @@ func ginEngine() *gin.Engine {
 	return r
 }
 
-func testAPI(domains ...korrel8r.Domain) *API {
-	return test.Must(New(engine.New(domains...), ginEngine()))
+type testAPI struct {
+	*API
+	Router *gin.Engine
 }
 
-func do(a *API, method, url string, body io.Reader) *httptest.ResponseRecorder {
+func newTestAPI(domains ...korrel8r.Domain) *testAPI {
+	r := ginEngine()
+	return &testAPI{API: test.Must(New(engine.New(domains...), r)), Router: r}
+}
+
+func do(t *testing.T, a *testAPI, method, url string, body any) *httptest.ResponseRecorder {
 	w := httptest.NewRecorder()
-	req, err := http.NewRequest(method, url, body)
-	if err != nil {
-		w.Code = http.StatusInternalServerError
-		fmt.Fprintln(w, err.Error())
+	var r io.Reader
+	if body != nil {
+		r = strings.NewReader(test.JSONString(body))
 	}
-	a.Router.ServeHTTP(w, req)
+	req, err := http.NewRequest(method, url, r)
+	if err != nil {
+		w.Code = http.StatusBadRequest
+		fmt.Fprintln(w, err.Error())
+	} else {
+		a.Router.ServeHTTP(w, req)
+	}
 	return w
 }
 
-func assertDo[T any](t *testing.T, a *API, method, url string, req any, code int, want T) {
-	t.Helper()
-	var r io.Reader
-	if req != nil {
-		r = strings.NewReader(test.JSONString(req))
+// normalize values by sorting slices to avoid test failure due to ordering inconsistency.
+func normalize(v any) {
+	switch v := v.(type) {
+	case Graph:
+		slices.SortFunc(v.Nodes, func(a, b Node) bool { return a.Class < b.Class })
+		slices.SortFunc(v.Edges, func(a, b Edge) bool {
+			return a.Start < b.Start || (a.Start == b.Start && a.Goal < b.Goal)
+		})
 	}
-	w := do(a, method, url, r)
+}
+
+func assertDo[T any](t *testing.T, a *testAPI, method, url string, req any, code int, want T) {
+	t.Helper()
+	w := do(t, a, method, url, req)
 	if assert.Equal(t, code, w.Code, w.Body.String()) {
 		var got T
-		assert.NoError(t, json.Unmarshal(w.Body.Bytes(), &got), w.Body.String())
-		assert.Equal(t, want, got)
+		if assert.NoError(t, json.Unmarshal(w.Body.Bytes(), &got), "body: %v", w.Body.String()) {
+			normalize(want)
+			normalize(got)
+			if assert.Equal(t, want, got) {
+				return
+			}
+		}
 	}
+	t.Logf("request: %v", test.JSONString(req)) // Log the request body on error.
 }
 
-func TestAPI_GET_domains(t *testing.T) {
-	assertDo(t, testAPI(mock.Domains("foo", "bar")...), "GET", "/api/v1alpha1/domains", nil, 200, Domains{"foo", "bar"})
+func TestAPI_GetDomains(t *testing.T) {
+	assertDo(t, newTestAPI(mock.Domains("foo", "bar")...), "GET", "/api/v1alpha1/domains", nil, 200, []string{"foo", "bar"})
 }
 
-func TestAPI_GET_stores(t *testing.T) {
-	a := testAPI(mock.Domains("foo", "bar")...)
-	require.NoError(t, a.Engine.AddStoreConfig(korrel8r.StoreConfig{"domain": "foo", "a": "1"}))
-	require.NoError(t, a.Engine.AddStoreConfig(korrel8r.StoreConfig{"domain": "foo", "b": "2"}))
-	require.NoError(t, a.Engine.AddStoreConfig(korrel8r.StoreConfig{"domain": "bar", "x": "y"}))
-
-	assertDo(t, a, "GET", "/api/v1alpha1/stores/foo", nil, 200, Stores{{"domain": "foo", "a": "1"}, {"domain": "foo", "b": "2"}})
-	assertDo(t, a, "GET", "/api/v1alpha1/stores/bar", nil, 200, Stores{{"domain": "bar", "x": "y"}})
-	assertDo(t, a, "GET", "/api/v1alpha1/stores", nil, 200, Stores{{"domain": "foo", "a": "1"}, {"domain": "foo", "b": "2"}, {"domain": "bar", "x": "y"}})
-	assertDo(t, a, "GET", "/api/v1alpha1/stores/bad", nil, 404, gin.H{"error": `domain not found: "bad"`})
-}
-
+// doubleFunc returns a goal object with the name of the start object repeated twice.
 func doubleFunc(goal korrel8r.Class) func(korrel8r.Object, *korrel8r.Constraint) (korrel8r.Query, error) {
 	return func(o korrel8r.Object, _ *korrel8r.Constraint) (korrel8r.Query, error) {
 		return mock.NewQuery(goal, o.(string)+o.(string)), nil
 	}
 }
 
-func apiWithRules() (a *API, x, y, z korrel8r.Class) {
+func apiWithRules() (a *testAPI, x, y, z korrel8r.Class) {
 	foo, bar := mock.Domain("foo"), mock.Domain("bar")
-	api := testAPI(foo, bar)
+	api := newTestAPI(foo, bar)
 	x, y, z = foo.Class("x"), bar.Class("y"), bar.Class("z")
 	test.PanicErr(api.Engine.AddStore(mock.NewStore(foo)))
 	test.PanicErr(api.Engine.AddStore(mock.NewStore(bar)))
-	api.Engine.AddRules(mock.NewApplyRule(x, y, doubleFunc(y)))
-	api.Engine.AddRules(mock.NewQueryRule(y, mock.NewQuery(z, "c")))
+	api.Engine.AddRules(mock.NewApplyRule("x->y", x, y, doubleFunc(y)))
+	api.Engine.AddRules(mock.NewQueryRule("y->z", y, mock.NewQuery(z, "c")))
 	return api, x, y, z
-}
-
-func TestAPI_GET_goals(t *testing.T) {
-	a, x, y, _ := apiWithRules()
-	assertDo(t, a, "GET", "/api/v1alpha1/goals?start=foo+x&goal=bar+y&query="+url.QueryEscape(mock.NewQuery(x, "a").String()), nil,
-		200, Results{{Class: newClass(y), Queries: QueryCounts{mock.NewQuery(y, "aa").String(): 1}}})
-}
-
-func TestAPI_POST_goals(t *testing.T) {
-	a, x, y, _ := apiWithRules()
-	assertDo(t, a, "POST", "/api/v1alpha1/goals",
-		GoalsRequest{
-			Start: Start{
-				Start:   newClass(x),
-				Query:   mock.NewQuery(x, "a").String(),
-				Objects: []json.RawMessage{[]byte(`"b"`)},
-			},
-			Goals: []Class{newClass(y)},
-		},
-		200, Results{{Class: Class{Class: "y", Domain: "bar"}, Queries: QueryCounts{
-			mock.NewQuery(y, "aa").String(): 1,
-			mock.NewQuery(y, "bb").String(): 1,
-		}}})
-}
-
-func TestAPI_GET_graphs(t *testing.T) {
-	a, x, y, _ := apiWithRules()
-	assertDo(t, a, "GET",
-		"/api/v1alpha1/graphs?start=foo+x&goal=bar+y&query="+url.QueryEscape(mock.NewQuery(x, "a").String()), nil,
-		200,
-		Graph{
-			Nodes: []Result{
-				{Class: newClass(x)},
-				{Class: newClass(y), Queries: QueryCounts{mock.NewQuery(y, "aa").String(): 1}},
-			},
-			Edges: [][2]int{{0, 1}},
-		})
-}
-
-func TestAPI_POST_graphs(t *testing.T) {
-	a, x, y, z := apiWithRules()
-	assertDo(t, a, "POST", "/api/v1alpha1/graphs",
-		GoalsRequest{
-			Start: Start{
-				Start:   newClass(x),
-				Query:   mock.NewQuery(x, "a").String(),
-				Objects: []json.RawMessage{[]byte(`"b"`)},
-			},
-			Goals: []Class{newClass(z)},
-		},
-		200,
-		Graph{
-			Nodes: []Result{
-				{Class: newClass(x)},
-				{Class: newClass(y), Queries: QueryCounts{
-					mock.NewQuery(y, "aa").String(): 1,
-					mock.NewQuery(y, "bb").String(): 1,
-				}},
-				{Class: newClass(z), Queries: QueryCounts{mock.NewQuery(z, "c").String(): 1}},
-			},
-			Edges: [][2]int{{0, 1}, {1, 2}},
-		})
-}
-
-func TestAPI_GET_neighbours(t *testing.T) {
-	a, x, y, _ := apiWithRules()
-	assertDo(t, a, "GET", "/api/v1alpha1/neighbours?start=foo+x&depth=1&query="+mock.NewQuery(x, "a").String(), nil,
-		200,
-		Graph{
-			Nodes: []Result{
-				{Class: newClass(x)},
-				{Class: newClass(y), Queries: QueryCounts{mock.NewQuery(y, "aa").String(): 1}}},
-			Edges: [][2]int{{0, 1}},
-		})
-}
-
-func TestAPI_POST_neighbours(t *testing.T) {
-	a, x, y, z := apiWithRules()
-	assertDo(t, a, "POST", "/api/v1alpha1/neighbours",
-		NeighboursRequest{
-			Start: Start{
-				Start:   newClass(x),
-				Objects: []json.RawMessage{[]byte(`"a"`)},
-			},
-			Depth: 2,
-		},
-		200,
-		Graph{
-			Nodes: []Result{
-				{Class: newClass(x)},
-				{Class: newClass(y), Queries: QueryCounts{mock.NewQuery(y, "aa").String(): 1}},
-				{Class: newClass(z), Queries: QueryCounts{mock.NewQuery(z, "c").String(): 1}},
-			},
-			Edges: [][2]int{{0, 1}, {1, 2}},
-		})
 }

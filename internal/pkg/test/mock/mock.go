@@ -8,7 +8,6 @@ package mock
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"net/url"
 
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
@@ -95,7 +94,7 @@ func NewRules(rules ...korrel8r.Rule) (mocks []Rule) {
 
 func (r Rule) Start() korrel8r.Class { return r.start }
 func (r Rule) Goal() korrel8r.Class  { return r.goal }
-func (r Rule) String() string        { return fmt.Sprintf("%v->%v", r.start, r.goal) }
+func (r Rule) String() string        { return r.name }
 func (r Rule) Apply(start korrel8r.Object, c *korrel8r.Constraint) (korrel8r.Query, error) {
 	panic("not implemented") // See ApplyRule
 }
@@ -117,15 +116,16 @@ type ApplyRule struct {
 	apply ApplyFunc
 }
 
-func NewApplyRule(start, goal korrel8r.Class, apply ApplyFunc) ApplyRule {
-	return ApplyRule{Rule: Rule{start: start, goal: goal}, apply: apply}
+func NewApplyRule(name string, start, goal korrel8r.Class, apply ApplyFunc) ApplyRule {
+	return ApplyRule{Rule: NewRule(name, start, goal), apply: apply}
 }
 
-func NewQueryRule(start korrel8r.Class, query korrel8r.Query) ApplyRule {
-	return NewApplyRule(start, query.Class(), func(korrel8r.Object, *korrel8r.Constraint) (korrel8r.Query, error) {
+func NewQueryRule(name string, start korrel8r.Class, query korrel8r.Query) ApplyRule {
+	return NewApplyRule(name, start, query.Class(), func(korrel8r.Object, *korrel8r.Constraint) (korrel8r.Query, error) {
 		return query, nil
 	})
 }
+
 func (r ApplyRule) Apply(start korrel8r.Object, c *korrel8r.Constraint) (korrel8r.Query, error) {
 	return r.apply(start, c)
 }

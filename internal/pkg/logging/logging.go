@@ -6,6 +6,7 @@ package logging
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/url"
 	"os"
@@ -19,8 +20,11 @@ const verboseEnv = "KORREL8R_VERBOSE"
 
 var root logr.Logger
 
-// The root logger.
+// Log returns the root logger.
 func Log() logr.Logger { return root }
+
+// LogWriter returns the destination for the root logger,  so other logs can be directed to it.
+func LogWriter() io.Writer { return os.Stderr }
 
 func init() { // Set env verbosity on init, Init() can over-ride.
 	root = stdr.New(log.New(os.Stderr, "korrel8r ", log.Ltime))
