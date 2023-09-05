@@ -9,6 +9,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/url"
+	"strings"
 
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"golang.org/x/exp/slices"
@@ -100,11 +101,11 @@ func (r Rule) Apply(start korrel8r.Object, c *korrel8r.Constraint) (korrel8r.Que
 }
 
 // RuleLess orders rules.
-func RuleLess(a, b korrel8r.Rule) bool {
+func RuleLess(a, b korrel8r.Rule) int {
 	if a.Start().String() != b.Start().String() {
-		return a.Start().String() < b.Start().String()
+		return strings.Compare(a.Start().String(), b.Start().String())
 	}
-	return a.Goal().String() < b.Goal().String()
+	return strings.Compare(a.Goal().String(), b.Goal().String())
 }
 
 // SorRules  sorts rules by (start, goal) order.

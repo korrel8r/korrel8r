@@ -151,10 +151,8 @@ func do(t *testing.T, a *testAPI, method, url string, body any) *httptest.Respon
 func normalize(v any) {
 	switch v := v.(type) {
 	case Graph:
-		slices.SortFunc(v.Nodes, func(a, b Node) bool { return a.Class < b.Class })
-		slices.SortFunc(v.Edges, func(a, b Edge) bool {
-			return a.Start < b.Start || (a.Start == b.Start && a.Goal < b.Goal)
-		})
+		slices.SortFunc(v.Nodes, func(a, b Node) int { return strings.Compare(a.Class, b.Class) })
+		slices.SortFunc(v.Edges, Edge.Compare)
 	}
 }
 

@@ -82,6 +82,13 @@ type Edge struct {
 	Rules []Rule `json:"rules,omitempty"`
 }
 
+func (a Edge) Compare(b Edge) int {
+	if a.Start != b.Start {
+		return strings.Compare(a.Start, b.Start)
+	}
+	return strings.Compare(a.Goal, b.Goal)
+}
+
 //	@description	Graph resulting from a correlation search.
 type Graph struct {
 	Nodes []Node `json:"nodes"`

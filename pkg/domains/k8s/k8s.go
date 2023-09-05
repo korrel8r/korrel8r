@@ -146,8 +146,11 @@ func NewStore(c client.Client, cfg *rest.Config) (korrel8r.Store, error) {
 
 	// TODO should be using discovery client?
 	groups := Scheme.PreferredVersionAllGroups()
-	slices.SortFunc(groups, func(a, b schema.GroupVersion) bool { // Move core and openshift to front.
-		return a.Group == "" || (strings.Contains(a.Group, ".openshift.io/") && b.Group != "")
+	slices.SortFunc(groups, func(a, b schema.GroupVersion) int { // Move core and openshift to front.
+		if a.Group == "" || (strings.Contains(a.Group, ".openshift.io/") && b.Group != "") {
+			return -1
+		}
+		return 0
 	})
 
 	return &Store{c: c, base: base, groups: groups}, err

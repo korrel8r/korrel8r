@@ -14,6 +14,7 @@ spec:
     secret:
       name: minio
       type: s3
-  storageClassName: local-storage
+  storageClassName: crc-csi-hostpath-provisioner # For CRC clusters, replace with default storage for others.
+  # storageClassName: local-storage
   tenants:
     mode: openshift-logging

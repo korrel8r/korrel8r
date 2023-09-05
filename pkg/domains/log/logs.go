@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/url"
 	"path"
+	"strings"
 
 	"github.com/korrel8r/korrel8r/pkg/config"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
@@ -215,7 +216,7 @@ func (s *Store) Get(ctx context.Context, query korrel8r.Query, result korrel8r.A
 	for _, sv := range qr.Data.Result {
 		logs = append(logs, sv.Values...)
 	}
-	slices.SortStableFunc(logs, func(a, b []string) bool { return a[0] < b[0] })
+	slices.SortStableFunc(logs, func(a, b []string) int { return strings.Compare(a[0], b[0]) })
 	for _, tl := range logs { // tl is [time, line]
 		result.Append(NewObject(tl[1]))
 	}

@@ -39,6 +39,6 @@ func (qcs QueryCounts) Sort() (list []QueryCount) {
 	for _, qc := range qcs {
 		list = append(list, qc)
 	}
-	slices.SortFunc(list, func(a, b QueryCount) bool { return a.Count > b.Count })
+	slices.SortFunc(list, func(a, b QueryCount) int { return a.Count - b.Count })
 	return list
 }
