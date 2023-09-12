@@ -7,16 +7,18 @@
 
 ## Quick Start ##
 
-Set up your cluster to run tests, there are scripts and examples in:
-- `hack/openshift`
-- `hack/kind`
+1. Set up your cluster; there are scripts and examples to help in:
+   - `hack/openshift-local` for an Openshift Local (aka Code Ready Container) test cluster on a laptop.
+   - `hack/openshift` for other Openshift clusters.
+   - `hack/kind` for Kind clusters.
 
-You may need to be logged in to an cluster as kubeadmin for korrel8r to work.
+2. Log into your cluster as `kubeadmin` or other admin user.
 
-```bash
-go install github.com/korrel8r/korrel8r/cmd/korrel8r
-korrel8r web -http :8080 & # Start korrel8r with web server
-```
+3. Install and run korrel8r locally
+   ```bash
+   go install github.com/korrel8r/korrel8r/cmd/korrel8r
+   korrel8r web -http :8080 & # Start korrel8r with web server
+   ```
 
 With korrel8r running, you can open the following URLs:
 
