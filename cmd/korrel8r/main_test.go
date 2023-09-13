@@ -25,7 +25,6 @@ import (
 func command(t *testing.T, args ...string) *exec.Cmd {
 	cmd := exec.Command("go", append([]string{"run", ".", "-v9", "-c", "testdata/korrel8r.yaml"}, args...)...)
 	cmd.Stderr = os.Stderr
-
 	return cmd
 }
 

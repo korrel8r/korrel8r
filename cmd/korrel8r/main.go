@@ -51,22 +51,25 @@ var (
 	Engine *engine.Engine
 )
 
-const configEnv = "KORREL8R_CONFIG"
+const (
+	configEnv = "KORREL8R_CONFIG"
+	defaultConfig =  "/etc/korrel8r/korrel8r.yaml"
+)
 
 func init() {
 	panicOnErr = rootCmd.PersistentFlags().Bool("panic", false, "panic on error instead of exit code 1")
 	output = rootCmd.PersistentFlags().StringP("output", "o", "yaml", "Output format: [json, json-pretty, yaml]")
 	verbose = rootCmd.PersistentFlags().IntP("verbose", "v", 0, "Verbosity for logging")
-	configuration = rootCmd.PersistentFlags().StringP("config", "c", defaultConfig(), "Configuration file")
+	configuration = rootCmd.PersistentFlags().StringP("config", "c", getConfig(), "Configuration file")
 	cobra.OnInitialize(func() { logging.Init(*verbose) }) // Initialize logging after flags are parsed
 }
 
-// defaultConfig looks for a default configuration file.
-func defaultConfig() string {
+// getConfig looks for the default configuration file.
+func getConfig() string {
 	if config, ok := os.LookupEnv(configEnv); ok {
 		return config // Use env. var. if set.
 	}
-	return "korrel8r.yaml" // Default to korrel8r.yaml in current directory.
+	return defaultConfig
 }
 
 func main() {

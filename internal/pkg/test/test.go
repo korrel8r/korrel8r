@@ -112,7 +112,7 @@ func TempNamespace(t *testing.T, c client.Client) string {
 	ns := corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
 			GenerateName: "test-",
-			Labels:       map[string]string{"test": t.Name(), "test-client": t.Name()},
+			Labels:       map[string]string{"test": t.Name()},
 		},
 	}
 	require.NoError(t, c.Create(context.Background(), &ns))

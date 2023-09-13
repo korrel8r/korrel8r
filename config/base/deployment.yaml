@@ -1,0 +1,28 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: korrel8r
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: korrel8r
+      app.kubernetes.io/component: engine
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: korrel8r
+        app.kubernetes.io/component: engine
+    spec:
+      containers:
+      - name: korrel8r
+        image: REPLACE_ME
+        command: ["korrel8r", "web", "--http", ":8080"]
+        ports:
+        - containerPort: 8080
+        securityContext:
+          runAsNonRoot: true
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop: ["ALL"]
+          seccompProfile:
+            type: RuntimeDefault

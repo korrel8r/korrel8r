@@ -38,8 +38,10 @@ type Domain interface {
 // StoreConfig name:value attributes to connect to a store.
 type StoreConfig map[string]string
 
+// Required keys for all store configurations.
 const (
-	StoreKeyDomain = "domain" // Required key for all store configurations.
+	StoreKeyDomain = "domain"
+	StoreKeyError  = "error"
 )
 
 // Class identifies a subset of objects from the same domain with the same schema.

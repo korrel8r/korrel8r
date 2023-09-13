@@ -7,23 +7,33 @@
 
 ## Quick Start ##
 
-1. Set up your cluster; there are scripts and examples to help in:
+Set up your cluster; there are scripts and examples to help in:
    - `hack/openshift-local` for an Openshift Local (aka Code Ready Container) test cluster on a laptop.
    - `hack/openshift` for other Openshift clusters.
    - `hack/kind` for Kind clusters.
 
-2. Log into your cluster as `kubeadmin` or other admin user.
+Log into your cluster as `kubeadmin` or other admin user.
 
-3. Install and run korrel8r locally
-   ```bash
-   go install github.com/korrel8r/korrel8r/cmd/korrel8r
-   korrel8r web -http :8080 & # Start korrel8r with web server
-   ```
+You can install and run korrel8r on your local host or deploy it to the cluster:
+
+- Local install
+	   ```bash
+	   go install github.com/korrel8r/korrel8r/cmd/korrel8r@latest
+	   korrel8r web -http :8080 &
+	   ```
+- Deploy the latest tagged version to your cluster as a deployment in namespace `korrel8r`
+	   ```bash
+	   make deploy-latest
+	   ```
 
 With korrel8r running, you can open the following URLs:
 
-- http://localhost:8080     # Interactive browser interface for humans.
-- http://localhost:8080/api # REST API documentation
+If running on the local host:
+  - http://localhost:8080     # Interactive browser interface.
+  - http://localhost:8080/api # REST API documentation
+
+If deployed to the cluster, you can get the base URL for korrel8r with `make route-url`
+(note this requires an openshift cluster to expose a route to the korrel8r service)
 
 Here's an example of using the REST API queries for logs associated with a namespace: 
 

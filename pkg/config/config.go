@@ -205,10 +205,12 @@ type Store korrel8r.StoreConfig
 
 func (m Store) K8sClient() (client.Client, *rest.Config, error) {
 	cfg, err := config.GetConfigWithContext(m["context"])
+	if err != nil {
+		return nil, nil, err
+	}
 	// Reduce client-side throttling for rapid results.
 	cfg.QPS = 100
 	cfg.Burst = 1000
-
 	if err != nil {
 		return nil, nil, err
 	}

@@ -1,1 +1,4 @@
-hack/kind/jsonnet/vendor/
+/korrel8r
+/cmd/korrel8r/version.go
+/hack/kind/jsonnet/vendor/
+/config/overlays/replace-image/

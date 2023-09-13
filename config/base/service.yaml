@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: korrel8r
+spec:
+  ports:
+  - port: 80
+    targetPort: 8080
+  selector:
+    app.kubernetes.io/name: korrel8r
+    app.kubernetes.io/component: engine
