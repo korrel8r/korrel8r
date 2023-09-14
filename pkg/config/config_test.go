@@ -5,6 +5,7 @@ package config
 import (
 	"testing"
 
+	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"github.com/korrel8r/korrel8r/internal/pkg/test/mock"
 	"github.com/korrel8r/korrel8r/pkg/engine"
 	"github.com/stretchr/testify/assert"
@@ -27,8 +28,8 @@ func TestLoad_More(t *testing.T) {
 	}, mock.NewRules(e.Rules()...))
 }
 
-func TestMerge_ExpandGroups(t *testing.T) {
-	configs := Configs{
+func TestApply_ExpandGroups(t *testing.T) {
+	c := Configs{
 		"test": &Config{
 			Groups: []Group{
 				{Name: "x", Domain: "foo", Classes: []string{"p", "q"}},
@@ -47,7 +48,7 @@ func TestMerge_ExpandGroups(t *testing.T) {
 	}
 	foo := mock.Domain("foo")
 	e := engine.New(foo)
-	require.NoError(t, configs.Apply(e))
+	require.NoError(t, c.Apply(e))
 	assert.Equal(t, []mock.Rule{
 		mock.NewRule("r", foo.Class("p"), foo.Class("u")),
 		mock.NewRule("r", foo.Class("p"), foo.Class("v")),
@@ -58,8 +59,8 @@ func TestMerge_ExpandGroups(t *testing.T) {
 	}, mock.NewRules(e.Rules()...))
 }
 
-func TestMerge_SameGroupDifferentDomain(t *testing.T) {
-	configs := Configs{
+func TestApply_SameGroupDifferentDomain(t *testing.T) {
+	c := Configs{
 		"test": &Config{
 			Groups: []Group{
 				{Name: "x", Domain: "foo", Classes: []string{"p", "q"}},
@@ -77,10 +78,32 @@ func TestMerge_SameGroupDifferentDomain(t *testing.T) {
 	}
 	foo, bar := mock.Domain("foo"), mock.Domain("bar")
 	e := engine.New(foo, bar)
-	require.NoError(t, configs.Apply(e))
+	require.NoError(t, c.Apply(e))
 	assert.Equal(t, []mock.Rule{
 		mock.NewRule("r1", foo.Class("a"), bar.Class("bbq")),
 		mock.NewRule("r1", foo.Class("p"), bar.Class("bbq")),
 		mock.NewRule("r1", foo.Class("q"), bar.Class("bbq")),
 	}, mock.NewRules(e.Rules()...))
+}
+
+func TestApply_BadStores(t *testing.T) {
+	c := Configs{
+		"a": &Config{ Stores: []korrel8r.StoreConfig{{"domain": "foo"},{"domain":"badFoo"}}},
+		"b": &Config{ Stores: []korrel8r.StoreConfig{{"domain": "bar"}, {"domain": "badBar"}}},
+	}
+	foo, bar := mock.Domain("foo"), mock.Domain("bar")
+	e := engine.New(foo, bar)
+	err := c.Apply(e)
+	require.IsType(t, (*Status)(nil), err)
+	s := err.(*Status)
+	require.NoError(t, s.Err)
+	assert.Len(t, s.StoreErrs, 2)
+	// Check for expected errorss
+	assert.Equal(t, korrel8r.StoreConfig{"domain": "badFoo"}, s.StoreErrs[0].Store)
+	assert.EqualError(t, s.StoreErrs[0].Err, `a: error creating store {"domain":"badFoo"}: domain not found: "badFoo"`)
+	assert.Equal(t, korrel8r.StoreConfig{"domain": "badBar"}, s.StoreErrs[1].Store)
+	assert.EqualError(t, s.StoreErrs[1].Err, `b: error creating store {"domain":"badBar"}: domain not found: "badBar"`)
+	// Check that we did apply the good stores
+	assert.Equal(t, mock.NewStore(foo), e.StoresFor(foo)[0])
+	assert.Equal(t, mock.NewStore(bar), e.StoresFor(bar)[0])
 }
