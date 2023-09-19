@@ -22,16 +22,14 @@ import (
 	"golang.org/x/exp/slices"
 )
 
-func TestAPI_GetStores(t *testing.T) {
+func TestAPI_GetDomains(t *testing.T) {
 	a := newTestAPI(mock.Domains("foo", "bar")...)
 	require.NoError(t, a.Engine.AddStoreConfig(korrel8r.StoreConfig{"domain": "foo", "a": "1"}))
 	require.NoError(t, a.Engine.AddStoreConfig(korrel8r.StoreConfig{"domain": "foo", "b": "2"}))
 	require.NoError(t, a.Engine.AddStoreConfig(korrel8r.StoreConfig{"domain": "bar", "x": "y"}))
-
-	assertDo(t, a, "GET", "/api/v1alpha1/stores/foo", nil, 200, []StoreConfig{{"domain": "foo", "a": "1"}, {"domain": "foo", "b": "2"}})
-	assertDo(t, a, "GET", "/api/v1alpha1/stores/bar", nil, 200, []StoreConfig{{"domain": "bar", "x": "y"}})
-	assertDo(t, a, "GET", "/api/v1alpha1/stores", nil, 200, []StoreConfig{{"domain": "foo", "a": "1"}, {"domain": "foo", "b": "2"}, {"domain": "bar", "x": "y"}})
-	assertDo(t, a, "GET", "/api/v1alpha1/stores/bad", nil, 404, gin.H{"error": `domain not found: "bad"`})
+	assertDo(t, a, "GET", "/api/v1alpha1/domains", nil, 200, []Domain{
+		{Name: "foo", Stores: []korrel8r.StoreConfig{{"a": "1", "domain": "foo"}, {"b": "2", "domain": "foo"}}},
+		{Name: "bar", Stores: []korrel8r.StoreConfig{{"domain": "bar", "x": "y"}}}})
 }
 
 func TestAPI_ListGoals(t *testing.T) {
@@ -170,10 +168,6 @@ func assertDo[T any](t *testing.T, a *testAPI, method, url string, req any, code
 		}
 	}
 	t.Logf("request: %v", test.JSONString(req)) // Log the request body on error.
-}
-
-func TestAPI_GetDomains(t *testing.T) {
-	assertDo(t, newTestAPI(mock.Domains("foo", "bar")...), "GET", "/api/v1alpha1/domains", nil, 200, []string{"foo", "bar"})
 }
 
 // doubleFunc returns a goal object with the name of the start object repeated twice.

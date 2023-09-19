@@ -3,11 +3,12 @@
 package config
 
 import (
+	"fmt"
 	"testing"
 
-	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"github.com/korrel8r/korrel8r/internal/pkg/test/mock"
 	"github.com/korrel8r/korrel8r/pkg/engine"
+	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -86,24 +87,23 @@ func TestApply_SameGroupDifferentDomain(t *testing.T) {
 	}, mock.NewRules(e.Rules()...))
 }
 
-func TestApply_BadStores(t *testing.T) {
+type mockStoreErrorDomain struct{ mock.Domain }
+
+func (d mockStoreErrorDomain) Store(sc korrel8r.StoreConfig) (korrel8r.Store, error) {
+	return nil, fmt.Errorf("bad store: %v", sc)
+}
+
+func TestApply_bad_stores(t *testing.T) {
+	foo, bar := mockStoreErrorDomain{Domain: "foo"}, mock.Domain("bar")
 	c := Configs{
-		"a": &Config{ Stores: []korrel8r.StoreConfig{{"domain": "foo"},{"domain":"badFoo"}}},
-		"b": &Config{ Stores: []korrel8r.StoreConfig{{"domain": "bar"}, {"domain": "badBar"}}},
+		"a": &Config{Stores: []korrel8r.StoreConfig{{"domain": "foo", "x": "y"}}},
+		"b": &Config{Stores: []korrel8r.StoreConfig{{"domain": "bar", "a": "b"}}},
 	}
-	foo, bar := mock.Domain("foo"), mock.Domain("bar")
 	e := engine.New(foo, bar)
-	err := c.Apply(e)
-	require.IsType(t, (*Status)(nil), err)
-	s := err.(*Status)
-	require.NoError(t, s.Err)
-	assert.Len(t, s.StoreErrs, 2)
-	// Check for expected errorss
-	assert.Equal(t, korrel8r.StoreConfig{"domain": "badFoo"}, s.StoreErrs[0].Store)
-	assert.EqualError(t, s.StoreErrs[0].Err, `a: error creating store {"domain":"badFoo"}: domain not found: "badFoo"`)
-	assert.Equal(t, korrel8r.StoreConfig{"domain": "badBar"}, s.StoreErrs[1].Store)
-	assert.EqualError(t, s.StoreErrs[1].Err, `b: error creating store {"domain":"badBar"}: domain not found: "badBar"`)
+	require.NoError(t, c.Apply(e))
+	// Check for expected errors
+	assert.Equal(t, "bad store: map[domain:foo x:y]", e.StoreConfigsFor(foo)[0][korrel8r.StoreKeyError])
 	// Check that we did apply the good stores
-	assert.Equal(t, mock.NewStore(foo), e.StoresFor(foo)[0])
+	assert.Empty(t, e.StoresFor(foo))
 	assert.Equal(t, mock.NewStore(bar), e.StoresFor(bar)[0])
 }

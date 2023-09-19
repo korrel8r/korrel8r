@@ -15,7 +15,7 @@
 //	@accept			json
 //	@produce		json
 //
-//go:generate swag init -g api.go
+//go:generate swag init -d ../.. -g pkg/api/api.go
 //go:generate swag fmt -d ./
 //go:generate swagger generate markdown -f docs/swagger.json --output ../../doc/rest-api.md
 //go:generate cp docs/swagger.json ../../doc
@@ -25,7 +25,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/korrel8r/korrel8r/pkg/api/docs"
@@ -51,8 +50,6 @@ func New(e *engine.Engine, r *gin.Engine) (*API, error) {
 	r.GET("/api", func(c *gin.Context) { c.Redirect(http.StatusPermanentRedirect, "/swagger/index.html") })
 	v := r.Group(docs.SwaggerInfo.BasePath)
 	v.GET("/domains", a.GetDomains)
-	v.GET("/stores", a.GetStores)
-	v.GET("/stores/:domain", a.GetStoresDomain)
 	v.POST("/graphs/goals", a.GraphsGoals)
 	v.POST("/lists/goals", a.ListsGoals)
 	v.POST("/graphs/neighbours", a.GraphsNeighbours)
@@ -65,46 +62,18 @@ func (a *API) Close() {}
 // GetDomains handler
 //
 //	@router		/domains [get]
-//	@summary	List all korrel8r domain names.
+//	@summary	List all configured domains and stores.
 //	@tags		configuration
-//	@success	200	{array}	string
+//	@success	200	{array}	Domain
 func (a *API) GetDomains(c *gin.Context) {
-	var domains []string
+	var domains []Domain
 	for _, d := range a.Engine.Domains() {
-		domains = append(domains, d.String())
+		domains = append(domains, Domain{
+			Name:   d.String(),
+			Stores: a.Engine.StoreConfigsFor(d),
+		})
 	}
 	c.JSON(http.StatusOK, domains)
-}
-
-// GetStores handler
-//
-//	@router		/stores [get]
-//	@summary	List of all store configurations objects.
-//	@tags		configuration
-//	@success	200	{array}	StoreConfig
-func (a *API) GetStores(c *gin.Context) {
-	var stores []StoreConfig
-	for _, d := range a.Engine.Domains() {
-		for _, c := range a.Engine.StoreConfigsFor(d) {
-			stores = append(stores, StoreConfig(c))
-		}
-	}
-	c.JSON(http.StatusOK, stores)
-}
-
-// GetStoresDomain handler
-//
-//	@router		/stores/{domain} [get]
-//	@summary	List of all store configurations objects for a specific domain.
-//	@tags		configuration
-//	@param		domain	path	string	true	"domain	name"
-//	@success	200		{array}	StoreConfig
-func (a *API) GetStoresDomain(c *gin.Context) {
-	name := strings.TrimPrefix(c.Params.ByName("domain"), "/")
-	d, err := a.Engine.DomainErr(name)
-	if check(c, http.StatusNotFound, err) {
-		c.JSON(http.StatusOK, a.Engine.StoreConfigsFor(d))
-	}
 }
 
 // GraphsGoals handler.

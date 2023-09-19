@@ -13,7 +13,7 @@ type Config struct {
 	// Groups defines short names for groups of related classes.
 	Groups []Group `json:"groups,omitempty"`
 
-	// Stores is a list of store configurations of domain names to stores.
+	// Stores is a list of store configurations.
 	Stores []korrel8r.StoreConfig `json:"stores,omitempty"`
 
 	// More is a list of file names or URLs for additional configuration files to load.

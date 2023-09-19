@@ -30,14 +30,14 @@ const docTemplate = `{
                 "tags": [
                     "configuration"
                 ],
-                "summary": "List all korrel8r domain names.",
+                "summary": "List all configured domains and stores.",
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
                             "type": "array",
                             "items": {
-                                "type": "string"
+                                "$ref": "#/definitions/api.Domain"
                             }
                         }
                     }
@@ -139,56 +139,30 @@ const docTemplate = `{
                     }
                 }
             }
-        },
-        "/stores": {
-            "get": {
-                "tags": [
-                    "configuration"
-                ],
-                "summary": "List of all store configurations objects.",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/api.StoreConfig"
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/stores/{domain}": {
-            "get": {
-                "tags": [
-                    "configuration"
-                ],
-                "summary": "List of all store configurations objects for a specific domain.",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "domain\tname",
-                        "name": "domain",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/api.StoreConfig"
-                            }
-                        }
-                    }
-                }
-            }
         }
     },
     "definitions": {
+        "api.Domain": {
+            "description": "Domain configuration information.",
+            "type": "object",
+            "properties": {
+                "errors": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "name": {
+                    "type": "string"
+                },
+                "stores": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/korrel8r.StoreConfig"
+                    }
+                }
+            }
+        },
         "api.Edge": {
             "type": "object",
             "properties": {
@@ -344,7 +318,7 @@ const docTemplate = `{
                 }
             }
         },
-        "api.StoreConfig": {
+        "korrel8r.StoreConfig": {
             "type": "object",
             "additionalProperties": {
                 "type": "string"

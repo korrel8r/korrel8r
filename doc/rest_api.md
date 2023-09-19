@@ -31,9 +31,7 @@ v1alpha1
 
 | Method  | URI     | Name   | Summary |
 |---------|---------|--------|---------|
-| GET | /api/v1alpha1/domains | [get domains](#get-domains) | List all korrel8r domain names. |
-| GET | /api/v1alpha1/stores | [get stores](#get-stores) | List of all store configurations objects. |
-| GET | /api/v1alpha1/stores/{domain} | [get stores domain](#get-stores-domain) | List of all store configurations objects for a specific domain. |
+| GET | /api/v1alpha1/domains | [get domains](#get-domains) | List all configured domains and stores. |
   
 
 
@@ -49,7 +47,7 @@ v1alpha1
 
 ## Paths
 
-### <span id="get-domains"></span> List all korrel8r domain names. (*GetDomains*)
+### <span id="get-domains"></span> List all configured domains and stores. (*GetDomains*)
 
 ```
 GET /api/v1alpha1/domains
@@ -70,59 +68,7 @@ Status: OK
    
   
 
-[]string
-
-### <span id="get-stores"></span> List of all store configurations objects. (*GetStores*)
-
-```
-GET /api/v1alpha1/stores
-```
-
-#### All responses
-| Code | Status | Description | Has headers | Schema |
-|------|--------|-------------|:-----------:|--------|
-| [200](#get-stores-200) | OK | OK |  | [schema](#get-stores-200-schema) |
-
-#### Responses
-
-
-##### <span id="get-stores-200"></span> 200 - OK
-Status: OK
-
-###### <span id="get-stores-200-schema"></span> Schema
-   
-  
-
-[][APIStoreConfig](#api-store-config)
-
-### <span id="get-stores-domain"></span> List of all store configurations objects for a specific domain. (*GetStoresDomain*)
-
-```
-GET /api/v1alpha1/stores/{domain}
-```
-
-#### Parameters
-
-| Name | Source | Type | Go type | Separator | Required | Default | Description |
-|------|--------|------|---------|-----------| :------: |---------|-------------|
-| domain | `path` | string | `string` |  | ✓ |  | domain	name |
-
-#### All responses
-| Code | Status | Description | Has headers | Schema |
-|------|--------|-------------|:-----------:|--------|
-| [200](#get-stores-domain-200) | OK | OK |  | [schema](#get-stores-domain-200-schema) |
-
-#### Responses
-
-
-##### <span id="get-stores-domain-200"></span> 200 - OK
-Status: OK
-
-###### <span id="get-stores-domain-200-schema"></span> Schema
-   
-  
-
-[][APIStoreConfig](#api-store-config)
+[][APIDomain](#api-domain)
 
 ### <span id="post-graphs-goals"></span> Create a correlation graph from start objects to goal queries. (*PostGraphsGoals*)
 
@@ -214,6 +160,26 @@ Status: OK
 [][APINode](#api-node)
 
 ## Models
+
+### <span id="api-domain"></span> api.Domain
+
+
+> Domain configuration information.
+  
+
+
+
+
+
+**Properties**
+
+| Name | Type | Go type | Required | Default | Description | Example |
+|------|------|---------|:--------:| ------- |-------------|---------|
+| errors | []string| `[]string` |  | |  |  |
+| name | string| `string` |  | |  |  |
+| stores | [][Korrel8rStoreConfig](#korrel8r-store-config)| `[]Korrel8rStoreConfig` |  | |  |  |
+
+
 
 ### <span id="api-edge"></span> api.Edge
 
@@ -352,9 +318,9 @@ Status: OK
 
 
 
-### <span id="api-store-config"></span> api.StoreConfig
+### <span id="korrel8r-store-config"></span> korrel8r.StoreConfig
 
 
   
 
-[APIStoreConfig](#api-store-config)
+[Korrel8rStoreConfig](#korrel8r-store-config)

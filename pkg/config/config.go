@@ -19,7 +19,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	"sigs.k8s.io/yaml"
-	"strings"
 )
 
 var log = logging.Log()
@@ -56,34 +55,8 @@ func load(source string, configs Configs) (err error) {
 	return nil
 }
 
-// StoreError is an error encountered when trying to add a store configuration.
-type StoreError struct {
-	Store korrel8r.StoreConfig
-	Err error
-}
-func (se StoreError)  Error() string {	return se.Err.Error() }
-
-// Status is the error state after attempting to apply a configuration.
-type Status struct {
-	Err error
-	StoreErrs []StoreError
-}
-
-func (s *Status) Error() string {
-	if s.Err != nil {
-		return s.Err.Error()
-	}
-	b := &strings.Builder{}
-	for _, se := range s.StoreErrs {
-		fmt.Fprintln(b, se.Err.Error())
-	}
-	return b.String()
-}
-
 // Apply normalized configurations to an engine.
-// Returns a list of errors for stores that could not be configured.
-// If the returned error is non-nil, it wil be of type *Status.
-func (configs Configs) Apply(e *engine.Engine) (err error) {
+func (configs Configs) Apply(e *engine.Engine) error {
 	sources := maps.Keys(configs)
 	slices.Sort(sources) // Predictable order
 	groupMap := groupMap{}
@@ -92,13 +65,13 @@ func (configs Configs) Apply(e *engine.Engine) (err error) {
 		c := configs[source]
 		for _, g := range c.Groups {
 			if _, err := e.DomainErr(g.Domain); err != nil {
-				return &Status{Err: fmt.Errorf("%v: group %q: %w", source, g.Name, err)}
+				return fmt.Errorf("%v: group %q: %w", source, g.Name, err)
 			}
 			if len(g.Classes) == 0 {
-				return &Status{Err:fmt.Errorf("%v: group %q: no classes", source, g.Name)}
+				return fmt.Errorf("%v: group %q: no classes", source, g.Name)
 			}
 			if !groupMap.Add(g) {
-				return &Status{Err: fmt.Errorf("%v: group %q: duplicate name", source, g.Name)}
+				return fmt.Errorf("%v: group %q: duplicate name", source, g.Name)
 			}
 		}
 	}
@@ -113,27 +86,22 @@ func (configs Configs) Apply(e *engine.Engine) (err error) {
 		}
 	}
 	// Add rules and stores to the engine
-	var badStores []StoreError
 	for _, source := range sources {
 		c := configs[source]
 		for _, r := range c.Rules {
 			r.Start.Classes = groupMap.Expand(r.Start.Domain, r.Start.Classes)
 			r.Goal.Classes = groupMap.Expand(r.Goal.Domain, r.Goal.Classes)
 			if err := addRules(e, r); err != nil {
-				return &Status{ Err:fmt.Errorf("%v: %w", source, err)}
+				return fmt.Errorf("%v: %w", source, err)
 			}
 		}
 		for _, sc := range c.Stores {
 			if err := e.AddStoreConfig(sc); err != nil {
-				log.Error(err, "error configuring store", "store", logging.JSON(sc))
-				badStores = append(badStores, StoreError{Store: sc, Err: fmt.Errorf("%v: %w", source, err)})
+				log.V(1).Error(err, "configuring store", "source", source, "store", logging.JSON(sc))
 			} else {
-				log.V(2).Info("configured store", "source", source, "store", logging.JSON(sc))
+				log.V(1).Info("configured store", "source", source, "store", logging.JSON(sc))
 			}
 		}
-	}
-	if badStores != nil {
-		return &Status{StoreErrs: badStores}
 	}
 	return nil
 }

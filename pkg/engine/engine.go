@@ -83,16 +83,19 @@ func (e *Engine) AddStore(s korrel8r.Store) error {
 }
 
 // AddStoreConfig creates a store from configuration and adds it to the engine.
+//
+// If there is an error, it is returned, and the configuration is stored with the error field set.
 func (e *Engine) AddStoreConfig(sc korrel8r.StoreConfig) (err error) {
-	defer func() {
-		if err != nil {
-			err = fmt.Errorf("error creating store %v: %w", logging.JSONString(sc), err)
-		}
-	}()
 	d, err := e.DomainErr(sc[korrel8r.StoreKeyDomain])
 	if err != nil {
 		return err
 	}
+	defer func() {
+		if err != nil {
+			sc[korrel8r.StoreKeyError] = err.Error()
+		}
+		e.storeConfigs[d.String()] = append(e.storeConfigs[d.String()], sc)
+	}()
 	store, err := d.Store(sc)
 	if err != nil {
 		return err
@@ -100,7 +103,6 @@ func (e *Engine) AddStoreConfig(sc korrel8r.StoreConfig) (err error) {
 	if err := e.AddStore(store); err != nil {
 		return err
 	}
-	e.storeConfigs[d.String()] = append(e.storeConfigs[d.String()], sc)
 	return nil
 }
 

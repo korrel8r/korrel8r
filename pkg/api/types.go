@@ -11,6 +11,13 @@ import (
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 )
 
+// @description Domain configuration information.
+type Domain struct {
+	Name   string                 `json:"name"`
+	Stores []korrel8r.StoreConfig `json:"stores,omitempty"`
+	Errors []string               `json:"errors,omitempty"`
+}
+
 // FIXME move to korrel8r
 func classname(c korrel8r.Class) string {
 	name, domain := c.String(), c.Domain().String()
@@ -20,7 +27,7 @@ func classname(c korrel8r.Class) string {
 	return fmt.Sprintf("%v.%v", name, domain)
 }
 
-//	@description	Starting point for correlation.
+// @description	Starting point for correlation.
 type Start struct {
 	// Class of starting objects
 	Class string `json:"class" example:"class.domain"`
@@ -30,13 +37,13 @@ type Start struct {
 	Objects []json.RawMessage `json:"objects,omitempty" swaggertype:"object"`
 }
 
-//	@description	Starting point for a goals search.
+// @description	Starting point for a goals search.
 type GoalsRequest struct {
 	Start Start    `json:"start"`                                  // Start of correlation search.
 	Goals []string `json:"goals,omitempty" example:"class.domain"` // Goal classes for correlation.
 }
 
-//	@description	Starting point for a neighbours search.
+// @description	Starting point for a neighbours search.
 type NeighboursRequest struct {
 	Start Start `json:"start"` // Start of correlation search.
 	Depth int   `json:"depth"` // Max depth of neighbours graph.
@@ -48,9 +55,9 @@ type Options struct {
 	WithRules bool `form:"withRules"`
 }
 
-//	@description	A set of query strings with counts of results found by the query.
-//	@description	Value of -1 means the query was not run so result count is unknown.
-//	@example		queryString:10
+// @description	A set of query strings with counts of results found by the query.
+// @description	Value of -1 means the query was not run so result count is unknown.
+// @example		queryString:10
 type Queries map[string]int
 
 // Rule is a correlation rule with a list of queries and results counts found during navigation.
@@ -89,7 +96,7 @@ func (a Edge) Compare(b Edge) int {
 	return strings.Compare(a.Goal, b.Goal)
 }
 
-//	@description	Graph resulting from a correlation search.
+// @description	Graph resulting from a correlation search.
 type Graph struct {
 	Nodes []Node `json:"nodes"`
 	Edges []Edge `json:"edges,omitempty"`
@@ -153,6 +160,3 @@ func edges(g *graph.Graph, opts *Options) (edges []Edge) {
 	})
 	return edges
 }
-
-// StoreConfig contains configuration parameters for a store.
-type StoreConfig map[string]string

@@ -52,8 +52,8 @@ var (
 )
 
 const (
-	configEnv = "KORREL8R_CONFIG"
-	defaultConfig =  "/etc/korrel8r/korrel8r.yaml"
+	configEnv     = "KORREL8R_CONFIG"
+	defaultConfig = "/etc/korrel8r/korrel8r.yaml"
 )
 
 func init() {
@@ -90,15 +90,6 @@ func main() {
 func newEngine() *engine.Engine {
 	e := engine.New(k8s.Domain, logdomain.Domain, alert.Domain, metric.Domain, mock.Domain("mock"))
 	c := must.Must1(config.Load(*configuration))
-	if err := c.Apply(e); err != nil {
-		if status, _ := err.(*config.Status); status != nil && status.Err == nil {
-			// Log store configuration errors but don't exit.
-			for _, s := range status.StoreErrs {
-				log.V(1).Error(s.Err, "error configuring store", "store", logging.JSON(s.Store))
-			}
-		} else {
-			panic(err)
-		}
-	}
+	must.Must(c.Apply(e))
 	return e
 }

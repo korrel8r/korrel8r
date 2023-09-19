@@ -23,7 +23,7 @@ import (
 )
 
 func command(t *testing.T, args ...string) *exec.Cmd {
-	cmd := exec.Command("go", append([]string{"run", ".", "-v9", "-c", "testdata/korrel8r.yaml"}, args...)...)
+	cmd := exec.Command("go", append([]string{"run", ".", "-v9", "-c", "testdata/korrel8r.yaml", "--panic"}, args...)...)
 	cmd.Stderr = os.Stderr
 	return cmd
 }
@@ -83,8 +83,7 @@ func assertDo(t *testing.T, want, method, url, body string) {
 func TestMain_web_api(t *testing.T) {
 	base := start(t)
 	u := func(path string) string { return base.String() + path }
-	assertDo(t, `["k8s","log","alert","metric","mock"]`, "GET", u("/domains"), "")
-	assertDo(t, `[{"domain":"mock"}]`, "GET", u("/stores"), "")
+	assertDo(t, `[{"name":"k8s"},{"name":"log"},{"name":"alert"},{"name":"metric"},{"name":"mock","stores":[{"domain":"mock"}]}]`, "GET", u("/domains"), "")
 	// FIXME result should not be empty?
 	assertDo(t, `{"nodes":[]}`, "POST", u("/graphs/goals?withRules=true"), `{"goals":["bar.mock"],"start":{"class":"foo.mock","objects":["x"]}}`)
 }
