@@ -12,7 +12,7 @@ import (
 	"path"
 	"strings"
 
-	"github.com/korrel8r/korrel8r/pkg/config"
+	"github.com/korrel8r/korrel8r/pkg/domains/k8s"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r/impl"
 	"github.com/korrel8r/korrel8r/pkg/openshift"
@@ -24,11 +24,12 @@ import (
 
 var (
 	// Verify implementing interfaces.
-	_ korrel8r.Domain   = Domain
-	_ console.Converter = Domain
-	_ korrel8r.Store    = &Store{}
-	_ korrel8r.Query    = &Query{}
-	_ korrel8r.Class    = Class("")
+	_ korrel8r.Domain    = Domain
+	_ console.Converter  = Domain
+	_ korrel8r.Store     = &Store{}
+	_ korrel8r.Query     = &Query{}
+	_ korrel8r.Class     = Class("")
+	_ korrel8r.Previewer = Class("")
 )
 
 var Domain = domain{}
@@ -51,7 +52,7 @@ func (domain) Store(sc korrel8r.StoreConfig) (korrel8r.Store, error) {
 		return nil, fmt.Errorf("can't create a store with both loki and lokiStack URLs")
 	}
 	if loki == "" && lokiStack == "" {
-		c, cfg, err := config.Store(sc).K8sClient()
+		c, cfg, err := k8s.NewClient()
 		if err != nil {
 			return nil, err
 		}
@@ -98,6 +99,16 @@ type Class string
 func (c Class) Domain() korrel8r.Domain { return Domain }
 func (c Class) String() string          { return string(c) }
 func (c Class) New() korrel8r.Object    { return Object{} }
+func (c Class) Preview(o korrel8r.Object) string {
+	var s string
+	if o, ok := o.(Object); ok {
+		s, _ = o.JSON()["message"].(string)
+		if s == "" {
+			s = o.Entry
+		}
+	}
+	return s
+}
 
 type Object struct {
 	Entry string          // Log entry as a string.
@@ -106,7 +117,7 @@ type Object struct {
 
 func NewObject(entry string) Object { return Object{Entry: entry} }
 
-func (o Object) JSON() any {
+func (o Object) JSON() map[string]any {
 	if o.json == nil {
 		o.json = new(map[string]any)
 		_ = json.Unmarshal([]byte(o.Entry), o.json)

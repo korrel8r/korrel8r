@@ -12,12 +12,8 @@ import (
 
 	"github.com/korrel8r/korrel8r/internal/pkg/logging"
 	"github.com/korrel8r/korrel8r/pkg/engine"
-	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"golang.org/x/exp/maps"
 	"golang.org/x/exp/slices"
-	"k8s.io/client-go/rest"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	"sigs.k8s.io/yaml"
 )
 
@@ -166,22 +162,4 @@ func resolve(base, ref string) string {
 		}
 	}
 	return filepath.Join(filepath.Dir(base), ref)
-}
-
-// Store provides getters/setters for common store config map keys.
-type Store korrel8r.StoreConfig
-
-func (m Store) K8sClient() (client.Client, *rest.Config, error) {
-	cfg, err := config.GetConfigWithContext(m["context"])
-	if err != nil {
-		return nil, nil, err
-	}
-	// Reduce client-side throttling for rapid results.
-	cfg.QPS = 100
-	cfg.Burst = 1000
-	if err != nil {
-		return nil, nil, err
-	}
-	c, err := client.New(cfg, client.Options{})
-	return c, cfg, err
 }

@@ -8,6 +8,8 @@
       <input type="text" id="start" name="start" value="{{.Start}}" size="50" accesskey="k">
       <label for="domain" title="Only required for korrel8r query"><small>Domain</small></label>
       <input type="text" id="domain" name="domain" value="{{.StartDomain}}">
+      <br>
+      {{with .StartQuery}}<pre>{{. | json}}</pre>{{end}}
     </div>
     <div style="white-space: nowrap">
       <b>Goals: </b>

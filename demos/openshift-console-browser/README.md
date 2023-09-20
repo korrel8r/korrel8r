@@ -11,12 +11,14 @@
 1. Log into an openshift cluster with openshift logging and Loki log store installed (Operator Hub)
 
 1. Generate bad deployments to create alerts. **Note**: it should take at most 60s for alerts to become pending.
-
-    ```oc apply -f bad-config-deployment.yaml -f bad-image-deployment.yaml```
+    ```
+	oc apply -f bad-config-deployment.yaml -f bad-image-deployment.yaml
+	```
 
 1. Start korrel8r
-
-    ```korrel8r web```
+    ```
+	korrel8r web
+	```
 
 1. With Firefox browser:
    - Install side-view add-on https://addons.mozilla.org/en-CA/firefox/addon/side-view/
@@ -90,3 +92,20 @@ Rules generate *queries* for various data stores, the queries retrieve live obje
 - Rules express relationships, open ended set of data types: k8s objects, metrics, logs, alerts ...
 - Need to build a richer rule base, capture SRE debugging know-how.
 - Need UI expertise to provide better presentations, integrated with consoles: sidebar? quick links? menus?
+# Additional live talking points
+
+Hover information (logs?)
+
+API http://korrel8r-korrel8r.apps-crc.testing/api
+
+curl -X GET http://korrel8r-korrel8r.apps-crc.testing/api/v1alpha1/domains
+
+curl -X POST http://korrel8r-korrel8r.apps-crc.testing/api/v1alpha1/graphs/neighbours -d '{ "depth": 9, "start":{"class":"Deployment.apps.k8s","query": ["{\"namespace\":\"default\",\"kind\":\"Deployment\",\"group\":\"apps\",\"version\":\"v1\"}"]}}' | jq
+
+Domains, Classes, Queries: Examples - refer to CURL query
+
+Rules: Start->Goal, template, refer to rules yaml
+  - Starting points are objects or queries.
+  - Results are queries (could be objects)
+
+

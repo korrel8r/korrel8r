@@ -1,9 +1,10 @@
-# Image name, without any version tag.
+# Image name without version tag.
 IMG?=quay.io/alanconway/korrel8r
 # Image version tag, a semantic version of the form: vX.Y.Z-extras
 TAG?=$(shell git describe)
-# Kustomize overlay to use for `make deploy`
+# Kustomize overlay to use for `make deploy`.
 OVERLAY?=replace-image
+
 
 # Use podman or docker, whichever is available.
 IMGTOOL?=$(shell which podman || which docker)
@@ -57,25 +58,24 @@ $(IMAGE_KUSTOMIZATION): force
 
 WATCH=kubectl get events -A --watch-only& trap "kill %%" EXIT;
 
-deploy:	$(IMAGE_KUSTOMIZATION) ## Create a new korrel8r deployment. Set 'IMG=your-image TAG=your-tag' to change image.
+deploy-only: $(IMAGE_KUSTOMIZATION)
 	$(WATCH) kubectl apply -k config/overlays/$(OVERLAY)
 	$(WATCH) kubectl wait -n korrel8r --for=condition=available deployment.apps/korrel8r
 	which oc >/dev/null && oc delete --ignore-not-found route/korrel8r && oc expose -n korrel8r svc/korrel8r
 
-route-url:
-	@oc get -n korrel8r route/korrel8r -o template='http://{{.spec.host}}'; echo
+deploy: image deploy-only	## Build korrel8r image and deploy to your cluster.
 
-ifeq ($(TAG),$(shell git describe))
-SAMETAG=1
-endif
-release:	## Create a release tag on the current branch. Set TAG=vX.Y.Z
-	true $(if $(SAMETAG),$(error "TAG=$(TAG) is the current tag. TAG should be set to the release version"),)
+route-url:
+	@oc get route/korrel8r -o template='http://{{.spec.host}}'; echo
+
+TAG:	 ## Create a release tag on the current branch. Set TAG=vX.Y.Z
+	@echo "$(TAG)" | grep -E "^v[0-9]+\.[0-9]+\.[0-9]+$$" || { echo TAG=$(TAG) must be a semantic version.; exit 1; }
+	@[[ -z "$$(git status --porcelain)" ]] || { echo "git repository is not clean"; git status -s; exit 1; }
 	go mod tidy
 	$(MAKE) all
-	if [[ `git status --porcelain` ]]; then git status; $(error "git repository is not clean for relase"); fi
 	git tag $(TAG) -a -m "Release $(TAG)"
 
 deploy-latest: 	## Deploy the latest tagged release.
-	$(MAKE) TAG=$(shell git tag) deploy
+	$(MAKE) TAG=$(shell git describe --abbrev=0) deploy-only
 
 force:

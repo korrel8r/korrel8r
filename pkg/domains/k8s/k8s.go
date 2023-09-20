@@ -12,7 +12,6 @@ import (
 	"strings"
 
 	"github.com/korrel8r/korrel8r/internal/pkg/must"
-	"github.com/korrel8r/korrel8r/pkg/config"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r/impl"
 	"github.com/korrel8r/korrel8r/pkg/openshift/console"
@@ -40,7 +39,7 @@ type domain struct{}
 func (d domain) String() string { return "k8s" }
 
 func (d domain) Store(sc korrel8r.StoreConfig) (s korrel8r.Store, err error) {
-	client, cfg, err := config.Store(sc).K8sClient() // Rename getk8sconf
+	client, cfg, err := NewClient()
 	if err != nil {
 		return nil, err
 	}

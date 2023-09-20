@@ -48,7 +48,7 @@ func TestPlainLokiStore_Get(t *testing.T) {
 func TestLokiStackStore_Get(t *testing.T) {
 	t.Parallel()
 	test.SkipIfNoCluster(t)
-	lines, _ := makeLines(t.Name(), 10)
+	lines, _ := makeLines(fmt.Sprintf("%v: %v", time.Now(), t.Name()), 10)
 	c := test.K8sClient
 	ns := test.TempNamespace(t, c)
 	pod := corev1.Pod{

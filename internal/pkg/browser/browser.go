@@ -19,7 +19,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/korrel8r/korrel8r/internal/pkg/logging"
 	"github.com/korrel8r/korrel8r/internal/pkg/must"
-	"github.com/korrel8r/korrel8r/pkg/config"
+	"github.com/korrel8r/korrel8r/pkg/domains/k8s"
 	"github.com/korrel8r/korrel8r/pkg/engine"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"github.com/korrel8r/korrel8r/pkg/openshift"
@@ -60,7 +60,7 @@ func New(e *engine.Engine, router *gin.Engine) (*Browser, error) {
 	if err != nil {
 		return nil, err
 	}
-	kc, _, err := config.Store(nil).K8sClient()
+	kc, _, err := k8s.NewClient()
 	if err != nil {
 		return nil, err
 	}

@@ -13,5 +13,5 @@ spec:
         app: bad-config-deployment
     spec:
       containers:
-      - image: quay.io/openshift-logging/vector:0.23-rh
+      - image: quay.io/openshift-logging/vector:5.8
         name: bad-config-deployment

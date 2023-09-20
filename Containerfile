@@ -11,6 +11,7 @@ COPY cmd cmd
 COPY pkg pkg
 COPY internal internal
 RUN CGO_ENABLED=0 GOOS=linux go build -mod=readonly ./cmd/korrel8r
+RUN true # Commit build cache
 
 # TODO: Use distroless as minimal base image to package the binary.
 # See https://github.com/GoogleContainerTools/distroless for more details

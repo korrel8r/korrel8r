@@ -258,15 +258,18 @@ func (c *correlate) updateDiagram() {
 			a["style"] = strings.Join([]string{a["style"], "bold"}, ",")
 			c.queryURLAttrs(a, n.QueryCounts)
 			previewer, _ := n.Class.(korrel8r.Previewer)
-			if previewer != nil {
+			if previewer != nil && len(result) > 0 {
+				b := &strings.Builder{}
+				fmt.Fprintln(b, a["tooltip"])
 				const limit = 10
 				for i, o := range result {
-					a["tooltip"] = fmt.Sprintf("%v\n- %v", a["tooltip"], previewer.Preview(o))
+					fmt.Fprintf(b, "- %v\n", previewer.Preview(o))
 					if i == limit {
-						a["tooltip"] = fmt.Sprintf("%v\n%v", a["tooltip"], "...")
+						fmt.Fprintf(b, "... %v more\n", len(result)-limit)
 						break
 					}
 				}
+				a["tooltip"] = b.String()
 			}
 		}
 	})
