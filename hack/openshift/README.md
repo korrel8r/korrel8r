@@ -1,51 +1,53 @@
-# Configuring Openshift for Observability Experiments
+# Set up Openshift for Korrel8r
 
-## Pre-requisites
+## Create your cluster
 
-- Administrative login to an Openshift cluster with a storage class.
-- Openshift Client `oc` installed in your path.
+To get a personal test-cluster on your own machine,
+[install Openshift Local](https://developers.redhat.com/products/openshift-local/overview)
+(formerly known as Code Ready Containers or CRC)
 
-## Logs
+**NOTE**: These instructions will also work for other types of  Openshift cluster, provided you
+edit `manifests/lokistack.yaml` and set `storageClassName` to a storage class available on your cluster.
+To see available storage classes:
+
+``` shell
+oc get storageclass
+```
+
+## Installing Logging
 
 ### Install operators
 
-Install options:
+1. From OperatorHub. Using the Openshift Console, install with defaults:
+   - "Red Hat Openshift Logging"
+   - "Loki operator"
 
-1. From OperatorHub via Openshift web Console
-   - Install: "Red Hat Openshift Logging", "Loki operator"
-   - Check "Enable Operator recommended cluster monitoring on this Namespace" each time
-   - Accept all other defaults.
-1. From source repositories.
-   _Read repository instructions, the example steps below may change._
+1. From source repositories. \
+   **NOTE**: _The steps below may be out of date, check the repository README for the latest instructions_
    - Cluster logging https://github.com/openshift/cluster-logging-operator
+   ```
+   oc create ns openshift-logging
+   make deploy-image deploy-catalog install
+   ```
    - LokiStack store https://github.com/grafana/loki/tree/main/operator
    ```
    oc create ns openshift-operators-redhat
    make VARIANT=openshift REGISTRY_BASE=quay.io/alanconway VERSION=v0.0.2-test olm-undeploy olm-deploy
    ```
 
-### Edit resources
-
-Edit logging/lokistack.yaml field "storageClassName" to a storage class in your cluster.
-
-``` shell
-oc get storageclass
-```
-
 ### Create resources
 
-    make all
+    make logging
 
 This will create resources in the `openshift-logging` namespace:
 
-1.  A minio deployment to provide S3 storage back-end for LokiStack.
-2.  An extra-small LokiStack deployment for log storage and query.
-3.  A CluserLogging instance using vector to forward to LokiStack.
-4.  A ClusterLogForwarder instance to forward all logs (by default audit logs are not forwarded)
+1.  An extra-small LokiStack deployment for log storage and query.
+1.  A CluserLogging instance using vector to forward to LokiStack.
+1.  A ClusterLogForwarder instance to forward all logs (including audit logs)
 
 ### View logs
 
-Openshift console: Observe > Logs
+From the Openshift console: Observe > Logs
 
 ## Metrics, Alerts
 
@@ -58,11 +60,4 @@ Built in to k8s.
 - Openshift console: Home > Events
 - Command line: `oc get events`
 
-## Traces
 
-TBD
-
-
-# Command line and programmatic access to signals
-
-See [signal_samples](./signal_samples/README.md)

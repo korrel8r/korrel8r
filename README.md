@@ -2,46 +2,6 @@
 
 **⚠ Warning: Experimental ⚠**: This code may change without warning.
 
-- [Go API documentation](https://pkg.go.dev/github.com/korrel8r/korrel8r/pkg/korrel8r)
-- [REST API documentation](pkg/api/docs/swagger.md)
-
-## Quick Start ##
-
-Set up your cluster; there are scripts and examples to help in:
-   - `hack/openshift-local` for an Openshift Local (aka Code Ready Container) test cluster on a laptop.
-   - `hack/openshift` for other Openshift clusters.
-   - `hack/kind` for Kind clusters.
-
-Log into your cluster as `kubeadmin` or other admin user.
-
-You can install and run korrel8r on your local host or deploy it to the cluster:
-
-- Local install
-	   ```bash
-	   go install github.com/korrel8r/korrel8r/cmd/korrel8r@latest
-	   korrel8r web -http :8080 &
-	   ```
-- Deploy the latest tagged version to your cluster as a deployment in namespace `korrel8r`
-	   ```bash
-	   make deploy-latest
-	   ```
-
-With korrel8r running, you can open the following URLs:
-
-If running on the local host:
-  - http://localhost:8080     # Interactive browser interface.
-  - http://localhost:8080/api # REST API documentation
-
-If deployed to the cluster, you can get the base URL for korrel8r with `make route-url`
-(note this requires an openshift cluster to expose a route to the korrel8r service)
-
-Here's an example of using the REST API queries for logs associated with a namespace: 
-
-``` bash
-REQUEST='{"start":{"class":"Namespace.k8s","queries":[{"kind":"Namespace","name":"openshift-apiserver"}]},"goals":["log/application","log/infrastructure","log/audit"]}'
-curl -w"\n" -X POST -H 'Content-Type: application/json' -d "$REQUEST" http://localhost:8080/api/v1alpha1/lists/goals
-```
-
 ## Overview ##
 
 Korrel8r is a *correlation engine* that follows relationships to find related data in multiple heterogeneous stores.
@@ -61,6 +21,8 @@ The goals of this project include:
 - Reduce multiple-step manual procedures to fewer clicks or queries.
 - Help tools that gather and analyze diagnostic data to focus on relevant information.
 - Bring together data that is held in different types of store.
+
+There is a short [video demo](demos/openshift-console-browser/video.mov)
 
 ## Signals and Objects ##
 
@@ -134,7 +96,64 @@ Unfortunately, at least for now, multiple vocabularies are embedded in existing 
 A single vocabulary may eventually become universal, but in the short to medium term we have to handle mixed signals.
 Korrel8r expresses rules in the native vocabulary of each domain, but allows rules to cross domains.
 
-## Request for Feedback ##
+## Quick Start ##
 
-If you work with OpenShift or kubernetes clusters, your experience can help to build a useful rule-base.
-If you are interested, please [create a GitHub issue](https://github.com/korrel8r/korrel8r/issues/new?assignees=&labels=enhancement&template=feature_request.md&title=%5BRFE%5D).
+Set up your cluster; there are scripts and examples to help in:
+- [hack/openshift](hack/openshift/README.md) for OpenShift clusters.
+- [hack/kind](hack/kind/README.md) for Kind clusters.
+
+Log into your cluster as `kubeadmin` or other admin user.
+
+You can install and run korrel8r on your local host:
+
+```bash
+go install github.com/korrel8r/korrel8r/cmd/korrel8r@latest
+korrel8r web -http :8080 &
+xdg-open http://localhost:8080
+```
+
+Or you can deploy the latest tagged image to your cluster as a deployment in namespace `korrel8r`
+
+```bash
+git clone git@github.com:korrel8r/korrel8r.git
+cd korrel8r
+make deploy-latest
+xdg-open $(make route-url)
+```
+
+With korrel8r running, you can browse the following URLs:
+
+If running on the local host:
+- http://localhost:8080     # Interactive browser interface.
+- http://localhost:8080/api # REST API documentation
+
+If deployed to the cluster, you can get the base URL for korrel8r with `make route-url`
+(Note this requires an openshift cluster to expose a route to the korrel8r service)
+
+## Developer Start ##
+
+Developer reference documentation is available:
+- [REST API documentation](pkg/api/docs/swagger.md)
+- [Go API documentation](https://pkg.go.dev/github.com/korrel8r/korrel8r/pkg/korrel8r)
+
+If you are interested in helping to develop Korrel8r:
+- clone this repository
+- `make help` will list make targets with brief explanation.
+- To run korrel8r directly from source code using the checked-in configuration:
+  ```
+  go run ./cmd/korrel8r/ web -c etc/korrel8r/korrel8r.yaml
+  ```
+
+### Building Images ###
+
+To build and use a custom korrel8r image, you need a _public_ image repository on a service like `quay.io` or `docker.io`.
+
+**NOTE**: your image repository must be _public_.
+On some services (including `quay.io`) new repositories are _private_ by default,
+You may need to log in and manually set the visibility of your new korrel8r repository _public_.
+
+To build and deploy your own image, set IMG when running `make`. For example
+
+```
+make deploy IMG=quay.io/my-account-name/korrel8r
+```

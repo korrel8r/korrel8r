@@ -43,7 +43,7 @@ cover:				## Run tests and show code coverage in browser.
 
 IMAGE=$(IMG):$(TAG)
 
-image:				## Build and push a korrel8r image. Set IMG=your-image TAG=your-tag to change image.
+image:				## Build and push a korrel8r image. You must set IMG to your _public_ image repository, for example IMG=quay.io/myquayaccount/korrel8r
 	$(IMGTOOL) build --tag=$(IMAGE) .
 	$(IMGTOOL) push -q $(IMAGE)
 	@echo $(IMAGE)

@@ -21,3 +21,10 @@ spec:
     - sh
     - "-c"
     - 'i=1; while true; do echo "$(date) chat says hello - $i"; i=$((i + 1)); sleep 1; done'
+    securityContext:
+      allowPrivilegeEscalation: false
+      runAsNonRoot: true
+      seccompProfile:
+        type: "RuntimeDefault"
+      capabilities:
+        drop: [ALL]

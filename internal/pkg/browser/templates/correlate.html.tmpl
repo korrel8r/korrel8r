@@ -1,7 +1,11 @@
 {{template "header.html.tmpl"}}
 <body>
   <h1>Korrel8r</h1>
+  <p>
+    Links: <a href="https://github.com/korrel8r/korrel8r#readme">About Korrel8r</a>, <a href="../api">REST API</a>
+  </p>
   <hr>
+  <h2>Correlation settings</h2>
   <form onsubmit="return validate()">
     <div style="white-space: nowrap">
       <label for="start" title="Consule URL or korrel8r query"><b>Start: </b></label>
@@ -55,7 +59,7 @@
   <div id="results">
     {{with .Err}}
       <hr>
-      <h3>Errors</h3>
+      <h2>Errors</h2>
       <div style="white-space: pre-line; border-width:2px; border-style:solid; border-color:red"> {{printf "%+v" .}}</div>
     {{end}}
 
@@ -70,7 +74,7 @@
     {{end}}
 
     <hr>
-    <h3> Detailed Results </h3>
+    <h2>Detailed Results</h2>
     <p>
       Update time: {{.UpdateTime}} ({{.Graph.Nodes.Len}} nodes, {{len .Graph.AllLines}} lines)<br>
       {{with .StartClass}}Start: <code>{{classname .}}</code><br>{{end}}
