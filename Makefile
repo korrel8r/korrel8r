@@ -1,29 +1,30 @@
 # Image name without version tag.
-IMG?=quay.io/alanconway/korrel8r
+IMG?=quay.io/korrel8r/korrel8r
 # Image version tag, a semantic version of the form: vX.Y.Z-extras
 TAG?=$(shell git describe)
 # Kustomize overlay to use for `make deploy`.
 OVERLAY?=replace-image
 
-
 # Use podman or docker, whichever is available.
 IMGTOOL?=$(shell which podman || which docker)
 
+## Local build and test
 
 help:				## Help for make targets
 	@echo
-	@echo = Make targets =
-	@grep '^[^: ]*: *.* *##' Makefile | sed 's/^\([^: ]*\): *.* *## \(.*\)$$/\1: \2/'
+	@echo Make targets; echo
+	@grep ':.*\s##' Makefile | sed 's/:.*##/:/' | column -s: -t
 
 tools:	     			## Install tools used to generate code and documentation.
 	go install github.com/go-swagger/go-swagger/cmd/swagger@latest
 	go install github.com/swaggo/swag/cmd/swag@latest
 	go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
 
-all: generate lint test image	## Generate code, lint, run tests, build image.
+all: generate lint test build	## Generate, lint, test and build everything.
 
 generate:			## Run code generation, pre-build.
 	go generate -x ./...
+	cp pkg/api/docs/swagger.json ../../doc
 	echo -e 'package main\nfunc Version() string { return "$(TAG)"; }' > cmd/korrel8r/version.go
 	hack/copyright.sh
 
@@ -41,14 +42,30 @@ cover:				## Run tests and show code coverage in browser.
 	go test -coverprofile=test.cov ./...
 	go tool cover --html test.cov; sleep 2 # Sleep required to let browser start up.
 
+tag: 				## Create a release tag.
+	@echo "$(TAG)" | grep -E "^v[0-9]+\.[0-9]+\.[0-9]+$$" || { echo "TAG=$(TAG) must be of the form vX.Y.Z"; exit 1; }
+	@[[ -z "$$(git status --porcelain)" ]] || { echo "git repository is not clean"; git status -s; exit 1; }
+	go mod tidy
+	$(MAKE) all TAG=$(TAG)
+	git tag $(TAG) -a -m "Release $(TAG)"
+
+run: 				## Run from source using checked-in default configuration.
+	go run ./cmd/korrel8r/ web -c etc/korrel8r/korrel8r.yaml
+
+## Build and deploy an image
+
 IMAGE=$(IMG):$(TAG)
 
-image:				## Build and push a korrel8r image. You must set IMG to your _public_ image repository, for example IMG=quay.io/myquayaccount/korrel8r
+image:				## Build and push a korrel8r image. Set IMG to you _public_ image repository, e.g. IMG=quay.io/myquayaccount/korrel8r
 	$(IMGTOOL) build --tag=$(IMAGE) .
 	$(IMGTOOL) push -q $(IMAGE)
 	@echo $(IMAGE)
 
-image-name:			## Print the image name.
+release: tag image
+	$(IMGTOOL) tag "$(IMAGE)" "$(IMG):latest"
+	$(IMGTOOL) push "$(IMG):latest"
+
+image-name:			## Print the image name with tag.
 	@echo $(IMAGE)
 
 IMAGE_KUSTOMIZATION=config/overlays/replace-image/kustomization.yaml
@@ -58,24 +75,12 @@ $(IMAGE_KUSTOMIZATION): force
 
 WATCH=kubectl get events -A --watch-only& trap "kill %%" EXIT;
 
-deploy-only: $(IMAGE_KUSTOMIZATION)
+deploy: $(IMAGE_KUSTOMIZATION)	## Deploy to a cluster using kustomize.
 	$(WATCH) kubectl apply -k config/overlays/$(OVERLAY)
 	$(WATCH) kubectl wait -n korrel8r --for=condition=available deployment.apps/korrel8r
 	which oc >/dev/null && oc delete --ignore-not-found route/korrel8r && oc expose -n korrel8r svc/korrel8r
 
-deploy: image deploy-only	## Build korrel8r image and deploy to your cluster.
-
-route-url:
+route-url:			## URL of route to korrel8r on cluster (requires openshift for route)
 	@oc get route/korrel8r -o template='http://{{.spec.host}}'; echo
-
-TAG:	 ## Create a release tag on the current branch. Set TAG=vX.Y.Z
-	@echo "$(TAG)" | grep -E "^v[0-9]+\.[0-9]+\.[0-9]+$$" || { echo TAG=$(TAG) must be a semantic version.; exit 1; }
-	@[[ -z "$$(git status --porcelain)" ]] || { echo "git repository is not clean"; git status -s; exit 1; }
-	go mod tidy
-	$(MAKE) all
-	git tag $(TAG) -a -m "Release $(TAG)"
-
-deploy-latest: 	## Deploy the latest tagged release.
-	$(MAKE) TAG=$(shell git describe --abbrev=0) deploy-only
 
 force:

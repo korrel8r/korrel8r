@@ -32,7 +32,7 @@ oc get storageclass
    - LokiStack store https://github.com/grafana/loki/tree/main/operator
    ```
    oc create ns openshift-operators-redhat
-   make VARIANT=openshift REGISTRY_BASE=quay.io/alanconway VERSION=v0.0.2-test olm-undeploy olm-deploy
+   make VARIANT=openshift REGISTRY_BASE=quay.io/my-quay-account VERSION=v0.0.2-test olm-undeploy olm-deploy
    ```
 
 ### Create resources

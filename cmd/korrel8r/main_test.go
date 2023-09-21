@@ -10,7 +10,6 @@ import (
 	"net/url"
 	"os"
 	"os/exec"
-	"path"
 	"strconv"
 	"strings"
 	"testing"
@@ -57,7 +56,7 @@ func start(t *testing.T) *url.URL {
 	require.NoError(t, cmd.Start())
 	// Wait till HTTP server is available.
 	require.Eventually(t, func() bool {
-		_, err = http.Get("http://" + path.Join(addr, "/api"))
+		_, err = http.Get("http://" + addr)
 		return err == nil
 	}, 10*time.Second, time.Second/10, "timeout error: %v", err)
 	t.Cleanup(func() {

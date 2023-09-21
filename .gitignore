@@ -2,3 +2,4 @@
 /cmd/korrel8r/version.go
 /hack/kind/jsonnet/vendor/
 /config/overlays/replace-image/
+/test.cov

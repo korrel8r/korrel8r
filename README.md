@@ -117,7 +117,7 @@ Or you can deploy the latest tagged image to your cluster as a deployment in nam
 ```bash
 git clone git@github.com:korrel8r/korrel8r.git
 cd korrel8r
-make deploy-latest
+make deploy TAG=latest
 xdg-open $(make route-url)
 ```
 
@@ -130,30 +130,7 @@ If running on the local host:
 If deployed to the cluster, you can get the base URL for korrel8r with `make route-url`
 (Note this requires an openshift cluster to expose a route to the korrel8r service)
 
-## Developer Start ##
+## Developer Start
 
-Developer reference documentation is available:
-- [REST API documentation](pkg/api/docs/swagger.md)
-- [Go API documentation](https://pkg.go.dev/github.com/korrel8r/korrel8r/pkg/korrel8r)
+If you are interested in developing korrel8r see also [README-DEV.md](README-DEV.md)
 
-If you are interested in helping to develop Korrel8r:
-- clone this repository
-- `make help` will list make targets with brief explanation.
-- To run korrel8r directly from source code using the checked-in configuration:
-  ```
-  go run ./cmd/korrel8r/ web -c etc/korrel8r/korrel8r.yaml
-  ```
-
-### Building Images ###
-
-To build and use a custom korrel8r image, you need a _public_ image repository on a service like `quay.io` or `docker.io`.
-
-**NOTE**: your image repository must be _public_.
-On some services (including `quay.io`) new repositories are _private_ by default,
-You may need to log in and manually set the visibility of your new korrel8r repository _public_.
-
-To build and deploy your own image, set IMG when running `make`. For example
-
-```
-make deploy IMG=quay.io/my-account-name/korrel8r
-```

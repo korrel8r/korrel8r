@@ -15,10 +15,9 @@
 //	@accept			json
 //	@produce		json
 //
-//go:generate swag init -d ../.. -g pkg/api/api.go
+//go:generate swag init -q -d ../.. -g pkg/api/api.go
 //go:generate swag fmt -d ./
-//go:generate swagger generate markdown -f docs/swagger.json --output ../../doc/rest-api.md
-//go:generate cp docs/swagger.json ../../doc
+//go:generate swagger -q generate markdown -f docs/swagger.json --output ../../doc/rest-api.md
 package api
 
 import (
