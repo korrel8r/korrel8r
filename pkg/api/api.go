@@ -174,6 +174,7 @@ func (a *API) queries(c *gin.Context, class korrel8r.Class, queryStrings []strin
 	}
 	return queries
 }
+
 func (a *API) objects(c *gin.Context, class korrel8r.Class, raw []json.RawMessage) (objects []korrel8r.Object) {
 	for _, r := range raw {
 		obj := class.New()
@@ -188,6 +189,9 @@ func (a *API) objects(c *gin.Context, class korrel8r.Class, raw []json.RawMessag
 // start validates and extracts data from the Start part of a request.
 func (a *API) start(c *gin.Context, start *Start) (korrel8r.Class, []korrel8r.Object, []korrel8r.Query) {
 	class := a.class(c, start.Class)
+	if c.Errors != nil {
+		return nil, nil, nil
+	}
 	objects := a.objects(c, class, start.Objects)
 	queries := a.queries(c, class, start.Queries)
 	return class, objects, queries

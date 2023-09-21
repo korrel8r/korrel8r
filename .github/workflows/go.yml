@@ -13,16 +13,19 @@ jobs:
     steps:
     - uses: actions/checkout@v3
 
+    - name: Cache Go packages and tools
+      uses: actions/cache@v3
+      with:
+        path: ~/go
+        key: cache-${{ runner.os }}-${{ runner.arch }}
+
     - name: Set up Go
       uses: actions/setup-go@v3
       with:
         go-version: "1.20"
 
     - name: Build
-      run: go build -v ./...
+      run: make tools all
 
     - name: Test
       run: go test -v ./...
-
-    - name: Run golangci-lint
-      uses: golangci/golangci-lint-action@v3.4.0
