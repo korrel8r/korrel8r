@@ -1,5 +1,5 @@
 /korrel8r
-/cmd/korrel8r/version.go
+/cmd/korrel8r/version.txt
 /hack/kind/jsonnet/vendor/
 /config/overlays/replace-image/
 /test.cov

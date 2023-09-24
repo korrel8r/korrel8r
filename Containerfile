@@ -10,12 +10,14 @@ RUN go mod download
 COPY cmd cmd
 COPY pkg pkg
 COPY internal internal
-RUN CGO_ENABLED=0 GOOS=linux go build -mod=readonly ./cmd/korrel8r
+COPY Makefile Makefile
+RUN CGO_ENABLED=0 GOOS=linux GOFLAGS=-mod=readonly make build
 RUN true # Commit build cache
 
-# TODO: Use distroless as minimal base image to package the binary.
+# TODO: using fedora image as a temporary workaround to install graphviz.
+# Remove the graphviz dependency (separate web browser from REST API)
+# When removed: Use gcr.io/distroless/static:nonroot as base.
 # See https://github.com/GoogleContainerTools/distroless for more details
-# gcr.io/distroless/static:nonroot
 FROM quay.io/fedora/fedora
 WORKDIR /
 RUN dnf -y install graphviz

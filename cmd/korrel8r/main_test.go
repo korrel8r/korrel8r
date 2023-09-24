@@ -3,7 +3,6 @@
 package main
 
 import (
-	"bytes"
 	"io"
 	"net"
 	"net/http"
@@ -51,9 +50,7 @@ func start(t *testing.T) *url.URL {
 	require.NoError(t, err)
 	addr := net.JoinHostPort("localhost", strconv.Itoa(port))
 	cmd := command(t, "web", "--http", addr)
-	stderr := &bytes.Buffer{}
-	cmd.Stderr = stderr
-	t.Logf("%v", cmd)
+	cmd.Stderr = os.Stderr
 	require.NoError(t, cmd.Start())
 	// Wait till HTTP server is available.
 	require.Eventually(t, func() bool {
@@ -62,9 +59,6 @@ func start(t *testing.T) *url.URL {
 	}, 10*time.Second, time.Second/10, "timeout error: %v", err)
 	t.Cleanup(func() {
 		_ = cmd.Process.Kill()
-		if t.Failed() {
-			t.Logf("... stderr: %v\n%v\n---", cmd, stderr)
-		}
 	})
 	return &url.URL{Scheme: "http", Host: addr, Path: api.BasePath}
 }
@@ -81,6 +75,7 @@ func assertDo(t *testing.T, want, method, url, body string) {
 }
 
 func TestMain_web_api(t *testing.T) {
+	test.SkipIfNoCluster(t)
 	base := start(t)
 	u := func(path string) string { return base.String() + path }
 	assertDo(t, `[{"name":"k8s"},{"name":"log"},{"name":"alert"},{"name":"metric"},{"name":"mock","stores":[{"domain":"mock"}]}]`, "GET", u("/domains"), "")

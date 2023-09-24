@@ -15,12 +15,12 @@ help:				## Help for make targets
 	@echo Make targets; echo
 	@grep ':.*\s##' Makefile | sed 's/:.*##/:/' | column -s: -t
 
+all: generate lint test	 	## Verify code changes: generate, lint, and test.
+
 tools:	     			## Install tools used to generate code and documentation.
 	go install github.com/go-swagger/go-swagger/cmd/swagger@latest
 	go install github.com/swaggo/swag/cmd/swag@latest
 	go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
-
-all: generate lint test build	## Generate, lint, test and build everything.
 
 generate:			## Run code generation, pre-build.
 	go generate -x ./...
@@ -75,7 +75,7 @@ route-url:			## URL of route to korrel8r on cluster (requires openshift for rout
 
 ## Create a release
 tag: 				## Create a release tag.
-	@echo "$(TAG)" | grep -E "^v[0-9]+\.[0-9]+\.[0-9]+$$" || { echo "TAG=$(TAG) must be of the form vX.Y.Z"; exit 1; }
+	@echo "$(TAG)" | grep -qE "^v[0-9]+\.[0-9]+\.[0-9]+$$" || { echo "TAG=$(TAG) must be of the form vX.Y.Z"; exit 1; }
 	@[[ -z "$$(git status --porcelain)" ]] || { echo "git repository is not clean"; git status -s; exit 1; }
 	go mod tidy
 	$(MAKE) all TAG=$(TAG)

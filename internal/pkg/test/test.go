@@ -80,10 +80,12 @@ func SkipIfNoCommand(t *testing.T, cmd string) {
 
 func skipf(t *testing.T, format string, args ...interface{}) {
 	t.Helper()
-	if os.Getenv("TEST_NO_SKIP") != "" {
-		t.Fatalf(format, args...)
+	msg := fmt.Sprintf(format, args...)
+	noSkip := os.Getenv("TEST_NO_SKIP")
+	if noSkip != "" {
+		t.Fatalf("TEST_NO_SKIP=%v failing: %v", noSkip, msg)
 	} else {
-		t.Skipf(format, args...)
+		t.Skipf(msg)
 	}
 }
 

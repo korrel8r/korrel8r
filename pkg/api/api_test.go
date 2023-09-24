@@ -109,7 +109,7 @@ func TestAPI_PostNeighbours_noRules(t *testing.T) {
 
 func ginEngine() *gin.Engine {
 	gin.SetMode(gin.ReleaseMode)
-	if flag.Lookup("test.v") != nil {
+	if flag.Lookup("test.v") != nil { // Running in a test.
 		gin.SetMode(gin.DebugMode)
 	}
 	r := gin.New()
