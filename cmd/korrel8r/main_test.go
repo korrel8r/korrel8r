@@ -53,6 +53,7 @@ func start(t *testing.T) *url.URL {
 	cmd := command(t, "web", "--http", addr)
 	stderr := &bytes.Buffer{}
 	cmd.Stderr = stderr
+	t.Logf("%v", cmd)
 	require.NoError(t, cmd.Start())
 	// Wait till HTTP server is available.
 	require.Eventually(t, func() bool {

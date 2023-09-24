@@ -1,23 +1,9 @@
 // Copyright: This file is part of korrel8r, released under https://github.com/korrel8r/korrel8r/blob/main/LICENSE
 
-/*
-Copyright © 2022 Alan Conway
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-	http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-*/
 package main
 
 import (
+	_ "embed"
 	"fmt"
 	"os"
 
@@ -34,10 +20,13 @@ import (
 )
 
 var (
+	//go:embed version.txt
+	version string
+
 	rootCmd = &cobra.Command{
 		Use:     "korrel8r",
 		Short:   "Command line correlation tool",
-		Version: Version(),
+		Version: version,
 	}
 	log = logging.Log()
 
@@ -62,6 +51,7 @@ func init() {
 	verbose = rootCmd.PersistentFlags().IntP("verbose", "v", 0, "Verbosity for logging")
 	configuration = rootCmd.PersistentFlags().StringP("config", "c", getConfig(), "Configuration file")
 	cobra.OnInitialize(func() { logging.Init(*verbose) }) // Initialize logging after flags are parsed
+	rootCmd.AddCommand(versionCmd)
 }
 
 // getConfig looks for the default configuration file.
@@ -92,4 +82,10 @@ func newEngine() *engine.Engine {
 	c := must.Must1(config.Load(*configuration))
 	must.Must(c.Apply(e))
 	return e
+}
+
+var versionCmd = &cobra.Command{
+	Use:   "version",
+	Short: "Print version.",
+	Run:   func(cmd *cobra.Command, args []string) { fmt.Println(rootCmd.Version) },
 }

@@ -23,8 +23,9 @@ You may need to log in and manually set the visibility of your new korrel8r repo
 
 ## Tags and Releases ##
 
-By default the image tag is derived from `git describe`, so there's always a simple relationship between git and image tags.
+The image tag is set from `git describe`, so there's always a simple relationship between git and image tags.
 Git describe computes a descriptive name based on the nearest tag and git hash - like `v0.1.0-9-g92f8e41`
 
-- `make tag` creates a vX.Y.Z release tag on the current branch, the corresponding image can be pushed with `make image`. 
-- `make release` does `make tag image` and also pushes the current image with a `:latest` tag.
+- `make tag TAG=vX.Y.Z` creates a vX.Y.Z release tag on the current branch.
+  Build and push the corresponding image with `make image`. 
+- `make release` pushes the current image tag and creates a `:latest` alias.
