@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 
@@ -108,9 +109,8 @@ func TestAPI_PostNeighbours_noRules(t *testing.T) {
 }
 
 func ginEngine() *gin.Engine {
-	gin.SetMode(gin.ReleaseMode)
-	if flag.Lookup("test.v") != nil { // Running in a test.
-		gin.SetMode(gin.DebugMode)
+	if os.Getenv(gin.EnvGinMode) == "" { // Don't override an explicit env setting.
+		gin.SetMode(gin.ReleaseMode)
 	}
 	r := gin.New()
 	if flag.Lookup("test.v") != nil {

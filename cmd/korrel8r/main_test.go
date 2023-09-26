@@ -14,14 +14,24 @@ import (
 	"testing"
 	"time"
 
+	"sync"
+
 	"github.com/korrel8r/korrel8r/internal/pkg/test"
 	"github.com/korrel8r/korrel8r/pkg/api"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
+var buildOnce sync.Once
+
 func command(t *testing.T, args ...string) *exec.Cmd {
-	cmd := exec.Command("go", append([]string{"run", ".", "-v9", "-c", "testdata/korrel8r.yaml", "--panic"}, args...)...)
+	buildOnce.Do(func() {
+		cmd := exec.Command("go", "build", "-o", "../../korrel8r")
+		cmd.Stderr = os.Stderr
+		test.Must(t, cmd.Run())
+	})
+	commonArgs := []string{"-v9", "-c", "testdata/korrel8r.yaml", "--panic"}
+	cmd := exec.Command("../../korrel8r", append(commonArgs, args...)...)
 	cmd.Stderr = os.Stderr
 	return cmd
 }

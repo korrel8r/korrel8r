@@ -21,9 +21,6 @@ var webCmd = &cobra.Command{
 		gin.DefaultWriter = logging.LogWriter()
 		if os.Getenv(gin.EnvGinMode) == "" { // Don't override an explicit env setting.
 			gin.SetMode(gin.ReleaseMode)
-			if *verbose >= 3 { // Enable gin debug mode and logging
-				gin.SetMode(gin.DebugMode)
-			}
 		}
 		router := gin.New()
 		router.Use(gin.Recovery())
