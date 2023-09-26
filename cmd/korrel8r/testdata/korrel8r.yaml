@@ -8,6 +8,7 @@ rules:
       classes: [foo]
     goal:
       domain: mock
+      classes: [bar]
     result:
       query: |-
-        {"class": "mock.bar","results":["z"]}
+        {"class":"bar","results":["z"]}

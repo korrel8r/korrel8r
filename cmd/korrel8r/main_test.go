@@ -89,6 +89,10 @@ func TestMain_web_api(t *testing.T) {
 	base := start(t)
 	u := func(path string) string { return base.String() + path }
 	assertDo(t, `[{"name":"k8s"},{"name":"log"},{"name":"alert"},{"name":"metric"},{"name":"mock","stores":[{"domain":"mock"}]}]`, "GET", u("/domains"), "")
-	// FIXME result should not be empty?
-	assertDo(t, `{"nodes":[]}`, "POST", u("/graphs/goals?withRules=true"), `{"goals":["bar.mock"],"start":{"class":"foo.mock","objects":["x"]}}`)
+	assertDo(t, `{"nodes":[{"class":"foo.mock","count":1},{"class":"bar.mock","queries":{"{\"class\":\"bar\",\"results\":[\"z\"]}":1},"count":1}],"edges":[{"start":"foo.mock","goal":"bar.mock"}]}`,
+		"POST", u("/graphs/goals"),
+		`{"goals":["bar.mock"],"start":{"class":"foo.mock","objects":["x"]}}`)
+	assertDo(t, `[{"class":"bar.mock","queries":{"{\"class\":\"bar\",\"results\":[\"z\"]}":1},"count":1}]`,
+		"POST", u("/lists/goals"),
+		`{"goals":["bar.mock"],"start":{"class":"foo.mock","objects":["x"]}}`)
 }

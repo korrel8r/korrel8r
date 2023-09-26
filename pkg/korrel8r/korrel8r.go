@@ -135,7 +135,7 @@ type Rule interface {
 
 // RuleName returns a string including the rule name with full start and goal class names.
 func RuleName(r Rule) string {
-	return fmt.Sprintf("%v [%v]->[%v]", r, ClassName(r.Start()), ClassName(r.Goal()))
+	return fmt.Sprintf("%v [%v]->[%v]", r.Name(), ClassName(r.Start()), ClassName(r.Goal()))
 }
 
 // JSONString returns the JSON marshaled string from v, or the error message if marshal fails
