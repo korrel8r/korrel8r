@@ -15,7 +15,7 @@ var Domain = domain{}
 
 type domain struct{}
 
-func (d domain) String() string                                     { return "graphmock" }
+func (d domain) Name() string                                       { return "graphmock" }
 func (d domain) Class(name string) korrel8r.Class                   { panic("not implemented") }
 func (d domain) Classes() (classes []korrel8r.Class)                { panic("not implemented") }
 func (d domain) Query(s string) (korrel8r.Query, error)             { panic("not implemented") }
@@ -26,7 +26,7 @@ type Class int
 func c(i int) korrel8r.Class { return Class(i) }
 
 func (c Class) Domain() korrel8r.Domain  { return Domain }
-func (c Class) String() string           { return fmt.Sprintf("%v", int(c)) }
+func (c Class) Name() string             { return fmt.Sprintf("%v", int(c)) }
 func (c Class) ID(o korrel8r.Object) any { return int(c) }
 func (c Class) New() korrel8r.Object     { panic("not implemented") }
 

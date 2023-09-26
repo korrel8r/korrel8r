@@ -34,7 +34,7 @@ var Domain = domain{}
 
 type domain struct{}
 
-func (domain) String() string                         { return "alert" }
+func (domain) Name() string                           { return "alert" }
 func (domain) Class(string) korrel8r.Class            { return Class{} }
 func (domain) Classes() []korrel8r.Class              { return []korrel8r.Class{Class{}} }
 func (domain) Query(r string) (korrel8r.Query, error) { return impl.Query(r, &Query{}) }
@@ -67,7 +67,7 @@ func (domain) Store(sc korrel8r.StoreConfig) (korrel8r.Store, error) {
 type Class struct{} // Only one class - "alert"
 
 func (c Class) Domain() korrel8r.Domain { return Domain }
-func (c Class) String() string          { return "alert" }
+func (c Class) Name() string            { return "alert" }
 func (c Class) New() korrel8r.Object    { return &Object{} }
 func (c Class) ID(o korrel8r.Object) any {
 	if o, _ := o.(*Object); o != nil {

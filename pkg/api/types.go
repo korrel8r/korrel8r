@@ -93,7 +93,7 @@ type Graph struct {
 }
 
 func rule(l *graph.Line) (r Rule) {
-	r.Name = l.Rule.String()
+	r.Name = l.Rule.Name()
 	r.Queries = queries(l.QueryCounts)
 	return r
 }

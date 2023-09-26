@@ -44,13 +44,13 @@ func TestDomain_Class(t *testing.T) {
 			assert.NotNil(t, x.want)
 			got := Domain.Class(x.name)
 			require.NotNil(t, got)
-			assert.Equal(t, x.want.String(), got.String())
+			assert.Equal(t, x.want.Name(), got.Name())
 
 			// Round trip for String()
-			name := got.String()
+			name := got.Name()
 			got2 := Domain.Class(name)
 			require.NotNil(t, got2)
-			assert.Equal(t, name, got2.String())
+			assert.Equal(t, name, got2.Name())
 		})
 	}
 }

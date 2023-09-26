@@ -36,7 +36,7 @@ var Domain = domain{}
 
 type domain struct{}
 
-func (d domain) String() string { return "k8s" }
+func (d domain) Name() string { return "k8s" }
 
 func (d domain) Store(sc korrel8r.StoreConfig) (s korrel8r.Store, err error) {
 	client, cfg, err := NewClient()

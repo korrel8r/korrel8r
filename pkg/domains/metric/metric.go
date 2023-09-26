@@ -35,7 +35,7 @@ var (
 
 type domain struct{}
 
-func (domain) String() string                         { return "metric" }
+func (domain) Name() string                           { return "metric" }
 func (domain) Class(name string) korrel8r.Class       { return Class{} }
 func (domain) Classes() []korrel8r.Class              { return []korrel8r.Class{Class{}} }
 func (domain) Query(r string) (korrel8r.Query, error) { return impl.Query(r, &Query{}) }
@@ -84,7 +84,7 @@ func (domain) QueryToConsoleURL(query korrel8r.Query) (*url.URL, error) {
 type Class struct{} // Singleton class
 
 func (c Class) Domain() korrel8r.Domain { return Domain }
-func (c Class) String() string          { return Domain.String() }
+func (c Class) Name() string            { return Domain.Name() }
 func (c Class) New() korrel8r.Object    { var obj Object; return obj }
 
 type Object *model.Sample

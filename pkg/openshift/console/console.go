@@ -64,7 +64,7 @@ func (c *Console) ConsoleURLToQuery(u *url.URL) (q korrel8r.Query, err error) {
 }
 
 func (c *Console) QueryToConsoleURL(q korrel8r.Query) (u *url.URL, err error) {
-	if qc := c.converter(q.Class().Domain().String()); qc != nil {
+	if qc := c.converter(q.Class().Domain().Name()); qc != nil {
 		u, err := qc.QueryToConsoleURL(q)
 		if err != nil {
 			return nil, err

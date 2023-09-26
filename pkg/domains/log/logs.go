@@ -36,7 +36,7 @@ var Domain = domain{}
 
 type domain struct{}
 
-func (domain) String() string                         { return "log" }
+func (domain) Name() string                           { return "log" }
 func (domain) Class(name string) korrel8r.Class       { return classMap[name] }
 func (domain) Classes() []korrel8r.Class              { return classes }
 func (domain) Query(s string) (korrel8r.Query, error) { return impl.Query(s, &Query{}) }
@@ -87,7 +87,7 @@ func (domain) ConsoleURLToQuery(u *url.URL) (korrel8r.Query, error) {
 	if c, ok := classMap[u.Query().Get("tenant")]; ok {
 		return &Query{
 			LogQL:   u.Query().Get("q"),
-			LogType: c.String(),
+			LogType: c.Name(),
 		}, nil
 	}
 	return nil, fmt.Errorf("not a valid Loki URL: %v", u)
@@ -97,7 +97,7 @@ func (domain) ConsoleURLToQuery(u *url.URL) (korrel8r.Query, error) {
 type Class string
 
 func (c Class) Domain() korrel8r.Domain { return Domain }
-func (c Class) String() string          { return string(c) }
+func (c Class) Name() string            { return string(c) }
 func (c Class) New() korrel8r.Object    { return Object{} }
 func (c Class) Preview(o korrel8r.Object) string {
 	var s string
@@ -173,7 +173,7 @@ func (q *Query) plainURL() *url.URL {
 func (q *Query) lokiStackURL() *url.URL {
 	u := q.plainURL()
 	if q.LogType == "" {
-		q.LogType = Application.String()
+		q.LogType = Application.Name()
 	}
 	u.Path = path.Join("/api/logs/v1/", q.LogType, u.Path)
 	return u

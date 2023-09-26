@@ -79,7 +79,7 @@ func TestSelectorToLogsRules(t *testing.T) {
 	// Verify rules selected the correct set of start classes
 	classes := unique.NewList[korrel8r.Class]()
 	for _, r := range e.Rules() {
-		if r.String() == "SelectorToLogs" {
+		if r.Name() == "SelectorToLogs" {
 			classes.Append(r.Start())
 		}
 	}

@@ -79,7 +79,7 @@ func TestFollower_Traverse(t *testing.T) {
 	assert.ElementsMatch(t, []korrel8r.Object{1, 2, 11, 12}, g.NodeFor(z).Result.List())
 	// Check line results
 	g.EachLine(func(l *graph.Line) {
-		switch l.Rule.String() {
+		switch l.Rule.Name() {
 		case "ab":
 			q, err := l.Rule.Apply(0, nil)
 			require.NoError(t, err)

@@ -23,7 +23,7 @@ type templateRule struct {
 	start, goal       korrel8r.Class
 }
 
-func (r *templateRule) String() string        { return r.query.Name() }
+func (r *templateRule) Name() string          { return r.query.Name() }
 func (r *templateRule) Start() korrel8r.Class { return r.start }
 func (r *templateRule) Goal() korrel8r.Class  { return r.goal }
 

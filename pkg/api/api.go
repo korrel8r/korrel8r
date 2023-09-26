@@ -68,7 +68,7 @@ func (a *API) GetDomains(c *gin.Context) {
 	var domains []Domain
 	for _, d := range a.Engine.Domains() {
 		domains = append(domains, Domain{
-			Name:   d.String(),
+			Name:   d.Name(),
 			Stores: a.Engine.StoreConfigsFor(d),
 		})
 	}

@@ -29,8 +29,8 @@ type Domain interface {
 	Class(string) Class
 	// Classes returns a list of known classes in the Domain.
 	Classes() []Class
-	// String returns the name of the domain
-	String() string
+	// Name returns the name of the domain
+	Name() string
 	// Query converts a query string to a Query object.
 	Query(string) (Query, error)
 	// Store returns a new store for this domain.
@@ -53,7 +53,7 @@ const (
 type Class interface {
 	Domain() Domain // Domain of this class.
 	New() Object    // Return a new instance of the class, can be unmarshaled from JSON.
-	String() string // String name of the class within the domain.
+	Name() string   // String name of the class within the domain.
 }
 
 // IDer is implemented by classes that have a meaningful identifier.
@@ -73,7 +73,7 @@ func ClassName(c Class) string {
 	if c == nil {
 		return "<nil>"
 	}
-	name, domain := c.String(), c.Domain().String()
+	name, domain := c.Name(), c.Domain().Name()
 	if strings.HasSuffix(name, ".") {
 		return name + domain
 	}
@@ -130,7 +130,7 @@ type Rule interface {
 	// Class of desired result object(s), must not be nil.
 	Goal() Class
 	// Name of the rule
-	String() string
+	Name() string
 }
 
 // RuleName returns a string including the rule name with full start and goal class names.

@@ -115,7 +115,7 @@ type Line struct {
 }
 
 func (l *Line) String() string           { return korrel8r.RuleName(l.Rule) }
-func (l *Line) DOTID() string            { return l.Rule.String() }
+func (l *Line) DOTID() string            { return l.Rule.Name() }
 func RuleFor(l graph.Line) korrel8r.Rule { return l.(*Line).Rule }
 
 type Edge multi.Edge

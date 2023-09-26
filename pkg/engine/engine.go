@@ -35,7 +35,7 @@ func New(domains ...korrel8r.Domain) *Engine {
 		templateFuncs: map[string]any{},
 	}
 	for _, d := range domains {
-		e.domainMap[d.String()] = d
+		e.domainMap[d.Name()] = d
 		e.addTemplateFuncs(d)
 	}
 	return e
@@ -52,11 +52,11 @@ func (e *Engine) DomainErr(name string) (korrel8r.Domain, error) {
 }
 
 // StoresFor returns the known stores for a domain.
-func (e *Engine) StoresFor(d korrel8r.Domain) []korrel8r.Store { return e.stores[d.String()] }
+func (e *Engine) StoresFor(d korrel8r.Domain) []korrel8r.Store { return e.stores[d.Name()] }
 
 // StoreConfigsFor returns store configurations added with AddStoreConfig
 func (e *Engine) StoreConfigsFor(d korrel8r.Domain) []korrel8r.StoreConfig {
-	return e.storeConfigs[d.String()]
+	return e.storeConfigs[d.Name()]
 }
 
 // StoreErr returns the default (first) store for domain, or an error.
@@ -75,7 +75,7 @@ type TemplateFuncser interface{ TemplateFuncs() map[string]any }
 
 // AddStore adds a store to the engine.
 func (e *Engine) AddStore(s korrel8r.Store) error {
-	domain := s.Domain().String()
+	domain := s.Domain().Name()
 	e.stores[domain] = append(e.stores[domain], s)
 	e.addTemplateFuncs(s)
 	return nil
@@ -93,7 +93,7 @@ func (e *Engine) AddStoreConfig(sc korrel8r.StoreConfig) (err error) {
 		if err != nil {
 			sc[korrel8r.StoreKeyError] = err.Error()
 		}
-		e.storeConfigs[d.String()] = append(e.storeConfigs[d.String()], sc)
+		e.storeConfigs[d.Name()] = append(e.storeConfigs[d.Name()], sc)
 	}()
 	store, err := d.Store(sc)
 	if err != nil {

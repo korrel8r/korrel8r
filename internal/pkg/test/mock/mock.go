@@ -26,7 +26,7 @@ var (
 
 type Domain string
 
-func (d Domain) String() string                                     { return string(d) }
+func (d Domain) Name() string                                       { return string(d) }
 func (d Domain) Class(name string) korrel8r.Class                   { return Class{name: name, domain: d} }
 func (d Domain) Classes() (classes []korrel8r.Class)                { return nil }
 func (d Domain) Store(korrel8r.StoreConfig) (korrel8r.Store, error) { return NewStore(d), nil }
@@ -58,7 +58,7 @@ func NewDomainWithClasses(name string, classes ...string) *DomainWithClasses {
 }
 
 func (d DomainWithClasses) Class(name string) korrel8r.Class {
-	i := slices.IndexFunc(d.MClasses, func(c korrel8r.Class) bool { return c.String() == name })
+	i := slices.IndexFunc(d.MClasses, func(c korrel8r.Class) bool { return c.Name() == name })
 	if i < 0 {
 		return nil
 	}
@@ -73,7 +73,7 @@ type Class struct {
 }
 
 func (c Class) Domain() korrel8r.Domain  { return c.domain }
-func (c Class) String() string           { return c.name }
+func (c Class) Name() string             { return c.name }
 func (c Class) ID(o korrel8r.Object) any { return o }
 func (c Class) New() korrel8r.Object     { return "" }
 
@@ -88,24 +88,24 @@ func NewRule(name string, start, goal korrel8r.Class) Rule {
 
 func NewRules(rules ...korrel8r.Rule) (mocks []Rule) {
 	for _, r := range rules {
-		mocks = append(mocks, NewRule(r.String(), r.Start(), r.Goal()))
+		mocks = append(mocks, NewRule(r.Name(), r.Start(), r.Goal()))
 	}
 	return mocks
 }
 
 func (r Rule) Start() korrel8r.Class { return r.start }
 func (r Rule) Goal() korrel8r.Class  { return r.goal }
-func (r Rule) String() string        { return r.name }
+func (r Rule) Name() string          { return r.name }
 func (r Rule) Apply(start korrel8r.Object, c *korrel8r.Constraint) (korrel8r.Query, error) {
 	panic("not implemented") // See ApplyRule
 }
 
 // RuleLess orders rules.
 func RuleLess(a, b korrel8r.Rule) int {
-	if a.Start().String() != b.Start().String() {
-		return strings.Compare(a.Start().String(), b.Start().String())
+	if a.Start().Name() != b.Start().Name() {
+		return strings.Compare(a.Start().Name(), b.Start().Name())
 	}
-	return strings.Compare(a.Goal().String(), b.Goal().String())
+	return strings.Compare(a.Goal().Name(), b.Goal().Name())
 }
 
 // SorRules  sorts rules by (start, goal) order.
@@ -155,7 +155,7 @@ func NewQuery(c korrel8r.Class, results ...korrel8r.Object) korrel8r.Query {
 }
 func (q Query) Class() korrel8r.Class { return q.MClass }
 func (q Query) String() string {
-	b, _ := json.Marshal(query{q.MClass.String(), q.MResults})
+	b, _ := json.Marshal(query{q.MClass.Name(), q.MResults})
 	return string(b)
 }
 

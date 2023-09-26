@@ -24,12 +24,12 @@ var listCmd = &cobra.Command{
 			w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
 			defer w.Flush()
 			for _, d := range e.Domains() {
-				fmt.Fprintln(w, d.String())
+				fmt.Fprintln(w, d.Name())
 			}
 		case 1:
 			d := must.Must1(e.DomainErr(args[0]))
 			for _, c := range d.Classes() {
-				fmt.Println(c.String())
+				fmt.Println(c.Name())
 			}
 		}
 	},
@@ -54,7 +54,7 @@ var rulesCmd = &cobra.Command{
 		for _, r := range e.Rules() {
 			if (start == nil || r.Start() == start) &&
 				(goal == nil || r.Goal() == goal) &&
-				name.MatchString(r.String()) {
+				name.MatchString(r.Name()) {
 				fmt.Fprintf(w, "%v\t%v/%v\t%v/%v\n", r, r.Start().Domain(), r.Start(), r.Goal().Domain(), r.Goal())
 			}
 		}
