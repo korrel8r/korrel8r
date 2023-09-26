@@ -69,7 +69,7 @@ The fields and values in a query depend on the type of store it will be used wit
 
 **Class**  \
 A subset of signals in a Domain with a common schema (the same field definitions).
-Examples: `k8s/Pod`, `log/audit`
+Examples: `Pod.k8s`, `audit.log`
 
 **Object** \
 An instance of a signal or other correlation object.
@@ -77,7 +77,7 @@ An instance of a signal or other correlation object.
 **Rule**  \
 A Rule applies to an instance of a *start* Class, and generates queries for a *goal* Class.
 Rules are written in terms of domain-specific objects and query languages.
-The start and goal of a rule can be in different domains (e.g. k8s/Pod → log)
+The start and goal of a rule can be in different domains (e.g. Pod.k8s → application.log)
 Rules are defined using Go templates, see ./rules for examples.
 
 ## Conflicting Vocabularies ##

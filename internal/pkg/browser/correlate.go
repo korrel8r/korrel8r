@@ -65,7 +65,7 @@ func (c *correlate) reset(params url.Values) {
 		ShortPaths:  params.Get("short") == "true",
 		RuleGraph:   params.Get("rules") == "true",
 	}
-	c.Goals = []string{"log", "k8s/Event", "metric/metric"}
+	c.Goals = []string{"log", "Event.k8s", "metric.metric"}
 	c.browser = app
 	c.ConsoleURL = c.browser.console.BaseURL
 	c.Graph = c.browser.engine.Graph()
@@ -225,6 +225,7 @@ func (c *correlate) addClassNode(class korrel8r.Class) {
 }
 
 func (c *correlate) queryURLAttrs(a graph.Attrs, qcs graph.QueryCounts) {
+	// TODO find a way to combine multiple queries into a URL?
 	if len(qcs) > 0 {
 		a["URL"] = c.checkURL(c.browser.console.QueryToConsoleURL(qcs.Sort()[0].Query)).String()
 		a["target"] = "_blank"
@@ -246,7 +247,7 @@ func (c *correlate) updateDiagram() {
 	}
 	g.EachNode(func(n *graph.Node) {
 		a := n.Attrs
-		a["label"] = fmt.Sprintf("%v/%v", n.Class.Domain(), korrel8r.ShortString(n.Class))
+		a["label"] = korrel8r.ClassName(n.Class)
 		a["tooltip"] = fmt.Sprintf("%v (%v)", korrel8r.ClassName(n.Class), len(n.Result.List()))
 		a["style"] = "rounded,filled"
 		result := n.Result.List()

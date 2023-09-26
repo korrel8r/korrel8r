@@ -20,13 +20,12 @@ func TestEngine_Class(t *testing.T) {
 		want korrel8r.Class
 		err  string
 	}{
-		{"mock/foo", domain.Class("foo"), ""},
 		{"foo.mock", domain.Class("foo"), ""},
-		{"x/", nil, "invalid class name: x/"},
-		{"/x", nil, "invalid class name: /x"},
+		{"x.", nil, "invalid class name: x."},
+		{".x", nil, "invalid class name: .x"},
 		{"x", nil, "invalid class name: x"},
 		{"", nil, "invalid class name: "},
-		{"bad/foo", nil, `domain not found: "bad"`},
+		{"foo.bad", nil, `domain not found: "bad"`},
 	} {
 		t.Run(x.name, func(t *testing.T) {
 			e := New(domain)

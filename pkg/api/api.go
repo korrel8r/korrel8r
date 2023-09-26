@@ -178,7 +178,7 @@ func (a *API) queries(c *gin.Context, class korrel8r.Class, queryStrings []strin
 func (a *API) objects(c *gin.Context, class korrel8r.Class, raw []json.RawMessage) (objects []korrel8r.Object) {
 	for _, r := range raw {
 		obj := class.New()
-		if !check(c, http.StatusBadRequest, json.Unmarshal([]byte(r), &obj), "decoding object of class %v", classname(class)) {
+		if !check(c, http.StatusBadRequest, json.Unmarshal([]byte(r), &obj), "decoding object of class %v", korrel8r.ClassName(class)) {
 			return nil
 		}
 		objects = append(objects, obj)

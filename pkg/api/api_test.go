@@ -38,11 +38,11 @@ func TestAPI_ListGoals(t *testing.T) {
 	assertDo(t, a, "POST", "/api/v1alpha1/lists/goals",
 		GoalsRequest{
 			Start: Start{
-				Class:   classname(x),
+				Class:   korrel8r.ClassName(x),
 				Queries: []string{mock.NewQuery(x, "a").String()},
 				Objects: []json.RawMessage{[]byte(`"b"`)},
 			},
-			Goals: []string{classname(y)},
+			Goals: []string{korrel8r.ClassName(y)},
 		},
 		200, []Node{
 			{
@@ -64,11 +64,11 @@ func TestAPI_GraphGoals_withRules(t *testing.T) {
 	assertDo(t, a, "POST", "/api/v1alpha1/graphs/goals?withRules=true",
 		GoalsRequest{
 			Start: Start{
-				Class:   classname(x),
+				Class:   korrel8r.ClassName(x),
 				Queries: []string{xQuery},
 				Objects: []json.RawMessage{[]byte(`"b"`)},
 			},
-			Goals: []string{classname(z)},
+			Goals: []string{korrel8r.ClassName(z)},
 		},
 		200,
 		Graph{
@@ -90,7 +90,7 @@ func TestAPI_PostNeighbours_noRules(t *testing.T) {
 	assertDo(t, a, "POST", "/api/v1alpha1/graphs/neighbours",
 		NeighboursRequest{
 			Start: Start{
-				Class:   classname(x),
+				Class:   korrel8r.ClassName(x),
 				Objects: []json.RawMessage{[]byte(`"a"`)},
 			},
 			Depth: 1,

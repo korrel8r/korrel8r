@@ -63,7 +63,7 @@ func HasCluster() error {
 func SkipIfNoCluster(t *testing.T) {
 	t.Helper()
 	if os.Getenv("TEST_NO_CLUSTER") != "" {
-		skipf(t, "TEST_NO_CLUSTER is set")
+		skipf(t, "Skipping TEST_NO_CLUSTER is set")
 	}
 	if err := HasCluster(); err != nil {
 		skipf(t, "no cluster available: %v", err)
@@ -121,7 +121,7 @@ func TempNamespace(t *testing.T, c client.Client) string {
 	require.NotEmpty(t, ns.Name)
 	t.Cleanup(func() {
 		t.Helper()
-		if t.Failed() {
+		if t.Failed() && os.Getenv("KORREL8R_TEST_KEEP_NS") != "" {
 			t.Logf("test namespace not deleted: %v", ns.Name)
 		} else {
 			_ = c.Delete(context.Background(), &ns)

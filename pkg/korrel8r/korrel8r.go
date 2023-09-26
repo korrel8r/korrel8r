@@ -11,6 +11,8 @@ import (
 	"fmt"
 	"time"
 
+	"strings"
+
 	"sigs.k8s.io/yaml"
 )
 
@@ -51,20 +53,7 @@ const (
 type Class interface {
 	Domain() Domain // Domain of this class.
 	New() Object    // Return a new instance of the class, can be unmarshaled from JSON.
-	String() string // String name of the class within the domain, e.g "Pod". See ClassName()
-}
-
-// ShortStringer optionally implemented by classes and objects that have a short-form readable string.
-type ShortStringer interface {
-	ShortString() string
-}
-
-// ShortString returns ShortString() if value is a ShortStringer, String() otherwise.
-func ShortString(v any) string {
-	if v, ok := v.(ShortStringer); ok {
-		return v.ShortString()
-	}
-	return fmt.Sprintf("%v", v)
+	String() string // String name of the class within the domain.
 }
 
 // IDer is implemented by classes that have a meaningful identifier.
@@ -79,12 +68,27 @@ type Previewer interface {
 	Preview(Object) string
 }
 
-// ClassName returns the fully qualified domain/name of a class, e.g. "k8s/Pod.v1."
+// ClassName returns the fully qualified 'class.domain' name of a class, e.g. "Pod.v1.k8s"
 func ClassName(c Class) string {
 	if c == nil {
 		return "<nil>"
 	}
-	return fmt.Sprintf("%v/%v", c.Domain(), c)
+	name, domain := c.String(), c.Domain().String()
+	if strings.HasSuffix(name, ".") {
+		return name + domain
+	}
+	return fmt.Sprintf("%v.%v", name, domain)
+}
+
+// SplitClassName splits a fully qualified 'class.domain' name into class and domain.
+// If there is no '.' treat the string as a domain name.
+func SplitClassName(fullname string) (class, domain string) {
+	i := strings.LastIndex(fullname, ".")
+	if i < 0 {
+		return "", fullname
+	} else {
+		return fullname[:i], fullname[i+1:]
+	}
 }
 
 // Query is query for a subset of Objects in a Domain.

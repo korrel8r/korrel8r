@@ -6,7 +6,6 @@ package engine
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	"github.com/korrel8r/korrel8r/internal/pkg/logging"
 	"github.com/korrel8r/korrel8r/pkg/graph"
@@ -114,17 +113,10 @@ func (e *Engine) addTemplateFuncs(v any) {
 }
 
 // Class parses a full 'domain/class' name and returns the class.
-//
-// FIXME: accepts DOMAIN/CLASS or CLASS.DOMAIN - move to dotted format.
-func (e *Engine) Class(name string) (korrel8r.Class, error) {
-	if i := strings.LastIndex(name, "."); i >= 0 {
-		if c, err := e.DomainClass(name[i+1:], name[:i]); err == nil {
-			return c, nil
-		}
-	}
-	d, c, ok := strings.Cut(name, "/")
-	if !ok || c == "" || d == "" {
-		return nil, fmt.Errorf("invalid class name: %v", name)
+func (e *Engine) Class(fullname string) (korrel8r.Class, error) {
+	c, d := korrel8r.SplitClassName(fullname)
+	if c == "" || d == "" {
+		return nil, fmt.Errorf("invalid class name: %v", fullname)
 	} else {
 		return e.DomainClass(d, c)
 	}

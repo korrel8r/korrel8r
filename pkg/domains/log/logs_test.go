@@ -33,6 +33,7 @@ func makeLines(line string, n int) (lines []string, objects []korrel8r.Object) {
 
 func TestPlainLokiStore_Get(t *testing.T) {
 	t.Parallel()
+	test.SkipIfNoCluster(t)
 	lines, want := makeLines(t.Name(), 10)
 	l := test.RequireLokiServer(t)
 	err := l.Push(map[string]string{"test": "log"}, lines...)
@@ -48,9 +49,9 @@ func TestPlainLokiStore_Get(t *testing.T) {
 func TestLokiStackStore_Get(t *testing.T) {
 	t.Parallel()
 	test.SkipIfNoCluster(t)
-	lines, _ := makeLines(fmt.Sprintf("%v: %v", time.Now(), t.Name()), 10)
 	c := test.K8sClient
 	ns := test.TempNamespace(t, c)
+	lines, _ := makeLines(fmt.Sprintf("%v: %v - %v", time.Now(), t.Name(), ns), 10)
 	pod := corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{Name: "logger", Namespace: ns},
 		Spec: corev1.PodSpec{
@@ -71,7 +72,7 @@ func TestLokiStackStore_Get(t *testing.T) {
 		require.NoError(t, err)
 		t.Logf("waiting for %v logs, got %v. %v%v", len(lines), len(result), s, q)
 		return len(result) >= len(lines)
-	}, 30*time.Second, 5*time.Second)
+	}, 30*time.Second, time.Second)
 	var got []string
 	for _, obj := range result {
 		var m map[string]any
@@ -83,6 +84,7 @@ func TestLokiStackStore_Get(t *testing.T) {
 }
 
 func TestStoreGet_Constraint(t *testing.T) {
+	test.SkipIfNoCluster(t)
 	t.Skip("TODO re-enable when constraints are implemented properly")
 	t.Parallel()
 	l := test.RequireLokiServer(t)

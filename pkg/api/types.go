@@ -4,7 +4,6 @@ package api
 
 import (
 	"encoding/json"
-	"fmt"
 	"strings"
 
 	"github.com/korrel8r/korrel8r/pkg/graph"
@@ -16,15 +15,6 @@ type Domain struct {
 	Name   string                 `json:"name"`
 	Stores []korrel8r.StoreConfig `json:"stores,omitempty"`
 	Errors []string               `json:"errors,omitempty"`
-}
-
-// FIXME move to korrel8r
-func classname(c korrel8r.Class) string {
-	name, domain := c.String(), c.Domain().String()
-	if strings.HasSuffix(name, ".") {
-		return name + domain
-	}
-	return fmt.Sprintf("%v.%v", name, domain)
 }
 
 // @description	Starting point for correlation.
@@ -121,7 +111,7 @@ func queries(g graph.QueryCounts) Queries {
 
 func node(n *graph.Node) Node {
 	return Node{
-		Class:   classname(n.Class),
+		Class:   korrel8r.ClassName(n.Class),
 		Queries: queries(n.QueryCounts),
 		Count:   len(n.Result.List()),
 	}
@@ -139,8 +129,8 @@ func nodes(g *graph.Graph) []Node {
 
 func edge(e *graph.Edge, withRules bool) Edge {
 	edge := Edge{
-		Start: classname(e.Start().Class),
-		Goal:  classname(e.Goal().Class),
+		Start: korrel8r.ClassName(e.Start().Class),
+		Goal:  korrel8r.ClassName(e.Goal().Class),
 	}
 	if withRules {
 		e.EachLine(func(l *graph.Line) {
