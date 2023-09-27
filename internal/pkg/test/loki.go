@@ -25,7 +25,7 @@ type LokiServer struct {
 }
 
 const (
-	lokiImage = "docker.io/grafana/loki:2.5.0"
+	lokiImage = "quay.io/openshift-logging/loki:v2.9.1"
 )
 
 var (
