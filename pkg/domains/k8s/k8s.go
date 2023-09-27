@@ -37,7 +37,9 @@ var Domain = domain{}
 type domain struct{}
 
 func (d domain) Name() string { return "k8s" }
-
+func (d domain) Description() string {
+	return "Resource objects in a Kubernetes API server"
+}
 func (d domain) Store(sc korrel8r.StoreConfig) (s korrel8r.Store, err error) {
 	client, cfg, err := NewClient()
 	if err != nil {
@@ -103,7 +105,17 @@ func (c Class) New() korrel8r.Object {
 	}
 	return nil
 }
-func (c Class) Name() string                 { return fmt.Sprintf("%v.%v.%v", c.Kind, c.Version, c.Group) }
+func (c Class) Name() string { return fmt.Sprintf("%v.%v.%v", c.Kind, c.Version, c.Group) }
+
+func (c Class) Description() string {
+	// k8s objects have SwaggerDoc() method that is not declared on the Object interface.
+	if o, _ := c.New().(interface{ SwaggerDoc() map[string]string }); o != nil {
+		// Result is a map of property decriptions, where "" is mapped to the overall type description.
+		return o.SwaggerDoc()[""]
+	}
+	return ""
+}
+
 func (c Class) GVK() schema.GroupVersionKind { return schema.GroupVersionKind(c) }
 
 type Object client.Object

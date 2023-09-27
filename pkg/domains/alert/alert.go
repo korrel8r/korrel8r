@@ -35,6 +35,7 @@ var Domain = domain{}
 type domain struct{}
 
 func (domain) Name() string                           { return "alert" }
+func (domain) Description() string                    { return "Alerts that metric values are out of bounds." }
 func (domain) Class(string) korrel8r.Class            { return Class{} }
 func (domain) Classes() []korrel8r.Class              { return []korrel8r.Class{Class{}} }
 func (domain) Query(r string) (korrel8r.Query, error) { return impl.Query(r, &Query{}) }
@@ -68,7 +69,10 @@ type Class struct{} // Only one class - "alert"
 
 func (c Class) Domain() korrel8r.Domain { return Domain }
 func (c Class) Name() string            { return "alert" }
-func (c Class) New() korrel8r.Object    { return &Object{} }
+func (c Class) Description() string {
+	return "An indication that some collection of metrics is outside of expected values."
+}
+func (c Class) New() korrel8r.Object { return &Object{} }
 func (c Class) ID(o korrel8r.Object) any {
 	if o, _ := o.(*Object); o != nil {
 		// The identity of an alert is defined by its labels.

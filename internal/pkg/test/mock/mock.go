@@ -8,6 +8,7 @@ package mock
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/url"
 	"strings"
 
@@ -27,6 +28,7 @@ var (
 type Domain string
 
 func (d Domain) Name() string                                       { return string(d) }
+func (d Domain) Description() string                                { return "Mock domain." }
 func (d Domain) Class(name string) korrel8r.Class                   { return Class{name: name, domain: d} }
 func (d Domain) Classes() (classes []korrel8r.Class)                { return nil }
 func (d Domain) Store(korrel8r.StoreConfig) (korrel8r.Store, error) { return NewStore(d), nil }
@@ -74,6 +76,7 @@ type Class struct {
 
 func (c Class) Domain() korrel8r.Domain  { return c.domain }
 func (c Class) Name() string             { return c.name }
+func (c Class) Description() string      { return fmt.Sprintf("mock class %v", korrel8r.ClassName(c)) }
 func (c Class) ID(o korrel8r.Object) any { return o }
 func (c Class) New() korrel8r.Object     { return "" }
 

@@ -25,16 +25,12 @@ type Object any
 
 // Domain is a collection of classes describing signals in the same family.
 type Domain interface {
-	// Class finds  a class by name, return nil if not found.
-	Class(string) Class
-	// Classes returns a list of known classes in the Domain.
-	Classes() []Class
-	// Name returns the name of the domain
-	Name() string
-	// Query converts a query string to a Query object.
-	Query(string) (Query, error)
-	// Store returns a new store for this domain.
-	Store(StoreConfig) (Store, error)
+	Class(string) Class               // Class finds a class by name, returns nil if not found.
+	Classes() []Class                 // Classes returns a list of known classes in the Domain.
+	Name() string                     // Name of the domain
+	Description() string              // Description is a short human-readable description of the domain.
+	Query(string) (Query, error)      // Query converts a query string to a Query object.
+	Store(StoreConfig) (Store, error) // Store creates a new store for this domain.
 }
 
 // StoreConfig name:value attributes to connect to a store.
@@ -51,13 +47,14 @@ const (
 //
 // Class implementations must be comparable.
 type Class interface {
-	Domain() Domain // Domain of this class.
-	New() Object    // Return a new instance of the class, can be unmarshaled from JSON.
-	Name() string   // String name of the class within the domain.
+	Domain() Domain      // Domain of this class.
+	Name() string        // String name of the class within the domain.
+	Description() string // Description of the class for human-readable documentation, may be empty.
+	New() Object         // Return a new instance of the class, can be unmarshaled from JSON.
 }
 
 // IDer is implemented by classes that have a meaningful identifier.
-// Classes that implement IDer can be de-duplicated when collected in a Result.
+// Classes that implement IDer can be de-duplicated when collected in a Result.map
 type IDer interface {
 	ID(Object) any // Comparable ID for de-duplication.
 }

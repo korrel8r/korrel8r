@@ -221,3 +221,19 @@ func Test_parsePath(t *testing.T) {
 		}
 	}
 }
+
+func TestDescription(t *testing.T) {
+	for _, x := range []struct {
+		class       Class
+		name        string
+		description string
+	}{
+		{ClassOf(&corev1.Pod{}), "Pod.v1.", "Pod is a collection of containers that can run on a host. This resource is created by clients and scheduled onto hosts."},
+		{ClassOf(&appv1.Deployment{}), "Deployment.v1.apps", "Deployment enables declarative updates for Pods and ReplicaSets."},
+	} {
+		t.Run(x.class.Name(), func(t *testing.T) {
+			assert.Equal(t, x.name, x.class.Name())
+			assert.Equal(t, x.description, x.class.Description())
+		})
+	}
+}

@@ -37,6 +37,7 @@ var Domain = domain{}
 type domain struct{}
 
 func (domain) Name() string                           { return "log" }
+func (domain) Description() string                    { return "Records from container and node logs." }
 func (domain) Class(name string) korrel8r.Class       { return classMap[name] }
 func (domain) Classes() []korrel8r.Class              { return classes }
 func (domain) Query(s string) (korrel8r.Query, error) { return impl.Query(s, &Query{}) }
@@ -98,7 +99,20 @@ type Class string
 
 func (c Class) Domain() korrel8r.Domain { return Domain }
 func (c Class) Name() string            { return string(c) }
-func (c Class) New() korrel8r.Object    { return Object{} }
+func (c Class) Description() string {
+	switch c {
+	case Application:
+		return "Container logs from pods in all namespaces that do not begin with kube- or openshift-."
+	case Infrastructure:
+		return "Node logs (journald or syslog) and container logs from pods in namespaces that begin with kube- or openshift-."
+	case Audit:
+		return "Audit logs from the node operating system (/var/log/audit) and the cluster API servers"
+	default:
+		return ""
+	}
+}
+
+func (c Class) New() korrel8r.Object { return Object{} }
 func (c Class) Preview(o korrel8r.Object) string {
 	var s string
 	if o, ok := o.(Object); ok {

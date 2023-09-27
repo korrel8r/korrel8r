@@ -36,6 +36,7 @@ var (
 type domain struct{}
 
 func (domain) Name() string                           { return "metric" }
+func (domain) Description() string                    { return "Time-series of measured values" }
 func (domain) Class(name string) korrel8r.Class       { return Class{} }
 func (domain) Classes() []korrel8r.Class              { return []korrel8r.Class{Class{}} }
 func (domain) Query(r string) (korrel8r.Query, error) { return impl.Query(r, &Query{}) }
@@ -85,6 +86,7 @@ type Class struct{} // Singleton class
 
 func (c Class) Domain() korrel8r.Domain { return Domain }
 func (c Class) Name() string            { return Domain.Name() }
+func (c Class) Description() string     { return "A set of label:value pairs identifying a time-series." }
 func (c Class) New() korrel8r.Object    { var obj Object; return obj }
 
 type Object *model.Sample
