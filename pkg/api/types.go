@@ -48,7 +48,7 @@ type Options struct {
 // @description	A set of query strings with counts of results found by the query.
 // @description	Value of -1 means the query was not run so result count is unknown.
 // @example		queryString:10
-type Queries map[string]int
+type Queries = graph.Queries
 
 // Rule is a correlation rule with a list of queries and results counts found during navigation.
 // Rules form a directed multi-graph over classes in the result graph.
@@ -94,25 +94,14 @@ type Graph struct {
 
 func rule(l *graph.Line) (r Rule) {
 	r.Name = l.Rule.Name()
-	r.Queries = queries(l.QueryCounts)
+	r.Queries = l.Queries
 	return r
-}
-
-func queries(g graph.QueryCounts) Queries {
-	var ret Queries
-	for s, qc := range g {
-		if ret == nil {
-			ret = Queries{}
-		}
-		ret[s] = qc.Count
-	}
-	return ret
 }
 
 func node(n *graph.Node) Node {
 	return Node{
 		Class:   korrel8r.ClassName(n.Class),
-		Queries: queries(n.QueryCounts),
+		Queries: n.Queries,
 		Count:   len(n.Result.List()),
 	}
 }
@@ -134,7 +123,7 @@ func edge(e *graph.Edge, withRules bool) Edge {
 	}
 	if withRules {
 		e.EachLine(func(l *graph.Line) {
-			if l.QueryCounts.Total() != 0 {
+			if l.Queries.Total() != 0 {
 				edge.Rules = append(edge.Rules, rule(l))
 			}
 		})

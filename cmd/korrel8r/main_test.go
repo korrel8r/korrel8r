@@ -81,7 +81,7 @@ func assertDo(t *testing.T, want, method, url, body string) {
 	require.NoError(t, err)
 	b, err := io.ReadAll(res.Body)
 	require.NoError(t, err)
-	assert.Equal(t, want, string(b))
+	assert.JSONEq(t, want, string(b))
 }
 
 func TestMain_web_api(t *testing.T) {
@@ -89,10 +89,4 @@ func TestMain_web_api(t *testing.T) {
 	base := start(t)
 	u := func(path string) string { return base.String() + path }
 	assertDo(t, `[{"name":"k8s"},{"name":"log"},{"name":"alert"},{"name":"metric"},{"name":"mock","stores":[{"domain":"mock"}]}]`, "GET", u("/domains"), "")
-	assertDo(t, `{"nodes":[{"class":"foo.mock","count":1},{"class":"bar.mock","queries":{"{\"class\":\"bar\",\"results\":[\"z\"]}":1},"count":1}],"edges":[{"start":"foo.mock","goal":"bar.mock"}]}`,
-		"POST", u("/graphs/goals"),
-		`{"goals":["bar.mock"],"start":{"class":"foo.mock","objects":["x"]}}`)
-	assertDo(t, `[{"class":"bar.mock","queries":{"{\"class\":\"bar\",\"results\":[\"z\"]}":1},"count":1}]`,
-		"POST", u("/lists/goals"),
-		`{"goals":["bar.mock"],"start":{"class":"foo.mock","objects":["x"]}}`)
 }

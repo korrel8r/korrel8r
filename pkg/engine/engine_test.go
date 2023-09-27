@@ -83,16 +83,13 @@ func TestFollower_Traverse(t *testing.T) {
 		case "ab":
 			q, err := l.Rule.Apply(0, nil)
 			require.NoError(t, err)
-			assert.Equal(t, graph.QueryCounts{q.String(): graph.QueryCount{Query: q, Count: 2}}, l.QueryCounts)
+			assert.Equal(t, graph.Queries{q.String(): 2}, l.Queries)
 		case "bc1", "bc2":
 			q1, err := l.Rule.Apply(1, nil)
 			require.NoError(t, err)
 			q2, err := l.Rule.Apply(2, nil)
 			require.NoError(t, err)
-			assert.Equal(t, graph.QueryCounts{
-				q1.String(): graph.QueryCount{Query: q1, Count: 1},
-				q2.String(): graph.QueryCount{Query: q2, Count: 1},
-			}, l.QueryCounts)
+			assert.Equal(t, graph.Queries{q1.String(): 1, q2.String(): 1}, l.Queries)
 		case "cz":
 			q1, err := l.Rule.Apply(1, nil)
 			require.NoError(t, err)
@@ -102,12 +99,12 @@ func TestFollower_Traverse(t *testing.T) {
 			require.NoError(t, err)
 			q4, err := l.Rule.Apply(12, nil)
 			require.NoError(t, err)
-			assert.Equal(t, graph.QueryCounts{
-				q1.String(): graph.QueryCount{Query: q1, Count: 1},
-				q2.String(): graph.QueryCount{Query: q2, Count: 1},
-				q3.String(): graph.QueryCount{Query: q3, Count: 1},
-				q4.String(): graph.QueryCount{Query: q4, Count: 1},
-			}, l.QueryCounts)
+			assert.Equal(t, graph.Queries{
+				q1.String(): 1,
+				q2.String(): 1,
+				q3.String(): 1,
+				q4.String(): 1,
+			}, l.Queries)
 		default:
 			t.Fatalf("unexpected rule: %v", korrel8r.RuleName(l.Rule))
 		}

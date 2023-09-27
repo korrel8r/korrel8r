@@ -38,8 +38,8 @@ func (f *Follower) Traverse(l *graph.Line) {
 			log.Error(err, "get failed", "class", goalNode.Class, "query", query.String())
 		}
 		// TODO get rid of duplication of query counts, simplify code?
-		l.QueryCounts.Put(query, result.Count)
-		goalNode.QueryCounts.Put(query, result.Count)
+		l.Queries[query.String()] = result.Count
+		goalNode.Queries[query.String()] = result.Count
 		log.V(3).Info("results", "count", result.Count)
 	}
 }

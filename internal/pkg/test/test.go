@@ -119,6 +119,7 @@ func TempNamespace(t *testing.T, c client.Client) string {
 	}
 	require.NoError(t, c.Create(context.Background(), &ns))
 	require.NotEmpty(t, ns.Name)
+	t.Logf("namespace for %v: %v", t.Name(), ns.Name)
 	t.Cleanup(func() {
 		t.Helper()
 		if t.Failed() && os.Getenv("KORREL8R_TEST_KEEP_NS") != "" {

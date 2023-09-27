@@ -126,7 +126,7 @@ func (c *correlate) update(req *http.Request) {
 		if c.addErr(c.browser.engine.Get(context.Background(), c.StartClass, c.StartQuery, start.Result)) {
 			return
 		}
-		start.QueryCounts.Put(c.StartQuery, len(start.Result.List()))
+		start.Queries[c.StartQuery.String()] = len(start.Result.List())
 	}
 	c.addErr(c.updateGoal(), "goal")
 	if c.Err != nil {
@@ -151,7 +151,7 @@ func (c *correlate) update(req *http.Request) {
 	if !c.RuleGraph {
 		c.addErr(c.Graph.Traverse(follower.Traverse))
 		c.Graph = c.Graph.Select(func(l *graph.Line) bool { // Remove lines with no queries
-			return l.QueryCounts.Total() > 0
+			return l.Queries.Total() > 0
 		})
 		if c.GoalClasses != nil {
 			// Only include start->goal paths, remove dead-ends.
@@ -224,10 +224,23 @@ func (c *correlate) addClassNode(class korrel8r.Class) {
 	}
 }
 
-func (c *correlate) queryURLAttrs(a graph.Attrs, qcs graph.QueryCounts) {
+func (c *correlate) queryURLAttrs(a graph.Attrs, qs graph.Queries, d korrel8r.Domain) {
 	// TODO find a way to combine multiple queries into a URL?
-	if len(qcs) > 0 {
-		a["URL"] = c.checkURL(c.browser.console.QueryToConsoleURL(qcs.Sort()[0].Query)).String()
+
+	// Find the biggest count
+	maxS, maxN := "", -1
+	for s, n := range qs {
+		if n > maxN {
+			maxS, maxN = s, n
+		}
+	}
+	if maxS != "" {
+		q, err := d.Query(maxS)
+		if err != nil {
+			a["URL"] = c.checkURL(&url.URL{}, err).String()
+		} else {
+			a["URL"] = c.checkURL(c.browser.console.QueryToConsoleURL(q)).String()
+		}
 		a["target"] = "_blank"
 	}
 }
@@ -257,7 +270,7 @@ func (c *correlate) updateDiagram() {
 			a["label"] = fmt.Sprintf("%v\n(%v)", a["label"], len(result))
 			a["fillcolor"] = fullColor
 			a["style"] = strings.Join([]string{a["style"], "bold"}, ",")
-			c.queryURLAttrs(a, n.QueryCounts)
+			c.queryURLAttrs(a, n.Queries, n.Class.Domain())
 			previewer, _ := n.Class.(korrel8r.Previewer)
 			if previewer != nil && len(result) > 0 {
 				b := &strings.Builder{}
@@ -277,11 +290,11 @@ func (c *correlate) updateDiagram() {
 
 	g.EachLine(func(l *graph.Line) {
 		a := l.Attrs
-		a["tooltip"] = fmt.Sprintf("%v (%v)\n", korrel8r.RuleName(l.Rule), l.QueryCounts.Total())
-		if count := l.QueryCounts.Total(); count > 0 {
+		a["tooltip"] = fmt.Sprintf("%v (%v)\n", korrel8r.RuleName(l.Rule), l.Queries.Total())
+		if count := l.Queries.Total(); count > 0 {
 			a["arrowsize"] = fmt.Sprintf("%v", math.Min(0.3+float64(count)*0.05, 1))
 			a["style"] = "bold"
-			c.queryURLAttrs(a, l.QueryCounts)
+			c.queryURLAttrs(a, l.Queries, l.Rule.Goal().Domain())
 		} else {
 			a["style"] = "dashed"
 			a["color"] = "gray"

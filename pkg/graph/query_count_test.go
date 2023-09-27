@@ -9,12 +9,12 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestQueryCounts(t *testing.T) {
+func TestQueries(t *testing.T) {
 	d := mock.Domain("x")
 	q := mock.NewQuery(d.Class("a"))
-	qcs := QueryCounts{}
-	qcs.Put(q, 3)
-	qc, ok := qcs.Get(q)
+	qs := Queries{}
+	qs[q.String()] = 3
+	n, ok := qs[q.String()]
 	assert.True(t, ok)
-	assert.Equal(t, QueryCount{Query: q, Count: 3}, qc)
+	assert.Equal(t, 3, n)
 }

@@ -52,10 +52,8 @@ func testTraverse(t *testing.T, e *engine.Engine, start, goal korrel8r.Class, st
 	f := e.Follower(context.Background())
 	assert.NoError(t, paths.Traverse(f.Traverse))
 	assert.NoError(t, f.Err)
-	got, ok := paths.NodeFor(goal).QueryCounts.Get(want)
-	if assert.True(t, ok, "query not found: %v", want) {
-		assert.Equal(t, want, got.Query)
-	}
+	_, ok := paths.NodeFor(goal).Queries[want.String()]
+	assert.True(t, ok, "query not found: %v", want)
 }
 
 func TestPodToLogs(t *testing.T) {

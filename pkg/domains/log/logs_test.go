@@ -32,7 +32,6 @@ func makeLines(line string, n int) (lines []string, objects []korrel8r.Object) {
 }
 
 func TestPlainLokiStore_Get(t *testing.T) {
-	t.Parallel()
 	test.SkipIfNoCluster(t)
 	lines, want := makeLines(t.Name(), 10)
 	l := test.RequireLokiServer(t)
@@ -47,7 +46,6 @@ func TestPlainLokiStore_Get(t *testing.T) {
 }
 
 func TestLokiStackStore_Get(t *testing.T) {
-	t.Parallel()
 	test.SkipIfNoCluster(t)
 	c := test.K8sClient
 	ns := test.TempNamespace(t, c)
@@ -86,7 +84,7 @@ func TestLokiStackStore_Get(t *testing.T) {
 func TestStoreGet_Constraint(t *testing.T) {
 	test.SkipIfNoCluster(t)
 	t.Skip("TODO re-enable when constraints are implemented properly")
-	t.Parallel()
+
 	l := test.RequireLokiServer(t)
 
 	err := l.Push(map[string]string{"test": "log"}, "much", "too", "early")

@@ -207,7 +207,7 @@ func (a *API) setupStart(c *gin.Context, g *graph.Graph, start korrel8r.Class, o
 		// TODO should we tolerate get failures and report in the response?
 		if check(c, http.StatusBadRequest, a.Engine.Get(c.Request.Context(), start, query, cr),
 			"query failed: %q", query.String) {
-			n.QueryCounts.Put(query, cr.Count)
+			n.Queries[query.String()] = cr.Count
 		}
 	}
 	return c.Errors == nil

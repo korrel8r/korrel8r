@@ -86,10 +86,10 @@
             <li><code><b>{{classname $node.Class}}</b> ({{len $node.Result.List}})</code>
               <ul>
                 {{range ($.Graph.LinesTo .)}}
-                  {{if .QueryCounts}}
+                  {{if .Queries}}
                     <li><code>{{rulename .Rule}}</code></li>
                     <ul>
-                      {{range $qc := .QueryCounts.Sort}}
+                      {{range $qc := .Queries.Sort}}
                         <li>
                           <a href="{{queryToConsole $qc.Query}}" target="_blank">Console</a> /
                           <a href="/stores/{{$node.Class.Domain}}?query={{json $qc.Query | urlquery}}" target="_blank">Data</a>
@@ -102,7 +102,7 @@
                     {{end}}
                     {{if not ($.Graph.LinesTo .)}}
                     {{/* No incoming lines, must be the start node. */}}
-                    {{template "querycounts" $node.QueryCounts}}
+                    {{template "querycounts" $node.Queries}}
                     {{end}}
               </ul>
             </li>
