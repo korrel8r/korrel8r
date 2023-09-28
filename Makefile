@@ -22,11 +22,16 @@ tools:	     			## Install tools used to generate code and documentation.
 	go install github.com/swaggo/swag/cmd/swag@latest
 	go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
 
-generate:			## Run code generation, pre-build.
-	go generate -x ./...
-	cp pkg/api/docs/swagger.json ../../doc
-	echo $(TAG) > cmd/korrel8r/version.txt
+generate: pkg/api/docs		## Run code generation, pre-build.
+	go mod tidy
 	hack/copyright.sh
+	echo $(TAG) > cmd/korrel8r/version.txt
+
+pkg/api/docs: $(shell find pkg/api pkg/korrel8r -name *.go)
+	swag init -q -g $(dir $@)/api.go -o $@
+	swag fmt $(dir $@)
+	cp $@/swagger.json doc
+	swagger -q generate markdown -f doc/swagger.json --output doc/rest-api.md
 
 lint:				## Run the linter to find possible errors.
 	golangci-lint run --fix
@@ -64,7 +69,7 @@ $(IMAGE_KUSTOMIZATION): force
 
 WATCH=kubectl get events -A --watch-only& trap "kill %%" EXIT;
 
-deploy: $(IMAGE_KUSTOMIZATION)	## Deploy to a cluster using kustomize.
+deploy: $(IMAGE_KUSTOMIZATION)	## Deploy to a cluster using customize.
 	$(WATCH) kubectl apply -k config/overlays/$(OVERLAY)
 	$(WATCH) kubectl wait -n korrel8r --for=condition=available deployment.apps/korrel8r
 	which oc >/dev/null && oc delete --ignore-not-found route/korrel8r && oc expose -n korrel8r svc/korrel8r
@@ -74,14 +79,18 @@ route-url:			## URL of route to korrel8r on cluster (requires openshift for rout
 
 
 ## Create a release
-tag: 				## Create a release tag.
+VERSION_TXT=cmd/korrel8r/version.txt
+check-tag:
 	@echo "$(TAG)" | grep -qE "^v[0-9]+\.[0-9]+\.[0-9]+$$" || { echo "TAG=$(TAG) must be of the form vX.Y.Z"; exit 1; }
-	@[[ -z "$$(git status --porcelain)" ]] || { echo "git repository is not clean"; git status -s; exit 1; }
-	go mod tidy
+release: check-tag		## Create a release tag and commit, push images.
 	$(MAKE) all TAG=$(TAG)
+	@if git status --porcelain | grep -v "M $(VERSION_TXT)"; then				\
+		echo "git repository is dirty, only $(VERSION_TXT) should be modified"; exit 1;	\
+	fi
+	git commit -a -m "Release $(TAG)"
 	git tag $(TAG) -a -m "Release $(TAG)"
-
-release: image			## Create and push image with current tag and "latest" alias.
+	git push origin $(TAG)
+	$(MAKE) image
 	$(IMGTOOL) push "$(IMAGE)" "$(IMG):latest"
 
 force:

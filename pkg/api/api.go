@@ -14,10 +14,6 @@
 //	@basePath		/api/v1alpha1
 //	@accept			json
 //	@produce		json
-//
-//go:generate swag init -q -d ../.. -g pkg/api/api.go
-//go:generate swag fmt -d ./
-//go:generate swagger -q generate markdown -f docs/swagger.json --output ../../doc/rest-api.md
 package api
 
 import (
