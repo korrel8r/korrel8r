@@ -81,8 +81,7 @@ tag: 				## Create a release tag.
 	$(MAKE) all TAG=$(TAG)
 	git tag $(TAG) -a -m "Release $(TAG)"
 
-release: image			## Create and push image with ":latest" alias.
+release: image			## Create and push image with current tag and "latest" alias.
 	$(IMGTOOL) push "$(IMAGE)" "$(IMG):latest"
-
 
 force:

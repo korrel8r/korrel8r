@@ -44,6 +44,31 @@ const docTemplate = `{
                 }
             }
         },
+        "/domains/{domain}/classes": {
+            "get": {
+                "tags": [
+                    "configuration"
+                ],
+                "summary": "Get class names and descriptions for the domain.",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Domain to get classes from.",
+                        "name": "domain",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.Classes"
+                        }
+                    }
+                }
+            }
+        },
         "/graphs/goals": {
             "post": {
                 "tags": [
@@ -142,6 +167,13 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "api.Classes": {
+            "description": "Classes maps class names to a short description.",
+            "type": "object",
+            "additionalProperties": {
+                "type": "string"
+            }
+        },
         "api.Domain": {
             "description": "Domain configuration information.",
             "type": "object",

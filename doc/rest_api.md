@@ -32,6 +32,7 @@ v1alpha1
 | Method  | URI     | Name   | Summary |
 |---------|---------|--------|---------|
 | GET | /api/v1alpha1/domains | [get domains](#get-domains) | List all configured domains and stores. |
+| GET | /api/v1alpha1/domains/{domain}/classes | [get domains domain classes](#get-domains-domain-classes) | Get class names and descriptions for the domain. |
   
 
 
@@ -69,6 +70,35 @@ Status: OK
   
 
 [][APIDomain](#api-domain)
+
+### <span id="get-domains-domain-classes"></span> Get class names and descriptions for the domain. (*GetDomainsDomainClasses*)
+
+```
+GET /api/v1alpha1/domains/{domain}/classes
+```
+
+#### Parameters
+
+| Name | Source | Type | Go type | Separator | Required | Default | Description |
+|------|--------|------|---------|-----------| :------: |---------|-------------|
+| domain | `path` | string | `string` |  | ✓ |  | Domain to get classes from. |
+
+#### All responses
+| Code | Status | Description | Has headers | Schema |
+|------|--------|-------------|:-----------:|--------|
+| [200](#get-domains-domain-classes-200) | OK | OK |  | [schema](#get-domains-domain-classes-200-schema) |
+
+#### Responses
+
+
+##### <span id="get-domains-domain-classes-200"></span> 200 - OK
+Status: OK
+
+###### <span id="get-domains-domain-classes-200-schema"></span> Schema
+   
+  
+
+[APIClasses](#api-classes)
 
 ### <span id="post-graphs-goals"></span> Create a correlation graph from start objects to goal queries. (*PostGraphsGoals*)
 
@@ -160,6 +190,16 @@ Status: OK
 [][APINode](#api-node)
 
 ## Models
+
+### <span id="api-classes"></span> api.Classes
+
+
+> Classes maps class names to a short description.
+  
+
+
+
+[APIClasses](#api-classes)
 
 ### <span id="api-domain"></span> api.Domain
 

@@ -39,13 +39,21 @@ func command(t *testing.T, args ...string) *exec.Cmd {
 func TestMain_list(t *testing.T) {
 	out, err := command(t, "list").Output()
 	require.NoError(t, test.ExecError(err))
-	assert.Equal(t, "k8s\nlog\nalert\nmetric\nmock\n", string(out))
+	want := `
+k8s      Resource objects in a Kubernetes API server
+log      Records from container and node logs.
+alert    Alerts that metric values are out of bounds.
+metric   Time-series of measured values
+mock     Mock domain.
+`
+	assert.Equal(t, strings.TrimSpace(want), strings.TrimSpace(string(out)))
 }
 
 func TestMain_list_domain(t *testing.T) {
-	out, err := command(t, "list", "log").Output()
+	out, err := command(t, "list", "metric").Output()
 	require.NoError(t, test.ExecError(err))
-	assert.Equal(t, "application\ninfrastructure\naudit\n", string(out))
+	want := "metric   A set of label:value pairs identifying a time-series."
+	assert.Equal(t, want, strings.TrimSpace(string(out)))
 }
 
 func TestMain_get(t *testing.T) {

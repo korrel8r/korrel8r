@@ -30,8 +30,6 @@ func init() { // Set env verbosity on init, Init() can over-ride.
 	root = stdr.New(log.New(os.Stderr, "korrel8r ", log.Ltime))
 	if n, err := strconv.Atoi(os.Getenv(verboseEnv)); err == nil {
 		stdr.SetVerbosity(n)
-	} else {
-		stdr.SetVerbosity(1)
 	}
 }
 

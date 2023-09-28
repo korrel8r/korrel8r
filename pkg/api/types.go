@@ -17,6 +17,9 @@ type Domain struct {
 	Errors []string               `json:"errors,omitempty"`
 }
 
+// @description Classes maps class names to a short description.
+type Classes map[string]string
+
 // @description	Starting point for correlation.
 type Start struct {
 	// Class of starting objects
