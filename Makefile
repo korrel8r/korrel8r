@@ -30,8 +30,7 @@ generate: pkg/api/docs		## Run code generation, pre-build.
 pkg/api/docs: $(shell find pkg/api pkg/korrel8r -name *.go)
 	swag init -q -g $(dir $@)/api.go -o $@
 	swag fmt $(dir $@)
-	cp $@/swagger.json doc
-	swagger -q generate markdown -f doc/swagger.json --output doc/rest-api.md
+	swagger -q generate markdown -f $@/swagger.json doc --output doc/rest-api.md
 
 lint:				## Run the linter to find possible errors.
 	golangci-lint run --fix

@@ -25,7 +25,7 @@ type Start struct {
 	// Class of starting objects
 	Class string `json:"class" example:"class.domain"`
 	// Queries for starting objects
-	Queries []string `json:"query,omitempty"`
+	Queries []string `json:"queries,omitempty"`
 	// Objects in JSON form
 	Objects []json.RawMessage `json:"objects,omitempty" swaggertype:"object"`
 }

@@ -341,7 +341,7 @@ const docTemplate = `{
                     "description": "Objects in JSON form",
                     "type": "object"
                 },
-                "query": {
+                "queries": {
                     "description": "Queries for starting objects",
                     "type": "array",
                     "items": {

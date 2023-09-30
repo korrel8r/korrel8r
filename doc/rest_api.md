@@ -354,7 +354,7 @@ Status: OK
 |------|------|---------|:--------:| ------- |-------------|---------|
 | class | string| `string` |  | | Class of starting objects | `class.domain` |
 | objects | [interface{}](#interface)| `interface{}` |  | | Objects in JSON form |  |
-| query | []string| `[]string` |  | | Queries for starting objects |  |
+| queries | []string| `[]string` |  | | Queries for starting objects |  |
 
 
 
