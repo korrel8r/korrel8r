@@ -4,6 +4,12 @@ This is the project's commit log. It is placeholder until a more user-readable c
 
 This project uses semantic versioning (https://semver.org)
 
+## Version v0.3.0
+
+- Present queries as JSON objects in REST API request and response
+- Rename JSON field "query" to "queries" in api.Start struct.
+- Add CHANGELOG.md and hack/changelog.sh script to generate it.
+
 ## Version v0.2.0
 
 - Release v0.2.0
