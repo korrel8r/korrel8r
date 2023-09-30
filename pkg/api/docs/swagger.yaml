@@ -84,17 +84,20 @@ definitions:
         description: Count of results found for this class, after de-duplication.
         type: integer
       queries:
-        allOf:
-        - $ref: '#/definitions/api.Queries'
         description: Queries yielding results for this class.
-        example:
-          querystring: 10
+        items:
+          $ref: '#/definitions/api.QueryCount'
+        type: array
     type: object
-  api.Queries:
-    additionalProperties:
-      type: integer
-    description: A set of query strings with counts of results found by the query.
-      Value of -1 means the query was not run so result count is unknown.
+  api.QueryCount:
+    description: Query run during a correlation with a count of results found.
+    properties:
+      count:
+        description: Count of results or -1 if the query was not executed.
+        type: integer
+      query:
+        description: Query for correlation data.
+        type: object
     type: object
   api.Rule:
     properties:
@@ -102,11 +105,10 @@ definitions:
         description: Name is an optional descriptive name.
         type: string
       queries:
-        allOf:
-        - $ref: '#/definitions/api.Queries'
         description: Queries generated while following this rule.
-        example:
-          querystring: 10
+        items:
+          $ref: '#/definitions/api.QueryCount'
+        type: array
     type: object
   api.Start:
     description: Starting point for correlation.
@@ -120,9 +122,7 @@ definitions:
         type: object
       queries:
         description: Queries for starting objects
-        items:
-          type: string
-        type: array
+        type: object
     type: object
   korrel8r.StoreConfig:
     additionalProperties:

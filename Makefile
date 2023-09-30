@@ -86,9 +86,9 @@ release: check-tag		## Create a release tag and commit, push images.
 	@if git status --porcelain | grep -v "M $(VERSION_TXT)"; then				\
 		echo "git repository is dirty, only $(VERSION_TXT) should be modified"; exit 1;	\
 	fi
-	hack/changelog.sh > CHANGELOG.md # Update CHANGELOG.md
+	hack/changelog.sh $(TAG) > CHANGELOG.md # Update CHANGELOG.md
 	git commit -a -m "Release $(TAG)" # Commit version.txt and CHANGELOG.md
-	git tag $(TAG) -a -m "Release $(TAG)" # Tag the release
+	git tag $(TAG) -a -m "Release $(TAG)"
 	git push origin $(TAG)
 	$(MAKE) image		# Push the release image
 	$(IMGTOOL) push "$(IMAGE)" "$(IMG):latest" # Push a "latest" alias

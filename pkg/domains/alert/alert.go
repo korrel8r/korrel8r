@@ -26,7 +26,7 @@ import (
 var (
 	_ korrel8r.Domain = Domain
 	_ korrel8r.Class  = Class{}
-	_ korrel8r.Query  = &Query{}
+	_ korrel8r.Query  = Query{}
 	_ korrel8r.Store  = &Store{}
 )
 
@@ -38,7 +38,7 @@ func (domain) Name() string                           { return "alert" }
 func (domain) Description() string                    { return "Alerts that metric values are out of bounds." }
 func (domain) Class(string) korrel8r.Class            { return Class{} }
 func (domain) Classes() []korrel8r.Class              { return []korrel8r.Class{Class{}} }
-func (domain) Query(r string) (korrel8r.Query, error) { return impl.Query(r, &Query{}) }
+func (domain) Query(r string) (korrel8r.Query, error) { return impl.Query(r, Query{}) }
 
 const (
 	StoreKeyMetrics      = "metrics"
@@ -112,12 +112,10 @@ type Receiver struct {
 	Name string `json:"name"`
 }
 
-type Query struct {
-	Labels map[string]string
-}
+type Query map[string]string
 
-func (q *Query) Class() korrel8r.Class { return Class{} }
-func (q *Query) String() string        { return korrel8r.JSONString(q.Labels) }
+func (q Query) Class() korrel8r.Class { return Class{} }
+func (q Query) String() string        { return korrel8r.JSONString(q) }
 
 func (domain) ConsoleURLToQuery(u *url.URL) (korrel8r.Query, error) {
 	m := map[string]string{}
@@ -125,19 +123,19 @@ func (domain) ConsoleURLToQuery(u *url.URL) (korrel8r.Query, error) {
 	for k := range uq {
 		m[k] = uq.Get(k)
 	}
-	return &Query{Labels: m}, nil
+	return Query(m), nil
 }
 
 func (domain) QueryToConsoleURL(query korrel8r.Query) (*url.URL, error) {
-	q, err := impl.TypeAssert[*Query](query)
+	q, err := impl.TypeAssert[Query](query)
 	if err != nil {
 		return nil, err
 	}
 	uq := url.Values{
 		"rowFilter-alert-state": []string{""}, // do not filter by alert state.
 	}
-	alertFilter := make([]string, 0, len(q.Labels))
-	for k, v := range q.Labels {
+	alertFilter := make([]string, 0, len(q))
+	for k, v := range q {
 		alertFilter = append(alertFilter, fmt.Sprintf("%s=%s", k, v))
 	}
 	uq.Add("alerts", strings.Join(alertFilter, ","))
@@ -207,8 +205,8 @@ func convertLabelSetToMap(m model.LabelSet) map[string]string {
 }
 
 // matches returns true if the Prometheus alert matches the korrel8r query.
-func (q *Query) matches(a *v1.Alert) bool {
-	for k, v := range q.Labels {
+func (q Query) matches(a *v1.Alert) bool {
+	for k, v := range q {
 		v2 := string(a.Labels[model.LabelName(k)])
 		if v != v2 {
 			return false
@@ -219,7 +217,7 @@ func (q *Query) matches(a *v1.Alert) bool {
 }
 
 func (s Store) Get(ctx context.Context, query korrel8r.Query, result korrel8r.Appender) error {
-	q, err := impl.TypeAssert[*Query](query)
+	q, err := impl.TypeAssert[Query](query)
 	if err != nil {
 		return err
 	}
@@ -258,7 +256,7 @@ func (s Store) Get(ctx context.Context, query korrel8r.Query, result korrel8r.Ap
 
 	// Gather matching alerts from the Alertmanager API and merge with the existing alerts.
 	var filters []string
-	for k, v := range q.Labels {
+	for k, v := range q {
 		filters = append(filters, fmt.Sprintf("%v=%v", k, v))
 	}
 	resp, err := s.alertmanagerAPI.Alert.GetAlerts(alert.NewGetAlertsParamsWithContext(ctx).WithFilter(filters))

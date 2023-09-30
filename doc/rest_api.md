@@ -308,19 +308,28 @@ Status: OK
 |------|------|---------|:--------:| ------- |-------------|---------|
 | class | string| `string` |  | | Class is the full name of the class in "CLASS.DOMAIN" form. | `class.domain` |
 | count | integer| `int64` |  | | Count of results found for this class, after de-duplication. |  |
-| queries | [APINode](#api-node)| `APINode` |  | | Queries yielding results for this class. | `{"querystring":10}` |
+| queries | [][APIQueryCount](#api-query-count)| `[]*APIQueryCount` |  | | Queries yielding results for this class. |  |
 
 
 
-### <span id="api-queries"></span> api.Queries
+### <span id="api-query-count"></span> api.QueryCount
 
 
-> A set of query strings with counts of results found by the query. Value of -1 means the query was not run so result count is unknown.
+> Query run during a correlation with a count of results found.
   
 
 
 
-[APIQueries](#api-queries)
+
+
+**Properties**
+
+| Name | Type | Go type | Required | Default | Description | Example |
+|------|------|---------|:--------:| ------- |-------------|---------|
+| count | integer| `int64` |  | | Count of results or -1 if the query was not executed. |  |
+| query | [interface{}](#interface)| `interface{}` |  | | Query for correlation data. |  |
+
+
 
 ### <span id="api-rule"></span> api.Rule
 
@@ -334,7 +343,7 @@ Status: OK
 | Name | Type | Go type | Required | Default | Description | Example |
 |------|------|---------|:--------:| ------- |-------------|---------|
 | name | string| `string` |  | | Name is an optional descriptive name. |  |
-| queries | [APIRule](#api-rule)| `APIRule` |  | | Queries generated while following this rule. | `{"querystring":10}` |
+| queries | [][APIQueryCount](#api-query-count)| `[]*APIQueryCount` |  | | Queries generated while following this rule. |  |
 
 
 
@@ -354,7 +363,7 @@ Status: OK
 |------|------|---------|:--------:| ------- |-------------|---------|
 | class | string| `string` |  | | Class of starting objects | `class.domain` |
 | objects | [interface{}](#interface)| `interface{}` |  | | Objects in JSON form |  |
-| queries | []string| `[]string` |  | | Queries for starting objects |  |
+| queries | [interface{}](#interface)| `interface{}` |  | | Queries for starting objects |  |
 
 
 

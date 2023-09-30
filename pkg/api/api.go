@@ -179,9 +179,9 @@ func (a *API) goalsRequest(c *gin.Context) (g *graph.Graph, goals []korrel8r.Cla
 	return g, goals
 }
 
-func (a *API) queries(c *gin.Context, class korrel8r.Class, queryStrings []string) (queries []korrel8r.Query) {
-	for _, q := range queryStrings {
-		query, err := class.Domain().Query(q)
+func (a *API) queries(c *gin.Context, class korrel8r.Class, rawQueries []json.RawMessage) (queries []korrel8r.Query) {
+	for _, q := range rawQueries {
+		query, err := class.Domain().Query(string(q))
 		if check(c, http.StatusBadRequest, err, "query parameter") {
 			queries = append(queries, query)
 		}

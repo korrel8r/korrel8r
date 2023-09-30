@@ -20,12 +20,15 @@ type Domain struct {
 // @description Classes maps class names to a short description.
 type Classes map[string]string
 
+// Note: use json.RawMessage for queries and objects because we don't know the type of these values
+// until the engine resolves the class name as a Class value.
+
 // @description	Starting point for correlation.
 type Start struct {
 	// Class of starting objects
 	Class string `json:"class" example:"class.domain"`
 	// Queries for starting objects
-	Queries []string `json:"queries,omitempty"`
+	Queries []json.RawMessage `json:"queries,omitempty" swaggertype:"object"`
 	// Objects in JSON form
 	Objects []json.RawMessage `json:"objects,omitempty" swaggertype:"object"`
 }
@@ -48,10 +51,14 @@ type Options struct {
 	WithRules bool `form:"withRules"`
 }
 
-// @description	A set of query strings with counts of results found by the query.
-// @description	Value of -1 means the query was not run so result count is unknown.
-// @example		queryString:10
-type Queries = graph.Queries
+// FIXME the json.RawMessage below should be a korrel8r.Query.
+// Need to resolve the status of queries as objects or strings once and for all.
+
+// @description Query run during a correlation with a count of results found.
+type QueryCount struct {
+	Query json.RawMessage `json:"query" swaggertype:"object"` // Query for correlation data.
+	Count int             `json:"count"`                      // Count of results or -1 if the query was not executed.
+}
 
 // Rule is a correlation rule with a list of queries and results counts found during navigation.
 // Rules form a directed multi-graph over classes in the result graph.
@@ -59,7 +66,7 @@ type Rule struct {
 	// Name is an optional descriptive name.
 	Name string `json:"name,omitempty"`
 	// Queries generated while following this rule.
-	Queries Queries `json:"queries,omitempty" example:"querystring:10"`
+	Queries []QueryCount `json:"queries,omitempty"`
 }
 
 // Node in the result graph, contains results for a single class.
@@ -67,7 +74,7 @@ type Node struct {
 	// Class is the full name of the class in "CLASS.DOMAIN" form.
 	Class string `json:"class" example:"class.domain"`
 	// Queries yielding results for this class.
-	Queries Queries `json:"queries,omitempty" example:"querystring:10"`
+	Queries []QueryCount `json:"queries,omitempty"`
 	// Count of results found for this class, after de-duplication.
 	Count int `json:"count"`
 }
@@ -95,16 +102,23 @@ type Graph struct {
 	Edges []Edge `json:"edges,omitempty"`
 }
 
+func queryCounts(gq graph.Queries) (qc []QueryCount) {
+	for q, c := range gq {
+		qc = append(qc, QueryCount{Query: json.RawMessage(q), Count: c})
+	}
+	return qc
+}
+
 func rule(l *graph.Line) (r Rule) {
 	r.Name = l.Rule.Name()
-	r.Queries = l.Queries
+	r.Queries = queryCounts(l.Queries)
 	return r
 }
 
 func node(n *graph.Node) Node {
 	return Node{
 		Class:   korrel8r.ClassName(n.Class),
-		Queries: n.Queries,
+		Queries: queryCounts(n.Queries),
 		Count:   len(n.Result.List()),
 	}
 }

@@ -280,22 +280,25 @@
                 },
                 "queries": {
                     "description": "Queries yielding results for this class.",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/api.Queries"
-                        }
-                    ],
-                    "example": {
-                        "querystring": 10
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/api.QueryCount"
                     }
                 }
             }
         },
-        "api.Queries": {
-            "description": "A set of query strings with counts of results found by the query. Value of -1 means the query was not run so result count is unknown.",
+        "api.QueryCount": {
+            "description": "Query run during a correlation with a count of results found.",
             "type": "object",
-            "additionalProperties": {
-                "type": "integer"
+            "properties": {
+                "count": {
+                    "description": "Count of results or -1 if the query was not executed.",
+                    "type": "integer"
+                },
+                "query": {
+                    "description": "Query for correlation data.",
+                    "type": "object"
+                }
             }
         },
         "api.Rule": {
@@ -307,13 +310,9 @@
                 },
                 "queries": {
                     "description": "Queries generated while following this rule.",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/api.Queries"
-                        }
-                    ],
-                    "example": {
-                        "querystring": 10
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/api.QueryCount"
                     }
                 }
             }
@@ -333,10 +332,7 @@
                 },
                 "queries": {
                     "description": "Queries for starting objects",
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
+                    "type": "object"
                 }
             }
         },
