@@ -63,7 +63,7 @@ image-name:			## Print the image name with tag.
 	@echo $(IMAGE)
 
 IMAGE_KUSTOMIZATION=config/overlays/replace-image/kustomization.yaml
-$(IMAGE_KUSTOMIZATION): force
+g$(IMAGE_KUSTOMIZATION): force	# Force because it depends on make variables, we can't tell if it's out of date.
 	mkdir -p $(dir $@)
 	hack/replace-image.sh REPLACE_ME $(IMG) $(TAG) > $@
 
@@ -83,14 +83,15 @@ VERSION_TXT=cmd/korrel8r/version.txt
 check-tag:
 	@echo "$(TAG)" | grep -qE "^v[0-9]+\.[0-9]+\.[0-9]+$$" || { echo "TAG=$(TAG) must be of the form vX.Y.Z"; exit 1; }
 release: check-tag		## Create a release tag and commit, push images.
-	$(MAKE) all TAG=$(TAG)
+	$(MAKE) all TAG=$(TAG)	# Make sure build is clean.
 	@if git status --porcelain | grep -v "M $(VERSION_TXT)"; then				\
 		echo "git repository is dirty, only $(VERSION_TXT) should be modified"; exit 1;	\
 	fi
-	git commit -a -m "Release $(TAG)"
-	git tag $(TAG) -a -m "Release $(TAG)"
+	hack/changelog.sh > CHANGELOG.md # Update CHANGELOG.md
+	git commit -a -m "Release $(TAG)" # Commit version.txt and CHANGELOG.md
+	git tag $(TAG) -a -m "Release $(TAG)" # Tag the release
 	git push origin $(TAG)
-	$(MAKE) image
-	$(IMGTOOL) push "$(IMAGE)" "$(IMG):latest"
+	$(MAKE) image		# Push the release image
+	$(IMGTOOL) push "$(IMAGE)" "$(IMG):latest" # Push a "latest" alias
 
-force:
+.PHONY: force # Dummy target that is never satisfied
