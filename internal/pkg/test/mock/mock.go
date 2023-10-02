@@ -28,6 +28,7 @@ var (
 type Domain string
 
 func (d Domain) Name() string                                       { return string(d) }
+func (d Domain) String() string                                     { return d.Name() }
 func (d Domain) Description() string                                { return "Mock domain." }
 func (d Domain) Class(name string) korrel8r.Class                   { return Class{name: name, domain: d} }
 func (d Domain) Classes() (classes []korrel8r.Class)                { return nil }
@@ -75,6 +76,7 @@ type Class struct {
 }
 
 func (c Class) Domain() korrel8r.Domain  { return c.domain }
+func (c Class) String() string           { return korrel8r.ClassName(c) }
 func (c Class) Name() string             { return c.name }
 func (c Class) Description() string      { return fmt.Sprintf("mock class %v", korrel8r.ClassName(c)) }
 func (c Class) ID(o korrel8r.Object) any { return o }

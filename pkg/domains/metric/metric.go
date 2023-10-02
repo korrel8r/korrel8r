@@ -36,6 +36,7 @@ var (
 type domain struct{}
 
 func (domain) Name() string                           { return "metric" }
+func (d domain) String() string                       { return d.Name() }
 func (domain) Description() string                    { return "Time-series of measured values" }
 func (domain) Class(name string) korrel8r.Class       { return Class{} }
 func (domain) Classes() []korrel8r.Class              { return []korrel8r.Class{Class{}} }

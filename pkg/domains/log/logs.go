@@ -37,6 +37,7 @@ var Domain = domain{}
 type domain struct{}
 
 func (domain) Name() string                           { return "log" }
+func (d domain) String() string                       { return d.Name() }
 func (domain) Description() string                    { return "Records from container and node logs." }
 func (domain) Class(name string) korrel8r.Class       { return classMap[name] }
 func (domain) Classes() []korrel8r.Class              { return classes }
@@ -99,6 +100,7 @@ type Class string
 
 func (c Class) Domain() korrel8r.Domain { return Domain }
 func (c Class) Name() string            { return string(c) }
+func (c Class) String() string          { return korrel8r.ClassName(c) }
 func (c Class) Description() string {
 	switch c {
 	case Application:

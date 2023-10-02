@@ -24,6 +24,7 @@ type templateRule struct {
 }
 
 func (r *templateRule) Name() string          { return r.query.Name() }
+func (r *templateRule) String() string        { return korrel8r.RuleName(r) }
 func (r *templateRule) Start() korrel8r.Class { return r.start }
 func (r *templateRule) Goal() korrel8r.Class  { return r.goal }
 
