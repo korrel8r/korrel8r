@@ -1,0 +1,20 @@
+{{range .Domains}}
+{{$domain := .}}
+== Domain `{{.Name}}`
+
+{{.Description}}
+
+=== `{{.Name}}` Classes
+{{- range .Classes}}
+
+==== Class `{{.Name}}` in `{{$domain.Name}}`
+
+{{.Description}}
+
+{{- end}}
+
+=== `{{.Name}}` Queries
+
+FIXME To Be Done.
+
+{{end}}
