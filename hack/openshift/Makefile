@@ -1,7 +1,7 @@
 NAMESPACES= -f manifests/0namespaces.yaml
 WATCH=oc get events -A --watch-only& trap "kill %%" EXIT;
 
-all: logging ## Deploy log collector and local Loki storage
+all: minio logging ## Deploy log collector and local Loki storage
 
 logging:
 	$(WATCH) oc apply $(NAMESPACES) $(LOGGING_MANIFESTS)
