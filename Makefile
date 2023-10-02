@@ -87,7 +87,8 @@ release:	      ## Create a release tag, update changelog, push commit, push imag
 	hack/changelog.sh $(VERSION_TXT) > CHANGELOG.md	# Update change log
 	git commit -a -m "Release $(TAG)"     # Commit new release
 	git tag $(TAG) -a -m "Release $(TAG)" # Tag the release
-	git push origin main $(TAG)
+	git push origin $(TAG)
+	git push origin main
 	$(MAKE) image-latest
 
 image-latest: image 		# Build and push the image and a "latest" alias

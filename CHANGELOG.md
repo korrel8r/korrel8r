@@ -4,8 +4,13 @@ This is the project's commit log. It is placeholder until a more user-readable c
 
 This project uses semantic versioning (https://semver.org)
 
+## Version cmd/korrel8r/version.txt
+
+- Improved pkg/korrel8r documentation for developers of new domains.
+
 ## Version v0.3.0
 
+- Release v0.3.0
 - Present queries as JSON objects in REST API request and response
 - Rename JSON field "query" to "queries" in api.Start struct.
 - Add CHANGELOG.md and hack/changelog.sh script to generate it.
