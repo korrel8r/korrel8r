@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
       - name: korrel8r
-        image: REPLACE_ME
+        image: "quay.io/korrel8r/korrel8r"
         command: ["korrel8r", "web", "--http", ":8080"]
         ports:
         - containerPort: 8080

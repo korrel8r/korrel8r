@@ -4,8 +4,9 @@ This is the project's commit log. It is placeholder until a more user-readable c
 
 This project uses semantic versioning (https://semver.org)
 
-## Version cmd/korrel8r/version.txt
+## Version v0.3.1
 
+- Release v0.3.1
 - Improved pkg/korrel8r documentation for developers of new domains.
 
 ## Version v0.3.0

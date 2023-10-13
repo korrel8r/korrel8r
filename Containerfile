@@ -10,8 +10,7 @@ RUN go mod download
 COPY cmd cmd
 COPY pkg pkg
 COPY internal internal
-COPY Makefile Makefile
-RUN CGO_ENABLED=0 GOOS=linux GOFLAGS=-mod=readonly make build
+RUN CGO_ENABLED=0 GOOS=linux GOFLAGS=-mod=readonly go build -tags netgo ./cmd/korrel8r
 RUN true # Commit build cache
 
 # TODO: using fedora image as a temporary workaround to install graphviz.

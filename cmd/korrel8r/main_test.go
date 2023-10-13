@@ -9,32 +9,17 @@ import (
 	"net/url"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"testing"
 	"time"
-
-	"sync"
 
 	"github.com/korrel8r/korrel8r/internal/pkg/test"
 	"github.com/korrel8r/korrel8r/pkg/api"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-var buildOnce sync.Once
-
-func command(t *testing.T, args ...string) *exec.Cmd {
-	buildOnce.Do(func() {
-		cmd := exec.Command("go", "build", "-o", "../../korrel8r")
-		cmd.Stderr = os.Stderr
-		test.Must(t, cmd.Run())
-	})
-	commonArgs := []string{"-v9", "-c", "testdata/korrel8r.yaml", "--panic"}
-	cmd := exec.Command("../../korrel8r", append(commonArgs, args...)...)
-	cmd.Stderr = os.Stderr
-	return cmd
-}
 
 func TestMain_list(t *testing.T) {
 	out, err := command(t, "list").Output()
@@ -97,4 +82,24 @@ func TestMain_web_api(t *testing.T) {
 	base := start(t)
 	u := func(path string) string { return base.String() + path }
 	assertDo(t, `[{"name":"k8s"},{"name":"log"},{"name":"alert"},{"name":"metric"},{"name":"mock","stores":[{"domain":"mock"}]}]`, "GET", u("/domains"), "")
+}
+
+func TestMain(m *testing.M) {
+	// Build korrel8r once to run in tests, much faster than using 'go run' for each test.
+	tmpDir = test.Must(os.MkdirTemp("", "korrel8r_test"))
+	defer func() { _ = os.RemoveAll(tmpDir) }()
+	cmd := exec.Command("go", "build", "-o", tmpDir)
+	cmd.Stderr = os.Stderr
+	test.PanicErr(cmd.Run())
+
+	m.Run()
+}
+
+var tmpDir string
+
+func command(t *testing.T, args ...string) *exec.Cmd {
+	commonArgs := []string{"-v9", "-c", "testdata/korrel8r.yaml", "--panic"}
+	cmd := exec.Command(filepath.Join(tmpDir, "korrel8r"), append(commonArgs, args...)...)
+	cmd.Stderr = os.Stderr
+	return cmd
 }
