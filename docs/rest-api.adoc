@@ -1,0 +1,390 @@
+== REST API for korrel8r
+
+=== Informations
+
+==== Version
+
+v1alpha1
+
+==== Contact
+
+https://github.com/korrel8r/korrel8r
+
+=== Content negotiation
+
+==== URI Schemes
+
+* http
+
+==== Consumes
+
+* application/json
+
+==== Produces
+
+* application/json
+
+=== All endpoints
+
+==== configuration
+
+[width="99%",cols="28%,25%,22%,25%",options="header",]
+|===
+|Method |URI |Name |Summary
+|GET |/api/v1alpha1/domains |link:#get-domains[get domains] |List all
+configured domains and stores.
+
+|GET |/api/v1alpha1/domains/\{domain}/classes
+|link:#get-domains-domain-classes[get domains domain classes] |Get class
+names and descriptions for the domain.
+|===
+
+==== search
+
+[width="99%",cols="28%,25%,22%,25%",options="header",]
+|===
+|Method |URI |Name |Summary
+|POST |/api/v1alpha1/graphs/goals |link:#post-graphs-goals[post graphs
+goals] |Create a correlation graph from start objects to goal queries.
+
+|POST |/api/v1alpha1/graphs/neighbours
+|link:#post-graphs-neighbours[post graphs neighbours] |Create a
+correlation graph of neighbours of a start object to a given depth.
+
+|POST |/api/v1alpha1/lists/goals |link:#post-lists-goals[post lists
+goals] |Generate a list of goal nodes related to a starting point.
+|===
+
+=== Paths
+
+==== [#get-domains]## List all configured domains and stores. (_GetDomains_)
+
+....
+GET /api/v1alpha1/domains
+....
+
+===== All responses
+
+[width="99%",cols="14%,16%,27%,^27%,16%",options="header",]
+|===
+|Code |Status |Description |Has headers |Schema
+|link:#get-domains-200[200] |OK |OK |
+|link:#get-domains-200-schema[schema]
+|===
+
+===== Responses
+
+====== [#get-domains-200]## 200 - OK
+
+Status: OK
+
+======= [#get-domains-200-schema]## Schema
+
+[][APIDomain](#api-domain)
+
+==== [#get-domains-domain-classes]## Get class names and descriptions for the domain. (_GetDomainsDomainClasses_)
+
+....
+GET /api/v1alpha1/domains/{domain}/classes
+....
+
+===== Parameters
+
+[width="100%",cols="13%,11%,8%,12%,15%,^11%,12%,18%",options="header",]
+|===
+|Name |Source |Type |Go type |Separator |Required |Default |Description
+|domain |`path` |string |`string` | |✓ | |Domain to get classes from.
+|===
+
+===== All responses
+
+[width="99%",cols="14%,16%,27%,^27%,16%",options="header",]
+|===
+|Code |Status |Description |Has headers |Schema
+|link:#get-domains-domain-classes-200[200] |OK |OK |
+|link:#get-domains-domain-classes-200-schema[schema]
+|===
+
+===== Responses
+
+====== [#get-domains-domain-classes-200]## 200 - OK
+
+Status: OK
+
+======= [#get-domains-domain-classes-200-schema]## Schema
+
+link:#api-classes[APIClasses]
+
+==== [#post-graphs-goals]## Create a correlation graph from start objects to goal queries. (_PostGraphsGoals_)
+
+....
+POST /api/v1alpha1/graphs/goals
+....
+
+===== Parameters
+
+[width="100%",cols="13%,11%,8%,12%,15%,^11%,12%,18%",options="header",]
+|===
+|Name |Source |Type |Go type |Separator |Required |Default |Description
+|withRules |`query` |boolean |`bool` | | | |include rules in graph edges
+
+|start |`body` |link:#api-goals-request[APIGoalsRequest]
+|`models.APIGoalsRequest` | |✓ | |search from start to goal classes
+|===
+
+===== All responses
+
+[width="99%",cols="14%,16%,27%,^27%,16%",options="header",]
+|===
+|Code |Status |Description |Has headers |Schema
+|link:#post-graphs-goals-200[200] |OK |OK |
+|link:#post-graphs-goals-200-schema[schema]
+|===
+
+===== Responses
+
+====== [#post-graphs-goals-200]## 200 - OK
+
+Status: OK
+
+======= [#post-graphs-goals-200-schema]## Schema
+
+link:#api-graph[APIGraph]
+
+==== [#post-graphs-neighbours]## Create a correlation graph of neighbours of a start object to a given depth. (_PostGraphsNeighbours_)
+
+....
+POST /api/v1alpha1/graphs/neighbours
+....
+
+===== Parameters
+
+[width="100%",cols="13%,11%,8%,12%,15%,^11%,12%,18%",options="header",]
+|===
+|Name |Source |Type |Go type |Separator |Required |Default |Description
+|withRules |`query` |boolean |`bool` | | | |include rules in graph edges
+
+|start |`body` |link:#api-neighbours-request[APINeighboursRequest]
+|`models.APINeighboursRequest` | |✓ | |search from neighbours
+|===
+
+===== All responses
+
+[width="99%",cols="14%,16%,27%,^27%,16%",options="header",]
+|===
+|Code |Status |Description |Has headers |Schema
+|link:#post-graphs-neighbours-200[200] |OK |OK |
+|link:#post-graphs-neighbours-200-schema[schema]
+|===
+
+===== Responses
+
+====== [#post-graphs-neighbours-200]## 200 - OK
+
+Status: OK
+
+======= [#post-graphs-neighbours-200-schema]## Schema
+
+link:#api-graph[APIGraph]
+
+==== [#post-lists-goals]## Generate a list of goal nodes related to a starting point. (_PostListsGoals_)
+
+....
+POST /api/v1alpha1/lists/goals
+....
+
+===== Parameters
+
+[width="100%",cols="13%,11%,8%,12%,15%,^11%,12%,18%",options="header",]
+|===
+|Name |Source |Type |Go type |Separator |Required |Default |Description
+|start |`body` |link:#api-goals-request[APIGoalsRequest]
+|`models.APIGoalsRequest` | |✓ | |search from start to goal classes
+|===
+
+===== All responses
+
+[width="99%",cols="14%,16%,27%,^27%,16%",options="header",]
+|===
+|Code |Status |Description |Has headers |Schema
+|link:#post-lists-goals-200[200] |OK |OK |
+|link:#post-lists-goals-200-schema[schema]
+|===
+
+===== Responses
+
+====== [#post-lists-goals-200]## 200 - OK
+
+Status: OK
+
+======= [#post-lists-goals-200-schema]## Schema
+
+[][APINode](#api-node)
+
+=== Models
+
+==== [#api-classes]## api.Classes
+
+____
+Classes maps class names to a short description.
+____
+
+link:#api-classes[APIClasses]
+
+==== [#api-domain]## api.Domain
+
+____
+Domain configuration information.
+____
+
+*Properties*
+
+[width="100%",cols="12%,10%,15%,^16%,11%,21%,15%",options="header",]
+|===
+|Name |Type |Go type |Required |Default |Description |Example
+|errors |[]string |`[]string` | | | |
+
+|name |string |`string` | | | |
+
+|stores |[][Korrel8rStoreConfig](#korrel8r-store-config)
+|`[]Korrel8rStoreConfig` | | | |
+|===
+
+==== [#api-edge]## api.Edge
+
+*Properties*
+
+[width="100%",cols="12%,10%,15%,^16%,11%,21%,15%",options="header",]
+|===
+|Name |Type |Go type |Required |Default |Description |Example
+|goal |string |`string` | | |Goal is the class name of the goal node.
+|`class.domain`
+
+|rules |[][APIRule](#api-rule) |`[]*APIRule` | | |Rules is the set of
+rules followed along this edge (optional). |
+
+|start |string |`string` | | |Start is the class name of the start node.
+|
+|===
+
+==== [#api-goals-request]## api.GoalsRequest
+
+____
+Starting point for a goals search.
+____
+
+*Properties*
+
+[width="100%",cols="12%,10%,15%,^16%,11%,21%,15%",options="header",]
+|===
+|Name |Type |Go type |Required |Default |Description |Example
+|goals |[]string |`[]string` | | |Goal classes for correlation.
+|`["class.domain"]`
+
+|start |link:#api-goals-request[APIGoalsRequest] |`APIGoalsRequest` | |
+|Start of correlation search. |
+|===
+
+==== [#api-graph]## api.Graph
+
+____
+Graph resulting from a correlation search.
+____
+
+*Properties*
+
+[cols=",,,^,,,",options="header",]
+|===
+|Name |Type |Go type |Required |Default |Description |Example
+|edges |[][APIEdge](#api-edge) |`[]*APIEdge` | | | |
+|nodes |[][APINode](#api-node) |`[]*APINode` | | | |
+|===
+
+==== [#api-neighbours-request]## api.NeighboursRequest
+
+____
+Starting point for a neighbours search.
+____
+
+*Properties*
+
+[width="100%",cols="12%,10%,15%,^16%,11%,21%,15%",options="header",]
+|===
+|Name |Type |Go type |Required |Default |Description |Example
+|depth |integer |`int64` | | |Max depth of neighbours graph. |
+
+|start |link:#api-neighbours-request[APINeighboursRequest]
+|`APINeighboursRequest` | | |Start of correlation search. |
+|===
+
+==== [#api-node]## api.Node
+
+*Properties*
+
+[width="100%",cols="12%,10%,15%,^16%,11%,21%,15%",options="header",]
+|===
+|Name |Type |Go type |Required |Default |Description |Example
+|class |string |`string` | | |Class is the full name of the class in
+``CLASS.DOMAIN'' form. |`class.domain`
+
+|count |integer |`int64` | | |Count of results found for this class,
+after de-duplication. |
+
+|queries |[][APIQueryCount](#api-query-count) |`[]*APIQueryCount` | |
+|Queries yielding results for this class. |
+|===
+
+==== [#api-query-count]## api.QueryCount
+
+____
+Query run during a correlation with a count of results found.
+____
+
+*Properties*
+
+[width="100%",cols="12%,10%,15%,^16%,11%,21%,15%",options="header",]
+|===
+|Name |Type |Go type |Required |Default |Description |Example
+|count |integer |`int64` | | |Count of results or -1 if the query was
+not executed. |
+
+|query |link:#interface[interface\{}] |`interface{}` | | |Query for
+correlation data. |
+|===
+
+==== [#api-rule]## api.Rule
+
+*Properties*
+
+[width="100%",cols="12%,10%,15%,^16%,11%,21%,15%",options="header",]
+|===
+|Name |Type |Go type |Required |Default |Description |Example
+|name |string |`string` | | |Name is an optional descriptive name. |
+
+|queries |[][APIQueryCount](#api-query-count) |`[]*APIQueryCount` | |
+|Queries generated while following this rule. |
+|===
+
+==== [#api-start]## api.Start
+
+____
+Starting point for correlation.
+____
+
+*Properties*
+
+[width="100%",cols="12%,10%,15%,^16%,11%,21%,15%",options="header",]
+|===
+|Name |Type |Go type |Required |Default |Description |Example
+|class |string |`string` | | |Class of starting objects |`class.domain`
+
+|objects |link:#interface[interface\{}] |`interface{}` | | |Objects in
+JSON form |
+
+|queries |link:#interface[interface\{}] |`interface{}` | | |Queries for
+starting objects |
+|===
+
+==== [#korrel8r-store-config]## korrel8r.StoreConfig
+
+link:#korrel8r-store-config[Korrel8rStoreConfig]

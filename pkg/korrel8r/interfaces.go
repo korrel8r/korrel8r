@@ -6,12 +6,12 @@
 // There are some optional interfaces that can also be implemented if they are relevant to the domain.
 //
 // Rules for a domain should be added to https://github.com/korrel8r/korrel8r/blob/etc/korrel8/rules.
-// Rules can express relationships within the new domain and link the new domain to existing domains and vice-versa.
+// Rules can express relationships within or between domains.
 //
 // Once a domain and rules are available, korrel8r can:
 // - apply rules linking the new domain with other domains.
 // - execute queries in the new domain while traversing search graphs.
-// - display correlated results in the new domain.
+// - display or return correlated results in the new domain.
 package korrel8r
 
 import (
@@ -19,7 +19,8 @@ import (
 	"time"
 )
 
-// Domain is a collection of classes describing signals in the same family.
+// Domain is the entry-point to a package implementing a korrel8r domain.
+// A korrel8r domain package must export a value called 'Domain' that implements this interface.
 //
 // Must be implemented by a korrel8r domain.
 type Domain interface {
@@ -38,8 +39,8 @@ type Domain interface {
 //
 // The motivation for separate classes is separate schema to decode objects.
 // For example, all metrics can be decoded into the same data structure, so there is only one metric class.
-// In the k8s domain there is a separate class for each kind of resource, because there is a separate Go type
-// to decode each kind of resource (Pod, Deployment etc.)
+// In the k8s domain there is a separate class for each Kind of resource,
+// because there is a separate Go type to decode each kind of resource (Pod, Deployment etc.)
 //
 // Must be implemented by a korrel8r domain.
 type Class interface {
@@ -121,11 +122,12 @@ type Constraint struct {
 type Appender interface{ Append(...Object) }
 
 // Rule describes a relationship for finding correlated objects.
+// Rule.Apply() generates correlated queries from start objects.
 //
 // Not required for a domain implementations: implemented by [github.com/korrel8r/korrel8r/pkg/rules]
 type Rule interface {
 	// Apply the rule to a start Object, return a Query for results.
-	// Optional Constraint may be included in the Query.
+	// Optional Constraint (may be nil) constrains the results of the query Query.
 	Apply(start Object, constraint *Constraint) (Query, error)
 	// Class of start object. If nil, this is a "wildcard" rule that can start from any class it applies to.
 	Start() Class

@@ -29,13 +29,17 @@ generate: $(VERSION_TXT) pkg/api/docs ## Run code generation, pre-build.
 	hack/copyright.sh
 	go mod tidy
 
-$(VERSION_TXT): force # Force because it depends on value of make variable $(TAG)
-	@if test "$$(cat $(VERSION_TXT))" != "$(TAG)"; then echo $(TAG) | tee $@; fi
+ifneq ($(TAG),$(file <$(VERSION_TXT))) # VERSION_TXT does not match TAG
+$(VERSION_TXT): force
+	echo $(TAG) | tee $@
+	sed 's/^:version:.*/:version: $(TAG)/' -i docs/index.adoc
+endif
 
 pkg/api/docs: $(shell find pkg/api pkg/korrel8r -name *.go)
 	swag init -q -g $(dir $@)/api.go -o $@
 	swag fmt $(dir $@)
-	swagger -q generate markdown -f $@/swagger.json doc --output doc/rest-api.md
+	swagger -q generate markdown -f pkg/api/docs/swagger.json --output $@/swagger.md
+	which pandoc > /dev/null && pandoc $@/swagger.md -o docs/rest-api.adoc
 
 lint: ## Run the linter to find and fix code style problems.
 	golangci-lint run --fix

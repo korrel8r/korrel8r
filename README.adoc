@@ -1,140 +1,30 @@
-== Korrel8r: Signal Correlation for Kubernetes and Beyond
-:doctype: book
-:keywords: correlation, observability, signal, kubernetes
-:copyright: This file is part of korrel8r, released under https://github.com/korrel8r/korrel8r/blob/main/LICENSE
-:toc:
+= Korrel8r: Signal Correlation for Kubernetes and Beyond
+:toc: preamble
 
 [abstract]
 Korrel8r is a correlation engine for observability signals and observable resources. +
-It can correlate across multiple domains, signals classes (schema), labelling and signal stores.
+It can correlate multiple domains, diverse signals, inconsistent labelling,  and varied data stores.
 
-CAUTION: Korrel8r is still in early development (version 0). +
+NOTE: link:docs/index.adoc[Read the Korrel8r Book] for more about what Korrel8r is and how to use it.
+
+CAUTION: Korrel8r is still in early development. +
 There are no compatibility guarantees between versions.
 
-== Overview
+== Getting Started
 
-Korrel8r is a correlation engine for _observability signals_ and _observed resources_.
-A _signal_ is a piece of observation data such as a log record, a trace record, a metric time-series, or an alert.
-A _resource_ is something to be observed, such as a Kubernetes Pod or Deployment.
+=== Cluster Set-up
 
-The goal of korrel8r is to express relationships between _objects_(resources or signals) in different _domains_ as _rules_,
-and to automatically navigate the resulting graph of rules and objects to find related data.
-
-For example: an alert is raised on a cluster console.
-Diagnosing the problem, requires logs from the containers that caused the alert.
-Korrel8rs can automatically follow the chain of relationships `alert -> deployment -> pod -> logs` and
-display the related logs directly.
-
-Given a _start_ object (e.g. an Alert in a cluster) and a _goal_ (e.g. _find related logs_)
-the engine can search for a chain of rules leading from start to  goal data.
-The engine can also display the _neighbourhood_ of all related data around some object of interest.
-
-The rules capture expert knowledge about troubleshooting in an executable form.
-The engine aims to provide common rule-base that can be re-used in many settings:
-as a service, in consoles, in command line tools, or offline data-processing systems.
-
-The goals of this project include:
-
-* Encode domain knowledge from SREs and other experts as re-usable rules.
-* Automate navigation from symptoms to data that helps diagnose causes.
-* Relate diverse data that is held in different types of storage with different schema.
-* Reduce multiple-step manual procedures to fewer clicks or queries.
-* Help tools that gather and analyze diagnostic data to focus on relevant information.
-
-There is a short link:demos/openshift-console-browser/video.mov[video demo]
-
-=== Key Concepts
-
-*Object* +
-An instance of a signal or resource.
-
-*Domain* +
-A family of related objects (signals and/or resources) with common storage and representation.
-
-Examples: `k8s` (Kubernetes resources), `alert` (Prometheus alerts), `metric` (Prometheus metrics), `log` (Loki logs), `trace` (OpenTelemetry traces)
-
-#FIXME: xref domain ref section#
-
-*Store* +
-A source of stored objects from a single Domain.
-
-Examples: Loki `log`, Prometheus `alert`, Kubernetes API server `k8s`.
-
-*Query* +
-A Query selects a set of objects from a store. The structure of a query depends on the domain of the store.
-
-*Class* +
-A subset of objects in a Domain with a common schema (the same field definitions).
-Classes are named <class-name>.<domain-name>
-
-Examples: `Pod.k8s`, `DaemonSet.k8s` `audit.log`
-
-*Rule* +
-
-A Rule applies to an object from a _start_ Class, and generates a query for a _goal_ Class.
-The start and goal of a rule can be in different domains (e.g. `Pod.k8s` → `application.log`) b
-
-Rules are the bridge between different domains: a rule definition is a _template_ that constructs
-a query for the _goal class_ by using the fields from an object of the _start class_.
-
-=== Conflicting Vocabularies
-
-Different signal and object domains may use different vocabularies to
-identify the same things. For example:
-
-* `k8s.pod.name` (trace)
-* `pod` or `pod_name` (metric)
-* `kubernetes.pod_name` (log)
-
-The correlation problem would be simpler if there was a single vocabulary to describe signal attributes.
-The https://opentelemetry.io/[Open Telemetry Project] aims to create such a standard vocabulary,
-but in the short to medium term we will have to contend with mixed-format signals.
-Korrel8r expresses rules in the native vocabulary of each domain and allowing rules to cross domains.
-
-=== Examples of Objects
-
-A Kubernetes cluster generates many types of _observable signal_, including:
-
-[width="100%",cols="21%,79%",options="header",]
-|===
-|Signal Type |Description
-|Metrics |Counts and measurements of system behaviour.
-
-|Alerts |Rules that fire when metrics cross important thresholds.
-
-|Logs |Application, infrastructure and audit logs from Pods and cluster
-nodes.
-
-|Kubernetes Events |Describe significant events in a cluster.
-
-|Traces |Nested execution spans describing distributed requests.
-
-|Network Events |TCP and IP level network information.
-|===
-
-A cluster also contains _resources_ that are not usually considered ``signals'',
-but that can be correlated with signals and other resources:
-
-[cols=",",options="header",]
-|===
-|Resource Type |Description
-|k8s resources |Spec and status information.
-|Run books |Problem solving guides associated with Alerts.
-|k8s probes |Information about resource state.
-|===
-
-Korrel8r does not distinguish between signals and resources, and refers to both as `objects`.
-
-== Quick Start
-
-Set up your cluster; there are scripts and examples to help in:
+There are scripts and examples to set up a cluster with logging, metrics and other observable signals:
 
 * link:hack/openshift/README.md[hack/openshift] for OpenShift clusters.
 * link:hack/kind/README.md[hack/kind] for Kind clusters.
 
 Log into your cluster as `kubeadmin` or other admin user.
 
-You can install and run korrel8r on your local host:
+=== Installing and running locally
+
+You can install and run korrel8r on your local host, it can observe your cluster from the outside.
+You need to be logged-in as `kubeadmin` to your cluster:
 
 [source,bash]
 ----
@@ -142,21 +32,36 @@ go install github.com/korrel8r/korrel8r/cmd/korrel8r@latest
 korrel8r web -http :8080 &
 ----
 
-Or you can deploy the latest release to your cluster in namespace `korrel8r`
+With korrel8r running, you can browse the following URLs:
+
+http://localhost:8080 - Interactive browser interface.
+* http://localhost:8080/api # REST API documentation
+
+
+=== Deploying on a cluster
+
+You can deploy the latest korrel8r image to your cluster in namespace `korrel8r`
+You need to be logged-in as `kubeadmin` to your cluster:
 
 [source,bash]
 ----
 kubectl apply -k https://github.com/korrel8r/korrel8r/config/base
 ----
 
-With korrel8r running, you can browse the following URLs:
+On an OpenShift cluster, you can create a route to korrel8r with `make route` to connect to korrel8r.
+On other types of cluster you can create a port mapping or ingress.
 
-If running on the local host: - http://localhost:8080 # Interactive
-browser interface. - http://localhost:8080/api # REST API documentation
+[source,bash]
+----
+URL=$(make root)
+----
 
-On an OpenShift cluster, you can create a route to korrel8r with `make route`, which will print a URL.
+Browse the following URLs:
 
-== Developer Start
+* `$URL`     # Interactive browser interface.
+* `$URL/api` # REST API documentation
+
+== Developers
 
 Browsable Go and REST API documentation (generated from source):
 - [REST API documentation](pkg/api/docs/swagger.md)

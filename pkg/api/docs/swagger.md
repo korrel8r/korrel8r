@@ -31,9 +31,8 @@ v1alpha1
 
 | Method  | URI     | Name   | Summary |
 |---------|---------|--------|---------|
-| GET | /api/v1alpha1/domains | [get domains](#get-domains) | List all korrel8r domain names. |
-| GET | /api/v1alpha1/stores | [get stores](#get-stores) | List of all store configurations objects. |
-| GET | /api/v1alpha1/stores/{domain} | [get stores domain](#get-stores-domain) | List of all store configurations objects for a specific domain. |
+| GET | /api/v1alpha1/domains | [get domains](#get-domains) | List all configured domains and stores. |
+| GET | /api/v1alpha1/domains/{domain}/classes | [get domains domain classes](#get-domains-domain-classes) | Get class names and descriptions for the domain. |
   
 
 
@@ -41,15 +40,15 @@ v1alpha1
 
 | Method  | URI     | Name   | Summary |
 |---------|---------|--------|---------|
-| POST | /api/v1alpha1/graphs/goals | [post graph goals](#post-graph-goals) | Create a correlation graph from start objects to goal queries. |
-| POST | /api/v1alpha1/graphs/neighbours | [post graph neighbours](#post-graph-neighbours) | Create a correlation graph of neighbours of a start object to a given depth. |
-| POST | /api/v1alpha1/lists/goals | [post list goals](#post-list-goals) | Generate a list of goal nodes related to a starting point. |
+| POST | /api/v1alpha1/graphs/goals | [post graphs goals](#post-graphs-goals) | Create a correlation graph from start objects to goal queries. |
+| POST | /api/v1alpha1/graphs/neighbours | [post graphs neighbours](#post-graphs-neighbours) | Create a correlation graph of neighbours of a start object to a given depth. |
+| POST | /api/v1alpha1/lists/goals | [post lists goals](#post-lists-goals) | Generate a list of goal nodes related to a starting point. |
   
 
 
 ## Paths
 
-### <span id="get-domains"></span> List all korrel8r domain names. (*GetDomains*)
+### <span id="get-domains"></span> List all configured domains and stores. (*GetDomains*)
 
 ```
 GET /api/v1alpha1/domains
@@ -70,61 +69,38 @@ Status: OK
    
   
 
-[]string
+[][APIDomain](#api-domain)
 
-### <span id="get-stores"></span> List of all store configurations objects. (*GetStores*)
-
-```
-GET /api/v1alpha1/stores
-```
-
-#### All responses
-| Code | Status | Description | Has headers | Schema |
-|------|--------|-------------|:-----------:|--------|
-| [200](#get-stores-200) | OK | OK |  | [schema](#get-stores-200-schema) |
-
-#### Responses
-
-
-##### <span id="get-stores-200"></span> 200 - OK
-Status: OK
-
-###### <span id="get-stores-200-schema"></span> Schema
-   
-  
-
-[][APIStoreConfig](#api-store-config)
-
-### <span id="get-stores-domain"></span> List of all store configurations objects for a specific domain. (*GetStoresDomain*)
+### <span id="get-domains-domain-classes"></span> Get class names and descriptions for the domain. (*GetDomainsDomainClasses*)
 
 ```
-GET /api/v1alpha1/stores/{domain}
+GET /api/v1alpha1/domains/{domain}/classes
 ```
 
 #### Parameters
 
 | Name | Source | Type | Go type | Separator | Required | Default | Description |
 |------|--------|------|---------|-----------| :------: |---------|-------------|
-| domain | `path` | string | `string` |  | ✓ |  | domain	name |
+| domain | `path` | string | `string` |  | ✓ |  | Domain to get classes from. |
 
 #### All responses
 | Code | Status | Description | Has headers | Schema |
 |------|--------|-------------|:-----------:|--------|
-| [200](#get-stores-domain-200) | OK | OK |  | [schema](#get-stores-domain-200-schema) |
+| [200](#get-domains-domain-classes-200) | OK | OK |  | [schema](#get-domains-domain-classes-200-schema) |
 
 #### Responses
 
 
-##### <span id="get-stores-domain-200"></span> 200 - OK
+##### <span id="get-domains-domain-classes-200"></span> 200 - OK
 Status: OK
 
-###### <span id="get-stores-domain-200-schema"></span> Schema
+###### <span id="get-domains-domain-classes-200-schema"></span> Schema
    
   
 
-[][APIStoreConfig](#api-store-config)
+[APIClasses](#api-classes)
 
-### <span id="post-graph-goals"></span> Create a correlation graph from start objects to goal queries. (*PostGraphGoals*)
+### <span id="post-graphs-goals"></span> Create a correlation graph from start objects to goal queries. (*PostGraphsGoals*)
 
 ```
 POST /api/v1alpha1/graphs/goals
@@ -140,21 +116,21 @@ POST /api/v1alpha1/graphs/goals
 #### All responses
 | Code | Status | Description | Has headers | Schema |
 |------|--------|-------------|:-----------:|--------|
-| [200](#post-graph-goals-200) | OK | OK |  | [schema](#post-graph-goals-200-schema) |
+| [200](#post-graphs-goals-200) | OK | OK |  | [schema](#post-graphs-goals-200-schema) |
 
 #### Responses
 
 
-##### <span id="post-graph-goals-200"></span> 200 - OK
+##### <span id="post-graphs-goals-200"></span> 200 - OK
 Status: OK
 
-###### <span id="post-graph-goals-200-schema"></span> Schema
+###### <span id="post-graphs-goals-200-schema"></span> Schema
    
   
 
 [APIGraph](#api-graph)
 
-### <span id="post-graph-neighbours"></span> Create a correlation graph of neighbours of a start object to a given depth. (*PostGraphNeighbours*)
+### <span id="post-graphs-neighbours"></span> Create a correlation graph of neighbours of a start object to a given depth. (*PostGraphsNeighbours*)
 
 ```
 POST /api/v1alpha1/graphs/neighbours
@@ -170,21 +146,21 @@ POST /api/v1alpha1/graphs/neighbours
 #### All responses
 | Code | Status | Description | Has headers | Schema |
 |------|--------|-------------|:-----------:|--------|
-| [200](#post-graph-neighbours-200) | OK | OK |  | [schema](#post-graph-neighbours-200-schema) |
+| [200](#post-graphs-neighbours-200) | OK | OK |  | [schema](#post-graphs-neighbours-200-schema) |
 
 #### Responses
 
 
-##### <span id="post-graph-neighbours-200"></span> 200 - OK
+##### <span id="post-graphs-neighbours-200"></span> 200 - OK
 Status: OK
 
-###### <span id="post-graph-neighbours-200-schema"></span> Schema
+###### <span id="post-graphs-neighbours-200-schema"></span> Schema
    
   
 
 [APIGraph](#api-graph)
 
-### <span id="post-list-goals"></span> Generate a list of goal nodes related to a starting point. (*PostListGoals*)
+### <span id="post-lists-goals"></span> Generate a list of goal nodes related to a starting point. (*PostListsGoals*)
 
 ```
 POST /api/v1alpha1/lists/goals
@@ -199,21 +175,51 @@ POST /api/v1alpha1/lists/goals
 #### All responses
 | Code | Status | Description | Has headers | Schema |
 |------|--------|-------------|:-----------:|--------|
-| [200](#post-list-goals-200) | OK | OK |  | [schema](#post-list-goals-200-schema) |
+| [200](#post-lists-goals-200) | OK | OK |  | [schema](#post-lists-goals-200-schema) |
 
 #### Responses
 
 
-##### <span id="post-list-goals-200"></span> 200 - OK
+##### <span id="post-lists-goals-200"></span> 200 - OK
 Status: OK
 
-###### <span id="post-list-goals-200-schema"></span> Schema
+###### <span id="post-lists-goals-200-schema"></span> Schema
    
   
 
 [][APINode](#api-node)
 
 ## Models
+
+### <span id="api-classes"></span> api.Classes
+
+
+> Classes maps class names to a short description.
+  
+
+
+
+[APIClasses](#api-classes)
+
+### <span id="api-domain"></span> api.Domain
+
+
+> Domain configuration information.
+  
+
+
+
+
+
+**Properties**
+
+| Name | Type | Go type | Required | Default | Description | Example |
+|------|------|---------|:--------:| ------- |-------------|---------|
+| errors | []string| `[]string` |  | |  |  |
+| name | string| `string` |  | |  |  |
+| stores | [][Korrel8rStoreConfig](#korrel8r-store-config)| `[]Korrel8rStoreConfig` |  | |  |  |
+
+
 
 ### <span id="api-edge"></span> api.Edge
 
@@ -302,19 +308,28 @@ Status: OK
 |------|------|---------|:--------:| ------- |-------------|---------|
 | class | string| `string` |  | | Class is the full name of the class in "CLASS.DOMAIN" form. | `class.domain` |
 | count | integer| `int64` |  | | Count of results found for this class, after de-duplication. |  |
-| queries | [APINode](#api-node)| `APINode` |  | | Queries yielding results for this class. | `{"querystring":10}` |
+| queries | [][APIQueryCount](#api-query-count)| `[]*APIQueryCount` |  | | Queries yielding results for this class. |  |
 
 
 
-### <span id="api-queries"></span> api.Queries
+### <span id="api-query-count"></span> api.QueryCount
 
 
-> A set of query strings with counts of results found by the query. Value of -1 means the query was not run so result count is unknown.
+> Query run during a correlation with a count of results found.
   
 
 
 
-[APIQueries](#api-queries)
+
+
+**Properties**
+
+| Name | Type | Go type | Required | Default | Description | Example |
+|------|------|---------|:--------:| ------- |-------------|---------|
+| count | integer| `int64` |  | | Count of results or -1 if the query was not executed. |  |
+| query | [interface{}](#interface)| `interface{}` |  | | Query for correlation data. |  |
+
+
 
 ### <span id="api-rule"></span> api.Rule
 
@@ -328,7 +343,7 @@ Status: OK
 | Name | Type | Go type | Required | Default | Description | Example |
 |------|------|---------|:--------:| ------- |-------------|---------|
 | name | string| `string` |  | | Name is an optional descriptive name. |  |
-| queries | [APIRule](#api-rule)| `APIRule` |  | | Queries generated while following this rule. | `{"querystring":10}` |
+| queries | [][APIQueryCount](#api-query-count)| `[]*APIQueryCount` |  | | Queries generated while following this rule. |  |
 
 
 
@@ -348,13 +363,13 @@ Status: OK
 |------|------|---------|:--------:| ------- |-------------|---------|
 | class | string| `string` |  | | Class of starting objects | `class.domain` |
 | objects | [interface{}](#interface)| `interface{}` |  | | Objects in JSON form |  |
-| query | []string| `[]string` |  | | Queries for starting objects |  |
+| queries | [interface{}](#interface)| `interface{}` |  | | Queries for starting objects |  |
 
 
 
-### <span id="api-store-config"></span> api.StoreConfig
+### <span id="korrel8r-store-config"></span> korrel8r.StoreConfig
 
 
   
 
-[APIStoreConfig](#api-store-config)
+[Korrel8rStoreConfig](#korrel8r-store-config)
