@@ -1,16 +1,16 @@
 = Korrel8r: Signal Correlation for Kubernetes and Beyond
 :toc: preamble
-
+:pages: https://korrel8r.github.io/korrel8r
 [abstract]
 Korrel8r is a correlation engine for observability signals and observable resources. +
 It can correlate multiple domains, diverse signals, inconsistent labelling,  and varied data stores.
 
-NOTE: link:docs/index.adoc[Read the Korrel8r Book] for more about what Korrel8r is and how to use it.
+NOTE: {pages}[Read the Korrel8r Book] for more about what Korrel8r is and how to use it.
 
 CAUTION: Korrel8r is still in early development. +
 There are no compatibility guarantees between versions.
 
-== Getting Started
+
 
 === Cluster Set-up
 
@@ -83,8 +83,3 @@ Set `IMG` to use a different repository:
 IMPORTANT: you need a _public_ image repository on a public service like `quay.io` or `docker.io`.
 Some services (including `quay.io`) make new repositories _private_ by default.
 You may need to log in and change settings so that your new repository is _public_.
-
-=== Tags and Releases
-
-The image tag is set from `git describe`, so there's always a simple relationship between git and image tags.
-Git describe computes a descriptive name based on the nearest tag and git hash - like `v0.1.2-3-g92f8e41`
