@@ -28,9 +28,6 @@ jobs:
     - name: Generate
       run: make tools generate
 
-    - name: Build
-      run: make build
-
     - name: Test
       run: go test ./...
 

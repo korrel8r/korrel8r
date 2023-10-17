@@ -12,7 +12,7 @@ LATEST=$(shell git describe --abbrev=0)
 ## IMG: Name of image to build or deploy, without version tag.
 IMG?=quay.io/korrel8r/korrel8r
 ## TAG: Version tag is a semantic version for releases, for work-in-progress tags are derived from git and are NOT semver.
-TAG?=WIP_$(shell git describe | cut -d- -f1,2)_$(shell git branch --show-current | sed 's/[^a-zA-Z_.-]/_/g')
+TAG?=$(shell echo WIP_$$(git describe | cut -d- -f1,2) || cat $(VERSION_TXT))
 ## OVERLAY: Name of kustomize directory in config/overlays to use for `make deploy`.
 OVERLAY?=dev
 ## IMGTOOL: May be podman or docker.
