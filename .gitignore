@@ -1,3 +1,5 @@
 /config/overlays/dev/
 /hack/kind/jsonnet/vendor/
 /test.cov
+/docs/index.html
+/docs/korrel8r.pdf

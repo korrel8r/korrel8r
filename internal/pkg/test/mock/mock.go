@@ -160,8 +160,17 @@ func NewQuery(c korrel8r.Class, results ...korrel8r.Object) korrel8r.Query {
 }
 func (q Query) Class() korrel8r.Class { return q.MClass }
 func (q Query) String() string {
-	b, _ := json.Marshal(query{q.MClass.Name(), q.MResults})
-	return string(b)
+	// Predictable ordering
+	var strs []string
+	for _, o := range q.MResults {
+		strs = append(strs, korrel8r.JSONString(o))
+	}
+	slices.Sort(strs)
+	var raw []korrel8r.Object
+	for _, s := range strs {
+		raw = append(raw, json.RawMessage(s))
+	}
+	return korrel8r.JSONString(query{Class: q.MClass.Name(), Results: raw})
 }
 
 // query for marshal/unmarhsal

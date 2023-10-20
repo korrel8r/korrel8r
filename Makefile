@@ -5,14 +5,12 @@ help: ## Print this help message.
 	@echo; echo  = Variables =
 	@grep -E '^## [A-Z_]+: ' Makefile | sed 's/^## \([A-Z_]*\): \(.*\)/\1#\2/' | column -s'#' -t
 
-LATEST=$(shell git describe --abbrev=0)
-
 # The following variables can be overridden by environment variables or on the `make` command line
 
 ## IMG: Name of image to build or deploy, without version tag.
 IMG?=quay.io/korrel8r/korrel8r
 ## TAG: Version tag is a semantic version for releases, for work-in-progress tags are derived from git and are NOT semver.
-TAG?=$(shell echo WIP_$$(git describe | cut -d- -f1,2) || cat $(VERSION_TXT))
+TAG?=$(shell echo WIP_$$(git describe 2>/dev/null | cut -d- -f1,2) || cat $(VERSION_TXT))
 ## OVERLAY: Name of kustomize directory in config/overlays to use for `make deploy`.
 OVERLAY?=dev
 ## IMGTOOL: May be podman or docker.
@@ -102,6 +100,7 @@ release: ## Create a local release tag and commit. TAG must be set to vX.Y.Z.
 	git tag $(TAG) -a -m "Release $(TAG)"
 	@echo -e "To push the release commit and images: \n   make release-push"
 
+LATEST=$(shell git describe --abbrev=0)
 release-push: ## Push latest release tag, branch and images.
 	@test -z "$(shell git status --porcelain)" || { git status -s; echo Workspace is not clean; exit 1; }
 	@test "$(shell git branch --show-current)" = main || { echo "Must release from branch main"; exit 1; }
