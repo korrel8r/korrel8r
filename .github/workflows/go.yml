@@ -25,9 +25,6 @@ jobs:
         path: ~/go
         key: cache-${{ runner.os }}-${{ runner.arch }}
 
-    - name: Generate
-      run: make tools generate
-
     - name: Test
       run: go test ./...
 

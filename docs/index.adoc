@@ -1,9 +1,10 @@
 = Korrel8r: Signal Correlation for Kubernetes and Beyond
 Korrel8r Project
 :doctype: book
+:revnumber: v0.3.1_dev_11
+:revdate: {docdate}
 :keywords: correlation, observability, signal, kubernetes
 :copyright: This file is part of korrel8r, released under https://github.com/korrel8r/korrel8r/blob/main/LICENSE
-:revdate: {docdate}
 :project: https://github.com/korrel8r/korrel8r
 :pages: https://korrel8r.github.io/korrel8r
 :toc: left
@@ -13,7 +14,7 @@ Korrel8r Project
 Korrel8r is a correlation engine for observability signals and observable resources. +
 It can correlate across multiple domains, diverse signal types, inconsistent labelling and varied data stores. +
 
-NOTE: Get the latest code from the {project}[Korrel8r project]. This guide is available online in {pages}[HTML] and {pages}/korrel8r.pdf[PDF] format.
+NOTE: Get the latest code from the {project}[Korrel8r project]. This guide is available online in {pages}[HTML] and {pages}/ebook.pdf[PDF ebook] format.
 
 == Overview
 
