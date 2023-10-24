@@ -4,7 +4,6 @@
 package test
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -144,18 +143,16 @@ func Must[T any](v T, err error) T { PanicErr(err); return v }
 
 // JSONString returns the JSON marshaled string from v, or the error message if marshal fails
 func JSONString(v any) string {
-	var s strings.Builder
-	e := json.NewEncoder(&s)
-	e.SetIndent("", "  ")
-	if err := e.Encode(v); err != nil {
+	w := &strings.Builder{}
+	if err := json.NewEncoder(w).Encode(v); err != nil {
 		return err.Error()
 	}
-	return s.String()
+	return w.String()
 }
 
 // JSONPretty returns an indented JSON string, or error message if marshal fails.
 func JSONPretty(v any) string {
-	w := &bytes.Buffer{}
+	w := &strings.Builder{}
 	e := json.NewEncoder(w)
 	e.SetIndent("", "  ")
 	if err := e.Encode(v); err != nil {

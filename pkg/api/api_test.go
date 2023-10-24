@@ -5,7 +5,6 @@ package api
 import (
 	"bytes"
 	"encoding/json"
-	"flag"
 	"fmt"
 	"io"
 	"net/http"
@@ -129,9 +128,6 @@ func ginEngine() *gin.Engine {
 		gin.SetMode(gin.ReleaseMode)
 	}
 	r := gin.New()
-	if flag.Lookup("test.v") != nil {
-		r.Use(gin.Logger())
-	}
 	return r
 }
 
@@ -165,16 +161,32 @@ func do(t *testing.T, a *testAPI, method, url string, body any) *httptest.Respon
 func normalize(v any) {
 	switch v := v.(type) {
 	case Graph:
-		slices.SortFunc(v.Nodes, func(a, b Node) int { return strings.Compare(a.Class, b.Class) })
-		for _, n := range v.Nodes {
-			slices.SortFunc(n.Queries, func(a, b QueryCount) int { return bytes.Compare(a.Query, b.Query) })
+		normalize(v.Nodes)
+		normalize(v.Edges)
+	case []Node:
+		slices.SortFunc(v, func(a, b Node) int { return strings.Compare(a.Class, b.Class) })
+		for _, n := range v {
+			normalize(n)
 		}
-		slices.SortFunc(v.Edges, Edge.Compare)
-		for _, e := range v.Edges {
-			for _, r := range e.Rules {
-				slices.SortFunc(r.Queries, func(a, b QueryCount) int { return bytes.Compare(a.Query, b.Query) })
+	case []Edge:
+		slices.SortFunc(v, func(a, b Edge) int {
+			if n := strings.Compare(a.Start, b.Start); n != 0 {
+				return n
+			} else {
+				return strings.Compare(a.Goal, b.Goal)
 			}
+		})
+		for _, e := range v {
+			normalize(e)
 		}
+	case Node:
+		normalize(v.Queries)
+	case Edge:
+		for _, r := range v.Rules {
+			normalize(r.Queries)
+		}
+	case []QueryCount:
+		slices.SortFunc(v, func(a, b QueryCount) int { return bytes.Compare(a.Query, b.Query) })
 	}
 }
 
@@ -186,7 +198,7 @@ func assertDo[T any](t *testing.T, a *testAPI, method, url string, req any, code
 		if assert.NoError(t, json.Unmarshal(w.Body.Bytes(), &got), "body: %v", w.Body.String()) {
 			normalize(want)
 			normalize(got)
-			if assert.Equal(t, test.JSONString(want), test.JSONString(got)) {
+			if assert.Equal(t, test.JSONPretty(want), test.JSONPretty(got)) {
 				return
 			}
 		}

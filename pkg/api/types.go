@@ -4,7 +4,6 @@ package api
 
 import (
 	"encoding/json"
-	"strings"
 
 	"github.com/korrel8r/korrel8r/pkg/graph"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
@@ -87,13 +86,6 @@ type Edge struct {
 	Goal string `json:"goal" example:"class.domain"`
 	// Rules is the set of rules followed along this edge (optional).
 	Rules []Rule `json:"rules,omitempty"`
-}
-
-func (a Edge) Compare(b Edge) int {
-	if a.Start != b.Start {
-		return strings.Compare(a.Start, b.Start)
-	}
-	return strings.Compare(a.Goal, b.Goal)
 }
 
 // @description	Graph resulting from a correlation search.

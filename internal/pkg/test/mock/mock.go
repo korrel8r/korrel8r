@@ -158,20 +158,9 @@ type Query struct {
 func NewQuery(c korrel8r.Class, results ...korrel8r.Object) korrel8r.Query {
 	return Query{MClass: c, MResults: results}
 }
-func (q Query) Class() korrel8r.Class { return q.MClass }
-func (q Query) String() string {
-	// Predictable ordering
-	var strs []string
-	for _, o := range q.MResults {
-		strs = append(strs, korrel8r.JSONString(o))
-	}
-	slices.Sort(strs)
-	var raw []korrel8r.Object
-	for _, s := range strs {
-		raw = append(raw, json.RawMessage(s))
-	}
-	return korrel8r.JSONString(query{Class: q.MClass.Name(), Results: raw})
-}
+func (q Query) Class() korrel8r.Class        { return q.MClass }
+func (q Query) MarshalJSON() ([]byte, error) { return json.Marshal(query{q.MClass.Name(), q.MResults}) }
+func (q Query) String() string               { return korrel8r.JSONString(q) }
 
 // query for marshal/unmarhsal
 type query struct {
