@@ -61,7 +61,7 @@ run: $(VERSION_TXT) ## Run `korrel8r web` from source using configuration in ./e
 
 IMAGE=$(IMG):$(TAG)
 image: $(VERSION_TXT) ## Build and push image. IMG must be set to a writable image repository.
-	$(IMGTOOL) build --tag=$(IMAGE) .
+	$(IMGTOOL) build -q --tag=$(IMAGE) .
 	$(IMGTOOL) push -q $(IMAGE)
 	@echo $(IMAGE)
 
@@ -108,6 +108,6 @@ release-push: ## Push release tag and image.
 	$(CHECK_RELEASE)
 	git push origin main --follow-tags
 	$(MAKE) --no-print-directory image
-	$(IMGTOOL) push "$(IMAGE)" "$(IMG):latest"
+	$(IMGTOOL) push -q "$(IMAGE)" "$(IMG):latest"
 
 CHECK_RELEASE=@echo "$(VERSION)" | grep -qE "^v[0-9]+\.[0-9]+\.[0-9]+$$" || { echo "VERSION=$(VERSION) must be semantic version like vX.Y.Z"; exit 1; }
