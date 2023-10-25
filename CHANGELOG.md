@@ -4,6 +4,21 @@ This is the project's commit log. It is placeholder until a more user-readable c
 
 This project uses semantic versioning (https://semver.org)
 
+## Version v0.3.2
+
+- Fix bug: Engine.Class parsing k8s classes for core kinds.
+- Publish docs to github pages.
+- Fix normalization in api_test.go
+- Fix ordering issue in tests mock.Query
+- Generate HTML and PDF documentation.
+- Create jekyll-gh-pages.yml
+- Generate HTML and PDF documentation.
+- Documentation improvements.
+- Better documentation, easier deployment.
+- Engine "template" command mode for doc generation
+- Add String() methods to Domain types for readable messages.
+- Deploy minio with "make all" in hack/openshift
+
 ## Version v0.3.1
 
 - Release v0.3.1
