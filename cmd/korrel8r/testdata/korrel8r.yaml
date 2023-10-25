@@ -12,3 +12,14 @@ rules:
     result:
       query: |-
         {"class":"bar","results":["z"]}
+
+  - name: barfoo
+    start:
+      domain: mock
+      classes: [bar]
+    goal:
+      domain: mock
+      classes: [foo]
+    result:
+      query: |-
+        {"class":"foo,"results":["y"]}

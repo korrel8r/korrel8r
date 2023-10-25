@@ -47,16 +47,29 @@ func (d domain) Store(sc korrel8r.StoreConfig) (s korrel8r.Store, err error) {
 	return NewStore(client, cfg)
 }
 
-// Class name in one of the forms: Kind,  Kind.Group,  Kind.Version.Group.
-// Group must be included, missing group implies core group.
+// Class name in one of the forms:
+// Kind.Group or Kind.Version.Group when Group != "",
+// Kind or Kind.Version when Group=="".
 func (d domain) Class(name string) korrel8r.Class {
-	gvk, gk := schema.ParseKindArg(name)
-	if gvk != nil && Scheme.Recognizes(*gvk) { // Direct hit
-		return Class(*gvk)
-	} else {
-		if vs := Scheme.VersionsForGroupKind(gk); len(vs) > 0 {
-			return Class(gk.WithVersion(vs[0].Version))
-		}
+	var gvk schema.GroupVersionKind
+	s := ""
+	ok := false
+	if gvk.Kind, s, ok = strings.Cut(name, "."); !ok { // Just Kind
+		return classForGK(gvk.GroupKind())
+	}
+	if gvk.Version, gvk.Group = s, ""; Scheme.Recognizes(gvk) { // Kind.Version
+		return Class(gvk)
+	}
+	if gvk.Version, gvk.Group, ok = strings.Cut(s, "."); ok && Scheme.Recognizes(gvk) { // s == Kind.Version.Group
+		return Class(gvk)
+	}
+	gvk.Version, gvk.Group = "", s // s == Kind.Group
+	return classForGK(gvk.GroupKind())
+}
+
+func classForGK(gk schema.GroupKind) korrel8r.Class {
+	if versions := Scheme.VersionsForGroupKind(gk); len(versions) > 0 {
+		return Class(gk.WithVersion(versions[0].Version))
 	}
 	return nil
 }

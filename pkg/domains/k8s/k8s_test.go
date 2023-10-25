@@ -35,8 +35,8 @@ func TestDomain_Class(t *testing.T) {
 		{"Namespace.v1.", ClassOf(&corev1.Namespace{})},       // Kind, version and group
 		{"Pod", ClassOf(&corev1.Pod{})},                       // Kind only
 		{"Pod.", ClassOf(&corev1.Pod{})},                      // Kind and group (core group is named "")
-		{"Pod.v1.", ClassOf(&corev1.Pod{})},                   // Kind, version and group.
-		{"Deployment.apps", ClassOf(&appsv1.Deployment{})},    // Kind only
+		{"Pod.v1", ClassOf(&corev1.Pod{})},                    // Kind, version, implied core group.
+		{"Pod.v1.", ClassOf(&corev1.Pod{})},                   // Kind, version, ""
 		{"Deployment.apps", ClassOf(&appsv1.Deployment{})},    // Kind and group
 		{"Deployment.v1.apps", ClassOf(&appsv1.Deployment{})}, // Kind, version and group
 	} {

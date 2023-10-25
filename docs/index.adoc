@@ -1,7 +1,7 @@
 = Korrel8r: Signal Correlation for Kubernetes and Beyond
 Korrel8r Project
 :doctype: book
-:revnumber: v0.3.1_dev_11
+:revnumber: v0.3.1_dev_12
 :revdate: {docdate}
 :keywords: correlation, observability, signal, kubernetes
 :copyright: This file is part of korrel8r, released under https://github.com/korrel8r/korrel8r/blob/main/LICENSE
