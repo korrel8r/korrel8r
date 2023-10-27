@@ -1,4 +1,3 @@
 /config/overlays/dev/
 /hack/kind/jsonnet/vendor/
-/test.cov
 /_site

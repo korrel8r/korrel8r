@@ -18,7 +18,12 @@ const docTemplate = `{
         "description": "{{escape .Description}}",
         "title": "{{.Title}}",
         "contact": {
+            "name": "Project Korrel8r",
             "url": "https://github.com/korrel8r/korrel8r"
+        },
+        "license": {
+            "name": "Apache 2.0",
+            "url": "https://github.com/korrel8r/korrel8r/blob/main/LICENSE"
         },
         "version": "{{.Version}}"
     },
@@ -361,8 +366,8 @@ var SwaggerInfo = &swag.Spec{
 	Host:             "",
 	BasePath:         "/api/v1alpha1",
 	Schemes:          []string{},
-	Title:            "REST API for korrel8r",
-	Description:      "",
+	Title:            "Korrel8r API",
+	Description:      "REST API for the Korrel8r correlation engine.",
 	InfoInstanceName: "swagger",
 	SwaggerTemplate:  docTemplate,
 	LeftDelim:        "{{",

@@ -1,0 +1,49 @@
+
+== alert
+
+Domain alert implements korrel8r interfaces on prometheus alerts.
+
+== k8s
+
+Domain k8s implements Kubernetes resources stored in a Kube API server.
+
+=== Class
+
+A k8s class corresponds to a kind of Kubernetes resource.
+
+The class name is `KIND.VERSION.GROUP.k8s`, VERSION can be omitted if there is no ambiguity. Example class names: `Pod.k8s`, `Pod.v1.k8s`, `Deployment.v1.apps.k8s`, `Deployment.apps.k8s`
+
+=== Object
+
+A resource instance is represented by a Go struct. These are the built-in types provided by `k8s.io/client-go/api` and the Kube-generated CRD struct types. Rule templates should use the Go Field names (capitalized) rather than the JSON field names (lowercase), and can expect field values to have the same Go types as the client-go or generated classes.
+
+=== Query
+
+Queries are the JSON-serialized form of this struct:
+
+----
+type Query struct {
+	// GroupVersionKind is the Kind the resource to find (required)
+	schema.GroupVersionKind
+	// NamespacedName restricts the search to objects matching the namespace and name (optional).
+	types.NamespacedName	`json:",omitempty"`
+	// Labels restricts the search to objects with matching label values (optional)
+	Labels	client.MatchingLabels	`json:",omitempty"`
+	// Fields restricts the search to objects with matching field values (optional)
+	Fields	client.MatchingFields	`json:",omitempty"`
+}
+----
+
+=== Store
+
+k8s stores connects to the current logged-in Kubernetes cluster, no other configuration is needed.
+
+== log
+
+Domain log is a domain for openshift-logging logs stored in Loki or LokiStack
+
+== metric
+
+Domain metric is the domain of prometheus metrics.
+
+FIXME metrics are only usable as goals

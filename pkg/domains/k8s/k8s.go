@@ -1,6 +1,28 @@
 // Copyright: This file is part of korrel8r, released under https://github.com/korrel8r/korrel8r/blob/main/LICENSE
 
-// package k8s is a Kubernetes implementation of the korrel8r interfaces
+// package k8s implements Kubernetes resources stored in a Kube API server.
+//
+// # Class
+//
+// A k8s class corresponds to a kind of Kubernetes resource.
+//
+// The class name is `KIND.VERSION.GROUP.k8s`, VERSION can be omitted if there is no ambiguity.
+// Example class names: `Pod.k8s`, `Pod.v1.k8s`, `Deployment.v1.apps.k8s`, `Deployment.apps.k8s`
+//
+// # Object
+//
+// A resource instance is represented by a Go struct.
+// These are the built-in types provided by `k8s.io/client-go/api` and the Kube-generated CRD struct types.
+// Rule templates should use the Go Field names (capitalized) rather than the JSON field names (lowercase),
+// and can expect field values to have the same Go types as the client-go or generated classes.
+//
+// # Query
+//
+// Queries are the JSON-serialized form of this struct: [Query]
+//
+// # Store
+//
+// k8s stores connects to the current logged-in Kubernetes cluster, no other configuration is needed.
 package k8s
 
 import (
@@ -24,16 +46,45 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 )
 
+// Domain for Kubernetes resources stored in a Kube API server.
+var Domain = domain{}
+
+// Class represents a kind of kubernetes resource.
+type Class schema.GroupVersionKind
+
+// Object is a Go struct type representing a serialized Kubernetes resource.
+type Object client.Object
+
+// Query represents a Kubernetes resource query.
+// FIXME JSON examples?
+type Query struct {
+	// GroupVersionKind is the Kind the resource to find (required)
+	schema.GroupVersionKind
+	// NamespacedName restricts the search to objects matching the namespace and name (optional).
+	types.NamespacedName `json:",omitempty"`
+	// Labels restricts the search to objects with matching label values (optional)
+	Labels client.MatchingLabels `json:",omitempty"`
+	// Fields restricts the search to objects with matching field values (optional)
+	Fields client.MatchingFields `json:",omitempty"`
+}
+
+// Store implements a korrel8r.Store using the kubernetes API server.
+type Store struct {
+	c      client.Client
+	base   *url.URL
+	groups []schema.GroupVersion
+}
+
+// Validate interfaces
 var (
 	_ korrel8r.Domain   = Domain
 	_ korrel8r.Class    = Class{}
+	_ korrel8r.Object   = Object(nil)
 	_ korrel8r.Query    = &Query{}
 	_ console.Converter = &Store{}
 )
 
-// Domain is a korrel8r.Domain.
-var Domain = domain{}
-
+// domain implementation
 type domain struct{}
 
 func (d domain) Name() string        { return "k8s" }
@@ -47,9 +98,6 @@ func (d domain) Store(sc korrel8r.StoreConfig) (s korrel8r.Store, err error) {
 	return NewStore(client, cfg)
 }
 
-// Class name in one of the forms:
-// Kind.Group or Kind.Version.Group when Group != "",
-// Kind or Kind.Version when Group=="".
 func (d domain) Class(name string) korrel8r.Class {
 	var gvk schema.GroupVersionKind
 	s := ""
@@ -83,15 +131,16 @@ func (d domain) Classes() (classes []korrel8r.Class) {
 
 func (domain) Query(s string) (korrel8r.Query, error) { return impl.Query(s, &Query{}) }
 
-// Class implements korrel8r.Class
-type Class schema.GroupVersionKind
-
 // ClassOf returns the Class of o, which must be a pointer to a typed API resource struct.
-func ClassOf(o client.Object) Class {
+func ClassOf(o client.Object) Class { return Class(GroupVersionKind(o)) }
+
+// GroupVersionKind returns the GVK of o, which must be a pointer to a typed API resource struct.
+// Returns empty if o is not a known resource type.
+func GroupVersionKind(o client.Object) schema.GroupVersionKind {
 	if gvks, _, err := Scheme.ObjectKinds(o); err == nil {
-		return Class(gvks[0])
+		return gvks[0]
 	}
-	return Class{}
+	return schema.GroupVersionKind{}
 }
 
 func (c Class) ID(o korrel8r.Object) any {
@@ -131,15 +180,6 @@ func (c Class) Description() string {
 
 func (c Class) GVK() schema.GroupVersionKind { return schema.GroupVersionKind(c) }
 
-type Object client.Object
-
-type Query struct {
-	schema.GroupVersionKind                       // `json:",omitempty"`
-	types.NamespacedName                          // `json:",omitempty"`
-	Labels                  client.MatchingLabels // `json:",omitempty"`
-	Fields                  client.MatchingFields // `json:",omitempty"`
-}
-
 func NewQuery(c Class, namespace, name string, labels, fields map[string]string) *Query {
 	return &Query{
 		GroupVersionKind: c.GVK(),
@@ -152,14 +192,7 @@ func NewQuery(c Class, namespace, name string, labels, fields map[string]string)
 func (q *Query) Class() korrel8r.Class { return Class(q.GroupVersionKind) }
 func (q *Query) String() string        { return korrel8r.JSONString(q) }
 
-// Store implements the korrel8r.Store interface as a k8s API client.
-type Store struct {
-	c      client.Client
-	base   *url.URL
-	groups []schema.GroupVersion
-}
-
-// NewStore creates a new store
+// NewStore creates a new k8s store.
 func NewStore(c client.Client, cfg *rest.Config) (korrel8r.Store, error) {
 	host := cfg.Host
 	if host == "" {

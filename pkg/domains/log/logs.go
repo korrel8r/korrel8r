@@ -32,6 +32,12 @@ var (
 	_ korrel8r.Previewer = Class("")
 )
 
+// Domain for log records produced by openshift-logging.
+//
+// There are several possible log store configurations:
+// - Default LokiStack store on current Openshift cluster: `{}`
+// - Remote LokiStack: `{ "lokiStack": "https://url-of-lokistack"}`
+// - Plain Loki store: `{ "loki": "https://url-of-loki"}`
 var Domain = domain{}
 
 type domain struct{}

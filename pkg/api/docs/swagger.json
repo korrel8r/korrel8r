@@ -7,9 +7,15 @@
     ],
     "swagger": "2.0",
     "info": {
-        "title": "REST API for korrel8r",
+        "description": "REST API for the Korrel8r correlation engine.",
+        "title": "Korrel8r API",
         "contact": {
+            "name": "Project Korrel8r",
             "url": "https://github.com/korrel8r/korrel8r"
+        },
+        "license": {
+            "name": "Apache 2.0",
+            "url": "https://github.com/korrel8r/korrel8r/blob/main/LICENSE"
         },
         "version": "v1alpha1"
     },

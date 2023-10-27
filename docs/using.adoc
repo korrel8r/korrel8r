@@ -1,0 +1,22 @@
+= Using Korrel8r
+
+Korrel8r connects to multiple data _stores_ such as loki for logs, prometheus for metrics, and the kube-API server for cluster resources.
+It provides a REST API for running correlation _queries_ using a set of _rules_ that relate object within and between stores.
+Korrel8r can be run as a plain executable, outside the cluster, and connect to the API server and stores inside the cluster.
+It can also run as a deployed service inside the cluster.
+
+== Running the Executable
+
+#FIXME - move from README, use default config.
+
+== Deploying the Service
+
+#FIXME - move from README, use default config.
+
+== Configuration
+
+#FIXME doc in config pkg close to code. Stores and rules. Mention default config, show examples.
+
+== REST API
+
+#FIXME - link to reference. Curl examples of API, use swagger UI.

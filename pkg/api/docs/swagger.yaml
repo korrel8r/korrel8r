@@ -130,8 +130,13 @@ definitions:
     type: object
 info:
   contact:
+    name: Project Korrel8r
     url: https://github.com/korrel8r/korrel8r
-  title: REST API for korrel8r
+  description: REST API for the Korrel8r correlation engine.
+  license:
+    name: Apache 2.0
+    url: https://github.com/korrel8r/korrel8r/blob/main/LICENSE
+  title: Korrel8r API
   version: v1alpha1
 paths:
   /domains:

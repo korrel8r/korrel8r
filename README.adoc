@@ -1,16 +1,16 @@
 = Korrel8r: Signal Correlation for Kubernetes and Beyond
 :toc: preamble
 :pages: https://korrel8r.github.io/korrel8r
+
 [abstract]
 Korrel8r is a correlation engine for observability signals and observable resources. +
 It can correlate multiple domains, diverse signals, inconsistent labelling,  and varied data stores.
 
+CAUTION: Korrel8r is still in early development. There are no compatibility guarantees between versions.
+
 NOTE: {pages}[Read the Korrel8r Documentation] for more about what Korrel8r is and how to use it.
 
-CAUTION: Korrel8r is still in early development. +
-There are no compatibility guarantees between versions.
-
-
+There is a short link:demos/openshift-console-browser/video.mov[demo video]
 
 === Cluster Set-up
 

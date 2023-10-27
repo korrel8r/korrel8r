@@ -2,14 +2,16 @@
 
 // Package api implements a REST API for korrel8r.
 //
-// See generated doc at https://github.com/korrel8r/korrel8r/blob/main/pkg/api/docs/swagger.md
-//
 // Note: Comments starting with "@" are used to generate a swagger spec via 'go generate'.
 // Static swagger doc is available at ./docs/swagger.md.
 // dynamic HTML doc is available from korrel8r at the "/api" endpoint.
 //
-//	@title			REST API for korrel8r
+//	@title			Korrel8r API
+//	@description	REST API for the Korrel8r correlation engine.
 //	@version		v1alpha1
+//	@license.name	Apache 2.0
+//	@license.url	https://github.com/korrel8r/korrel8r/blob/main/LICENSE
+//	@contact.name	Project Korrel8r
 //	@contact.url	https://github.com/korrel8r/korrel8r
 //	@basePath		/api/v1alpha1
 //	@accept			json

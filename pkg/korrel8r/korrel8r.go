@@ -52,7 +52,7 @@ type Class interface {
 
 // Store is a source of signal data that can be queried.
 //
-// Must be implemented by a korrel8r domain.
+// FIXME store config.
 type Store interface {
 	// Domain of the Store
 	Domain() Domain

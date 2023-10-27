@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - run: make _site
+      - run: make _site SITE_DEPS=
       - uses: actions/upload-pages-artifact@v2
 
   deploy:
