@@ -88,41 +88,52 @@ barfoo [bar.mock]->[foo.mock]  mock/bar.mock  mock/foo.mock`,
 	}
 }
 
-func start(t *testing.T) *url.URL {
+func startServer(t *testing.T, h *http.Client, proto string, args ...string) *url.URL {
 	t.Helper()
 	port, err := test.ListenPort()
 	require.NoError(t, err)
 	addr := net.JoinHostPort("localhost", strconv.Itoa(port))
-	cmd := command(t, "web", "--http", addr)
+	cmd := command(t, append([]string{"web", "--" + proto, addr}, args...)...)
 	cmd.Stderr = os.Stderr
 	require.NoError(t, cmd.Start())
-	// Wait till HTTP server is available.
+	// Wait till server is available.
 	require.Eventually(t, func() bool {
-		_, err = http.Get("http://" + addr)
+		_, err = h.Get(proto + "://" + addr)
 		return err == nil
 	}, 10*time.Second, time.Second/10, "timeout error: %v", err)
 	t.Cleanup(func() {
 		_ = cmd.Process.Kill()
 	})
-	return &url.URL{Scheme: "http", Host: addr, Path: api.BasePath}
+	return &url.URL{Scheme: proto, Host: addr, Path: api.BasePath}
 }
 
-func assertDo(t *testing.T, want, method, url, body string) {
+func assertDo(t *testing.T, h *http.Client, want, method, url, body string) {
 	t.Helper()
 	req, err := http.NewRequest(method, url, strings.NewReader(body))
 	require.NoError(t, err)
-	res, err := http.DefaultClient.Do(req)
+	res, err := h.Do(req)
 	require.NoError(t, err)
 	b, err := io.ReadAll(res.Body)
 	require.NoError(t, err)
 	assert.JSONEq(t, want, string(b))
 }
 
-func TestMain_web_api(t *testing.T) {
+func TestMain_server_insecure(t *testing.T) {
 	test.SkipIfNoCluster(t)
-	base := start(t)
-	u := func(path string) string { return base.String() + path }
-	assertDo(t, `[{"name":"k8s"},{"name":"log"},{"name":"alert"},{"name":"metric"},{"name":"mock","stores":[{"domain":"mock"}]}]`, "GET", u("/domains"), "")
+	t.Run("insecure", func(t *testing.T) {
+		u := startServer(t, http.DefaultClient, "http").String() + "/domains"
+		assertDo(t, http.DefaultClient, `[{"name":"k8s"},{"name":"log"},{"name":"alert"},{"name":"metric"},{"name":"mock","stores":[{"domain":"mock"}]}]`, "GET", u, "")
+	})
+}
+
+func TestMain_server_secure(t *testing.T) {
+	test.SkipIfNoCluster(t)
+	_, clientTLS := certSetup(tmpDir)
+	h := &http.Client{Transport: &http.Transport{TLSClientConfig: clientTLS}}
+	t.Run("secure", func(t *testing.T) {
+		u := startServer(t, h, "https", "--cert", filepath.Join(tmpDir, "tls.crt"), "--key", filepath.Join(tmpDir, "tls.key")).String() + "/domains"
+		assertDo(t, h, `[{"name":"k8s"},{"name":"log"},{"name":"alert"},{"name":"metric"},{"name":"mock","stores":[{"domain":"mock"}]}]`, "GET", u, "")
+	})
 }
 
 func TestMain(m *testing.M) {

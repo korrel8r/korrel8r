@@ -13,10 +13,18 @@ spec:
         app.kubernetes.io/name: korrel8r
         app.kubernetes.io/component: engine
     spec:
+      volumes:
+        - name: secrets
+          secret:
+            secretName: korrel8r
       containers:
       - name: korrel8r
         image: "quay.io/korrel8r/korrel8r"
-        command: ["korrel8r", "web", "--http", ":8080"]
+        command: ["korrel8r", "web", "--https", ":8443", "--cert", "/etc/secrets/tls.crt", "--key", "/etc/secrets/tls.key"]
+        volumeMounts:
+          - name: secrets
+            readOnly: true
+            mountPath: /etc/secrets
         ports:
         - containerPort: 8080
         securityContext:
