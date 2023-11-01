@@ -53,7 +53,8 @@ On other types of cluster you can create a port mapping or ingress.
 
 [source,bash]
 ----
-URL=$(make root)
+make route
+URL=$(make route-url)
 ----
 
 Browse the following URLs:

@@ -4,8 +4,16 @@ This is the project's commit log. It is placeholder until a more user-readable c
 
 This project uses semantic versioning (https://semver.org)
 
+## Version v0.4.0
+
+- Fix #65: HTTPs flags to korrel8r server.
+- Upgrade dependencies for dependabot alert.
+- Asciidoc generation from domain doc comments and REST API
+- Call podman with --quiet flag from Makefile
+
 ## Version v0.3.2
 
+- Release v0.3.2
 - Fix bug: Engine.Class parsing k8s classes for core kinds.
 - Publish docs to github pages.
 - Fix normalization in api_test.go
