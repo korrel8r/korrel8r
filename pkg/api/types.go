@@ -25,7 +25,7 @@ type Classes map[string]string
 // @description	Starting point for correlation.
 type Start struct {
 	// Class of starting objects
-	Class string `json:"class" example:"class.domain"`
+	Class string `json:"class" example:"domain:class"`
 	// Queries for starting objects
 	Queries []json.RawMessage `json:"queries,omitempty" swaggertype:"object"`
 	// Objects in JSON form
@@ -35,7 +35,7 @@ type Start struct {
 // @description	Starting point for a goals search.
 type GoalsRequest struct {
 	Start Start    `json:"start"`                                  // Start of correlation search.
-	Goals []string `json:"goals,omitempty" example:"class.domain"` // Goal classes for correlation.
+	Goals []string `json:"goals,omitempty" example:"domain:class"` // Goal classes for correlation.
 }
 
 // @description	Starting point for a neighbours search.
@@ -70,8 +70,8 @@ type Rule struct {
 
 // Node in the result graph, contains results for a single class.
 type Node struct {
-	// Class is the full name of the class in "CLASS.DOMAIN" form.
-	Class string `json:"class" example:"class.domain"`
+	// Class is the full class name in "DOMAIN:CLASS" form.
+	Class string `json:"class" example:"domain:class"`
 	// Queries yielding results for this class.
 	Queries []QueryCount `json:"queries,omitempty"`
 	// Count of results found for this class, after de-duplication.
@@ -83,7 +83,7 @@ type Edge struct {
 	// Start is the class name of the start node.
 	Start string `json:"start"`
 	// Goal is the class name of the goal node.
-	Goal string `json:"goal" example:"class.domain"`
+	Goal string `json:"goal" example:"domain:class"`
 	// Rules is the set of rules followed along this edge (optional).
 	Rules []Rule `json:"rules,omitempty"`
 }

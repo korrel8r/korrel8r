@@ -70,7 +70,7 @@ These abstractions allow Korrel8r to treat different domains in the same way.
 Class::
 A subset of objects in a Domain with a common schema for serialization.
 Some domains have many classes.
-<<_domain_k8s>> has a class for each resource Kind; `Pod.k8s`, `DaemonSet.k8s` and so on.
+<<_domain_k8s>> has a class for each resource Kind; `k8s:Pod`, `k8s:DaemonSet` and so on.
 Other domains are "flat" with only a single class, for example <<_domain_alert>>
 
 Store::
@@ -93,7 +93,7 @@ The structure of a query depends on the domain, see the <<_domain>> reference fo
 Rules are the key to Korrel8r, they express relationships between classes, possibly in _different domains_.
 
 A Rule applies to an object of a _start_ class, and generates a query for a _goal_ class.
-The start and goal can be in different domains (e.g. `Pod.k8s` → `application.log`)
+The start and goal can be in different domains (e.g. `k8s:Pod` → `log:application`)
 
 A rule definition contains a _template_ that produces a _query_ in the vocabulary of the _goal domain_.
 The template uses fields from the _start class_ in the vocabulary of the _start domain_.

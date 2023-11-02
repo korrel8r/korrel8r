@@ -206,7 +206,7 @@ const docTemplate = `{
                 "goal": {
                     "description": "Goal is the class name of the goal node.",
                     "type": "string",
-                    "example": "class.domain"
+                    "example": "domain:class"
                 },
                 "rules": {
                     "description": "Rules is the set of rules followed along this edge (optional).",
@@ -232,7 +232,7 @@ const docTemplate = `{
                         "type": "string"
                     },
                     "example": [
-                        "class.domain"
+                        "domain:class"
                     ]
                 },
                 "start": {
@@ -285,9 +285,9 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "class": {
-                    "description": "Class is the full name of the class in \"CLASS.DOMAIN\" form.",
+                    "description": "Class is the full class name in \"DOMAIN:CLASS\" form.",
                     "type": "string",
-                    "example": "class.domain"
+                    "example": "domain:class"
                 },
                 "count": {
                     "description": "Count of results found for this class, after de-duplication.",
@@ -339,7 +339,7 @@ const docTemplate = `{
                 "class": {
                     "description": "Class of starting objects",
                     "type": "string",
-                    "example": "class.domain"
+                    "example": "domain:class"
                 },
                 "objects": {
                     "description": "Objects in JSON form",

@@ -320,7 +320,7 @@ link:#api-classes[APIClasses]
 |===
 | Name | Type | Go type | Required | Default | Description | Example
 
-	| goal | string| `string` |  | | Goal is the class name of the goal node. | `class.domain`
+	| goal | string| `string` |  | | Goal is the class name of the goal node. | `domain:class`
 
 	| rules | []link:#api-rule[APIRule]| `[]*APIRule` |  | | Rules is the set of rules followed along this edge (optional). | 
 
@@ -345,7 +345,7 @@ link:#api-classes[APIClasses]
 |===
 | Name | Type | Go type | Required | Default | Description | Example
 
-	| goals | []string| `[]string` |  | | Goal classes for correlation. | `["class.domain"]`
+	| goals | []string| `[]string` |  | | Goal classes for correlation. | `["domain:class"]`
 
 	| start | link:#api-goals-request[APIGoalsRequest]| `APIGoalsRequest` |  | | Start of correlation search. | 
 
@@ -411,7 +411,7 @@ link:#api-classes[APIClasses]
 |===
 | Name | Type | Go type | Required | Default | Description | Example
 
-	| class | string| `string` |  | | Class is the full name of the class in "CLASS.DOMAIN" form. | `class.domain`
+	| class | string| `string` |  | | Class is the full class name in "DOMAIN:CLASS" form. | `domain:class`
 
 	| count | integer| `int64` |  | | Count of results found for this class, after de-duplication. | 
 
@@ -479,7 +479,7 @@ link:#api-classes[APIClasses]
 |===
 | Name | Type | Go type | Required | Default | Description | Example
 
-	| class | string| `string` |  | | Class of starting objects | `class.domain`
+	| class | string| `string` |  | | Class of starting objects | `domain:class`
 
 	| objects | link:#interface[interface{}]| `interface{}` |  | | Objects in JSON form | 
 

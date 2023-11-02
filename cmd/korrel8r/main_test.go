@@ -55,7 +55,7 @@ func TestMain_describe_domain(t *testing.T) {
 }
 
 func TestMain_describe_class(t *testing.T) {
-	out, err := command(t, "describe", "audit.log").Output()
+	out, err := command(t, "describe", "log:audit").Output()
 	require.NoError(t, test.ExecError(err))
 	want := "Audit logs from the node operating system (/var/log/audit) and the cluster API servers"
 	assert.Equal(t, want, strings.TrimSpace(string(out)))
@@ -67,17 +67,17 @@ func TestMain_rules(t *testing.T) {
 		want string
 	}{
 		{
-			args: []string{"rules", "--no-headers"},
-			want: `foobar [foo.mock]->[bar.mock]  mock/foo.mock  mock/bar.mock
-barfoo [bar.mock]->[foo.mock]  mock/bar.mock  mock/foo.mock`,
+			args: []string{"rules"},
+			want: `foobar [mock:foo]->[mock:bar]
+barfoo [mock:bar]->[mock:foo]`,
 		},
 		{
-			args: []string{"rules", "--no-headers", "--start", "foo.mock"},
-			want: "foobar [foo.mock]->[bar.mock]  mock/foo.mock  mock/bar.mock",
+			args: []string{"rules", "--start", "mock:foo"},
+			want: "foobar [mock:foo]->[mock:bar]",
 		},
 		{
-			args: []string{"rules", "--no-headers", "--goal", "foo.mock"},
-			want: "barfoo [bar.mock]->[foo.mock]  mock/bar.mock  mock/foo.mock",
+			args: []string{"rules", "--goal", "mock:foo"},
+			want: "barfoo [mock:bar]->[mock:foo]",
 		},
 	} {
 		t.Run(strings.Join(x.args, " "), func(t *testing.T) {

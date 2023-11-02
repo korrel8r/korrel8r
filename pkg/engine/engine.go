@@ -112,9 +112,9 @@ func (e *Engine) addTemplateFuncs(v any) {
 	}
 }
 
-// Class parses a full 'class.domain' name and returns the class.
+// Class parses a full class name and returns the class.
 func (e *Engine) Class(fullname string) (korrel8r.Class, error) {
-	c, d := korrel8r.SplitClassName(fullname)
+	d, c := korrel8r.SplitClassName(fullname)
 	if c == "" || d == "" {
 		return nil, fmt.Errorf("invalid class name: %v", fullname)
 	} else {

@@ -61,7 +61,7 @@ func TestAPI_ListGoals(t *testing.T) {
 		},
 		200, []Node{
 			{
-				Class: "y.bar",
+				Class: "bar:y",
 				Count: 2,
 				Queries: queryCounts(graph.Queries{
 					mock.NewQuery(y, "bb").String(): 1,
@@ -88,13 +88,13 @@ func TestAPI_GraphGoals_withRules(t *testing.T) {
 		200,
 		Graph{
 			Nodes: []Node{
-				{Class: "x.foo", Count: 2, Queries: queryCounts(graph.Queries{xQuery: 1})},
-				{Class: "y.bar", Count: 2, Queries: yQueries},
-				{Class: "z.bar", Count: 1, Queries: zQueries},
+				{Class: "foo:x", Count: 2, Queries: queryCounts(graph.Queries{xQuery: 1})},
+				{Class: "bar:y", Count: 2, Queries: yQueries},
+				{Class: "bar:z", Count: 1, Queries: zQueries},
 			},
 			Edges: []Edge{
-				{Start: "x.foo", Goal: "y.bar", Rules: []Rule{{Name: "x->y", Queries: yQueries}}},
-				{Start: "y.bar", Goal: "z.bar", Rules: []Rule{{Name: "y->z", Queries: zQueries}}},
+				{Start: "foo:x", Goal: "bar:y", Rules: []Rule{{Name: "x->y", Queries: yQueries}}},
+				{Start: "bar:y", Goal: "bar:z", Rules: []Rule{{Name: "y->z", Queries: zQueries}}},
 			},
 		})
 }
@@ -113,11 +113,11 @@ func TestAPI_PostNeighbours_noRules(t *testing.T) {
 		200,
 		Graph{
 			Nodes: []Node{
-				{Class: "x.foo", Count: 1},
-				{Class: "y.bar", Count: 1, Queries: yQueries},
+				{Class: "foo:x", Count: 1},
+				{Class: "bar:y", Count: 1, Queries: yQueries},
 			},
 			Edges: []Edge{
-				{Start: "x.foo", Goal: "y.bar"},
+				{Start: "foo:x", Goal: "bar:y"},
 			},
 		},
 	)

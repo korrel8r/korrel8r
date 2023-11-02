@@ -65,7 +65,7 @@ func (c *correlate) reset(params url.Values) {
 		ShortPaths:  params.Get("short") == "true",
 		RuleGraph:   params.Get("rules") == "true",
 	}
-	c.Goals = []string{"log", "Event.k8s", "metric.metric"}
+	c.Goals = []string{"log", "k8s:Event", "metric:metric"}
 	c.browser = app
 	c.ConsoleURL = c.browser.console.BaseURL
 	c.Graph = c.browser.engine.Graph()

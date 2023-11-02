@@ -100,7 +100,7 @@ API http://korrel8r-korrel8r.apps-crc.testing/api
 
 curl -X GET http://korrel8r-korrel8r.apps-crc.testing/api/v1alpha1/domains
 
-curl -X POST http://korrel8r-korrel8r.apps-crc.testing/api/v1alpha1/graphs/neighbours -d '{ "depth": 9, "start":{"class":"Deployment.apps.k8s","query": ["{\"namespace\":\"default\",\"kind\":\"Deployment\",\"group\":\"apps\",\"version\":\"v1\"}"]}}' | jq
+curl -X POST http://korrel8r-korrel8r.apps-crc.testing/api/v1alpha1/graphs/neighbours -d '{ "depth": 9, "start":{"class":"k8s:Deployment.apps","query": ["{\"namespace\":\"default\",\"kind\":\"Deployment\",\"group\":\"apps\",\"version\":\"v1\"}"]}}' | jq
 
 Domains, Classes, Queries: Examples - refer to CURL query
 

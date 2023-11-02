@@ -10,27 +10,18 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-// ClassName returns the fully qualified 'class.domain' name of a class, e.g. "Pod.v1.k8s"
+// ClassName returns the fully qualified 'DOMAIN:CLASS' name of a class, e.g. "k8s:Pod.v1"
 func ClassName(c Class) string {
 	if c == nil {
 		return "<nil>"
 	}
-	name, domain := c.Name(), c.Domain().Name()
-	if strings.HasSuffix(name, ".") {
-		return name + domain
-	}
-	return fmt.Sprintf("%v.%v", name, domain)
+	return c.Domain().Name() + ":" + c.Name()
 }
 
-// SplitClassName splits a fully qualified 'class.domain' name into class and domain.
-// If there is no '.' treat the string as a domain name.
+// SplitClassName splits a fully qualified 'domain:class' name into class and domain.
 func SplitClassName(fullname string) (class, domain string) {
-	i := strings.LastIndex(fullname, ".")
-	if i < 0 {
-		return "", fullname
-	} else {
-		return fullname[:i], fullname[i+1:]
-	}
+	d, c, _ := strings.Cut(fullname, ":")
+	return d, c
 }
 
 // RuleName returns a string including the rule name with full start and goal class names.

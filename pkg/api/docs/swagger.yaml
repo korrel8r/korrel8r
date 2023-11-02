@@ -25,7 +25,7 @@ definitions:
     properties:
       goal:
         description: Goal is the class name of the goal node.
-        example: class.domain
+        example: domain:class
         type: string
       rules:
         description: Rules is the set of rules followed along this edge (optional).
@@ -42,7 +42,7 @@ definitions:
       goals:
         description: Goal classes for correlation.
         example:
-        - class.domain
+        - domain:class
         items:
           type: string
         type: array
@@ -77,8 +77,8 @@ definitions:
   api.Node:
     properties:
       class:
-        description: Class is the full name of the class in "CLASS.DOMAIN" form.
-        example: class.domain
+        description: Class is the full class name in "DOMAIN:CLASS" form.
+        example: domain:class
         type: string
       count:
         description: Count of results found for this class, after de-duplication.
@@ -115,7 +115,7 @@ definitions:
     properties:
       class:
         description: Class of starting objects
-        example: class.domain
+        example: domain:class
         type: string
       objects:
         description: Objects in JSON form
