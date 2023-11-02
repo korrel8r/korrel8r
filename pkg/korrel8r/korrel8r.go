@@ -77,18 +77,18 @@ type Query interface {
 // Object represents an instance of a signal.
 //
 // Object can be any Go type that supports JSON marshal/unmarshal.
-// It does not require any special methods.
+// It does not have any special methods.
 // It can be a simple string, a struct, or some more complicated API data structure.
 // The goal is to allow values from some underlying toolkit to be used directly as Object.
 //
 // [Class] provides some methods for inspecting objects.
-type Object any
+type Object = any
 
 // IDer is optionally implemented by Class implementations that have a meaningful unique identifier.
 //
-// Classes that implement IDer can be de-duplicated when collected in a Result.map1
+// Classes that implement IDer can be de-duplicated when collected in a Result.map
 type IDer interface {
-	ID(Object) any // ID must be comparable for de-duplication.
+	ID(Object) any // ID must be a comparable type.
 }
 
 // Previewer is optionally implemented by Class implementations to show a short "preview" string from the object.
@@ -129,10 +129,10 @@ type Rule interface {
 	// Apply the rule to a start Object, return a Query for results.
 	// Optional Constraint (may be nil) constrains the results of the query Query.
 	Apply(start Object, constraint *Constraint) (Query, error)
-	// Class of start object. If nil, this is a "wildcard" rule that can start from any class it applies to.
+	// Class of start object. If nil, this is a "wildcard" rule that can start from any class it can be applied to.
 	Start() Class
 	// Class of desired result object(s), must not be nil.
 	Goal() Class
-	// Name of the rule
+	// Name is a short human-readable name for the rule.
 	Name() string
 }

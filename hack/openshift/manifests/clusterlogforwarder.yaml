@@ -5,6 +5,5 @@ metadata:
   namespace: openshift-logging
 spec:
   pipelines:
-    # NOTE: add 'audit' to the list for audit logs. These can be very verbose.
-    - inputRefs: [application, infrastructure]
+    - inputRefs: [application, infrastructure, audit]
       outputRefs: [default]

@@ -14,13 +14,13 @@ import (
 // All graphs based on the same Data have stable, consistent node and line IDs.
 // Note new rules can be added to a Data instance but never removed.
 type Data struct {
-	Nodes  []*Node // Nodes slice index == Node.ID()
-	Lines  []*Line // Lines slice index == Line.ID()
-	nodeID map[korrel8r.Class]int64
+	Nodes  []*Node          // Nodes slice index == Node.ID()
+	Lines  []*Line          // Lines slice index == Line.ID()
+	nodeID map[string]int64 // Map by full class name
 }
 
 func NewData(rules ...korrel8r.Rule) *Data {
-	d := Data{nodeID: make(map[korrel8r.Class]int64)}
+	d := Data{nodeID: make(map[string]int64)}
 	for _, r := range rules {
 		d.AddRule(r)
 	}
@@ -40,7 +40,8 @@ func (d *Data) AddRule(r korrel8r.Rule) {
 
 // NodeFor returns the Node for class c, creating it if necessary.
 func (d *Data) NodeFor(c korrel8r.Class) *Node {
-	if id, ok := d.nodeID[c]; ok {
+	cname := korrel8r.ClassName(c)
+	if id, ok := d.nodeID[cname]; ok {
 		return d.Nodes[id]
 	}
 	id := int64(len(d.Nodes))
@@ -52,7 +53,7 @@ func (d *Data) NodeFor(c korrel8r.Class) *Node {
 		Queries: Queries{},
 	}
 	d.Nodes = append(d.Nodes, n)
-	d.nodeID[c] = id
+	d.nodeID[cname] = id
 	return n
 }
 

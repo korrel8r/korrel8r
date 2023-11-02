@@ -120,32 +120,11 @@ func (c Class) Description() string {
 	}
 }
 
-func (c Class) New() korrel8r.Object { return Object{} }
-func (c Class) Preview(o korrel8r.Object) string {
-	var s string
-	if o, ok := o.(Object); ok {
-		s, _ = o.JSON()["message"].(string)
-		if s == "" {
-			s = o.Entry
-		}
-	}
-	return s
-}
+func (c Class) New() korrel8r.Object             { return Object("") }
+func (c Class) Preview(o korrel8r.Object) string { return o.(string) }
 
-type Object struct {
-	Entry string          // Log entry as a string.
-	json  *map[string]any // Decoded as a JSON Object. Empty if failed.
-}
-
-func NewObject(entry string) Object { return Object{Entry: entry} }
-
-func (o Object) JSON() map[string]any {
-	if o.json == nil {
-		o.json = new(map[string]any)
-		_ = json.Unmarshal([]byte(o.Entry), o.json)
-	}
-	return *o.json
-}
+// Object is a log record string. Format depends on source of logs.
+type Object = string
 
 // Query is a LogQL query string
 type Query struct {
@@ -251,7 +230,7 @@ func (s *Store) Get(ctx context.Context, query korrel8r.Query, result korrel8r.A
 	}
 	slices.SortStableFunc(logs, func(a, b []string) int { return strings.Compare(a[0], b[0]) })
 	for _, tl := range logs { // tl is [time, line]
-		result.Append(NewObject(tl[1]))
+		result.Append(Object(tl[1]))
 	}
 	return nil
 }

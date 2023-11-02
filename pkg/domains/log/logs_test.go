@@ -26,7 +26,7 @@ func makeLines(line string, n int) (lines []string, objects []korrel8r.Object) {
 	for i := 0; i < n; i++ {
 		line := fmt.Sprintf("%v: %v", i, line)
 		lines = append(lines, line)
-		objects = append(objects, NewObject(line))
+		objects = append(objects, Object(line))
 	}
 	return lines, objects
 }
@@ -72,10 +72,9 @@ func TestLokiStackStore_Get(t *testing.T) {
 		return len(result) >= len(lines)
 	}, 30*time.Second, time.Second)
 	var got []string
-	for _, obj := range result {
+	for _, record := range result {
 		var m map[string]any
-		line := obj.(Object).Entry
-		assert.NoError(t, json.Unmarshal([]byte(line), &m), line)
+		assert.NoError(t, json.Unmarshal([]byte(record.(string)), &m), record)
 		got = append(got, m["message"].(string))
 	}
 	assert.Equal(t, lines, got)
@@ -108,12 +107,12 @@ func TestStoreGet_Constraint(t *testing.T) {
 		{
 			q:    &Query{LogQL: `{test="log"}`},
 			c:    &korrel8r.Constraint{End: &t1},
-			want: []korrel8r.Object{NewObject("much"), NewObject("too"), NewObject("early")},
+			want: []korrel8r.Object{"much", "too", "early"},
 		},
 		{
 			q:    &Query{LogQL: `{test="log"}`},
 			c:    &korrel8r.Constraint{Start: &t1, End: &t2},
-			want: []korrel8r.Object{NewObject("right"), NewObject("on"), NewObject("time")},
+			want: []korrel8r.Object{"right", "on", "time"},
 		},
 	} {
 		t.Run(strconv.Itoa(n), func(t *testing.T) {

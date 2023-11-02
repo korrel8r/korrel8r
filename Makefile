@@ -18,7 +18,7 @@ OVERLAY?=dev
 ## IMGTOOL: May be podman or docker.
 IMGTOOL?=$(shell which podman || which docker)
 
-all: generate lint test install ## Run all build and test targets, except: image deploy
+all: generate lint test install ## Generate build and test.
 
 clean: # Warning: runs `git clean -dfx` and removes checked-in generated files.
 	rm -vrf _site docs/zz_*.adoc pkg/api/docs /cmd/korrel8r/version.txt
@@ -61,8 +61,9 @@ cover: ## Run tests and show code coverage in browser.
 	go tool cover --html test.cov; sleep 2 # Sleep required to let browser start up.
 
 CONFIG=etc/korrel8r/korrel8r.yaml
-run: $(VERSION_TXT) ## Run `korrel8r web` from source using configuration in ./etc.
-	go run ./cmd/korrel8r/ web -c $(CONFIG)
+GOBIN=$(or $(go env GOBIN),$(HOME)/go/bin)
+run: install ## Install and run `korrel8r web` using configuration in ./etc/korrel8r
+	$(GOBIN)/korrel8r web -c $(CONFIG)
 
 IMAGE=$(IMG):$(TAG)
 image: $(VERSION_TXT) ## Build and push image. IMG must be set to a writable image repository.
@@ -109,19 +110,11 @@ docs/zz_domains.adoc: $(shell find cmd/korrel8r-doc pkg -name '*.go')
 docs/zz_rest_api.adoc: pkg/api/docs docs/templates/markdown/docs.gotmpl
 	swagger -q generate markdown -T docs/templates -f $</swagger.json --output $@
 
-release: ## Create a local release tag and commit. TAG must be set to vX.Y.Z.
-	$(CHECK_RELEASE)
+release: all image ## Create a local release tag and commit. TAG must be set to vX.Y.Z.
+	@echo "$(VERSION)" | grep -qE "^v[0-9]+\.[0-9]+\.[0-9]+$$" || { echo "VERSION=$(VERSION) must be semantic version like vX.Y.Z"; exit 1; }
 	@test -z "$(shell git status --porcelain)" || { git status -s; echo Workspace is not clean; exit 1; }
-	$(MAKE) all
 	hack/changelog.sh $(VERSION) > CHANGELOG.md	# Update change log
 	git commit -q -a -m "Release $(VERSION)"
 	git tag $(VERSION) -a -m "Release $(VERSION)"
-	@echo -e "To push the release commit and images: \n   make release-push"
-
-release-push: ## Push release tag and image.
-	$(CHECK_RELEASE)
-	git push origin main --follow-tags
-	$(MAKE) --no-print-directory image
 	$(IMGTOOL) push -q "$(IMAGE)" "$(IMG):latest"
-
-CHECK_RELEASE=@echo "$(VERSION)" | grep -qE "^v[0-9]+\.[0-9]+\.[0-9]+$$" || { echo "VERSION=$(VERSION) must be semantic version like vX.Y.Z"; exit 1; }
+	git push origin main --follow-tags

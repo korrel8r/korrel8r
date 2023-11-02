@@ -22,6 +22,9 @@ var webCmd = &cobra.Command{
 		var (
 			s http.Server
 		)
+		if *httpFlag == "" && *httpsFlag == "" {
+			*httpFlag = ":8080" // Default if no port specified.
+		}
 		switch {
 		case *httpFlag != "" && *httpsFlag != "":
 			panic(fmt.Errorf("only one of --http or --https may be present"))
@@ -35,8 +38,6 @@ var webCmd = &cobra.Command{
 			if *certFlag == "" || *keyFlag == "" {
 				panic(fmt.Errorf("--cert and --key are required for https"))
 			}
-		default:
-			panic(fmt.Errorf("one of --http or --https must be present"))
 		}
 
 		gin.DefaultWriter = logging.LogWriter()
