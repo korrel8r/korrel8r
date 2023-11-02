@@ -1,4 +1,7 @@
-# Set up Openshift for Korrel8r
+# Set up Openshift for Korrel8r demos
+
+These instructions will help you set up a small cluster with observable signals for _test or demonstration_ purposes.
+This is not intended for production clusters.
 
 ## Create your cluster
 
