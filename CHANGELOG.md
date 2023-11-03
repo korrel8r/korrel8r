@@ -7,6 +7,7 @@ This project uses semantic versioning (https://semver.org)
 ## Version v0.4.0
 
 - Release v0.4.0
+- Release v0.4.0
 - Fix #65: HTTPs flags to korrel8r server.
 - Upgrade dependencies for dependabot alert.
 - Asciidoc generation from domain doc comments and REST API
