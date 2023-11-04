@@ -3,7 +3,6 @@
 package api
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -49,15 +48,15 @@ func TestAPI_GetDomainClasses(t *testing.T) {
 }
 
 func TestAPI_ListGoals(t *testing.T) {
-	a, x, y, _ := apiWithRules()
+	a, x, y, z := apiWithRules()
 	assertDo(t, a, "POST", "/api/v1alpha1/lists/goals",
 		GoalsRequest{
 			Start: Start{
 				Class:   korrel8r.ClassName(x),
-				Queries: []json.RawMessage{json.RawMessage(mock.NewQuery(x, "a").String())},
+				Queries: []string{korrel8r.ClassName(x) + `:["a"]`, korrel8r.ClassName(y) + `:["b"]`},
 				Objects: []json.RawMessage{[]byte(`"b"`)},
 			},
-			Goals: []string{korrel8r.ClassName(y)},
+			Goals: []string{korrel8r.ClassName(y), korrel8r.ClassName(z)},
 		},
 		200, []Node{
 			{
@@ -66,6 +65,13 @@ func TestAPI_ListGoals(t *testing.T) {
 				Queries: queryCounts(graph.Queries{
 					mock.NewQuery(y, "bb").String(): 1,
 					mock.NewQuery(y, "aa").String(): 1,
+				}),
+			},
+			{
+				Class: "bar:z",
+				Count: 1,
+				Queries: queryCounts(graph.Queries{
+					mock.NewQuery(z, "c").String(): 1,
 				}),
 			},
 		})
@@ -80,7 +86,7 @@ func TestAPI_GraphGoals_withRules(t *testing.T) {
 		GoalsRequest{
 			Start: Start{
 				Class:   korrel8r.ClassName(x),
-				Queries: []json.RawMessage{json.RawMessage(xQuery)},
+				Queries: []string{xQuery},
 				Objects: []json.RawMessage{[]byte(`"b"`)},
 			},
 			Goals: []string{korrel8r.ClassName(z)},
@@ -93,15 +99,15 @@ func TestAPI_GraphGoals_withRules(t *testing.T) {
 				{Class: "bar:z", Count: 1, Queries: zQueries},
 			},
 			Edges: []Edge{
-				{Start: "foo:x", Goal: "bar:y", Rules: []Rule{{Name: "x->y", Queries: yQueries}}},
-				{Start: "bar:y", Goal: "bar:z", Rules: []Rule{{Name: "y->z", Queries: zQueries}}},
+				{Start: "foo:x", Goal: "bar:y", Rules: []Rule{{Name: "x-y", Queries: yQueries}}},
+				{Start: "bar:y", Goal: "bar:z", Rules: []Rule{{Name: "y-z", Queries: zQueries}}},
 			},
 		})
 }
 
 func TestAPI_PostNeighbours_noRules(t *testing.T) {
 	a, x, y, _ := apiWithRules()
-	yQueries := queryCounts(graph.Queries{mock.NewQuery(y, "aa").String(): 1})
+	qc := queryCounts(graph.Queries{mock.NewQuery(y, "aa").String(): 1})
 	assertDo(t, a, "POST", "/api/v1alpha1/graphs/neighbours",
 		NeighboursRequest{
 			Start: Start{
@@ -114,7 +120,7 @@ func TestAPI_PostNeighbours_noRules(t *testing.T) {
 		Graph{
 			Nodes: []Node{
 				{Class: "foo:x", Count: 1},
-				{Class: "bar:y", Count: 1, Queries: yQueries},
+				{Class: "bar:y", Count: 1, Queries: qc},
 			},
 			Edges: []Edge{
 				{Start: "foo:x", Goal: "bar:y"},
@@ -128,6 +134,7 @@ func ginEngine() *gin.Engine {
 		gin.SetMode(gin.ReleaseMode)
 	}
 	r := gin.New()
+	r.Use(gin.Logger())
 	return r
 }
 
@@ -184,9 +191,10 @@ func normalize(v any) {
 	case Edge:
 		for _, r := range v.Rules {
 			normalize(r.Queries)
+			ruleCoverage[r.Name] = ruleCoverage[r.Name] + 1
 		}
 	case []QueryCount:
-		slices.SortFunc(v, func(a, b QueryCount) int { return bytes.Compare(a.Query, b.Query) })
+		slices.SortFunc(v, func(a, b QueryCount) int { return strings.Compare(a.Query, b.Query) })
 	}
 }
 
@@ -219,7 +227,14 @@ func apiWithRules() (a *testAPI, x, y, z korrel8r.Class) {
 	x, y, z = foo.Class("x"), bar.Class("y"), bar.Class("z")
 	test.PanicErr(api.Engine.AddStore(mock.NewStore(foo)))
 	test.PanicErr(api.Engine.AddStore(mock.NewStore(bar)))
-	api.Engine.AddRules(mock.NewApplyRule("x->y", x, y, doubleFunc(y)))
-	api.Engine.AddRules(mock.NewQueryRule("y->z", y, mock.NewQuery(z, "c")))
+	api.Engine.AddRules(mock.NewApplyRule("x-y", x, y, doubleFunc(y)))
+	api.Engine.AddRules(mock.NewQueryRule("y-z", y, mock.NewQuery(z, "c")))
 	return api, x, y, z
+}
+
+var ruleCoverage = map[string]int{}
+
+func TestMain(m *testing.M) {
+	m.Run()
+	fmt.Println(test.JSONPretty((ruleCoverage)))
 }

@@ -10,10 +10,8 @@
     <div style="white-space: nowrap">
       <label for="start" title="Consule URL or korrel8r query"><b>Start: </b></label>
       <input type="text" id="start" name="start" value="{{.Start}}" size="50" accesskey="k">
-      <label for="domain" title="Only required for korrel8r query"><small>Domain</small></label>
-      <input type="text" id="domain" name="domain" value="{{.StartDomain}}">
       <br>
-      {{with .StartQuery}}<pre>{{. | json}}</pre>{{end}}
+      {{with .StartQuery}}<pre>{{.}}</pre>{{end}}
     </div>
     <div style="white-space: nowrap">
       <b>Goals: </b>
@@ -94,7 +92,7 @@
                           <a href="{{queryToConsole $qc.Query}}" target="_blank">Console</a> /
                           <a href="/stores/{{$node.Class.Domain}}?query={{json $qc.Query | urlquery}}" target="_blank">Data</a>
                           ({{$qc.Count}})
-                          <pre>{{$qc.Query | json}}</pre>
+                          <pre>{{$qc.Query}}</pre>
                         </li>
 			{{end}}
                     </ul>
@@ -118,9 +116,9 @@
   {{range $qc := .Sort}}
     <li>
       <a href="{{queryToConsole $qc.Query}}" target="_blank">Console</a> /
-      <a href="/stores/{{$qc.Query.Class.Domain}}?query={{json $qc.Query | urlquery}}" target="_blank">Data</a>
+      <a href="/stores/{{$qc.Query.Class.Domain}}?query={{$qc.Query | urlquery}}" target="_blank">Data</a>
       ({{$qc.Count}})
-      <pre>{{$qc.Query | json}}</pre>
+      <pre>{{$qc.Query}}</pre>
     </li>
   {{end}}
 {{end}}

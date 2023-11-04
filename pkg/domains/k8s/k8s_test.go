@@ -78,16 +78,16 @@ func TestStore_Get(t *testing.T) {
 	)
 	podGVK := ClassOf(&corev1.Pod{}).GVK()
 	for _, x := range []struct {
-		q    Query
+		q    korrel8r.Query
 		want []types.NamespacedName
 	}{
-		{Query{GroupVersionKind: podGVK, NamespacedName: fred}, []types.NamespacedName{fred}},
-		{Query{GroupVersionKind: podGVK, NamespacedName: types.NamespacedName{Namespace: "x"}}, []types.NamespacedName{fred, barney}},
-		{Query{GroupVersionKind: podGVK, Labels: client.MatchingLabels{"app": "foo"}}, []types.NamespacedName{fred, wilma}},
+		{NewQuery(Class(podGVK), "x", "fred", nil, nil), []types.NamespacedName{fred}},
+		{NewQuery(Class(podGVK), "x", "", nil, nil), []types.NamespacedName{fred, barney}},
+		{NewQuery(Class(podGVK), "", "", client.MatchingLabels{"app": "foo"}, nil), []types.NamespacedName{fred, wilma}},
 	} {
 		t.Run(fmt.Sprintf("%#v", x.q), func(t *testing.T) {
 			var result korrel8r.ListResult
-			err = store.Get(context.Background(), &x.q, &result)
+			err = store.Get(context.Background(), x.q, &result)
 			require.NoError(t, err)
 			var got []types.NamespacedName
 			for _, v := range result {
@@ -105,19 +105,19 @@ func TestStore_QueryToConsoleURL(t *testing.T) {
 		WithRESTMapper(testrestmapper.TestOnlyStaticRESTMapper(scheme.Scheme)).
 		Build(), &rest.Config{})
 	for _, x := range []struct {
-		q Query
+		q korrel8r.Query
 		p string
 	}{
-		{query(ClassOf(&corev1.Pod{}), "default", "foo", nil, nil), "k8s/ns/default/pods/foo"},
-		{query(ClassOf(&corev1.Pod{}), "default", "", nil, nil), "k8s/ns/default/pods"},
-		{query(ClassOf(&corev1.Namespace{}), "", "foo", nil, nil), "k8s/cluster/namespaces/foo"},
-		{query(ClassOf(&corev1.Namespace{}), "", "", nil, nil), "k8s/cluster/namespaces"},
-		{query(ClassOf(&appv1.Deployment{}), "", "", nil, nil), "k8s/cluster/deployments"},
-		{query(ClassOf(&appv1.Deployment{}), "NAMESPACE", "", nil, nil), "k8s/ns/NAMESPACE/deployments"},
-		{query(ClassOf(&appv1.Deployment{}), "NAMESPACE", "NAME", nil, nil), "k8s/ns/NAMESPACE/deployments/NAME"},
+		{NewQuery(ClassOf(&corev1.Pod{}), "default", "foo", nil, nil), "k8s/ns/default/pods/foo"},
+		{NewQuery(ClassOf(&corev1.Pod{}), "default", "", nil, nil), "k8s/ns/default/pods"},
+		{NewQuery(ClassOf(&corev1.Namespace{}), "", "foo", nil, nil), "k8s/cluster/namespaces/foo"},
+		{NewQuery(ClassOf(&corev1.Namespace{}), "", "", nil, nil), "k8s/cluster/namespaces"},
+		{NewQuery(ClassOf(&appv1.Deployment{}), "", "", nil, nil), "k8s/cluster/deployments"},
+		{NewQuery(ClassOf(&appv1.Deployment{}), "NAMESPACE", "", nil, nil), "k8s/ns/NAMESPACE/deployments"},
+		{NewQuery(ClassOf(&appv1.Deployment{}), "NAMESPACE", "NAME", nil, nil), "k8s/ns/NAMESPACE/deployments/NAME"},
 	} {
 		t.Run(x.p, func(t *testing.T) {
-			u, err := s.(*Store).QueryToConsoleURL(&x.q)
+			u, err := s.(*Store).QueryToConsoleURL(x.q)
 			if assert.NoError(t, err) {
 				assert.Equal(t, x.p, u.Path)
 			}
@@ -126,48 +126,28 @@ func TestStore_QueryToConsoleURL(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func query(c Class, namespace, name string, labels, fields map[string]string) Query {
-	return Query{
-		GroupVersionKind: c.GVK(),
-		NamespacedName:   types.NamespacedName{Namespace: namespace, Name: name},
-		Labels:           labels,
-		Fields:           fields,
-	}
-}
-
 func TestStore_ConsoleURLToQuery(t *testing.T) {
 	s := must.Must1(NewStore(fake.NewClientBuilder().
 		WithRESTMapper(testrestmapper.TestOnlyStaticRESTMapper(scheme.Scheme)).
 		Build(), &rest.Config{}))
 	for _, x := range []struct {
 		p string
-		q Query
+		q korrel8r.Query
 	}{
-		{"/k8s/ns/default/pods/foo", query(ClassOf(&corev1.Pod{}), "default", "foo", nil, nil)},
-		{"/k8s/ns/default/pods", query(ClassOf(&corev1.Pod{}), "default", "", nil, nil)},
-		{"/k8s/cluster/namespaces/foo", query(ClassOf(&corev1.Namespace{}), "", "foo", nil, nil)},
-		{"/k8s/cluster/projects/foo", query(ClassOf(&corev1.Namespace{}), "", "foo", nil, nil)},
-		{"/k8s/ns/default?kind=Pod&q=name%3Dfoo%2Capp%3dbar", query(ClassOf(&corev1.Pod{}), "default", "", map[string]string{"name": "foo", "app": "bar"}, nil)},
+		{"/k8s/ns/default/pods/foo", NewQuery(ClassOf(&corev1.Pod{}), "default", "foo", nil, nil)},
+		{"/k8s/ns/default/pods", NewQuery(ClassOf(&corev1.Pod{}), "default", "", nil, nil)},
+		{"/k8s/cluster/namespaces/foo", NewQuery(ClassOf(&corev1.Namespace{}), "", "foo", nil, nil)},
+		{"/k8s/cluster/projects/foo", NewQuery(ClassOf(&corev1.Namespace{}), "", "foo", nil, nil)},
+		{"/k8s/ns/default?kind=Pod&q=name%3Dfoo%2Capp%3dbar", NewQuery(ClassOf(&corev1.Pod{}), "default", "", map[string]string{"name": "foo", "app": "bar"}, nil)},
 	} {
 		t.Run(x.p, func(t *testing.T) {
 			u, _ := url.Parse(x.p)
 			q, err := s.(*Store).ConsoleURLToQuery(u)
 			if assert.NoError(t, err) {
-				assert.Equal(t, &x.q, q)
+				assert.Equal(t, x.q, q)
 			}
 		})
 	}
-}
-
-func TestQuery_Marshal(t *testing.T) {
-	class := ClassOf(&corev1.Pod{})
-	q := NewQuery(class, "NAMESPACE", "NAME",
-		client.MatchingLabels{"label": "foo"}, client.MatchingFields{"field": "bar"})
-	want := `{"Group":"","Version":"v1","Kind":"Pod","Namespace":"NAMESPACE","Name":"NAME","Labels":{"label":"foo"},"Fields":{"field":"bar"}}`
-	assert.Equal(t, want, string(q.String()))
-	q2, err := Domain.Query(q.String())
-	require.NoError(t, err)
-	assert.Equal(t, q, q2)
 }
 
 func Test_parsePath(t *testing.T) {

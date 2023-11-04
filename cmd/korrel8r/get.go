@@ -16,16 +16,15 @@ import (
 
 // getCmd represents the get command
 var getCmd = &cobra.Command{
-	Use:   "get DOMAIN QUERY",
-	Short: "Execute QUERY in DOMAIN and print the results",
+	Use:   "get DOMAIN:CLASS:QUERY",
+	Short: "Execute QUERY and print the results",
 	Long: `
 `,
-	Args: cobra.ExactArgs(2),
+	Args: cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		e := newEngine()
-		d := must.Must1(e.DomainErr(args[0]))
-		q := must.Must1(d.Query(args[1]))
-		s := must.Must1(e.StoreErr(d))
+		q := must.Must1(e.Query(args[0]))
+		s := must.Must1(e.StoreErr(q.Class().Domain()))
 		log.V(3).Info("get", "query", q, "class", korrel8r.ClassName(q.Class()))
 		result := newPrinter(os.Stdout)
 		must.Must(s.Get(context.Background(), q, result))

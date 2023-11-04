@@ -23,14 +23,14 @@ Queries are the JSON-serialized form of this struct:
 
 ----
 type Query struct {
-	// GroupVersionKind is the Kind the resource to find (required)
-	schema.GroupVersionKind
-	// NamespacedName restricts the search to objects matching the namespace and name (optional).
-	types.NamespacedName	`json:",omitempty"`
+	// Namespace restricts the search to a namespace.
+	Namespace	string	`json:"namespace,omitempty"`
+	Name		string	`json:"name,omitempty"`
 	// Labels restricts the search to objects with matching label values (optional)
-	Labels	client.MatchingLabels	`json:",omitempty"`
+	Labels	client.MatchingLabels	`json:"labels,omitempty"`
 	// Fields restricts the search to objects with matching field values (optional)
-	Fields	client.MatchingFields	`json:",omitempty"`
+	Fields	client.MatchingFields	`json:"fields,omitempty"`
+	// contains filtered or unexported fields
 }
 ----
 

@@ -37,18 +37,17 @@ func (r *templateRule) Apply(start korrel8r.Object, c *korrel8r.Constraint) (kor
 		"rule":       func() korrel8r.Rule { return r },
 	}).Execute(b, start)
 	if err != nil {
-		return nil, fmt.Errorf("apply: %s", err)
+		return nil, err
 	}
-
 	q, err := r.Goal().Domain().Query(b.String())
 	if err != nil {
-		return nil, fmt.Errorf("apply: unmarshal error: %w", err)
+		return nil, err
 	}
-
+	if q.Query() == "" {
+		return nil, fmt.Errorf("empty query")
+	}
 	if q.Class() != r.Goal() {
-		return nil, fmt.Errorf("apply: wrong goal: %v != %v; in %#+v",
-			korrel8r.ClassName(r.Goal()), korrel8r.ClassName(q.Class()), q)
+		return nil, fmt.Errorf("wrong goal: expected %v, query: %v", korrel8r.ClassName(r.Goal()), korrel8r.QueryName(q))
 	}
-
 	return q, nil
 }

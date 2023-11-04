@@ -101,7 +101,7 @@ rules:
        classes: [Pod]
      result:
        query: |-
-         {"Namespace":"{{.Namespace}}","Labels":{{ .Spec.Selector.MatchLabels | json -}} }
+         {"namespace":"{{.Namespace}}","labels":{{ .Spec.Selector.MatchLabels | json -}} }
    - name: EventToAll
      start:
        domain: k8s

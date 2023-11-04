@@ -21,6 +21,7 @@ import (
 	"github.com/korrel8r/korrel8r/pkg/graph"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"go.uber.org/multierr"
+	"golang.org/x/exp/maps"
 	"gonum.org/v1/gonum/graph/encoding/dot"
 )
 
@@ -154,42 +155,34 @@ func (c *correlate) update(req *http.Request) {
 			return l.Queries.Total() > 0
 		})
 		if c.GoalClasses != nil {
-			// Only include start->goal paths, remove dead-ends.
+			// Only include paths to goal, remove dead-ends.
 			c.Graph = c.Graph.AllPaths(c.StartClass, c.GoalClasses...)
 		}
 	}
-	// Add start/goal nodes even if empty.
+	// Add start node even if empty.
 	c.addClassNode(c.StartClass)
-	for _, goal := range c.GoalClasses {
-		c.addClassNode(goal)
-	}
-
 	c.updateDiagram()
 }
 
 func (c *correlate) updateStart() (err error) {
-	if c.Start == "" {
-		return errors.New("empty")
-	}
-	if c.StartClass, err = c.browser.engine.Class(c.Start); err == nil {
-		return nil
-	}
-	if u, err := url.Parse(c.Start); err == nil {
-		if c.StartQuery, err = c.browser.console.ConsoleURLToQuery(u); err != nil {
-			return err
+	prefix, _, ok := strings.Cut(c.Start, ":") // Guess if its a korrel8r query or a URL
+	switch {
+	case ok && (prefix == "http" || prefix == "https"): // Looks like URL
+		var u *url.URL
+		if u, err = url.Parse(c.Start); err == nil {
+			c.StartQuery, err = c.browser.console.ConsoleURLToQuery(u)
 		}
+	case ok: // Try as a query
+		c.StartQuery, err = c.browser.engine.Query(c.Start)
+	case c.Start == "":
+		err = errors.New("empty")
+	default:
+		err = fmt.Errorf("invalid start: %v", c.Start)
+	}
+	if c.StartQuery != nil {
 		c.StartClass = c.StartQuery.Class()
-		return nil
 	}
-	domain, err := c.browser.engine.DomainErr(c.StartDomain)
-	if err != nil {
-		return err
-	}
-	if c.StartQuery, err = domain.Query(c.Start); err != nil {
-		return err
-	}
-	c.StartClass = c.StartQuery.Class()
-	return nil
+	return err
 }
 
 func (c *correlate) updateGoal() (err error) {
@@ -245,12 +238,13 @@ func (c *correlate) queryURLAttrs(a graph.Attrs, qs graph.Queries, d korrel8r.Do
 	}
 }
 
-const (
-	startColor = "green2"
-	goalColor  = "pink"
-	fullColor  = "wheat"
-	emptyColor = "white"
-)
+// FIXME make this configurable - map domains to node attrs
+var domainAttrs = map[string]graph.Attrs{
+	"k8s":    {"shape": "septagon", "fillcolor": "#326CE5", "fontcolor": "white", "fontname": "Ubuntu,Bold"},
+	"log":    {"shape": "note", "fillcolor": "goldenrod", "fontname": "Courier"},
+	"alert":  {"shape": "triangle", "fillcolor": "yellow", "fontname": "Helvetica", "style": "bold"},
+	"metric": {"shape": "oval", "fillcolor": "violet", "style": "rounded"},
+}
 
 // updateDiagram generates an SVG diagram via graphviz.
 func (c *correlate) updateDiagram() {
@@ -260,22 +254,21 @@ func (c *correlate) updateDiagram() {
 	}
 	g.EachNode(func(n *graph.Node) {
 		a := n.Attrs
-		a["label"] = korrel8r.ClassName(n.Class)
+		maps.Copy(a, domainAttrs[n.Class.Domain().Name()]) // FIXME
+		a["label"] = n.Class.Name()
 		a["tooltip"] = fmt.Sprintf("%v (%v)", korrel8r.ClassName(n.Class), len(n.Result.List()))
-		a["style"] = "rounded,filled"
+		a["style"] += ",filled"
 		result := n.Result.List()
 		if len(result) == 0 {
-			a["fillcolor"] = emptyColor
+			a["color"] += "gray"
 		} else {
 			a["label"] = fmt.Sprintf("%v\n(%v)", a["label"], len(result))
-			a["fillcolor"] = fullColor
-			a["style"] = strings.Join([]string{a["style"], "bold"}, ",")
 			c.queryURLAttrs(a, n.Queries, n.Class.Domain())
 			previewer, _ := n.Class.(korrel8r.Previewer)
 			if previewer != nil && len(result) > 0 {
 				b := &strings.Builder{}
 				fmt.Fprintln(b, a["tooltip"])
-				const limit = 10
+				const limit = 5
 				for i, o := range result {
 					fmt.Fprintf(b, "- %v\n", previewer.Preview(o))
 					if i == limit {
@@ -296,26 +289,14 @@ func (c *correlate) updateDiagram() {
 			a["style"] = "bold"
 			c.queryURLAttrs(a, l.Queries, l.Rule.Goal().Domain())
 		} else {
-			a["style"] = "dashed"
 			a["color"] = "gray"
 		}
 	})
 
 	if c.StartClass != nil {
 		a := g.NodeFor(c.StartClass).Attrs
-		a["shape"] = "oval"
-		a["fillcolor"] = startColor
+		a["color"] = "orange"
 		a["root"] = "true"
-	}
-
-	for _, class := range c.GoalClasses {
-		goal := g.NodeFor(class)
-		a := goal.Attrs
-		a["shape"] = "diamond"
-		a["fillcolor"] = goalColor
-		if len(goal.Result.List()) == 0 {
-			a["fillcolor"] = emptyColor
-		}
 	}
 
 	// Write the graph files

@@ -26,7 +26,7 @@ import (
 type Domain interface {
 	Class(string) Class               // Class finds a class by name, returns nil if not found.
 	Classes() []Class                 // Classes returns a list of known classes in the Domain.
-	Name() string                     // Name of the domain
+	Name() string                     // Name of the domain. Domain names must not contain the character ':'.
 	Description() string              // Description for human-readable documentation.
 	Query(string) (Query, error)      // Query converts a query string to a Query object.
 	Store(StoreConfig) (Store, error) // Store creates a new store for this domain.
@@ -45,7 +45,7 @@ type Domain interface {
 // Must be implemented by a korrel8r domain.
 type Class interface {
 	Domain() Domain      // Domain of this class.
-	Name() string        // String name of the class within the domain.
+	Name() string        // Name of the class within the domain. Class names must not contain the character ':'.
 	Description() string // Description for human-readable documentation.
 	New() Object         // Return a blank instance of the class, can be unmarshaled from JSON.
 }
@@ -70,7 +70,10 @@ type Store interface {
 type Query interface {
 	// Class returned by this query.
 	Class() Class
-	// String form of the Query
+	// Query  string without the "DOMAIN:CLASS" prefix. Format of the string depends on the domain.
+	// Note the QUERY part may contain any characters, including spaces.
+	Query() string
+	// String returns the full query string, same value as QueryName(q)
 	String() string
 }
 
@@ -128,6 +131,7 @@ type Appender interface{ Append(...Object) }
 type Rule interface {
 	// Apply the rule to a start Object, return a Query for results.
 	// Optional Constraint (may be nil) constrains the results of the query Query.
+	// Apply may return (nil, nil) if the rule does not apply to the input.
 	Apply(start Object, constraint *Constraint) (Query, error)
 	// Class of start object. If nil, this is a "wildcard" rule that can start from any class it can be applied to.
 	Start() Class

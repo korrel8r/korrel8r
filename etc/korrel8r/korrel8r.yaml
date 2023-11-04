@@ -4,6 +4,7 @@ stores:                         # Load default stores
   - domain: k8s
   - domain: alert
   - domain: log
+  - domain: metric
 
 more:                           # Load rules
   - rules/alert.yaml

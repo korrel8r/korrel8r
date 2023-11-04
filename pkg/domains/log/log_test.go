@@ -39,7 +39,7 @@ func TestPlainLokiStore_Get(t *testing.T) {
 	require.NoError(t, err)
 	s, err := NewPlainLokiStore(l.URL(), http.DefaultClient)
 	require.NoError(t, err)
-	q := &Query{LogQL: `{test="log"}`}
+	q := Query{logQL: `{test="log"}`}
 	result := korrel8r.NewListResult()
 	require.NoError(t, s.Get(ctx, q, result))
 	assert.Equal(t, want, result.List())
@@ -62,7 +62,7 @@ func TestLokiStackStore_Get(t *testing.T) {
 	s, err := NewOpenshiftLokiStackStore(ctx, c, test.RESTConfig)
 	require.NoError(t, err)
 	logQL := fmt.Sprintf(`{kubernetes_pod_name="%v", kubernetes_namespace_name="%v"}`, pod.Name, pod.Namespace)
-	q := &Query{LogQL: logQL, LogType: "application"}
+	q := Query{logQL: logQL, class: "application"}
 	var result korrel8r.ListResult
 	assert.Eventually(t, func() bool {
 		result = nil
@@ -105,12 +105,12 @@ func TestStoreGet_Constraint(t *testing.T) {
 		want []korrel8r.Object
 	}{
 		{
-			q:    &Query{LogQL: `{test="log"}`},
+			q:    Query{logQL: `{test="log"}`},
 			c:    &korrel8r.Constraint{End: &t1},
 			want: []korrel8r.Object{"much", "too", "early"},
 		},
 		{
-			q:    &Query{LogQL: `{test="log"}`},
+			q:    Query{logQL: `{test="log"}`},
 			c:    &korrel8r.Constraint{Start: &t1, End: &t2},
 			want: []korrel8r.Object{"right", "on", "time"},
 		},

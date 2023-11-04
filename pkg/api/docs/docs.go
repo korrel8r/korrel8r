@@ -312,7 +312,7 @@ const docTemplate = `{
                 },
                 "query": {
                     "description": "Query for correlation data.",
-                    "type": "object"
+                    "type": "string"
                 }
             }
         },
@@ -347,7 +347,10 @@ const docTemplate = `{
                 },
                 "queries": {
                     "description": "Queries for starting objects",
-                    "type": "object"
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 }
             }
         },

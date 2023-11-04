@@ -303,7 +303,7 @@
                 },
                 "query": {
                     "description": "Query for correlation data.",
-                    "type": "object"
+                    "type": "string"
                 }
             }
         },
@@ -338,7 +338,10 @@
                 },
                 "queries": {
                     "description": "Queries for starting objects",
-                    "type": "object"
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 }
             }
         },

@@ -97,11 +97,9 @@ rules:
        domain: log
      result:
        query: |-
-         {
-           "LogType": "{{ k8sLogType .Namespace }}",
-           "LogQL": "{kubernetes_namespace_name=\"{{.Namespace}}\"} | json
-             {{- range $k, $v := .Spec.Selector.MatchLabels}} | kubernetes_labels_{{lokiFixLabel $k}}=\"{{$v}}\"{{end -}}"
-         }
+         log:{{ k8sLogType .Namespace }}:{kubernetes_namespace_name="{{.Namespace}}"} | json
+             {{- range $k, $v := .Spec.Selector.MatchLabels}} | kubernetes_labels_{{lokiFixLabel $k}}="{{$v}}"{{end -}}
+
    - name: PodToLogs
      start:
        domain: k8s
@@ -110,10 +108,7 @@ rules:
        domain: log
      result:
        query: |-
-         {
-           "LogType": "{{ k8sLogType .Namespace }}",
-           "LogQL": "{kubernetes_namespace_name=\"{{.Namespace}}\",kubernetes_pod_name=\"{{.Name}}\"} | json"
-         }
+         log:{{ k8sLogType .Namespace }}:{kubernetes_namespace_name="{{.Namespace}}",kubernetes_pod_name="{{.Name}}"} | json
 
    # TODO see  https://github.com/korrel8r/korrel8r/issues/52
    #
@@ -141,8 +136,7 @@ rules:
        classes: [namespacedResources]
      result:
        query: |-
-         {{$goal := rule.Goal}}
-         {Namespace: {{.Name}}, Group: {{$goal.Group}}, Version: {{$goal.Version}}, Kind: {{$goal.Kind}} }
+         {{classname rule.Goal}}:{namespace: {{.Name -}} }
 
    - name: NamespaceToAlert
      start:
@@ -152,12 +146,7 @@ rules:
        domain: alert
      result:
        query: |-
-         {
-           "Labels":
-           {
-             "namespace": "{{.Name}}"
-           }
-         }
+         alert:alert:{"namespace": "{{.Name}}"}
 
    - name: PodToAlert
      start:
@@ -167,13 +156,7 @@ rules:
        domain: alert
      result:
        query: |-
-         {
-           "Labels":
-           {
-             "namespace": "{{.Namespace}}",
-             "pod": "{{.Name}}"
-           }
-         }
+         alert:alert:{"namespace": "{{.Namespace}}","pod": "{{.Name}}"}
 
    - name: SelectorToPods
      start:
@@ -184,7 +167,8 @@ rules:
        classes: [Pod]
      result:
        query: |-
-         { Version: v1, Kind: Pod, Namespace: {{.Namespace}}, Labels: {{ .Spec.Selector.MatchLabels | json }} }
+         {{classname rule.Goal}}:{namespace: {{.Namespace}}, labels: {{.Spec.Selector.MatchLabels | json -}} }
+
    - name: EventToAll
      start:
        domain: k8s
@@ -195,9 +179,9 @@ rules:
      result:
        query: |-
          {{- with .InvolvedObject -}}
-         {{- $gv := k8sGroupVersion .APIVersion -}}
-         {Namespace: {{.Namespace}},Name: {{.Name}},Group: {{$gv.Group}},Version: {{$gv.Version}},Kind: {{.Kind}}}
+         {{classnameAVK .APIVersion .Kind}}:{namespace: {{.Namespace}}, name: {{.Name}}}
          {{- end -}}
+
    - name: AllToEvent
      start:
        domain: k8s
@@ -207,7 +191,7 @@ rules:
        classes: [Event.]
      result:
        query: |-
-         { "Version":"v1", "Kind":"Event", "Fields": {
+         {{classname rule.Goal}}:{"fields":{
                       "involvedObject.namespace":"{{.Namespace}}",
                       "involvedObject.name": "{{.Name}}",
                       "involvedObject.kind": "{{.Kind}}",
@@ -222,4 +206,4 @@ rules:
        domain: metric
      result:
        query: |-
-         { "PromQL": "{ namespace=\"{{.Namespace}}\", {{tolower .Kind}}=\"{{.Name}}\" }" }
+         {{classname rule.Goal}}:{namespace="{{.Namespace}}",{{tolower .Kind}}="{{.Name}}"}

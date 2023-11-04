@@ -19,15 +19,15 @@ type Domain struct {
 // @description Classes maps class names to a short description.
 type Classes map[string]string
 
-// Note: use json.RawMessage for queries and objects because we don't know the type of these values
+// Note: use json.RawMessage for and objects because we don't know the type of these values
 // until the engine resolves the class name as a Class value.
 
 // @description	Starting point for correlation.
 type Start struct {
-	// Class of starting objects
-	Class string `json:"class" example:"domain:class"`
 	// Queries for starting objects
-	Queries []json.RawMessage `json:"queries,omitempty" swaggertype:"object"`
+	Queries []string `json:"queries,omitempty"`
+	// Class of starting objects
+	Class string `json:"class,omitempty"`
 	// Objects in JSON form
 	Objects []json.RawMessage `json:"objects,omitempty" swaggertype:"object"`
 }
@@ -55,8 +55,8 @@ type Options struct {
 
 // @description Query run during a correlation with a count of results found.
 type QueryCount struct {
-	Query json.RawMessage `json:"query" swaggertype:"object"` // Query for correlation data.
-	Count int             `json:"count"`                      // Count of results or -1 if the query was not executed.
+	Query string `json:"query"` // Query for correlation data.
+	Count int    `json:"count"` // Count of results or -1 if the query was not executed.
 }
 
 // Rule is a correlation rule with a list of queries and results counts found during navigation.
@@ -96,7 +96,7 @@ type Graph struct {
 
 func queryCounts(gq graph.Queries) (qc []QueryCount) {
 	for q, c := range gq {
-		qc = append(qc, QueryCount{Query: json.RawMessage(q), Count: c})
+		qc = append(qc, QueryCount{Query: q, Count: c})
 	}
 	return qc
 }

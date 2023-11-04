@@ -10,8 +10,8 @@ import (
 
 func TestQuery_String(t *testing.T) {
 	q := NewQuery(Domain("foo").Class("x"), "a", "b", "c")
-	s := `{"class":"x", "results": ["a","b","c"]}`
-	assert.JSONEq(t, s, q.String())
+	s := `foo:x:["a","b","c"]`
+	assert.Equal(t, s, q.String())
 	q2, err := Domain("foo").Query(s)
 	assert.NoError(t, err)
 	assert.Equal(t, q, q2)

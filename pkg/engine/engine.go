@@ -112,10 +112,10 @@ func (e *Engine) addTemplateFuncs(v any) {
 	}
 }
 
-// Class parses a full class name and returns the class.
+// Class parses a full class name and returns the
 func (e *Engine) Class(fullname string) (korrel8r.Class, error) {
-	d, c := korrel8r.SplitClassName(fullname)
-	if c == "" || d == "" {
+	d, c, ok := korrel8r.SplitClassName(fullname)
+	if !ok {
 		return nil, fmt.Errorf("invalid class name: %v", fullname)
 	} else {
 		return e.DomainClass(d, c)
@@ -132,6 +132,19 @@ func (e *Engine) DomainClass(domain, class string) (korrel8r.Class, error) {
 		return nil, korrel8r.ClassNotFoundErr{Class: class, Domain: d}
 	}
 	return c, nil
+}
+
+// Query parses a query string to a query object.
+func (e *Engine) Query(query string) (korrel8r.Query, error) {
+	d, _, _, ok := korrel8r.SplitClassData(query)
+	if !ok {
+		return nil, fmt.Errorf("invalid query string: %v", query)
+	}
+	domain, err := e.DomainErr(d)
+	if err != nil {
+		return nil, err
+	}
+	return domain.Query(query)
 }
 
 func (e *Engine) Rules() []korrel8r.Rule { return e.rules }

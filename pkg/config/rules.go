@@ -15,7 +15,7 @@ import (
 
 func addRules(e *engine.Engine, r Rule) (err error) {
 	if r.Name == "" {
-		r.Name = fmt.Sprintf("%v->%v", r.Start, r.Goal)
+		r.Name = fmt.Sprintf("%v=%v", r.Start, r.Goal)
 	}
 	defer func() {
 		if err != nil {

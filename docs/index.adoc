@@ -50,9 +50,7 @@ Pods are identified by a name (among other things), but this name is labelled di
 
 The https://opentelemetry.io/[Open Telemetry Project] aims to create a standard vocabulary,
 but in the short to medium term there are many long-lived, widely-used alternative vocabularies in use.
-That is something we have to live with while we wait and hope for "one standard to rule them all".
-
-image:https://imgs.xkcd.com/comics/standards.png[]
+That is something we have to live with while we wait for "one standard to rule them all".
 
 There are also multiple storage technologies used to store signal data,
 and multiple query languages to search them.
@@ -98,10 +96,6 @@ The start and goal can be in different domains (e.g. `k8s:Pod` → `log:applicat
 A rule definition contains a _template_ that produces a _query_ in the vocabulary of the _goal domain_.
 The template uses fields from the _start class_ in the vocabulary of the _start domain_.
 Rules are bridge between domains different vocabularies, schema, labels and query langauges.
-
-
-
-
 
 == Examples of Objects
 

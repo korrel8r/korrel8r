@@ -10,6 +10,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/korrel8r/korrel8r/pkg/domains/k8s"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 )
 
@@ -30,6 +31,8 @@ import (
 //	  Marshals its argument as YAML and returns the string.
 //	classname
 //	  Returns the domain qualified name of a korrel8r.Class argument.
+//	classnameAVK
+//	  Returns the full class name for (APIVersion, Kind)
 //	urlquerymap
 //	  Returns the URL query encoding of a map argument.
 //	  Map values are stringified as for fmt.Printf("%v", ...)
@@ -45,18 +48,19 @@ var Funcs map[string]any
 
 func init() {
 	Funcs = map[string]any{
-		"rule":        func() korrel8r.Rule { return nil },
-		"constraint":  func() *korrel8r.Constraint { return nil },
-		"assert":      doAssert, // Assert a condition in a template
-		"json":        korrel8r.JSONString,
-		"yaml":        korrel8r.YAMLString,
-		"classname":   korrel8r.ClassName,
-		"rulename":    korrel8r.RuleName,
-		"urlquerymap": urlquerymap,
-		"selector":    selector,
-		"mkslice":     mkslice,
-		"mkmap":       mkmap,
-		"tolower":     strings.ToLower,
+		"rule":         func() korrel8r.Rule { return nil },
+		"constraint":   func() *korrel8r.Constraint { return nil },
+		"assert":       doAssert, // Assert a condition in a template
+		"json":         korrel8r.JSONString,
+		"yaml":         korrel8r.YAMLString,
+		"classname":    korrel8r.ClassName,
+		"classnameAVK": func(av, k string) string { return korrel8r.ClassName(k8s.ClassOfAPIVersionKind(av, k)) },
+		"rulename":     korrel8r.RuleName,
+		"urlquerymap":  urlquerymap,
+		"selector":     selector,
+		"mkslice":      mkslice,
+		"mkmap":        mkmap,
+		"tolower":      strings.ToLower,
 	}
 }
 

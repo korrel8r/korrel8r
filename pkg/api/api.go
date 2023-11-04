@@ -181,9 +181,9 @@ func (a *API) goalsRequest(c *gin.Context) (g *graph.Graph, goals []korrel8r.Cla
 	return g, goals
 }
 
-func (a *API) queries(c *gin.Context, class korrel8r.Class, rawQueries []json.RawMessage) (queries []korrel8r.Query) {
-	for _, q := range rawQueries {
-		query, err := class.Domain().Query(string(q))
+func (a *API) queries(c *gin.Context, queryStrings []string) (queries []korrel8r.Query) {
+	for _, q := range queryStrings {
+		query, err := a.Engine.Query(q)
 		if check(c, http.StatusBadRequest, err, "query parameter") {
 			queries = append(queries, query)
 		}
@@ -209,7 +209,7 @@ func (a *API) start(c *gin.Context, start *Start) (korrel8r.Class, []korrel8r.Ob
 		return nil, nil, nil
 	}
 	objects := a.objects(c, class, start.Objects)
-	queries := a.queries(c, class, start.Queries)
+	queries := a.queries(c, start.Queries)
 	return class, objects, queries
 }
 
@@ -222,7 +222,7 @@ func (a *API) setupStart(c *gin.Context, g *graph.Graph, start korrel8r.Class, o
 		cr := korrel8r.NewCountResult(result)
 		// TODO should we tolerate get failures and report in the response?
 		if check(c, http.StatusBadRequest, a.Engine.Get(c.Request.Context(), start, query, cr),
-			"query failed: %q", query.String) {
+			"query failed: %q", query.String()) {
 			n.Queries[query.String()] = cr.Count
 		}
 	}

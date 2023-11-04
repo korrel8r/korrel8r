@@ -7,7 +7,7 @@ rules:
       classes: [Deployment.apps]
     result:
       query: |-
-        { {{k8sQueryClass "Deployment.apps"}}, "Namespace": "{{.Labels.namespace}}", "Name":"{{.Labels.deployment}}"}
+        {{classname rule.Goal}}:{namespace: "{{.Labels.namespace}}", name:"{{.Labels.deployment}}"}
 
   - name: AlertToPod
     start:
@@ -17,7 +17,7 @@ rules:
       classes: [Pod.]
     result:
       query: |-
-        { {{k8sQueryClass "Pod"}}, "Namespace": "{{.Labels.namespace}}", "Name":"{{.Labels.pod}}"}
+        {{classname rule.Goal}}:{namespace: "{{.Labels.namespace}}", name:"{{.Labels.pod}}"}
 
   - name: AlertToDaemonSet
     start:
@@ -27,7 +27,7 @@ rules:
       classes: [DaemonSet.apps]
     result:
       query: |-
-        { {{k8sQueryClass "DaemonSet.apps"}}, "Namespace": "{{.Labels.namespace}}", "Name":"{{.Labels.daemonset}}"}
+        {{classname rule.Goal}}:{namespace: "{{.Labels.namespace}}", name:"{{.Labels.daemonset}}"}
 
   - name: AlertToStatefulSet
     start:
@@ -37,7 +37,7 @@ rules:
       classes: [StatefulSet.apps]
     result:
       query: |-
-        { {{k8sQueryClass "StatefulSet.apps"}}, "Namespace": "{{.Labels.namespace}}", "Name":"{{.Labels.statefulset}}"}
+        {{classname rule.Goal}}:{namespace: "{{.Labels.namespace}}", name:"{{.Labels.statefulset}}"}
 
   - name: AlertToMetric
     start:
@@ -46,4 +46,4 @@ rules:
       domain: metric
     result:
       query: |-
-        { "PromQL": {{ .Expression | json }} }
+        {{classname rule.Goal}}:{{.Expression}}

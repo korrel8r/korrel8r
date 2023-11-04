@@ -34,12 +34,16 @@ var Domain = domain{}
 
 type domain struct{}
 
-func (domain) Name() string                           { return "alert" }
-func (d domain) String() string                       { return d.Name() }
-func (domain) Description() string                    { return "Alerts that metric values are out of bounds." }
-func (domain) Class(string) korrel8r.Class            { return Class{} }
-func (domain) Classes() []korrel8r.Class              { return []korrel8r.Class{Class{}} }
-func (domain) Query(r string) (korrel8r.Query, error) { return impl.Query(r, Query{}) }
+func (domain) Name() string                { return "alert" }
+func (d domain) String() string            { return d.Name() }
+func (domain) Description() string         { return "Alerts that metric values are out of bounds." }
+func (domain) Class(string) korrel8r.Class { return Class{} }
+func (domain) Classes() []korrel8r.Class   { return []korrel8r.Class{Class{}} }
+func (d domain) Query(s string) (korrel8r.Query, error) {
+	var q Query
+	_, err := impl.UnmarshalQueryString(d, s, &q)
+	return q, err
+}
 
 const (
 	StoreKeyMetrics      = "metrics"
@@ -117,7 +121,8 @@ type Receiver struct {
 type Query map[string]string
 
 func (q Query) Class() korrel8r.Class { return Class{} }
-func (q Query) String() string        { return korrel8r.JSONString(q) }
+func (q Query) Query() string         { return korrel8r.JSONString(q) }
+func (q Query) String() string        { return korrel8r.QueryName(q) }
 
 func (domain) ConsoleURLToQuery(u *url.URL) (korrel8r.Query, error) {
 	m := map[string]string{}

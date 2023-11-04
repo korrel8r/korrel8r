@@ -20,6 +20,8 @@ import (
 	"github.com/prometheus/client_golang/api"
 	promv1 "github.com/prometheus/client_golang/api/prometheus/v1"
 	"github.com/prometheus/common/model"
+	"golang.org/x/exp/maps"
+	"golang.org/x/exp/slices"
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -35,12 +37,15 @@ var (
 
 type domain struct{}
 
-func (domain) Name() string                           { return "metric" }
-func (d domain) String() string                       { return d.Name() }
-func (domain) Description() string                    { return "Time-series of measured values" }
-func (domain) Class(name string) korrel8r.Class       { return Class{} }
-func (domain) Classes() []korrel8r.Class              { return []korrel8r.Class{Class{}} }
-func (domain) Query(r string) (korrel8r.Query, error) { return impl.Query(r, &Query{}) }
+func (domain) Name() string                     { return "metric" }
+func (d domain) String() string                 { return d.Name() }
+func (domain) Description() string              { return "Time-series of measured values" }
+func (domain) Class(name string) korrel8r.Class { return Class{} }
+func (domain) Classes() []korrel8r.Class        { return []korrel8r.Class{Class{}} }
+func (d domain) Query(s string) (korrel8r.Query, error) {
+	_, qs, err := impl.ParseQueryString(d, s)
+	return Query{PromQL: qs}, err
+}
 
 const StoreKeyMetricURL = "metric"
 
@@ -75,7 +80,7 @@ func (domain) ConsoleURLToQuery(u *url.URL) (korrel8r.Query, error) {
 }
 
 func (domain) QueryToConsoleURL(query korrel8r.Query) (*url.URL, error) {
-	q, err := impl.TypeAssert[*Query](query)
+	q, err := impl.TypeAssert[Query](query)
 	if err != nil {
 		return nil, err
 	}
@@ -89,6 +94,20 @@ func (c Class) Domain() korrel8r.Domain { return Domain }
 func (c Class) Name() string            { return Domain.Name() }
 func (c Class) Description() string     { return "A set of label:value pairs identifying a time-series." }
 func (c Class) New() korrel8r.Object    { var obj Object; return obj }
+func (c Class) Preview(o korrel8r.Object) string {
+	switch o := o.(type) {
+	case *model.Sample:
+		if name, ok := o.Metric["__name__"]; ok {
+			return fmt.Sprintf("%v", name)
+		} else {
+			keys := maps.Keys(o.Metric)
+			slices.Sort(keys)
+			return fmt.Sprintf("%v", keys)
+		}
+	default:
+		return fmt.Sprintf("(%T)%v", o, o)
+	}
+}
 
 type Object *model.Sample
 
@@ -97,7 +116,8 @@ type Query struct {
 }
 
 func (q Query) Class() korrel8r.Class { return Class{} }
-func (q Query) String() string        { return korrel8r.JSONString(q) }
+func (q Query) Query() string         { return q.PromQL }
+func (q Query) String() string        { return korrel8r.QueryName(q) }
 
 type Store struct{ api promv1.API }
 
@@ -112,7 +132,7 @@ func NewStore(base *url.URL, hc *http.Client) (korrel8r.Store, error) {
 func (s *Store) Domain() korrel8r.Domain { return Domain }
 
 func (s *Store) Get(ctx context.Context, query korrel8r.Query, result korrel8r.Appender) error {
-	q, err := impl.TypeAssert[*Query](query)
+	q, err := impl.TypeAssert[Query](query)
 	if err != nil {
 		return err
 	}
@@ -120,12 +140,12 @@ func (s *Store) Get(ctx context.Context, query korrel8r.Query, result korrel8r.A
 	if err != nil {
 		return err
 	}
-	if values, ok := value.(model.Vector); ok {
-		for _, v := range values {
+	if vector, ok := value.(model.Vector); ok {
+		for _, v := range vector {
 			result.Append(v)
 		}
 	} else {
-		result.Append(value)
+		return fmt.Errorf("unexpected metric value: (%T)%#v", value, value)
 	}
 	return nil
 }

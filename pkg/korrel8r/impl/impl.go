@@ -8,8 +8,7 @@ import (
 	"reflect"
 
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
-
-	"sigs.k8s.io/yaml"
+	"gopkg.in/yaml.v2"
 )
 
 // TypeName returns the name of the static type of its argument, which may be an interface.
@@ -24,10 +23,29 @@ func TypeAssert[T any](x any) (v T, err error) {
 	return v, err
 }
 
-func Query(s string, q korrel8r.Query) (korrel8r.Query, error) {
-	err := yaml.Unmarshal([]byte(s), &q)
-	if q.Class() == nil {
-		return nil, fmt.Errorf("query has no class: %+v", q)
+// ParseQueryString parses a query string into class and query parts.
+func ParseQueryString(domain korrel8r.Domain, query string) (class korrel8r.Class, queryString string, err error) {
+	d, c, q, ok := korrel8r.SplitClassData(query)
+	if !ok {
+		return nil, "", fmt.Errorf("invalid query: %v", query)
 	}
-	return q, err
+	if d != domain.Name() {
+		return nil, "", fmt.Errorf("wrong query domain, want %v: %v", domain, query)
+	}
+	class = domain.Class(c)
+	if class == nil {
+		return nil, "", korrel8r.ClassNotFoundErr{Domain: domain, Class: c}
+	}
+	return class, q, nil
+}
+
+func UnmarshalQueryString(domain korrel8r.Domain, query string, data any) (korrel8r.Class, error) {
+	c, qs, err := ParseQueryString(domain, query)
+	if err != nil {
+		return nil, err
+	}
+	if err := yaml.Unmarshal([]byte(qs), data); err != nil {
+		return c, fmt.Errorf("invalid query: %w: %v", err, qs)
+	}
+	return c, nil
 }

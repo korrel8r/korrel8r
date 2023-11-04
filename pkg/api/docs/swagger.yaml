@@ -97,7 +97,7 @@ definitions:
         type: integer
       query:
         description: Query for correlation data.
-        type: object
+        type: string
     type: object
   api.Rule:
     properties:
@@ -122,7 +122,9 @@ definitions:
         type: object
       queries:
         description: Queries for starting objects
-        type: object
+        items:
+          type: string
+        type: array
     type: object
   korrel8r.StoreConfig:
     additionalProperties:

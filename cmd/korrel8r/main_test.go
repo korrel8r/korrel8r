@@ -42,7 +42,7 @@ func TestMain_list_domain(t *testing.T) {
 }
 
 func TestMain_get(t *testing.T) {
-	out, err := command(t, "get", "-o", "json", "mock", `{"class":"foo", "results":["hello"]}`).Output()
+	out, err := command(t, "get", "-o", "json", `mock:foo:["hello"]`).Output()
 	require.NoError(t, test.ExecError(err))
 	assert.Equal(t, "\"hello\"\n", string(out))
 }
@@ -68,16 +68,15 @@ func TestMain_rules(t *testing.T) {
 	}{
 		{
 			args: []string{"rules"},
-			want: `foobar [mock:foo]->[mock:bar]
-barfoo [mock:bar]->[mock:foo]`,
+			want: "foobar(mock:foo,mock:bar)\nbarfoo(mock:bar,mock:foo)",
 		},
 		{
 			args: []string{"rules", "--start", "mock:foo"},
-			want: "foobar [mock:foo]->[mock:bar]",
+			want: "foobar(mock:foo,mock:bar)",
 		},
 		{
 			args: []string{"rules", "--goal", "mock:foo"},
-			want: "barfoo [mock:bar]->[mock:foo]",
+			want: "barfoo(mock:bar,mock:foo)",
 		},
 	} {
 		t.Run(strings.Join(x.args, " "), func(t *testing.T) {

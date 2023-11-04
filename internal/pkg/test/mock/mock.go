@@ -7,12 +7,12 @@ package mock
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/url"
 	"strings"
 
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
+	"github.com/korrel8r/korrel8r/pkg/korrel8r/impl"
 	"golang.org/x/exp/slices"
 )
 
@@ -34,9 +34,12 @@ func (d Domain) Class(name string) korrel8r.Class                   { return Cla
 func (d Domain) Classes() (classes []korrel8r.Class)                { return nil }
 func (d Domain) Store(korrel8r.StoreConfig) (korrel8r.Store, error) { return NewStore(d), nil }
 func (d Domain) Query(s string) (korrel8r.Query, error) {
-	q := &query{}
-	err := json.Unmarshal([]byte(s), q)
-	return NewQuery(d.Class(q.Class), q.Results...), err
+	var (
+		q   Query
+		err error
+	)
+	q.class, err = impl.UnmarshalQueryString(d, s, &q.Results)
+	return q, err
 }
 
 func Domains(names ...string) []korrel8r.Domain {
@@ -143,7 +146,7 @@ func NewStore(d korrel8r.Domain) Store { return Store{domain: d} }
 
 func (s Store) Domain() korrel8r.Domain { return s.domain }
 func (s Store) Get(_ context.Context, q korrel8r.Query, r korrel8r.Appender) error {
-	r.Append(q.(Query).MResults...)
+	r.Append(q.(Query).Results...)
 	return nil
 }
 
@@ -151,19 +154,13 @@ func (s *Store) Resolve(korrel8r.Query) *url.URL { panic("not implemented") }
 
 // Query is a mock query that contains the desired results.
 type Query struct {
-	MClass   korrel8r.Class
-	MResults []korrel8r.Object
+	Results []korrel8r.Object
+	class   korrel8r.Class
 }
 
 func NewQuery(c korrel8r.Class, results ...korrel8r.Object) korrel8r.Query {
-	return Query{MClass: c, MResults: results}
+	return Query{class: c, Results: results}
 }
-func (q Query) Class() korrel8r.Class        { return q.MClass }
-func (q Query) MarshalJSON() ([]byte, error) { return json.Marshal(query{q.MClass.Name(), q.MResults}) }
-func (q Query) String() string               { return korrel8r.JSONString(q) }
-
-// query for marshal/unmarhsal
-type query struct {
-	Class   string            `json:"class"`
-	Results []korrel8r.Object `json:"results"`
-}
+func (q Query) Class() korrel8r.Class { return q.class }
+func (q Query) Query() string         { return korrel8r.JSONString(q.Results) }
+func (q Query) String() string        { return korrel8r.QueryName(q) }

@@ -56,16 +56,17 @@ type Class schema.GroupVersionKind
 type Object client.Object
 
 // Query represents a Kubernetes resource query.
-// FIXME JSON examples?
+// FIXME DOC
 type Query struct {
-	// GroupVersionKind is the Kind the resource to find (required)
-	schema.GroupVersionKind
-	// NamespacedName restricts the search to objects matching the namespace and name (optional).
-	types.NamespacedName `json:",omitempty"`
+	// Namespace restricts the search to a namespace.
+	Namespace string `json:"namespace,omitempty"`
+	Name      string `json:"name,omitempty"`
 	// Labels restricts the search to objects with matching label values (optional)
-	Labels client.MatchingLabels `json:",omitempty"`
+	Labels client.MatchingLabels `json:"labels,omitempty"`
 	// Fields restricts the search to objects with matching field values (optional)
-	Fields client.MatchingFields `json:",omitempty"`
+	Fields client.MatchingFields `json:"fields,omitempty"`
+
+	class Class
 }
 
 // Store implements a korrel8r.Store using the kubernetes API server.
@@ -129,10 +130,22 @@ func (d domain) Classes() (classes []korrel8r.Class) {
 	return classes
 }
 
-func (domain) Query(s string) (korrel8r.Query, error) { return impl.Query(s, &Query{}) }
+func (d domain) Query(s string) (korrel8r.Query, error) {
+	var q Query
+	c, err := impl.UnmarshalQueryString(d, s, &q)
+	if err != nil {
+		return nil, err
+	}
+	q.class = c.(Class)
+	return &q, nil
+}
 
 // ClassOf returns the Class of o, which must be a pointer to a typed API resource struct.
 func ClassOf(o client.Object) Class { return Class(GroupVersionKind(o)) }
+
+func ClassOfAPIVersionKind(apiVersion, kind string) Class {
+	return Class(schema.FromAPIVersionAndKind(apiVersion, kind))
+}
 
 // GroupVersionKind returns the GVK of o, which must be a pointer to a typed API resource struct.
 // Returns empty if o is not a known resource type.
@@ -182,15 +195,17 @@ func (c Class) GVK() schema.GroupVersionKind { return schema.GroupVersionKind(c)
 
 func NewQuery(c Class, namespace, name string, labels, fields map[string]string) *Query {
 	return &Query{
-		GroupVersionKind: c.GVK(),
-		NamespacedName:   types.NamespacedName{Namespace: namespace, Name: name},
-		Labels:           labels,
-		Fields:           fields,
+		class:     c,
+		Namespace: namespace,
+		Name:      name,
+		Labels:    labels,
+		Fields:    fields,
 	}
 }
 
-func (q *Query) Class() korrel8r.Class { return Class(q.GroupVersionKind) }
-func (q *Query) String() string        { return korrel8r.JSONString(q) }
+func (q Query) Class() korrel8r.Class { return q.class }
+func (q Query) Query() string         { return korrel8r.JSONString(q) }
+func (q Query) String() string        { return korrel8r.QueryName(q) }
 
 // NewStore creates a new k8s store.
 func NewStore(c client.Client, cfg *rest.Config) (korrel8r.Store, error) {
@@ -234,7 +249,7 @@ func setMeta(o Object) Object {
 }
 
 func (s *Store) getObject(ctx context.Context, q *Query, result korrel8r.Appender) error {
-	o, err := Scheme.New(q.GroupVersionKind)
+	o, err := Scheme.New(q.class.GVK())
 	if err != nil {
 		return err
 	}
@@ -242,7 +257,7 @@ func (s *Store) getObject(ctx context.Context, q *Query, result korrel8r.Appende
 	if co == nil {
 		return fmt.Errorf("invalid client.Object: %T", o)
 	}
-	err = s.c.Get(ctx, q.NamespacedName, co)
+	err = s.c.Get(ctx, NamespacedName(q.Namespace, q.Name), co)
 	if err != nil {
 		return err
 	}
@@ -251,7 +266,7 @@ func (s *Store) getObject(ctx context.Context, q *Query, result korrel8r.Appende
 }
 
 func (s *Store) getList(ctx context.Context, q *Query, result korrel8r.Appender) error {
-	gvk := q.GroupVersionKind
+	gvk := q.class.GVK()
 	gvk.Kind = gvk.Kind + "List"
 	o, err := Scheme.New(gvk)
 	if err != nil {
@@ -302,19 +317,20 @@ func (s *Store) QueryToConsoleURL(query korrel8r.Query) (*url.URL, error) {
 	if err != nil {
 		return nil, err
 	}
-	gvr, err := s.resource(q.GroupVersionKind)
+	gvr, err := s.resource(q.class.GVK())
 	if err != nil {
 		return nil, err
 	}
 	var u url.URL
 	switch {
-	case q.GroupVersionKind == eventGVK && len(q.Fields) != 0:
+	case q.class.GVK() == eventGVK && len(q.Fields) != 0:
 		return s.eventQueryToConsoleURL(q) // Special case
 	case len(q.Labels) > 0: // Label search
 		// Search using label selector
 		u.Path = path.Join("search", "ns", q.Namespace) // TODO non-namespaced searches?
 		v := url.Values{}
-		v.Add("kind", fmt.Sprintf("%v~%v~%v", q.Group, q.Version, q.Kind))
+		gvk := q.class.GVK()
+		v.Add("kind", fmt.Sprintf("%v~%v~%v", gvk.Group, gvk.Version, gvk.Kind))
 		v.Add("q", selectorString(q.Labels))
 		u.RawQuery = v.Encode()
 	default: // Named resource
@@ -341,8 +357,9 @@ func (s *Store) eventQueryToConsoleURL(q *Query) (*url.URL, error) {
 		return nil, err
 	}
 	u, err := s.QueryToConsoleURL(&Query{ // URL for involved object
-		GroupVersionKind: gv.WithKind(q.Fields[iKind]),
-		NamespacedName:   NamespacedName(q.Fields[iNamespace], q.Fields[iName]),
+		class:     Class(gv.WithKind(q.Fields[iKind])),
+		Namespace: q.Fields[iNamespace],
+		Name:      q.Fields[iName],
 	})
 	if err != nil {
 		return nil, err
@@ -385,7 +402,7 @@ func (s *Store) ConsoleURLToQuery(u *url.URL) (korrel8r.Query, error) {
 	}
 	if events { // Query events involving the object, not the object itself
 		q := &Query{
-			GroupVersionKind: eventGVK,
+			class: Class(eventGVK),
 			Fields: map[string]string{
 				iNamespace:  namespace,
 				iName:       name,
@@ -394,7 +411,7 @@ func (s *Store) ConsoleURLToQuery(u *url.URL) (korrel8r.Query, error) {
 			}}
 		return q, nil
 	} else {
-		q := Query{NamespacedName: NamespacedName(namespace, name), GroupVersionKind: gvk}
+		q := Query{Namespace: namespace, Name: name, class: Class(gvk)}
 		if labels := uq.Get("q"); labels != "" {
 			if q.Labels, err = parseSelector(labels); err != nil {
 				return nil, err

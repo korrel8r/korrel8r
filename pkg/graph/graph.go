@@ -28,7 +28,7 @@ func New(data *Data) *Graph {
 		DirectedGraph: multi.NewDirectedGraph(),
 		GraphAttrs: Attrs{
 			"fontname":        "Helvetica",
-			"fontsize":        "10",
+			"fontsize":        "12",
 			"splines":         "true",
 			"overlap":         "prism",
 			"overlap_scaling": "-2",
@@ -37,7 +37,6 @@ func New(data *Data) *Graph {
 		NodeAttrs: Attrs{
 			"fontname": "Helvetica",
 			"fontsize": "12",
-			"shape":    "box",
 		},
 		EdgeAttrs: Attrs{
 			"fontname": "Helvetica",

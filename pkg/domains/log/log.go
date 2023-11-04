@@ -27,7 +27,7 @@ var (
 	_ korrel8r.Domain    = Domain
 	_ console.Converter  = Domain
 	_ korrel8r.Store     = &Store{}
-	_ korrel8r.Query     = &Query{}
+	_ korrel8r.Query     = Query{}
 	_ korrel8r.Class     = Class("")
 	_ korrel8r.Previewer = Class("")
 )
@@ -42,12 +42,20 @@ var Domain = domain{}
 
 type domain struct{}
 
-func (domain) Name() string                           { return "log" }
-func (d domain) String() string                       { return d.Name() }
-func (domain) Description() string                    { return "Records from container and node logs." }
-func (domain) Class(name string) korrel8r.Class       { return classMap[name] }
-func (domain) Classes() []korrel8r.Class              { return classes }
-func (domain) Query(s string) (korrel8r.Query, error) { return impl.Query(s, &Query{}) }
+func (domain) Name() string                     { return "log" }
+func (d domain) String() string                 { return d.Name() }
+func (domain) Description() string              { return "Records from container and node logs." }
+func (domain) Class(name string) korrel8r.Class { return classMap[name] }
+func (domain) Classes() []korrel8r.Class        { return classes }
+
+// FIXME should be on Class?
+func (d domain) Query(s string) (korrel8r.Query, error) {
+	c, s, err := impl.ParseQueryString(d, s)
+	if err != nil {
+		return nil, err
+	}
+	return NewQuery(c.(Class), s), nil
+}
 
 const (
 	StoreKeyLoki      = "loki"
@@ -81,21 +89,21 @@ func (domain) Store(sc korrel8r.StoreConfig) (korrel8r.Store, error) {
 }
 
 func (domain) QueryToConsoleURL(query korrel8r.Query) (*url.URL, error) {
-	q, err := impl.TypeAssert[*Query](query)
+	q, err := impl.TypeAssert[Query](query)
 	if err != nil {
 		return nil, err
 	}
 	v := url.Values{}
-	v.Add("q", q.LogQL)
-	v.Add("tenant", q.LogType)
+	v.Add("q", q.logQL)
+	v.Add("tenant", q.Class().Name())
 	return &url.URL{Path: "/monitoring/logs", RawQuery: v.Encode()}, nil
 }
 
 func (domain) ConsoleURLToQuery(u *url.URL) (korrel8r.Query, error) {
 	if c, ok := classMap[u.Query().Get("tenant")]; ok {
-		return &Query{
-			LogQL:   u.Query().Get("q"),
-			LogType: c.Name(),
+		return Query{
+			class: c.(Class),
+			logQL: u.Query().Get("q"),
 		}, nil
 	}
 	return nil, fmt.Errorf("not a valid Loki URL: %v", u)
@@ -120,17 +128,30 @@ func (c Class) Description() string {
 	}
 }
 
-func (c Class) New() korrel8r.Object             { return Object("") }
-func (c Class) Preview(o korrel8r.Object) string { return o.(string) }
+func (c Class) New() korrel8r.Object { return Object("") }
+func (c Class) Preview(o korrel8r.Object) string {
+	r, ok := o.(string)
+	if ok {
+		var m map[string]any
+		if json.Unmarshal([]byte(r), &m) == nil {
+			if s, ok := m["message"].(string); ok {
+				return s
+			}
+		}
+	}
+	return fmt.Sprintf("%v", o)
+}
 
 // Object is a log record string. Format depends on source of logs.
 type Object = string
 
 // Query is a LogQL query string
 type Query struct {
-	LogQL   string // `json:",omitempty"`
-	LogType string // `json:",omitempty"`
+	logQL string // `json:",omitempty"`
+	class Class  // `json:",omitempty"`
 }
+
+func NewQuery(c Class, logQL string) korrel8r.Query { return Query{class: c, logQL: logQL} }
 
 const (
 	Application    Class = "application"
@@ -149,12 +170,13 @@ func init() {
 	}
 }
 
-func (q *Query) Class() korrel8r.Class { return Class(q.LogType) }
-func (q *Query) String() string        { return korrel8r.JSONString(q) }
+func (q Query) Class() korrel8r.Class { return q.class }
+func (q Query) Query() string         { return q.logQL }
+func (q Query) String() string        { return korrel8r.QueryName(q) }
 
-func (q *Query) plainURL() *url.URL {
+func (q Query) plainURL() *url.URL {
 	v := url.Values{}
-	v.Add("query", q.LogQL)
+	v.Add("query", q.logQL)
 	v.Add("direction", "forward")
 	// TODO constraint inside query
 	// if constraint != nil {
@@ -171,35 +193,35 @@ func (q *Query) plainURL() *url.URL {
 	return &url.URL{Path: "/loki/api/v1/query_range", RawQuery: v.Encode()}
 }
 
-func (q *Query) lokiStackURL() *url.URL {
+func (q Query) lokiStackURL() *url.URL {
 	u := q.plainURL()
-	if q.LogType == "" {
-		q.LogType = Application.Name()
+	if q.class == "" {
+		q.class = Application
 	}
-	u.Path = path.Join("/api/logs/v1/", q.LogType, u.Path)
+	u.Path = path.Join("/api/logs/v1/", q.class.Name(), u.Path)
 	return u
 }
 
 type Store struct {
 	c        *http.Client
 	base     *url.URL
-	queryURL func(*Query) *url.URL
+	queryURL func(Query) *url.URL
 }
 
 func (Store) Domain() korrel8r.Domain { return Domain }
 
 // NewLokiStackStore returns a store that uses a LokiStack observatorium-style URLs.
 func NewLokiStackStore(base *url.URL, c *http.Client) (korrel8r.Store, error) {
-	return &Store{c: c, base: base, queryURL: (*Query).lokiStackURL}, nil
+	return &Store{c: c, base: base, queryURL: (Query).lokiStackURL}, nil
 }
 
 // NewPlainLokiStore returns a store that uses plain Loki URLs.
 func NewPlainLokiStore(base *url.URL, c *http.Client) (korrel8r.Store, error) {
-	return &Store{c: c, base: base, queryURL: (*Query).plainURL}, nil
+	return &Store{c: c, base: base, queryURL: (Query).plainURL}, nil
 }
 
 func (s *Store) Get(ctx context.Context, query korrel8r.Query, result korrel8r.Appender) error {
-	q, err := impl.TypeAssert[*Query](query)
+	q, err := impl.TypeAssert[Query](query)
 	if err != nil {
 		return err
 	}

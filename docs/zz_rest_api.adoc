@@ -438,7 +438,7 @@ link:#api-classes[APIClasses]
 
 	| count | integer| `int64` |  | | Count of results or -1 if the query was not executed. | 
 
-	| query | link:#interface[interface{}]| `interface{}` |  | | Query for correlation data. | 
+	| query | string| `string` |  | | Query for correlation data. | 
 
 |===
 
@@ -483,7 +483,7 @@ link:#api-classes[APIClasses]
 
 	| objects | link:#interface[interface{}]| `interface{}` |  | | Objects in JSON form | 
 
-	| queries | link:#interface[interface{}]| `interface{}` |  | | Queries for starting objects | 
+	| queries | []string| `[]string` |  | | Queries for starting objects | 
 
 |===
 

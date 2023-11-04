@@ -5,7 +5,6 @@ package engine
 import (
 	"context"
 
-	"github.com/korrel8r/korrel8r/internal/pkg/logging"
 	"github.com/korrel8r/korrel8r/pkg/graph"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 )
@@ -28,18 +27,19 @@ func (f *Follower) Traverse(l *graph.Line) {
 	}
 	for _, s := range starters {
 		query, err := rule.Apply(s, nil)
-		if err != nil {
+		if err != nil || query == nil {
 			log.V(4).Info("did not apply", "error", err)
 			continue
 		}
-		log := log.WithValues("query", logging.JSON(query))
+		qs := korrel8r.QueryName(query)
+		log := log.WithValues("query", qs)
 		result := korrel8r.NewCountResult(goalNode.Result)
 		if err := f.Engine.Get(f.Context, goalNode.Class, query, result); err != nil {
-			log.Error(err, "get failed", "class", goalNode.Class, "query", query.String())
+			log.Error(err, "get failed")
 		}
 		// TODO get rid of duplication of query counts, simplify code?
-		l.Queries[query.String()] = result.Count
-		goalNode.Queries[query.String()] = result.Count
+		l.Queries[qs] = result.Count
+		goalNode.Queries[qs] = result.Count
 		log.V(3).Info("results", "count", result.Count)
 	}
 }
