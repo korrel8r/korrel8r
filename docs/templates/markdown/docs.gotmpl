@@ -227,7 +227,7 @@ link:#{{ dasherize (dropPackage .GoType) -}}[{{- dropPackage .GoType }}]
 Version:: {{ . }}
 {{- end }}
 {{ with .Info.License }}
-License:: {{ if .Name }}[{{ .Name }}]({{ end}}{{ .URL }}{{ if .Name }}){{ end }}
+License:: {{ .URL }}{{if and .Name .URL}}[{{.Name}}]{{ end }}
 {{- end }}
 {{- with .Info.Contact }}
 Contact:: {{ .Name }} {{ .Email }} {{ .URL }}

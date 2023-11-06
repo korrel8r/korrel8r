@@ -14,7 +14,7 @@ import (
 func main() {
 	dirs := os.Args[1:]
 	if len(dirs) == 0 {
-		fmt.Fprintf(os.Stderr, `Generate asciidoc with a section for for each package directory.
+		fmt.Fprintf(os.Stderr, `Generate asciidoc with a section :for for each package directory.
 usage: %v PKGDIRS...`, filepath.Base(os.Args[0]))
 		os.Exit(1)
 	}
@@ -33,7 +33,7 @@ func genDoc(dir string) error {
 	if err != nil {
 		return err
 	}
-	fmt.Printf("\n== %v\n\n", d.Name)
+	fmt.Printf("\n== Domain `%v`\n\n", d.Name)
 	fmt.Println(d.Asciidoc(2))
 	return nil
 }

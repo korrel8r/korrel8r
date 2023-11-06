@@ -34,9 +34,10 @@ korrel8r web -http :8080 &
 
 With korrel8r running, you can browse the following URLs:
 
-http://localhost:8080 - Interactive browser interface.
-* http://localhost:8080/api # REST API documentation
+- http://localhost:8080 - Interactive browser interface.
+- http://localhost:8080/api - REST API documentation
 
+You can also run korrel8r as a command line tool, see `korrel8r --help` for commands and options.
 
 === Deploying on a cluster
 
@@ -64,9 +65,10 @@ Browse the following URLs:
 
 == Developers
 
-Browsable Go and REST API documentation (generated from source):
-- [REST API documentation](pkg/api/docs/swagger.md)
-- [Go API documentation](https://pkg.go.dev/github.com/korrel8r/korrel8r/pkg/korrel8r)
+Documentation:
+
+- {pages}[Korrel8r User guide and Reference] for more about what Korrel8r is and how to use it.
+- https://pkg.go.dev/github.com/korrel8r/korrel8r/pkg/korrel8r:[Go package documentation]
 
 If you are interested in helping to develop Korrel8r:
 - clone this repository

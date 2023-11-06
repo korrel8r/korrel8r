@@ -1,21 +1,70 @@
 
-== alert
+== Domain `alert`
 
-Domain alert implements korrel8r interfaces on prometheus alerts.
-
-== k8s
-
-Domain k8s implements Kubernetes resources stored in a Kube API server.
+Domain `alert` provides Prometheus alerts, queries and access to Thanos and AlertManager stores.
 
 === Class
 
-A k8s class corresponds to a kind of Kubernetes resource.
-
-The class name is `KIND.VERSION.GROUP.k8s`, VERSION can be omitted if there is no ambiguity. Example class names: `Pod.k8s`, `Pod.v1.k8s`, `Deployment.v1.apps.k8s`, `Deployment.apps.k8s`
+There is a single class `alert:alert`.
 
 === Object
 
-A resource instance is represented by a Go struct. These are the built-in types provided by `k8s.io/client-go/api` and the Kube-generated CRD struct types. Rule templates should use the Go Field names (capitalized) rather than the JSON field names (lowercase), and can expect field values to have the same Go types as the client-go or generated classes.
+An alert object is represented by this Go type. Rules starting from an alert should use the capitalized Go field names rather than the lowercase JSON names.
+
+----
+type Object struct {
+	// Common fields.
+	Labels		map[string]string	`json:"labels"`
+	Annotations	map[string]string	`json:"annotations"`
+	Status		string			`json:"status"`	// inactive|pending|firing|suppressed
+	StartsAt	time.Time		`json:"startsAt"`
+
+	// Prometheus fields.
+	Value		string	`json:"value"`
+	Expression	string	`json:"expression"`
+	Fingerprint	string	`json:"fingerprint"`
+
+	// Alertmanager fields.
+	EndsAt		time.Time	`json:"endsAt"`
+	UpdatedAt	time.Time	`json:"updatedAt"`
+	Receivers	[]Receiver	`json:"receivers"`
+	InhibitedBy	[]string	`json:"inhibitedBy"`
+	SilencedBy	[]string	`json:"silencedBy"`
+	GeneratorURL	string		`json:"generatorURL"`
+}
+----
+
+=== Query
+
+A JSON map of string names to string values, matched against alert labels, for example:
+
+----
+alert:alert:{"alertname":"KubeStatefulSetReplicasMismatch","container":"kube-rbac-proxy-main","namespace":"openshift-logging"}
+----
+
+=== Store
+
+A client of Prometheus and/or AlertManager. Store configuration:
+
+----
+domain: alert
+metrics: PROMETHEUS_URL
+alertmanager: ALERTMANAGER_URL
+----
+
+Either or both of `metrics` or `alertmanager` may be present.
+
+== Domain `k8s`
+
+Domain `k8s` implements Kubernetes resources stored in a Kube API server.
+
+=== Class
+
+A k8s class corresponds to a kind of Kubernetes resource, the class name is `KIND.VERSION.GROUP` VERSION can be omitted if there is no ambiguity. Example class names: `k8s:Pod`, `k8s:Pod.v1`, `k8s:Deployment.v1.apps`, `k8s:Deployment.apps`
+
+=== Object
+
+Objects are represented by the standard Go types used by `k8s.io/client-go/api`, and by Kube-generated CRD struct types. Rules starting from the k8s domain should use the capitalized Go field names rather than the lowercase JSON field names.
 
 === Query
 
@@ -34,16 +83,87 @@ type Query struct {
 }
 ----
 
+For example:
+
+----
+k8s:Pod.v1.:{"namespace":"openshift-cluster-version","name":"cluster-version-operator-8d86bcb65-btlgn"}
+----
+
 === Store
 
-k8s stores connects to the current logged-in Kubernetes cluster, no other configuration is needed.
+k8s stores connects to the current logged-in Kubernetes cluster, no other configuration is needed than:
 
-== log
+----
+domain: k8s
+----
 
-Domain log is a domain for openshift-logging logs stored in Loki or LokiStack
+== Domain `log`
 
-== metric
+Domain `log` is a domain for openshift-logging logs stored in Loki or LokiStack.
 
-Domain metric is the domain of prometheus metrics.
+=== Class
 
-FIXME metrics are only usable as goals
+There are 3 classes corresponding to the 3 openshift logging log types:
+
+----
+log:application
+log:infrastructure
+log:audit
+----
+
+=== Object
+
+A log object is a log record string in the Viaq JSON format stored by openshift logging.
+
+=== Query
+
+A query is a https://grafana.com/docs/loki/latest/query/[LogQL] query string, prefixed by the logging class, for example:
+
+----
+log:infrastructure:{ kubernetes_namespace_name="openshift-cluster-version", kubernetes_pod_name=~".*-operator-.*" }
+----
+
+=== Store
+
+To connect to a lokiStack store use this configuration:
+
+----
+domain: log
+lokistack: URL_OF_LOKISTACK_PROXY
+----
+
+To connect to plain loki store use:
+
+----
+domain: log
+loki: URL_OF_LOKI
+----
+
+== Domain `metric`
+
+Domain `metric` represents Prometheus metric samples as objects.
+
+=== Class
+
+There is only one class: `metric:metric`
+
+=== Object
+
+A https://pkg.go.dev/github.com/prometheus/common@v0.45.0/model#Sample[metric sample], which includes a metric time series (name and labels), a timestamp and a value.
+
+=== Query
+
+Queries are https://prometheus.io/docs/prometheus/latest/querying/basics/#time-series-selectors[PromQL] time series selector strings, prefixed by `metric:metric:` for example:
+
+----
+metric:metric:http_requests_total{environment=~"staging|testing|development",method!="GET"}
+----
+
+=== Store
+
+Prometheus is the store, store configuration:
+
+----
+domain: metric
+metric: URL_OF_PROMETHEUS
+----

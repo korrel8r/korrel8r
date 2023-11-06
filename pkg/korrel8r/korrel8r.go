@@ -51,8 +51,6 @@ type Class interface {
 }
 
 // Store is a source of signal data that can be queried.
-//
-// FIXME store config.
 type Store interface {
 	// Domain of the Store
 	Domain() Domain

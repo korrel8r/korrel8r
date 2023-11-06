@@ -47,7 +47,7 @@ func (r *templateRule) Apply(start korrel8r.Object, c *korrel8r.Constraint) (kor
 		return nil, fmt.Errorf("empty query")
 	}
 	if q.Class() != r.Goal() {
-		return nil, fmt.Errorf("wrong goal: expected %v, query: %v", korrel8r.ClassName(r.Goal()), korrel8r.QueryName(q))
+		return nil, fmt.Errorf("wrong goal %v, expected %v", q.Class(), r.Goal())
 	}
 	return q, nil
 }

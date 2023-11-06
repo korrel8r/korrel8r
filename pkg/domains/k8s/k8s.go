@@ -4,25 +4,28 @@
 //
 // # Class
 //
-// A k8s class corresponds to a kind of Kubernetes resource.
-//
-// The class name is `KIND.VERSION.GROUP.k8s`, VERSION can be omitted if there is no ambiguity.
-// Example class names: `Pod.k8s`, `Pod.v1.k8s`, `Deployment.v1.apps.k8s`, `Deployment.apps.k8s`
+// A k8s class corresponds to a kind of Kubernetes resource, the class name is `KIND.VERSION.GROUP`
+// VERSION can be omitted if there is no ambiguity.
+// Example class names: `k8s:Pod`, `k8s:Pod.v1`, `k8s:Deployment.v1.apps`, `k8s:Deployment.apps`
 //
 // # Object
 //
-// A resource instance is represented by a Go struct.
-// These are the built-in types provided by `k8s.io/client-go/api` and the Kube-generated CRD struct types.
-// Rule templates should use the Go Field names (capitalized) rather than the JSON field names (lowercase),
-// and can expect field values to have the same Go types as the client-go or generated classes.
+// Objects are represented by the standard Go types used by `k8s.io/client-go/api`, and by Kube-generated CRD struct types.
+// Rules starting from the k8s domain should use the capitalized Go field names rather than the lowercase JSON field names.
 //
 // # Query
 //
 // Queries are the JSON-serialized form of this struct: [Query]
 //
+// For example:
+//
+//	k8s:Pod.v1.:{"namespace":"openshift-cluster-version","name":"cluster-version-operator-8d86bcb65-btlgn"}
+//
 // # Store
 //
-// k8s stores connects to the current logged-in Kubernetes cluster, no other configuration is needed.
+// k8s stores connects to the current logged-in Kubernetes cluster, no other configuration is needed than:
+//
+//	domain: k8s
 package k8s
 
 import (
@@ -56,7 +59,6 @@ type Class schema.GroupVersionKind
 type Object client.Object
 
 // Query represents a Kubernetes resource query.
-// FIXME DOC
 type Query struct {
 	// Namespace restricts the search to a namespace.
 	Namespace string `json:"namespace,omitempty"`

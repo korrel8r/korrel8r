@@ -18,9 +18,7 @@ import (
 var getCmd = &cobra.Command{
 	Use:   "get DOMAIN:CLASS:QUERY",
 	Short: "Execute QUERY and print the results",
-	Long: `
-`,
-	Args: cobra.ExactArgs(1),
+	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		e := newEngine()
 		q := must.Must1(e.Query(args[0]))

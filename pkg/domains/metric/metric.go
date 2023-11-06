@@ -1,9 +1,34 @@
 // Copyright: This file is part of korrel8r, released under https://github.com/korrel8r/korrel8r/blob/main/LICENSE
 
-// package metric is the domain of prometheus metrics.
+// package metric represents Prometheus metric samples as objects.
 //
-// FIXME metrics are only usable as goals
+// # Class
+//
+// There is only one class: `metric:metric`
+//
+// # Object
+//
+// A [metric sample], which includes a metric time series (name and labels), a timestamp and a value.
+//
+// # Query
+//
+// Queries are [PromQL] time series selector strings, prefixed by `metric:metric:` for example:
+//
+//	metric:metric:http_requests_total{environment=~"staging|testing|development",method!="GET"}
+//
+// # Store
+//
+// Prometheus is the store, store configuration:
+//
+//	domain: metric
+//	metric: URL_OF_PROMETHEUS
+//
+// [PromQL]: https://prometheus.io/docs/prometheus/latest/querying/basics/#time-series-selectors
+// [metric sample]: https://pkg.go.dev/github.com/prometheus/common@v0.45.0/model#Sample
 package metric
+
+// TODO: doc comment needs to show model.Sample structure or link to it properly.
+// TODO: metrics are only usable as goals.
 
 import (
 	"context"

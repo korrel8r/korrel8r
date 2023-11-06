@@ -115,7 +115,6 @@ definitions:
     properties:
       class:
         description: Class of starting objects
-        example: domain:class
         type: string
       objects:
         description: Objects in JSON form
@@ -233,4 +232,7 @@ paths:
       - search
 produces:
 - application/json
+schemes:
+- http
+- https
 swagger: "2.0"

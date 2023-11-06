@@ -77,11 +77,11 @@ func (p *Domain) Asciidoc(headingLevel int) string {
 		return ""
 	}
 	adoc := strings.TrimSpace(pr.Asciidoc(p.Parser().Parse(p.Doc)))
-	// Clean up stray spaces caused by expanding DocURLs as code blocks:
+	// Clean up stray spaces caused by expanding dock links as code blocks:
 	adoc = regexp.MustCompile(`(?m)----\n\n `).ReplaceAllString(adoc, "----\n\n")
 	adoc = regexp.MustCompile(`(?m) \n\n----$`).ReplaceAllString(adoc, "\n\n----")
-	// Replace the leading "package name" if present with "Domain name"
-	adoc = strings.Replace(adoc, "package "+p.Name, "Domain "+p.Name, 1)
+	// Replace the leading "Package name" if present with "Domain name"
+	adoc = regexp.MustCompile("[Pp]ackage "+p.Name).ReplaceAllString(adoc, "Domain `"+p.Name+"`")
 	return adoc
 }
 

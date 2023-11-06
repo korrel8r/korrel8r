@@ -238,7 +238,7 @@ func (c *correlate) queryURLAttrs(a graph.Attrs, qs graph.Queries, d korrel8r.Do
 	}
 }
 
-// FIXME make this configurable - map domains to node attrs
+// TODO make this configurable - map domains to node attrs
 var domainAttrs = map[string]graph.Attrs{
 	"k8s":    {"shape": "septagon", "fillcolor": "#326CE5", "fontcolor": "white", "fontname": "Ubuntu,Bold"},
 	"log":    {"shape": "note", "fillcolor": "goldenrod", "fontname": "Courier"},
@@ -254,7 +254,7 @@ func (c *correlate) updateDiagram() {
 	}
 	g.EachNode(func(n *graph.Node) {
 		a := n.Attrs
-		maps.Copy(a, domainAttrs[n.Class.Domain().Name()]) // FIXME
+		maps.Copy(a, domainAttrs[n.Class.Domain().Name()]) // add in domainAttrs
 		a["label"] = n.Class.Name()
 		a["tooltip"] = fmt.Sprintf("%v (%v)", korrel8r.ClassName(n.Class), len(n.Result.List()))
 		a["style"] += ",filled"

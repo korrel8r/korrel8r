@@ -50,9 +50,6 @@ type Options struct {
 	WithRules bool `form:"withRules"`
 }
 
-// FIXME the json.RawMessage below should be a korrel8r.Query.
-// Need to resolve the status of queries as objects or strings once and for all.
-
 // @description Query run during a correlation with a count of results found.
 type QueryCount struct {
 	Query string `json:"query"` // Query for correlation data.

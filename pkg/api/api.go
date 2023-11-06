@@ -14,6 +14,7 @@
 //	@contact.name	Project Korrel8r
 //	@contact.url	https://github.com/korrel8r/korrel8r
 //	@basePath		/api/v1alpha1
+//	@schemes		http https
 //	@accept			json
 //	@produce		json
 package api
@@ -24,7 +25,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/korrel8r/korrel8r/pkg/api/docs"
+	docs "github.com/korrel8r/korrel8r/pkg/api/zz_docs"
 	"github.com/korrel8r/korrel8r/pkg/engine"
 	"github.com/korrel8r/korrel8r/pkg/graph"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"

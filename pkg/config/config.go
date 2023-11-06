@@ -31,6 +31,7 @@ func Load(fileOrURL string) (Configs, error) {
 }
 
 func load(source string, configs Configs) (err error) {
+	log.V(3).Info("Loading configuration", "config", source)
 	if _, ok := configs[source]; ok {
 		return nil // Already loaded
 	}
@@ -92,10 +93,9 @@ func (configs Configs) Apply(e *engine.Engine) error {
 			}
 		}
 		for _, sc := range c.Stores {
-			if err := e.AddStoreConfig(sc); err != nil {
-				log.V(1).Error(err, "configuring store", "source", source, "store", logging.JSON(sc))
-			} else {
-				log.V(1).Info("configured store", "source", source, "store", logging.JSON(sc))
+			log.V(1).Info("configuring store", "config", source, "store", logging.JSON(sc))
+			if err := e.AddStoreConfig(maps.Clone(sc)); err != nil {
+				log.V(1).Error(err, "configuring store", "config", source, "store", logging.JSON(sc))
 			}
 		}
 	}

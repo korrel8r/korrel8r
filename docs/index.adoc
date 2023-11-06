@@ -99,7 +99,7 @@ Rules are bridge between domains different vocabularies, schema, labels and quer
 
 == Examples of Objects
 
-#FIXME YAML/JSON examples.
+// TODO: JSON examples.
 
 A Kubernetes cluster generates many types of _observable signal_, including:
 

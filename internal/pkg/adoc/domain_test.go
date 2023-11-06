@@ -12,7 +12,7 @@ import (
 func TestDomainDoc(t *testing.T) {
 	p, err := NewDomain("testdata")
 	require.NoError(t, err)
-	want := `Domain fake represents fake resoures in a fake world.
+	want := "Domain `fake` represents fake resoures in a fake world." + `
 
 === Class
 

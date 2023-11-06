@@ -7,12 +7,13 @@ REST API for the Korrel8r correlation engine.
 
 Version:: v1alpha1
 
-License:: [Apache 2.0](https://github.com/korrel8r/korrel8r/blob/main/LICENSE)
+License:: https://github.com/korrel8r/korrel8r/blob/main/LICENSE[Apache 2.0]
 Contact:: Project Korrel8r  https://github.com/korrel8r/korrel8r
 
 == Content negotiation
 URI Schemes::
 * http
+* https
 Consumes::
 * application/json
 Produces::
@@ -479,7 +480,7 @@ link:#api-classes[APIClasses]
 |===
 | Name | Type | Go type | Required | Default | Description | Example
 
-	| class | string| `string` |  | | Class of starting objects | `domain:class`
+	| class | string| `string` |  | | Class of starting objects | 
 
 	| objects | link:#interface[interface{}]| `interface{}` |  | | Objects in JSON form | 
 

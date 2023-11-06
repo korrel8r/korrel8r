@@ -1,6 +1,32 @@
 // Copyright: This file is part of korrel8r, released under https://github.com/korrel8r/korrel8r/blob/main/LICENSE
 
-// package alert implements korrel8r interfaces on prometheus alerts.
+// Package alert provides Prometheus alerts, queries and access to Thanos and AlertManager stores.
+//
+// # Class
+//
+// There is a single class `alert:alert`.
+//
+// # Object
+//
+// An alert object is represented by this Go type.
+// Rules starting from an alert should use the capitalized Go field names rather than the lowercase JSON names.
+// [Object]
+//
+// # Query
+//
+// A JSON map of string names to string values, matched against alert labels, for example:
+//
+//	alert:alert:{"alertname":"KubeStatefulSetReplicasMismatch","container":"kube-rbac-proxy-main","namespace":"openshift-logging"}
+//
+// # Store
+//
+// A client of Prometheus and/or AlertManager. Store configuration:
+//
+//	domain: alert
+//	metrics: PROMETHEUS_URL
+//	alertmanager: ALERTMANAGER_URL
+//
+// Either or both of `metrics` or `alertmanager` may be present.
 package alert
 
 import (
@@ -70,7 +96,8 @@ func (domain) Store(sc korrel8r.StoreConfig) (korrel8r.Store, error) {
 	return NewStore(alertmanagerURL, metricsURL, nil)
 }
 
-type Class struct{} // Only one class - "alert"
+// Class is represents any Prometheus alert. There is only a single class, named "alert".
+type Class struct{}
 
 func (c Class) Domain() korrel8r.Domain { return Domain }
 func (c Class) Name() string            { return "alert" }
@@ -93,6 +120,7 @@ func (c Class) Preview(o korrel8r.Object) string {
 	return ""
 }
 
+// Object is represented by the JSON serialization the following type.
 type Object struct {
 	// Common fields.
 	Labels      map[string]string `json:"labels"`
@@ -114,10 +142,12 @@ type Object struct {
 	GeneratorURL string     `json:"generatorURL"`
 }
 
+// Receiver is a named receiver, part of Object.
 type Receiver struct {
 	Name string `json:"name"`
 }
 
+// Query is a map of label name:value pairs for matching alerts, serialized as JSON.
 type Query map[string]string
 
 func (q Query) Class() korrel8r.Class { return Class{} }
@@ -153,11 +183,13 @@ func (domain) QueryToConsoleURL(query korrel8r.Query) (*url.URL, error) {
 	}, nil
 }
 
+// Store is a client of Prometheus and AlertManager.
 type Store struct {
 	alertmanagerAPI *client.AlertmanagerAPI
 	prometheusAPI   v1.API
 }
 
+// NewStore creates a new store client for a Prometheus URL.
 func NewStore(alertmanagerURL *url.URL, prometheusURL *url.URL, hc *http.Client) (korrel8r.Store, error) {
 	alertmanagerAPI, err := newAlertmanagerClient(alertmanagerURL, hc)
 	if err != nil {

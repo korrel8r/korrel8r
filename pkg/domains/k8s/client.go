@@ -3,6 +3,8 @@
 package k8s
 
 import (
+	"time"
+
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
@@ -16,9 +18,11 @@ func NewClient() (client.Client, *rest.Config, error) {
 	if err != nil {
 		return nil, nil, err
 	}
+	// TODO configurable settings for k8s client.
 	// Reduce client-side throttling for rapid results.
 	cfg.QPS = 100
 	cfg.Burst = 1000
+	cfg.Timeout = 5 * time.Second
 	httpClient, err := rest.HTTPClientFor(cfg)
 	if err != nil {
 		return nil, nil, err

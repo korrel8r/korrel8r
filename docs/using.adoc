@@ -5,18 +5,24 @@ It provides a REST API for running correlation _queries_ using a set of _rules_ 
 Korrel8r can be run as a plain executable, outside the cluster, and connect to the API server and stores inside the cluster.
 It can also run as a deployed service inside the cluster.
 
-== Running the Executable
-
-#FIXME - move from README, use default config.
-
-== Deploying the Service
-
-#FIXME - move from README, use default config.
-
 == Configuration
 
-#FIXME doc in config pkg close to code. Stores and rules. Mention default config, show examples.
+// TODO: default configuration & rules. Configure outside/inside cluster. Link to reference.
 
-== REST API
+== Command Line
 
-#FIXME - link to reference. Curl examples of API, use swagger UI.
+// TODO: move from README, use default config.
+
+== Browser
+
+The `korrel8r web` command provides browser access to:
+
+- Interactive queries and correlation graphs `http://localhost:8080/correlate`
+- Interactive REST API documentation on `http://localhost:8080/api`
+
+WARNING: The interactive web interface may be dropped in future.
+Other consoles or tools acting as korrel8r clients will provide better visualization and processing of results.
+
+== REST Service
+
+// TODO: move from README. Link to reference. Curl examples of API, use swagger UI.

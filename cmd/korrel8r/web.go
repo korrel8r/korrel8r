@@ -19,6 +19,7 @@ import (
 var webCmd = &cobra.Command{
 	Use:   "web [ADDR] [flags]",
 	Short: "Start web server listening on host:port address ADDR (default :8080 for http, :8443 for https)",
+	Args:  cobra.NoArgs,
 	Run: func(_ *cobra.Command, args []string) {
 		if *httpFlag == "" && *httpsFlag == "" {
 			*httpFlag = ":8080" // Default if no port specified.

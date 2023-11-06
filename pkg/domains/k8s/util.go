@@ -11,17 +11,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 )
 
-// clientObjectStruct is a constraint for types T where *T implements client.Object, e.g. corev1.Pod
-type clientObjectStruct[T any] interface {
-	client.Object
+func New[T any, PT interface {
+	Object
 	*T
-}
-
-func New[T any, PT clientObjectStruct[T]](namespace, name string) PT {
-	var (
-		t T
-		o PT = &t
-	)
+}](namespace, name string) PT {
+	o := PT(new(T))
 	gvk := test.Must(apiutil.GVKForObject(o, Scheme))
 	o.GetObjectKind().SetGroupVersionKind(gvk)
 	o.SetNamespace(namespace)
