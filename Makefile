@@ -82,7 +82,9 @@ $(IMAGE_KUSTOMIZATION):
 
 WATCH=kubectl get events -A --watch-only& trap "kill %%" EXIT;
 
-deploy: image $(IMAGE_KUSTOMIZATION)	## Deploy to a cluster using kustomize. IMG must be set to a *public* image repository.
+# NOTE: deploy does not depend on 'image', since it may be used to deploy pre-existing images.
+# To build and deploy a new image do `make image deploy`
+deploy: $(IMAGE_KUSTOMIZATION)	## Deploy to a cluster using kustomize.
 	$(WATCH) kubectl apply -k config/overlays/$(OVERLAY)
 	$(WATCH) kubectl wait -n korrel8r --for=condition=available --timeout=60s deployment.apps/korrel8r
 
