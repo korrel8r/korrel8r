@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/gin-contrib/pprof"
 	"github.com/gin-gonic/gin"
 	"github.com/korrel8r/korrel8r/internal/pkg/browser"
 	"github.com/korrel8r/korrel8r/internal/pkg/logging"
@@ -19,12 +20,10 @@ var webCmd = &cobra.Command{
 	Use:   "web [ADDR] [flags]",
 	Short: "Start web server listening on host:port address ADDR (default :8080 for http, :8443 for https)",
 	Run: func(_ *cobra.Command, args []string) {
-		var (
-			s http.Server
-		)
 		if *httpFlag == "" && *httpsFlag == "" {
 			*httpFlag = ":8080" // Default if no port specified.
 		}
+		var s http.Server
 		switch {
 		case *httpFlag != "" && *httpsFlag != "":
 			panic(fmt.Errorf("only one of --http or --https may be present"))
@@ -45,6 +44,7 @@ var webCmd = &cobra.Command{
 			gin.SetMode(gin.ReleaseMode)
 		}
 		router := gin.New()
+		pprof.Register(router) // Enable profiling
 		s.Handler = router
 		router.Use(gin.Recovery())
 		if *verbose >= 2 {

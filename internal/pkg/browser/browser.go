@@ -4,6 +4,7 @@
 package browser
 
 import (
+	"context"
 	"embed"
 	"html/template"
 	"io/fs"
@@ -11,10 +12,6 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
-
-	"context"
-
-	_ "net/http/pprof"
 
 	"github.com/gin-gonic/gin"
 	"github.com/korrel8r/korrel8r/internal/pkg/logging"

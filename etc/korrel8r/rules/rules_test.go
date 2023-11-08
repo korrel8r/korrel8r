@@ -17,10 +17,10 @@ import (
 	"github.com/korrel8r/korrel8r/pkg/domains/log"
 	"github.com/korrel8r/korrel8r/pkg/domains/metric"
 	"github.com/korrel8r/korrel8r/pkg/engine"
+	"github.com/korrel8r/korrel8r/pkg/graph"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"github.com/korrel8r/korrel8r/pkg/unique"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta/testrestmapper"
@@ -30,32 +30,37 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
-func setup(t *testing.T) *engine.Engine {
-	t.Helper()
-	configs, err := config.Load("../korrel8r.yaml")
-	require.NoError(t, err)
+func setup() *engine.Engine {
+	configs := test.Must(config.Load("../korrel8r.yaml"))
 	for _, c := range configs {
 		c.Stores = nil // Use fake stores, not configured defaults.
 	}
 	e := engine.New(k8s.Domain, log.Domain, alert.Domain, metric.Domain)
-	require.NoError(t, configs.Apply(e))
+	test.PanicErr(configs.Apply(e))
 	c := fake.NewClientBuilder().WithRESTMapper(testrestmapper.TestOnlyStaticRESTMapper(k8s.Scheme)).Build()
-	require.NoError(t, e.AddStore(test.Must(k8s.NewStore(c, &rest.Config{}))))
+	test.PanicErr(e.AddStore(test.Must(k8s.NewStore(c, &rest.Config{}))))
 	return e
 }
+
+var rulesUsed = unique.Set[string]{}
 
 func testTraverse(t *testing.T, e *engine.Engine, start, goal korrel8r.Class, starters []korrel8r.Object, want korrel8r.Query) {
 	t.Helper()
 	paths := e.Graph().AllPaths(start, goal)
 	paths.NodeFor(start).Result.Append(starters...)
 	f := e.Follower(context.Background())
-	assert.NoError(t, paths.Traverse(f.Traverse))
+	assert.NoError(t, paths.Traverse(func(l *graph.Line) {
+		f.Traverse(l)
+		if len(l.Queries) > 0 { // Only consider the rule used if it generated some queries
+			rulesUsed.Add(l.Rule.Name())
+		}
+	}))
 	assert.NoError(t, f.Err)
 	assert.Contains(t, paths.NodeFor(goal).Queries, korrel8r.QueryName(want))
 }
 
 func TestPodToLogs(t *testing.T) {
-	e := setup(t)
+	e := setup()
 	for _, pod := range []*corev1.Pod{
 		k8s.New[corev1.Pod]("project", "application"),
 		k8s.New[corev1.Pod]("kube-something", "infrastructure"),
@@ -68,7 +73,7 @@ func TestPodToLogs(t *testing.T) {
 }
 
 func TestSelectorToLogsRules(t *testing.T) {
-	e := setup(t)
+	e := setup()
 	// Verify rules selected the correct set of start classes
 	classes := unique.NewList[korrel8r.Class]()
 	for _, r := range e.Rules() {
@@ -91,7 +96,7 @@ func TestSelectorToLogsRules(t *testing.T) {
 }
 
 func TestSelectorToLogs(t *testing.T) {
-	e := setup(t)
+	e := setup()
 	d := k8s.New[appsv1.Deployment]("ns", "x")
 	d.Spec = appsv1.DeploymentSpec{
 		Selector: &metav1.LabelSelector{MatchLabels: map[string]string{"a.b/c": "x"}},
@@ -101,7 +106,7 @@ func TestSelectorToLogs(t *testing.T) {
 }
 
 func TestSelectorToPods(t *testing.T) {
-	e := setup(t)
+	e := setup()
 
 	// Deployment
 	labels := map[string]string{"test": "testme"}
@@ -131,7 +136,7 @@ func TestSelectorToPods(t *testing.T) {
 }
 
 func TestK8sEvent(t *testing.T) {
-	e := setup(t)
+	e := setup()
 	pod := k8s.New[corev1.Pod]("aNamespace", "foo")
 	event := k8s.EventFor(pod, "a")
 
@@ -150,14 +155,14 @@ func TestK8sEvent(t *testing.T) {
 }
 
 func TestK8sAllToMetric(t *testing.T) {
-	e := setup(t)
+	e := setup()
 	pod := k8s.New[corev1.Pod]("aNamespace", "foo")
 	want := &metric.Query{PromQL: "{namespace=\"aNamespace\",pod=\"foo\"}"}
 	testTraverse(t, e, k8s.ClassOf(pod), metric.Class{}, []korrel8r.Object{pod}, want)
 }
 
 func TestNamespace(t *testing.T) {
-	e := setup(t)
+	e := setup()
 	ns := k8s.New[corev1.Namespace]("", "ns")
 	poda := k8s.New[corev1.Pod]("ns", "a")
 
@@ -171,4 +176,16 @@ func TestNamespace(t *testing.T) {
 		want := k8s.NewQuery(k8s.ClassOf(poda), "ns", "", nil, nil)
 		testTraverse(t, e, k8s.ClassOf(ns), k8s.ClassOf(poda), []korrel8r.Object{ns}, want)
 	})
+}
+
+func TestMain(m *testing.M) {
+	m.Run()
+	e := setup()
+	fmt.Println("= Rules not covered by tests:")
+	for _, r := range e.Rules() {
+		name := r.Name()
+		if !rulesUsed.Has(name) {
+			fmt.Println(name)
+		}
+	}
 }

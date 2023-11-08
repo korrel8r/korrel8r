@@ -24,10 +24,11 @@ clean: # Warning: runs `git clean -dfx` and removes checked-in generated files.
 	rm -vrf _site docs/zz_*.adoc pkg/api/docs /cmd/korrel8r/version.txt
 	git clean -dfx
 
-tools: ## Install tools for `make generate` and `make lint` locally.
+tools: ## Install tools for generating, linting nad testing locally.
 	go install github.com/go-swagger/go-swagger/cmd/swagger@latest
 	go install github.com/swaggo/swag/cmd/swag@latest
 	go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+	go install sigs.k8s.io/kind@latest
 
 VERSION_TXT=cmd/korrel8r/version.txt
 

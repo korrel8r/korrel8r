@@ -16,6 +16,7 @@ import (
 	logdomain "github.com/korrel8r/korrel8r/pkg/domains/log"
 	"github.com/korrel8r/korrel8r/pkg/domains/metric"
 	"github.com/korrel8r/korrel8r/pkg/engine"
+	"github.com/pkg/profile"
 	"github.com/spf13/cobra"
 )
 
@@ -35,9 +36,14 @@ var (
 	verbose       *int
 	configuration *string
 	panicOnErr    *bool
+	profileType   *string
 
-	// Korrel8r engine
-	Engine *engine.Engine
+	// profileType values.
+	profileTypes = map[string]func(*profile.Profile){
+		"cpu":   profile.CPUProfile,
+		"mem":   profile.MemProfile,
+		"trace": profile.TraceProfile,
+	}
 )
 
 const (
@@ -50,7 +56,7 @@ func init() {
 	output = rootCmd.PersistentFlags().StringP("output", "o", "yaml", "Output format: [json, json-pretty, yaml]")
 	verbose = rootCmd.PersistentFlags().IntP("verbose", "v", 0, "Verbosity for logging")
 	configuration = rootCmd.PersistentFlags().StringP("config", "c", getConfig(), "Configuration file")
-	cobra.OnInitialize(func() { logging.Init(*verbose) }) // Initialize logging after flags are parsed
+	profileType = rootCmd.PersistentFlags().String("profile", "", "Enable profiling, one of [cpu mem trace]")
 	rootCmd.AddCommand(versionCmd)
 }
 
@@ -63,6 +69,16 @@ func getConfig() string {
 }
 
 func main() {
+	/// Actions to take after flags are parsed
+	var stopProfile = func() {}
+	defer stopProfile()
+	cobra.OnInitialize(func() {
+		logging.Init(*verbose)
+		if pt := profileTypes[*profileType]; pt != nil {
+			stopProfile = profile.Start(pt).Stop
+		}
+	})
+
 	defer func() {
 		// Code in this package will panic with an error to cause an exit.
 		if r := recover(); r != nil {
