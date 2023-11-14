@@ -4,8 +4,19 @@ This is the project's commit log. It is placeholder until a more user-readable c
 
 This project uses semantic versioning (https://semver.org)
 
+## Version v0.5.0
+
+- Added domain doc with class and query examples.
+- Enable profiling and /debug/pprof endpoint.
+- Change query format to DOMAIN:CLASS:QUERY.
+- Fix Makefile: deploy should not depend on image.
+- Minor cleanup, simplified log.Object.
+- Use lokistak "1x.demo" size for hack/openshift setup.
+- Change full class name from CLASS.DOMAIN to DOMAIN:CLASS
+
 ## Version v0.4.0
 
+- Release v0.4.0
 - Release v0.4.0
 - Release v0.4.0
 - Fix #65: HTTPs flags to korrel8r server.
