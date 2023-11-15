@@ -8,7 +8,7 @@ help: ## Print this help message.
 # The following variables can be overridden by environment variables or on the `make` command line
 
 ## VERSION: semantic version for releases, based on "git describe" for work in development (not semver).
-VERSION?=$(or $(shell git describe 2>/dev/null | cut -d- -f1,2 | sed 's/-/_dev_/'),$(file <$(VERSION_TXT)))
+VERSION?=$(or $(shell git describe --dirty 2>/dev/null | cut -d- -f1,2,4- | sed 's/-/_dev_/'),$(file <$(VERSION_TXT)))
 ## IMG: Name of image to build or deploy, without version tag.
 IMG?=quay.io/korrel8r/korrel8r
 ## TAG: Image tag, defaults to $(VERSION)
@@ -18,7 +18,9 @@ OVERLAY?=dev
 ## IMGTOOL: May be podman or docker.
 IMGTOOL?=$(shell which podman || which docker)
 
-all: generate lint test install ## Generate build and test.
+check: generate lint test ## Lint and test code.
+
+all: check install _site image ## Build everything.
 
 clean: # Warning: runs `git clean -dfx` and removes checked-in generated files.
 	rm -vrf _site docs/zz_*.adoc pkg/api/zz_docs /cmd/korrel8r/version.txt
@@ -28,7 +30,6 @@ tools: ## Install tools for generating, linting nad testing locally.
 	go install github.com/go-swagger/go-swagger/cmd/swagger@latest
 	go install github.com/swaggo/swag/cmd/swag@latest
 	go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
-	go install github.com/mariotoffia/goasciidoc@latest
 	go install sigs.k8s.io/kind@latest
 
 VERSION_TXT=cmd/korrel8r/version.txt
@@ -39,7 +40,7 @@ endif
 $(VERSION_TXT):
 	echo $(VERSION) > $@
 
-generate: $(VERSION_TXT) pkg/api/zz_docs _site ## Generate code and doc.
+generate: $(VERSION_TXT) pkg/api/zz_docs $(shell find -name '*.go') ## Generate code.
 	hack/copyright.sh
 	go mod tidy
 
@@ -49,14 +50,16 @@ pkg/api/zz_docs: $(wildcard pkg/api/*.go pkg/korrel8r/*.go)
 	swag fmt pkg/api
 	@touch $@
 
-lint: ## Run the linter to find and fix code style problems.
+lint: $(VERSION_TXT) ## Run the linter to find and fix code style problems.
 	golangci-lint run --fix
 
 install: $(VERSION_TXT) ## Build and install the korrel8r binary locally in $GOBIN.
 	go install -tags netgo ./cmd/korrel8r
 
 test: ## Run all tests, requires a cluster.
-	TEST_NO_SKIP=1 go test -timeout=1m -race ./...
+	$(MAKE) TEST_NO_SKIP=1 test-skip
+test-skip: $(VERSION_TXT) ## Run all tests but skip those requiring a cluster if not logged in.
+	go test -timeout=1m -race ./...
 
 cover: ## Run tests and show code coverage in browser.
 	go test -coverprofile=test.cov ./...
@@ -71,7 +74,6 @@ IMAGE=$(IMG):$(TAG)
 image: $(VERSION_TXT) ## Build and push image. IMG must be set to a writable image repository.
 	$(IMGTOOL) build --tag=$(IMAGE) .
 	$(IMGTOOL) push -q $(IMAGE)
-	@echo $(IMAGE)
 
 image-name: ## Print the full image name and tag.
 	@echo $(IMAGE)
@@ -114,11 +116,12 @@ docs/zz_domains.adoc: $(shell find cmd/korrel8r-doc internal pkg -name '*.go')
 docs/zz_rest_api.adoc: pkg/api/zz_docs docs/templates/markdown/docs.gotmpl
 	swagger -q generate markdown -T docs/templates -f $</swagger.json --output $@
 
-release: all image ## Create a local release tag and commit. TAG must be set to vX.Y.Z.
+release: ## Create a local release tag and commit. Set VERSION=vX.Y.Z.
 	@echo "$(VERSION)" | grep -qE "^v[0-9]+\.[0-9]+\.[0-9]+$$" || { echo "VERSION=$(VERSION) must be semantic version like vX.Y.Z"; exit 1; }
 	@test -z "$(shell git status --porcelain)" || { git status -s; echo Workspace is not clean; exit 1; }
+	$(MAKE) all
 	hack/changelog.sh $(VERSION) > CHANGELOG.md	# Update change log
-	git commit -q -a -m "Release $(VERSION)"
+	git commit -q  -m "Release $(VERSION)" -- $(VERSION_TXT) CHANGELOG.md
 	git tag $(VERSION) -a -m "Release $(VERSION)"
 	$(IMGTOOL) push -q "$(IMAGE)" "$(IMG):latest"
 	git push origin main --follow-tags

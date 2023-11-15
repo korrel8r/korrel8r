@@ -1,18 +1,44 @@
-name: Publish Website
+name: Go
 
 on:
   push:
     branches: [ "main" ]
-  workflow_dispatch:       # Allow manual trigger
+  pull_request:
+    branches: [ "main" ]
 
 jobs:
 
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-      - run: make _site SITE_DEPS=
-      - uses: actions/upload-pages-artifact@v2
+    - uses: actions/checkout@v3
+
+    - name: Set up Go
+      uses: actions/setup-go@v3
+      with:
+        go-version: "1.21"
+
+    - name: Cache Go Packages and Tools
+      id: cache-compiled-go
+      uses: actions/cache@v3
+      with:
+        path: ~/go
+        key: cache-${{ runner.os }}-${{ runner.arch }}
+
+    - name: Download Tools
+      run: make tools
+
+    - name: Generate and Lint
+      run: make generate lint
+
+    - name: Test
+      run: make test-skip
+
+    - name: Generate Web Site
+      run: make _site
+
+    - name: Upload web site
+      uses: actions/upload-pages-artifact@v2
 
   deploy:
     needs: build
