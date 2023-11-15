@@ -116,7 +116,7 @@ docs/zz_domains.adoc: $(shell find cmd/korrel8r-doc internal pkg -name '*.go')
 docs/zz_rest_api.adoc: pkg/api/zz_docs docs/templates/markdown/docs.gotmpl
 	swagger -q generate markdown -T docs/templates -f $</swagger.json --output $@
 
-release: ## Create a local release tag and commit. Set VERSION=vX.Y.Z.
+release: ## Create and push a new release tag and image. Set VERSION=vX.Y.Z.
 	@echo "$(VERSION)" | grep -qE "^v[0-9]+\.[0-9]+\.[0-9]+$$" || { echo "VERSION=$(VERSION) must be semantic version like vX.Y.Z"; exit 1; }
 	@test -z "$(shell git status --porcelain)" || { git status -s; echo Workspace is not clean; exit 1; }
 	$(MAKE) all
