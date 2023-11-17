@@ -1,5 +1,9 @@
 // Copyright: This file is part of korrel8r, released under https://github.com/korrel8r/korrel8r/blob/main/LICENSE
 
+//+kubebuilder:object:generate=true
+
+// Package config contains configuration types for Korrel8r.
+// These types can be loaded from YAML configuration files and/or used in a Kubernetes resource spec.
 package config
 
 import (

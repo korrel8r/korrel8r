@@ -8,7 +8,7 @@ help: ## Print this help message.
 # The following variables can be overridden by environment variables or on the `make` command line
 
 ## VERSION: semantic version for releases, based on "git describe" for work in development (not semver).
-VERSION?=$(or $(shell git describe --dirty 2>/dev/null | cut -d- -f1,2,4- | sed 's/-/_dev_/'),$(file <$(VERSION_TXT)))
+VERSION?=$(or $(shell git describe 2>/dev/null | cut -d- -f1,2,4- | sed 's/-/_dev_/'),$(file <$(VERSION_TXT)))
 ## IMG: Name of image to build or deploy, without version tag.
 IMG?=quay.io/korrel8r/korrel8r
 ## TAG: Image tag, defaults to $(VERSION)
@@ -20,7 +20,7 @@ IMGTOOL?=$(shell which podman || which docker)
 
 check: generate lint test ## Lint and test code.
 
-all: check install _site image ## Build everything.
+all: tools check install _site image-build ## Build and test everything. Recommended before pushing.
 
 clean: # Warning: runs `git clean -dfx` and removes checked-in generated files.
 	rm -vrf _site docs/zz_*.adoc pkg/api/zz_docs /cmd/korrel8r/version.txt
@@ -31,6 +31,7 @@ tools: ## Install tools for generating, linting nad testing locally.
 	go install github.com/swaggo/swag/cmd/swag@latest
 	go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
 	go install sigs.k8s.io/kind@latest
+	go install sigs.k8s.io/controller-tools/cmd/controller-gen@latest
 
 VERSION_TXT=cmd/korrel8r/version.txt
 
@@ -41,6 +42,7 @@ $(VERSION_TXT):
 	echo $(VERSION) > $@
 
 generate: $(VERSION_TXT) pkg/api/zz_docs $(shell find -name '*.go') ## Generate code.
+	controller-gen	object paths=./pkg/config/...
 	hack/copyright.sh
 	go mod tidy
 
@@ -71,8 +73,10 @@ run: install ## Install and run `korrel8r web` using configuration in ./etc/korr
 	$(GOBIN)/korrel8r web -c $(CONFIG)
 
 IMAGE=$(IMG):$(TAG)
-image: $(VERSION_TXT) ## Build and push image. IMG must be set to a writable image repository.
+image-build: $(VERSION_TXT) ## Build image locally, don't push.
 	$(IMGTOOL) build --tag=$(IMAGE) .
+
+image: image-build ## Build and push image. IMG must be set to a writable image repository.
 	$(IMGTOOL) push -q $(IMAGE)
 
 image-name: ## Print the full image name and tag.
