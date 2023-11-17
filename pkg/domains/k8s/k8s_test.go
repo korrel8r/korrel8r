@@ -55,6 +55,27 @@ func TestDomain_Class(t *testing.T) {
 	}
 }
 
+func TestDomain_Query(t *testing.T) {
+	for _, x := range []struct {
+		s    string
+		want korrel8r.Query
+	}{
+		{`k8s:Namespace:{"name":"foo"}`, NewQuery(ClassOf(&corev1.Namespace{}), "", "foo", nil, nil)},
+		{`k8s:Namespace:{name: foo}`, NewQuery(ClassOf(&corev1.Namespace{}), "", "foo", nil, nil)},
+		{`k8s:Pod:{namespace: foo, name: bar}`, NewQuery(ClassOf(&corev1.Pod{}), "foo", "bar", nil, nil)},
+		{`k8s:Pod:{namespace: foo, name: bar, labels: { a: b }, fields: { c: d }}`,
+			NewQuery(ClassOf(&corev1.Pod{}), "foo", "bar", map[string]string{"a": "b"}, map[string]string{"c": "d"})},
+	} {
+		t.Run(x.s, func(t *testing.T) {
+			got, err := Domain.Query(x.s)
+			if assert.NoError(t, err) {
+				assert.Equal(t, x.want, got)
+			}
+		})
+	}
+
+}
+
 func TestStore_Get(t *testing.T) {
 	c := fake.NewClientBuilder().
 		WithRESTMapper(testrestmapper.TestOnlyStaticRESTMapper(scheme.Scheme)).

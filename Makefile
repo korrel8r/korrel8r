@@ -70,7 +70,7 @@ cover: ## Run tests and show code coverage in browser.
 CONFIG=etc/korrel8r/korrel8r.yaml
 GOBIN=$(or $(go env GOBIN),$(HOME)/go/bin)
 run: install ## Install and run `korrel8r web` using configuration in ./etc/korrel8r
-	$(GOBIN)/korrel8r web -c $(CONFIG)
+	$(GOBIN)/korrel8r web -c $(CONFIG) $(ARGS)
 
 IMAGE=$(IMG):$(TAG)
 image-build: $(VERSION_TXT) ## Build image locally, don't push.
@@ -92,9 +92,12 @@ WATCH=kubectl get events -A --watch-only& trap "kill %%" EXIT;
 
 # NOTE: deploy does not depend on 'image', since it may be used to deploy pre-existing images.
 # To build and deploy a new image do `make image deploy`
-deploy: $(IMAGE_KUSTOMIZATION)	## Deploy to a cluster using kustomize.
+deploy: $(IMAGE_KUSTOMIZATION)	## Deploy to current cluster using kustomize.
 	$(WATCH) kubectl apply -k config/overlays/$(OVERLAY)
 	$(WATCH) kubectl wait -n korrel8r --for=condition=available --timeout=60s deployment.apps/korrel8r
+
+undeploy:
+	kubectl delete -k config/overlays/$(OVERLAY)
 
 route:				## Create a route to access korrel8r service from outside the cluster, requires openshift.
 	@oc delete -n korrel8r route/korrel8r --ignore-not-found

@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"strings"
 
-	"gopkg.in/yaml.v2"
+	"sigs.k8s.io/yaml"
 )
 
 // sep used in DOMAIN:CLASS and DOMAIN:CLASS:QUERY strings.

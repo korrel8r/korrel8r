@@ -8,7 +8,7 @@ import (
 	"reflect"
 
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
-	"gopkg.in/yaml.v2"
+	"sigs.k8s.io/yaml"
 )
 
 // TypeName returns the name of the static type of its argument, which may be an interface.
