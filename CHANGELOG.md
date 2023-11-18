@@ -6,6 +6,10 @@ This project uses semantic versioning (https://semver.org)
 
 ## Version v0.5.1
 
+
+## Version v0.5.1
+
+- Release v0.5.1
 - Use sigs.k8s.io/yaml consistently for YAML parsing.
 - Add controller-gen to make config code usable in a k8s API.
 - Release v0.5.0
