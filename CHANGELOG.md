@@ -4,8 +4,11 @@ This is the project's commit log. It is placeholder until a more user-readable c
 
 This project uses semantic versioning (https://semver.org)
 
-## Version v0.5.0
+## Version v0.5.1
 
+- Use sigs.k8s.io/yaml consistently for YAML parsing.
+- Add controller-gen to make config code usable in a k8s API.
+- Release v0.5.0
 - Fix github workflows to generate all code & docs.
 - Added domain doc with class and query examples.
 - Enable profiling and /debug/pprof endpoint.
