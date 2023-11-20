@@ -57,7 +57,13 @@ func init() {
 	verbose = rootCmd.PersistentFlags().IntP("verbose", "v", 0, "Verbosity for logging")
 	configuration = rootCmd.PersistentFlags().StringP("config", "c", getConfig(), "Configuration file")
 	profileType = rootCmd.PersistentFlags().String("profile", "", "Enable profiling, one of [cpu mem trace]")
-	rootCmd.AddCommand(versionCmd)
+
+	cobra.OnInitialize(func() {
+		logging.Init(*verbose)
+		if pt := profileTypes[*profileType]; pt != nil {
+			cobra.OnFinalize(profile.Start(pt).Stop)
+		}
+	})
 }
 
 // getConfig looks for the default configuration file.
@@ -69,16 +75,6 @@ func getConfig() string {
 }
 
 func main() {
-	/// Actions to take after flags are parsed
-	var stopProfile = func() {}
-	defer stopProfile()
-	cobra.OnInitialize(func() {
-		logging.Init(*verbose)
-		if pt := profileTypes[*profileType]; pt != nil {
-			stopProfile = profile.Start(pt).Stop
-		}
-	})
-
 	defer func() {
 		// Code in this package will panic with an error to cause an exit.
 		if r := recover(); r != nil {
@@ -105,3 +101,5 @@ var versionCmd = &cobra.Command{
 	Short: "Print version.",
 	Run:   func(cmd *cobra.Command, args []string) { fmt.Println(rootCmd.Version) },
 }
+
+func init() { rootCmd.AddCommand(versionCmd) }

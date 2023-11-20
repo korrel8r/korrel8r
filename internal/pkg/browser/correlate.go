@@ -77,7 +77,7 @@ func (c *correlate) reset(params url.Values) {
 	if c.Goal == "neighbours" {
 		c.Depth, _ = strconv.Atoi(c.Neighbours)
 		if c.Depth <= 0 {
-			c.Depth = 9 // Invalid use default
+			c.Depth = 1 // Invalid use default
 		}
 		c.Neighbours = strconv.Itoa(c.Depth)
 	}

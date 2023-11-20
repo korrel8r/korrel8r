@@ -5,6 +5,8 @@ package openshift
 
 import (
 	"context"
+	"fmt"
+	"net"
 	"net/url"
 
 	routev1 "github.com/openshift/api/route/v1"
@@ -45,6 +47,12 @@ func RouteHost(ctx context.Context, c client.Client, nn types.NamespacedName) (s
 	r := &routev1.Route{}
 	err := c.Get(ctx, nn, r)
 	return r.Spec.Host, err
+}
+
+func ServiceHost(ctx context.Context, c client.Client, nn types.NamespacedName) (string, error) {
+	host := fmt.Sprintf("%v.%v.svc", nn.Name, nn.Namespace)
+	_, err := net.DefaultResolver.LookupHost(ctx, host)
+	return host, err
 }
 
 // ConsoleURL returns the base URL for the Openshift console on the current cluster.

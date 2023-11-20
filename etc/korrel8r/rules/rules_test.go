@@ -66,7 +66,7 @@ func TestPodToLogs(t *testing.T) {
 		k8s.New[corev1.Pod]("kube-something", "infrastructure"),
 	} {
 		t.Run(pod.Name, func(t *testing.T) {
-			want := log.NewQuery(log.Class(pod.Name), fmt.Sprintf(`{kubernetes_namespace_name="%v",kubernetes_pod_name="%v"} | json`, pod.Namespace, pod.Name))
+			want := log.NewQuery(log.Class(pod.Name), fmt.Sprintf(`{kubernetes_namespace_name="%v",kubernetes_pod_name="%v"}`, pod.Namespace, pod.Name))
 			testTraverse(t, e, k8s.ClassOf(pod), log.Domain.Class(pod.Name), []korrel8r.Object{pod}, want)
 		})
 	}
@@ -101,7 +101,7 @@ func TestSelectorToLogs(t *testing.T) {
 	d.Spec = appsv1.DeploymentSpec{
 		Selector: &metav1.LabelSelector{MatchLabels: map[string]string{"a.b/c": "x"}},
 	}
-	want := log.NewQuery(log.Application, `{kubernetes_namespace_name="ns"} | json | kubernetes_labels_a_b_c="x"`)
+	want := log.NewQuery(log.Application, `{kubernetes_namespace_name="ns"}|json|kubernetes_labels_a_b_c="x"|line_format"{{__line__}}"`)
 	testTraverse(t, e, k8s.ClassOf(d), log.Domain.Class("application"), []korrel8r.Object{d}, want)
 }
 

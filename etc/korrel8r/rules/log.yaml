@@ -1,0 +1,10 @@
+rules:
+  - name: LogToPod
+    start:
+      domain: log
+    goal:
+      domain: k8s
+      classes: [Pod]
+    result:
+      query: |-
+        {{classname rule.Goal}}:{namespace: "{{.Properties.kubernetes.namespace_name}}", name:"{{.Properties.kubernetes.pod_name}}"}

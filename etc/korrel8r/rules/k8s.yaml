@@ -97,8 +97,9 @@ rules:
        domain: log
      result:
        query: |-
-         log:{{ k8sLogType .Namespace }}:{kubernetes_namespace_name="{{.Namespace}}"} | json
-             {{- range $k, $v := .Spec.Selector.MatchLabels}} | kubernetes_labels_{{lokiFixLabel $k}}="{{$v}}"{{end -}}
+         log:{{k8sLogType .Namespace}}:{kubernetes_namespace_name="{{.Namespace}}"}|json
+             {{- range $k,$v:=.Spec.Selector.MatchLabels}}|kubernetes_labels_{{lokiFixLabel $k}}="{{$v}}"{{end -}}
+             |line_format{{"\"{{__line__}}\""}}
 
    - name: PodToLogs
      start:
@@ -108,7 +109,7 @@ rules:
        domain: log
      result:
        query: |-
-         log:{{ k8sLogType .Namespace }}:{kubernetes_namespace_name="{{.Namespace}}",kubernetes_pod_name="{{.Name}}"} | json
+         log:{{ k8sLogType .Namespace }}:{kubernetes_namespace_name="{{.Namespace}}",kubernetes_pod_name="{{.Name}}"}
 
    # TODO see  https://github.com/korrel8r/korrel8r/issues/52
    #
@@ -201,7 +202,6 @@ rules:
    - name: AllToMetric
      start:
        domain: k8s
-       classes: [all]
      goal:
        domain: metric
      result:

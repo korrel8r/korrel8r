@@ -160,22 +160,43 @@ func (c Class) Description() string {
 	}
 }
 
-func (c Class) New() korrel8r.Object { return Object("") }
-func (c Class) Preview(o korrel8r.Object) string {
-	r, ok := o.(string)
-	if ok {
-		var m map[string]any
-		if json.Unmarshal([]byte(r), &m) == nil {
-			if s, ok := m["message"].(string); ok {
-				return s
-			}
+func (c Class) New() korrel8r.Object { return Object{} }
+func (c Class) Preview(x korrel8r.Object) (s string) {
+	if o, ok := x.(Object); ok {
+		if m := o.Properties()["message"]; m != nil {
+			s, _ = m.(string)
+		}
+		if s == "" {
+			s = o.Line()
 		}
 	}
-	return fmt.Sprintf("%v", o)
+	return s
 }
 
-// Object is a log record string. Format depends on source of logs.
-type Object = string
+// Object is a log record string, with on demand JSON parsing.
+// Exact format depends on source of logs.
+type Object struct {
+	line  string
+	props any
+}
+
+func NewObject(s string) Object {
+	return Object{line: s}
+}
+
+// Line returns the original log line string.
+func (o Object) Line() string { return o.line }
+
+// Properties returns a the log record's property map if it has one.
+func (o Object) Properties() map[string]any {
+	if o.props == nil {
+		if err := json.Unmarshal([]byte(o.line), &o.props); err != nil {
+			o.props = err
+		}
+	}
+	props, _ := o.props.(map[string]any)
+	return props
+}
 
 // Query is a LogQL query string
 type Query struct {
@@ -284,7 +305,7 @@ func (s *Store) Get(ctx context.Context, query korrel8r.Query, result korrel8r.A
 	}
 	slices.SortStableFunc(logs, func(a, b []string) int { return strings.Compare(a[0], b[0]) })
 	for _, tl := range logs { // tl is [time, line]
-		result.Append(Object(tl[1]))
+		result.Append(NewObject(tl[1]))
 	}
 	return nil
 }

@@ -9,3 +9,4 @@ stores:                         # Load default stores
 more:                           # Load rules
   - rules/alert.yaml
   - rules/k8s.yaml
+  - rules/log.yaml

@@ -4,7 +4,6 @@ package log
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -26,7 +25,7 @@ func makeLines(line string, n int) (lines []string, objects []korrel8r.Object) {
 	for i := 0; i < n; i++ {
 		line := fmt.Sprintf("%v: %v", i, line)
 		lines = append(lines, line)
-		objects = append(objects, Object(line))
+		objects = append(objects, NewObject(line))
 	}
 	return lines, objects
 }
@@ -72,10 +71,8 @@ func TestLokiStackStore_Get(t *testing.T) {
 		return len(result) >= len(lines)
 	}, 30*time.Second, time.Second)
 	var got []string
-	for _, record := range result {
-		var m map[string]any
-		assert.NoError(t, json.Unmarshal([]byte(record.(string)), &m), record)
-		got = append(got, m["message"].(string))
+	for _, o := range result {
+		got = append(got, o.(Object).Properties()["message"].(string))
 	}
 	assert.Equal(t, lines, got)
 }

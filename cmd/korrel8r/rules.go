@@ -9,8 +9,10 @@ import (
 	"text/tabwriter"
 
 	"github.com/korrel8r/korrel8r/internal/pkg/must"
+	"github.com/korrel8r/korrel8r/pkg/graph"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"github.com/spf13/cobra"
+	"gonum.org/v1/gonum/graph/encoding/dot"
 )
 
 var rulesCmd = &cobra.Command{
@@ -28,11 +30,20 @@ var rulesCmd = &cobra.Command{
 			goal = must.Must1(e.Class(*ruleGoal))
 		}
 		name := must.Must1(regexp.Compile(*ruleName))
-		for _, r := range e.Rules() {
-			if (start == nil || r.Start() == start) &&
+		test := func(r korrel8r.Rule) bool {
+			return (start == nil || r.Start() == start) &&
 				(goal == nil || r.Goal() == goal) &&
-				name.MatchString(r.Name()) {
-				fmt.Fprintln(w, korrel8r.RuleName(r))
+				name.MatchString(r.Name())
+		}
+		if *ruleGraph {
+			g := e.Graph().Select(func(l *graph.Line) bool { return test(l.Rule) })
+			b := must.Must1(dot.MarshalMulti(g, "", "", "  "))
+			os.Stdout.Write(b)
+		} else { // Print rules as text
+			for _, r := range e.Rules() {
+				if test(r) {
+					fmt.Fprintln(w, korrel8r.RuleName(r))
+				}
 			}
 		}
 		w.Flush()
@@ -41,11 +52,13 @@ var rulesCmd = &cobra.Command{
 
 var (
 	ruleStart, ruleGoal, ruleName *string
+	ruleGraph                     *bool
 )
 
 func init() {
 	ruleStart = rulesCmd.Flags().StringP("start", "s", "", "show rules with this start class")
 	ruleGoal = rulesCmd.Flags().StringP("goal", "g", "", "show rules with this goal class")
 	ruleName = rulesCmd.Flags().StringP("name", "n", "", "show rules with name matching this regexp")
+	ruleGraph = rulesCmd.Flags().Bool("graph", false, "write rule graph in graphviz format")
 	rootCmd.AddCommand(rulesCmd)
 }
