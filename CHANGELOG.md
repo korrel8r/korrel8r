@@ -4,8 +4,10 @@ This is the project's commit log. It is placeholder until a more user-readable c
 
 This project uses semantic versioning (https://semver.org)
 
-## Version v0.5.1
+## Version v0.5.2
 
+- Log domain fixes to enable rules with start=log
+- Release v0.5.1
 - Use sigs.k8s.io/yaml consistently for YAML parsing.
 - Add controller-gen to make config code usable in a k8s API.
 - Release v0.5.0
