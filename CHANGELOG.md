@@ -4,8 +4,14 @@ This is the project's commit log. It is placeholder until a more user-readable c
 
 This project uses semantic versioning (https://semver.org)
 
+## Version v0.5.3
+
+- Use level-0 titles for generated doc fragments.
+- Automate installation of tools.
+
 ## Version v0.5.2
 
+- Release v0.5.2
 - Log domain fixes to enable rules with start=log
 - Release v0.5.1
 - Use sigs.k8s.io/yaml consistently for YAML parsing.
