@@ -1,4 +1,5 @@
 /config/overlays/dev/
 /hack/kind/jsonnet/vendor/
-/_site
-/tmp
+/_site/
+/bin/
+zz_*
