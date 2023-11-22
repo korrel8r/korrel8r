@@ -1,0 +1,19 @@
+[id="about-domains"]
+= About domains
+
+A Korrel8r _domain_ represents a family of related objects with a common vocabulary and related storage and query technologies. For examples see the xref:index.adoc#index-api-reference[API reference documentation].
+
+Each domain defines its own class, object, query, and store. These abstractions allow Korrel8r to treat different domains in the same way.
+
+Class:: A subset of objects in a domain with a common schema for serialization. Some domains have many classes. xref:index.adoc#_domain_k8s[Domain `k8s`] has a class for each resource kind. For example `k8s:Pod` and `k8s:DaemonSet`. Other domains are flat, with only a single class, for example xref:index.adoc#_domain_alert[Domain `alert`]
+
+Store:: A source of stored objects from a single domain.
++
+For example:
+- xref:index.adoc#_domain_log[Domain `log`] uses Loki
+- xref:index.adoc#_domain_alert[Domain `alert`] uses Prometheus
+- xref:index.adoc#_domain_k8s[Domain `k8s`] uses the Kubernetes API server
+
+Object:: The data associated with an individual signal or resource instance. For example a log record, or a serialized Kubernetes resource.
+
+Query:: A query selects a set of objects from a store. The structure of a query depends on the domain.

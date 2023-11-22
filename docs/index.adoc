@@ -1,4 +1,5 @@
-= Korrel8r: Signal Correlation for Kubernetes and Beyond
+[id="index"]
+= Korrel8r: Signal Correlation for Kubernetes
 Alan Conway
 :doctype: book
 :toc: left
@@ -9,135 +10,33 @@ Alan Conway
 :pages: https://korrel8r.github.io/korrel8r
 :icons: font
 
-[abstract]
-Korrel8r is a _correlation engine_ that can follow relationships between diverse signal types and cluster resources.
-Given a resource or signal data as a starting point, korrel8r can search for related signals or resources
-in multiple different back-end signal stores, encoded using multiple different schema.
+[NOTE]
+====
+This documentation is available in {pages}[HTML] and {pages}/ebook.pdf[PDF] format.
 
-NOTE: This guide is available online in {pages}[HTML] and {pages}/ebook.pdf[PDF] format. +
 Software is available from the {project}[Korrel8r project].
+====
 
-= Introduction
+Korrel8r is a correlation engine for Kubernetes objects. It provides a REST API for running correlation queries, by using a set of rules that relate objects.
 
-Korrel8r is a correlation engine for _observability signals_ and _observed resources_.
-A _signal_ is a unit of observation data such as a log record, a trace record, a metric time-series, or an alert.
-A _resource_ is something to be observed, such as a Kubernetes Pod, Deployment or Service.
-Resources and signals are related by _rules_ that express relationships in an executable form.
+Given a _start_ object, korrel8r searches for a chain of related rules, and finds other related objects. Related objects can be in multiple different back-end stores, and can be encoded using multiple different schemas. Korrel8r can also show the _neighbourhood_ of all data related to an object of interest.
 
-Given a _start_ resource or signals (e.g. an alert in a Kubernetes cluster) and a _goal_ (e.g. _find related logs_)
-the engine can search for a chain of rules (e.g. `alert -> deployment -> pod -> logs`) from start to goal.
-It can also show the _neighbourhood_ of all data related to an object of interest.
+Korrel8r can be run as a plain executable, outside the cluster, and connect to the API server and stores inside the cluster. It can also run as a deployed service inside the cluster.
 
-The engine has a REST API
-The goals of this project include:
+// TODO: add setup / install docs
 
-* Encode domain knowledge from SREs and other experts as re-usable _rules_.
-* Automate navigation from symptoms to data that helps diagnose causes.
-* Connect data from diverse types of store, with different schema.
-* Reduce multiple-step manual procedures to fewer clicks or queries.
-* Help tools that gather and analyze diagnostic data to focus on relevant information.
+[id="index-architecture"]
+== Korrel8r architecture
 
-== Many Data Models
+include::background.adoc[leveloffset=+2]
+include::about-domains.adoc[leveloffset=+2]
+include::about-objects.adoc[leveloffset=+2]
+include::about-rules.adoc[leveloffset=+2]
 
-Observability tools and observable systems tend to invent their own vocabularies or _data models_
-to describe the things being observed and the data associated with an observation.
+include::using-korrel8r.adoc[leveloffset=+1]
 
-For example, consider a Kubernetes `Pod` -  the basic unit of execution in Kubernetes cluster.
-Pods are identified by a name (among other things), but this name is labelled differently in different systems:
+[id="index-api-reference"]
+== API reference documentation
 
-* OpenTelemetry tracees: `k8s.pod.name`
-* Prometheus metrics (the de-facto standard convention for Kubernetes): `pod` or `pod_name`
-* Openshift logging records: `kubernetes.pod_name`
-
-The https://opentelemetry.io/[Open Telemetry Project] aims to create a standard vocabulary,
-but in the short to medium term there are many long-lived, widely-used alternative vocabularies in use.
-That is something we have to live with while we wait for "one standard to rule them all".
-
-There are also multiple storage technologies used to store signal data,
-and multiple query languages to search them.
-
-Korrel8r tackles the diversity problem by dividing the world into a set of basic concepts called
-"Domain", "Class", "Store", "Query", "Object" and "Rule".
-
-== Domains
-
-A Korrel8r _Domain_ represents a family of related signals and/or resources with a common vocabulary,
-and related storage and query technologies. For examples see <<_domains>>.
-Each `Domain` defines its own `Class`, `Object`, `Query`, and `Store`.
-These abstractions allow Korrel8r to treat different domains in the same way.
-
-Class::
-A subset of objects in a Domain with a common schema for serialization.
-Some domains have many classes.
-<<_domain_k8s>> has a class for each resource Kind; `k8s:Pod`, `k8s:DaemonSet` and so on.
-Other domains are "flat" with only a single class, for example <<_domain_alert>>
-
-Store::
-A source of stored objects from a single `Domain`.
-For example:
-- <<_domain_log>> uses Loki
-- <<_domain_alert>> uses Prometheus
-- <<_domain_k8s>> uses the Kubernetes API server.
-
-Object::
-The data associated with an individual signal or resource instance.
-For example a log record, or a serialized Kubernetes resource object.
-
-Query::
-A Query selects a set of objects from a store.
-The structure of a query depends on the domain, see the <<_domain>> reference for more.
-
-== Rules
-
-Rules are the key to Korrel8r, they express relationships between classes, possibly in _different domains_.
-
-A Rule applies to an object of a _start_ class, and generates a query for a _goal_ class.
-The start and goal can be in different domains (e.g. `k8s:Pod` → `log:application`)
-
-A rule definition contains a _template_ that produces a _query_ in the vocabulary of the _goal domain_.
-The template uses fields from the _start class_ in the vocabulary of the _start domain_.
-Rules are bridge between domains different vocabularies, schema, labels and query langauges.
-
-== Examples of Objects
-
-// TODO: JSON examples.
-
-A Kubernetes cluster generates many types of _observable signal_, including:
-
-[width="100%",cols="21%,79%",options="header",]
-|===
-|Signal Type |Description
-|Metrics |Counts and measurements of system behaviour.
-
-|Alerts |Rules that fire when metrics cross important thresholds.
-
-|Logs |Application, infrastructure and audit logs from Pods and cluster
-nodes.
-
-|Kubernetes Events |Describe significant events in a cluster.
-
-|Traces |Nested execution spans describing distributed requests.
-
-|Network Events |TCP and IP level network information.
-|===
-
-A cluster also contains _resources_ that are not usually considered ``signals'',
-but that can be correlated with signals and other resources:
-
-[cols=",",options="header",]
-|===
-|Resource Type |Description
-|k8s resources |Spec and status information.
-|Run books |Problem solving guides associated with Alerts.
-|k8s probes |Information about resource state.
-|===
-
-Korrel8r does not distinguish between signals and resources, and refers to both as `objects`.
-
-include::using.adoc[]
-
-= Domains
-
-include::zz_domains.adoc[leveloffset=+1]
-
-include::zz_rest_api.adoc[]
+include::zz_domains.adoc[leveloffset=+2]
+include::zz_rest_api.adoc[leveloffset=+2]
