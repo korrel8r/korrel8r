@@ -33,7 +33,7 @@ func genDoc(dir string) error {
 	if err != nil {
 		return err
 	}
-	fmt.Printf("\n== Domain `%v`\n\n", d.Name)
-	fmt.Println(d.Asciidoc(2))
+	fmt.Printf("\n= Domain `%v`\n\n", d.Name)
+	fmt.Println(d.Asciidoc(1))
 	return nil
 }

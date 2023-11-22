@@ -7,10 +7,12 @@ It can also run as a deployed service inside the cluster.
 
 == Configuration
 
-// TODO: default configuration & rules. Configure outside/inside cluster. Link to reference.
+🚧 #Under Construction# 🚧
+// TODO: default configuration & rules. Configure outside/inside cluster. Link to reference.#
 
 == Command Line
 
+🚧 #Under Construction# 🚧
 // TODO: move from README, use default config.
 
 == Browser
@@ -25,4 +27,5 @@ Other consoles or tools acting as korrel8r clients will provide better visualiza
 
 == REST Service
 
-// TODO: move from README. Link to reference. Curl examples of API, use swagger UI.
+🚧 #Under Construction# 🚧
+// TODO: move from README. Link to reference. Curl examples of API, use swagger UI.#

@@ -7,6 +7,7 @@ Alan Conway
 :source-highlighter: rouge
 :project: https://github.com/korrel8r/korrel8r
 :pages: https://korrel8r.github.io/korrel8r
+:icons: font
 
 [abstract]
 Korrel8r is a _correlation engine_ that can follow relationships between diverse signal types and cluster resources.
@@ -137,6 +138,6 @@ include::using.adoc[]
 
 = Domains
 
-include::zz_domains.adoc[]
+include::zz_domains.adoc[leveloffset=+1]
 
 include::zz_rest_api.adoc[]
