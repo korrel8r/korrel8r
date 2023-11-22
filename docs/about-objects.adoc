@@ -1,0 +1,43 @@
+[id="about-objects"]
+= About objects
+
+Korrel8r works with different types of Kubernetes objects, which include _signals_ and _resources_. Korrel8r does not distinguish between different object types.
+
+Any of the object types discussed in the following documentation can be used as a start object for Korrel8r.
+// TODO: JSON examples.
+
+[id="objects-signal-types_{context}"]
+== Signal types
+
+A Kubernetes cluster generates many types of _signals_, including the following:
+
+[width="100%",cols="21%,79%",options="header",]
+|===
+|Signal Type |Description
+|Metrics |Counts and measurements of system behavior.
+
+|Alerts |Rules that fire when metrics cross important thresholds.
+
+|Logs |Application, infrastructure and audit logs from pods and cluster
+nodes.
+
+|Kubernetes events |Describe significant events in a cluster.
+
+|Traces |Nested execution spans describing distributed requests.
+
+|Network events |TCP and IP level network information.
+|===
+
+[id="objects-resource-types_{context}"]
+== Resource types
+
+A cluster also contains _resources_ which are not generally considered to be signals,
+but that can be correlated with signals and other objects. Korrel8r supports using the following resources:
+
+[cols=",",options="header",]
+|===
+|Resource Type |Description
+|k8s resources |Spec and status information.
+|Run books |Problem solving guides associated with Alerts.
+|k8s probes |Information about resource state.
+|===

@@ -1,10 +1,18 @@
-= Korrel8r: Signal Correlation for Kubernetes and Beyond
+= Korrel8r: Signal correlation for Kubernetes
 :toc: preamble
 :pages: https://korrel8r.github.io/korrel8r
 
 [abstract]
 Korrel8r is a correlation engine for observability signals and observable resources. +
-It can correlate multiple domains, diverse signals, inconsistent labelling,  and varied data stores.
+It can correlate multiple domains, diverse signals, inconsistent labeling, and varied data stores.
+
+The goals of this project include:
+
+* Encode domain knowledge from SREs and other experts as re-usable _rules_.
+* Automate navigation from symptoms to data that helps diagnose causes.
+* Connect data from diverse types of store, with different schema.
+* Reduce multiple-step manual procedures to fewer clicks or queries.
+* Help tools that gather and analyze diagnostic data to focus on relevant information.
 
 CAUTION: Korrel8r is still in early development. There are no compatibility guarantees between versions.
 
@@ -12,7 +20,7 @@ NOTE: {pages}[Read the Korrel8r Documentation] for more about what Korrel8r is a
 
 There is a short link:demos/openshift-console-browser/video.mov[demo video]
 
-=== Cluster Set-up
+== Cluster Set-up
 
 There are scripts and examples to set up a cluster with logging, metrics and other observable signals:
 
@@ -21,7 +29,7 @@ There are scripts and examples to set up a cluster with logging, metrics and oth
 
 Log into your cluster as `kubeadmin` or other admin user.
 
-=== Installing and running locally
+== Installing and running locally
 
 You can install and run korrel8r on your local host, it can observe your cluster from the outside.
 You need to be logged-in as `kubeadmin` to your cluster:
@@ -39,7 +47,7 @@ With korrel8r running, you can browse the following URLs:
 
 You can also run korrel8r as a command line tool, see `korrel8r --help` for commands and options.
 
-=== Deploying on a cluster
+== Deploying on a cluster
 
 You can deploy the latest korrel8r image to your cluster in namespace `korrel8r`
 You need to be logged-in as `kubeadmin` to your cluster:
@@ -86,3 +94,22 @@ Set `IMG` to use a different repository:
 IMPORTANT: you need a _public_ image repository on a public service like `quay.io` or `docker.io`.
 Some services (including `quay.io`) make new repositories _private_ by default.
 You may need to log in and change settings so that your new repository is _public_.
+
+== Contributing to documentation
+
+. Fork and clone the repository
+. Install Go
+. Install make
+. Run the following command to install required tools:
++
+[source,terminal]
+----
+make tools
+----
+
+. Make changes to the docs, then run the following command to generate the site:
++
+[source,terminal]
+----
+make _site
+----
