@@ -6,6 +6,10 @@ This project uses semantic versioning (https://semver.org)
 
 ## Version v0.5.4
 
+
+## Version v0.5.4
+
+- Release v0.5.4
 - Sort query counts by count in REST responses.
 - Initial docs review
 
