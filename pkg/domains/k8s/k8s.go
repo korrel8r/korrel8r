@@ -106,7 +106,7 @@ func (d domain) Class(name string) korrel8r.Class {
 	s := ""
 	ok := false
 	if gvk.Kind, s, ok = strings.Cut(name, "."); !ok { // Just Kind
-		return classForGK(gvk.GroupKind())
+		return classForKind(gvk.Kind)
 	}
 	if gvk.Version, gvk.Group = s, ""; Scheme.Recognizes(gvk) { // Kind.Version
 		return Class(gvk)
@@ -121,6 +121,16 @@ func (d domain) Class(name string) korrel8r.Class {
 func classForGK(gk schema.GroupKind) korrel8r.Class {
 	if versions := Scheme.VersionsForGroupKind(gk); len(versions) > 0 {
 		return Class(gk.WithVersion(versions[0].Version))
+	}
+	return nil
+}
+
+func classForKind(kind string) korrel8r.Class {
+	for _, gv := range Scheme.PrioritizedVersionsAllGroups() {
+		gvk := gv.WithKind(kind)
+		if Scheme.Recognizes(gvk) {
+			return Class(gvk)
+		}
 	}
 	return nil
 }
