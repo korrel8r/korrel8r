@@ -126,7 +126,7 @@ func (domain) QueryToConsoleURL(query korrel8r.Query) (*url.URL, error) {
 		return nil, err
 	}
 	v := url.Values{}
-	v.Add("q", q.logQL)
+	v.Add("q", q.logQL+"|json")
 	v.Add("tenant", q.Class().Name())
 	return &url.URL{Path: "/monitoring/logs", RawQuery: v.Encode()}, nil
 }
