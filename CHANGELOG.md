@@ -4,8 +4,14 @@ This is the project's commit log. It is placeholder until a more user-readable c
 
 This project uses semantic versioning (https://semver.org)
 
+## Version v0.5.4
+
+- Sort query counts by count in REST responses.
+- Initial docs review
+
 ## Version v0.5.3
 
+- Release v0.5.3
 - Use level-0 titles for generated doc fragments.
 - Automate installation of tools.
 
