@@ -78,10 +78,11 @@ func main() {
 	defer func() {
 		// Code in this package will panic with an error to cause an exit.
 		if r := recover(); r != nil {
-			fmt.Fprintln(os.Stderr, r)
-			if *panicOnErr {
+			err, ok := r.(error)
+			if !ok || *panicOnErr {
 				panic(r)
 			}
+			log.Error(err, "Fatal error")
 			os.Exit(1)
 		}
 		os.Exit(0)

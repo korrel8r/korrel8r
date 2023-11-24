@@ -3,7 +3,9 @@
 package api
 
 import (
+	"cmp"
 	"encoding/json"
+	"slices"
 
 	"github.com/korrel8r/korrel8r/pkg/graph"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
@@ -95,6 +97,12 @@ func queryCounts(gq graph.Queries) (qc []QueryCount) {
 	for q, c := range gq {
 		qc = append(qc, QueryCount{Query: q, Count: c})
 	}
+	slices.SortFunc(qc, func(a, b QueryCount) int {
+		if n := cmp.Compare(a.Count, b.Count); n != 0 {
+			return -n
+		}
+		return cmp.Compare(a.Query, b.Query)
+	})
 	return qc
 }
 

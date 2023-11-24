@@ -36,10 +36,12 @@ endif
 $(VERSION_TXT):
 	echo $(VERSION) > $@
 
-generate: $(VERSION_TXT) pkg/api/zz_docs $(shell find -name '*.go')  bin/controller-gen ## Generate code.
-	bin/controller-gen object paths=./pkg/config/...
+generate: $(VERSION_TXT) pkg/api/zz_docs $(shell find -name '*.go')  ## Generate code.
 	hack/copyright.sh
 	go mod tidy
+
+pkg/config/zz_generated.deepcopy.go:  $(wildcard pkg/config/*.go) bin/controller-gen
+	bin/controller-gen object paths=./pkg/config/...
 
 pkg/api/zz_docs: $(wildcard pkg/api/*.go pkg/korrel8r/*.go) bin/swag
 	@mkdir -p $(dir $@)

@@ -25,6 +25,12 @@ import (
 	"golang.org/x/exp/slices"
 )
 
+func Test_QueryCounts(t *testing.T) {
+	assert.Equal(t,
+		[]QueryCount{{"c", 3}, {"b", 2}, {"a", 1}, {"d", 1}},
+		queryCounts(graph.Queries{"a": 1, "b": 2, "c": 3, "d": 1}))
+}
+
 func TestAPI_GetDomains(t *testing.T) {
 	a := newTestAPI(mock.Domains("foo", "bar")...)
 	require.NoError(t, a.Engine.AddStoreConfig(korrel8r.StoreConfig{"domain": "foo", "a": "1"}))
@@ -193,8 +199,6 @@ func normalize(v any) {
 			normalize(r.Queries)
 			ruleCoverage[r.Name] = ruleCoverage[r.Name] + 1
 		}
-	case []QueryCount:
-		slices.SortFunc(v, func(a, b QueryCount) int { return strings.Compare(a.Query, b.Query) })
 	}
 }
 
