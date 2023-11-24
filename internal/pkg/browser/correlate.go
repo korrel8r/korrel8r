@@ -262,7 +262,12 @@ func (c *correlate) updateDiagram() {
 		if len(result) == 0 {
 			a["color"] += "gray"
 		} else {
-			a["label"] = fmt.Sprintf("%v\n(%v)", a["label"], len(result))
+			ider, _ := n.Class.(korrel8r.IDer)
+			if len(result) == 1 && ider != nil {
+				a["label"] = fmt.Sprintf("%v\n(%v)", a["label"], ider.ID(result[0]))
+			} else {
+				a["label"] = fmt.Sprintf("%v\n%v", a["label"], len(result))
+			}
 			c.queryURLAttrs(a, n.Queries, n.Class.Domain())
 			previewer, _ := n.Class.(korrel8r.Previewer)
 			if previewer != nil && len(result) > 0 {
