@@ -10,11 +10,11 @@ metadata:
 apiVersion: operators.coreos.com/v1
 kind: OperatorGroup
 metadata:
-  name: cluster-logging
+  annotations:
+    olm.providedAPIs: ClusterLogForwarder.v1.logging.openshift.io,ClusterLogging.v1.logging.openshift.io,LogFileMetricExporter.v1alpha1.logging.openshift.i    generateName: openshift-logging
   namespace: openshift-logging
 spec:
-  targetNamespaces:
-  - openshift-logging
+  upgradeStrategy: Default
 ---
 apiVersion: operators.coreos.com/v1alpha1
 kind: Subscription

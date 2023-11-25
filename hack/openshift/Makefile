@@ -12,7 +12,8 @@ logging:
 operators:
 	oc apply -f ./manifests/0namespaces.yaml
 	oc apply -f manifests/operators/
-	oc get -n openshift-logging csv -o name | xargs oc wait --for=jsonpath='{.status.phase}'=Succeeded -n openshift-logging
+	$(WATCH) until oc get -n openshift-logging $(LOGGING_CSVS); do echo waiting...; sleep 3;  done
+	$(WATCH) oc wait --for=jsonpath='{.status.phase}'=Succeeded -n openshift-logging $(LOGGING_CSVS)
 
 namespaces:
 	oc apply $(NAMESPACES)
@@ -33,6 +34,10 @@ LOGGING_STATEFULSETS=					\
 	statefulset.apps/logging-loki-compactor		\
 	statefulset.apps/logging-loki-index-gateway	\
 	statefulset.apps/logging-loki-ingester
+
+LOGGING_CSVS=									\
+	clusterserviceversion.operators.coreos.com/cluster-logging.v5.8.0	\
+	clusterserviceversion.operators.coreos.com/loki-operator.v5.8.0
 
 delete-all: delete # Delete resources and operators
 	oc delete --ignore-not-found subscription,replicaset,deployment,service -n openshift-operators-redhat -l app.kubernetes.io/part-of=cluster-logging
