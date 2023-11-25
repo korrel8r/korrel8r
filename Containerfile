@@ -21,7 +21,6 @@ FROM quay.io/fedora/fedora
 WORKDIR /
 RUN dnf -y install graphviz
 COPY --from=builder /workspace/korrel8r /bin/korrel8r
-COPY etc/korrel8r/korrel8r.yaml /etc/korrel8r/korrel8r.yaml
-COPY etc/korrel8r/rules /etc/korrel8r/rules
+COPY etc/korrel8r /etc/korrel8r
 USER 1000
 ENTRYPOINT ["/bin/korrel8r", "web"]

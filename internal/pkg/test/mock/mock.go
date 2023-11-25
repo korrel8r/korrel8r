@@ -22,17 +22,17 @@ var (
 	_ korrel8r.Class  = Domain("").Class("")
 	_ korrel8r.Query  = Query{}
 	_ korrel8r.Rule   = Rule{}
-	_ korrel8r.Store  = NewStore(Domain(""))
+	_ korrel8r.Store  = NewStore(Domain(""), nil)
 )
 
 type Domain string
 
-func (d Domain) Name() string                                       { return string(d) }
-func (d Domain) String() string                                     { return d.Name() }
-func (d Domain) Description() string                                { return "Mock domain." }
-func (d Domain) Class(name string) korrel8r.Class                   { return Class{name: name, domain: d} }
-func (d Domain) Classes() (classes []korrel8r.Class)                { return nil }
-func (d Domain) Store(korrel8r.StoreConfig) (korrel8r.Store, error) { return NewStore(d), nil }
+func (d Domain) Name() string                                          { return string(d) }
+func (d Domain) String() string                                        { return d.Name() }
+func (d Domain) Description() string                                   { return "Mock domain." }
+func (d Domain) Class(name string) korrel8r.Class                      { return Class{name: name, domain: d} }
+func (d Domain) Classes() (classes []korrel8r.Class)                   { return nil }
+func (d Domain) Store(sc korrel8r.StoreConfig) (korrel8r.Store, error) { return NewStore(d, sc), nil }
 func (d Domain) Query(s string) (korrel8r.Query, error) {
 	var (
 		q   Query
@@ -140,9 +140,14 @@ func (r ApplyRule) Apply(start korrel8r.Object, c *korrel8r.Constraint) (korrel8
 }
 
 // Store is a mock store, use with [Query]
-type Store struct{ domain korrel8r.Domain }
+type Store struct {
+	domain      korrel8r.Domain
+	StoreConfig korrel8r.StoreConfig
+}
 
-func NewStore(d korrel8r.Domain) Store { return Store{domain: d} }
+func NewStore(d korrel8r.Domain, sc korrel8r.StoreConfig) Store {
+	return Store{domain: d, StoreConfig: sc}
+}
 
 func (s Store) Domain() korrel8r.Domain { return s.domain }
 func (s Store) Get(_ context.Context, q korrel8r.Query, r korrel8r.Appender) error {

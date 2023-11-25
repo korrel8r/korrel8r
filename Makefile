@@ -36,11 +36,13 @@ endif
 $(VERSION_TXT):
 	echo $(VERSION) > $@
 
-generate: $(VERSION_TXT) pkg/api/zz_docs $(shell find -name '*.go')  ## Generate code.
+generate: .generate.made
+.generate.made: $(VERSION_TXT) pkg/api/zz_docs pkg/config/zz_generated.deepcopy.go $(shell find -name '*.go')  ## Generate code.
 	hack/copyright.sh
 	go mod tidy
+	touch $@
 
-pkg/config/zz_generated.deepcopy.go:  $(wildcard pkg/config/*.go) bin/controller-gen
+pkg/config/zz_generated.deepcopy.go:  $(filter-out pkg/config/zz_generated.deepcopy.go,$(wildcard pkg/config/*.go)) bin/controller-gen
 	bin/controller-gen object paths=./pkg/config/...
 
 pkg/api/zz_docs: $(wildcard pkg/api/*.go pkg/korrel8r/*.go) bin/swag
@@ -66,7 +68,7 @@ cover: ## Run tests and show code coverage in browser.
 
 CONFIG=etc/korrel8r/korrel8r.yaml
 run: $(VERSION_TXT) ## Run `korrel8r web` using configuration in ./etc/korrel8r
-	go run korrel8r web -c $(CONFIG) $(ARGS)
+	go run ./cmd/korrel8r web -c $(CONFIG) $(ARGS)
 
 IMAGE=$(IMG):$(TAG)
 image-build: $(VERSION_TXT) ## Build image locally, don't push.

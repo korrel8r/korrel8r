@@ -27,18 +27,18 @@ var log = logging.Log()
 type Configs map[string]*Config
 
 // Load loads all configurations from a file or URL.
-// If a configuration has a "More" section, also loads all referenced configurations.
-// Relative paths in More are relative to the location of file containing them.
+// If a configuration has an Include section, also loads all referenced configurations.
+// Relative paths in Include are relative to the location of file containing them.
 func Load(fileOrURL string) (Configs, error) {
 	configs := Configs{}
 	return configs, load(fileOrURL, configs)
 }
 
 func load(source string, configs Configs) (err error) {
-	log.V(3).Info("Loading configuration", "config", source)
 	if _, ok := configs[source]; ok {
 		return nil // Already loaded
 	}
+	log.V(2).Info("Loading configuration", "config", source)
 	b, err := readFileOrURL(source)
 	if err != nil {
 		return fmt.Errorf("%v: %w", source, err)
@@ -48,8 +48,9 @@ func load(source string, configs Configs) (err error) {
 		return fmt.Errorf("%v: %w", source, err)
 	}
 	configs[source] = c
-	for _, s := range c.More {
-		if err := load(resolve(source, s), configs); err != nil {
+	for _, s := range c.Include {
+		ref := resolve(source, s)
+		if err := load(ref, configs); err != nil {
 			return err
 		}
 	}

@@ -105,5 +105,21 @@ func TestApply_bad_stores(t *testing.T) {
 	assert.Equal(t, "bad store: map[domain:foo x:y]", e.StoreConfigsFor(foo)[0][korrel8r.StoreKeyError])
 	// Check that we did apply the good stores
 	assert.Empty(t, e.StoresFor(foo))
-	assert.Equal(t, mock.NewStore(bar), e.StoresFor(bar)[0])
+	assert.Equal(t, mock.NewStore(bar, korrel8r.StoreConfig{"domain": "bar", "a": "b"}), e.StoresFor(bar)[0])
+}
+
+func TestApply_store_templates(t *testing.T) {
+	foo, bar := mock.Domain("foo"), mock.Domain("bar")
+	c := Configs{
+		"a": &Config{Stores: []korrel8r.StoreConfig{{"domain": "foo", "x": `{{ "fooStore" }}`}}},
+		"b": &Config{Stores: []korrel8r.StoreConfig{{"domain": "bar", "y": `{{ get "foo:a:[1,2,3]" }}`}}},
+	}
+	e := engine.New(foo, bar)
+	require.NoError(t, c.Apply(e))
+	// Check there are no errors
+	assert.Empty(t, e.StoreConfigsFor(foo)[0][korrel8r.StoreKeyError])
+	assert.Empty(t, e.StoreConfigsFor(bar)[0][korrel8r.StoreKeyError])
+	// Check the stores are as expeced
+	assert.Equal(t, mock.NewStore(foo, korrel8r.StoreConfig{"domain": "foo", "x": "fooStore"}), e.StoresFor(foo)[0])
+	assert.Equal(t, mock.NewStore(bar, korrel8r.StoreConfig{"domain": "bar", "y": "[1 2 3]"}), e.StoresFor(bar)[0])
 }

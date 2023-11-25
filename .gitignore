@@ -2,4 +2,4 @@
 /hack/kind/jsonnet/vendor/
 /_site/
 /bin/
-zz_*
+.*.made

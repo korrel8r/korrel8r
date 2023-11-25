@@ -97,7 +97,7 @@ rules:
        domain: log
      result:
        query: |-
-         log:{{k8sLogType .Namespace}}:{kubernetes_namespace_name="{{.Namespace}}"}|json
+         log:{{k8sLogType .Namespace}}:{kubernetes_namespace_name="{{.Namespace}}"}|toJson
              {{- range $k,$v:=.Spec.Selector.MatchLabels}}|kubernetes_labels_{{lokiFixLabel $k}}="{{$v}}"{{end -}}
              |line_format{{"\"{{__line__}}\""}}
 
@@ -137,7 +137,7 @@ rules:
        classes: [namespacedResources]
      result:
        query: |-
-         {{classname rule.Goal}}:{namespace: {{.Name -}} }
+         {{className rule.Goal}}:{namespace: {{.Name -}} }
 
    - name: NamespaceToAlert
      start:
@@ -168,7 +168,7 @@ rules:
        classes: [Pod]
      result:
        query: |-
-         {{classname rule.Goal}}:{namespace: {{.Namespace}}, labels: {{.Spec.Selector.MatchLabels | json -}} }
+         {{rule.Goal}}:{namespace: {{.Namespace}}, labels: {{.Spec.Selector.MatchLabels | toJson -}} }
 
    - name: EventToAll
      start:
@@ -180,7 +180,7 @@ rules:
      result:
        query: |-
          {{- with .InvolvedObject -}}
-         {{classnameAVK .APIVersion .Kind}}:{namespace: {{.Namespace}}, name: {{.Name}}}
+         {{k8sClass .APIVersion .Kind}}:{namespace: {{.Namespace}}, name: {{.Name}}}
          {{- end -}}
 
    - name: AllToEvent
@@ -192,7 +192,7 @@ rules:
        classes: [Event.]
      result:
        query: |-
-         {{classname rule.Goal}}:{"fields":{
+         {{className rule.Goal}}:{"fields":{
                       "involvedObject.namespace":"{{.Namespace}}",
                       "involvedObject.name": "{{.Name}}",
                       "involvedObject.kind": "{{.Kind}}",
@@ -206,4 +206,4 @@ rules:
        domain: metric
      result:
        query: |-
-         {{classname rule.Goal}}:{namespace="{{.Namespace}}",{{tolower .Kind}}="{{.Name}}"}
+         {{className rule.Goal}}:{namespace="{{.Namespace}}",{{lower .Kind}}="{{.Name}}"}

@@ -75,22 +75,22 @@
     <h2>Detailed Results</h2>
     <p>
       Update time: {{.UpdateTime}} ({{.Graph.Nodes.Len}} nodes, {{len .Graph.AllLines}} lines)<br>
-      {{with .StartClass}}Start: <code>{{classname .}}</code><br>{{end}}
-      {{if .GoalClasses}}Goals: <code>{{range .GoalClasses}}{{classname .}} {{end}}</code><br>{{end}}
+      {{with .StartClass}}Start: <code>{{.String}}</code><br>{{end}}
+      {{if .GoalClasses}}Goals: <code>{{range .GoalClasses}}{{.String}} {{end}}</code><br>{{end}}
       {{with .Depth}}Neighbourhood depth: {{.}}<br>{{end}}
       <ul>
         {{range $node := (and .Graph .Graph.AllNodes)}}
           {{if $node.Result.List}}
-            <li><code><b>{{classname $node.Class}}</b> ({{len $node.Result.List}})</code>
+            <li><code><b>{{$node.Class.String}}</b> ({{len $node.Result.List}})</code>
               <ul>
                 {{range ($.Graph.LinesTo .)}}
                   {{if .Queries}}
-                    <li><code>{{rulename .Rule}}</code></li>
+                    <li><code>{{.Rule.String}}</code></li>
                     <ul>
                       {{range $qc := .Queries.Sort}}
                         <li>
                           <a href="{{queryToConsole $qc.Query}}" target="_blank">Console</a> /
-                          <a href="/stores/{{$node.Class.Domain}}?query={{json $qc.Query | urlquery}}" target="_blank">Data</a>
+                          <a href="/stores/{{$node.Class.Domain}}?query={{toJson $qc.Query | urlquery}}" target="_blank">Data</a>
                           ({{$qc.Count}})
                           <pre>{{$qc.Query}}</pre>
                         </li>

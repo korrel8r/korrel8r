@@ -1,12 +1,4 @@
-# Configuration for korrel8r
-
-stores:                         # Load default stores
-  - domain: k8s
-  - domain: alert
-  - domain: log
-  - domain: metric
-
-more:                           # Load rules
-  - rules/alert.yaml
-  - rules/k8s.yaml
-  - rules/log.yaml
+# Default korrel8r configuration for external testing.
+include:
+  - stores/openshift-external.yaml
+  - rules/all.yaml

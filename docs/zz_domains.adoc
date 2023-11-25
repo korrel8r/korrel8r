@@ -60,7 +60,7 @@ Domain `k8s` implements Kubernetes resources stored in a Kube API server.
 
 == Class
 
-A k8s class corresponds to a kind of Kubernetes resource, the class name is `KIND.VERSION.GROUP` VERSION can be omitted if there is no ambiguity. Example class names: `k8s:Pod`, `k8s:Pod.v1`, `k8s:Deployment.v1.apps`, `k8s:Deployment.apps`
+A k8s class corresponds to a kind of Kubernetes resource, the class name is `KIND.VERSION.GROUP` VERSION and/or GROUP can be omitted if there is no ambiguity. Example class names: `k8s:Pod.v1`, `ks8:Pod`, `k8s:Deployment.v1.apps`, `k8s:Deployment.apps`, `k8s:Deployment`
 
 == Object
 

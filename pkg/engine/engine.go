@@ -6,7 +6,10 @@ package engine
 import (
 	"context"
 	"fmt"
+	"strings"
+	"text/template"
 
+	sprig "github.com/go-task/slim-sprig"
 	"github.com/korrel8r/korrel8r/internal/pkg/logging"
 	"github.com/korrel8r/korrel8r/pkg/graph"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
@@ -23,17 +26,25 @@ type Engine struct {
 	stores        map[string][]korrel8r.Store
 	storeConfigs  map[string][]korrel8r.StoreConfig
 	rules         []korrel8r.Rule
-	templateFuncs map[string]any
+	templateFuncs template.FuncMap
 }
 
 func New(domains ...korrel8r.Domain) *Engine {
 	e := &Engine{
-		domains:       slices.Clone(domains), // Predicatable order for Domains()
-		domainMap:     map[string]korrel8r.Domain{},
-		stores:        map[string][]korrel8r.Store{},
-		storeConfigs:  map[string][]korrel8r.StoreConfig{},
-		templateFuncs: map[string]any{},
+		domains:      slices.Clone(domains), // Predicatable order for Domains()
+		domainMap:    map[string]korrel8r.Domain{},
+		stores:       map[string][]korrel8r.Store{},
+		storeConfigs: map[string][]korrel8r.StoreConfig{},
 	}
+	// FIXME document template funcs
+	e.templateFuncs = template.FuncMap{
+		"get":       e.get,
+		"className": korrel8r.ClassName,
+		"ruleName":  korrel8r.RuleName,
+	}
+
+	maps.Copy(e.templateFuncs, sprig.TxtFuncMap())
+
 	for _, d := range domains {
 		e.domainMap[d.Name()] = d
 		e.addTemplateFuncs(d)
@@ -81,26 +92,46 @@ func (e *Engine) AddStore(s korrel8r.Store) error {
 	return nil
 }
 
-// AddStoreConfig creates a store from configuration and adds it to the engine.
+// AddStoreConfig saves the store configuration and creates a store.
 //
-// If there is an error, it is returned, and the configuration is stored with the error field set.
+// If there is an error, it is returned, and the error key in the configuration is set.
 func (e *Engine) AddStoreConfig(sc korrel8r.StoreConfig) (err error) {
-	d, err := e.DomainErr(sc[korrel8r.StoreKeyDomain])
-	if err != nil {
-		return err
-	}
 	defer func() {
 		if err != nil {
 			sc[korrel8r.StoreKeyError] = err.Error()
 		}
-		e.storeConfigs[d.Name()] = append(e.storeConfigs[d.Name()], sc)
 	}()
+	d, err := e.DomainErr(sc[korrel8r.StoreKeyDomain])
+	if err != nil {
+		return err
+	}
+	e.storeConfigs[d.Name()] = append(e.storeConfigs[d.Name()], sc)
+	if err := e.expandStoreConfig(sc); err != nil {
+		return err
+	}
 	store, err := d.Store(sc)
 	if err != nil {
 		return err
 	}
 	if err := e.AddStore(store); err != nil {
 		return err
+	}
+	return nil
+}
+
+// expandStoreConfig expands templates in store config values providing the engine's
+func (e *Engine) expandStoreConfig(sc korrel8r.StoreConfig) error {
+	for k, v := range sc {
+		t, err := template.New(k + ": " + v).Funcs(e.TemplateFuncs()).Parse(v)
+		if err != nil {
+			return err
+		}
+		w := &strings.Builder{}
+		err = t.Execute(w, nil)
+		if err != nil {
+			return err
+		}
+		sc[k] = w.String()
 	}
 	return nil
 }
@@ -159,8 +190,8 @@ func (e *Engine) Graph() *graph.Graph { return graph.NewData(e.rules...).NewGrap
 func (e *Engine) TemplateFuncs() map[string]any { return e.templateFuncs }
 
 // Get finds the store for the query.Class() and gets into result.
-func (e *Engine) Get(ctx context.Context, class korrel8r.Class, query korrel8r.Query, result korrel8r.Appender) error {
-	for _, store := range e.StoresFor(class.Domain()) {
+func (e *Engine) Get(ctx context.Context, query korrel8r.Query, result korrel8r.Appender) error {
+	for _, store := range e.StoresFor(query.Class().Domain()) {
 		if err := store.Get(ctx, query, result); err != nil {
 			return err
 		}
@@ -169,3 +200,17 @@ func (e *Engine) Get(ctx context.Context, class korrel8r.Class, query korrel8r.Q
 }
 
 func (e *Engine) Follower(ctx context.Context) *Follower { return &Follower{Engine: e, Context: ctx} }
+
+// FIXME Document template funs.
+//
+//	get DOMAIN:CLASS:QUERY
+//	  Executes QUERY and returns a list of result objects. Type of results depends DOMAIN and CLASS.
+func (e *Engine) get(query string) ([]korrel8r.Object, error) {
+	q, err := e.Query(query)
+	if err != nil {
+		return nil, err
+	}
+	results := korrel8r.NewResult(q.Class())
+	err = e.Get(context.Background(), q, results)
+	return results.List(), err
+}

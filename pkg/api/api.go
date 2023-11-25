@@ -222,7 +222,7 @@ func (a *API) setupStart(c *gin.Context, g *graph.Graph, start korrel8r.Class, o
 	for _, query := range queries {
 		cr := korrel8r.NewCountResult(result)
 		// TODO should we tolerate get failures and report in the response?
-		if check(c, http.StatusBadRequest, a.Engine.Get(c.Request.Context(), start, query, cr),
+		if check(c, http.StatusBadRequest, a.Engine.Get(c.Request.Context(), query, cr),
 			"query failed: %q", query.String()) {
 			n.Queries[query.String()] = cr.Count
 		}

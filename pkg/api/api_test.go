@@ -229,8 +229,8 @@ func apiWithRules() (a *testAPI, x, y, z korrel8r.Class) {
 	foo, bar := mock.Domain("foo"), mock.Domain("bar")
 	api := newTestAPI(foo, bar)
 	x, y, z = foo.Class("x"), bar.Class("y"), bar.Class("z")
-	test.PanicErr(api.Engine.AddStore(mock.NewStore(foo)))
-	test.PanicErr(api.Engine.AddStore(mock.NewStore(bar)))
+	test.PanicErr(api.Engine.AddStore(mock.NewStore(foo, nil)))
+	test.PanicErr(api.Engine.AddStore(mock.NewStore(bar, nil)))
 	api.Engine.AddRules(mock.NewApplyRule("x-y", x, y, doubleFunc(y)))
 	api.Engine.AddRules(mock.NewQueryRule("y-z", y, mock.NewQuery(z, "c")))
 	return api, x, y, z

@@ -11,7 +11,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
-// TODO document
+// FIXME document template functions with the domain - both store and domain functions.
 
 func (s *Store) TemplateFuncs() map[string]any {
 	return map[string]any{
@@ -23,6 +23,7 @@ func (s *Store) TemplateFuncs() map[string]any {
 
 func (domain) TemplateFuncs() map[string]any {
 	return map[string]any{
+
 		"k8sClass":        k8sClass,
 		"k8sQueryClass":   k8sQueryClass,
 		"k8sGroupVersion": schema.ParseGroupVersion,
@@ -44,12 +45,8 @@ func kindToResource(restMapper meta.RESTMapper, kind string, apiVersion string) 
 	return rm.Resource.Resource, nil
 }
 
-func k8sClass(kind, apiVersion string) (Class, error) {
-	gv, err := schema.ParseGroupVersion(apiVersion)
-	if err != nil {
-		return Class{}, err
-	}
-	return Class(gv.WithKind(kind)), nil
+func k8sClass(apiVersion, kind string) Class {
+	return Class(schema.FromAPIVersionAndKind(apiVersion, kind))
 }
 
 func k8sQueryClass(classOrName any) (string, error) {

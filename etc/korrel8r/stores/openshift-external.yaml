@@ -1,0 +1,15 @@
+# Configuration for korrel8r running outside an openshift cluster.
+
+stores:                         # Load default stores
+  - domain: k8s
+  - domain: alert
+    metrics: |-
+      https://{{(get "k8s:Route:{namespace: openshift-monitoring, name: thanos-querier}" | first).Spec.Host}}
+    alertManager: |-
+      https://{{(get "k8s:Route:{namespace: openshift-monitoring, name: alertmanager-main}" | first).Spec.Host}}
+  - domain: log
+    lokiStack: |-
+      https://{{(get "k8s:Route:{namespace: openshift-logging, name: logging-loki}" | first).Spec.Host}}
+  - domain: metric
+    metric: |-
+      https://{{(get "k8s:Route:{namespace: openshift-monitoring, name: thanos-querier}" | first).Spec.Host}}

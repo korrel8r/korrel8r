@@ -16,8 +16,8 @@ type Config struct {
 	// Stores is a list of store configurations.
 	Stores []korrel8r.StoreConfig `json:"stores,omitempty"`
 
-	// More is a list of file names or URLs for additional configuration files to load.
-	More []string `json:"more,omitempty"`
+	// Include lists additional configuration files or URLs to include.
+	Include []string `json:"include,omitempty"`
 }
 
 // Rule specifies a template rule.

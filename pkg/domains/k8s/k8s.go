@@ -5,8 +5,8 @@
 // # Class
 //
 // A k8s class corresponds to a kind of Kubernetes resource, the class name is `KIND.VERSION.GROUP`
-// VERSION can be omitted if there is no ambiguity.
-// Example class names: `k8s:Pod`, `k8s:Pod.v1`, `k8s:Deployment.v1.apps`, `k8s:Deployment.apps`
+// VERSION and/or GROUP can be omitted if there is no ambiguity.
+// Example class names: `k8s:Pod.v1`, `ks8:Pod`, `k8s:Deployment.v1.apps`, `k8s:Deployment.apps`, `k8s:Deployment`
 //
 // # Object
 //
@@ -154,10 +154,6 @@ func (d domain) Query(s string) (korrel8r.Query, error) {
 
 // ClassOf returns the Class of o, which must be a pointer to a typed API resource struct.
 func ClassOf(o client.Object) Class { return Class(GroupVersionKind(o)) }
-
-func ClassOfAPIVersionKind(apiVersion, kind string) Class {
-	return Class(schema.FromAPIVersionAndKind(apiVersion, kind))
-}
 
 // GroupVersionKind returns the GVK of o, which must be a pointer to a typed API resource struct.
 // Returns empty if o is not a known resource type.

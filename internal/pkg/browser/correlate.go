@@ -124,7 +124,7 @@ func (c *correlate) update(req *http.Request) {
 	if !c.addErr(c.updateStart(), "start") {
 		// Prime the start node with initial results
 		start := c.Graph.NodeFor(c.StartClass)
-		if c.addErr(c.browser.engine.Get(context.Background(), c.StartClass, c.StartQuery, start.Result)) {
+		if c.addErr(c.browser.engine.Get(context.Background(), c.StartQuery, start.Result)) {
 			return
 		}
 		start.Queries[c.StartQuery.String()] = len(start.Result.List())

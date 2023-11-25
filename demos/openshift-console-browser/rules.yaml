@@ -90,7 +90,7 @@ rules:
        query: |-
          {
            "LogType": "{{ k8sLogType .Namespace }}",
-           "LogQL": "{kubernetes_namespace_name=\"{{.Namespace}}\",kubernetes_pod_name=\"{{.Name}}\"} | json"
+           "LogQL": "{kubernetes_namespace_name=\"{{.Namespace}}\",kubernetes_pod_name=\"{{.Name}}\"} | toJson"
          }
    - name: SelectorToPods
      start:
@@ -101,7 +101,7 @@ rules:
        classes: [Pod]
      result:
        query: |-
-         {"namespace":"{{.Namespace}}","labels":{{ .Spec.Selector.MatchLabels | json -}} }
+         {"namespace":"{{.Namespace}}","labels":{{ .Spec.Selector.MatchLabels | toJson -}} }
    - name: EventToAll
      start:
        domain: k8s
@@ -139,4 +139,4 @@ rules:
        domain: metric
      result:
        query: |-
-         "{ namespace=\"{{.Namespace}}\", {{tolower .Kind}}=\"{{.Name}}\" }"
+         "{ namespace=\"{{.Namespace}}\", {{lower .Kind}}=\"{{.Name}}\" }"

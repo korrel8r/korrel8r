@@ -48,7 +48,7 @@ func TestEngine_Domains(t *testing.T) {
 
 func TestFollower_Traverse(t *testing.T) {
 	d := mock.Domain("mock")
-	s := mock.NewStore(d)
+	s := mock.NewStore(d, nil)
 	e := New(d)
 	a, b, c, z := d.Class("a"), d.Class("b"), d.Class("c"), d.Class("z")
 	require.NoError(t, e.AddStore(s))

@@ -3,125 +3,35 @@
 package rules
 
 import (
-	"errors"
-	"fmt"
-	"net/url"
-	"reflect"
-	"sort"
-	"strings"
-
-	"github.com/korrel8r/korrel8r/pkg/domains/k8s"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 )
 
-// Funcs available to templates used in rules.
-// Additional funcs may be made available by the [engine.Engine] that applies the rules.
+// FIXME doc for domain-specific functions
+
+// Funcs available for use in rule templates.
+//
+// As well as the functions listed below, rule templates can use the [slim-sprig] functions.
+//
+// Additional domain-specific functions are added by the [engine.Engine] for each domain loaded.
+// Domain functions are prefixed with the domain name (e.g. k8sLogType), and are documented with the domain.
 //
 //	rule
 //	  Returns the korrel8r.Rule being applied.
 //	constraint
 //	  Returns the korrel8r.Constraint in force when applying a rule. May be nil.
-//	has(r.Name, r.Result.Query)
-//	  Evaluates its arguments for errors. Useful for asserting that fields exist in the context value.
-//	assert
-//	  Exits with an error if its argument is false.
-//	json
-//	  Marshals its argument as JSON and returns the string.
-//	yaml
-//	  Marshals its argument as YAML and returns the string.
-//	classname
-//	  Returns the domain qualified name of a korrel8r.Class argument.
-//	classnameAVK
-//	  Returns the full class name for (APIVersion, Kind)
-//	urlquerymap
-//	  Returns the URL query encoding of a map argument.
-//	  Map values are stringified as for fmt.Printf("%v", ...)
-//	selector
-//	  Takes a map arguments and returns a selector string of the form: "k1=value1,k2=value2 ..."
-//	mkslice
-//	  Returns a []any slice of its arguments.
-//	  Useful for passing parameters to a nested template.
-//	mkmap
-//	  Returns a map[any]any formed from (key, value, key2, value2...) argument pairs.
-//	  Useful for passing parameters to a nested template.
+//	className CLASS
+//	  Returns the fully qualified name of CLASS, with domain prefix.
+//	ruleName RULE
+//	  Returns the fully qualified name of RULE, with domain prefix.
+//
+// [Sprig]: https://go-task.github.io/slim-sprig/
 var Funcs map[string]any
+
+// FIXME functions moved to engine. need better doc.
 
 func init() {
 	Funcs = map[string]any{
-		"rule":         func() korrel8r.Rule { return nil },
-		"constraint":   func() *korrel8r.Constraint { return nil },
-		"assert":       doAssert, // Assert a condition in a template
-		"json":         korrel8r.JSONString,
-		"yaml":         korrel8r.YAMLString,
-		"classname":    korrel8r.ClassName,
-		"classnameAVK": func(av, k string) string { return korrel8r.ClassName(k8s.ClassOfAPIVersionKind(av, k)) },
-		"rulename":     korrel8r.RuleName,
-		"urlquerymap":  urlquerymap,
-		"selector":     selector,
-		"mkslice":      mkslice,
-		"mkmap":        mkmap,
-		"tolower":      strings.ToLower,
+		"rule":       func() korrel8r.Rule { return nil },
+		"constraint": func() *korrel8r.Constraint { return nil },
 	}
-}
-
-var errFailed = errors.New("failed")
-
-// assert a condition in a template - int return is a dummy value required for template functions.
-func doAssert(ok bool, msg ...any) (int, error) {
-	if !ok {
-		if len(msg) > 0 {
-			if s, ok := msg[0].(string); ok {
-				return 0, fmt.Errorf(s, msg[1:]...)
-			}
-		}
-		return 0, errFailed
-	}
-	return 0, nil
-}
-
-func urlquerymap(m any) (string, error) {
-	rm := reflect.ValueOf(m)
-	if rm.Kind() != reflect.Map {
-		return "", fmt.Errorf("urlquerymap expected a map but got (%T)%v", m, m)
-	}
-	v := url.Values{}
-	i := rm.MapRange()
-	for i.Next() {
-		v.Add(fmt.Sprintf("%v", i.Key()), fmt.Sprintf("%v", i.Value()))
-	}
-	return v.Encode(), nil
-}
-
-func selector(m any) string {
-	v := reflect.ValueOf(m)
-	if !v.IsValid() {
-		return ""
-	}
-	b := &strings.Builder{}
-	i := v.MapRange()
-	keys := make([]string, 0, v.Len())
-	for i.Next() {
-		keys = append(keys, i.Key().String())
-	}
-	sort.Strings(keys)
-	for i, k := range keys {
-		if i > 0 {
-			b.WriteString(",")
-		}
-		fmt.Fprintf(b, "%v=%v", k, v.MapIndex(reflect.ValueOf(k)))
-	}
-	return b.String()
-}
-
-func mkslice(values ...any) []any { return values }
-
-func mkmap(keyValue ...any) map[string]any {
-	if len(keyValue) == 0 {
-		return nil
-	}
-	m := map[string]any{}
-	for i := 0; i < len(keyValue); i += 2 { // Will panic out of range on odd number
-		m[keyValue[i].(string)] = keyValue[i+1]
-	}
-	return m
 }

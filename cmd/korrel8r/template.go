@@ -22,8 +22,8 @@ var templateCmd = &cobra.Command{
 		if *templateFile != "" {
 			*templateString = string(must.Must1(os.ReadFile(*templateFile)))
 		}
-		t := template.Must(template.New(*templateString).Parse(*templateString))
 		e := newEngine()
+		t := template.Must(template.New(*templateString).Funcs(e.TemplateFuncs()).Parse(*templateString))
 		must.Must(t.Execute(os.Stdout, e))
 	},
 }

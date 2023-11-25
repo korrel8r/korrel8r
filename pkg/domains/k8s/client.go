@@ -3,17 +3,26 @@
 package k8s
 
 import (
+	"sync"
 	"time"
 
+	"github.com/korrel8r/korrel8r/internal/pkg/logging"
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 )
+
+var setLoggerOnce sync.Once
 
 // NewClient provides a general-purpose k8s client.
 // It may be used by other domains that need to talk to the cluster.
 func NewClient() (client.Client, *rest.Config, error) {
+	setLoggerOnce.Do(func() {
+		// Have controller-runtime use the korrel8r root Logger.
+		log.SetLogger(logging.Log())
+	})
 	cfg, err := config.GetConfig()
 	if err != nil {
 		return nil, nil, err

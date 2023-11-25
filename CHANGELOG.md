@@ -4,8 +4,14 @@ This is the project's commit log. It is placeholder until a more user-readable c
 
 This project uses semantic versioning (https://semver.org)
 
-## Version v0.5.4
+## Version v0.5.5
 
+- Internal/external cluster configurations using store templates.
+- Fixes to operator deployment via `make operators`
+- K8s class lookup make group optional.
+- Include |json in console URL queries.
+- Show result ID if there is only one result.
+- Release v0.5.4
 
 ## Version v0.5.4
 

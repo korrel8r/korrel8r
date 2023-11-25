@@ -101,7 +101,7 @@ func TestSelectorToLogs(t *testing.T) {
 	d.Spec = appsv1.DeploymentSpec{
 		Selector: &metav1.LabelSelector{MatchLabels: map[string]string{"a.b/c": "x"}},
 	}
-	want := log.NewQuery(log.Application, `{kubernetes_namespace_name="ns"}|json|kubernetes_labels_a_b_c="x"|line_format"{{__line__}}"`)
+	want := log.NewQuery(log.Application, `{kubernetes_namespace_name="ns"}|toJson|kubernetes_labels_a_b_c="x"|line_format"{{__line__}}"`)
 	testTraverse(t, e, k8s.ClassOf(d), log.Domain.Class("application"), []korrel8r.Object{d}, want)
 }
 
@@ -186,6 +186,7 @@ func TestMain(m *testing.M) {
 		name := r.Name()
 		if !rulesUsed.Has(name) {
 			fmt.Println(name)
+			rulesUsed.Add((name))
 		}
 	}
 }
