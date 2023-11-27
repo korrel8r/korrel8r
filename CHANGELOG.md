@@ -6,6 +6,7 @@ This project uses semantic versioning (https://semver.org)
 
 ## Version v0.5.5
 
+- Remove hard-coded openshift default configuration.
 - Internal/external cluster configurations using store templates.
 - Fixes to operator deployment via `make operators`
 - K8s class lookup make group optional.
