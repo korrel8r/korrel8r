@@ -20,7 +20,6 @@ import (
 	"github.com/korrel8r/korrel8r/pkg/engine"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"github.com/korrel8r/korrel8r/pkg/openshift"
-	"github.com/korrel8r/korrel8r/pkg/openshift/console"
 	"github.com/korrel8r/korrel8r/pkg/rules"
 	"go.uber.org/multierr"
 )
@@ -36,7 +35,7 @@ var (
 // Browser implements HTTP handlers for web browsers.
 type Browser struct {
 	engine     *engine.Engine
-	console    *console.Console
+	console    *openshift.Console
 	router     *gin.Engine
 	images     http.FileSystem
 	dir, files string
@@ -57,7 +56,11 @@ func New(e *engine.Engine, router *gin.Engine) (*Browser, error) {
 	if err != nil {
 		return nil, err
 	}
-	kc, _, err := k8s.NewClient()
+	cfg, err := k8s.GetConfig()
+	if err != nil {
+		return nil, err
+	}
+	kc, err := k8s.NewClient(cfg)
 	if err != nil {
 		return nil, err
 	}
@@ -65,7 +68,7 @@ func New(e *engine.Engine, router *gin.Engine) (*Browser, error) {
 	if err != nil {
 		return nil, err
 	}
-	b.console = console.New(consoleURL, e)
+	b.console = openshift.NewConsole(consoleURL, e)
 	c := &correlate{browser: b}
 
 	tmpl := template.Must(template.New("").
