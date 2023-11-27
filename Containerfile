@@ -3,7 +3,8 @@ FROM golang:1.21.4 as builder
 
 WORKDIR /workspace
 # Download and cache go modules before building.
-COPY go.mod go.sum .
+COPY go.mod go.mod
+COPY go.sum go.sum
 RUN go mod download
 
 # Copy go sources and build

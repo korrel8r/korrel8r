@@ -41,14 +41,12 @@ import (
 	"github.com/korrel8r/korrel8r/pkg/domains/k8s"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r/impl"
-	"github.com/korrel8r/korrel8r/pkg/openshift"
 	"github.com/prometheus/client_golang/api"
 	promv1 "github.com/prometheus/client_golang/api/prometheus/v1"
 	"github.com/prometheus/common/model"
 	"golang.org/x/exp/maps"
 	"golang.org/x/exp/slices"
 	"k8s.io/client-go/rest"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 var (
@@ -75,20 +73,15 @@ func (d domain) Query(s string) (korrel8r.Query, error) {
 const StoreKeyMetricURL = "metric"
 
 func (domain) Store(sc korrel8r.StoreConfig) (korrel8r.Store, error) {
-	uStr := sc[StoreKeyMetricURL]
-	if uStr == "" { // Use cluster store
-		client, cfg, err := k8s.NewClient()
-		if err != nil {
-			return nil, err
-		}
-		return NewOpenshiftStore(context.Background(), client, cfg)
-	} else {
-		u, err := url.Parse(uStr)
-		if err != nil {
-			return nil, err
-		}
-		return NewStore(u, nil)
+	cfg, err := k8s.GetConfig()
+	if err != nil {
+		return nil, err
 	}
+	hc, err := rest.HTTPClientFor(cfg)
+	if err != nil {
+		return nil, err
+	}
+	return NewStore(sc[StoreKeyMetricURL], hc)
 }
 
 const (
@@ -146,8 +139,8 @@ func (q Query) String() string        { return korrel8r.QueryName(q) }
 
 type Store struct{ api promv1.API }
 
-func NewStore(base *url.URL, hc *http.Client) (korrel8r.Store, error) {
-	c, err := api.NewClient(api.Config{Address: base.String(), Client: hc})
+func NewStore(baseURL string, hc *http.Client) (korrel8r.Store, error) {
+	c, err := api.NewClient(api.Config{Address: baseURL, Client: hc})
 	if err != nil {
 		return nil, err
 	}
@@ -173,16 +166,4 @@ func (s *Store) Get(ctx context.Context, query korrel8r.Query, result korrel8r.A
 		return fmt.Errorf("unexpected metric value: (%T)%#v", value, value)
 	}
 	return nil
-}
-
-func NewOpenshiftStore(ctx context.Context, c client.Client, cfg *rest.Config) (korrel8r.Store, error) {
-	host, err := openshift.RouteHost(ctx, c, openshift.ThanosQuerierNSName)
-	if err != nil {
-		return nil, err
-	}
-	hc, err := rest.HTTPClientFor(cfg)
-	if err != nil {
-		return nil, err
-	}
-	return NewStore(&url.URL{Scheme: "https", Host: host}, hc)
 }

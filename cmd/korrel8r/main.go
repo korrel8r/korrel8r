@@ -60,6 +60,7 @@ func init() {
 
 	cobra.OnInitialize(func() {
 		logging.Init(*verbose)
+		k8s.SetLogger(logging.Log())
 		if pt := profileTypes[*profileType]; pt != nil {
 			cobra.OnFinalize(profile.Start(pt).Stop)
 		}

@@ -39,7 +39,7 @@ import (
 	"github.com/korrel8r/korrel8r/internal/pkg/must"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r/impl"
-	"github.com/korrel8r/korrel8r/pkg/openshift/console"
+	"github.com/korrel8r/korrel8r/pkg/openshift"
 	"golang.org/x/exp/slices"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -84,7 +84,7 @@ var (
 	_ korrel8r.Class    = Class{}
 	_ korrel8r.Object   = Object(nil)
 	_ korrel8r.Query    = &Query{}
-	_ console.Converter = &Store{}
+	_ openshift.Converter = &Store{}
 )
 
 // domain implementation
@@ -94,11 +94,15 @@ func (d domain) Name() string        { return "k8s" }
 func (d domain) String() string      { return d.Name() }
 func (d domain) Description() string { return "Resource objects in a Kubernetes API server" }
 func (d domain) Store(sc korrel8r.StoreConfig) (s korrel8r.Store, err error) {
-	client, cfg, err := NewClient()
+	cfg, err := GetConfig()
+	if err != nil {
+			return nil,err
+	}
+	c, err := NewClient(cfg)
 	if err != nil {
 		return nil, err
 	}
-	return NewStore(client, cfg)
+	return NewStore(c, cfg)
 }
 
 func (d domain) Class(name string) korrel8r.Class {

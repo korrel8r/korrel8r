@@ -16,6 +16,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+// Observability namespaces
 const (
 	OpenshiftLogging    = "openshift-logging"
 	LoggingLoki         = "logging-loki"
@@ -25,6 +26,7 @@ const (
 	AlertmanagerMain    = "alertmanager-main"
 )
 
+// Observability service namespace-names
 var (
 	LokiStackNSName        = NamespacedName(OpenshiftLogging, LoggingLoki)
 	ConsoleNSName          = NamespacedName(OpenshiftConsole, "console")
