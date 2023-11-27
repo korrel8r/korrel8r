@@ -3,7 +3,7 @@
 // package console helps convert queries to and from console  URLs.
 //
 // The Query type for domains that support console URLs must implement the Query interface
-package console
+package openshift
 
 import (
 	"fmt"
@@ -27,7 +27,7 @@ type Console struct {
 	e       *engine.Engine
 }
 
-func New(baseURL *url.URL, e *engine.Engine) *Console {
+func NewConsole(baseURL *url.URL, e *engine.Engine) *Console {
 	return &Console{BaseURL: baseURL, e: e}
 }
 

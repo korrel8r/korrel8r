@@ -48,16 +48,13 @@ import (
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r/impl"
 	"github.com/korrel8r/korrel8r/pkg/openshift"
-	"github.com/korrel8r/korrel8r/pkg/openshift/console"
 	"golang.org/x/exp/slices"
-	"k8s.io/client-go/rest"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 var (
 	// Verify implementing interfaces.
 	_ korrel8r.Domain    = Domain
-	_ console.Converter  = Domain
+	_ openshift.Converter  = Domain
 	_ korrel8r.Store     = &Store{}
 	_ korrel8r.Query     = Query{}
 	_ korrel8r.Class     = Class("")
@@ -95,29 +92,34 @@ const (
 )
 
 func (domain) Store(sc korrel8r.StoreConfig) (korrel8r.Store, error) {
-	loki, lokiStack := sc[StoreKeyLoki], sc[StoreKeyLokiStack]
-	if loki != "" && lokiStack != "" {
-		return nil, fmt.Errorf("can't create a store with both loki and lokiStack URLs")
-	}
-	if loki == "" && lokiStack == "" {
-		c, cfg, err := k8s.NewClient()
-		if err != nil {
-			return nil, err
-		}
-		return NewOpenshiftLokiStackStore(context.Background(), c, cfg)
-	}
-	s := loki
-	if s == "" {
-		s = lokiStack
-	}
-	u, err := url.Parse(s)
+	hc, err := k8s.NewHTTPClient()
 	if err != nil {
 		return nil, err
 	}
-	if lokiStack != "" {
-		return NewLokiStackStore(u, nil)
+
+	loki, lokiStack := sc[StoreKeyLoki], sc[StoreKeyLokiStack]
+	switch {
+
+	case loki != "" && lokiStack != "":
+		return nil, fmt.Errorf("can't set both loki and lokiStack URLs")
+
+	case loki != "":
+		u, err := url.Parse(loki)
+		if err != nil {
+			return nil, err
+		}
+		return NewPlainLokiStore(u, hc)
+
+	case lokiStack != "":
+		u, err := url.Parse(lokiStack)
+		if err != nil {
+			return nil, err
+		}
+		return NewLokiStackStore(u, hc)
+
+	default:
+		return nil, fmt.Errorf("must set one of loki or lokiStack URLs")
 	}
-	return NewPlainLokiStore(u, nil)
 }
 
 func (domain) QueryToConsoleURL(query korrel8r.Query) (*url.URL, error) {
@@ -326,16 +328,4 @@ type queryData struct {
 type streamValues struct {
 	Stream map[string]string `json:"stream"` // Labels for the stream
 	Values [][]string        `json:"values"`
-}
-
-func NewOpenshiftLokiStackStore(ctx context.Context, c client.Client, cfg *rest.Config) (korrel8r.Store, error) {
-	host, err := openshift.RouteHost(ctx, c, openshift.LokiStackNSName)
-	if err != nil {
-		return nil, err
-	}
-	hc, err := rest.HTTPClientFor(cfg)
-	if err != nil {
-		return nil, err
-	}
-	return NewLokiStackStore(&url.URL{Scheme: "https", Host: host}, hc)
 }

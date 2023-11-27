@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
-	"strings"
 	"testing"
 	"time"
 
@@ -15,8 +14,6 @@ import (
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 var ctx = context.Background()
@@ -44,38 +41,39 @@ func TestPlainLokiStore_Get(t *testing.T) {
 	assert.Equal(t, want, result.List())
 }
 
-func TestLokiStackStore_Get(t *testing.T) {
-	test.SkipIfNoCluster(t)
-	c := test.K8sClient
-	ns := test.TempNamespace(t, c)
-	lines, _ := makeLines(fmt.Sprintf("%v: %v - %v", time.Now(), t.Name(), ns), 10)
-	pod := corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{Name: "logger", Namespace: ns},
-		Spec: corev1.PodSpec{
-			Containers: []corev1.Container{{
-				Name:    "logger",
-				Image:   "quay.io/quay/busybox",
-				Command: []string{"sh", "-c", fmt.Sprintf("echo %v; sleep infinity", strings.Join(lines, "; echo "))}}}},
-	}
-	require.NoError(t, c.Create(ctx, &pod))
-	s, err := NewOpenshiftLokiStackStore(ctx, c, test.RESTConfig)
-	require.NoError(t, err)
-	logQL := fmt.Sprintf(`{kubernetes_pod_name="%v", kubernetes_namespace_name="%v"}`, pod.Name, pod.Namespace)
-	q := Query{logQL: logQL, class: "application"}
-	var result korrel8r.ListResult
-	assert.Eventually(t, func() bool {
-		result = nil
-		err = s.Get(ctx, q, &result)
-		require.NoError(t, err)
-		t.Logf("waiting for %v logs, got %v. %v%v", len(lines), len(result), s, q)
-		return len(result) >= len(lines)
-	}, 30*time.Second, time.Second)
-	var got []string
-	for _, o := range result {
-		got = append(got, o.(Object).Properties()["message"].(string))
-	}
-	assert.Equal(t, lines, got)
-}
+// FIXME better test with kind?
+// func TestLokiStackStore_Get(t *testing.T) {
+// 	test.SkipIfNoCluster(t)
+// 	c := test.K8sClient
+// 	ns := test.TempNamespace(t, c)
+// 	lines, _ := makeLines(fmt.Sprintf("%v: %v - %v", time.Now(), t.Name(), ns), 10)
+// 	pod := corev1.Pod{
+// 		ObjectMeta: metav1.ObjectMeta{Name: "logger", Namespace: ns},
+// 		Spec: corev1.PodSpec{
+// 			Containers: []corev1.Container{{
+// 				Name:    "logger",
+// 				Image:   "quay.io/quay/busybox",
+// 				Command: []string{"sh", "-c", fmt.Sprintf("echo %v; sleep infinity", strings.Join(lines, "; echo "))}}}},
+// 	}
+// 	require.NoError(t, c.Create(ctx, &pod))
+// 	s, err := NewOpenshiftLokiStackStore(ctx, c, test.RESTConfig)
+// 	require.NoError(t, err)
+// 	logQL := fmt.Sprintf(`{kubernetes_pod_name="%v", kubernetes_namespace_name="%v"}`, pod.Name, pod.Namespace)
+// 	q := Query{logQL: logQL, class: "application"}
+// 	var result korrel8r.ListResult
+// 	assert.Eventually(t, func() bool {
+// 		result = nil
+// 		err = s.Get(ctx, q, &result)
+// 		require.NoError(t, err)
+// 		t.Logf("waiting for %v logs, got %v. %v%v", len(lines), len(result), s, q)
+// 		return len(result) >= len(lines)
+// 	}, 30*time.Second, time.Second)
+// 	var got []string
+// 	for _, o := range result {
+// 		got = append(got, o.(Object).Properties()["message"].(string))
+// 	}
+// 	assert.Equal(t, lines, got)
+// }
 
 func TestStoreGet_Constraint(t *testing.T) {
 	test.SkipIfNoCluster(t)
