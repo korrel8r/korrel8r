@@ -4,8 +4,9 @@ This is the project's commit log. It is placeholder until a more user-readable c
 
 This project uses semantic versioning (https://semver.org)
 
-## Version v0.5.5
+## Version v0.5.6
 
+- Remove hard-coded openshift default configuration.
 - Internal/external cluster configurations using store templates.
 - Fixes to operator deployment via `make operators`
 - K8s class lookup make group optional.
@@ -41,9 +42,6 @@ This project uses semantic versioning (https://semver.org)
 - Minor cleanup, simplified log.Object.
 - Use lokistak "1x.demo" size for hack/openshift setup.
 - Change full class name from CLASS.DOMAIN to DOMAIN:CLASS
-
-## Version v0.4.0
-
 - Release v0.4.0
 - Release v0.4.0
 - Release v0.4.0
