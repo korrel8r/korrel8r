@@ -11,18 +11,19 @@ apiVersion: operators.coreos.com/v1
 kind: OperatorGroup
 metadata:
   annotations:
-    olm.providedAPIs: ClusterLogForwarder.v1.logging.openshift.io,ClusterLogging.v1.logging.openshift.io,LogFileMetricExporter.v1alpha1.logging.openshift.i    generateName: openshift-logging
+    olm.providedAPIs: ClusterLogForwarder.v1.logging.openshift.io,ClusterLogging.v1.logging.openshift.io,LogFileMetricExporter.v1alpha1.logging.openshift.i
+  name: openshift-logging-hack
   namespace: openshift-logging
 spec:
   upgradeStrategy: Default
----
-apiVersion: operators.coreos.com/v1alpha1
-kind: Subscription
-metadata:
-  name: cluster-logging
-  namespace: openshift-logging
-spec:
-  channel: "stable"
-  name: cluster-logging
-  source: redhat-operators
-  sourceNamespace: openshift-marketplace
+# ---
+# apiVersion: operators.coreos.com/v1alpha1
+# kind: Subscription
+# metadata:
+#   name: cluster-logging
+#   namespace: openshift-logging
+# spec:
+#   channel: "stable"
+#   name: cluster-logging
+#   source: redhat-operators
+#   sourceNamespace: openshift-marketplace
