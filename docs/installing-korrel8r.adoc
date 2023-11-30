@@ -1,0 +1,83 @@
+[id="installing-korrel8r"]
+= Installing Korrel8r
+
+You can install Korrel8r by using one of the following procedures.
+
+[id="installing-korrel8r-ocp"]
+== Installing Korrel8r on a Red{nbsp}Hat OpenShift Container Platform cluster
+
+You can install Korrel8r on a Red{nbsp}Hat OpenShift Container Platform cluster by using the Operator provided in the GitHub repository.
+Installing Korrel8r on a Red{nbsp}Hat OpenShift Container Platform cluster means that you can use the link:https://docs.openshift.com/container-platform/latest/web_console/web-console-overview.html[web console] to view Korrel8r data.
+
+.Prerequisites
+
+* You have administrator permissions on an Red{nbsp}Hat OpenShift Container Platform cluster version 4.12 or newer.
+* You have installed the link:https://docs.openshift.com/container-platform/latest/logging/cluster-logging-deploying.html#cluster-logging-deploy-console_cluster-logging-deploying[Red Hat OpenShift Logging Operator] provided by Red{nbsp}Hat.
+* You have installed the link:https://docs.openshift.com/container-platform/latest/logging/cluster-logging-loki.html#logging-loki-gui-install_cluster-logging-loki[Loki Operator] provided by Red{nbsp}Hat, and have created a `LokiStack` custom resource (CR).
+* You have link:https://docs.openshift.com/container-platform/latest/logging/cluster-logging-deploying.html#configuring-log-storage-cr_cluster-logging-deploying[created a `ClusterLogging` CR that configures LokiStack as the log store].
+
+.Procedure
+
+. Install the link:https://sdk.operatorframework.io/docs/installation/[`operator-sdk` command].
+. Install the Operator by running the following command:
++
+[source,terminal]
+----
+$ operator-sdk run bundle quay.io/korrel8r/operator-bundle:latest
+----
++
+.Example output
+[source,terminal]
+----
+INFO[0015] Creating a File-Based Catalog of the bundle "quay.io/korrel8r/operator-bundle:latest"
+INFO[0016] Generated a valid File-Based Catalog
+INFO[0024] Created registry pod: quay-io-korrel8r-operator-bundle-latest
+INFO[0024] Created CatalogSource: korrel8r-catalog
+INFO[0024] OperatorGroup "operator-sdk-og" created
+INFO[0024] Created Subscription: korrel8r-v0-0-5-sub
+INFO[0040] Approved InstallPlan install-bblsw for the Subscription: korrel8r-v0-0-5-sub
+INFO[0040] Waiting for ClusterServiceVersion "default/korrel8r.v0.0.5" to reach 'Succeeded' phase
+INFO[0040]   Waiting for ClusterServiceVersion "default/korrel8r.v0.0.5" to appear
+INFO[0042]   Found ClusterServiceVersion "default/korrel8r.v0.0.5" phase: Pending
+INFO[0043]   Found ClusterServiceVersion "default/korrel8r.v0.0.5" phase: Installing
+INFO[0064]   Found ClusterServiceVersion "default/korrel8r.v0.0.5" phase: Succeeded
+INFO[0064] OLM has successfully installed "korrel8r.v0.0.5"
+----
+
+. In the *Administrator* perspective of the Red{nbsp}Hat OpenShift Container Platform web console, navigate to *Operators* -> *Installed Operators*.
+. In the *Provided APIs* column, click *Korrel8r*.
+. In the *Korrel8RS* page, click *Create Korrel8r*.
+. Use the default configuration and click *Create*.
+. Modify the `ClusterLogging` CR and add the following annotation to enable the Console plugin:
++
+[source,yaml]
+----
+apiVersion: logging.openshift.io/v1
+kind: ClusterLogging
+metadata:
+  annotations:
+    logging.openshift.io/preview-korrel8r-console: enabled
+# ...
+----
+
+. Refresh the web console, then navigate to *Observe* -> *Logs* to use Korrel8r.
+
+.Removing Korrel8r
+
+* Delete the Operator and custom resource definitions (CRDs) by running the following command:
++
+[source,terminal]
+----
+$ operator-sdk cleanup korrel8r
+----
++
+.Example output
+[source,terminal]
+----
+INFO[0001] subscription "korrel8r-v0-0-5-sub" deleted
+INFO[0001] customresourcedefinition "korrel8rs.korrel8r.openshift.io" deleted
+INFO[0001] clusterserviceversion "korrel8r.v0.0.5" deleted
+INFO[0001] catalogsource "korrel8r-catalog" deleted
+INFO[0001] operatorgroup "operator-sdk-og" deleted
+INFO[0001] Operator "korrel8r" uninstalled
+----
