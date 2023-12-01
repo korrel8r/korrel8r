@@ -1,4 +1,4 @@
-name: Go
+name: Build
 
 on:
   push:
@@ -25,34 +25,8 @@ jobs:
         path: ~/go
         key: cache-${{ runner.os }}-${{ runner.arch }}
 
-    - name: Download Tools
-      run: make tools
-
     - name: Generate and Lint
       run: make generate lint
 
     - name: Test
       run: make test-skip
-
-    - name: Generate Web Site
-      run: make _site
-
-    - name: Upload web site
-      uses: actions/upload-pages-artifact@v2
-
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-
-    permissions:            # Grant GITHUB_TOKEN the permissions required to make a Pages deployment
-      pages: write          # to deploy to Pages
-      id-token: write       # to verify the deployment originates from an appropriate source
-
-    environment:            # Deploy to the github-pages environment
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-
-    steps:
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v2

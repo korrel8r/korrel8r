@@ -5,7 +5,6 @@ Alan Conway
 :toc: left
 :keywords: correlation, observability, signal, kubernetes
 :copyright: This file is part of korrel8r, released under https://github.com/korrel8r/korrel8r/blob/main/LICENSE
-:source-highlighter: rouge
 :project: https://github.com/korrel8r/korrel8r
 :pages: https://korrel8r.github.io/korrel8r
 :icons: font
