@@ -1,15 +1,14 @@
-[id="installing-korrel8r"]
+[id="installing-korrel8r-ocp"]
 = Installing Korrel8r
 
-You can install Korrel8r by using one of the following procedures.
-
-[id="installing-korrel8r-ocp"]
-== Installing Korrel8r on a Red{nbsp}Hat OpenShift Container Platform cluster
-
-NOTE: This procedure may work a non-Openshift cluster with OLM (Operator  Lifecycle Manager) installed. This has not been tested.
-
 You can install Korrel8r on a Red{nbsp}Hat OpenShift Container Platform cluster by using the Operator provided in the GitHub repository.
-Installing Korrel8r on a Red{nbsp}Hat OpenShift Container Platform cluster means that you can use the link:https://docs.openshift.com/container-platform/latest/web_console/web-console-overview.html[web console] to view Korrel8r data.
+
+[IMPORTANT]
+====
+The following procedure may work a Kubernetes cluster that is not a Red{nbsp}Hat OpenShift Container Platform cluster if the link:https://olm.operatorframework.io/[Operator Lifecycle Manager (OLM)] is installed. However, this has not been tested.
+====
+
+Installing Korrel8r on a Red{nbsp}Hat OpenShift Container Platform cluster means that you can use the link:https://docs.openshift.com/container-platform/latest/web_console/web-console-overview.html[Red{nbsp}Hat OpenShift Container Platform web console] to view Korrel8r data.
 
 .Prerequisites
 
@@ -21,11 +20,17 @@ Installing Korrel8r on a Red{nbsp}Hat OpenShift Container Platform cluster means
 .Procedure
 
 . Install the link:https://sdk.operatorframework.io/docs/installation/[`operator-sdk` command].
-. Create a namespace for korrel8r and install the operator by running the following commands:
+. Create a namespace for Korrel8r by running the following command:
 +
 [source,terminal]
 ----
 $ oc create namespace korrel8r
+----
+
+. Install the Korrel8r Operator by running the following command:
++
+[source,terminal]
+----
 $ operator-sdk -n korrel8r run bundle quay.io/korrel8r/operator-bundle:latest
 ----
 +
@@ -55,14 +60,19 @@ INFO[0064] OLM has successfully installed "korrel8r.v0.0.7"
 +
 [source,terminal]
 ----
-$ oc patch -n openshift-logging --type merge --patch '{"metadata":{"annotations":{"logging.openshift.io/preview-korrel8r-console":"enabled"}}}'  clusterlogging/instance
+$ oc patch -n openshift-logging --type merge --patch \
+'{"metadata":{"annotations":{"logging.openshift.io/preview-korrel8r-console":"enabled"}}}' \
+clusterlogging/instance
 ----
 
 . Refresh the web console
-. Navigate to *Observe* -> *Logs*, you should see a "Metrics" link to the right of each log record that links to correlated metrics.
-. Navigate to *Observe* -> *Alerting*, and open an alert. If the alert has related logs there will be a "see related logs" link. +
-  Note that many alerts do not have related container logs. Only alerts relating to a particular pod or deployment have related logs, for example `KubePodCrashLooping`.
-
+. Navigate to *Observe* -> *Logs*. Click the *Metrics* link to see correlated metrics of each log record.
+. Navigate to *Observe* -> *Alerting*, and click an alert. Alerts that have related logs have a *see related logs* link.
++
+[NOTE]
+====
+Many alerts do not have related container logs. Only alerts relating to a particular pod or deployment have related logs, for example, `KubePodCrashLooping` alerts.
+====
 
 .Removing Korrel8r
 
