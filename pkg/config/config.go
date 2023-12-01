@@ -98,9 +98,11 @@ func (configs Configs) Apply(e *engine.Engine) error {
 			}
 		}
 		for _, sc := range c.Stores {
-			log.V(1).Info("configuring store", "config", source, "store", logging.JSON(sc))
-			if err := e.AddStoreConfig(maps.Clone(sc)); err != nil {
-				log.V(1).Error(err, "configuring store", "config", source, "store", logging.JSON(sc))
+			sc = maps.Clone(sc)
+			if err := e.AddStoreConfig(sc); err != nil {
+				log.V(1).Error(err, "error configuring store", "config", source, "store", logging.JSON(sc))
+			} else {
+				log.V(1).Info("configured store", "config", source, "store", logging.JSON(sc))
 			}
 		}
 	}

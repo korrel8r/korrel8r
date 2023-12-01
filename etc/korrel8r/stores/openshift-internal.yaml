@@ -4,7 +4,7 @@ stores:                         # Load default stores
   - domain: k8s
   - domain: alert
     metrics: https://thanos-querier.openshift-monitoring.svc
-    alertManager: https://alertmanager-main.openshift-monitoring.svc
+    alertmanager: https://alertmanager-main.openshift-monitoring.svc
   - domain: log
     lokiStack: https://logging-loki.openshift-logging.svc
   - domain: metric

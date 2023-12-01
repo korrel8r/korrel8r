@@ -5,7 +5,7 @@ stores:                         # Load default stores
   - domain: alert
     metrics: |-
       https://{{(get "k8s:Route:{namespace: openshift-monitoring, name: thanos-querier}" | first).Spec.Host}}
-    alertManager: |-
+    alertmanager: |-
       https://{{(get "k8s:Route:{namespace: openshift-monitoring, name: alertmanager-main}" | first).Spec.Host}}
   - domain: log
     lokiStack: |-
