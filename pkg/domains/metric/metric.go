@@ -46,7 +46,6 @@ import (
 	"github.com/prometheus/common/model"
 	"golang.org/x/exp/maps"
 	"golang.org/x/exp/slices"
-	"k8s.io/client-go/rest"
 )
 
 var (
@@ -73,11 +72,7 @@ func (d domain) Query(s string) (korrel8r.Query, error) {
 const StoreKeyMetricURL = "metric"
 
 func (domain) Store(sc korrel8r.StoreConfig) (korrel8r.Store, error) {
-	cfg, err := k8s.GetConfig()
-	if err != nil {
-		return nil, err
-	}
-	hc, err := rest.HTTPClientFor(cfg)
+	hc, err := k8s.NewHTTPClient()
 	if err != nil {
 		return nil, err
 	}
