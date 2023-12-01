@@ -4,8 +4,17 @@ This is the project's commit log. It is placeholder until a more user-readable c
 
 This project uses semantic versioning (https://semver.org)
 
+## Version v0.5.8
+
+- Update install documentation for final preview.
+- Fix incorrect default configuration for alertmanager.
+- Consistent use of NewHTTPClient for metrics and alerts.
+- Fix errors in openshift/hack make operators
+- Added OpenShift install docs
+
 ## Version v0.5.7
 
+- Release v0.5.7
 - Remove hard-coded openshift default configuration.
 - Internal/external cluster configurations using store templates.
 - Fixes to operator deployment via `make operators`
