@@ -9,16 +9,11 @@ jobs:
   docs:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-
-      - name: Set up Go
-        uses: actions/setup-go@v3
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v4
         with:
           go-version: "1.21"
-
-      - name: Cache Go Packages and Tools
-        id: cache-compiled-go
-        uses: actions/cache@v3
+      - uses: actions/cache@v3
         with:
           path: ~/go
           key: cache-${{ runner.os }}-${{ runner.arch }}
