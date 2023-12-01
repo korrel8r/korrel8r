@@ -31,8 +31,8 @@ include::about-domains.adoc[leveloffset=+2]
 include::about-objects.adoc[leveloffset=+2]
 include::about-rules.adoc[leveloffset=+2]
 
-// Setup / installation docs
-include::installing-korrel8r.adoc[leveloffset=+1]
+// OCP setup / installation docs
+include::installing-korrel8r-ocp.adoc[leveloffset=+1]
 
 // User guides
 include::using-korrel8r.adoc[leveloffset=+1]
