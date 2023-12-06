@@ -4,8 +4,16 @@ This is the project's commit log. It is placeholder until a more user-readable c
 
 This project uses semantic versioning (https://semver.org)
 
+## Version v0.5.9
+
+- Fix syntax error in alert and log rules.
+- Fix github action cache settings.
+- Separate build and deploy actions
+- Suggested review comments for install docs
+
 ## Version v0.5.8
 
+- Release v0.5.8
 - Update install documentation for final preview.
 - Fix incorrect default configuration for alertmanager.
 - Consistent use of NewHTTPClient for metrics and alerts.
