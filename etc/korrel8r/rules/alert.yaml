@@ -7,7 +7,7 @@ rules:
       classes: [Deployment.apps]
     result:
       query: |-
-        {{className rule.Goal}}:{namespace: "{{.Labels.namespace}}", name:"{{.Labels.deployment}}"}
+        {{className rule.Goal}}:{namespace: "{{.Labels.namespace}}", name: "{{.Labels.deployment}}"}
 
   - name: AlertToPod
     start:
@@ -17,7 +17,7 @@ rules:
       classes: [Pod.]
     result:
       query: |-
-        {{className rule.Goal}}:{namespace: "{{.Labels.namespace}}", name:"{{.Labels.pod}}"}
+        {{className rule.Goal}}:{namespace: "{{.Labels.namespace}}", name: "{{.Labels.pod}}"}
 
   - name: AlertToDaemonSet
     start:
@@ -27,7 +27,7 @@ rules:
       classes: [DaemonSet.apps]
     result:
       query: |-
-        {{className rule.Goal}}:{namespace: "{{.Labels.namespace}}", name:"{{.Labels.daemonset}}"}
+        {{className rule.Goal}}:{namespace: "{{.Labels.namespace}}", name: "{{.Labels.daemonset}}"}
 
   - name: AlertToStatefulSet
     start:
@@ -37,7 +37,7 @@ rules:
       classes: [StatefulSet.apps]
     result:
       query: |-
-        {{className rule.Goal}}:{namespace: "{{.Labels.namespace}}", name:"{{.Labels.statefulset}}"}
+        {{className rule.Goal}}:{namespace: "{{.Labels.namespace}}", name: "{{.Labels.statefulset}}"}
 
   - name: AlertToMetric
     start:
