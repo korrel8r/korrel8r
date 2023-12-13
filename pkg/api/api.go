@@ -6,7 +6,7 @@
 // Static swagger doc is available at ./docs/swagger.md.
 // dynamic HTML doc is available from korrel8r at the "/api" endpoint.
 //
-//	@title			Korrel8r API
+//	@title			REST API
 //	@description	REST API for the Korrel8r correlation engine.
 //	@version		v1alpha1
 //	@license.name	Apache 2.0

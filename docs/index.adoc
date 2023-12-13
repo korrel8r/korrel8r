@@ -4,15 +4,11 @@ Alan Conway
 :doctype: book
 :toc: left
 :keywords: correlation, observability, signal, kubernetes
-:copyright: This file is part of korrel8r, released under https://github.com/korrel8r/korrel8r/blob/main/LICENSE
-:project: https://github.com/korrel8r/korrel8r
-:pages: https://korrel8r.github.io/korrel8r
-:icons: font
+include::attributes.adoc[]
 
 [NOTE]
 ====
 This documentation is available in {pages}[HTML] and {pages}/ebook.pdf[PDF] format.
-
 Software is available from the {project}[Korrel8r project].
 ====
 
@@ -20,7 +16,7 @@ Korrel8r is a correlation engine for Kubernetes objects. It provides a REST API 
 
 Given a _start_ object, korrel8r searches for a chain of related rules, and finds other related objects. Related objects can be in multiple different back-end stores, and can be encoded using multiple different schemas. Korrel8r can also show the _neighbourhood_ of all data related to an object of interest.
 
-Korrel8r can be run as a plain executable, outside the cluster, and connect to the API server and stores inside the cluster. It can also run as a deployed service inside the cluster.
+Korrel8r can be deployed service inside the cluster, or run as an executable outside the cluster connecting to the API server and stores inside the cluster.
 
 [id="index-architecture"]
 == Korrel8r architecture
@@ -37,7 +33,16 @@ include::installing-korrel8r-ocp.adoc[leveloffset=+1]
 include::using-korrel8r.adoc[leveloffset=+1]
 
 [id="index-api-reference"]
-== API reference documentation
+// REST API
+include::zz_rest_api.adoc[leveloffset=+1]
+
+
+[id="index-domain-reference"]
+== Domain Reference
+
+Reference details for the for the classes, objects, queries and stores of each available domain.
 
 include::zz_domains.adoc[leveloffset=+2]
-include::zz_rest_api.adoc[leveloffset=+2]
+
+// FAQ
+include::FAQ.adoc[leveloffset=+1]

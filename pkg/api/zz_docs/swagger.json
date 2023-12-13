@@ -12,7 +12,7 @@
     "swagger": "2.0",
     "info": {
         "description": "REST API for the Korrel8r correlation engine.",
-        "title": "Korrel8r API",
+        "title": "REST API",
         "contact": {
             "name": "Project Korrel8r",
             "url": "https://github.com/korrel8r/korrel8r"

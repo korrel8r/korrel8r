@@ -1,9 +1,8 @@
 [id="about-objects"]
 = About objects
 
-Korrel8r works with different types of Kubernetes objects, which include _signals_ and _resources_. Korrel8r does not distinguish between different object types.
+Korrel8r works with data _objects_ which include _signals_ (data about events) and _resources_  (data about observable ojects).
 
-Any of the object types discussed in the following documentation can be used as a start object for Korrel8r.
 // TODO: JSON examples.
 
 [id="objects-signal-types_{context}"]
@@ -32,7 +31,7 @@ nodes.
 == Resource types
 
 A cluster also contains _resources_ which are not generally considered to be signals,
-but that can be correlated with signals and other objects. Korrel8r supports using the following resources:
+but that can be correlated with signals and other objects. Examples of resources include:
 
 [cols=",",options="header",]
 |===

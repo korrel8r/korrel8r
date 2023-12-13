@@ -1,6 +1,6 @@
 
 
-= Korrel8r API
+= REST API
 
 REST API for the Korrel8r correlation engine.
 

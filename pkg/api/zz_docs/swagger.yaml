@@ -137,7 +137,7 @@ info:
   license:
     name: Apache 2.0
     url: https://github.com/korrel8r/korrel8r/blob/main/LICENSE
-  title: Korrel8r API
+  title: REST API
   version: v1alpha1
 paths:
   /domains:

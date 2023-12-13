@@ -1,7 +1,23 @@
 [id="using-korrel8r"]
 = Using Korrel8r
+include::attributes.adoc[]
 
-Korrel8r connects to multiple data _stores_ such as loki for logs, prometheus for metrics, and the kube-API server for cluster resources.
+[id="using-ocp-console"]
+== Using the {rh-ocp} preview
+
+TIP: Make sure you have xref:installing-korrel8r-ocp.adoc#installing-korrel8r-ocp[installed Korrel8r]
+
+. Refresh the web console
+. Navigate to *Observe* -> *Logs*. Click the *Metrics* link to see correlated metrics of each log record.
+. Navigate to *Observe* -> *Alerting*, and click an alert. Alerts that have related logs have a *see related logs* link.
+
+[TIP]
+====
+Not all alerts have a *see related logs* link.
+Only alerts that are _related_ to container workloads can have related logs.
+For example, `KubePodCrashLooping` is related to a Pod and so can have related logs.
+See the xref:FAQ.adoc#no-related-logs[FAQ] for more.
+====
 
 == Configuration
 
@@ -15,13 +31,14 @@ Korrel8r connects to multiple data _stores_ such as loki for logs, prometheus fo
 
 == Browser
 
+WARNING: The browser interface is experimental may be dropped in future.
+Other consoles or tools acting as korrel8r clients can provide better visualization.
+
 The `korrel8r web` command provides browser access to:
 
 - Interactive queries and correlation graphs `http://localhost:8080/correlate`
 - Interactive REST API documentation on `http://localhost:8080/api`
 
-WARNING: The interactive web interface may be dropped in future.
-Other consoles or tools acting as korrel8r clients will provide better visualization and processing of results.
 
 == REST Service
 
