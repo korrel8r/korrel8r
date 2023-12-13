@@ -1,0 +1,106 @@
+= Frequently asked questions
+:toc: left
+include::attributes.adoc[]
+
+[id="why-admin"]
+== Why do I need to be an administrator?
+
+To navigate between correlated data, Korrel8r needs to access multiple data stores in the cluster.
+These include the Kubernetes API server (resouces), LokiStack (logs), Prometheus (metrics), and AlertManager (alerts).
+The initial release can only be deployed and used by an admin user that has full access to all these stores.
+
+See also link:{project}/issues/73[]
+
+[id="no-related-logs"]
+== Why is there no "see related logs" link?
+
+TIP: Make sure you have xref:installing-korrel8r-ocp.adoc#installing-korrel8r-ocp[installed Korrel8r]
+
+The *see related logs* link does not appear unless the following are true:
+
+. The alert is _related_ to a container workload.
+. The workload has generated logs.
+. The logs have been collected by openshift logging..
+
+For example, the `UpdateAvailable` alert indicates an update is available for the entire cluster, it is not related to any specific workload.
+
+To force the creation of an alert with *see related logs*, you can create a broken deployment in a system namespace as follows:
+
+[source,terminal]
+----
+kubectl apply -f - << EOF
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bad-deployment
+  namespace: default <1>
+spec:
+  selector:
+    matchLabels:
+      app: bad-deployment
+  template:
+    metadata:
+      labels:
+        app: bad-deployment
+    spec:
+      containers: <2>
+      - name: bad-deployment
+      	image: quay.io/openshift-logging/vector:5.8
+----
+
+<1> The deployment must be in a system namespace (such as `default`) to cause the desired alerts.
+<2> This container deliberately tries to start a `vector` server with no configuration file. The server will log a few messages, and then exit with an error. Any container could be used for this.
+
+To view the alerts:
+
+. Navigate to *Observe* -> *Alerting* and click *clear all filters* so you can see `Pending` alerts.
++
+IMPORTANT: Alerts first appear in the `Pending` state.
+They do not start `Firing` until the container has been crashing for some time.
+By showing `Pending` alerts you can see them much more quickly.
+
+. Look for `KubeContainerWaiting`, `KubePodCrashLooping` or `KubePodNotReady`.
+These alerts will all have a *show related logs* link.
+
+== Why are there no logs for the Logging system itself?
+
+The log collector does not collect its own logs!
+Doing so might create a circular condition where collecting its own logs causes the collector to log something, which it then collects, which causes it to log something, and so on in an endless cycle.
+
+To avoid this risk, the log collector does not collect any logs from Pods that are part of the logging system.
+You can still see these logs by using `kubectl logs` directly.
+
+== Is kube-lineage the same as Korrel8r?
+
+link:https://github.com/tohjustin/kube-lineage[`kube-lineage`] is a CLI tool to display all the dependencies and dependents of a resource in a Kubernetes cluster.
+
+`kube-lineage` is similar to Korrel8r as both can follow chains of relationships between cluster resources.
+However, Korrel8r can also follow relationships with other types of observability data, such as logs, alerts or metrics. Korrel8r is designed to be extendable to new types of data and data stores in future, for example, network observability events.
+
+
+== Install errors on {rh-ocp} 4.15
+
+{red-hat} OpenShift Container Platform 4.15 enforces additional security restrictions that did were not included in {red-hat} OpenShift Container Platform 4.14 and earlier versions.
+Installing the Operator bundle on {red-hat} OpenShift Container Platform 4.15 causes security policy errors.
+You can use the following workarounds:
+
+* Deploy Korrel8r in the `default` namespace instead of creating a new `korrel8r` namespace, by running the following command:
++
+[source,terminal]
+----
+$ operator-sdk -n default run bundle quay.io/korrel8r/operator-bundle:latest
+----
+
+* Apply labels to the `korrel8r` namespace before installing, by running the following commands:
++
+[source,terminal]
+----
+$ oc label ns/korrel8r pod-security.kubernetes.io/enforce=privileged --overwrite
+----
++
+[source,terminal]
+----
+$ oc label ns/korrel8r pod-security.kubernetes.io/warn=privileged --overwrite
+----
+
+This will be fixed in future, see also https://issues.redhat.com/browse/OU-304.

@@ -1,10 +1,14 @@
 = Korrel8r: Signal correlation for Kubernetes
-:toc: preamble
+:toc: left
 :pages: https://korrel8r.github.io/korrel8r
+include::docs/attributes.adoc[]
 
 [abstract]
 Korrel8r is a correlation engine for observability signals and observable resources. +
 It can correlate multiple domains, diverse signals, inconsistent labeling, and varied data stores.
+
+CAUTION: Korrel8r is still in early development. There are no compatibility guarantees between versions.
+
 
 The goals of this project include:
 
@@ -14,102 +18,17 @@ The goals of this project include:
 * Reduce multiple-step manual procedures to fewer clicks or queries.
 * Help tools that gather and analyze diagnostic data to focus on relevant information.
 
-CAUTION: Korrel8r is still in early development. There are no compatibility guarantees between versions.
-
-NOTE: {pages}[Read the Korrel8r Documentation] for more about what Korrel8r is and how to use it.
-
 There is a short link:demos/openshift-console-browser/video.mov[demo video]
 
-== Cluster Set-up
+== Getting Started
 
-There are scripts and examples to set up a cluster with logging, metrics and other observable signals:
+To try the {rh-ocp} preview features, do the following:
 
-* link:hack/openshift/README.md[hack/openshift] for OpenShift clusters.
-* link:hack/kind/README.md[hack/kind] for Kind clusters.
+. link:{pages}#installing-korrel8r-ocp[Install the operator.]
+. xref:using-korrel8r.adoc#using-ocp-console[Try it out!]
 
-Log into your cluster as `kubeadmin` or other admin user.
-
-== Installing and running locally
-
-You can install and run korrel8r on your local host, it can observe your cluster from the outside.
-You need to be logged-in as `kubeadmin` to your cluster:
-
-[source,bash]
-----
-go install github.com/korrel8r/korrel8r/cmd/korrel8r@latest
-korrel8r web -http :8080 &
-----
-
-With korrel8r running, you can browse the following URLs:
-
-- http://localhost:8080 - Interactive browser interface.
-- http://localhost:8080/api - REST API documentation
-
-You can also run korrel8r as a command line tool, see `korrel8r --help` for commands and options.
-
-== Deploying on a cluster
-
-You can deploy the latest korrel8r image to your cluster in namespace `korrel8r`
-You need to be logged-in as `kubeadmin` to your cluster:
-
-[source,bash]
-----
-kubectl apply -k https://github.com/korrel8r/korrel8r/config/base
-----
-
-On an OpenShift cluster, you can create a route to korrel8r with `make route` to connect to korrel8r.
-On other types of cluster you can create a port mapping or ingress.
-
-[source,bash]
-----
-make route
-URL=$(make route-url)
-----
-
-Browse the following URLs:
-
-* `$URL`     # Interactive browser interface.
-* `$URL/api` # REST API documentation
-
-== Developers
-
-Documentation:
+== Documentation
 
 - {pages}[Korrel8r User guide and Reference] for more about what Korrel8r is and how to use it.
-- https://pkg.go.dev/github.com/korrel8r/korrel8r/pkg/korrel8r:[Go package documentation]
-
-If you are interested in helping to develop Korrel8r:
-- clone this repository
-- `make help` will list make targets with brief explanation.
-- `make run` will run korrel8r directly from source using the checked-in configuration
-
-=== Building Images
-
-By default, the Makefile uses `quay.io/korrel8r/korrel8r` as its image repository.
-Set `IMG` to use a different repository:
-
-- `make image IMG=quay.io/myaccount/mykorrel8r` build and push an image to your image repository.
-- `make deploy IMG=quay.io/myaccount/mykorrel8r` deploy your image to your cluster.
-
-IMPORTANT: you need a _public_ image repository on a public service like `quay.io` or `docker.io`.
-Some services (including `quay.io`) make new repositories _private_ by default.
-You may need to log in and change settings so that your new repository is _public_.
-
-== Contributing to documentation
-
-. Fork and clone the repository
-. Install Go
-. Install make
-. Run the following command to install required tools:
-+
-[source,terminal]
-----
-make tools
-----
-
-. Make changes to the docs, then run the following command to generate the site:
-+
-[source,terminal]
-----
-make _site
-----
+- link:https://pkg.go.dev/github.com/korrel8r/korrel8r/pkg/korrel8r:[Go package documentation] for embedding Korrel8r in your own code.
+- link:./docs/HACKING.adoc[Hackers guide] for experimenting and contributing to the code.

@@ -1,20 +1,26 @@
-[id="installing-korrel8r-ocp"]
+[id="installing-korrel8r"]
 = Installing Korrel8r
+include::attributes.adoc[]
 
-You can install Korrel8r on a Red{nbsp}Hat OpenShift Container Platform cluster by using the Operator provided in the GitHub repository.
 
-[IMPORTANT]
+[id="installing-korrel8r-ocp"]
+==  {rh-ocp}
+
+The following steps install Korrel8r on {rh-ocp} using an operator.
+
+[TIP]
 ====
-The following procedure may work a Kubernetes cluster that is not a Red{nbsp}Hat OpenShift Container Platform cluster if the link:https://olm.operatorframework.io/[Operator Lifecycle Manager (OLM)] is installed. However, this has not been tested.
+This _may_ work for Kubernetes clusters that do not use {rh-ocp}, provided they have the  link:https://olm.operatorframework.io/[Operator Lifecycle Manager (OLM)]. This has not been tested.
 ====
 
-Installing Korrel8r on a Red{nbsp}Hat OpenShift Container Platform cluster means that you can use the link:https://docs.openshift.com/container-platform/latest/web_console/web-console-overview.html[Red{nbsp}Hat OpenShift Container Platform web console] to view Korrel8r data.
+The latest version of the {rh-console} has preview features that display correlated data found by Korrel8r.
+You can also query or browse the Korrel8r service directly.
 
 .Prerequisites
 
 * You have administrator permissions on an Red{nbsp}Hat OpenShift Container Platform cluster version 4.12 or newer.
-* You have installed the link:https://docs.openshift.com/container-platform/latest/logging/cluster-logging-deploying.html#cluster-logging-deploy-console_cluster-logging-deploying[Red Hat OpenShift Logging Operator] provided by Red{nbsp}Hat.
-* You have installed the link:https://docs.openshift.com/container-platform/latest/logging/cluster-logging-loki.html#logging-loki-gui-install_cluster-logging-loki[Loki Operator] provided by Red{nbsp}Hat, and have created a `LokiStack` custom resource (CR).
+* You have installed the link:https://docs.openshift.com/container-platform/latest/logging/cluster-logging-deploying.html#cluster-logging-deploy-console_cluster-logging-deploying[Red Hat OpenShift Logging Operator] version 5.8.1 or newer provided by {red-hat}.
+* You have installed the link:https://docs.openshift.com/container-platform/latest/logging/cluster-logging-loki.html#logging-loki-gui-install_cluster-logging-loki[Loki Operator] version 5.8.1 or newer provided by Red{nbsp}Hat, and have created a `LokiStack` custom resource (CR).
 * You have link:https://docs.openshift.com/container-platform/latest/logging/cluster-logging-deploying.html#configuring-log-storage-cr_cluster-logging-deploying[created a `ClusterLogging` CR that configures LokiStack as the log store].
 
 .Procedure
@@ -56,23 +62,16 @@ INFO[0064] OLM has successfully installed "korrel8r.v0.0.7"
 . In the *Provided APIs* column, click *Korrel8r*.
 . In the *Korrel8RS* page, click *Create Korrel8r*.
 . Use the default configuration and click *Create*.
-. To enable the Console plugin, annotate the `ClusterLogging` CR by running the following command:
+. To enable the preview features in the Console plugin, annotate the `ClusterLogging` CR by running the following command:
 +
 [source,terminal]
 ----
-$ oc patch -n openshift-logging --type merge --patch \
+oc patch -n openshift-logging --type merge --patch \
 '{"metadata":{"annotations":{"logging.openshift.io/preview-korrel8r-console":"enabled"}}}' \
 clusterlogging/instance
 ----
 
-. Refresh the web console
-. Navigate to *Observe* -> *Logs*. Click the *Metrics* link to see correlated metrics of each log record.
-. Navigate to *Observe* -> *Alerting*, and click an alert. Alerts that have related logs have a *see related logs* link.
-+
-[NOTE]
-====
-Many alerts do not have related container logs. Only alerts relating to a particular pod or deployment have related logs, for example, `KubePodCrashLooping` alerts.
-====
+To verify it is working, see xref:using-korrel8r.adoc#using-ocp-console[using the console]
 
 .Removing Korrel8r
 

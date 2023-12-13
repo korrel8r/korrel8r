@@ -1,0 +1,9 @@
+:copyright: This file is part of korrel8r, released under https://github.com/korrel8r/korrel8r/blob/main/LICENSE
+:github: https://github.com/korrel8r
+:project: {github}/korrel8r
+:pages: https://korrel8r.github.io/korrel8r
+:icons: font
+// abbreviations
+:red-hat: Red{nbsp}Hat
+:rh-ocp: {red-hat} OpenShift Container Platform
+:rh-console: link:https://docs.openshift.com/container-platform/latest/web_console/web-console-overview.html[{rh-ocp} web console]

@@ -1,0 +1,93 @@
+= Hacking on Korrel8r
+
+Tips for contributing to the Korrel8r project.
+
+== Installing via Kustomize
+
+For development you can use `kustomize` or `kubectrl apply -k` directly.
+You need to be logged-in as `kubeadmin` to your cluster:
+
+[source,bash]
+----
+kubectl apply -k https://github.com/korrel8r/korrel8r/config/base
+----
+
+On {rh-ocp}, you can create a `route` to the service with `make route`.
+
+[source,bash]
+----
+make route
+URL=$(make route-url)
+----
+
+On other types of cluster you can use port mapping or an `ingress`.
+
+Browse the following URLs:
+
+* `$URL`     # Interactive browser interface.
+* `$URL/api` # REST API documentation
+
+== Running as an external executable
+
+You can install and run korrel8r on your local host, it can observe your cluster from the outside.
+You need to be logged-in as `kubeadmin` to your cluster:
+
+[source,bash]
+----
+go install github.com/korrel8r/korrel8r/cmd/korrel8r@latest
+korrel8r web -http :8080 &
+----
+
+With korrel8r running, you can browse the following URLs:
+
+- http://localhost:8080 - Interactive browser interface.
+- http://localhost:8080/api - REST API documentation
+
+You can also run korrel8r as a command line tool, see `korrel8r --help` for commands and options.
+
+== Cluster Set-up
+
+There are scripts and examples to help set up logging, metrics and other observable signals:
+
+* link:hack/openshift/README.md[hack/openshift] for OpenShift clusters.
+* link:hack/kind/README.md[hack/kind] for Kind clusters.
+
+Log into your cluster as `kubeadmin` or other admin user.
+
+
+w
+If you are interested in helping to develop Korrel8r:
+- clone this repository
+- `make help` will list make targets with brief explanation.
+- `make run` will run korrel8r directly from source using the checked-in configuration
+
+== Building Images
+
+By default, the Makefile uses `quay.io/korrel8r/korrel8r` as its image repository.
+Set `IMG` to use a different repository:
+
+- `make image IMG=quay.io/myaccount/mykorrel8r` build and push an image to your image repository.
+- `make deploy IMG=quay.io/myaccount/mykorrel8r` deploy your image to your cluster.
+
+IMPORTANT: you need a _public_ image repository on a public service like `quay.io` or `docker.io`.
+Some services (including `quay.io`) make new repositories _private_ by default.
+You may need to log in and change settings so that your new repository is _public_.
+
+== Contributing to documentation
+
+. Fork and clone the repository
+. Install Go
+. Install make
+. Run the following command to install required tools:
++
+[source,terminal]
+----
+make tools
+----
+
+. Make changes to the docs, then run the following command to generate the site:
++
+[source,terminal]
+----
+make _site
+----

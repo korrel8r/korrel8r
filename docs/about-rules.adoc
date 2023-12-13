@@ -1,11 +1,10 @@
 [id="about-rules"]
 = About rules
 
-Rules are the key to Korrel8r, they express relationships between classes, possibly in _different domains_.
+Rules express relationships between classes, possibly in different domains.
 
 A Rule applies to an object of a _start_ class, and generates a query for a _goal_ class.
 The start and goal can be in different domains (e.g. `k8s:Pod` → `log:application`)
 
-A rule definition contains a _template_ that produces a _query_ in the vocabulary of the _goal domain_.
-The template uses fields from the _start class_ in the vocabulary of the _start domain_.
+A rule definition contains a _template_ that uses the vocabulary of the _start domain_ and  generates a _query_ in the vocabulary of the _goal domain_.
 Rules are bridge between domains different vocabularies, schema, labels and query languages.
