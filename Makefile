@@ -66,7 +66,7 @@ cover: ## Run tests and show code coverage in browser.
 	go tool cover --html test.cov; sleep 2 # Sleep required to let browser start up.
 
 CONFIG=etc/korrel8r/korrel8r.yaml
-run: $(VERSION_TXT) ## Run `korrel8r web` using configuration in ./etc/korrel8r
+run: $(GENERATED) ## Run `korrel8r web` using configuration in ./etc/korrel8r
 	go run ./cmd/korrel8r web -c $(CONFIG) $(ARGS)
 
 IMAGE=$(IMG):$(TAG)

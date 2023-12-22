@@ -5,7 +5,6 @@ package main
 import (
 	"fmt"
 	"net/http"
-	"os"
 
 	"github.com/gin-contrib/pprof"
 	"github.com/gin-gonic/gin"
@@ -39,16 +38,18 @@ var webCmd = &cobra.Command{
 				panic(fmt.Errorf("--cert and --key are required for https"))
 			}
 		}
-
 		gin.DefaultWriter = logging.LogWriter()
-		if os.Getenv(gin.EnvGinMode) == "" { // Don't override an explicit env setting.
+		ginDebug := *verbose >= 4 // Include gin logging & debugging
+		if ginDebug {
+			gin.SetMode(gin.DebugMode)
+		} else {
 			gin.SetMode(gin.ReleaseMode)
 		}
 		router := gin.New()
-		pprof.Register(router) // Enable profiling
 		s.Handler = router
+		pprof.Register(router) // Enable profiling
 		router.Use(gin.Recovery())
-		if *verbose >= 2 {
+		if ginDebug {
 			router.Use(gin.Logger())
 		}
 		engine := newEngine()

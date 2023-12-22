@@ -33,11 +33,12 @@ func init() { // Set env verbosity on init, Init() can over-ride.
 	}
 }
 
-// Init sets verbosity for the Root logger.
-func Init(verbosity int) {
-	if verbosity != 0 { // If not set, let default stand
-		stdr.SetVerbosity(verbosity)
+// Init sets verbosity based on flag and environment. Sets the flag to actual setting.
+func Init(verbosity *int) {
+	if *verbosity == 0 {
+		*verbosity, _ = strconv.Atoi(os.Getenv(verboseEnv))
 	}
+	stdr.SetVerbosity(*verbosity)
 }
 
 // Log url slices properly, url.URL only has a pointer-receiver String() method.

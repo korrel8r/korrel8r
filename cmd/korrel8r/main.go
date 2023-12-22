@@ -59,7 +59,7 @@ func init() {
 	profileType = rootCmd.PersistentFlags().String("profile", "", "Enable profiling, one of [cpu mem trace]")
 
 	cobra.OnInitialize(func() {
-		logging.Init(*verbose)
+		logging.Init(verbose)
 		k8s.SetLogger(logging.Log())
 		if pt := profileTypes[*profileType]; pt != nil {
 			cobra.OnFinalize(profile.Start(pt).Stop)
