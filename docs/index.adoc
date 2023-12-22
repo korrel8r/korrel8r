@@ -12,11 +12,7 @@ This documentation is available in {pages}[HTML] and {pages}/ebook.pdf[PDF] form
 Software is available from the {project}[Korrel8r project].
 ====
 
-Korrel8r is a correlation engine for Kubernetes objects. It provides a REST API for running correlation queries, by using a set of rules that relate objects.
-
-Given a _start_ object, korrel8r searches for a chain of related rules, and finds other related objects. Related objects can be in multiple different back-end stores, and can be encoded using multiple different schemas. Korrel8r can also show the _neighbourhood_ of all data related to an object of interest.
-
-Korrel8r can be deployed service inside the cluster, or run as an executable outside the cluster connecting to the API server and stores inside the cluster.
+include::description.adoc[]
 
 [id="index-architecture"]
 == Korrel8r architecture

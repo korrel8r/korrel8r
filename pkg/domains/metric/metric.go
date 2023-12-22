@@ -105,6 +105,7 @@ type Class struct{} // Singleton class
 
 func (c Class) Domain() korrel8r.Domain { return Domain }
 func (c Class) Name() string            { return Domain.Name() }
+func (c Class) String() string          { return korrel8r.ClassName(c) }
 func (c Class) Description() string     { return "A set of label:value pairs identifying a time-series." }
 func (c Class) New() korrel8r.Object    { var obj Object; return obj }
 func (c Class) Preview(o korrel8r.Object) string {

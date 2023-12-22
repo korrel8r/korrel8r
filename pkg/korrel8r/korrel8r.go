@@ -46,6 +46,7 @@ type Domain interface {
 type Class interface {
 	Domain() Domain      // Domain of this class.
 	Name() string        // Name of the class within the domain. Class names must not contain the character ':'.
+	String() string      // Fully qualified domain:class name
 	Description() string // Description for human-readable documentation.
 	New() Object         // Return a blank instance of the class, can be unmarshaled from JSON.
 }
