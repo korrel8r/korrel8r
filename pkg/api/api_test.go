@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"strings"
 	"testing"
@@ -133,6 +134,16 @@ func TestAPI_PostNeighbours_noRules(t *testing.T) {
 			},
 		},
 	)
+}
+
+func TestAPI_GetObjects(t *testing.T) {
+	want := []any{"a", "b", "c"}
+	d := mock.Domain("x")
+	c := d.Class("y")
+	q := mock.NewQuery(c, want...)
+	a := newTestAPI(d)
+	assert.NoError(t, a.Engine.AddStore(mock.NewStore(d, nil)))
+	assertDo(t, a, "GET", "/api/v1alpha1/objects?query="+url.QueryEscape(q.String()), nil, 200, want)
 }
 
 func ginEngine() *gin.Engine {

@@ -46,10 +46,16 @@ type NeighboursRequest struct {
 	Depth int   `json:"depth"` // Max depth of neighbours graph.
 }
 
-// Options control the format of the graph
-type Options struct {
+// GraphOptions control the format of the graph
+type GraphOptions struct {
 	// WithRules if true include rules in the graph edges.
 	WithRules bool `form:"withRules"`
+}
+
+// QueryOptions provides a query to execute.
+type QueryOptions struct {
+	// Query string to execute.
+	Query string `form:"query"`
 }
 
 // @description Query run during a correlation with a count of results found.
@@ -145,7 +151,7 @@ func edge(e *graph.Edge, withRules bool) Edge {
 	return edge
 }
 
-func edges(g *graph.Graph, opts *Options) (edges []Edge) {
+func edges(g *graph.Graph, opts *GraphOptions) (edges []Edge) {
 	g.EachEdge(func(e *graph.Edge) {
 		if !e.Goal().Empty() { // Skip edges that lead to an empty node.
 			edges = append(edges, edge(e, opts.WithRules))

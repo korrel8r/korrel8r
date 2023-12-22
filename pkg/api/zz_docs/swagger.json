@@ -164,6 +164,34 @@
                     }
                 }
             }
+        },
+        "/objects": {
+            "get": {
+                "tags": [
+                    "search"
+                ],
+                "summary": "Execute a query, returns a list of JSON objects.",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "query string",
+                        "name": "query",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "object"
+                            }
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {

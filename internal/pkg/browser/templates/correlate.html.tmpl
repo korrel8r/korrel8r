@@ -79,46 +79,22 @@
       {{if .GoalClasses}}Goals: <code>{{range .GoalClasses}}{{.String}} {{end}}</code><br>{{end}}
       {{with .Depth}}Neighbourhood depth: {{.}}<br>{{end}}
       <ul>
-        {{range $node := (and .Graph .Graph.AllNodes)}}
-          {{if $node.Result.List}}
-            <li><code><b>{{$node.Class.String}}</b> ({{len $node.Result.List}})</code>
-              <ul>
-                {{range ($.Graph.LinesTo .)}}
-                  {{if .Queries}}
-                    <li><code>{{.Rule.String}}</code></li>
-                    <ul>
-                      {{range $qc := .Queries.Sort}}
-                        <li>
-                          <a href="{{queryToConsole $qc.Query}}" target="_blank">Console</a> /
-                          <a href="/stores/{{$node.Class.Domain}}?query={{toJson $qc.Query | urlquery}}" target="_blank">Data</a>
-                          ({{$qc.Count}})
-                          <pre>{{$qc.Query}}</pre>
-                        </li>
-			{{end}}
-                    </ul>
-                    {{end}}
-                    {{end}}
-                    {{if not ($.Graph.LinesTo .)}}
-                    {{/* No incoming lines, must be the start node. */}}
-                    {{template "querycounts" $node.Queries}}
-                    {{end}}
-              </ul>
-            </li>
-            {{end}}
-            {{end}}
+        {{range (and .Graph .Graph.AllNodes)}}
+	  {{$lines := $.Graph.LinesTo .}}
+          <li><code><b>{{.Class.String}}</b></code> ({{len .Result.List}} objects)
+            <ul>
+              {{range $lines}}
+                <li><code>{{.Rule.String}}</code></li>
+                <ul>
+                  {{range $q, $c := .Queries}}
+                    <li>{{$c}}: <a href="/api/v1alpha1/objects?query={{$q|urlquery}}" target="_blank">{{$q}}</a></li>
+                  {{end}}
+                </ul>
+              {{end}}
+            </ul>
+          </li>
+        {{end}}
       </ul>
     </p>
   </div>
 </body>
-
-{{define "querycounts"}}
-  {{/* Context is a QueryCount value. Geneates list items, expects to be inside a HTML list. */}}
-  {{range $qc := .Sort}}
-    <li>
-      <a href="{{queryToConsole $qc.Query}}" target="_blank">Console</a> /
-      <a href="/stores/{{$qc.Query.Class.Domain}}?query={{$qc.Query | urlquery}}" target="_blank">Data</a>
-      ({{$qc.Count}})
-      <pre>{{$qc.Query}}</pre>
-    </li>
-  {{end}}
-{{end}}

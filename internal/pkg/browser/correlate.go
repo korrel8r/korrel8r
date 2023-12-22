@@ -255,34 +255,21 @@ func (c *correlate) updateDiagram() {
 	g.EachNode(func(n *graph.Node) {
 		a := n.Attrs
 		maps.Copy(a, domainAttrs[n.Class.Domain().Name()]) // add in domainAttrs
-		a["label"] = n.Class.Name()
-		a["tooltip"] = fmt.Sprintf("%v (%v)", korrel8r.ClassName(n.Class), len(n.Result.List()))
-		a["style"] += ",filled"
 		result := n.Result.List()
-		if len(result) == 0 {
-			a["color"] += "gray"
-		} else {
-			ider, _ := n.Class.(korrel8r.IDer)
-			if len(result) == 1 && ider != nil {
-				a["label"] = fmt.Sprintf("%v\n(%v)", a["label"], ider.ID(result[0]))
-			} else {
-				a["label"] = fmt.Sprintf("%v\n%v", a["label"], len(result))
+		a["style"] += ",filled"
+		a["label"] = fmt.Sprintf("%v\n%v", n.Class.Name(), len(result))
+		a["tooltip"] = fmt.Sprintf("%v (%v)", korrel8r.ClassName(n.Class), len(result))
+		c.queryURLAttrs(a, n.Queries, n.Class.Domain())
+		if summary := summaryFunc(n.Class); summary != nil && len(result) > 0 {
+			n := min(10, len(result)) // Limit max items
+			w := &strings.Builder{}
+			for _, o := range result[:n] {
+				fmt.Fprintf(w, "- %v\n", summary(o))
 			}
-			c.queryURLAttrs(a, n.Queries, n.Class.Domain())
-			previewer, _ := n.Class.(korrel8r.Previewer)
-			if previewer != nil && len(result) > 0 {
-				b := &strings.Builder{}
-				fmt.Fprintln(b, a["tooltip"])
-				const limit = 5
-				for i, o := range result {
-					fmt.Fprintf(b, "- %v\n", previewer.Preview(o))
-					if i == limit {
-						fmt.Fprintf(b, "... %v more\n", len(result)-limit)
-						break
-					}
-				}
-				a["tooltip"] = b.String()
+			if n < len(result) {
+				fmt.Fprintf(w, "\n... %v more\n", len(result)-n)
 			}
+			a["tooltip"] = w.String()
 		}
 	})
 
@@ -328,4 +315,15 @@ func runDot(cmdName string, args ...string) error {
 	log.V(1).Info("run", "cmd", cmdName, "args", args)
 	cmd.Stdout, cmd.Stderr = os.Stdout, os.Stderr
 	return cmd.Run()
+}
+
+func summaryFunc(c korrel8r.Class) func(any) string {
+	switch c := c.(type) {
+	case korrel8r.Previewer:
+		return c.Preview
+	case korrel8r.IDer:
+		return func(v any) string { return fmt.Sprintf("%v", c.ID(v)) }
+	default:
+		return nil
+	}
 }

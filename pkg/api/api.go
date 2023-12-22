@@ -52,6 +52,7 @@ func New(e *engine.Engine, r *gin.Engine) (*API, error) {
 	v.POST("/graphs/goals", a.GraphsGoals)
 	v.POST("/lists/goals", a.ListsGoals)
 	v.POST("/graphs/neighbours", a.GraphsNeighbours)
+	v.GET("/objects", a.GetObjects)
 	return a, nil
 }
 
@@ -75,7 +76,7 @@ func (a *API) GetDomains(c *gin.Context) {
 	c.JSON(http.StatusOK, domains)
 }
 
-// GetClasses handler
+// GetDomainClasses handler
 //
 //	@router		/domains/{domain}/classes [get]
 //	@summary	Get class names and descriptions for the domain.
@@ -101,7 +102,7 @@ func (a *API) GetDomainClasses(c *gin.Context) {
 //	@tags		search
 //	@success	200	{object}	Graph
 func (a *API) GraphsGoals(c *gin.Context) {
-	opts := &Options{}
+	opts := &GraphOptions{}
 	if check(c, http.StatusBadRequest, c.BindQuery(opts)) {
 		if g, _ := a.goalsRequest(c); g != nil {
 			c.JSON(http.StatusOK, Graph{Nodes: nodes(g), Edges: edges(g, opts)})
@@ -140,7 +141,7 @@ func (a *API) ListsGoals(c *gin.Context) {
 //	@tags		search
 //	@success	200	{object}	Graph
 func (a *API) GraphsNeighbours(c *gin.Context) {
-	r, opts := NeighboursRequest{}, Options{}
+	r, opts := NeighboursRequest{}, GraphOptions{}
 	check(c, http.StatusBadRequest, c.BindJSON(&r))
 	check(c, http.StatusBadRequest, c.BindUri(&opts))
 	if c.Errors != nil {
@@ -158,6 +159,29 @@ func (a *API) GraphsNeighbours(c *gin.Context) {
 	follower := a.Engine.Follower(c.Request.Context())
 	g = g.Neighbours(start, depth, follower.Traverse)
 	c.JSON(http.StatusOK, Graph{Nodes: nodes(g), Edges: edges(g, &opts)})
+}
+
+// GetObjects handler
+//
+//	@router		/objects [get]
+//	@summary	Execute a query, returns a list of JSON objects.
+//	@param		query	query	string	true	"query string"
+//	@tags		search
+//	@success	200	{array}	any
+func (a *API) GetObjects(c *gin.Context) {
+	opts := &QueryOptions{}
+	if !check(c, http.StatusBadRequest, c.BindQuery(opts)) {
+		return
+	}
+	query, err := a.Engine.Query(opts.Query)
+	if !check(c, http.StatusBadRequest, err) {
+		return
+	}
+	result := korrel8r.NewResult(query.Class())
+	if !check(c, http.StatusInternalServerError, a.Engine.Get(c.Request.Context(), query, result)) {
+		return
+	}
+	c.JSON(http.StatusOK, result.List())
 }
 
 func (a *API) goalsRequest(c *gin.Context) (g *graph.Graph, goals []korrel8r.Class) {

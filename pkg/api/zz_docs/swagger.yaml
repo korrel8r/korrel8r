@@ -230,6 +230,24 @@ paths:
       summary: Generate a list of goal nodes related to a starting point.
       tags:
       - search
+  /objects:
+    get:
+      parameters:
+      - description: query string
+        in: query
+        name: query
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              type: object
+            type: array
+      summary: Execute a query, returns a list of JSON objects.
+      tags:
+      - search
 produces:
 - application/json
 schemes:
