@@ -23,7 +23,7 @@ check: generate lint test ## Lint and test code.
 all: check install _site image-build ## Build and test everything. Recommended before pushing.
 
 clean: # Warning: runs `git clean -dfx` and removes checked-in generated files.
-	rm -vrf bin _site $(VERSION_TXT) $(shell find -name 'zz_*')
+	rm -vrf bin _site $(GENERATED) $(shell find -name 'zz_*')
 	git clean -dfx
 
 include tools.mk
@@ -36,7 +36,8 @@ endif
 $(VERSION_TXT):
 	echo $(VERSION) > $@
 
-GENERATED=$(VERSION_TXT) docs/zz_domains.adoc docs/zz_rest_api.adoc pkg/api/zz_docs pkg/config/zz_generated.deepcopy.go
+GENERATED=$(VERSION_TXT) docs/zz_domains.adoc docs/zz_rest_api.adoc pkg/api/zz_docs pkg/config/zz_generated.deepcopy.go docs/icon/icon.gif
+
 generate: $(GENERATED)  ## Generate code and doc.
 	hack/copyright.sh
 	go mod tidy
@@ -49,6 +50,10 @@ pkg/api/zz_docs: $(wildcard pkg/api/*.go pkg/korrel8r/*.go) bin/swag
 	bin/swag init -q -g pkg/api/api.go -o $@
 	bin/swag fmt pkg/api
 	@touch $@
+
+%.gif: %.odg
+	libreoffice --convert-to gif --outdir $(dir $@) $^
+
 
 lint: $(VERSION_TXT) bin/golangci-lint ## Run the linter to find and fix code style problems.
 	bin/golangci-lint run --fix
