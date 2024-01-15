@@ -1,6 +1,5 @@
 [id="index"]
 = Korrel8r: Signal Correlation for Kubernetes
-Alan Conway
 :doctype: book
 :toc: left
 :keywords: correlation, observability, signal, kubernetes
@@ -12,33 +11,64 @@ This documentation is available in {pages}[HTML] and {pages}/ebook.pdf[PDF] form
 Software is available from the {project}[Korrel8r project].
 ====
 
-include::description.adoc[]
+[id="index-overview"]
+== Korrel8r overview
+
+Many observability tools and observable systems use their own unique data models, storage technologies, query languages, and related nomenclature.
+
+The differences between these nomenclatures can make it difficult for users to recognize relationships between different Kubernetes cluster resources. As a result, troubleshooting and identifying resources affected by issues in your cluster can be time consuming and difficult.
+
+Korrel8r is a correlation engine for observable signals that relates Kubernetes objects to different types of signal data. Given a _start_ object, Korrel8r searches for a chain of rules to related _goal_ objects. Korrel8r can also show the _neighbourhood_ of all data related to an object of interest.
+
+A REST API can be used by clients to make correlation queries. The REST API can be deployed as a service in a cluster, or run outside the cluster and connect to signal stores inside the cluster.
+
+Signal data can be stored in separate signal stores, and encoded using different schema.
+
+[IMPORTANT]
+====
+To navigate between correlated data, Korrel8r needs to access multiple data stores in the cluster.
+These include the Kubernetes API server (resouces), LokiStack (logs), Prometheus (metrics), and AlertManager (alerts).
+The initial release can only be deployed and used by an admin user that has full access to all these stores.
+
+See also link:{project}/issues/73[]
+====
+
+////
+commenting out for now but keeping in case it does turn out to be an FAQ ;)
+[id="index-kube-lineage"]
+=== Is kube-lineage the same as Korrel8r?
+
+link:https://github.com/tohjustin/kube-lineage[`kube-lineage`] is a CLI tool to display all the dependencies and dependents of a resource in a Kubernetes cluster.
+
+`kube-lineage` is similar to Korrel8r as both can follow chains of relationships between cluster resources.
+However, Korrel8r can also follow relationships with other types of observability data, such as logs, alerts or metrics. Korrel8r is designed to be extendable to new types of data and data stores in future, for example, network observability events.
+////
 
 [id="index-architecture"]
-== Korrel8r architecture
+=== Korrel8r architecture
 
-include::background.adoc[leveloffset=+2]
-include::about-domains.adoc[leveloffset=+2]
-include::about-objects.adoc[leveloffset=+2]
-include::about-rules.adoc[leveloffset=+2]
+include::about-domains.adoc[leveloffset=+3]
+include::about-objects.adoc[leveloffset=+3]
+include::about-rules.adoc[leveloffset=+3]
 
 // OCP setup / installation docs
 include::installing-korrel8r-ocp.adoc[leveloffset=+1]
+// troubleshooting
+include::troubleshooting.adoc[leveloffset=+2]
 
 // User guides
 include::using-korrel8r.adoc[leveloffset=+1]
 
+[id="index-reference"]
+== Reference
+
 [id="index-api-reference"]
 // REST API
-include::zz_rest_api.adoc[leveloffset=+1]
-
+include::zz_rest_api.adoc[leveloffset=+2]
 
 [id="index-domain-reference"]
-== Domain Reference
+=== Domain Reference
 
 Reference details for the for the classes, objects, queries and stores of each available domain.
 
-include::zz_domains.adoc[leveloffset=+2]
-
-// FAQ
-include::FAQ.adoc[leveloffset=+1]
+include::zz_domains.adoc[leveloffset=+3]
