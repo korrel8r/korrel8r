@@ -7,3 +7,5 @@
 :red-hat: Red{nbsp}Hat
 :rh-ocp: {red-hat} OpenShift Container Platform
 :rh-console: link:https://docs.openshift.com/container-platform/latest/web_console/web-console-overview.html[{rh-ocp} web console]
+:logging: logging subsystem for {red-hat} OpenShift
+:operator: Korrel8r Operator
