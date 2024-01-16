@@ -7,8 +7,8 @@ help: ## Print this help message.
 
 # The following variables can be overridden by environment variables or on the `make` command line
 
-## VERSION: Explicitly set to a semantic version for release, generated using "git describe" for work in progress.
-VERSION?=$(or dev-$(shell git describe 2>/dev/null | cut -d- -f1,2),$(file <$(VERSION_TXT)))
+## VERSION: Semantic version for release, use next-release -dev for work-in progress .
+VERSION ?= 0.5.9-dev
 ## IMG: Name of image to build or deploy, without version tag.
 IMG?=quay.io/korrel8r/korrel8r
 ## TAG: Image tag, defaults to $(VERSION)
@@ -20,27 +20,33 @@ IMGTOOL?=$(shell which podman || which docker)
 
 check: generate lint test ## Lint and test code.
 
-all: check install _site image-build ## Build and test everything. Recommended before pushing.
+all: check install _site image-build ## Build and test everything locally. Recommended before pushing.
 
-clean: # Warning: runs `git clean -dfx` and removes checked-in generated files.
+clean: ## Remove generated files, including checked-in files.
 	rm -vrf bin _site $(GENERATED) $(shell find -name 'zz_*')
-	git clean -dfx
-
-include tools.mk
 
 VERSION_TXT=cmd/korrel8r/version.txt
 
 ifneq ($(VERSION),$(file <$(VERSION_TXT)))
-.PHONY: $(VERSION_TXT) # Force update if VERSION_TXT does not match VERSION
+.PHONY: $(VERSION_TXT) # Force update if VERSION_TXT does not match $(VERSION)
 endif
 $(VERSION_TXT):
 	echo $(VERSION) > $@
 
-GENERATED=$(VERSION_TXT) docs/zz_domains.adoc docs/zz_rest_api.adoc pkg/api/zz_docs pkg/config/zz_generated.deepcopy.go docs/icon/icon.gif
+# List of generated files
+GENERATED=$(VERSION_TXT) pkg/config/zz_generated.deepcopy.go .copyright docs/zz_domains.adoc docs/zz_rest_api.adoc pkg/api/zz_docs docs/icon/icon.gif
 
-generate: $(GENERATED)  ## Generate code and doc.
-	hack/copyright.sh
-	go mod tidy
+generate: $(GENERATED) go.mod ## Generate code and doc.
+
+GO_SRC=$(shell find -name '*.go')
+
+.copyright: $(GO_SRC)
+	hack/copyright.sh	# Make sure files have copyright notice.
+	@touch $@
+
+go.mod: $(GO_SRC)
+	go mod tidy		# Keep modules up to date.
+	@touch $@
 
 pkg/config/zz_generated.deepcopy.go:  $(filter-out pkg/config/zz_generated.deepcopy.go,$(wildcard pkg/config/*.go)) bin/controller-gen
 	bin/controller-gen object paths=./pkg/config/...
@@ -54,11 +60,10 @@ pkg/api/zz_docs: $(wildcard pkg/api/*.go pkg/korrel8r/*.go) bin/swag
 %.gif: %.odg
 	libreoffice --convert-to gif --outdir $(dir $@) $^
 
-
 lint: $(VERSION_TXT) bin/golangci-lint ## Run the linter to find and fix code style problems.
 	bin/golangci-lint run --fix
 
-install: $(VERSION_TXT) ## Build and install the korrel8r binary locally in $GOBIN.
+install: $(VERSION_TXT) ## Build and install the korrel8r binary in $GOBIN.
 	go install -tags netgo ./cmd/korrel8r
 
 test: ## Run all tests, requires a cluster.
@@ -127,10 +132,11 @@ docs/zz_domains.adoc: $(shell find cmd/korrel8r-doc internal pkg -name '*.go')
 docs/zz_rest_api.adoc: pkg/api/zz_docs docs/templates/markdown/docs.gotmpl bin/swagger
 	bin/swagger -q generate markdown -T docs/templates -f $</swagger.json --output $@
 
-release: release-check all release-commit release-push ## Create and push a new release tag and image. Set VERSION=vX.Y.Z.
+release: release-commit release-push ## Create and push a new release tag and image. Set VERSION=vX.Y.Z.
 
 release-check:
-	@echo "$(VERSION)" | grep -qE "^v[0-9]+\.[0-9]+\.[0-9]+$$" || { echo "VERSION=$(VERSION) must be semantic version like vX.Y.Z"; exit 1; }
+	@echo "$(VERSION)" | grep -qE "^[0-9]+\.[0-9]+\.[0-9]+$$" || { echo "VERSION=$(VERSION) must be semantic version X.Y.Z"; exit 1; }
+	$(MAKE) all
 	@test -z "$(shell git status --porcelain)" || { git status -s; echo Workspace is not clean; exit 1; }
 
 release-commit: release-check
@@ -141,3 +147,21 @@ release-commit: release-check
 release-push: release-check image
 	git push origin main --follow-tags
 	$(IMGTOOL) push -q "$(IMAGE)" "$(IMG):latest"
+
+
+define TOOL_PKGS
+github.com/go-swagger/go-swagger/cmd/swagger
+github.com/swaggo/swag/cmd/swag
+github.com/golangci/golangci-lint/cmd/golangci-lint
+sigs.k8s.io/kind
+sigs.k8s.io/controller-tools/cmd/controller-gen
+endef
+
+tools: $(patsubst %,bin/%,$(notdir $(TOOL_PKGS))) ## Download all tools needed for development
+
+define TOOL_TARGET
+bin/$(notdir $(1)):
+	mkdir -p bin && GOBIN=$(abspath bin) go install $(1)@latest
+endef
+
+$(foreach pkg,$(TOOL_PKGS),$(eval $(call TOOL_TARGET,$(pkg))))

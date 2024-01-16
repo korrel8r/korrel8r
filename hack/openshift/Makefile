@@ -11,16 +11,12 @@ logging:
 	$(WATCH) for S in $(LOGGING_STATEFULSETS); do echo $$S; oc rollout status  -n openshift-logging --watch $$S; done
 
 DEFAULT_SC=$(shell kubectl get storageclass -o=jsonpath='{.items[?(@.metadata.annotations.storageclass\.kubernetes\.io/is-default-class=="true")].metadata.name}')
-STORAGE_CLASS?=$(or $(DEFAULT_SC),$(error No default storage class, set STORAGE_CLASS'))
+STORAGE_CLASS?=$(or $(DEFAULT_SC),$(error No default storage class, set STORAGE_CLASS))
 
 operators:
 	oc apply -f ./manifests/0namespaces.yaml
 	oc apply -f manifests/operators/
-	$(make wait-operators)
-
-wait-operators:
-	$(WATCH) until oc get -n openshift-logging $(LOGGING_CSVS); do echo waiting...; sleep 3;  done
-	$(WATCH) oc wait --for=jsonpath='{.status.phase}'=Succeeded -n openshift-logging $(LOGGING_CSVS)
+	$(WATCH) for NAME in $(LOGGING_CSVS); do ../wait-for-csv.sh openshift-logging $$NAME; done
 
 namespaces:
 	oc apply $(NAMESPACES)
@@ -42,13 +38,16 @@ LOGGING_STATEFULSETS=					\
 	statefulset.apps/logging-loki-index-gateway	\
 	statefulset.apps/logging-loki-ingester
 
-LOGGING_CSVS=									\
-	clusterserviceversion.operators.coreos.com/cluster-logging.v5.8.0	\
-	clusterserviceversion.operators.coreos.com/loki-operator.v5.8.0
+LOGGING_CSVS=								\
+	clusterserviceversion.operators.coreos.com/cluster-logging	\
+	clusterserviceversion.operators.coreos.com/loki-operator
 
-delete-all: delete # Delete resources and operators
+delete-all: delete # Delete resources and operators, see fix-finalizer
 	oc delete --ignore-not-found subscription,replicaset,deployment,service -n openshift-operators-redhat -l app.kubernetes.io/part-of=cluster-logging
 	oc delete --ignore-not-found $(NAMESPACES)
 	oc delete --ignore-not-found operator/cluster-logging.openshift-logging operator/loki-operator.kubernetes-operators
 	oc delete --ignore-not-found -A crd,clusterrole -l app.kubernetes.io/part-of=cluster-logging
 
+fix-finalizer: # Work-around if ClusterLogging finalizer gets stuck and stops ns/openshift-logging from deleting.
+	oc patch --type json --patch='[ { "op": "remove", "path": "/metadata/finalizers" } ]' -n openshift-logging cl/instance || true
+	oc patch --type json --patch='[ { "op": "remove", "path": "/spec/finalizers" } ]' -n openshift-logging cl/instance || true
