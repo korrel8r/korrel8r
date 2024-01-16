@@ -3,15 +3,14 @@
 package k8s
 
 import (
+	"net/http"
 	"time"
 
 	"github.com/go-logr/logr"
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 	"sigs.k8s.io/controller-runtime/pkg/log"
-	"net/http"
 )
 
 // SetLogger sets the logger for controller-runtime.
@@ -24,26 +23,18 @@ func SetLogger(l logr.Logger) {
 // If cfg is nil, use GetConfig() to get a default config.
 func NewClient(cfg *rest.Config) (c client.Client, err error) {
 	if cfg == nil {
-		if cfg, err  = GetConfig(); err != nil {
-			return nil,err
+		if cfg, err = GetConfig(); err != nil {
+			return nil, err
 		}
 	}
-	hc, err := rest.HTTPClientFor(cfg)
-	if err != nil {
-		return nil, err
-	}
-	mapper, err := apiutil.NewDiscoveryRESTMapper(cfg, hc)
-	if err != nil {
-		return nil, err
-	}
-	return client.New(cfg, client.Options{Scheme: Scheme, Mapper: mapper})
+	return client.New(cfg, client.Options{Scheme: Scheme})
 }
 
 // NewHTTPClient returns a new client for GetConfig()
-func NewHTTPClient() (*http.Client, error){
-	cfg, err  := GetConfig()
+func NewHTTPClient() (*http.Client, error) {
+	cfg, err := GetConfig()
 	if err != nil {
-		return nil,err
+		return nil, err
 	}
 	return rest.HTTPClientFor(cfg)
 }
