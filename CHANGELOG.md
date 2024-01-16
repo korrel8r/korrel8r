@@ -4,8 +4,17 @@ This is the project's commit log. It is placeholder until a more user-readable c
 
 This project uses semantic versioning (https://semver.org)
 
-## Version v0.5.9
+## Version 0.0.0
 
+- Fix hack/openshift/Makefile waiting for operator ready.
+- Improved icon.
+- Added /objects to REST API, call from web UI
+- Doc fixes: logo, description
+- Enable gin logging based on KORREL8R_VERBOSE.
+- Bump golang.org/x/crypto from 0.15.0 to 0.17.0
+- Add FAQ, update install instructions, doc cleanup.
+- Remove feature request template.
+- Release v0.5.9
 - Fix syntax error in alert and log rules.
 - Fix github action cache settings.
 - Separate build and deploy actions
