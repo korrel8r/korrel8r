@@ -21,24 +21,13 @@ oc get storageclass
 
 ### Install operators
 
-1. From OperatorHub. Using the Openshift Console, install with defaults:
-   - "Red Hat Openshift Logging"
-   - "Loki operator"
+    make operators
 
-1. From source repositories. \
-   **NOTE**: _The steps below may be out of date, check the repository README for the latest instructions_
-   - Cluster logging https://github.com/openshift/cluster-logging-operator
-   ```
-   oc create ns openshift-logging
-   make deploy-image deploy-catalog install
-   ```
-   - LokiStack store https://github.com/grafana/loki/tree/main/operator
-   ```
-   oc create ns openshift-operators-redhat
-   make VARIANT=openshift REGISTRY_BASE=quay.io/my-quay-account VERSION=v0.0.2-test olm-undeploy olm-deploy
-   ```
+**Note**: You can also install the operators manually from OperatorHub:
+- "Red Hat Openshift Logging"
+- "Loki operator"
 
-### Create resources
+### Create logging resources
 
     make logging
 
