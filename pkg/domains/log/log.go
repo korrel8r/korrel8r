@@ -42,6 +42,7 @@ import (
 	"net/http"
 	"net/url"
 	"path"
+	"regexp"
 	"strings"
 
 	"github.com/korrel8r/korrel8r/pkg/domains/k8s"
@@ -53,12 +54,12 @@ import (
 
 var (
 	// Verify implementing interfaces.
-	_ korrel8r.Domain    = Domain
-	_ openshift.Converter  = Domain
-	_ korrel8r.Store     = &Store{}
-	_ korrel8r.Query     = Query{}
-	_ korrel8r.Class     = Class("")
-	_ korrel8r.Previewer = Class("")
+	_ korrel8r.Domain     = Domain
+	_ openshift.Converter = Domain
+	_ korrel8r.Store      = &Store{}
+	_ korrel8r.Query      = Query{}
+	_ korrel8r.Class      = Class("")
+	_ korrel8r.Previewer  = Class("")
 )
 
 // Domain for log records produced by openshift-logging.
@@ -76,8 +77,6 @@ func (d domain) String() string                 { return d.Name() }
 func (domain) Description() string              { return "Records from container and node logs." }
 func (domain) Class(name string) korrel8r.Class { return classMap[name] }
 func (domain) Classes() []korrel8r.Class        { return classes }
-
-// TODO should be on Class?
 func (d domain) Query(s string) (korrel8r.Query, error) {
 	c, s, err := impl.ParseQueryString(d, s)
 	if err != nil {
@@ -134,13 +133,15 @@ func (domain) QueryToConsoleURL(query korrel8r.Query) (*url.URL, error) {
 }
 
 func (domain) ConsoleURLToQuery(u *url.URL) (korrel8r.Query, error) {
-	if c, ok := classMap[u.Query().Get("tenant")]; ok {
-		return Query{
-			class: c.(Class),
-			logQL: u.Query().Get("q"),
-		}, nil
+	q := u.Query().Get("q")
+	c := classMap[u.Query().Get("tenant")]
+	if c == nil {
+		c = getLogQLClass(q)
 	}
-	return nil, fmt.Errorf("not a valid Loki URL: %v", u)
+	if c == nil {
+		return nil, fmt.Errorf("not a valid Loki URL: %v", u)
+	}
+	return NewQuery(c.(Class), q), nil
 }
 
 // Class is the log_type name (aka logType in lokistack)
@@ -221,7 +222,7 @@ var (
 
 func init() {
 	for _, c := range classes {
-		classMap[string(c.(Class))] = c
+		classMap[string(c.(Class))] = c.(Class)
 	}
 }
 
@@ -328,4 +329,28 @@ type queryData struct {
 type streamValues struct {
 	Stream map[string]string `json:"stream"` // Labels for the stream
 	Values [][]string        `json:"values"`
+}
+
+var logTypeRe = regexp.MustCompile(`{[^}]*log_type(=~*)"([^"]+)"}`)
+
+// getLogQLClass get the class implied by a LogQL query, or Class("") if none.
+func getLogQLClass(logQL string) korrel8r.Class {
+	// Parser at github.com/grafana/loki/logql does not work with go modules.
+	// See https://github.com/grafana/loki/issues/2826][v2 go module semantic versioning
+	// Use a simple regexp approach instead.
+	if m := logTypeRe.FindStringSubmatch(logQL); m != nil {
+		switch m[1] {
+		case "=":
+			return classMap[m[2]]
+		case "=~":
+			if re, err := regexp.Compile(m[2]); err == nil {
+				for k, v := range classMap {
+					if re.MatchString(k) {
+						return v
+					}
+				}
+			}
+		}
+	}
+	return nil
 }
