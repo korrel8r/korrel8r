@@ -5,7 +5,10 @@ include::attributes.adoc[]
 [id="using-ocp-console"]
 == Using the {rh-ocp} preview
 
-TIP: Make sure you have xref:installing-korrel8r-ocp.adoc#installing-korrel8r-ocp[installed Korrel8r]
+[IMPORTANT]
+====
+Ensure that you have xref:installing-korrel8r-ocp.adoc#installing-korrel8r-ocp[installed Korrel8r]
+====
 
 . Refresh the web console
 . Navigate to *Observe* -> *Logs*. Click the *Metrics* link to see correlated metrics of each log record.
@@ -13,16 +16,8 @@ TIP: Make sure you have xref:installing-korrel8r-ocp.adoc#installing-korrel8r-oc
 
 [TIP]
 ====
-Not all alerts have a *see related logs* link.
-Only alerts that are _related_ to container workloads can have related logs.
-For example, `KubePodCrashLooping` is related to a Pod and so can have related logs.
-See the xref:FAQ.adoc#no-related-logs[FAQ] for more.
+Not all alerts have a *see related logs* link. Only alerts that are _related_ to container workloads can have related logs. For example, `KubePodCrashLooping` is related to a pod and so can have related logs. See the xref:troubleshooting.adoc#troubleshooting-no-related-logs[There is no "see related logs" link] documentation for more information.
 ====
-
-== Configuration
-
-🚧 #Under Construction# 🚧
-// TODO: default configuration & rules. Configure outside/inside cluster. Link to reference.#
 
 == Command Line
 
@@ -31,14 +26,15 @@ See the xref:FAQ.adoc#no-related-logs[FAQ] for more.
 
 == Browser
 
-WARNING: The browser interface is experimental may be dropped in future.
-Other consoles or tools acting as korrel8r clients can provide better visualization.
+[WARNING]
+====
+The browser interface is experimental may be dropped in future. Other consoles or tools acting as korrel8r clients can provide better visualization.
+====
 
 The `korrel8r web` command provides browser access to:
 
 - Interactive queries and correlation graphs `http://localhost:8080/correlate`
 - Interactive REST API documentation on `http://localhost:8080/api`
-
 
 == REST Service
 
