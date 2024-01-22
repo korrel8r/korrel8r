@@ -1,5 +1,5 @@
+[id="troubleshooting"]
 = Troubleshooting
-:toc: left
 include::attributes.adoc[]
 
 [id="troubleshooting-ocp-415-errors"]

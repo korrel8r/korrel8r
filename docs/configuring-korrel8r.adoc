@@ -1,0 +1,117 @@
+[id="configuring-korrel8r"]
+= Configuring Korrel8r
+include::attributes.adoc[]
+
+You can configure how Korrel8r processes and generates rules, groups, and store configurations by creating or modifying a configuration file. Configuration files can be either JSON or YAML.
+
+You can pass a new configuration file to Korrel8r by running the following command:
+
+[source,terminal]
+----
+$ korrel8r --config <path_to_config_file>
+----
+
+.Example command
+[source,terminal]
+----
+$ korrel8r --config my-config.yaml
+----
+
+.Example YAML configuration file
+[source,yaml]
+----
+rules:
+  - name: <rule_name> # <1>
+    start:
+      domain: <domain_name> # <2>
+      classes:
+        - <list_of_classes_or_groups> # <3>
+    goal:
+      domain: <domain_name> # <4>
+      classes:
+        - <list_of_classes_or_groups> # <5>
+    result:
+      query: <query_name> # <6>
+      constraint: <constraint_name> # <7>
+groups:
+  - name: <group_name> # <8>
+    domain: <domain_name> # <9>
+    classes:
+      - <list_of_classes> # <10>
+stores:
+  - name: <store_name> # <11>
+    type: <store_type> # <12>
+    url: <url> # <13>
+include:
+  - <path_to_config_file> # <14>
+----
+<1> Specify a short, descriptive name for the rule.
+<2> Specify the domain that the rule can be applied to.
+<3> Optional: Specify a list of classes, or groups of classes, to be selected from the domain. If this is not specified, all classes in the domain are selected.
+<4> Specify the domain that this rule can produce.
+<5> Optional: Specify a list of classes, or groups of classes, to be selected from the domain. If this is not specified, all classes in the domain are selected.
+<6> Specify a query template that generates a `Query` object suitable for the configured store.
+<7> Optional: Specify a constraint template that generates a `Constraint` object in JSON form. This constraint is combined with any existing constraints.
+<8> Specify a short name for a group of classes. Creating a group is optional, but if you create a group you must specify a name.
+<9> Specify the domain for classes that are included in the group. All classes included in a group must be in the same domain.
+<10> Specify a list of classes to include in the group.
+// QUESTION: can you add multiple domains to one group? Future feature to include classes from different domains in a single group, or why not?
+<11> Specify a short, descriptive name for the store.
+<12> Specify the store type. Currently, Korrel8r only supports the `lokistack` store type. For more information about the LokiStack store, see the {logging} documentation about link:https://docs.openshift.com/container-platform/4.14/logging/log_storage/installing-log-storage.html#installing-log-storage-loki[Deploying a Loki log store].
+<13> Specify the URL for the store.
+<14> Optional: Specify a list of paths to additional configuration files to include.
+
+////
+add config for outside the cluster once confirmed details and use case
+# Configuration for korrel8r running outside an openshift cluster.
+stores:                         # Load default stores
+  - domain: k8s
+  - domain: alert
+    metrics: https://thanos-querier.openshift-monitoring.svc
+    alertManager: https://alertmanager-main.openshift-monitoring.svc
+  - domain: log
+    lokiStack: https://logging-loki.openshift-logging.svc
+  - domain: metric
+    metric: https://thanos-querier.openshift-monitoring.svc
+////
+
+.Example JSON configuration file
+[source,json]
+----
+{
+  "rules": [
+    {
+      "name": "exampleRule",
+      "start": {
+        "domain": "exampleDomain",
+        "classes": ["ClassA", "ClassB"]
+      },
+      "goal": {
+        "domain": "exampleDomain",
+        "classes": ["ClassC"]
+      },
+      "result": {
+        "query": "exampleQuery",
+        "constraint": "exampleConstraint"
+      }
+    }
+  ],
+  "groups": [
+    {
+      "name": "exampleGroup",
+      "domain": "exampleDomain",
+      "classes": ["GroupClass1", "GroupClass2"]
+    }
+  ],
+  "stores": [
+    {
+      "name": "exampleStore",
+      "type": "exampleType",
+      "url": "exampleURL"
+    }
+  ],
+  "include": [
+    "path/to/additional/config/file.json"
+  ]
+}
+----
