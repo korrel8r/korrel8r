@@ -2,7 +2,7 @@
 = Configuring Korrel8r
 include::attributes.adoc[]
 
-You can configure how Korrel8r processes and generates rules, groups, and store configurations by creating or modifying a configuration file. Configuration files can be either JSON or YAML.
+You can configure the set of stores Korrel8r connects to, and modify or extend the correlation rules it uses, via a configuration file. Configuration files can be in either JSON or YAML format.
 
 You can pass a new configuration file to Korrel8r by running the following command:
 
