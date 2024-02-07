@@ -6,6 +6,7 @@ import (
 	_ "embed"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/korrel8r/korrel8r/internal/pkg/logging"
 	"github.com/korrel8r/korrel8r/internal/pkg/must"
@@ -27,7 +28,7 @@ var (
 	rootCmd = &cobra.Command{
 		Use:     "korrel8r",
 		Short:   "Command line correlation tool",
-		Version: version,
+		Version: strings.TrimSpace(version),
 	}
 	log = logging.Log()
 

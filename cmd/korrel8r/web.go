@@ -63,10 +63,10 @@ var webCmd = &cobra.Command{
 		}
 
 		if *httpFlag != "" {
-			log.Info("listening for http", "addr", s.Addr)
+			log.Info("listening for http", "addr", s.Addr, "version", rootCmd.Version)
 			must.Must(s.ListenAndServe())
 		} else {
-			log.Info("listening for https", "addr", s.Addr)
+			log.Info("listening for https", "addr", s.Addr, "version", rootCmd.Version)
 			must.Must(s.ListenAndServeTLS(*certFlag, *keyFlag))
 		}
 	},
