@@ -19,7 +19,7 @@ check: generate lint test ## Lint and test code.
 all: check install _site image-build ## Build and test everything locally. Recommended before pushing.
 
 clean: ## Remove generated files, including checked-in files.
-	rm -vrf bin _site $(GENERATED) $(shell find -name 'zz_*')
+	rm -vrf bin _site $(GENERATED) $(shell find . -name 'zz_*')
 
 VERSION_TXT=cmd/korrel8r/version.txt
 
@@ -34,7 +34,7 @@ GENERATED=$(VERSION_TXT) pkg/config/zz_generated.deepcopy.go pkg/api/zz_docs doc
 
 generate: $(GENERATED) go.mod ## Generate code and doc.
 
-GO_SRC=$(shell find -name '*.go')
+GO_SRC=$(shell find . -name '*.go')
 
 .copyright: $(GO_SRC)
 	hack/copyright.sh	# Make sure files have copyright notice.
@@ -44,20 +44,20 @@ go.mod: $(GO_SRC)
 	go mod tidy		# Keep modules up to date.
 	@touch $@
 
-pkg/config/zz_generated.deepcopy.go:  $(filter-out pkg/config/zz_generated.deepcopy.go,$(wildcard pkg/config/*.go)) bin/controller-gen
-	bin/controller-gen object paths=./pkg/config/...
+pkg/config/zz_generated.deepcopy.go:  $(filter-out pkg/config/zz_generated.deepcopy.go,$(wildcard pkg/config/*.go)) controller-gen
+	$(CONTROLLER_GEN) object paths=./pkg/config/...
 
-pkg/api/zz_docs: $(wildcard pkg/api/*.go pkg/korrel8r/*.go) bin/swag
+pkg/api/zz_docs: $(wildcard pkg/api/*.go pkg/korrel8r/*.go) swag
 	@mkdir -p $(dir $@)
-	bin/swag init -q -g pkg/api/api.go -o $@
-	bin/swag fmt pkg/api
+	$(SWAG) init -q -g pkg/api/api.go -o $@
+	$(SWAG) fmt pkg/api
 	@touch $@
 
 %.gif: %.odg
 	libreoffice --convert-to gif --outdir $(dir $@) $^
 
-lint: $(VERSION_TXT) bin/golangci-lint ## Run the linter to find and fix code style problems.
-	bin/golangci-lint run --fix
+lint: $(VERSION_TXT) golangci-lint ## Run the linter to find and fix code style problems.
+	$(GO_LINT) run --fix
 
 install: $(VERSION_TXT) ## Build and install the korrel8r binary in $GOBIN.
 	go install -tags netgo ./cmd/korrel8r
@@ -124,8 +124,8 @@ docs/zz_domains.adoc: $(shell find cmd/korrel8r-doc internal pkg -name '*.go')
 	go run ./cmd/korrel8r-doc pkg/domains/* > $@
 
 # Note docs/templates/markdown overrides the swagger markdown templates to generate asciidoc
-docs/zz_rest_api.adoc: pkg/api/zz_docs docs/templates/markdown/docs.gotmpl bin/swagger
-	bin/swagger -q generate markdown -T docs/templates -f $</swagger.json --output $@
+docs/zz_rest_api.adoc: pkg/api/zz_docs docs/templates/markdown/docs.gotmpl swagger
+	$(SWAGGER) -q generate markdown -T docs/templates -f $</swagger.json --output $@
 
 release: release-commit release-push ## Create and push a new release tag and image. Set VERSION=vX.Y.Z.
 
@@ -143,20 +143,27 @@ release-push: release-check image
 	git push origin main --follow-tags
 	$(IMGTOOL) push -q "$(IMAGE)" "$(IMG):latest"
 
+# Location where binaries are installed
+LOCALBIN ?= $(shell pwd)/tmp/bin
 
-define TOOL_PKGS
-github.com/go-swagger/go-swagger/cmd/swagger
-github.com/swaggo/swag/cmd/swag
-github.com/golangci/golangci-lint/cmd/golangci-lint
-sigs.k8s.io/kind
-sigs.k8s.io/controller-tools/cmd/controller-gen
-endef
+CONTROLLER_GEN ?= $(LOCALBIN)/controller-gen
+SWAG?= $(LOCALBIN)/swag
+SWAGGER?= $(LOCALBIN)/swagger
+GO_LINT?= $(LOCALBIN)/golangci-lint
 
-tools: $(patsubst %,bin/%,$(notdir $(TOOL_PKGS))) ## Download all tools needed for development
 
-define TOOL_TARGET
-bin/$(notdir $(1)):
-	mkdir -p bin && GOBIN=$(abspath bin) go install $(1)@latest
-endef
+TOOLS = controller-gen \
+		golangci-lint \
+		kind \
+		kubectl \
+		kustomize \
+		oc \
+		swag \
+		swagger \
 
-$(foreach pkg,$(TOOL_PKGS),$(eval $(call TOOL_TARGET,$(pkg))))
+.PHONY: tools
+tools:
+	./hack/tools.sh
+
+$(TOOLS):
+	./hack/tools.sh $@
