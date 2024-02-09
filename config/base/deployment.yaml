@@ -20,6 +20,7 @@ spec:
       containers:
       - name: korrel8r
         image: "quay.io/korrel8r/korrel8r"
+        imagePullPolicy: Always
         command: ["korrel8r", "web", "--https", ":8443", "--cert", "/etc/secrets/tls.crt", "--key", "/etc/secrets/tls.key"]
         volumeMounts:
           - name: secrets

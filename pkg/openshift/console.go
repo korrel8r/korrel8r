@@ -71,5 +71,5 @@ func (c *Console) QueryToConsoleURL(q korrel8r.Query) (u *url.URL, err error) {
 		}
 		return c.BaseURL.ResolveReference(u), nil
 	}
-	return nil, fmt.Errorf("cannot convert query to console URL: q")
+	return nil, fmt.Errorf("cannot convert query to console URL: %v", q)
 }

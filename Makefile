@@ -30,7 +30,7 @@ $(VERSION_TXT):
 	echo $(VERSION) > $@
 
 # List of generated files
-GENERATED=$(VERSION_TXT) pkg/config/zz_generated.deepcopy.go .copyright pkg/api/zz_docs .copyright docs/zz_domains.adoc docs/zz_rest_api.adoc
+GENERATED=$(VERSION_TXT) pkg/config/zz_generated.deepcopy.go pkg/api/zz_docs docs/zz_domains.adoc docs/zz_rest_api.adoc .copyright
 
 generate: $(GENERATED) go.mod ## Generate code and doc.
 
@@ -100,11 +100,9 @@ WATCH=kubectl get events -A --watch-only& trap "kill %%" EXIT;
 deploy: $(IMAGE_KUSTOMIZATION)	## Deploy to current cluster using kustomize.
 	$(WATCH) kubectl apply -k config/overlays/$(OVERLAY)
 	$(WATCH) kubectl wait -n korrel8r --for=condition=available --timeout=60s deployment.apps/korrel8r
-	oc create route passthrough -n $(NAMESPACE) --service=$(NAME)
 
 undeploy:
 	kubectl delete -k config/overlays/$(OVERLAY)
-	kubectl delete -n $(NAMESPACE) route/$(NAME)
 
 route:				## Create a route to access korrel8r service from outside the cluster, requires openshift.
 	@oc delete -n korrel8r route/korrel8r --ignore-not-found

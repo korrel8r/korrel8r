@@ -87,6 +87,7 @@ func (c *correlate) HTML(gc *gin.Context) {
 	c.update(gc.Request)
 	if c.Err != nil {
 		log.Error(c.Err, "page errors")
+		c.Graph = graph.New(nil) // Don't show empty graph on error
 	}
 	gc.HTML(http.StatusOK, "correlate.html.tmpl", c)
 }
@@ -135,7 +136,7 @@ func (c *correlate) update(req *http.Request) {
 	}
 	follower := c.browser.engine.Follower(context.Background())
 
-	if c.GoalClasses != nil { // Paths from start to goal.
+	if c.GoalClasses != nil { // Find paths from start to goal.
 		if c.ShortPaths {
 			c.Graph = c.Graph.ShortestPaths(c.StartClass, c.GoalClasses...)
 		} else {
@@ -313,7 +314,6 @@ func (c *correlate) updateDiagram() {
 func runDot(cmdName string, args ...string) error {
 	cmd := exec.Command(cmdName, args[1:]...)
 	log.V(1).Info("run", "cmd", cmdName, "args", args)
-	cmd.Stdout, cmd.Stderr = os.Stdout, os.Stderr
 	return cmd.Run()
 }
 

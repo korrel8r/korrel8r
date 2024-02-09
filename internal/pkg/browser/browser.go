@@ -6,6 +6,7 @@ package browser
 import (
 	"context"
 	"embed"
+	"errors"
 	"html/template"
 	"io/fs"
 	"net/http"
@@ -85,6 +86,9 @@ func New(e *engine.Engine, router *gin.Engine) (*Browser, error) {
 	router.Static("/files", b.files)
 	router.StaticFS("/images", b.images)
 	router.GET("/stores/:domain", b.stores)
+	// Display errors converted into URLs.
+	router.GET("/error", func(c *gin.Context) { httpError(c, errors.New(c.Request.URL.Query().Get("err")), http.StatusNotFound) })
+
 	return b, nil
 }
 
