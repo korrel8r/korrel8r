@@ -1,19 +1,28 @@
 # Deploy lokistack into the openshift-logging namespace.
 ---
-apiVersion: loki.grafana.com/v1
-kind: LokiStack
+apiVersion: template.openshift.io/v1
+kind: Template
 metadata:
-  name: logging-loki
-  namespace: openshift-logging
-spec:
-  size: 1x.demo
-  storage:
-    schemas:
-    - version: v12
-      effectiveDate: 2022-06-01
-    secret:
-      name: minio
-      type: s3
-  storageClassName: local-storage
-  tenants:
-    mode: openshift-logging
+  name: lokistack-template
+objects:
+- apiVersion: loki.grafana.com/v1
+  kind: LokiStack
+  metadata:
+    name: logging-loki
+    namespace: ${NAMESPACE}
+  spec:
+    size: 1x.demo
+    storage:
+      schemas:
+      - version: v12
+        effectiveDate: 2022-06-01
+      secret:
+        name: minio
+        type: s3
+    storageClassName: ${STORAGE_CLASS}
+    tenants:
+      mode: openshift-logging
+parameters:
+  - name: STORAGE_CLASS
+  - name: NAMESPACE
+    value: openshift-logging
