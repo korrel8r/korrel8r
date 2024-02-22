@@ -85,7 +85,7 @@ You may need to log in and change settings so that your new repository is _publi
 make tools
 ----
 
-. Make changes to the docs, then run the following command to generate the site:
+. Make changes to the docs, then run the following command to generate the sitelink:
 +
 [source,terminal]
 ----

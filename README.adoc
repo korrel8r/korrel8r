@@ -1,7 +1,7 @@
 = Korrel8r: Signal correlation for Kubernetes
 :toc: left
 :pages: https://korrel8r.github.io/korrel8r
-include::docs/attributes.adoc[]
+include::doc/attributes.adoc[]
 
 [abstract]
 Korrel8r is a correlation engine for observability signals and observable resources. +
@@ -31,4 +31,4 @@ To try the {rh-ocp} preview features, do the following:
 
 - {pages}[Korrel8r User guide and Reference] for more about what Korrel8r is and how to use it.
 - link:https://pkg.go.dev/github.com/korrel8r/korrel8r/pkg/korrel8r:[Go package documentation] for embedding Korrel8r in your own code.
-- link:./docs/HACKING.adoc[Hackers guide] for experimenting and contributing to the code.
+- link:./doc/HACKING.adoc[Hackers guide] for experimenting and contributing to the code.

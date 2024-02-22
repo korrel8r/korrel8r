@@ -3,7 +3,7 @@
 // Package api implements a REST API for korrel8r.
 //
 // Note: Comments starting with "@" are used to generate a swagger spec via 'go generate'.
-// Static swagger doc is available at ./docs/swagger.md.
+// Static swagger doc is available at ./doc/swagger.md.
 // dynamic HTML doc is available from korrel8r at the "/api" endpoint.
 //
 //	@title			REST API
