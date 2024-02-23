@@ -112,8 +112,9 @@ route:				## Create a route to access korrel8r service from outside the cluster,
 ADOC_RUN=$(IMGTOOL) run -iq -v./doc:/src:z -v./_site:/dst:z quay.io/rhdevdocs/devspaces-documentation
 ADOC_ARGS=-a revnumber=$(VERSION) -a stylesheet=fedora.css -D/dst /src/index.adoc
 
-_site: $(wildcard doc/*.adoc) doc/zz_domains.adoc doc/zz_rest_api.adoc ## Generate the website HTML.
+_site: $(wildcard doc/*.adoc doc/images/*) doc/zz_domains.adoc doc/zz_rest_api.adoc ## Generate the website HTML.
 	@mkdir -p $@
+	cp -r doc/images $@
 	$(ADOC_RUN) asciidoctor $(ADOC_ARGS)
 	$(ADOC_RUN) asciidoctor-pdf -a allow-uri-read -o ebook.pdf $(ADOC_ARGS)
 	$(and $(shell type -p linkchecker),linkchecker _site)
