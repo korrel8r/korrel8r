@@ -1,19 +1,26 @@
 <!DOCTYPE html PUBLIC " - //W3C//DTD xhtml 1.0 Strict//EN"	"http://www.w3.org/1999/xhtml">
 <head>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
   <style>
    <!-- Auto-fit generated graphs to the browser window -->
    <style>
-   html, body {
-     height: 100%;
-   }
-   img, object {
-     display: block;
-     margin-left: auto;
-     margin-right: auto;
-     max-height: 100%;
-     max-width: 100%;
-   }
+     html {
+       height: 100%;
+     }
+     body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+     }
+     img, object {
+       display: block;
+       margin-left: auto;
+       margin-right: auto;
+       max-height: 100%;
+       max-width: 100%;
+     }
   </style>
+
   <!-- Enable pop-up windows -->
   <style>
    /* Popup container - can be anything you want */
@@ -73,7 +80,38 @@
      to {opacity:1 ;}
    }
   </style>
-    {{block "head" . -}}
-        <title>Korrel8r Web UI</title>
-    {{end -}}
+
+  <!-- Add top navigation bar -->
+  <style>
+   .topnav {
+     display:flex;
+     justify-content: flex-start;
+     align-content: center;
+     overflow: hidden;
+     background-color: #333;
+    }
+
+    .topnav a, span {
+      color: #f2f2f2;
+      padding: 16px;
+      text-decoration: none;
+    }
+
+   .topnav img {
+       display: inline-block;
+       margin-left: 8px;
+       margin-right: 0;
+    }
+
+  </style>
+
+  <title>Korrel8r Web UI</title>
+  <link rel="icon" href="images/favicon.svg" type="image/svg+xml"/>
+
+  <div class="topnav">
+    <img src="images/favicon.svg" alt="Korrel8r">
+    <a><b>Korrel8r</b></a>
+    <a href="https://korrel8r.github.io/korrel8r/">Documentation</a>
+  </div>
+  </meta>
 </head>
