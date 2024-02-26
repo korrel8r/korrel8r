@@ -19,8 +19,8 @@ func NewTemplateRule(start, goal korrel8r.Class, query *template.Template) korre
 }
 
 type templateRule struct {
-	query, constraint *template.Template
-	start, goal       korrel8r.Class
+	query       *template.Template
+	start, goal korrel8r.Class
 }
 
 func (r *templateRule) Name() string          { return r.query.Name() }

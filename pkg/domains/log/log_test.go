@@ -104,10 +104,15 @@ func TestStoreGet_Constraint(t *testing.T) {
 	before, during, after := []string{"too", "early"}, []string{"on", "time"}, []string{"too", "late"}
 	labels := map[string]string{"test": "log"}
 
+	// FIXME need a faster test?
 	require.NoError(t, l.Push(labels, before...))
+	time.Sleep(time.Second / 10)
 	t1 := time.Now()
+	time.Sleep(time.Second / 10)
 	require.NoError(t, l.Push(labels, during...))
+	time.Sleep(time.Second / 10)
 	t2 := time.Now()
+	time.Sleep(time.Second / 10)
 	require.NoError(t, l.Push(labels, after...))
 
 	s, err := NewPlainLokiStore(l.URL(), http.DefaultClient)
@@ -125,7 +130,7 @@ func TestStoreGet_Constraint(t *testing.T) {
 			want: during,
 		},
 		{
-			c:    &korrel8r.Constraint{Start: &t1, End: &t2},
+			c:    &korrel8r.Constraint{Start: &t2},
 			want: after,
 		},
 	} {

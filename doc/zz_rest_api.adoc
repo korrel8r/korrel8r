@@ -532,9 +532,33 @@ link:#api-classes[APIClasses]
 
 	| class | string| `string` |  | | Class of starting objects | 
 
+	| constraint | link:#api-start[APIStart]| `APIStart` |  | | Constraint (optional) to limit the results. | 
+
 	| objects | link:#interface[interface{}]| `interface{}` |  | | Objects in JSON form | 
 
 	| queries | []string| `[]string` |  | | Queries for starting objects | 
+
+|===
+
+[id=korrel8r-constraint]
+=== korrel8r.Constraint
+
+
+  
+
+
+
+**Properties**
+
+[%autowidth]
+|===
+| Name | Type | Go type | Required | Default | Description | Example
+
+	| end | string| `string` |  | | Include only results timestamped before this time. | 
+
+	| limit | integer| `int64` |  | | Max number of entries to return | 
+
+	| start | string| `string` |  | | Include only results timestamped after this time. | 
 
 |===
 

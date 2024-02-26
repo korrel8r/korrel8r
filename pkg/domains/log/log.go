@@ -230,27 +230,26 @@ func (q Query) Class() korrel8r.Class { return q.class }
 func (q Query) Query() string         { return q.logQL }
 func (q Query) String() string        { return korrel8r.QueryName(q) }
 
-func (q Query) plainURL() *url.URL {
+func (q Query) plainURL(c *korrel8r.Constraint) *url.URL {
 	v := url.Values{}
 	v.Add("query", q.logQL)
 	v.Add("direction", "forward")
-	// TODO constraint inside query
-	// if constraint != nil {
-	// 	if constraint.Limit != nil {
-	// 		v.Add("limit", fmt.Sprintf("%v", *constraint.Limit))
-	// 	}
-	// 	if constraint.Start != nil {
-	// 		v.Add("start", fmt.Sprintf("%v", constraint.Start.UnixNano()))
-	// 	}
-	// 	if constraint.End != nil {
-	// 		v.Add("end", fmt.Sprintf("%v", constraint.End.UnixNano()))
-	// 	}
-	// }
+	if c != nil {
+		if c.Limit != nil {
+			v.Add("limit", fmt.Sprintf("%v", *c.Limit))
+		}
+		if c.Start != nil {
+			v.Add("start", fmt.Sprintf("%v", c.Start.UnixNano()))
+		}
+		if c.End != nil {
+			v.Add("end", fmt.Sprintf("%v", c.End.UnixNano()))
+		}
+	}
 	return &url.URL{Path: "/loki/api/v1/query_range", RawQuery: v.Encode()}
 }
 
-func (q Query) lokiStackURL() *url.URL {
-	u := q.plainURL()
+func (q Query) lokiStackURL(c *korrel8r.Constraint) *url.URL {
+	u := q.plainURL(c)
 	if q.class == "" {
 		q.class = Application
 	}
@@ -261,7 +260,7 @@ func (q Query) lokiStackURL() *url.URL {
 type Store struct {
 	c        *http.Client
 	base     *url.URL
-	queryURL func(Query) *url.URL
+	queryURL func(Query, *korrel8r.Constraint) *url.URL
 }
 
 func (Store) Domain() korrel8r.Domain { return Domain }
@@ -282,7 +281,7 @@ func (s *Store) Get(ctx context.Context, query korrel8r.Query, c *korrel8r.Const
 	if err != nil {
 		return err
 	}
-	u := s.base.ResolveReference(s.queryURL(q))
+	u := s.base.ResolveReference(s.queryURL(q, c))
 
 	resp, err := s.c.Get(u.String())
 	if err != nil {

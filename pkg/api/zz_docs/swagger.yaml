@@ -116,6 +116,10 @@ definitions:
       class:
         description: Class of starting objects
         type: string
+      constraint:
+        allOf:
+        - $ref: '#/definitions/korrel8r.Constraint'
+        description: Constraint (optional) to limit the results.
       objects:
         description: Objects in JSON form
         type: object
@@ -124,6 +128,18 @@ definitions:
         items:
           type: string
         type: array
+    type: object
+  korrel8r.Constraint:
+    properties:
+      end:
+        description: Include only results timestamped before this time.
+        type: string
+      limit:
+        description: Max number of entries to return
+        type: integer
+      start:
+        description: Include only results timestamped after this time.
+        type: string
     type: object
   korrel8r.StoreConfig:
     additionalProperties:

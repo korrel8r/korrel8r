@@ -122,6 +122,5 @@ func TestEngine_Constraints(t *testing.T) {
 	// c := Constraint{Start: &start, End: &end}
 	// early, ontime, late := start.Add(-1), start.Add(1), end.Add(1)
 
-	panic("FIXME") // Use simple timestamps as korrel8r objects
-
+	t.Fatalf("FIXME") // Use simple timestamps as korrel8r objects
 }

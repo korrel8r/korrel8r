@@ -368,6 +368,14 @@ const docTemplate = `{
                     "description": "Class of starting objects",
                     "type": "string"
                 },
+                "constraint": {
+                    "description": "Constraint (optional) to limit the results.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/korrel8r.Constraint"
+                        }
+                    ]
+                },
                 "objects": {
                     "description": "Objects in JSON form",
                     "type": "object"
@@ -378,6 +386,23 @@ const docTemplate = `{
                     "items": {
                         "type": "string"
                     }
+                }
+            }
+        },
+        "korrel8r.Constraint": {
+            "type": "object",
+            "properties": {
+                "end": {
+                    "description": "Include only results timestamped before this time.",
+                    "type": "string"
+                },
+                "limit": {
+                    "description": "Max number of entries to return",
+                    "type": "integer"
+                },
+                "start": {
+                    "description": "Include only results timestamped after this time.",
+                    "type": "string"
                 }
             }
         },
