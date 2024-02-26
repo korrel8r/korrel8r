@@ -1,0 +1,10 @@
+kind: Route
+apiVersion: route.openshift.io/v1
+metadata:
+  name: korrel8r
+spec:
+  to:
+    kind: Service
+    name: korrel8r
+  tls:
+    termination: passthrough

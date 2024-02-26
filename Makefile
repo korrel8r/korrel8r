@@ -91,11 +91,13 @@ $(IMAGE_KUSTOMIZATION):
 	hack/replace-image.sh "quay.io/korrel8r/korrel8r" $(IMG) $(VERSION) > $@
 
 WATCH=kubectl get events -A --watch-only& trap "kill %%" EXIT;
+HAS_ROUTE={ oc api-versions | grep -q route.openshift.io/v1 ; }
 
 # NOTE: deploy does not depend on 'image', since it may be used to deploy pre-existing images.
 # To build and deploy a new image do `make image deploy`
 deploy: $(IMAGE_KUSTOMIZATION)	## Deploy to current cluster using kustomize.
 	$(WATCH) kubectl apply -k config/overlays/$(OVERLAY)
+	$(HAS_ROUTE) && kubectl apply -k config/base/route
 	$(WATCH) kubectl wait -n korrel8r --for=condition=available --timeout=60s deployment.apps/korrel8r
 
 undeploy:
