@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"net/url"
 	"strings"
+	"time"
 
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r/impl"
@@ -104,7 +105,7 @@ func NewRules(rules ...korrel8r.Rule) (mocks []Rule) {
 func (r Rule) Start() korrel8r.Class { return r.start }
 func (r Rule) Goal() korrel8r.Class  { return r.goal }
 func (r Rule) Name() string          { return r.name }
-func (r Rule) Apply(start korrel8r.Object, c *korrel8r.Constraint) (korrel8r.Query, error) {
+func (r Rule) Apply(start korrel8r.Object) (korrel8r.Query, error) {
 	panic("not implemented") // See ApplyRule
 }
 
@@ -119,7 +120,7 @@ func RuleLess(a, b korrel8r.Rule) int {
 // SorRules  sorts rules by (start, goal) order.
 func SortRules(rules []korrel8r.Rule) []korrel8r.Rule { slices.SortFunc(rules, RuleLess); return rules }
 
-type ApplyFunc func(korrel8r.Object, *korrel8r.Constraint) (korrel8r.Query, error)
+type ApplyFunc func(korrel8r.Object) (korrel8r.Query, error)
 type ApplyRule struct {
 	Rule
 	apply ApplyFunc
@@ -130,19 +131,22 @@ func NewApplyRule(name string, start, goal korrel8r.Class, apply ApplyFunc) Appl
 }
 
 func NewQueryRule(name string, start korrel8r.Class, query korrel8r.Query) ApplyRule {
-	return NewApplyRule(name, start, query.Class(), func(korrel8r.Object, *korrel8r.Constraint) (korrel8r.Query, error) {
+	return NewApplyRule(name, start, query.Class(), func(korrel8r.Object) (korrel8r.Query, error) {
 		return query, nil
 	})
 }
 
-func (r ApplyRule) Apply(start korrel8r.Object, c *korrel8r.Constraint) (korrel8r.Query, error) {
-	return r.apply(start, c)
+func (r ApplyRule) Apply(start korrel8r.Object) (korrel8r.Query, error) {
+	return r.apply(start)
 }
 
 // Store is a mock store, use with [Query]
 type Store struct {
-	domain      korrel8r.Domain
+	domain korrel8r.Domain
+	// Optional StoreConfig
 	StoreConfig korrel8r.StoreConfig
+	// Optional constraint testing function
+	ConstraintFunc func(*korrel8r.Constraint, korrel8r.Object) bool
 }
 
 func NewStore(d korrel8r.Domain, sc korrel8r.StoreConfig) Store {
@@ -150,8 +154,13 @@ func NewStore(d korrel8r.Domain, sc korrel8r.StoreConfig) Store {
 }
 
 func (s Store) Domain() korrel8r.Domain { return s.domain }
-func (s Store) Get(_ context.Context, q korrel8r.Query, r korrel8r.Appender) error {
-	r.Append(q.(Query).Results...)
+
+func (s Store) Get(ctx context.Context, q korrel8r.Query, c *korrel8r.Constraint, r korrel8r.Appender) error {
+	results := q.(Query).Results
+	if c != nil && s.ConstraintFunc != nil {
+		slices.DeleteFunc(results, func(o korrel8r.Object) bool { return s.ConstraintFunc(c, o) })
+	}
+	r.Append(results...)
 	return nil
 }
 
@@ -169,3 +178,6 @@ func NewQuery(c korrel8r.Class, results ...korrel8r.Object) korrel8r.Query {
 func (q Query) Class() korrel8r.Class { return q.class }
 func (q Query) Query() string         { return korrel8r.JSONString(q.Results) }
 func (q Query) String() string        { return korrel8r.QueryName(q) }
+
+// Timestamper interface for objects with a Timestamp() method.
+type Timestamper interface{ Timestamp() time.Time }

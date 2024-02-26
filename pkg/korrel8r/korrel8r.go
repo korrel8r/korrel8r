@@ -52,13 +52,16 @@ type Class interface {
 }
 
 // Store is a source of signal data that can be queried.
+//
+// Must be implemented by a korrel8r domain.
 type Store interface {
 	// Domain of the Store
 	Domain() Domain
 
 	// Get requests objects selected by the Query.
 	// Collected objects are appended to the Appender.
-	Get(context.Context, Query, Appender) error
+	// If Constraint is non-nil, only objects satisfying the constraint are returned.
+	Get(context.Context, Query, *Constraint, Appender) error
 }
 
 // Query is a request that selects some subset of Objects from a Store.
@@ -84,6 +87,8 @@ type Query interface {
 // The goal is to allow values from some underlying toolkit to be used directly as Object.
 //
 // [Class] provides some methods for inspecting objects.
+//
+// Must be implemented by a korrel8r domain.
 type Object = any
 
 // IDer is optionally implemented by Class implementations that have a meaningful unique identifier.
@@ -129,9 +134,8 @@ type Appender interface{ Append(...Object) }
 // Not required for a domain implementations: implemented by [github.com/korrel8r/korrel8r/pkg/rules]
 type Rule interface {
 	// Apply the rule to a start Object, return a Query for results.
-	// Optional Constraint (may be nil) constrains the results of the query Query.
-	// Apply may return (nil, nil) if the rule does not apply to the input.
-	Apply(start Object, constraint *Constraint) (Query, error)
+	// Apply may return (nil, nil) if the rule does not apply to the input. FIXME
+	Apply(start Object) (Query, error)
 	// Class of start object. If nil, this is a "wildcard" rule that can start from any class it can be applied to.
 	Start() Class
 	// Class of desired result object(s), must not be nil.

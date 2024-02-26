@@ -147,16 +147,17 @@ func (a *API) GraphsNeighbours(c *gin.Context) {
 	if c.Errors != nil {
 		return
 	}
-	start, objects, queries := a.start(c, &r.Start)
+	start, objects, queries, constraint := a.start(c, &r.Start)
 	depth := r.Depth
 	if c.Errors != nil {
 		return
 	}
 	g := a.Engine.Graph()
-	if !a.setupStart(c, g, start, objects, queries) {
+	if !a.setupStart(c, g, start, objects, queries, constraint) {
 		return
 	}
-	follower := a.Engine.Follower(c.Request.Context())
+	// FIXME add constraint
+	follower := a.Engine.Follower(c.Request.Context(), constraint)
 	g = g.Neighbours(start, depth, follower.Traverse)
 	c.JSON(http.StatusOK, Graph{Nodes: nodes(g), Edges: edges(g, &opts)})
 }
@@ -178,7 +179,7 @@ func (a *API) GetObjects(c *gin.Context) {
 		return
 	}
 	result := korrel8r.NewResult(query.Class())
-	if !check(c, http.StatusInternalServerError, a.Engine.Get(c.Request.Context(), query, result)) {
+	if !check(c, http.StatusInternalServerError, a.Engine.Get(c.Request.Context(), query, (*korrel8r.Constraint)(opts.Constraint), result)) {
 		return
 	}
 	c.JSON(http.StatusOK, result.List())
@@ -189,17 +190,17 @@ func (a *API) goalsRequest(c *gin.Context) (g *graph.Graph, goals []korrel8r.Cla
 	if !check(c, http.StatusBadRequest, c.BindJSON(&r)) {
 		return nil, nil
 	}
-	start, objects, queries := a.start(c, &r.Start)
+	start, objects, queries, constraint := a.start(c, &r.Start)
 	goals = a.classes(c, r.Goals)
 	if c.Errors != nil {
 		return nil, nil
 	}
 	g = a.Engine.Graph().AllPaths(start, goals...)
-	if !a.setupStart(c, g, start, objects, queries) {
+	if !a.setupStart(c, g, start, objects, queries, constraint) {
 		return nil, nil
 	}
 
-	follower := a.Engine.Follower(c.Request.Context())
+	follower := a.Engine.Follower(c.Request.Context(), constraint)
 	if !check(c, http.StatusInternalServerError, g.Traverse(follower.Traverse)) {
 		return nil, nil
 	}
@@ -228,25 +229,25 @@ func (a *API) objects(c *gin.Context, class korrel8r.Class, raw []json.RawMessag
 }
 
 // start validates and extracts data from the Start part of a request.
-func (a *API) start(c *gin.Context, start *Start) (korrel8r.Class, []korrel8r.Object, []korrel8r.Query) {
+func (a *API) start(c *gin.Context, start *Start) (korrel8r.Class, []korrel8r.Object, []korrel8r.Query, *korrel8r.Constraint) {
 	class := a.class(c, start.Class)
 	if c.Errors != nil {
-		return nil, nil, nil
+		return nil, nil, nil, nil
 	}
 	objects := a.objects(c, class, start.Objects)
 	queries := a.queries(c, start.Queries)
-	return class, objects, queries
+	return class, objects, queries, start.Constraint
 }
 
 // setupStart sets up the start node of the graph
-func (a *API) setupStart(c *gin.Context, g *graph.Graph, start korrel8r.Class, objects []korrel8r.Object, queries []korrel8r.Query) (ok bool) {
+func (a *API) setupStart(c *gin.Context, g *graph.Graph, start korrel8r.Class, objects []korrel8r.Object, queries []korrel8r.Query, constraint *korrel8r.Constraint) (ok bool) {
 	n := g.NodeFor(start)
 	result := n.Result
 	result.Append(objects...)
 	for _, query := range queries {
 		cr := korrel8r.NewCountResult(result)
 		// TODO should we tolerate get failures and report in the response?
-		if check(c, http.StatusBadRequest, a.Engine.Get(c.Request.Context(), query, cr),
+		if check(c, http.StatusBadRequest, a.Engine.Get(c.Request.Context(), query, constraint, cr),
 			"query failed: %q", query.String()) {
 			n.Queries[query.String()] = cr.Count
 		}

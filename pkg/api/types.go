@@ -32,18 +32,24 @@ type Start struct {
 	Class string `json:"class,omitempty"`
 	// Objects in JSON form
 	Objects []json.RawMessage `json:"objects,omitempty" swaggertype:"object"`
+	// Constraint (optional) to limit the results.
+	Constraint *korrel8r.Constraint `json:"constraint,omitempty"`
 }
 
 // @description	Starting point for a goals search.
 type GoalsRequest struct {
-	Start Start    `json:"start"`                                  // Start of correlation search.
-	Goals []string `json:"goals,omitempty" example:"domain:class"` // Goal classes for correlation.
+	// Start of correlation search.
+	Start Start `json:"start"`
+	// Goal classes for correlation.
+	Goals []string `json:"goals,omitempty" example:"domain:class"`
 }
 
 // @description	Starting point for a neighbours search.
 type NeighboursRequest struct {
-	Start Start `json:"start"` // Start of correlation search.
-	Depth int   `json:"depth"` // Max depth of neighbours graph.
+	// Start of correlation search.
+	Start Start `json:"start"`
+	// Max depth of neighbours graph.
+	Depth int `json:"depth"`
 }
 
 // GraphOptions control the format of the graph
@@ -56,12 +62,16 @@ type GraphOptions struct {
 type QueryOptions struct {
 	// Query string to execute.
 	Query string `form:"query"`
+	// Constraint (optional) to limit the results.
+	Constraint *korrel8r.Constraint `json:"constraint,omitempty"`
 }
 
 // @description Query run during a correlation with a count of results found.
 type QueryCount struct {
-	Query string `json:"query"` // Query for correlation data.
-	Count int    `json:"count"` // Count of results or -1 if the query was not executed.
+	// Query for correlation data.
+	Query string `json:"query"`
+	// Count of results or -1 if the query was not executed.
+	Count int `json:"count"`
 }
 
 // Rule is a correlation rule with a list of queries and results counts found during navigation.

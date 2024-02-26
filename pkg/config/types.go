@@ -53,11 +53,6 @@ type ClassSpec struct {
 type ResultSpec struct {
 	// Query template generates a query object suitable for the goal store.
 	Query string `json:"query"`
-
-	// Constraint template is optional, it generates a korrel8r.Constraint in JSON form.
-	// This constraint is combined with the constraint already in force, if there is one.
-	// See Constraint.Combine
-	Constraint string `json:"constraint,omitempty"`
 }
 
 // Group of similar classes that can be referred to by a short name in a ClassSpec.

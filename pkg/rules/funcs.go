@@ -17,8 +17,6 @@ import (
 //
 //	rule
 //	  Returns the korrel8r.Rule being applied.
-//	constraint
-//	  Returns the korrel8r.Constraint in force when applying a rule. May be nil.
 //	className CLASS
 //	  Returns the fully qualified name of CLASS, with domain prefix.
 //	ruleName RULE
@@ -31,7 +29,6 @@ var Funcs map[string]any
 
 func init() {
 	Funcs = map[string]any{
-		"rule":       func() korrel8r.Rule { return nil },
-		"constraint": func() *korrel8r.Constraint { return nil },
+		"rule": func() korrel8r.Rule { return nil },
 	}
 }

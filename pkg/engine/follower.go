@@ -11,9 +11,10 @@ import (
 
 // Follower provide a Traverse() method to follow rules and collect results in a graph.
 type Follower struct {
-	Engine  *Engine
-	Context context.Context
-	Err     error // Collect errors using multierror
+	Engine     *Engine
+	Context    context.Context
+	Constraint *korrel8r.Constraint
+	Err        error // Collect errors using multierror
 }
 
 func (f *Follower) Traverse(l *graph.Line) {
@@ -26,7 +27,7 @@ func (f *Follower) Traverse(l *graph.Line) {
 		return
 	}
 	for _, s := range starters {
-		query, err := rule.Apply(s, nil)
+		query, err := rule.Apply(s)
 		if err != nil || query == nil {
 			log.V(4).Info("did not apply", "error", err)
 			continue
@@ -34,7 +35,7 @@ func (f *Follower) Traverse(l *graph.Line) {
 		qs := korrel8r.QueryName(query)
 		log := log.WithValues("query", qs)
 		result := korrel8r.NewCountResult(goalNode.Result)
-		if err := f.Engine.Get(f.Context, query, result); err != nil {
+		if err := f.Engine.Get(f.Context, query, f.Constraint, result); err != nil {
 			log.V(4).Info("error in get", "error", err)
 		}
 		// TODO get rid of duplication of query counts, simplify code?

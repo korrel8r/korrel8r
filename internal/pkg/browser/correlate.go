@@ -122,10 +122,11 @@ func (c *correlate) update(req *http.Request) {
 		log.V(2).Info("update complete", "duration", c.UpdateTime)
 	}()
 	c.reset(req.URL.Query())
+	var constraint *korrel8r.Constraint // FIXME implement constraints
 	if !c.addErr(c.updateStart(), "start") {
 		// Prime the start node with initial results
 		start := c.Graph.NodeFor(c.StartClass)
-		if c.addErr(c.browser.engine.Get(context.Background(), c.StartQuery, start.Result)) {
+		if c.addErr(c.browser.engine.Get(context.Background(), c.StartQuery, constraint, start.Result)) {
 			return
 		}
 		start.Queries[c.StartQuery.String()] = len(start.Result.List())
@@ -134,7 +135,7 @@ func (c *correlate) update(req *http.Request) {
 	if c.Err != nil {
 		return
 	}
-	follower := c.browser.engine.Follower(context.Background())
+	follower := c.browser.engine.Follower(context.Background(), constraint)
 
 	if c.GoalClasses != nil { // Find paths from start to goal.
 		if c.ShortPaths {

@@ -230,8 +230,8 @@ func assertDo[T any](t *testing.T, a *testAPI, method, url string, req any, code
 }
 
 // doubleFunc returns a goal object with the name of the start object repeated twice.
-func doubleFunc(goal korrel8r.Class) func(korrel8r.Object, *korrel8r.Constraint) (korrel8r.Query, error) {
-	return func(o korrel8r.Object, _ *korrel8r.Constraint) (korrel8r.Query, error) {
+func doubleFunc(goal korrel8r.Class) func(korrel8r.Object) (korrel8r.Query, error) {
+	return func(o korrel8r.Object) (korrel8r.Query, error) {
 		return mock.NewQuery(goal, o.(string)+o.(string)), nil
 	}
 }

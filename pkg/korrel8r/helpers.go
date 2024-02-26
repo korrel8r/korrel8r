@@ -53,6 +53,7 @@ func JSONString(v any) string {
 	return string(b)
 }
 
+// YAMLString returns the YAML marshaled string from v, or the error message if marshal fails
 func YAMLString(v any) string {
 	b, err := yaml.Marshal(v)
 	if err != nil {

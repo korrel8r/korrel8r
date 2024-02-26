@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -24,18 +23,26 @@ import (
 
 var ctx = context.Background()
 
-func makeLines(line string, n int) (lines []string, objects []korrel8r.Object) {
-	for i := 0; i < n; i++ {
-		line := fmt.Sprintf("%v: %v", i, line)
-		lines = append(lines, line)
-		objects = append(objects, NewObject(line))
+func logs(lines []string) []korrel8r.Object {
+	logs := make([]korrel8r.Object, len(lines))
+	for i := range lines {
+		logs[i] = NewObject(lines[i])
 	}
-	return lines, objects
+	return logs
+}
+
+func numberedLines(line string, n int) []string {
+	lines := make([]string, n)
+	for i := range lines {
+		lines[i] = fmt.Sprintf("%v: %v", i, line)
+	}
+	return lines
 }
 
 func TestPlainLokiStore_Get(t *testing.T) {
 	test.SkipIfNoCluster(t)
-	lines, want := makeLines(t.Name(), 10)
+	lines := numberedLines(t.Name(), 10)
+	want := logs(lines)
 	l := test.RequireLokiServer(t)
 	err := l.Push(map[string]string{"test": "log"}, lines...)
 	require.NoError(t, err)
@@ -43,7 +50,7 @@ func TestPlainLokiStore_Get(t *testing.T) {
 	require.NoError(t, err)
 	q := Query{logQL: `{test="log"}`}
 	result := korrel8r.NewListResult()
-	require.NoError(t, s.Get(ctx, q, result))
+	require.NoError(t, s.Get(ctx, q, nil, result))
 	assert.Equal(t, want, result.List())
 }
 
@@ -52,7 +59,7 @@ func TestLokiStackStore_Get(t *testing.T) {
 	test.SkipIfNoCluster(t)
 	c := test.K8sClient
 	ns := test.TempNamespace(t, c)
-	lines, _ := makeLines(fmt.Sprintf("%v: %v - %v", time.Now(), t.Name(), ns), 10)
+	lines := numberedLines(fmt.Sprintf("%v: %v - %v", time.Now(), t.Name(), ns), 10)
 	pod := corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{Name: "logger", Namespace: ns},
 		Spec: corev1.PodSpec{
@@ -77,7 +84,7 @@ func TestLokiStackStore_Get(t *testing.T) {
 	var result korrel8r.ListResult
 	assert.Eventually(t, func() bool {
 		result = nil
-		err = s.Get(ctx, q, &result)
+		err = s.Get(ctx, q, nil, &result)
 		require.NoError(t, err)
 		t.Logf("waiting for %v logs, got %v. %v%v", len(lines), len(result), s, q)
 		return len(result) >= len(lines)
@@ -91,43 +98,41 @@ func TestLokiStackStore_Get(t *testing.T) {
 
 func TestStoreGet_Constraint(t *testing.T) {
 	test.SkipIfNoCluster(t)
-	t.Skip("TODO re-enable when constraints are implemented properly")
 
 	l := test.RequireLokiServer(t)
 
-	err := l.Push(map[string]string{"test": "log"}, "much", "too", "early")
-	require.NoError(t, err)
+	before, during, after := []string{"too", "early"}, []string{"on", "time"}, []string{"too", "late"}
+	labels := map[string]string{"test": "log"}
 
+	require.NoError(t, l.Push(labels, before...))
 	t1 := time.Now()
-	err = l.Push(map[string]string{"test": "log"}, "right", "on", "time")
-	require.NoError(t, err)
+	require.NoError(t, l.Push(labels, during...))
 	t2 := time.Now()
+	require.NoError(t, l.Push(labels, after...))
 
-	err = l.Push(map[string]string{"test": "log"}, "much", "too", "late")
-	require.NoError(t, err)
 	s, err := NewPlainLokiStore(l.URL(), http.DefaultClient)
 	require.NoError(t, err)
-
-	for n, x := range []struct {
-		q    korrel8r.Query
+	for _, x := range []struct {
 		c    *korrel8r.Constraint
-		want []korrel8r.Object
+		want []string
 	}{
 		{
-			q:    Query{logQL: `{test="log"}`},
 			c:    &korrel8r.Constraint{End: &t1},
-			want: []korrel8r.Object{"much", "too", "early"},
+			want: before,
 		},
 		{
-			q:    Query{logQL: `{test="log"}`},
 			c:    &korrel8r.Constraint{Start: &t1, End: &t2},
-			want: []korrel8r.Object{"right", "on", "time"},
+			want: during,
+		},
+		{
+			c:    &korrel8r.Constraint{Start: &t1, End: &t2},
+			want: after,
 		},
 	} {
-		t.Run(strconv.Itoa(n), func(t *testing.T) {
+		t.Run(fmt.Sprintf("%v", x.want), func(t *testing.T) {
 			var result korrel8r.ListResult
-			assert.NoError(t, s.Get(ctx, x.q, &result))
-			assert.Equal(t, x.want, result.List())
+			assert.NoError(t, s.Get(ctx, Query{logQL: `{test="log"}`}, x.c, &result))
+			assert.Equal(t, logs(x.want), result.List())
 		})
 	}
 }

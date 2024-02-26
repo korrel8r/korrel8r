@@ -28,13 +28,9 @@ func addRules(e *engine.Engine, r Rule) (err error) {
 	if err != nil {
 		return fmt.Errorf("error in query %q: %w", r.Result.Query, err)
 	}
-	constraint, err := newTemplate(r.Name+"-constraint", r.Result.Constraint)
-	if err != nil {
-		return fmt.Errorf("error in constraint %q: %w", r.Result.Constraint, err)
-	}
 	return eachClass(e, &r.Start, func(start korrel8r.Class) error {
 		return eachClass(e, &r.Goal, func(goal korrel8r.Class) error {
-			e.AddRules(rules.NewTemplateRule(start, goal, query, constraint))
+			e.AddRules(rules.NewTemplateRule(start, goal, query))
 			return nil
 		})
 	})

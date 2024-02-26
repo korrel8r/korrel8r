@@ -80,10 +80,10 @@ type Store struct {
 
 // Validate interfaces
 var (
-	_ korrel8r.Domain   = Domain
-	_ korrel8r.Class    = Class{}
-	_ korrel8r.Object   = Object(nil)
-	_ korrel8r.Query    = &Query{}
+	_ korrel8r.Domain     = Domain
+	_ korrel8r.Class      = Class{}
+	_ korrel8r.Object     = Object(nil)
+	_ korrel8r.Query      = &Query{}
 	_ openshift.Converter = &Store{}
 )
 
@@ -96,7 +96,7 @@ func (d domain) Description() string { return "Resource objects in a Kubernetes 
 func (d domain) Store(sc korrel8r.StoreConfig) (s korrel8r.Store, err error) {
 	cfg, err := GetConfig()
 	if err != nil {
-			return nil,err
+		return nil, err
 	}
 	c, err := NewClient(cfg)
 	if err != nil {
@@ -242,7 +242,8 @@ func NewStore(c client.Client, cfg *rest.Config) (korrel8r.Store, error) {
 func (s Store) Domain() korrel8r.Domain { return Domain }
 func (s Store) Client() client.Client   { return s.c }
 
-func (s *Store) Get(ctx context.Context, query korrel8r.Query, result korrel8r.Appender) (err error) {
+func (s *Store) Get(ctx context.Context, query korrel8r.Query, c *korrel8r.Constraint, result korrel8r.Appender) (err error) {
+	// FIXME implement constraint (resource creation time?)
 	q, err := impl.TypeAssert[*Query](query)
 	if err != nil {
 		return err

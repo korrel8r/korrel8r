@@ -190,16 +190,19 @@ func (e *Engine) Graph() *graph.Graph { return graph.NewData(e.rules...).NewGrap
 func (e *Engine) TemplateFuncs() map[string]any { return e.templateFuncs }
 
 // Get finds the store for the query.Class() and gets into result.
-func (e *Engine) Get(ctx context.Context, query korrel8r.Query, result korrel8r.Appender) error {
-	for _, store := range e.StoresFor(query.Class().Domain()) {
-		if err := store.Get(ctx, query, result); err != nil {
+func (e *Engine) Get(ctx context.Context, q korrel8r.Query, c *korrel8r.Constraint, result korrel8r.Appender) error {
+	for _, store := range e.StoresFor(q.Class().Domain()) {
+		if err := store.Get(ctx, q, c, result); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func (e *Engine) Follower(ctx context.Context) *Follower { return &Follower{Engine: e, Context: ctx} }
+// Follower creates a follower. Constraint can be nil.
+func (e *Engine) Follower(ctx context.Context, c *korrel8r.Constraint) *Follower {
+	return &Follower{Engine: e, Context: ctx, Constraint: c}
+}
 
 // FIXME Document template funs.
 //
@@ -211,6 +214,6 @@ func (e *Engine) get(query string) ([]korrel8r.Object, error) {
 		return nil, err
 	}
 	results := korrel8r.NewResult(q.Class())
-	err = e.Get(context.Background(), q, results)
+	err = e.Get(context.Background(), q, nil, results)
 	return results.List(), err
 }

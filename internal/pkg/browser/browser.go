@@ -114,8 +114,9 @@ func (b *Browser) stores(c *gin.Context) {
 		return
 	}
 	result := korrel8r.NewResult(query.Class())
+	var constraint *korrel8r.Constraint // FIXME implement constraints
 	for _, store := range stores {
-		err = multierr.Append(err, store.Get(context.Background(), query, result))
+		err = multierr.Append(err, store.Get(context.Background(), query, constraint, result))
 	}
 	c.HTML(http.StatusOK, "stores.html.tmpl", map[string]any{"query": query, "err": err, "result": result.List()})
 }

@@ -252,7 +252,8 @@ func (q Query) matches(a *v1.Alert) bool {
 	return true
 }
 
-func (s Store) Get(ctx context.Context, query korrel8r.Query, result korrel8r.Appender) error {
+func (s Store) Get(ctx context.Context, query korrel8r.Query, c *korrel8r.Constraint, result korrel8r.Appender) error {
+	// FIXME implement constraint
 	q, err := impl.TypeAssert[Query](query)
 	if err != nil {
 		return err

@@ -48,7 +48,7 @@ func testTraverse(t *testing.T, e *engine.Engine, start, goal korrel8r.Class, st
 	t.Helper()
 	paths := e.Graph().AllPaths(start, goal)
 	paths.NodeFor(start).Result.Append(starters...)
-	f := e.Follower(context.Background())
+	f := e.Follower(context.Background(), nil)
 	assert.NoError(t, paths.Traverse(func(l *graph.Line) {
 		f.Traverse(l)
 		if len(l.Queries) > 0 { // Only consider the rule used if it generated some queries

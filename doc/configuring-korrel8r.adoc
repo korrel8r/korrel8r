@@ -32,7 +32,6 @@ rules:
         - <list_of_classes_or_groups> # <5>
     result:
       query: <query_name> # <6>
-      constraint: <constraint_name> # <7>
 groups:
   - name: <group_name> # <8>
     domain: <domain_name> # <9>
@@ -51,7 +50,6 @@ include:
 <4> Specify the domain that this rule can produce.
 <5> Optional: Specify a list of classes, or groups of classes, to be selected from the domain. If this is not specified, all classes in the domain are selected.
 <6> Specify a query template that generates a `Query` object suitable for the configured store.
-<7> Optional: Specify a constraint template that generates a `Constraint` object in JSON form. This constraint is combined with any existing constraints.
 <8> Specify a short name for a group of classes. Creating a group is optional, but if you create a group you must specify a name.
 <9> Specify the domain for classes that are included in the group. All classes included in a group must be in the same domain.
 <10> Specify a list of classes to include in the group.
@@ -92,7 +90,6 @@ stores:                         # Load default stores
       },
       "result": {
         "query": "exampleQuery",
-        "constraint": "exampleConstraint"
       }
     }
   ],

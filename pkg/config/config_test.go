@@ -108,6 +108,8 @@ func TestApply_bad_stores(t *testing.T) {
 	assert.Equal(t, mock.NewStore(bar, korrel8r.StoreConfig{"domain": "bar", "a": "b"}), e.StoresFor(bar)[0])
 }
 
+// TestApply_store_templates tests that we can use templates in store declarations.
+// Used in default configurations to get route hosts as part of the default URL.
 func TestApply_store_templates(t *testing.T) {
 	foo, bar := mock.Domain("foo"), mock.Domain("bar")
 	c := Configs{

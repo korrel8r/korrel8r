@@ -14,8 +14,8 @@ import (
 // NewTemplateRule returns a korrel8r.Rule that uses Go templates to transform objects to queries.
 //
 // The funcsions in [Funcs] are available to the template.
-func NewTemplateRule(start, goal korrel8r.Class, query, constraint *template.Template) korrel8r.Rule {
-	return &templateRule{start: start, goal: goal, query: query, constraint: constraint}
+func NewTemplateRule(start, goal korrel8r.Class, query *template.Template) korrel8r.Rule {
+	return &templateRule{start: start, goal: goal, query: query}
 }
 
 type templateRule struct {
@@ -29,12 +29,11 @@ func (r *templateRule) Start() korrel8r.Class { return r.start }
 func (r *templateRule) Goal() korrel8r.Class  { return r.goal }
 
 // Apply the rule by applying the template.
-func (r *templateRule) Apply(start korrel8r.Object, c *korrel8r.Constraint) (korrel8r.Query, error) {
+func (r *templateRule) Apply(start korrel8r.Object) (korrel8r.Query, error) {
 	b := &bytes.Buffer{}
 
 	err := r.query.Funcs(map[string]any{
-		"constraint": func() *korrel8r.Constraint { return c },
-		"rule":       func() korrel8r.Rule { return r },
+		"rule": func() korrel8r.Rule { return r },
 	}).Execute(b, start)
 	if err != nil {
 		return nil, err

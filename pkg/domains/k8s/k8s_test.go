@@ -109,7 +109,7 @@ func TestStore_Get(t *testing.T) {
 	} {
 		t.Run(fmt.Sprintf("%#v", x.q), func(t *testing.T) {
 			var result korrel8r.ListResult
-			err = store.Get(context.Background(), x.q, &result)
+			err = store.Get(context.Background(), x.q, nil, &result)
 			require.NoError(t, err)
 			var got []types.NamespacedName
 			for _, v := range result {

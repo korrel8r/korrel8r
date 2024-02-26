@@ -19,6 +19,7 @@ import (
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/util/flowcontrol"
@@ -53,8 +54,7 @@ func HasCluster() error {
 		}
 		HTTPClient, clusterErr = rest.HTTPClientFor(RESTConfig)
 		ns := &corev1.Namespace{}
-		ns.Name = "default"
-		clusterErr = K8sClient.Get(ctx, client.ObjectKeyFromObject(ns), ns)
+		clusterErr = K8sClient.Get(ctx, types.NamespacedName{Name: "default"}, ns)
 	})
 	return clusterErr
 }

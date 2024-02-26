@@ -276,7 +276,8 @@ func NewPlainLokiStore(base *url.URL, c *http.Client) (korrel8r.Store, error) {
 	return &Store{c: c, base: base, queryURL: (Query).plainURL}, nil
 }
 
-func (s *Store) Get(ctx context.Context, query korrel8r.Query, result korrel8r.Appender) error {
+func (s *Store) Get(ctx context.Context, query korrel8r.Query, c *korrel8r.Constraint, result korrel8r.Appender) error {
+	// FIXME implement constraints
 	q, err := impl.TypeAssert[Query](query)
 	if err != nil {
 		return err
