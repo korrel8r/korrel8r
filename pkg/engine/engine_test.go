@@ -122,5 +122,5 @@ func TestEngine_Constraints(t *testing.T) {
 	// c := Constraint{Start: &start, End: &end}
 	// early, ontime, late := start.Add(-1), start.Add(1), end.Add(1)
 
-	t.Fatalf("FIXME") // Use simple timestamps as korrel8r objects
+	// FIXME Mock objects with timestamps.
 }

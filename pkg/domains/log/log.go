@@ -41,22 +41,21 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	"path"
 	"regexp"
-	"strings"
 
+	"github.com/korrel8r/korrel8r/internal/pkg/loki"
 	"github.com/korrel8r/korrel8r/pkg/domains/k8s"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r/impl"
 	"github.com/korrel8r/korrel8r/pkg/openshift"
-	"golang.org/x/exp/slices"
 )
 
 var (
 	// Verify implementing interfaces.
 	_ korrel8r.Domain     = Domain
 	_ openshift.Converter = Domain
-	_ korrel8r.Store      = &Store{}
+	_ korrel8r.Store      = &store{}
+	_ korrel8r.Store      = &stackStore{}
 	_ korrel8r.Query      = Query{}
 	_ korrel8r.Class      = Class("")
 	_ korrel8r.Previewer  = Class("")
@@ -136,7 +135,7 @@ func (domain) ConsoleURLToQuery(u *url.URL) (korrel8r.Query, error) {
 	q := u.Query().Get("q")
 	c := classMap[u.Query().Get("tenant")]
 	if c == nil {
-		c = getLogQLClass(q)
+		c = queryClass(q)
 	}
 	if c == nil {
 		return nil, fmt.Errorf("not a valid Loki URL: %v", u)
@@ -230,111 +229,45 @@ func (q Query) Class() korrel8r.Class { return q.class }
 func (q Query) Query() string         { return q.logQL }
 func (q Query) String() string        { return korrel8r.QueryName(q) }
 
-func (q Query) plainURL(c *korrel8r.Constraint) *url.URL {
-	v := url.Values{}
-	v.Add("query", q.logQL)
-	v.Add("direction", "forward")
-	if c != nil {
-		if c.Limit != nil {
-			v.Add("limit", fmt.Sprintf("%v", *c.Limit))
-		}
-		if c.Start != nil {
-			v.Add("start", fmt.Sprintf("%v", c.Start.UnixNano()))
-		}
-		if c.End != nil {
-			v.Add("end", fmt.Sprintf("%v", c.End.UnixNano()))
-		}
-	}
-	return &url.URL{Path: "/loki/api/v1/query_range", RawQuery: v.Encode()}
-}
-
-func (q Query) lokiStackURL(c *korrel8r.Constraint) *url.URL {
-	u := q.plainURL(c)
-	if q.class == "" {
-		q.class = Application
-	}
-	u.Path = path.Join("/api/logs/v1/", q.class.Name(), u.Path)
-	return u
-}
-
-type Store struct {
-	c        *http.Client
-	base     *url.URL
-	queryURL func(Query, *korrel8r.Constraint) *url.URL
-}
-
-func (Store) Domain() korrel8r.Domain { return Domain }
-
 // NewLokiStackStore returns a store that uses a LokiStack observatorium-style URLs.
-func NewLokiStackStore(base *url.URL, c *http.Client) (korrel8r.Store, error) {
-	return &Store{c: c, base: base, queryURL: (Query).lokiStackURL}, nil
+func NewLokiStackStore(base *url.URL, h *http.Client) (korrel8r.Store, error) {
+	return &stackStore{store: store{loki.New(h, base)}}, nil
 }
 
 // NewPlainLokiStore returns a store that uses plain Loki URLs.
-func NewPlainLokiStore(base *url.URL, c *http.Client) (korrel8r.Store, error) {
-	return &Store{c: c, base: base, queryURL: (Query).plainURL}, nil
+func NewPlainLokiStore(base *url.URL, h *http.Client) (korrel8r.Store, error) {
+	return &store{loki.New(h, base)}, nil
 }
 
-func (s *Store) Get(ctx context.Context, query korrel8r.Query, c *korrel8r.Constraint, result korrel8r.Appender) error {
-	// FIXME implement constraints
+type store struct{ *loki.Client }
+
+func (store) Domain() korrel8r.Domain { return Domain }
+func (s *store) Get(ctx context.Context, query korrel8r.Query, c *korrel8r.Constraint, result korrel8r.Appender) error {
 	q, err := impl.TypeAssert[Query](query)
 	if err != nil {
 		return err
 	}
-	u := s.base.ResolveReference(s.queryURL(q, c))
+	return s.Client.Get(q.logQL, c, func(e *loki.Entry) { result.Append(NewObject(e.Line)) })
+}
 
-	resp, err := s.c.Get(u.String())
+type stackStore struct{ store }
+
+func (s *stackStore) Get(ctx context.Context, query korrel8r.Query, c *korrel8r.Constraint, result korrel8r.Appender) error {
+	q, err := impl.TypeAssert[Query](query)
 	if err != nil {
-		return fmt.Errorf("%w: %v", err, u)
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode/100 != 2 {
-		return fmt.Errorf("%v: %v", resp.Status, u)
-	}
-	qr := queryResponse{}
-	if err = json.NewDecoder(resp.Body).Decode(&qr); err != nil {
 		return err
 	}
-	if qr.Status != "success" {
-		return fmt.Errorf("expected 'status: success' in %v", qr)
+	class := queryClass(q.logQL)
+	if c == nil {
+		class = Application
 	}
-	if qr.Data.ResultType != "streams" {
-		return fmt.Errorf("expected 'resultType: streams' in %v", qr)
-	}
-	// Interleave and sort the stream results.
-	var logs [][]string // Each log is [timestamp,logline]
-	for _, sv := range qr.Data.Result {
-		logs = append(logs, sv.Values...)
-	}
-	slices.SortStableFunc(logs, func(a, b []string) int { return strings.Compare(a[0], b[0]) })
-	for _, tl := range logs { // tl is [time, line]
-		result.Append(NewObject(tl[1]))
-	}
-	return nil
-}
-
-// queryResponse is the response to a loki query.
-type queryResponse struct {
-	Status string    `json:"status"`
-	Data   queryData `json:"data"`
-}
-
-// queryData holds the data for a query
-type queryData struct {
-	ResultType string         `json:"resultType"`
-	Result     []streamValues `json:"result"`
-}
-
-// streamValues is a set of log values ["time", "line"] for a log stream.
-type streamValues struct {
-	Stream map[string]string `json:"stream"` // Labels for the stream
-	Values [][]string        `json:"values"`
+	return s.Client.GetStack(q.logQL, class.Name(), c, func(e *loki.Entry) { result.Append(NewObject(e.Line)) })
 }
 
 var logTypeRe = regexp.MustCompile(`{[^}]*log_type(=~*)"([^"]+)"}`)
 
-// getLogQLClass get the class implied by a LogQL query, or Class("") if none.
-func getLogQLClass(logQL string) korrel8r.Class {
+// queryClass get the class name implied by a LogQL query or nil.
+func queryClass(logQL string) korrel8r.Class {
 	// Parser at github.com/grafana/loki/logql does not work with go modules.
 	// See https://github.com/grafana/loki/issues/2826][v2 go module semantic versioning
 	// Use a simple regexp approach instead.

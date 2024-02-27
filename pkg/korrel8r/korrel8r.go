@@ -118,9 +118,9 @@ const (
 
 // Constraint included in a reference to restrict the resulting objects.
 type Constraint struct {
-	Limit *uint      `json:"limit,omitempty"` // Max number of entries to return
-	Start *time.Time `json:"start,omitempty"` // Include only results timestamped after this time.
-	End   *time.Time `json:"end,omitempty"`   // Include only results timestamped before this time.
+	Limit *uint      `json:"limit,omitempty"` // Max number of entries to return.
+	Start *time.Time `json:"start,omitempty"` // Exclude results before Start.
+	End   *time.Time `json:"end,omitempty"`   // Exclude results after End.
 }
 
 // Appender gathers results from Store.Get calls.
@@ -134,7 +134,7 @@ type Appender interface{ Append(...Object) }
 // Not required for a domain implementations: implemented by [github.com/korrel8r/korrel8r/pkg/rules]
 type Rule interface {
 	// Apply the rule to a start Object, return a Query for results.
-	// Apply may return (nil, nil) if the rule does not apply to the input. FIXME
+	// Apply may return (nil, nil) if the rule does not apply to the input. FIXME explicit ErrDoesNotApply
 	Apply(start Object) (Query, error)
 	// Class of start object. If nil, this is a "wildcard" rule that can start from any class it can be applied to.
 	Start() Class

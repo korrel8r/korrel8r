@@ -554,11 +554,11 @@ link:#api-classes[APIClasses]
 |===
 | Name | Type | Go type | Required | Default | Description | Example
 
-	| end | string| `string` |  | | Include only results timestamped before this time. | 
+	| end | string| `string` |  | | Exclude results after End. | 
 
-	| limit | integer| `int64` |  | | Max number of entries to return | 
+	| limit | integer| `int64` |  | | Max number of entries to return. | 
 
-	| start | string| `string` |  | | Include only results timestamped after this time. | 
+	| start | string| `string` |  | | Exclude results before Start. | 
 
 |===
 

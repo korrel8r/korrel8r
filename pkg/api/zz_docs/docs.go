@@ -393,15 +393,15 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "end": {
-                    "description": "Include only results timestamped before this time.",
+                    "description": "Exclude results after End.",
                     "type": "string"
                 },
                 "limit": {
-                    "description": "Max number of entries to return",
+                    "description": "Max number of entries to return.",
                     "type": "integer"
                 },
                 "start": {
-                    "description": "Include only results timestamped after this time.",
+                    "description": "Exclude results before Start.",
                     "type": "string"
                 }
             }
