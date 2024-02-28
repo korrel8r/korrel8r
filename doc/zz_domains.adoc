@@ -99,7 +99,7 @@ domain: k8s
 
 = Domain `log`
 
-Domain `log` is a domain for openshift-logging logs stored in Loki or LokiStack.
+Domain `log` is a domain for openshift-logging ViaQ logs stored in Loki or LokiStack.
 
 == Class
 
@@ -113,7 +113,7 @@ log:audit
 
 == Object
 
-A log object is a log record string in the Viaq JSON format stored by openshift logging.
+A log object is a JSON map\[string]any in ViaQ format.
 
 == Query
 

@@ -54,7 +54,6 @@ func TestPlainLokiStore_Get(t *testing.T) {
 	assert.Equal(t, want, result.List())
 }
 
-// FIXME better test with kind?
 func TestLokiStackStore_Get(t *testing.T) {
 	test.SkipIfNoCluster(t)
 	c := test.K8sClient
@@ -91,7 +90,7 @@ func TestLokiStackStore_Get(t *testing.T) {
 	}, 30*time.Second, time.Second)
 	var got []string
 	for _, o := range result {
-		got = append(got, o.(Object).Properties()["message"].(string))
+		got = append(got, o.(Object)["message"].(string))
 	}
 	assert.Equal(t, lines, got)
 }

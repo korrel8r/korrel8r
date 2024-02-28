@@ -72,6 +72,26 @@ func TestPodToLogs(t *testing.T) {
 	}
 }
 
+func TestLogToPod(t *testing.T) {
+	e := setup()
+	for _, o := range []log.Object{
+		log.NewObject(`{"kubernetes":{"namespace_name":"foo","pod_name":"bar"}, "message":"hello"}`),
+		log.NewObject(`{"kubernetes":{"namespace_name":"default","pod_name":"baz"}, "message":"bye"}`),
+	} {
+		t.Run(log.Preview(o), func(t *testing.T) {
+			k := o["kubernetes"].(map[string]any)
+			namespace := k["namespace_name"].(string)
+			name := k["pod_name"].(string)
+			start := log.Application
+			if log.Preview(o) == "default" {
+				start = log.Infrastructure
+			}
+			want := k8s.NewQuery(k8s.ClassOf(&corev1.Pod{}), namespace, name, nil, nil)
+			testTraverse(t, e, start, k8s.ClassOf(&corev1.Pod{}), []korrel8r.Object{o}, want)
+		})
+	}
+}
+
 func TestSelectorToLogsRules(t *testing.T) {
 	e := setup()
 	// Verify rules selected the correct set of start classes

@@ -1,6 +1,6 @@
 // Copyright: This file is part of korrel8r, released under https://github.com/korrel8r/korrel8r/blob/main/LICENSE
 
-// Package log is a domain for openshift-logging logs stored in Loki or LokiStack.
+// Package log is a domain for openshift-logging ViaQ logs stored in Loki or LokiStack.
 //
 // # Class
 //
@@ -12,7 +12,7 @@
 //
 // # Object
 //
-// A log object is a log record string in the Viaq JSON format stored by openshift logging.
+// A log object is a JSON map[string]any in ViaQ format.
 //
 // # Query
 //
@@ -120,30 +120,7 @@ func (domain) Store(sc korrel8r.StoreConfig) (korrel8r.Store, error) {
 	}
 }
 
-func (domain) QueryToConsoleURL(query korrel8r.Query) (*url.URL, error) {
-	q, err := impl.TypeAssert[Query](query)
-	if err != nil {
-		return nil, err
-	}
-	v := url.Values{}
-	v.Add("q", q.logQL+"|json")
-	v.Add("tenant", q.Class().Name())
-	return &url.URL{Path: "/monitoring/logs", RawQuery: v.Encode()}, nil
-}
-
-func (domain) ConsoleURLToQuery(u *url.URL) (korrel8r.Query, error) {
-	q := u.Query().Get("q")
-	c := classMap[u.Query().Get("tenant")]
-	if c == nil {
-		c = queryClass(q)
-	}
-	if c == nil {
-		return nil, fmt.Errorf("not a valid Loki URL: %v", u)
-	}
-	return NewQuery(c.(Class), q), nil
-}
-
-// Class is the log_type name (aka logType in lokistack)
+// Class is the log_type name.
 type Class string
 
 func (c Class) Domain() korrel8r.Domain { return Domain }
@@ -162,42 +139,34 @@ func (c Class) Description() string {
 	}
 }
 
-func (c Class) New() korrel8r.Object { return Object{} }
-func (c Class) Preview(x korrel8r.Object) (s string) {
-	if o, ok := x.(Object); ok {
-		if m := o.Properties()["message"]; m != nil {
-			s, _ = m.(string)
-		}
-		if s == "" {
-			s = o.Line()
-		}
+func (c Class) New() korrel8r.Object { return NewObject("") }
+
+// Preview extracts the message from a Viaq log record.
+func (c Class) Preview(x korrel8r.Object) (line string) { return Preview(x) }
+
+// Preview extracts the message from a Viaq log record.
+func Preview(x korrel8r.Object) (line string) {
+	if m := x.(Object)["message"]; m != nil {
+		s, _ := m.(string)
+		return s
 	}
-	return s
+	return ""
 }
 
-// Object is a log record string, with on demand JSON parsing.
-// Exact format depends on source of logs.
-type Object struct {
-	line  string
-	props any
+// Object is a map in Viaq format.
+type Object map[string]any
+
+func NewObject(line string) Object {
+	var o Object
+	_ = json.Unmarshal([]byte(line), &o)
+	return o
 }
 
-func NewObject(s string) Object {
-	return Object{line: s}
-}
-
-// Line returns the original log line string.
-func (o Object) Line() string { return o.line }
-
-// Properties returns a the log record's property map if it has one.
-func (o Object) Properties() map[string]any {
-	if o.props == nil {
-		if err := json.Unmarshal([]byte(o.line), &o.props); err != nil {
-			o.props = err
-		}
+func (o *Object) UnmarshalJSON(line []byte) error {
+	if err := json.Unmarshal([]byte(line), (*map[string]any)(o)); err != nil {
+		*o = map[string]any{"message": line}
 	}
-	props, _ := o.props.(map[string]any)
-	return props
+	return nil
 }
 
 // Query is a LogQL query string
@@ -286,4 +255,27 @@ func queryClass(logQL string) korrel8r.Class {
 		}
 	}
 	return nil
+}
+
+func (domain) QueryToConsoleURL(query korrel8r.Query) (*url.URL, error) {
+	q, err := impl.TypeAssert[Query](query)
+	if err != nil {
+		return nil, err
+	}
+	v := url.Values{}
+	v.Add("q", q.logQL+"|json")
+	v.Add("tenant", q.Class().Name())
+	return &url.URL{Path: "/monitoring/logs", RawQuery: v.Encode()}, nil
+}
+
+func (domain) ConsoleURLToQuery(u *url.URL) (korrel8r.Query, error) {
+	q := u.Query().Get("q")
+	c := classMap[u.Query().Get("tenant")]
+	if c == nil {
+		c = queryClass(q)
+	}
+	if c == nil {
+		return nil, fmt.Errorf("not a valid Loki URL: %v", u)
+	}
+	return NewQuery(c.(Class), q), nil
 }
