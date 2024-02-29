@@ -2,4 +2,5 @@
 /hack/kind/jsonnet/vendor/
 /_site/
 /bin/
+/tmp/
 .*.made
