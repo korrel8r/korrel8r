@@ -11,7 +11,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
-// FIXME document template functions with the domain - both store and domain functions.
+// TODO document template functions with the domain - both store and domain functions.
 
 func (s *Store) TemplateFuncs() map[string]any {
 	return map[string]any{

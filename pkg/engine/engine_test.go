@@ -4,7 +4,9 @@ package engine
 
 import (
 	"context"
+	"fmt"
 	"testing"
+	"time"
 
 	"github.com/korrel8r/korrel8r/internal/pkg/test/mock"
 	"github.com/korrel8r/korrel8r/pkg/graph"
@@ -111,16 +113,71 @@ func TestFollower_Traverse(t *testing.T) {
 	})
 }
 
-func TestEngine_Constraints(t *testing.T) {
-	//	d := mock.Domain("mock")
-	// s := mock.NewStore(d, nil)
-	// e := New(d)
-	// x := d.Class("x")
+// Mock object has a name and a timestamp.
+type obj struct {
+	Name string
+	Time time.Time
+}
 
-	// start := time.Now()
-	// end := start.Add(time.Minute)
-	// c := Constraint{Start: &start, End: &end}
-	// early, ontime, late := start.Add(-1), start.Add(1), end.Add(1)
+func (o obj) String() string { return o.Name }
 
-	// FIXME Mock objects with timestamps.
+func TestEngine_PropagateConstraints(t *testing.T) {
+	d := mock.Domain("mock")
+	a, b, c := d.Class("a"), d.Class("b"), d.Class("c")
+	// Time range [start,end] and some time points.
+	start := time.Now()
+	end := start.Add(time.Minute)
+	early, ontime, late := start.Add(-1), start.Add(1), end.Add(1)
+
+	// Rules to test constraints.
+	e := New(d)
+	e.AddRules(
+		// Generate objects with timepoints.
+		mock.NewQueryRule("ab", a, mock.NewQuery(b, obj{"x", early}, obj{"y", ontime}, obj{"z", late})),
+		// Generate objects with timeponts and record name of previous object.
+		mock.NewApplyRule("bc", b, c, func(o korrel8r.Object) (korrel8r.Query, error) {
+			name := o.(obj).Name
+			return mock.NewQuery(c, obj{"u" + name, early}, obj{"v" + name, ontime}, obj{"w" + name, late}), nil
+		}))
+	// Mock store that enforces time constraints.
+	s := mock.NewStore(d, nil)
+	s.ConstraintFunc = func(c *korrel8r.Constraint, o korrel8r.Object) bool {
+		return c.CompareTime(o.(obj).Time) == 0
+	}
+	require.NoError(t, e.AddStore(s))
+
+	// Test traversals, verify constraints are applied.
+	for _, x := range []struct {
+		constraint *korrel8r.Constraint
+		want       []obj
+	}{
+		{nil, []obj{
+			{"ux", early}, {"vx", ontime}, {"wx", late},
+			{"uy", early}, {"vy", ontime}, {"wy", late},
+			{"uz", early}, {"vz", ontime}, {"wz", late},
+		}},
+		{&korrel8r.Constraint{}, []obj{
+			{"ux", early}, {"vx", ontime}, {"wx", late},
+			{"uy", early}, {"vy", ontime}, {"wy", late},
+			{"uz", early}, {"vz", ontime}, {"wz", late},
+		}},
+		{&korrel8r.Constraint{Start: &start, End: &end}, []obj{
+			{"vy", ontime},
+		}},
+		{&korrel8r.Constraint{Start: &start}, []obj{
+			{"vy", ontime}, {"wy", late},
+			{"vz", ontime}, {"wz", late},
+		}},
+		{&korrel8r.Constraint{End: &end}, []obj{
+			{"ux", early}, {"vx", ontime},
+			{"uy", early}, {"vy", ontime},
+		}},
+	} {
+		t.Run(fmt.Sprintf("%+v", x.constraint), func(t *testing.T) {
+			g, err := e.Goals([]korrel8r.Object{obj{"a", ontime}}, a, []korrel8r.Class{c}, x.constraint)
+			assert.NoError(t, err)
+			got := g.NodeFor(c).Result.List()
+			assert.ElementsMatch(t, x.want, got, "want %v got %v", x.want, got)
+		})
+	}
 }

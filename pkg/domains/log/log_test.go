@@ -39,8 +39,7 @@ func numberedLines(line string, n int) []string {
 	return lines
 }
 
-func TestPlainLokiStore_Get(t *testing.T) {
-	test.SkipIfNoCluster(t)
+func TestLokiStore_Get(t *testing.T) {
 	lines := numberedLines(t.Name(), 10)
 	want := logs(lines)
 	l := test.RequireLokiServer(t)
@@ -54,56 +53,12 @@ func TestPlainLokiStore_Get(t *testing.T) {
 	assert.Equal(t, want, result.List())
 }
 
-func TestLokiStackStore_Get(t *testing.T) {
-	test.SkipIfNoCluster(t)
-	c := test.K8sClient
-	ns := test.TempNamespace(t, c)
-	lines := numberedLines(fmt.Sprintf("%v: %v - %v", time.Now(), t.Name(), ns), 10)
-	pod := corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{Name: "logger", Namespace: ns},
-		Spec: corev1.PodSpec{
-			Containers: []corev1.Container{{
-				Name:    "logger",
-				Image:   "quay.io/quay/busybox",
-				Command: []string{"sh", "-c", fmt.Sprintf("echo %v; sleep infinity", strings.Join(lines, "; echo "))}}}},
-	}
-
-	require.NoError(t, c.Create(ctx, &pod))
-
-	// Construct in-cluster lokistack store.
-	host, err := openshift.RouteHost(ctx, c, openshift.LokiStackNSName)
-	require.NoError(t, err)
-	hc, err := rest.HTTPClientFor(test.RESTConfig)
-	require.NoError(t, err)
-	s, err := NewLokiStackStore(&url.URL{Scheme: "https", Host: host}, hc)
-	require.NoError(t, err)
-
-	logQL := fmt.Sprintf(`{kubernetes_pod_name="%v", kubernetes_namespace_name="%v"}`, pod.Name, pod.Namespace)
-	q := Query{logQL: logQL, class: "application"}
-	var result korrel8r.ListResult
-	assert.Eventually(t, func() bool {
-		result = nil
-		err = s.Get(ctx, q, nil, &result)
-		require.NoError(t, err)
-		t.Logf("waiting for %v logs, got %v. %v%v", len(lines), len(result), s, q)
-		return len(result) >= len(lines)
-	}, 30*time.Second, time.Second)
-	var got []string
-	for _, o := range result {
-		got = append(got, o.(Object)["message"].(string))
-	}
-	assert.Equal(t, lines, got)
-}
-
-func TestStoreGet_Constraint(t *testing.T) {
-	test.SkipIfNoCluster(t)
-
+func TestLokiStoreGet_Constraint(t *testing.T) {
 	l := test.RequireLokiServer(t)
 
 	before, during, after := []string{"too", "early"}, []string{"on", "time"}, []string{"too", "late"}
 	labels := map[string]string{"test": "log"}
 
-	// FIXME need a faster test?
 	require.NoError(t, l.Push(labels, before...))
 	time.Sleep(time.Second / 10)
 	t1 := time.Now()
@@ -139,4 +94,51 @@ func TestStoreGet_Constraint(t *testing.T) {
 			assert.Equal(t, logs(x.want), result.List())
 		})
 	}
+}
+
+func TestLokiStackStore_Get(t *testing.T) {
+	test.SkipIfNoCluster(t) // Need a cluster for loki stack, don't have a podman version.
+	c := test.K8sClient
+	ns := test.TempNamespace(t, c)
+	lines := numberedLines(fmt.Sprintf("%v: %v - %v", time.Now(), t.Name(), ns), 10)
+	falsev := false
+	pod := corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{Name: "logger", Namespace: ns},
+		Spec: corev1.PodSpec{
+			Containers: []corev1.Container{{
+				Name:    "logger",
+				Image:   "quay.io/quay/busybox",
+				Command: []string{"sh", "-c", fmt.Sprintf("echo %v; sleep infinity", strings.Join(lines, "; echo "))},
+				SecurityContext: &corev1.SecurityContext{
+					AllowPrivilegeEscalation: &falsev,
+					Capabilities:             &corev1.Capabilities{Drop: []corev1.Capability{"ALL"}},
+					SeccompProfile:           &corev1.SeccompProfile{Type: corev1.SeccompProfileTypeRuntimeDefault},
+				}}}},
+	}
+
+	require.NoError(t, c.Create(ctx, &pod))
+
+	// Construct in-cluster lokistack store.
+	host, err := openshift.RouteHost(ctx, c, openshift.LokiStackNSName)
+	require.NoError(t, err)
+	hc, err := rest.HTTPClientFor(test.RESTConfig)
+	require.NoError(t, err)
+	s, err := NewLokiStackStore(&url.URL{Scheme: "https", Host: host}, hc)
+	require.NoError(t, err)
+
+	logQL := fmt.Sprintf(`{kubernetes_pod_name="%v", kubernetes_namespace_name="%v"}`, pod.Name, pod.Namespace)
+	q := Query{logQL: logQL, class: "application"}
+	var result korrel8r.ListResult
+	assert.Eventually(t, func() bool {
+		result = nil
+		err = s.Get(ctx, q, nil, &result)
+		require.NoError(t, err)
+		t.Logf("waiting for %v logs, got %v. %v%v", len(lines), len(result), s, q)
+		return len(result) >= len(lines)
+	}, 30*time.Second, time.Second)
+	var got []string
+	for _, o := range result {
+		got = append(got, o.(Object)["message"].(string))
+	}
+	assert.Equal(t, lines, got)
 }

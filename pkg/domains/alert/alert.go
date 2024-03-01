@@ -253,7 +253,6 @@ func (q Query) matches(a *v1.Alert) bool {
 }
 
 func (s Store) Get(ctx context.Context, query korrel8r.Query, c *korrel8r.Constraint, result korrel8r.Appender) error {
-	// FIXME implement constraint
 	q, err := impl.TypeAssert[Query](query)
 	if err != nil {
 		return err
@@ -349,7 +348,10 @@ func (s Store) Get(ctx context.Context, query korrel8r.Query, c *korrel8r.Constr
 	}
 
 	for _, a := range alerts {
-		result.Append(a)
+		// Only include alerts that overlap with the constraint interval.
+		if c.CompareTime(a.StartsAt) <= 0 && c.CompareTime(a.EndsAt) >= 0 {
+			result.Append(a)
+		}
 	}
 
 	return nil

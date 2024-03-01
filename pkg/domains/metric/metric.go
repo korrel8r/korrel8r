@@ -146,12 +146,18 @@ func NewStore(baseURL string, hc *http.Client) (korrel8r.Store, error) {
 func (s *Store) Domain() korrel8r.Domain { return Domain }
 
 func (s *Store) Get(ctx context.Context, query korrel8r.Query, c *korrel8r.Constraint, result korrel8r.Appender) error {
-	// FIXME implement constraint
 	q, err := impl.TypeAssert[Query](query)
 	if err != nil {
 		return err
 	}
-	value, _, err := s.api.Query(ctx, q.PromQL, time.Now())
+	var t time.Time
+	// Evaluate time series at end of the constraint time range or now if there is no end.
+	if c != nil && c.End != nil {
+		t = *c.End
+	} else {
+		t = time.Now()
+	}
+	value, _, err := s.api.Query(ctx, q.PromQL, t)
 	if err != nil {
 		return err
 	}

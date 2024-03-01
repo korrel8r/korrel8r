@@ -25,10 +25,10 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	docs "github.com/korrel8r/korrel8r/pkg/rest/zz_docs"
 	"github.com/korrel8r/korrel8r/pkg/engine"
 	"github.com/korrel8r/korrel8r/pkg/graph"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
+	docs "github.com/korrel8r/korrel8r/pkg/rest/zz_docs"
 	"github.com/korrel8r/korrel8r/pkg/unique"
 	swaggoFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
@@ -156,7 +156,6 @@ func (a *API) GraphsNeighbours(c *gin.Context) {
 	if !a.setupStart(c, g, start, objects, queries, constraint) {
 		return
 	}
-	// FIXME add constraint
 	follower := a.Engine.Follower(c.Request.Context(), constraint)
 	g = g.Neighbours(start, depth, follower.Traverse)
 	c.JSON(http.StatusOK, Graph{Nodes: nodes(g), Edges: edges(g, &opts)})
@@ -245,11 +244,12 @@ func (a *API) setupStart(c *gin.Context, g *graph.Graph, start korrel8r.Class, o
 	result := n.Result
 	result.Append(objects...)
 	for _, query := range queries {
-		cr := korrel8r.NewCountResult(result)
+		count := 0
+		counter := korrel8r.FuncAppender(func(o korrel8r.Object) { result.Append(o); count++ })
 		// TODO should we tolerate get failures and report in the response?
-		if check(c, http.StatusBadRequest, a.Engine.Get(c.Request.Context(), query, constraint, cr),
+		if check(c, http.StatusBadRequest, a.Engine.Get(c.Request.Context(), query, constraint, counter),
 			"query failed: %q", query.String()) {
-			n.Queries[query.String()] = cr.Count
+			n.Queries[query.String()] = count
 		}
 	}
 	return c.Errors == nil

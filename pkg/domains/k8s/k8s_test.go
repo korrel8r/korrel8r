@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/url"
 	"testing"
+	"time"
 
 	"github.com/korrel8r/korrel8r/internal/pkg/must"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
@@ -117,6 +118,45 @@ func TestStore_Get(t *testing.T) {
 				got = append(got, types.NamespacedName{Namespace: o.Namespace, Name: o.Name})
 			}
 			assert.ElementsMatch(t, x.want, got)
+		})
+	}
+	// Need to validate labels and all get variations on fake client or env test...
+}
+
+func TestStore_Get_Constraint(t *testing.T) {
+	// Time range [start,end] and some time points.
+	start := time.Now()
+	end := start.Add(time.Minute)
+	testPod := func(name string, t time.Time) *corev1.Pod {
+		return &corev1.Pod{
+			ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: "test", CreationTimestamp: metav1.Time{Time: t}},
+		}
+	}
+	early, ontime, late := testPod("early", start.Add(-time.Second)), testPod("ontime", start.Add(time.Second)), testPod("late", end.Add(time.Second))
+	c := fake.NewClientBuilder().
+		WithRESTMapper(testrestmapper.TestOnlyStaticRESTMapper(scheme.Scheme)).
+		WithObjects(early, ontime, late).Build()
+	store, err := NewStore(c, &rest.Config{})
+	require.NoError(t, err)
+
+	for _, x := range []struct {
+		constraint *korrel8r.Constraint
+		want       []string
+	}{
+		{&korrel8r.Constraint{Start: &start, End: &end}, []string{"early", "ontime"}},
+		{&korrel8r.Constraint{Start: &start}, []string{"early", "ontime", "late"}},
+		{&korrel8r.Constraint{End: &end}, []string{"early", "ontime"}},
+		{nil, []string{"early", "ontime", "late"}},
+	} {
+		t.Run(fmt.Sprintf("%+v", x.constraint), func(t *testing.T) {
+			var result korrel8r.ListResult
+			err = store.Get(context.Background(), NewQuery(ClassOf(&corev1.Pod{}), "test", "", nil, nil), x.constraint, &result)
+			require.NoError(t, err)
+			var got []string
+			for _, v := range result {
+				got = append(got, v.(Object).(*corev1.Pod).GetName())
+			}
+			assert.ElementsMatch(t, x.want, got, "%v != %v", x.want, got)
 		})
 	}
 	// Need to validate labels and all get variations on fake client or env test...

@@ -243,15 +243,20 @@ func (s Store) Domain() korrel8r.Domain { return Domain }
 func (s Store) Client() client.Client   { return s.c }
 
 func (s *Store) Get(ctx context.Context, query korrel8r.Query, c *korrel8r.Constraint, result korrel8r.Appender) (err error) {
-	// FIXME implement constraint (resource creation time?)
 	q, err := impl.TypeAssert[*Query](query)
 	if err != nil {
 		return err
 	}
+	appender := korrel8r.FuncAppender(func(o korrel8r.Object) {
+		// Include only objects created before or during the constraint interval.
+		if c.CompareTime(o.(Object).GetCreationTimestamp().Time) <= 0 {
+			result.Append(o)
+		}
+	})
 	if q.Name != "" { // Request for single object.
-		return s.getObject(ctx, q, result)
+		return s.getObject(ctx, q, appender)
 	} else {
-		return s.getList(ctx, q, result)
+		return s.getList(ctx, q, appender)
 	}
 }
 

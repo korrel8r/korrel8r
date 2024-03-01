@@ -53,3 +53,12 @@ func (c *CountResult) Append(objects ...Object) {
 	c.Count += len(objects)
 	c.Result.Append(objects...)
 }
+
+// FuncAppender turns makes a function conform to the Appender interface.
+type FuncAppender func(Object)
+
+func (f FuncAppender) Append(objects ...Object) {
+	for _, o := range objects {
+		(func(Object))(f)(o)
+	}
+}

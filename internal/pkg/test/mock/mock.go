@@ -145,7 +145,7 @@ type Store struct {
 	domain korrel8r.Domain
 	// Optional StoreConfig
 	StoreConfig korrel8r.StoreConfig
-	// Optional constraint testing function
+	// Optional constraint testing function: return true if object is accepted.
 	ConstraintFunc func(*korrel8r.Constraint, korrel8r.Object) bool
 }
 
@@ -155,10 +155,10 @@ func NewStore(d korrel8r.Domain, sc korrel8r.StoreConfig) Store {
 
 func (s Store) Domain() korrel8r.Domain { return s.domain }
 
-func (s Store) Get(ctx context.Context, q korrel8r.Query, c *korrel8r.Constraint, r korrel8r.Appender) error {
-	results := q.(Query).Results
-	if c != nil && s.ConstraintFunc != nil {
-		slices.DeleteFunc(results, func(o korrel8r.Object) bool { return s.ConstraintFunc(c, o) })
+func (s Store) Get(ctx context.Context, q korrel8r.Query, constraint *korrel8r.Constraint, r korrel8r.Appender) error {
+	results := slices.Clone(q.(Query).Results)
+	if constraint != nil && s.ConstraintFunc != nil {
+		results = slices.DeleteFunc(results, func(o korrel8r.Object) bool { return !s.ConstraintFunc(constraint, o) })
 	}
 	r.Append(results...)
 	return nil

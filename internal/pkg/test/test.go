@@ -16,6 +16,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/korrel8r/korrel8r/internal/pkg/logging"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -25,6 +26,7 @@ import (
 	"k8s.io/client-go/util/flowcontrol"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 var (
@@ -41,6 +43,7 @@ var (
 func HasCluster() error {
 	// Contact the cluster once per test run, after that assume nothing changes.
 	hasClusterOnce.Do(func() {
+		log.SetLogger(logging.Log())
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 		RESTConfig, clusterErr = config.GetConfig()

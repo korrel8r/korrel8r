@@ -6,8 +6,6 @@ import (
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 )
 
-// FIXME doc for domain-specific functions
-
 // Funcs available for use in rule templates.
 //
 // As well as the functions listed below, rule templates can use the [slim-sprig] functions.
@@ -24,8 +22,6 @@ import (
 //
 // [Sprig]: https://go-task.github.io/slim-sprig/
 var Funcs map[string]any
-
-// FIXME functions moved to engine. need better doc.
 
 func init() {
 	Funcs = map[string]any{

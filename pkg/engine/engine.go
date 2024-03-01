@@ -36,7 +36,7 @@ func New(domains ...korrel8r.Domain) *Engine {
 		stores:       map[string][]korrel8r.Store{},
 		storeConfigs: map[string][]korrel8r.StoreConfig{},
 	}
-	// FIXME document template funcs
+	// TODO document template funcs
 	e.templateFuncs = template.FuncMap{
 		"get":       e.get,
 		"className": korrel8r.ClassName,
@@ -190,9 +190,9 @@ func (e *Engine) Graph() *graph.Graph { return graph.NewData(e.rules...).NewGrap
 func (e *Engine) TemplateFuncs() map[string]any { return e.templateFuncs }
 
 // Get finds the store for the query.Class() and gets into result.
-func (e *Engine) Get(ctx context.Context, q korrel8r.Query, c *korrel8r.Constraint, result korrel8r.Appender) error {
+func (e *Engine) Get(ctx context.Context, q korrel8r.Query, constraint *korrel8r.Constraint, result korrel8r.Appender) error {
 	for _, store := range e.StoresFor(q.Class().Domain()) {
-		if err := store.Get(ctx, q, c, result); err != nil {
+		if err := store.Get(ctx, q, constraint, result); err != nil {
 			return err
 		}
 	}
@@ -204,10 +204,20 @@ func (e *Engine) Follower(ctx context.Context, c *korrel8r.Constraint) *Follower
 	return &Follower{Engine: e, Context: ctx, Constraint: c}
 }
 
-// FIXME Document template funs.
+// Goals does a goal directed search and returns the graph.
+func (e *Engine) Goals(starters []korrel8r.Object, start korrel8r.Class, goals []korrel8r.Class, constraint *korrel8r.Constraint) (*graph.Graph, error) {
+	g := e.Graph().AllPaths(start, goals...)
+	g.NodeFor(start).Result.Append(starters...)
+	f := e.Follower(context.Background(), constraint)
+	if err := g.Traverse(f.Traverse); err != nil {
+		return g, err
+	}
+	return g, f.Err
+}
+
+// get DOMAIN:CLASS:QUERY
 //
-//	get DOMAIN:CLASS:QUERY
-//	  Executes QUERY and returns a list of result objects. Type of results depends DOMAIN and CLASS.
+//	Executes QUERY and returns a list of result objects. Type of results depends DOMAIN and CLASS.
 func (e *Engine) get(query string) ([]korrel8r.Object, error) {
 	q, err := e.Query(query)
 	if err != nil {
