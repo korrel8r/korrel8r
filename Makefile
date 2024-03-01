@@ -30,7 +30,7 @@ $(VERSION_TXT):
 	echo $(VERSION) > $@
 
 # List of generated files
-GENERATED=$(VERSION_TXT) pkg/config/zz_generated.deepcopy.go pkg/api/zz_docs doc/zz_domains.adoc doc/zz_rest_api.adoc .copyright
+GENERATED=$(VERSION_TXT) pkg/config/zz_generated.deepcopy.go pkg/rest/zz_docs doc/zz_domains.adoc doc/zz_rest_api.adoc .copyright
 
 generate: $(GENERATED) go.mod ## Generate code and doc.
 
@@ -47,10 +47,10 @@ go.mod: $(GO_SRC)
 pkg/config/zz_generated.deepcopy.go:  $(filter-out pkg/config/zz_generated.deepcopy.go,$(wildcard pkg/config/*.go)) bin/controller-gen
 	bin/controller-gen object paths=./pkg/config/...
 
-pkg/api/zz_docs: $(wildcard pkg/api/*.go pkg/korrel8r/*.go) bin/swag
+pkg/rest/zz_docs: $(wildcard pkg/rest/*.go pkg/korrel8r/*.go) bin/swag
 	@mkdir -p $(dir $@)
-	bin/swag init -q -g pkg/api/api.go -o $@
-	bin/swag fmt pkg/api
+	bin/swag init -q -g pkg/rest/api.go -o $@
+	bin/swag fmt pkg/rest
 	@touch $@
 
 lint: $(VERSION_TXT) bin/golangci-lint ## Run the linter to find and fix code style problems.
@@ -117,7 +117,7 @@ doc/zz_domains.adoc: $(shell find cmd/korrel8r-doc internal pkg -name '*.go')
 	go run ./cmd/korrel8r-doc pkg/domains/* > $@
 
 # Note doc/templates/markdown overrides the swagger markdown templates to generate asciidoc
-doc/zz_rest_api.adoc: pkg/api/zz_docs doc/templates/markdown/docs.gotmpl bin/swagger
+doc/zz_rest_api.adoc: pkg/rest/zz_docs doc/templates/markdown/docs.gotmpl bin/swagger
 	bin/swagger -q generate markdown -T doc/templates -f $</swagger.json --output $@
 
 release: release-commit release-push ## Create and push a new release tag and image. Set VERSION=vX.Y.Z.

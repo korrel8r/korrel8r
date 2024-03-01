@@ -25,7 +25,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	docs "github.com/korrel8r/korrel8r/pkg/api/zz_docs"
+	docs "github.com/korrel8r/korrel8r/pkg/rest/zz_docs"
 	"github.com/korrel8r/korrel8r/pkg/engine"
 	"github.com/korrel8r/korrel8r/pkg/graph"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"

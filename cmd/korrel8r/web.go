@@ -11,7 +11,7 @@ import (
 	"github.com/korrel8r/korrel8r/internal/pkg/browser"
 	"github.com/korrel8r/korrel8r/internal/pkg/logging"
 	"github.com/korrel8r/korrel8r/internal/pkg/must"
-	"github.com/korrel8r/korrel8r/pkg/api"
+	"github.com/korrel8r/korrel8r/pkg/rest"
 	"github.com/spf13/cobra"
 )
 
