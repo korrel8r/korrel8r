@@ -1,6 +1,16 @@
-# Set up Openshift for Korrel8r demos
+# Set up OpenShift for Korrel8r demos
 
-These instructions will help you set up a small cluster with observable signals for _test or demonstration_ purposes.
+<!--toc:start-->
+- [Set up OpenShift for Korrel8r demos](#set-up-openshift-for-korrel8r-demos)
+  - [Create your cluster](#create-your-cluster)
+  - [Installing Operators and Logging resources](#installing-operators-and-logging-resources)
+    - [View logs](#view-logs)
+  - [Metrics, Alerts](#metrics-alerts)
+  - [Events](#events)
+  - [Uninstalling](#uninstalling)
+<!--toc:end-->
+
+These instructions will help you set up a small cluster with observable signals for test or demonstration purposes.
 This is not intended for production clusters.
 
 ## Create your cluster
@@ -9,14 +19,7 @@ To get a personal test-cluster on your own machine,
 [install OpenShift Local](https://developers.redhat.com/products/openshift-local/overview)
 (formerly known as Code Ready Containers or CRC)
 
-**NOTE**: These instructions will also work for other types of OpenShift cluster, provided you
-edit `manifests/lokistack.yaml` and set `storageClassName` to a storage class available on your cluster.
-To see available storage classes:
-
-``` shell
-oc get storageclass
-```
-
+**NOTE**: These instructions will also work for other types of OpenShift clusters.
 ## Installing Operators and Logging resources
 
 **Note**: You can also install the operators manually from OperatorHub:
@@ -52,4 +55,8 @@ Built in to k8s.
 - OpenShift console: Home > Events
 - Command line: `oc get events`
 
+## Uninstalling
 
+```bash
+make undeploy
+```
