@@ -14,6 +14,8 @@ OVERLAY?=config/overlays/dev
 ## IMGTOOL: May be podman or docker.
 IMGTOOL?=$(shell which podman || which docker)
 
+include .bingo/Variables.mk	# Versioned tools
+
 check: generate lint test ## Lint and test code.
 
 all: check install _site image-build ## Build and test everything locally. Recommended before pushing.
@@ -44,17 +46,17 @@ go.mod: $(GO_SRC)
 	go mod tidy		# Keep modules up to date.
 	@touch $@
 
-pkg/config/zz_generated.deepcopy.go:  $(filter-out pkg/config/zz_generated.deepcopy.go,$(wildcard pkg/config/*.go)) bin/controller-gen
-	bin/controller-gen object paths=./pkg/config/...
+pkg/config/zz_generated.deepcopy.go:  $(filter-out pkg/config/zz_generated.deepcopy.go,$(wildcard pkg/config/*.go)) $(CONTROLLER_GEN)
+	$(CONTROLLER_GEN) object paths=./pkg/config/...
 
-pkg/rest/zz_docs: $(wildcard pkg/rest/*.go pkg/korrel8r/*.go) bin/swag
+pkg/rest/zz_docs: $(wildcard pkg/rest/*.go pkg/korrel8r/*.go) $(SWAG)
 	@mkdir -p $(dir $@)
-	bin/swag init -q -g pkg/rest/api.go -o $@
-	bin/swag fmt pkg/rest
+	$(SWAG) init -q -g pkg/rest/api.go -o $@
+	$(SWAG) fmt pkg/rest
 	@touch $@
 
-lint: $(VERSION_TXT) bin/golangci-lint ## Run the linter to find and fix code style problems.
-	bin/golangci-lint run --fix
+lint: $(VERSION_TXT) $(GOLANGCI_LINT) ## Run the linter to find and fix code style problems.
+	$(GOLANGCI_LINT) run --fix
 
 install: $(VERSION_TXT) ## Build and install the korrel8r binary in $GOBIN.
 	go install -tags netgo ./cmd/korrel8r
@@ -117,8 +119,8 @@ doc/zz_domains.adoc: $(shell find cmd/korrel8r-doc internal pkg -name '*.go')
 	go run ./cmd/korrel8r-doc pkg/domains/* > $@
 
 # Note doc/templates/markdown overrides the swagger markdown templates to generate asciidoc
-doc/zz_rest_api.adoc: pkg/rest/zz_docs doc/templates/markdown/docs.gotmpl bin/swagger
-	bin/swagger -q generate markdown -T doc/templates -f $</swagger.json --output $@
+doc/zz_rest_api.adoc: pkg/rest/zz_docs doc/templates/markdown/docs.gotmpl $(SWAGGER)
+	$(SWAGGER) -q generate markdown -T doc/templates -f $</swagger.json --output $@
 
 release: release-commit release-push ## Create and push a new release tag and image. Set VERSION=vX.Y.Z.
 
@@ -136,20 +138,5 @@ release-push: release-check image
 	git push origin main --follow-tags
 	$(IMGTOOL) push -q "$(IMAGE)" "$(IMG):latest"
 
-
-define TOOL_PKGS
-github.com/go-swagger/go-swagger/cmd/swagger
-github.com/swaggo/swag/cmd/swag
-github.com/golangci/golangci-lint/cmd/golangci-lint
-sigs.k8s.io/kind
-sigs.k8s.io/controller-tools/cmd/controller-gen
-endef
-
-tools: $(patsubst %,bin/%,$(notdir $(TOOL_PKGS))) ## Download all tools needed for development
-
-define TOOL_TARGET
-bin/$(notdir $(1)):
-	mkdir -p bin && GOBIN=$(abspath bin) go install $(1)@latest
-endef
-
-$(foreach pkg,$(TOOL_PKGS),$(eval $(call TOOL_TARGET,$(pkg))))
+tools: $(BINGO) ## Download all tools needed for development
+	$(BINGO) get
