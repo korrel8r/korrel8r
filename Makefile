@@ -32,7 +32,8 @@ $(VERSION_TXT):
 	echo $(VERSION) > $@
 
 # List of generated files
-GENERATED=$(VERSION_TXT) pkg/config/zz_generated.deepcopy.go pkg/rest/zz_docs doc/zz_domains.adoc doc/zz_rest_api.adoc .copyright
+GENERATED_DOC=doc/zz_domains.adoc doc/zz_rest_api.adoc doc/zz_config.adoc
+GENERATED=$(VERSION_TXT) pkg/config/zz_generated.deepcopy.go pkg/rest/zz_docs $(GENERATED_DOC) .copyright
 
 generate: $(GENERATED) go.mod ## Generate code and doc.
 
@@ -107,7 +108,7 @@ undeploy: $(OVERLAY)
 ADOC_RUN=$(IMGTOOL) run -iq -v./doc:/src:z -v./_site:/dst:z quay.io/rhdevdocs/devspaces-documentation
 ADOC_ARGS=-a revnumber=$(VERSION) -a stylesheet=fedora.css -D/dst /src/index.adoc
 
-_site: $(wildcard doc/*.adoc doc/images/*) doc/zz_domains.adoc doc/zz_rest_api.adoc ## Generate the website HTML.
+_site: $(wildcard doc/*.adoc doc/images/*) $(GENERATED_DOC) ## Generate the website HTML.
 	@mkdir -p $@
 	cp -r doc/images $@
 	$(ADOC_RUN) asciidoctor $(ADOC_ARGS)
@@ -118,9 +119,11 @@ _site: $(wildcard doc/*.adoc doc/images/*) doc/zz_domains.adoc doc/zz_rest_api.a
 doc/zz_domains.adoc: $(shell find cmd/korrel8r-doc internal pkg -name '*.go')
 	go run ./cmd/korrel8r-doc pkg/domains/* > $@
 
-# Note doc/templates/markdown overrides the swagger markdown templates to generate asciidoc
-doc/zz_rest_api.adoc: pkg/rest/zz_docs doc/templates/markdown/docs.gotmpl $(SWAGGER)
-	$(SWAGGER) -q generate markdown -T doc/templates -f $</swagger.json --output $@
+doc/zz_rest_api.adoc: pkg/rest/zz_docs $(shell find etc/swagger) $(SWAGGER)
+	$(SWAGGER) -q generate markdown -T etc/swagger -f $</swagger.json --output $@
+
+doc/zz_config.adoc: $(shell find pkg/config -name '*.go') $(shell find hack/crd-ref-docs) $(CRD_REF_DOCS)
+	 $(CRD_REF_DOCS) --source-path pkg/config --config etc/crd-ref-docs/config.yaml --templates-dir etc/crd-ref-docs/templates/asciidoctor --output-path $@
 
 release: release-commit release-push ## Create and push a new release tag and image. Set VERSION=vX.Y.Z.
 

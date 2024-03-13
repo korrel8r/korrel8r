@@ -4,6 +4,9 @@ package config
 
 import "github.com/korrel8r/korrel8r/pkg/korrel8r"
 
+// NOTE: Fake annotations to make this look like a k8s CRD, so we can use crd-ref-docs to generate documentation.
+// +groupName=korrel8r.openshift.io
+
 // Config defines the configuration for an instance of korrel8r.
 // Configuration files may be JSON or YAML.
 type Config struct {

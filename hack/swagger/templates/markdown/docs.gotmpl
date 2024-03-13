@@ -1,0 +1,567 @@
+{{- /*
+This template generates Asciidoc, not markdown. Based on the markdown template at:
+https://github.com/go-swagger/go-swagger/blob/master/generator/templates/markdown/docs.gotmpl
+*/ -}}
+
+{{- define "externalDoc" }}{{/* renders external documentation */}}
+  {{- with .ExternalDocs }}
+    {{- if .URL }}
+      {{- if .Description }}
+	> {{ .URL }}[{{ trimSpace .Description }}]
+      {{- else }}
+	> {{ .URL }}[Read more]
+      {{- end }}
+    {{- else }}
+> {{ trimSpace .Description }}
+    {{- end }}
+  {{- end }}
+{{- end }}
+
+{{- define "docParam" }}{{/* renders a parameter with simple schema */}}
+
+| {{ .Name }}
+| `{{ .Location }}`
+| {{ paramDocType . }}
+| `{{ .GoType }}`
+| {{ if .CollectionFormat }}`{{ docCollectionFormat .CollectionFormat .Child }}`{{ end }}
+| {{ if .Required }}required{{else}}optional{{ end }}
+| {{ if .Default }}`{{ json .Default }}`{{ end }}
+| {{ trimSpace .Description }}
+
+{{- end }}
+
+{{- define "docModelSchema" }}{{/* renders a schema */}}
+  {{- if .IsArray }}
+    {{- if .IsAliased }}
+link:#{{ dasherize (dropPackage .GoType) -}}[{{- dropPackage .GoType }}]
+    {{- else if .Items }}
+      {{- if and .Items.IsPrimitive (not .Items.IsAliased) -}}
+	{{- schemaDocType . -}}
+      {{- else -}}
+	[]link:#{{ dasherize (dropPackage .Items.GoType) -}}[{{- dropPackage .Items.GoType }}]
+      {{- end -}}
+    {{- else -}}
+[]any{{ printf " " -}}
+    {{- end -}}
+  {{- else if and .IsMap (not .IsAdditionalProperties) -}}
+    {{- if .IsAliased -}}
+link:#{{ dasherize (dropPackage .GoType) -}}[{{- dropPackage .GoType }}]
+    {{- else if .ElemType }}
+      {{- if and .ElemType.IsPrimitive (not .ElemType.IsAliased) (not .ElemType.IsInterface) -}}
+	{{ schemaDocMapType . -}}
+      {{- else if .ElemType.IsInterface -}}
+	map of any{{ printf " " -}}
+      {{- else -}}
+	map of link:#{{ dasherize (dropPackage .ElemType.GoType) -}}[{{- dropPackage .ElemType.GoType }}]
+      {{- end -}}
+    {{- else -}}
+map of any{{ printf " " -}}
+    {{- end -}}
+  {{- else if and .IsAliased .IsPrimitive (not .IsSuperAlias) -}}
+
+[%autowidth]
+|===
+| Name | Type | Go type | Default | Description | Example
+
+| {{ .Name }} | {{ schemaDocType . }}| {{ .AliasedType }} | {{ if .Default }}`{{ json .Default }}`{{ end }}| {{ trimSpace .Description }} | {{ if .Example }}`{{ .Example }}`{{ end }}
+
+|===
+  {{- else if or (and .IsAliased (not (.IsAdditionalProperties))) (and .IsComplexObject (not .Properties) (not .AllOf)) -}}
+
+
+link:#{{ dasherize (dropPackage .GoType) -}})[{{- dropPackage .GoType }}]
+  {{- else if and .IsInterface (not .IsAliased) (not .IsMap) -}}
+any
+  {{- else -}}
+    {{- range .AllOf }}
+      {{- if .IsAnonymous }}
+	* inlined member (*{{ .Name }}*)
+
+	{{ template "docModelSchema" . }}
+      {{- else if or .IsComplexObject .IsPrimitive }}
+	* composed type link:#{{ dasherize (dropPackage .GoType) -}}[{{- dropPackage .GoType }}]
+      {{- else }}
+	* {{ template "docModelSchema" . }}
+      {{- end }}
+    {{- end }}
+    {{- if .Properties }}
+
+**{{ if .IsTuple }}Tuple members{{ else }}Properties{{ end }}**
+
+[%autowidth]
+|===
+| Name | Type | Go type | Required | Default | Description | Example
+
+      {{- range .Properties }}
+
+	| {{ .Name }} | {{ template "docSchemaSimple" . }}| `{{ .GoType }}` | {{ if .Required }}✓{{ end }} | {{ if .Default }}`{{ json .Default }}`{{ end }}| {{ trimSpace .Description }} | {{ if .Example }}`{{ .Example }}`{{ end }}
+      {{- end }}
+
+|===
+    {{- end }}
+    {{- if .HasAdditionalProperties }}
+
+**Additional Properties**
+      {{- with .AdditionalProperties }}
+        {{- if .IsInterface }}
+
+	  any
+        {{- else if .IsPrimitive }}
+
+	  [%autowidth]
+	  |===
+	  | Type | Go type | Default | Description | Example
+
+	  | {{ template "docSchemaSimple" . }} | `{{ .GoType }}` |{{ if .Default }}`{{ json .Default }}`{{ end }}| {{ trimSpace .Description }} | {{ if .Example }}`{{ .Example }}`{{ end }}
+
+	  |===
+        {{- else }}
+
+	  {{ template "docModelSchema" . }}
+        {{- end }}
+      {{- end }}
+    {{- end }}
+    {{- if and .IsTuple .HasAdditionalItems }}
+      {{- with .AdditionalItems }}
+
+	**Additional Items**
+        {{- if .IsInterface }}
+
+	  any
+        {{- else if .IsPrimitive }}
+
+	  [%autowidth]
+	  |===
+	  | Type | Go type | Default | Description | Example
+
+	  | {{ template "docSchemaSimple" . }} | `{{ .GoType }}` |{{ if .Default }}`{{ json .Default }}`{{ end }}| {{ trimSpace .Description }} | {{ if .Example }}`{{ .Example }}`{{ end }}
+
+	  |===
+        {{- else }}
+
+	  {{ template "docModelSchema" . }}
+        {{- end }}
+      {{- end }}
+    {{- end }}
+  {{- end -}}
+{{- end }}
+
+{{- define "docModel" }}{{/* renders a definition */}}
+  {{- with .Description }}
+> {{ .}}
+  {{- end }}
+  {{- if .ExternalDocs }}
+{{ template "externalDoc" . }}
+  {{- end }}
+  {{ if or .Description .ExternalDocs }}
+{{ printf "\n" }}
+  {{- end }}
+
+{{ template "docModelSchema" .}}
+{{- end }}
+
+{{- define "docSchemaSimple" }}{{/* renders a simple property */}}
+  {{- if .IsAliased -}}
+link:#{{ dasherize (dropPackage .GoType) -}}[{{- dropPackage .GoType }}]
+  {{- else if .IsArray }}
+    {{- if .Items }}
+      {{- if and .Items.IsPrimitive (not .Items.IsAliased) -}}
+	{{- schemaDocType . -}}
+      {{- else -}}
+	[]link:#{{ dasherize (dropPackage .Items.GoType) -}}[{{- dropPackage .Items.GoType }}]
+      {{- end -}}
+    {{- else -}}
+[]any{{ printf " " -}}
+    {{- end -}}
+  {{- else if .IsMap -}}
+    {{- if .ElemType }}
+      {{- if and .ElemType.IsPrimitive (not .ElemType.IsAliased) (not .ElemType.IsInterface) -}}
+	{{ schemaDocMapType . -}}
+      {{- else if .ElemType.IsInterface -}}
+	map of any{{ printf " " -}}
+      {{- else -}}
+	map of link:#{{ dasherize (dropPackage .ElemType.GoType) -}}[{{- dropPackage .ElemType.GoType }}]
+      {{- end -}}
+    {{- else -}}
+map of any{{ printf " " -}}
+    {{- end -}}
+  {{- else if .IsPrimitive -}}
+    {{- schemaDocType . -}}
+  {{- else -}}
+link:#{{ dasherize (dropPackage .GoType) -}}[{{- dropPackage .GoType }}]
+  {{- end -}}
+{{- end }}
+
+{{- define "docModelBodyParam" }}{{/* layout for body param schema */}}
+
+| {{ .Name }} | `body` | {{ template "docSchemaSimple" .Schema }} | `{{ .Schema.GoType }}` | | {{ if .Required }}✓{{ end }} | {{ if .Default }}`{{ json .Default }}`{{ end }}| {{ trimSpace .Description }}
+{{- end }}
+
+{{- define "docHeaders" }}{{/* renders response headers */}}
+  {{- if .Headers }}
+
+[%autowidth]
+|===
+| Name | Type | Go type | Separator | Default | Description
+    {{- range .Headers }}
+
+| {{ .Name }} | {{ headerDocType . }} | `{{ .GoType }}` | {{ if .CollectionFormat }}`{{ docCollectionFormat .CollectionFormat .Child }}`{{ end }} | {{ if .Default }}`{{ json .Default }}`{{ end }} | {{ trimSpace .Description }}
+    {{- end }}
+  {{- end }}
+{{- end }}
+
+{{- /* Title and top-level information block */ -}}
+{{- with .Info.Title }}
+
+= {{ . }}
+{{- end }}
+{{- with .Info.Description }}
+
+{{ . }}
+{{- end }}
+
+{{ template "externalDoc" . }}
+
+{{- with .Info.Version }}
+Version:: {{ . }}
+{{- end }}
+{{ with .Info.License }}
+License:: {{ .URL }}{{if and .Name .URL}}[{{.Name}}]{{ end }}
+{{- end }}
+{{- with .Info.Contact }}
+Contact:: {{ .Name }} {{ .Email }} {{ .URL }}
+{{- end }}
+{{- with .Info.TermsOfService }}
+Terms Of Service:: {{ . }}
+{{- end }}
+
+{{- if .Tags }}
+
+== Tags
+  {{- range .Tags }}
+
+[id=tag-{{ dasherize .Name }}]
+=== {{if .ExternalDocs }}{{ .ExternalDocs.URL }}[{{ .Name }}] {{ .ExternalDocs.Description }}{{ else }}{{  .Name }}{{ end }}
+    {{- if .Description }}
+
+{{ .Description }}
+    {{- end }}
+  {{- end }}
+{{- end }}
+
+{{- if or .Schemes .ExtraSchemes .Consumes .Produces }}
+
+== Content negotiation
+
+  {{- if or .Schemes .ExtraSchemes }}
+URI Schemes::
+    {{- range .Schemes }}
+* {{ . }}
+    {{- end }}
+  {{- end }}
+  {{- range .ExtraSchemes }}
+* {{ . }}
+  {{- end }}
+{{- end }}
+
+{{- if .Consumes }}
+Consumes::
+  {{- range .Consumes }}
+    {{- range .AllSerializers }}
+* {{ .MediaType }}
+    {{- end }}
+  {{- end }}
+{{- end }}
+
+{{- if .Produces }}
+Produces::
+  {{- range .Produces }}
+    {{- range .AllSerializers }}
+* {{ .MediaType }}
+    {{- end }}
+  {{- end }}
+{{- end }}
+
+{{- if or .SecurityDefinitions .SecurityRequirements }}
+
+== Access control
+{{- end }}
+{{- if .SecurityDefinitions }}
+
+=== Security Schemes
+  {{- range .SecurityDefinitions }}
+
+==== {{ .ID }}{{ if .Source }} ({{ .Source }}{{ with .Name }}: {{ . }}{{ end }}){{ end }}
+
+{{ .Description }}
+
+    {{- with .Type }}
+
+> **Type**: {{ . }}
+    {{- end }}
+    {{- if .IsOAuth2}}
+      {{- with .Flow }}
+	>
+	> **Flow**: {{ . }}
+      {{- end }}
+      {{- with .AuthorizationURL }}
+	>
+	> **Authorization URL**: {{ . }}
+      {{- end }}
+      {{- with .TokenURL }}
+	>
+	> **Token URL**: {{ . }}
+      {{- end }}
+      {{ if .ScopesDesc }}
+
+	===== Scopes
+
+	[%autowidth]
+	|===
+	| Name | Description
+        {{- range .ScopesDesc }}
+
+	  | {{ .Name }} | {{ .Description }}
+        {{- end }}
+
+	|===
+      {{- end }}
+    {{- end }}
+  {{- end }}
+{{- end }}{{/* end .SecurityDefinitions */}}
+
+{{- if .SecurityRequirements }}
+
+=== Security Requirements
+
+  {{- range .SecurityRequirements }}
+* {{ .Name }}{{ if .Scopes }}: {{ range $idx, $scope := .Scopes }}{{ if gt $idx 0 }}, {{ end }}{{ $scope }}{{ end }}
+    {{- end }}
+  {{- end }}
+{{- end }}{{/* end .SecurityRequirements */}}
+
+== Endpoints by group{{/* an index of all API endpoints */}}
+
+{{- $alltags := .Tags }}
+{{- range .OperationGroups }}
+
+===  {{ .PackageAlias }}
+  {{- $pkg := .PackageAlias }}
+  {{- range $alltags }}
+    {{- if eq .Name $pkg }}
+
+{{ template "externalDoc" . }}
+    {{- end }}
+  {{- end }}
+
+[%autowidth]
+|===
+| Method  | URI     | Name   | Summary
+
+  {{- range .Operations }}
+
+| {{ upper .Method }} | {{ joinPath .BasePath .Path }} | link:#{{ dasherize .Name }}[{{ humanize .Name }}] | {{ .Summary }}
+  {{- end }}
+
+|===
+{{- end }}
+
+== Paths{{/* all paths to operations */}}
+
+{{- range .Operations }}
+  {{- $opname := .Name }}
+
+[id={{ dasherize .Name }}]
+=== {{ or (trimSpace .Summary) (humanize .Name) }}
+
+----
+{{ upper .Method }} {{ joinPath .BasePath .Path }}
+----
+  {{- with .Description }}
+
+{{ . }}
+  {{- end }}
+
+  {{- with .ExternalDocs }}
+
+> {{ if .URL }}[Read more]({{ .URL }} "{{ .Description }}"){{ end }}
+  {{- end }}
+
+  {{- if or (gt (len .SchemeOverrides)  0) (gt (len .ExtraSchemeOverrides) 0) }}
+
+==== URI Schemes
+
+    {{- range .SchemeOverrides }}
+* {{ . }}
+    {{- end }}
+    {{- range .ExtraSchemeOverrides }}
+* {{ . }}
+    {{- end }}
+  {{- end }}
+
+  {{- if .Consumes }}
+
+==== Consumes
+
+    {{- range .Consumes }}
+* {{ . }}
+    {{- end }}
+  {{- end }}
+
+  {{- if .Produces }}
+
+==== Produces
+
+    {{- range .Produces }}
+* {{ . }}
+    {{- end }}
+  {{- end }}
+
+  {{- if .SecurityRequirements }}
+
+==== Security Requirements
+    {{- range .SecurityRequirements }}
+* {{ .Name }}{{ if .Scopes }}: {{ range $idx, $scope := .Scopes }}{{ if gt $idx 0 }}, {{ end }}{{ $scope }}{{ end }}{{ end }}
+    {{- end }}
+  {{- end }}
+
+  {{- if .Params }}
+
+==== Parameters
+
+[%autowidth]
+|===
+| Name | Source | Type | Go type | Separator | Required | Default | Description
+
+    {{- range .PathParams }}{{ template "docParam" . }}{{ end }}
+    {{- range .HeaderParams }}{{ template "docParam" . }}{{ end }}
+    {{- range .QueryParams }}{{ template "docParam" . }}{{ end }}
+    {{- range .FormParams }}{{ template "docParam" . }}{{ end }}
+    {{- range .Params }}
+      {{- if .IsBodyParam }}
+	{{- template "docModelBodyParam" . }}
+      {{- end }}
+    {{- end }}
+
+|===
+  {{- end }}{{/* end .Params */}}
+
+==== All responses
+
+[%autowidth]
+|===
+| Code | Status | Description | Has headers | Schema
+  {{- range .Responses }}
+
+| link:#{{ dasherize $opname }}-{{ .Code }}[{{.Code}}] | {{ httpStatus .Code }} | {{ trimSpace .Description }} | {{ if .Headers }}✓{{ end }} | link:#{{ dasherize $opname }}-{{ .Code }}-schema[schema]
+  {{- end }}
+  {{- with .DefaultResponse }}
+
+| link:#{{ dasherize $opname }}-default[default] | | {{ trimSpace .Description }} | {{ if .Headers }}✓{{ end }} | link:#{{ dasherize $opname }}-default-schema[schema]
+  {{- end }}
+
+|===
+
+==== Responses
+  {{ range .Responses }}
+
+[id={{ dasherize $opname }}-{{ .Code }}]
+=====  {{.Code}}{{ if .Description }} - {{ trimSpace .Description }}{{ end }}
+Status: {{ httpStatus .Code }}
+
+[id={{ dasherize $opname }}-{{ .Code }}-schema]
+====== Schema
+    {{- if .Schema }}
+{{ template "docModel" .Schema }}
+    {{- end }}
+
+    {{- if .Examples }}
+
+====== Examples
+      {{ range .Examples }}
+	**{{ .MediaType }}**
+	[source,json]
+	----
+	{{ prettyjson .Example }}
+	----
+      {{- end }}
+    {{- end }}
+
+    {{- if .Headers }}
+
+====== Response headers
+{{ template "docHeaders" . }}
+    {{- end }}
+  {{- end }}
+
+  {{- with .DefaultResponse }}
+
+[id={{ dasherize $opname }}-default]
+===== Default Response
+{{ trimSpace .Description }}
+
+[id={{ dasherize $opname }}-default-schema]
+====== Schema
+    {{- if .Schema }}
+{{ template "docModel" .Schema }}
+    {{- else }}
+empty schema
+    {{- end }}
+
+    {{- if .Examples }}
+
+====== Examples
+      {{ range .Examples }}
+	**{{ .MediaType }}**
+	[source,json]
+	----
+	{{ .Example }}
+	----
+      {{- end }}
+    {{- end }}
+
+    {{- if .Headers }}
+
+====== Response headers
+{{ template "docHeaders" . }}
+    {{- end }}
+  {{- end }}
+
+  {{- if .ExtraSchemas }}
+
+====== Inlined models
+    {{- range .ExtraSchemas }}
+      {{- if ne .Name "" }}
+
+	[id={{ dasherize .Name }}]
+	**{{ .Name }}**
+
+	{{ template "docModel" . }}
+      {{- end }}
+    {{- end }}
+  {{- end }}
+{{- end }}{{/* end .Operations */}}
+
+== Models
+
+{{- range .Models }}
+
+[id={{ dasherize .Name }}]
+=== {{ .Name }}
+
+{{ template "docModel" . }}
+
+  {{- if .ExtraSchemas }}
+
+==== Inlined models
+    {{- range .ExtraSchemas }}
+      {{- if ne .Name "" }}
+
+[id={{ dasherize .Name }}]
+**{{ .Name }}**
+
+{{ template "docModel" . }}
+      {{- end }}
+    {{- end }}
+  {{- end }}
+{{- end }}
