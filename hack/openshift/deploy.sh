@@ -111,7 +111,7 @@ log_events() {
 logs() {
   echo "## Logs $*"
   local ns="$1" resource="$2"
-  oc logs -n "$ns" "$resource"  | tee "$LOGS_DIR/$(basename $resource)" | grep -i error
+  oc logs -n "$ns" "$resource"  | tee "$LOGS_DIR/$(basename "$resource")" | grep -i error
 }
 
 deploy_operators() {
@@ -141,7 +141,7 @@ deploy_operators() {
       sleep 5
     done
     echo "waiting for $csv to be succeeded"
-    oc wait --for=jsonpath='{.status.phase}'=Succeeded -n "$LOGGING_NS" "$csv" --timeout=$TIMEOUT || {
+    oc wait --for=jsonpath='{.status.phase}'=Succeeded -n "$LOGGING_NS" "$csv" --timeout="$TIMEOUT" || {
       echo "$csv status is invalid"
       return 1
     }
@@ -189,7 +189,7 @@ wait_exists() {
 validate() {
   echo "checking status"
   wait_exists -n "$LOGGING_NS" "${LOGGING_DEPLOYMENTS[@]}" "${LOGGING_STATEFULSETS[@]}" || return 1
-  oc rollout status -n "$LOGGING_NS" --timeout=$TIMEOUT --watch  "${LOGGING_DEPLOYMENTS[@]}" "${LOGGING_STATEFULSETS[@]}" || return 1
+  oc rollout status -n "$LOGGING_NS" --timeout="$TIMEOUT" --watch  "${LOGGING_DEPLOYMENTS[@]}" "${LOGGING_STATEFULSETS[@]}" || return 1
   echo "all deployments and statefulsets are healthy"
 }
 
