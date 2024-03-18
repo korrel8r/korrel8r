@@ -1,4 +1,4 @@
-groups:
+aliases:
   - name: workloads
     domain: k8s
     classes:
@@ -137,7 +137,7 @@ rules:
        classes: [namespacedResources]
      result:
        query: |-
-         {{className rule.Goal}}:{namespace: {{.Name -}} }
+         {{rule.Goal}}:{namespace: {{.Name -}} }
 
    - name: NamespaceToAlert
      start:
@@ -192,13 +192,12 @@ rules:
        classes: [Event.]
      result:
        query: |-
-         {{className rule.Goal}}:{"fields":{
+         {{rule.Goal}}:{"fields":{
                       "involvedObject.namespace":"{{.Namespace}}",
                       "involvedObject.name": "{{.Name}}",
                       "involvedObject.kind": "{{.Kind}}",
                       "involvedObject.apiVersion": "{{.APIVersion}}"} }
-# https://console-openshift-console.apps.snoflake.my.test/k8s/ns/default/deployments/bad-image-deployment/events
-# https://console-openshift-console.apps.snoflake.my.test/k8s/ns/default/deployments/bad-image-deployment/events
+
    - name: AllToMetric
      start:
        domain: k8s
@@ -206,4 +205,4 @@ rules:
        domain: metric
      result:
        query: |-
-         {{className rule.Goal}}:{namespace="{{.Namespace}}",{{lower .Kind}}="{{.Name}}"}
+         {{rule.Goal}}:{namespace="{{.Namespace}}",{{lower .Kind}}="{{.Name}}"}

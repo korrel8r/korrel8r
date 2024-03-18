@@ -14,7 +14,7 @@ var describeCmd = &cobra.Command{
 	Short: "Describe NAME, which can be a domain or class name.",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		e := newEngine()
+		e, _ := newEngine()
 		if c, err := e.Class(args[0]); err == nil {
 			fmt.Println(c.Description())
 		} else if d, err := e.DomainErr(args[0]); err == nil {

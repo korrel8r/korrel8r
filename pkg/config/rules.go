@@ -22,7 +22,7 @@ func addRules(e *engine.Engine, r Rule) (err error) {
 		}
 	}()
 	newTemplate := func(name, text string) (*template.Template, error) {
-		return template.New(name).Option("missingkey=error").Funcs(rules.Funcs).Funcs(e.TemplateFuncs()).Parse(text)
+		return template.New(name).Option("missingkey=error").Funcs(e.TemplateFuncs()).Parse(text)
 	}
 	query, err := newTemplate(r.Name, r.Result.Query)
 	if err != nil {

@@ -4,17 +4,14 @@ package config
 
 import "github.com/korrel8r/korrel8r/pkg/korrel8r"
 
-// NOTE: Fake annotations to make this look like a k8s CRD, so we can use crd-ref-docs to generate documentation.
-// +groupName=korrel8r.openshift.io
-
 // Config defines the configuration for an instance of korrel8r.
 // Configuration files may be JSON or YAML.
 type Config struct {
 	// Rules define the relationships that korrel8r will follow.
 	Rules []Rule `json:"rules,omitempty"`
 
-	// Groups defines short names for groups of related classes.
-	Groups []Group `json:"groups,omitempty"`
+	// Aliases defines short names for groups of related classes.
+	Aliases []Class `json:"aliases,omitempty"`
 
 	// Stores is a list of store configurations.
 	Stores []korrel8r.StoreConfig `json:"stores,omitempty"`
@@ -58,8 +55,8 @@ type ResultSpec struct {
 	Query string `json:"query"`
 }
 
-// Group of similar classes that can be referred to by a short name in a ClassSpec.
-type Group struct {
+// Class defines a shortcut name for a set of existing classes.
+type Class struct {
 	// Name is the short name for a group of classes.
 	Name string `json:"name"`
 	// Domain of the classes, all must be in the same domain.

@@ -27,6 +27,8 @@ Produces::
 |===
 | Method  | URI     | Name   | Summary
 
+| GET | /api/v1alpha1/configuration | link:#get-configuration[get configuration] | Dump configuration files and their contents.
+
 | GET | /api/v1alpha1/domains | link:#get-domains[get domains] | List all configured domains and stores.
 
 | GET | /api/v1alpha1/domains/{domain}/classes | link:#get-domains-domain-classes[get domains domain classes] | Get class names and descriptions for the domain.
@@ -50,6 +52,37 @@ Produces::
 |===
 
 == Paths
+
+[id=get-configuration]
+=== Dump configuration files and their contents.
+
+----
+GET /api/v1alpha1/configuration
+----
+
+==== All responses
+
+[%autowidth]
+|===
+| Code | Status | Description | Has headers | Schema
+
+| link:#get-configuration-200[200] | OK | OK |  | link:#get-configuration-200-schema[schema]
+
+|===
+
+==== Responses
+  
+
+[id=get-configuration-200]
+=====  200 - OK
+Status: OK
+
+[id=get-configuration-200-schema]
+====== Schema
+
+  
+
+link:#config-configs[ConfigConfigs]
 
 [id=get-domains]
 === List all configured domains and stores.
@@ -537,6 +570,126 @@ link:#api-classes[APIClasses]
 	| objects | link:#interface[interface{}]| `interface{}` |  | | Objects in JSON form | 
 
 	| queries | []string| `[]string` |  | | Queries for starting objects | 
+
+|===
+
+[id=config-class]
+=== config.Class
+
+
+  
+
+
+
+**Properties**
+
+[%autowidth]
+|===
+| Name | Type | Go type | Required | Default | Description | Example
+
+	| classes | []string| `[]string` |  | | Classes are the names of classes in this group. | 
+
+	| domain | string| `string` |  | | Domain of the classes, all must be in the same domain. | 
+
+	| name | string| `string` |  | | Name is the short name for a group of classes. | 
+
+|===
+
+[id=config-class-spec]
+=== config.ClassSpec
+
+
+  
+
+
+
+**Properties**
+
+[%autowidth]
+|===
+| Name | Type | Go type | Required | Default | Description | Example
+
+	| classes | []string| `[]string` |  | | Classes is a list of class names to be selected from the domain.
+If absent, all classes in the domain are selected. | 
+
+	| domain | string| `string` |  | | Domain is the domain for selected classes. | 
+
+|===
+
+[id=config-config]
+=== config.Config
+
+
+  
+
+
+
+**Properties**
+
+[%autowidth]
+|===
+| Name | Type | Go type | Required | Default | Description | Example
+
+	| aliases | []link:#config-class[ConfigClass]| `[]*ConfigClass` |  | | Aliases defines short names for groups of related classes. | 
+
+	| include | []string| `[]string` |  | | Include lists additional configuration files or URLs to include. | 
+
+	| rules | []link:#config-rule[ConfigRule]| `[]*ConfigRule` |  | | Rules define the relationships that korrel8r will follow. | 
+
+	| stores | []link:#korrel8r-store-config[Korrel8rStoreConfig]| `[]Korrel8rStoreConfig` |  | | Stores is a list of store configurations. | 
+
+|===
+
+[id=config-configs]
+=== config.Configs
+
+
+  
+
+link:#config-configs[ConfigConfigs]
+
+[id=config-result-spec]
+=== config.ResultSpec
+
+
+  
+
+
+
+**Properties**
+
+[%autowidth]
+|===
+| Name | Type | Go type | Required | Default | Description | Example
+
+	| query | string| `string` |  | | Query template generates a query object suitable for the goal store. | 
+
+|===
+
+[id=config-rule]
+=== config.Rule
+
+
+  
+
+
+
+**Properties**
+
+[%autowidth]
+|===
+| Name | Type | Go type | Required | Default | Description | Example
+
+	| goal | link:#config-rule[ConfigRule]| `ConfigRule` |  | | Goal specifies the set of classes that this rule can produce. | 
+
+	| name | string| `string` |  | | Name is a short, descriptive name.
+If omitted, a name is generated from Start and Goal. | 
+
+	| result | link:#config-rule[ConfigRule]| `ConfigRule` |  | | TemplateResult contains templates to generate the result of applying this rule.
+Each template is applied to an object from one of the `start` classes.
+If any template yields a blank string or an error, the rule does not apply. | 
+
+	| start | link:#config-rule[ConfigRule]| `ConfigRule` |  | | Start specifies the set of classes that this rule can apply to. | 
 
 |===
 

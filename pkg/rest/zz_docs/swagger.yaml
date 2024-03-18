@@ -129,6 +129,90 @@ definitions:
           type: string
         type: array
     type: object
+  config.Class:
+    properties:
+      classes:
+        description: Classes are the names of classes in this group.
+        items:
+          type: string
+        type: array
+      domain:
+        description: Domain of the classes, all must be in the same domain.
+        type: string
+      name:
+        description: Name is the short name for a group of classes.
+        type: string
+    type: object
+  config.ClassSpec:
+    properties:
+      classes:
+        description: |-
+          Classes is a list of class names to be selected from the domain.
+          If absent, all classes in the domain are selected.
+        items:
+          type: string
+        type: array
+      domain:
+        description: Domain is the domain for selected classes.
+        type: string
+    type: object
+  config.Config:
+    properties:
+      aliases:
+        description: Aliases defines short names for groups of related classes.
+        items:
+          $ref: '#/definitions/config.Class'
+        type: array
+      include:
+        description: Include lists additional configuration files or URLs to include.
+        items:
+          type: string
+        type: array
+      rules:
+        description: Rules define the relationships that korrel8r will follow.
+        items:
+          $ref: '#/definitions/config.Rule'
+        type: array
+      stores:
+        description: Stores is a list of store configurations.
+        items:
+          $ref: '#/definitions/korrel8r.StoreConfig'
+        type: array
+    type: object
+  config.Configs:
+    additionalProperties:
+      $ref: '#/definitions/config.Config'
+    type: object
+  config.ResultSpec:
+    properties:
+      query:
+        description: Query template generates a query object suitable for the goal
+          store.
+        type: string
+    type: object
+  config.Rule:
+    properties:
+      goal:
+        allOf:
+        - $ref: '#/definitions/config.ClassSpec'
+        description: Goal specifies the set of classes that this rule can produce.
+      name:
+        description: |-
+          Name is a short, descriptive name.
+          If omitted, a name is generated from Start and Goal.
+        type: string
+      result:
+        allOf:
+        - $ref: '#/definitions/config.ResultSpec'
+        description: |-
+          TemplateResult contains templates to generate the result of applying this rule.
+          Each template is applied to an object from one of the `start` classes.
+          If any template yields a blank string or an error, the rule does not apply.
+      start:
+        allOf:
+        - $ref: '#/definitions/config.ClassSpec'
+        description: Start specifies the set of classes that this rule can apply to.
+    type: object
   korrel8r.Constraint:
     properties:
       end:
@@ -156,6 +240,16 @@ info:
   title: REST API
   version: v1alpha1
 paths:
+  /configuration:
+    get:
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/config.Configs'
+      summary: Dump configuration files and their contents.
+      tags:
+      - configuration
   /domains:
     get:
       responses:

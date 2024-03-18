@@ -27,7 +27,7 @@ var (
 
 	rootCmd = &cobra.Command{
 		Use:     "korrel8r",
-		Short:   "Command line correlation tool",
+		Short:   "Observability signal correlation tool.",
 		Version: strings.TrimSpace(version),
 	}
 	log = logging.Log()
@@ -92,11 +92,11 @@ func main() {
 	must.Must(rootCmd.Execute())
 }
 
-func newEngine() *engine.Engine {
+func newEngine() (*engine.Engine, config.Configs) {
 	e := engine.New(k8s.Domain, logdomain.Domain, alert.Domain, metric.Domain, mock.Domain("mock"))
 	c := must.Must1(config.Load(*configuration))
 	must.Must(c.Apply(e))
-	return e
+	return e, c
 }
 
 var versionCmd = &cobra.Command{

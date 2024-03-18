@@ -9,8 +9,8 @@
 // Rules can express relationships within or between domains.
 //
 // Once a domain and rules are available, korrel8r can:
-// - apply rules linking the new domain with other domains.
-// - execute queries in the new domain while traversing search graphs.
+// - apply Rules linking the new domain with other domains.
+// - execute Queries in the new domain while traversing search graphs.
 // - display or return correlated results in the new domain.
 package korrel8r
 

@@ -162,7 +162,7 @@ type testAPI struct {
 
 func newTestAPI(domains ...korrel8r.Domain) *testAPI {
 	r := ginEngine()
-	return &testAPI{API: test.Must(New(engine.New(domains...), r)), Router: r}
+	return &testAPI{API: test.Must(New(engine.New(domains...), nil, r)), Router: r}
 }
 
 func do(t *testing.T, a *testAPI, method, url string, body any) *httptest.ResponseRecorder {

@@ -1,5 +1,6 @@
 // Copyright: This file is part of korrel8r, released under https://github.com/korrel8r/korrel8r/blob/main/LICENSE
 
+// Package graph provides a directed multi-graph with class nodes and rule edges.
 package graph
 
 import (

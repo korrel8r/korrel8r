@@ -1,5 +1,5 @@
 # Demo rule set, crafted to avoid unresolved issues with wildcard rules in korrel8r.
-groups:
+aliases:
   - name: workloads
     classes:
       - Pod

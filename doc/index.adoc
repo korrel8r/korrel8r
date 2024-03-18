@@ -1,5 +1,5 @@
 [id="index"]
-= Korrel8r: Signal Correlation for Kubernetes
+= Korrel8r User Guide
 :doctype: book
 :toc: left
 :toclevels: 3
@@ -8,12 +8,12 @@ include::attributes.adoc[]
 
 [NOTE]
 ====
-This documentation is available in {pages}[HTML] and {pages}/ebook.pdf[PDF] format.
-Software is available from the {project}[Korrel8r project].
+This documentation is part of the {project}[Korrel8r project]. +
+It is available in {pages}/index.html[HTML] and {pages}/ebook.pdf[PDF] format.
 ====
 
 [id="index-overview"]
-== Korrel8r overview
+== Overview
 
 Many observability tools and observable systems use their own unique data models, storage technologies, query languages, and related nomenclature.
 
@@ -27,26 +27,15 @@ Signal data can be stored in separate signal stores, and encoded using different
 
 [IMPORTANT]
 ====
-To navigate between correlated data, Korrel8r needs to access multiple data stores in the cluster.
-These include the Kubernetes API server (resouces), LokiStack (logs), Prometheus (metrics), and AlertManager (alerts).
-The initial release can only be deployed and used by an admin user that has full access to all these stores.
+To navigate between correlated data, Korrel8r needs access to the cluster API and several data stores.
+Currently Korrel8r can only be deployed by a user with the `cluster-admin` role.
 
-See also link:{project}/issues/73[]
+This may change in future, see:
+link:{project}/issues/73[Issue 73: Authentication and Authorization for restricted access.]
 ====
 
-////
-commenting out for now but keeping in case it does turn out to be an FAQ ;)
-[id="index-kube-lineage"]
-=== Is kube-lineage the same as Korrel8r?
-
-link:https://github.com/tohjustin/kube-lineage[`kube-lineage`] is a CLI tool to display all the dependencies and dependents of a resource in a Kubernetes cluster.
-
-`kube-lineage` is similar to Korrel8r as both can follow chains of relationships between cluster resources.
-However, Korrel8r can also follow relationships with other types of observability data, such as logs, alerts or metrics. Korrel8r is designed to be extendable to new types of data and data stores in future, for example, network observability events.
-////
-
 [id="index-architecture"]
-=== Korrel8r architecture
+=== Architecture
 
 include::about-domains.adoc[leveloffset=+3]
 include::about-objects.adoc[leveloffset=+3]
@@ -59,7 +48,7 @@ include::troubleshooting.adoc[leveloffset=+2]
 
 // User guides
 include::using-korrel8r.adoc[leveloffset=+1]
-include::configuring-korrel8r.adoc[leveloffset=+1]
+include::configuration.adoc[leveloffset=+1]
 
 [id="index-reference"]
 == Reference

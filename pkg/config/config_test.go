@@ -32,7 +32,7 @@ func TestLoad_More(t *testing.T) {
 func TestApply_ExpandGroups(t *testing.T) {
 	c := Configs{
 		"test": &Config{
-			Groups: []Group{
+			Aliases: []Class{
 				{Name: "x", Domain: "foo", Classes: []string{"p", "q"}},
 				{Name: "y", Domain: "foo", Classes: []string{"x", "a"}},
 				{Name: "z", Domain: "foo", Classes: []string{"u", "v"}},
@@ -63,7 +63,7 @@ func TestApply_ExpandGroups(t *testing.T) {
 func TestApply_SameGroupDifferentDomain(t *testing.T) {
 	c := Configs{
 		"test": &Config{
-			Groups: []Group{
+			Aliases: []Class{
 				{Name: "x", Domain: "foo", Classes: []string{"p", "q"}},
 				{Name: "x", Domain: "bar", Classes: []string{"bbq"}},
 			},
