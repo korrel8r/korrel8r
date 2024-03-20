@@ -11,7 +11,7 @@ import (
 	"github.com/korrel8r/korrel8r/internal/pkg/browser"
 	"github.com/korrel8r/korrel8r/internal/pkg/logging"
 	"github.com/korrel8r/korrel8r/internal/pkg/must"
-	api "github.com/korrel8r/korrel8r/pkg/rest"
+	"github.com/korrel8r/korrel8r/pkg/rest"
 	"github.com/spf13/cobra"
 )
 
@@ -58,7 +58,7 @@ var webCmd = &cobra.Command{
 			defer b.Close()
 		}
 		if *restFlag {
-			r := must.Must1(api.New(engine, configs, router))
+			r := must.Must1(rest.New(engine, configs, router))
 			defer r.Close()
 		}
 

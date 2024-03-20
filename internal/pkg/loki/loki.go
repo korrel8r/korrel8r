@@ -1,6 +1,6 @@
 // Copyright: This file is part of korrel8r, released under https://github.com/korrel8r/korrel8r/blob/main/LICENSE
 
-// package loki is a limited client for the Loki HTTP API: https://grafana.com/docs/loki/latest/reference/api/
+// package loki is a limited client for the Loki HTTP API: https://grafana.com/docs/loki/latest/reference/api
 // Should be replaced with an official Loki client package if/when one is available.
 package loki
 

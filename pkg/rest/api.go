@@ -1,6 +1,6 @@
 // Copyright: This file is part of korrel8r, released under https://github.com/korrel8r/korrel8r/blob/main/LICENSE
 
-// Package api implements a REST API for korrel8r.
+// Package rest implements a REST API for korrel8r.
 //
 // Note: Comments starting with "@" are used to generate a swagger spec via 'go generate'.
 // Static swagger doc is available at ./doc/swagger.md.
@@ -17,7 +17,7 @@
 //	@schemes		http https
 //	@accept			json
 //	@produce		json
-package api
+package rest
 
 import (
 	"encoding/json"

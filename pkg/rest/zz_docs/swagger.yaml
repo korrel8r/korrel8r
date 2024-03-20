@@ -2,133 +2,6 @@ basePath: /api/v1alpha1
 consumes:
 - application/json
 definitions:
-  api.Classes:
-    additionalProperties:
-      type: string
-    description: Classes maps class names to a short description.
-    type: object
-  api.Domain:
-    description: Domain configuration information.
-    properties:
-      errors:
-        items:
-          type: string
-        type: array
-      name:
-        type: string
-      stores:
-        items:
-          $ref: '#/definitions/korrel8r.StoreConfig'
-        type: array
-    type: object
-  api.Edge:
-    properties:
-      goal:
-        description: Goal is the class name of the goal node.
-        example: domain:class
-        type: string
-      rules:
-        description: Rules is the set of rules followed along this edge (optional).
-        items:
-          $ref: '#/definitions/api.Rule'
-        type: array
-      start:
-        description: Start is the class name of the start node.
-        type: string
-    type: object
-  api.GoalsRequest:
-    description: Starting point for a goals search.
-    properties:
-      goals:
-        description: Goal classes for correlation.
-        example:
-        - domain:class
-        items:
-          type: string
-        type: array
-      start:
-        allOf:
-        - $ref: '#/definitions/api.Start'
-        description: Start of correlation search.
-    type: object
-  api.Graph:
-    description: Graph resulting from a correlation search.
-    properties:
-      edges:
-        items:
-          $ref: '#/definitions/api.Edge'
-        type: array
-      nodes:
-        items:
-          $ref: '#/definitions/api.Node'
-        type: array
-    type: object
-  api.NeighboursRequest:
-    description: Starting point for a neighbours search.
-    properties:
-      depth:
-        description: Max depth of neighbours graph.
-        type: integer
-      start:
-        allOf:
-        - $ref: '#/definitions/api.Start'
-        description: Start of correlation search.
-    type: object
-  api.Node:
-    properties:
-      class:
-        description: Class is the full class name in "DOMAIN:CLASS" form.
-        example: domain:class
-        type: string
-      count:
-        description: Count of results found for this class, after de-duplication.
-        type: integer
-      queries:
-        description: Queries yielding results for this class.
-        items:
-          $ref: '#/definitions/api.QueryCount'
-        type: array
-    type: object
-  api.QueryCount:
-    description: Query run during a correlation with a count of results found.
-    properties:
-      count:
-        description: Count of results or -1 if the query was not executed.
-        type: integer
-      query:
-        description: Query for correlation data.
-        type: string
-    type: object
-  api.Rule:
-    properties:
-      name:
-        description: Name is an optional descriptive name.
-        type: string
-      queries:
-        description: Queries generated while following this rule.
-        items:
-          $ref: '#/definitions/api.QueryCount'
-        type: array
-    type: object
-  api.Start:
-    description: Starting point for correlation.
-    properties:
-      class:
-        description: Class of starting objects
-        type: string
-      constraint:
-        allOf:
-        - $ref: '#/definitions/korrel8r.Constraint'
-        description: Constraint (optional) to limit the results.
-      objects:
-        description: Objects in JSON form
-        type: object
-      queries:
-        description: Queries for starting objects
-        items:
-          type: string
-        type: array
-    type: object
   config.Class:
     properties:
       classes:
@@ -229,6 +102,133 @@ definitions:
     additionalProperties:
       type: string
     type: object
+  rest.Classes:
+    additionalProperties:
+      type: string
+    description: Classes maps class names to a short description.
+    type: object
+  rest.Domain:
+    description: Domain configuration information.
+    properties:
+      errors:
+        items:
+          type: string
+        type: array
+      name:
+        type: string
+      stores:
+        items:
+          $ref: '#/definitions/korrel8r.StoreConfig'
+        type: array
+    type: object
+  rest.Edge:
+    properties:
+      goal:
+        description: Goal is the class name of the goal node.
+        example: domain:class
+        type: string
+      rules:
+        description: Rules is the set of rules followed along this edge (optional).
+        items:
+          $ref: '#/definitions/rest.Rule'
+        type: array
+      start:
+        description: Start is the class name of the start node.
+        type: string
+    type: object
+  rest.GoalsRequest:
+    description: Starting point for a goals search.
+    properties:
+      goals:
+        description: Goal classes for correlation.
+        example:
+        - domain:class
+        items:
+          type: string
+        type: array
+      start:
+        allOf:
+        - $ref: '#/definitions/rest.Start'
+        description: Start of correlation search.
+    type: object
+  rest.Graph:
+    description: Graph resulting from a correlation search.
+    properties:
+      edges:
+        items:
+          $ref: '#/definitions/rest.Edge'
+        type: array
+      nodes:
+        items:
+          $ref: '#/definitions/rest.Node'
+        type: array
+    type: object
+  rest.NeighboursRequest:
+    description: Starting point for a neighbours search.
+    properties:
+      depth:
+        description: Max depth of neighbours graph.
+        type: integer
+      start:
+        allOf:
+        - $ref: '#/definitions/rest.Start'
+        description: Start of correlation search.
+    type: object
+  rest.Node:
+    properties:
+      class:
+        description: Class is the full class name in "DOMAIN:CLASS" form.
+        example: domain:class
+        type: string
+      count:
+        description: Count of results found for this class, after de-duplication.
+        type: integer
+      queries:
+        description: Queries yielding results for this class.
+        items:
+          $ref: '#/definitions/rest.QueryCount'
+        type: array
+    type: object
+  rest.QueryCount:
+    description: Query run during a correlation with a count of results found.
+    properties:
+      count:
+        description: Count of results or -1 if the query was not executed.
+        type: integer
+      query:
+        description: Query for correlation data.
+        type: string
+    type: object
+  rest.Rule:
+    properties:
+      name:
+        description: Name is an optional descriptive name.
+        type: string
+      queries:
+        description: Queries generated while following this rule.
+        items:
+          $ref: '#/definitions/rest.QueryCount'
+        type: array
+    type: object
+  rest.Start:
+    description: Starting point for correlation.
+    properties:
+      class:
+        description: Class of starting objects
+        type: string
+      constraint:
+        allOf:
+        - $ref: '#/definitions/korrel8r.Constraint'
+        description: Constraint (optional) to limit the results.
+      objects:
+        description: Objects serialized as JSON to, must be of start class.
+        type: object
+      queries:
+        description: Queries for starting objects, must return the start class.
+        items:
+          type: string
+        type: array
+    type: object
 info:
   contact:
     name: Project Korrel8r
@@ -257,7 +257,7 @@ paths:
           description: OK
           schema:
             items:
-              $ref: '#/definitions/api.Domain'
+              $ref: '#/definitions/rest.Domain'
             type: array
       summary: List all configured domains and stores.
       tags:
@@ -274,7 +274,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/api.Classes'
+            $ref: '#/definitions/rest.Classes'
       summary: Get class names and descriptions for the domain.
       tags:
       - configuration
@@ -290,12 +290,12 @@ paths:
         name: start
         required: true
         schema:
-          $ref: '#/definitions/api.GoalsRequest'
+          $ref: '#/definitions/rest.GoalsRequest'
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/api.Graph'
+            $ref: '#/definitions/rest.Graph'
       summary: Create a correlation graph from start objects to goal queries.
       tags:
       - search
@@ -311,12 +311,12 @@ paths:
         name: start
         required: true
         schema:
-          $ref: '#/definitions/api.NeighboursRequest'
+          $ref: '#/definitions/rest.NeighboursRequest'
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/api.Graph'
+            $ref: '#/definitions/rest.Graph'
       summary: Create a correlation graph of neighbours of a start object to a given
         depth.
       tags:
@@ -329,13 +329,13 @@ paths:
         name: start
         required: true
         schema:
-          $ref: '#/definitions/api.GoalsRequest'
+          $ref: '#/definitions/rest.GoalsRequest'
       responses:
         "200":
           description: OK
           schema:
             items:
-              $ref: '#/definitions/api.Node'
+              $ref: '#/definitions/rest.Node'
             type: array
       summary: Generate a list of goal nodes related to a starting point.
       tags:

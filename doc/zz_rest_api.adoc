@@ -113,7 +113,7 @@ Status: OK
 
   
 
-[]link:#api-domain[APIDomain]
+[]link:#rest-domain[RestDomain]
 
 [id=get-domains-domain-classes]
 === Get class names and descriptions for the domain.
@@ -161,7 +161,7 @@ Status: OK
 
   
 
-link:#api-classes[APIClasses]
+link:#rest-classes[RestClasses]
 
 [id=get-objects]
 === Execute a query, returns a list of JSON objects.
@@ -233,7 +233,7 @@ POST /api/v1alpha1/graphs/goals
 | 
 | include rules in graph edges
 
-| start | `body` | link:#api-goals-request[APIGoalsRequest] | `models.APIGoalsRequest` | | ✓ | | search from start to goal classes
+| start | `body` | link:#rest-goals-request[RestGoalsRequest] | `models.RestGoalsRequest` | | ✓ | | search from start to goal classes
 
 |===
 
@@ -259,7 +259,7 @@ Status: OK
 
   
 
-link:#api-graph)[APIGraph]
+link:#rest-graph)[RestGraph]
 
 [id=post-graphs-neighbours]
 === Create a correlation graph of neighbours of a start object to a given depth.
@@ -283,7 +283,7 @@ POST /api/v1alpha1/graphs/neighbours
 | 
 | include rules in graph edges
 
-| start | `body` | link:#api-neighbours-request[APINeighboursRequest] | `models.APINeighboursRequest` | | ✓ | | search from neighbours
+| start | `body` | link:#rest-neighbours-request[RestNeighboursRequest] | `models.RestNeighboursRequest` | | ✓ | | search from neighbours
 
 |===
 
@@ -309,7 +309,7 @@ Status: OK
 
   
 
-link:#api-graph)[APIGraph]
+link:#rest-graph)[RestGraph]
 
 [id=post-lists-goals]
 === Generate a list of goal nodes related to a starting point.
@@ -324,7 +324,7 @@ POST /api/v1alpha1/lists/goals
 |===
 | Name | Source | Type | Go type | Separator | Required | Default | Description
 
-| start | `body` | link:#api-goals-request[APIGoalsRequest] | `models.APIGoalsRequest` | | ✓ | | search from start to goal classes
+| start | `body` | link:#rest-goals-request[RestGoalsRequest] | `models.RestGoalsRequest` | | ✓ | | search from start to goal classes
 
 |===
 
@@ -350,228 +350,9 @@ Status: OK
 
   
 
-[]link:#api-node[APINode]
+[]link:#rest-node[RestNode]
 
 == Models
-
-[id=api-classes]
-=== api.Classes
-
-
-> Classes maps class names to a short description.
-  
-
-
-
-link:#api-classes[APIClasses]
-
-[id=api-domain]
-=== api.Domain
-
-
-> Domain configuration information.
-  
-
-
-
-
-
-**Properties**
-
-[%autowidth]
-|===
-| Name | Type | Go type | Required | Default | Description | Example
-
-	| errors | []string| `[]string` |  | |  | 
-
-	| name | string| `string` |  | |  | 
-
-	| stores | []link:#korrel8r-store-config[Korrel8rStoreConfig]| `[]Korrel8rStoreConfig` |  | |  | 
-
-|===
-
-[id=api-edge]
-=== api.Edge
-
-
-  
-
-
-
-**Properties**
-
-[%autowidth]
-|===
-| Name | Type | Go type | Required | Default | Description | Example
-
-	| goal | string| `string` |  | | Goal is the class name of the goal node. | `domain:class`
-
-	| rules | []link:#api-rule[APIRule]| `[]*APIRule` |  | | Rules is the set of rules followed along this edge (optional). | 
-
-	| start | string| `string` |  | | Start is the class name of the start node. | 
-
-|===
-
-[id=api-goals-request]
-=== api.GoalsRequest
-
-
-> Starting point for a goals search.
-  
-
-
-
-
-
-**Properties**
-
-[%autowidth]
-|===
-| Name | Type | Go type | Required | Default | Description | Example
-
-	| goals | []string| `[]string` |  | | Goal classes for correlation. | `["domain:class"]`
-
-	| start | link:#api-goals-request[APIGoalsRequest]| `APIGoalsRequest` |  | | Start of correlation search. | 
-
-|===
-
-[id=api-graph]
-=== api.Graph
-
-
-> Graph resulting from a correlation search.
-  
-
-
-
-
-
-**Properties**
-
-[%autowidth]
-|===
-| Name | Type | Go type | Required | Default | Description | Example
-
-	| edges | []link:#api-edge[APIEdge]| `[]*APIEdge` |  | |  | 
-
-	| nodes | []link:#api-node[APINode]| `[]*APINode` |  | |  | 
-
-|===
-
-[id=api-neighbours-request]
-=== api.NeighboursRequest
-
-
-> Starting point for a neighbours search.
-  
-
-
-
-
-
-**Properties**
-
-[%autowidth]
-|===
-| Name | Type | Go type | Required | Default | Description | Example
-
-	| depth | integer| `int64` |  | | Max depth of neighbours graph. | 
-
-	| start | link:#api-neighbours-request[APINeighboursRequest]| `APINeighboursRequest` |  | | Start of correlation search. | 
-
-|===
-
-[id=api-node]
-=== api.Node
-
-
-  
-
-
-
-**Properties**
-
-[%autowidth]
-|===
-| Name | Type | Go type | Required | Default | Description | Example
-
-	| class | string| `string` |  | | Class is the full class name in "DOMAIN:CLASS" form. | `domain:class`
-
-	| count | integer| `int64` |  | | Count of results found for this class, after de-duplication. | 
-
-	| queries | []link:#api-query-count[APIQueryCount]| `[]*APIQueryCount` |  | | Queries yielding results for this class. | 
-
-|===
-
-[id=api-query-count]
-=== api.QueryCount
-
-
-> Query run during a correlation with a count of results found.
-  
-
-
-
-
-
-**Properties**
-
-[%autowidth]
-|===
-| Name | Type | Go type | Required | Default | Description | Example
-
-	| count | integer| `int64` |  | | Count of results or -1 if the query was not executed. | 
-
-	| query | string| `string` |  | | Query for correlation data. | 
-
-|===
-
-[id=api-rule]
-=== api.Rule
-
-
-  
-
-
-
-**Properties**
-
-[%autowidth]
-|===
-| Name | Type | Go type | Required | Default | Description | Example
-
-	| name | string| `string` |  | | Name is an optional descriptive name. | 
-
-	| queries | []link:#api-query-count[APIQueryCount]| `[]*APIQueryCount` |  | | Queries generated while following this rule. | 
-
-|===
-
-[id=api-start]
-=== api.Start
-
-
-> Starting point for correlation.
-  
-
-
-
-
-
-**Properties**
-
-[%autowidth]
-|===
-| Name | Type | Go type | Required | Default | Description | Example
-
-	| class | string| `string` |  | | Class of starting objects | 
-
-	| constraint | link:#api-start[APIStart]| `APIStart` |  | | Constraint (optional) to limit the results. | 
-
-	| objects | link:#interface[interface{}]| `interface{}` |  | | Objects in JSON form | 
-
-	| queries | []string| `[]string` |  | | Queries for starting objects | 
-
-|===
 
 [id=config-class]
 === config.Class
@@ -722,3 +503,222 @@ If any template yields a blank string or an error, the rule does not apply. |
   
 
 link:#korrel8r-store-config[Korrel8rStoreConfig]
+
+[id=rest-classes]
+=== rest.Classes
+
+
+> Classes maps class names to a short description.
+  
+
+
+
+link:#rest-classes[RestClasses]
+
+[id=rest-domain]
+=== rest.Domain
+
+
+> Domain configuration information.
+  
+
+
+
+
+
+**Properties**
+
+[%autowidth]
+|===
+| Name | Type | Go type | Required | Default | Description | Example
+
+	| errors | []string| `[]string` |  | |  | 
+
+	| name | string| `string` |  | |  | 
+
+	| stores | []link:#korrel8r-store-config[Korrel8rStoreConfig]| `[]Korrel8rStoreConfig` |  | |  | 
+
+|===
+
+[id=rest-edge]
+=== rest.Edge
+
+
+  
+
+
+
+**Properties**
+
+[%autowidth]
+|===
+| Name | Type | Go type | Required | Default | Description | Example
+
+	| goal | string| `string` |  | | Goal is the class name of the goal node. | `domain:class`
+
+	| rules | []link:#rest-rule[RestRule]| `[]*RestRule` |  | | Rules is the set of rules followed along this edge (optional). | 
+
+	| start | string| `string` |  | | Start is the class name of the start node. | 
+
+|===
+
+[id=rest-goals-request]
+=== rest.GoalsRequest
+
+
+> Starting point for a goals search.
+  
+
+
+
+
+
+**Properties**
+
+[%autowidth]
+|===
+| Name | Type | Go type | Required | Default | Description | Example
+
+	| goals | []string| `[]string` |  | | Goal classes for correlation. | `["domain:class"]`
+
+	| start | link:#rest-goals-request[RestGoalsRequest]| `RestGoalsRequest` |  | | Start of correlation search. | 
+
+|===
+
+[id=rest-graph]
+=== rest.Graph
+
+
+> Graph resulting from a correlation search.
+  
+
+
+
+
+
+**Properties**
+
+[%autowidth]
+|===
+| Name | Type | Go type | Required | Default | Description | Example
+
+	| edges | []link:#rest-edge[RestEdge]| `[]*RestEdge` |  | |  | 
+
+	| nodes | []link:#rest-node[RestNode]| `[]*RestNode` |  | |  | 
+
+|===
+
+[id=rest-neighbours-request]
+=== rest.NeighboursRequest
+
+
+> Starting point for a neighbours search.
+  
+
+
+
+
+
+**Properties**
+
+[%autowidth]
+|===
+| Name | Type | Go type | Required | Default | Description | Example
+
+	| depth | integer| `int64` |  | | Max depth of neighbours graph. | 
+
+	| start | link:#rest-neighbours-request[RestNeighboursRequest]| `RestNeighboursRequest` |  | | Start of correlation search. | 
+
+|===
+
+[id=rest-node]
+=== rest.Node
+
+
+  
+
+
+
+**Properties**
+
+[%autowidth]
+|===
+| Name | Type | Go type | Required | Default | Description | Example
+
+	| class | string| `string` |  | | Class is the full class name in "DOMAIN:CLASS" form. | `domain:class`
+
+	| count | integer| `int64` |  | | Count of results found for this class, after de-duplication. | 
+
+	| queries | []link:#rest-query-count[RestQueryCount]| `[]*RestQueryCount` |  | | Queries yielding results for this class. | 
+
+|===
+
+[id=rest-query-count]
+=== rest.QueryCount
+
+
+> Query run during a correlation with a count of results found.
+  
+
+
+
+
+
+**Properties**
+
+[%autowidth]
+|===
+| Name | Type | Go type | Required | Default | Description | Example
+
+	| count | integer| `int64` |  | | Count of results or -1 if the query was not executed. | 
+
+	| query | string| `string` |  | | Query for correlation data. | 
+
+|===
+
+[id=rest-rule]
+=== rest.Rule
+
+
+  
+
+
+
+**Properties**
+
+[%autowidth]
+|===
+| Name | Type | Go type | Required | Default | Description | Example
+
+	| name | string| `string` |  | | Name is an optional descriptive name. | 
+
+	| queries | []link:#rest-query-count[RestQueryCount]| `[]*RestQueryCount` |  | | Queries generated while following this rule. | 
+
+|===
+
+[id=rest-start]
+=== rest.Start
+
+
+> Starting point for correlation.
+  
+
+
+
+
+
+**Properties**
+
+[%autowidth]
+|===
+| Name | Type | Go type | Required | Default | Description | Example
+
+	| class | string| `string` |  | | Class of starting objects | 
+
+	| constraint | link:#rest-start[RestStart]| `RestStart` |  | | Constraint (optional) to limit the results. | 
+
+	| objects | link:#interface[interface{}]| `interface{}` |  | | Objects serialized as JSON to, must be of start class. | 
+
+	| queries | []string| `[]string` |  | | Queries for starting objects, must return the start class. | 
+
+|===
