@@ -16,6 +16,7 @@ import (
 	"github.com/korrel8r/korrel8r/pkg/domains/k8s"
 	"github.com/korrel8r/korrel8r/pkg/domains/log"
 	"github.com/korrel8r/korrel8r/pkg/domains/metric"
+	"github.com/korrel8r/korrel8r/pkg/domains/netflow"
 	"github.com/korrel8r/korrel8r/pkg/engine"
 	"github.com/korrel8r/korrel8r/pkg/graph"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
@@ -35,7 +36,7 @@ func setup() *engine.Engine {
 	for _, c := range configs {
 		c.Stores = nil // Use fake stores, not configured defaults.
 	}
-	e := engine.New(k8s.Domain, log.Domain, alert.Domain, metric.Domain)
+	e := engine.New(k8s.Domain, log.Domain, netflow.Domain, alert.Domain, metric.Domain)
 	test.PanicErr(configs.Apply(e))
 	c := fake.NewClientBuilder().WithRESTMapper(testrestmapper.TestOnlyStaticRESTMapper(k8s.Scheme)).Build()
 	test.PanicErr(e.AddStore(test.Must(k8s.NewStore(c, &rest.Config{}))))
