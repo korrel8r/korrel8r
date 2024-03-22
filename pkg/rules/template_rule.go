@@ -1,5 +1,6 @@
 // Copyright: This file is part of korrel8r, released under https://github.com/korrel8r/korrel8r/blob/main/LICENSE
 
+// Package rules uses templates to generate goal queries from start objects.
 package rules
 
 import (

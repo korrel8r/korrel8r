@@ -22,7 +22,7 @@ var templateCmd = &cobra.Command{
 		if *templateFile != "" {
 			*templateString = string(must.Must1(os.ReadFile(*templateFile)))
 		}
-		e := newEngine()
+		e, _ := newEngine()
 		t := template.Must(template.New(*templateString).Funcs(e.TemplateFuncs()).Parse(*templateString))
 		must.Must(t.Execute(os.Stdout, e))
 	},

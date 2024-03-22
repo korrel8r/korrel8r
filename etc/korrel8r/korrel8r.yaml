@@ -1,4 +1,14 @@
-# Default korrel8r configuration for external testing.
+# For OpenShift clusters. Use default routes to find store URLs.
+stores:
+  - domain: k8s
+  - domain: alert
+    metrics: 'https://{{(get "k8s:Route:{namespace: openshift-monitoring, name: thanos-querier}" | first).Spec.Host}}'
+    alertmanager: 'https://{{(get "k8s:Route:{namespace: openshift-monitoring, name: alertmanager-main}" | first).Spec.Host}}'
+  - domain: log
+    lokiStack: 'https://{{(get "k8s:Route:{namespace: openshift-logging, name: logging-loki}" | first).Spec.Host}}'
+  - domain: metric
+    metric: 'https://{{(get "k8s:Route:{namespace: openshift-monitoring, name: thanos-querier}" | first).Spec.Host}}'
+
+# Include all rules
 include:
-  - stores/openshift-external.yaml
   - rules/all.yaml

@@ -1,6 +1,6 @@
 // Copyright: This file is part of korrel8r, released under https://github.com/korrel8r/korrel8r/blob/main/LICENSE
 
-// Package api implements a REST API for korrel8r.
+// Package rest implements a REST API for korrel8r.
 //
 // Note: Comments starting with "@" are used to generate a swagger spec via 'go generate'.
 // Static swagger doc is available at ./doc/swagger.md.
@@ -17,7 +17,7 @@
 //	@schemes		http https
 //	@accept			json
 //	@produce		json
-package api
+package rest
 
 import (
 	"encoding/json"
@@ -25,6 +25,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/korrel8r/korrel8r/pkg/config"
 	"github.com/korrel8r/korrel8r/pkg/engine"
 	"github.com/korrel8r/korrel8r/pkg/graph"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
@@ -38,15 +39,17 @@ import (
 var BasePath = docs.SwaggerInfo.BasePath
 
 type API struct {
-	Engine *engine.Engine
+	Engine  *engine.Engine
+	Configs config.Configs
 }
 
 // New API instance, registers  handlers with a gin Engine.
-func New(e *engine.Engine, r *gin.Engine) (*API, error) {
-	a := &API{Engine: e}
+func New(e *engine.Engine, c config.Configs, r *gin.Engine) (*API, error) {
+	a := &API{Engine: e, Configs: c}
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggoFiles.Handler))
 	r.GET("/api", func(c *gin.Context) { c.Redirect(http.StatusPermanentRedirect, "/swagger/index.html") })
 	v := r.Group(docs.SwaggerInfo.BasePath)
+	v.GET("/configuration", a.GetConfiguration)
 	v.GET("/domains", a.GetDomains)
 	v.GET("/domains/:domain/classes", a.GetDomainClasses)
 	v.POST("/graphs/goals", a.GraphsGoals)
@@ -58,6 +61,16 @@ func New(e *engine.Engine, r *gin.Engine) (*API, error) {
 
 // Close cleans any persistent resources.
 func (a *API) Close() {}
+
+// GetConfiguration handler
+//
+//	@router		/configuration [get]
+//	@summary	Dump configuration files and their contents.
+//	@tags		configuration
+//	@success	200	{object}	config.Configs
+func (a *API) GetConfiguration(c *gin.Context) {
+	c.JSON(http.StatusOK, a.Configs)
+}
 
 // GetDomains handler
 //

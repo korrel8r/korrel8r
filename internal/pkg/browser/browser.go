@@ -10,7 +10,6 @@ import (
 	"html/template"
 	"io/fs"
 	"net/http"
-	"net/url"
 	"os"
 	"path/filepath"
 
@@ -21,7 +20,6 @@ import (
 	"github.com/korrel8r/korrel8r/pkg/engine"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"github.com/korrel8r/korrel8r/pkg/openshift"
-	"github.com/korrel8r/korrel8r/pkg/rules"
 	"go.uber.org/multierr"
 )
 
@@ -72,14 +70,7 @@ func New(e *engine.Engine, router *gin.Engine) (*Browser, error) {
 	b.console = openshift.NewConsole(consoleURL, e)
 	c := &correlate{browser: b}
 
-	tmpl := template.Must(template.New("").
-		Funcs(rules.Funcs).
-		Funcs(b.engine.TemplateFuncs()).
-		Funcs(map[string]any{
-			"asHTML":         func(s string) template.HTML { return template.HTML(s) },
-			"queryToConsole": func(q korrel8r.Query) *url.URL { return c.checkURL(c.browser.console.QueryToConsoleURL(q)) },
-		}).
-		ParseFS(templates, "templates/*.tmpl"))
+	tmpl := template.Must(template.New("").Funcs(b.engine.TemplateFuncs()).ParseFS(templates, "templates/*.tmpl"))
 	router.SetHTMLTemplate(tmpl)
 	router.GET("/", func(c *gin.Context) { c.Redirect(http.StatusMovedPermanently, "/correlate") })
 	router.GET("/correlate", c.HTML)

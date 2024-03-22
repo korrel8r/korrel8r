@@ -4,9 +4,9 @@
 package engine
 
 import (
+	"bytes"
 	"context"
 	"fmt"
-	"strings"
 	"text/template"
 
 	sprig "github.com/go-task/slim-sprig"
@@ -36,14 +36,13 @@ func New(domains ...korrel8r.Domain) *Engine {
 		stores:       map[string][]korrel8r.Store{},
 		storeConfigs: map[string][]korrel8r.StoreConfig{},
 	}
-	// TODO document template funcs
-	e.templateFuncs = template.FuncMap{
-		"get":       e.get,
-		"className": korrel8r.ClassName,
-		"ruleName":  korrel8r.RuleName,
-	}
 
-	maps.Copy(e.templateFuncs, sprig.TxtFuncMap())
+	// NOTE any channges to the template funcs should be reflected in doc/configuration.adoc
+	e.templateFuncs = template.FuncMap{
+		"rule": func() korrel8r.Rule { return nil }, // Placeholder, replaced by [Rule.Apply]
+		"get":  e.get,                               // Acess to
+	}
+	maps.Copy(e.templateFuncs, sprig.FuncMap())
 
 	for _, d := range domains {
 		e.domainMap[d.Name()] = d
@@ -126,7 +125,7 @@ func (e *Engine) expandStoreConfig(sc korrel8r.StoreConfig) error {
 		if err != nil {
 			return err
 		}
-		w := &strings.Builder{}
+		w := &bytes.Buffer{}
 		err = t.Execute(w, nil)
 		if err != nil {
 			return err
@@ -215,9 +214,7 @@ func (e *Engine) Goals(starters []korrel8r.Object, start korrel8r.Class, goals [
 	return g, f.Err
 }
 
-// get DOMAIN:CLASS:QUERY
-//
-//	Executes QUERY and returns a list of result objects. Type of results depends DOMAIN and CLASS.
+// get implements the template function version of Get()
 func (e *Engine) get(query string) ([]korrel8r.Object, error) {
 	q, err := e.Query(query)
 	if err != nil {

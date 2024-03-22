@@ -1,6 +1,6 @@
 // Copyright: This file is part of korrel8r, released under https://github.com/korrel8r/korrel8r/blob/main/LICENSE
 
-package api
+package rest
 
 import (
 	"cmp"
@@ -25,12 +25,15 @@ type Classes map[string]string
 // until the engine resolves the class name as a Class value.
 
 // @description	Starting point for correlation.
+// The starting object set includes:
+// - results from getting each of the [Start.Queries]
+// - unmarshalled objects from [Start.Objects]
 type Start struct {
-	// Queries for starting objects
-	Queries []string `json:"queries,omitempty"`
 	// Class of starting objects
 	Class string `json:"class,omitempty"`
-	// Objects in JSON form
+	// Queries for starting objects, must return the start class.
+	Queries []string `json:"queries,omitempty"`
+	// Objects serialized as JSON to, must be of start class.
 	Objects []json.RawMessage `json:"objects,omitempty" swaggertype:"object"`
 	// Constraint (optional) to limit the results.
 	Constraint *korrel8r.Constraint `json:"constraint,omitempty"`

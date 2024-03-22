@@ -20,7 +20,7 @@ var getCmd = &cobra.Command{
 	Short: "Execute QUERY and print the results",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		e := newEngine()
+		e, _ := newEngine()
 		q := must.Must1(e.Query(args[0]))
 		s := must.Must1(e.StoreErr(q.Class().Domain()))
 		log.V(3).Info("get", "query", q, "class", korrel8r.ClassName(q.Class()))

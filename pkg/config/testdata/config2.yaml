@@ -1,4 +1,4 @@
-groups:
+aliases:
   - domain: foo
     name: g
     classes: [ d,e ]

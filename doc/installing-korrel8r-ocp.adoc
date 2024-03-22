@@ -1,6 +1,10 @@
 include::attributes.adoc[]
 [id="installing-korrel8r-ocp"]
-= Installing {operator} on {rh-ocp}
+= Installing the community operator
+
+There is a community operator for Korrel8r on OperatorHub.
+It has been tested with {rh-ocp}, it may or may not work with other k8s clusters.
+
 
 .Prerequisites
 
@@ -22,4 +26,4 @@ You can change this during install.
 You can now create a "Korrel8r" instance in any namespace.
 
 NOTE: A Korrel8r instance with no additional configuration will connect to default signal stores for  {rh-ocp}, and integrate with the {rh-console}.
-You can xref:configuring-korrel8r.adoc#configuring-korrel8r[customize the configuration] to use alternate stores.
+You can xref:configuration.adoc#configuration[customize the configuration] to use alternate stores.

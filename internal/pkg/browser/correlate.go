@@ -263,8 +263,12 @@ func (c *correlate) updateDiagram() {
 		a["tooltip"] = fmt.Sprintf("%v (%v)", korrel8r.ClassName(n.Class), len(result))
 		c.queryURLAttrs(a, n.Queries, n.Class.Domain())
 		if summary := summaryFunc(n.Class); summary != nil && len(result) > 0 {
+			if len(result) == 1 {
+				a["label"] = fmt.Sprintf("%v\n%v", n.Class.Name(), summary(result[0]))
+			}
 			n := min(10, len(result)) // Limit max items
 			w := &strings.Builder{}
+			fmt.Fprintln(w, a["tooltip"])
 			for _, o := range result[:n] {
 				fmt.Fprintf(w, "- %v\n", summary(o))
 			}

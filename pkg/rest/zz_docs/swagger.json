@@ -25,6 +25,22 @@
     },
     "basePath": "/api/v1alpha1",
     "paths": {
+        "/configuration": {
+            "get": {
+                "tags": [
+                    "configuration"
+                ],
+                "summary": "Dump configuration files and their contents.",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/config.Configs"
+                        }
+                    }
+                }
+            }
+        },
         "/domains": {
             "get": {
                 "tags": [
@@ -37,7 +53,7 @@
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/api.Domain"
+                                "$ref": "#/definitions/rest.Domain"
                             }
                         }
                     }
@@ -63,7 +79,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/api.Classes"
+                            "$ref": "#/definitions/rest.Classes"
                         }
                     }
                 }
@@ -88,7 +104,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/api.GoalsRequest"
+                            "$ref": "#/definitions/rest.GoalsRequest"
                         }
                     }
                 ],
@@ -96,7 +112,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/api.Graph"
+                            "$ref": "#/definitions/rest.Graph"
                         }
                     }
                 }
@@ -121,7 +137,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/api.NeighboursRequest"
+                            "$ref": "#/definitions/rest.NeighboursRequest"
                         }
                     }
                 ],
@@ -129,7 +145,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/api.Graph"
+                            "$ref": "#/definitions/rest.Graph"
                         }
                     }
                 }
@@ -148,7 +164,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/api.GoalsRequest"
+                            "$ref": "#/definitions/rest.GoalsRequest"
                         }
                     }
                 ],
@@ -158,7 +174,7 @@
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/api.Node"
+                                "$ref": "#/definitions/rest.Node"
                             }
                         }
                     }
@@ -195,27 +211,68 @@
         }
     },
     "definitions": {
-        "api.Classes": {
-            "description": "Classes maps class names to a short description.",
-            "type": "object",
-            "additionalProperties": {
-                "type": "string"
-            }
-        },
-        "api.Domain": {
-            "description": "Domain configuration information.",
+        "config.Class": {
             "type": "object",
             "properties": {
-                "errors": {
+                "classes": {
+                    "description": "Classes are the names of classes in this group.",
                     "type": "array",
                     "items": {
                         "type": "string"
                     }
                 },
-                "name": {
+                "domain": {
+                    "description": "Domain of the classes, all must be in the same domain.",
                     "type": "string"
                 },
+                "name": {
+                    "description": "Name is the short name for a group of classes.",
+                    "type": "string"
+                }
+            }
+        },
+        "config.ClassSpec": {
+            "type": "object",
+            "properties": {
+                "classes": {
+                    "description": "Classes is a list of class names to be selected from the domain.\nIf absent, all classes in the domain are selected.",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "domain": {
+                    "description": "Domain is the domain for selected classes.",
+                    "type": "string"
+                }
+            }
+        },
+        "config.Config": {
+            "type": "object",
+            "properties": {
+                "aliases": {
+                    "description": "Aliases defines short names for groups of related classes.",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/config.Class"
+                    }
+                },
+                "include": {
+                    "description": "Include lists additional configuration files or URLs to include.",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "rules": {
+                    "description": "Rules define the relationships that korrel8r will follow.",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/config.Rule"
+                    }
+                },
                 "stores": {
+                    "description": "Stores is a list of store configurations.",
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/korrel8r.StoreConfig"
@@ -223,164 +280,51 @@
                 }
             }
         },
-        "api.Edge": {
+        "config.Configs": {
+            "type": "object",
+            "additionalProperties": {
+                "$ref": "#/definitions/config.Config"
+            }
+        },
+        "config.ResultSpec": {
+            "type": "object",
+            "properties": {
+                "query": {
+                    "description": "Query template generates a query object suitable for the goal store.",
+                    "type": "string"
+                }
+            }
+        },
+        "config.Rule": {
             "type": "object",
             "properties": {
                 "goal": {
-                    "description": "Goal is the class name of the goal node.",
-                    "type": "string",
-                    "example": "domain:class"
-                },
-                "rules": {
-                    "description": "Rules is the set of rules followed along this edge (optional).",
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/api.Rule"
-                    }
-                },
-                "start": {
-                    "description": "Start is the class name of the start node.",
-                    "type": "string"
-                }
-            }
-        },
-        "api.GoalsRequest": {
-            "description": "Starting point for a goals search.",
-            "type": "object",
-            "properties": {
-                "goals": {
-                    "description": "Goal classes for correlation.",
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    },
-                    "example": [
-                        "domain:class"
-                    ]
-                },
-                "start": {
-                    "description": "Start of correlation search.",
+                    "description": "Goal specifies the set of classes that this rule can produce.",
                     "allOf": [
                         {
-                            "$ref": "#/definitions/api.Start"
+                            "$ref": "#/definitions/config.ClassSpec"
                         }
                     ]
-                }
-            }
-        },
-        "api.Graph": {
-            "description": "Graph resulting from a correlation search.",
-            "type": "object",
-            "properties": {
-                "edges": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/api.Edge"
-                    }
                 },
-                "nodes": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/api.Node"
-                    }
-                }
-            }
-        },
-        "api.NeighboursRequest": {
-            "description": "Starting point for a neighbours search.",
-            "type": "object",
-            "properties": {
-                "depth": {
-                    "description": "Max depth of neighbours graph.",
-                    "type": "integer"
-                },
-                "start": {
-                    "description": "Start of correlation search.",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/api.Start"
-                        }
-                    ]
-                }
-            }
-        },
-        "api.Node": {
-            "type": "object",
-            "properties": {
-                "class": {
-                    "description": "Class is the full class name in \"DOMAIN:CLASS\" form.",
-                    "type": "string",
-                    "example": "domain:class"
-                },
-                "count": {
-                    "description": "Count of results found for this class, after de-duplication.",
-                    "type": "integer"
-                },
-                "queries": {
-                    "description": "Queries yielding results for this class.",
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/api.QueryCount"
-                    }
-                }
-            }
-        },
-        "api.QueryCount": {
-            "description": "Query run during a correlation with a count of results found.",
-            "type": "object",
-            "properties": {
-                "count": {
-                    "description": "Count of results or -1 if the query was not executed.",
-                    "type": "integer"
-                },
-                "query": {
-                    "description": "Query for correlation data.",
-                    "type": "string"
-                }
-            }
-        },
-        "api.Rule": {
-            "type": "object",
-            "properties": {
                 "name": {
-                    "description": "Name is an optional descriptive name.",
+                    "description": "Name is a short, descriptive name.\nIf omitted, a name is generated from Start and Goal.",
                     "type": "string"
                 },
-                "queries": {
-                    "description": "Queries generated while following this rule.",
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/api.QueryCount"
-                    }
-                }
-            }
-        },
-        "api.Start": {
-            "description": "Starting point for correlation.",
-            "type": "object",
-            "properties": {
-                "class": {
-                    "description": "Class of starting objects",
-                    "type": "string"
-                },
-                "constraint": {
-                    "description": "Constraint (optional) to limit the results.",
+                "result": {
+                    "description": "TemplateResult contains templates to generate the result of applying this rule.\nEach template is applied to an object from one of the `start` classes.\nIf any template yields a blank string or an error, the rule does not apply.",
                     "allOf": [
                         {
-                            "$ref": "#/definitions/korrel8r.Constraint"
+                            "$ref": "#/definitions/config.ResultSpec"
                         }
                     ]
                 },
-                "objects": {
-                    "description": "Objects in JSON form",
-                    "type": "object"
-                },
-                "queries": {
-                    "description": "Queries for starting objects",
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
+                "start": {
+                    "description": "Start specifies the set of classes that this rule can apply to.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/config.ClassSpec"
+                        }
+                    ]
                 }
             }
         },
@@ -405,6 +349,195 @@
             "type": "object",
             "additionalProperties": {
                 "type": "string"
+            }
+        },
+        "rest.Classes": {
+            "description": "Classes maps class names to a short description.",
+            "type": "object",
+            "additionalProperties": {
+                "type": "string"
+            }
+        },
+        "rest.Domain": {
+            "description": "Domain configuration information.",
+            "type": "object",
+            "properties": {
+                "errors": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "name": {
+                    "type": "string"
+                },
+                "stores": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/korrel8r.StoreConfig"
+                    }
+                }
+            }
+        },
+        "rest.Edge": {
+            "type": "object",
+            "properties": {
+                "goal": {
+                    "description": "Goal is the class name of the goal node.",
+                    "type": "string",
+                    "example": "domain:class"
+                },
+                "rules": {
+                    "description": "Rules is the set of rules followed along this edge (optional).",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/rest.Rule"
+                    }
+                },
+                "start": {
+                    "description": "Start is the class name of the start node.",
+                    "type": "string"
+                }
+            }
+        },
+        "rest.GoalsRequest": {
+            "description": "Starting point for a goals search.",
+            "type": "object",
+            "properties": {
+                "goals": {
+                    "description": "Goal classes for correlation.",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "domain:class"
+                    ]
+                },
+                "start": {
+                    "description": "Start of correlation search.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/rest.Start"
+                        }
+                    ]
+                }
+            }
+        },
+        "rest.Graph": {
+            "description": "Graph resulting from a correlation search.",
+            "type": "object",
+            "properties": {
+                "edges": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/rest.Edge"
+                    }
+                },
+                "nodes": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/rest.Node"
+                    }
+                }
+            }
+        },
+        "rest.NeighboursRequest": {
+            "description": "Starting point for a neighbours search.",
+            "type": "object",
+            "properties": {
+                "depth": {
+                    "description": "Max depth of neighbours graph.",
+                    "type": "integer"
+                },
+                "start": {
+                    "description": "Start of correlation search.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/rest.Start"
+                        }
+                    ]
+                }
+            }
+        },
+        "rest.Node": {
+            "type": "object",
+            "properties": {
+                "class": {
+                    "description": "Class is the full class name in \"DOMAIN:CLASS\" form.",
+                    "type": "string",
+                    "example": "domain:class"
+                },
+                "count": {
+                    "description": "Count of results found for this class, after de-duplication.",
+                    "type": "integer"
+                },
+                "queries": {
+                    "description": "Queries yielding results for this class.",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/rest.QueryCount"
+                    }
+                }
+            }
+        },
+        "rest.QueryCount": {
+            "description": "Query run during a correlation with a count of results found.",
+            "type": "object",
+            "properties": {
+                "count": {
+                    "description": "Count of results or -1 if the query was not executed.",
+                    "type": "integer"
+                },
+                "query": {
+                    "description": "Query for correlation data.",
+                    "type": "string"
+                }
+            }
+        },
+        "rest.Rule": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "description": "Name is an optional descriptive name.",
+                    "type": "string"
+                },
+                "queries": {
+                    "description": "Queries generated while following this rule.",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/rest.QueryCount"
+                    }
+                }
+            }
+        },
+        "rest.Start": {
+            "description": "Starting point for correlation.",
+            "type": "object",
+            "properties": {
+                "class": {
+                    "description": "Class of starting objects",
+                    "type": "string"
+                },
+                "constraint": {
+                    "description": "Constraint (optional) to limit the results.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/korrel8r.Constraint"
+                        }
+                    ]
+                },
+                "objects": {
+                    "description": "Objects serialized as JSON to, must be of start class.",
+                    "type": "object"
+                },
+                "queries": {
+                    "description": "Queries for starting objects, must return the start class.",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
             }
         }
     }

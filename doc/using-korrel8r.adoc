@@ -3,7 +3,7 @@
 include::attributes.adoc[]
 
 [id="using-ocp-console"]
-== Using the {rh-ocp} preview
+== On {rh-ocp}
 
 [IMPORTANT]
 ====

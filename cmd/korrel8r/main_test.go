@@ -103,7 +103,7 @@ func startServer(t *testing.T, h *http.Client, proto string, args ...string) *ur
 	t.Cleanup(func() {
 		_ = cmd.Process.Kill()
 	})
-	return &url.URL{Scheme: proto, Host: addr, Path: api.BasePath}
+	return &url.URL{Scheme: proto, Host: addr, Path: rest.BasePath}
 }
 
 func assertDo(t *testing.T, h *http.Client, want, method, url, body string) {

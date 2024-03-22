@@ -65,7 +65,7 @@ func (configs Configs) Apply(e *engine.Engine) error {
 	// Gather groupMap first, before interpreting rules.
 	for _, source := range sources {
 		c := configs[source]
-		for _, g := range c.Groups {
+		for _, g := range c.Aliases {
 			if _, err := e.DomainErr(g.Domain); err != nil {
 				return fmt.Errorf("%v: group %q: %w", source, g.Name, err)
 			}
@@ -112,7 +112,7 @@ func (configs Configs) Apply(e *engine.Engine) error {
 // map of domain names to group names with class name lists
 type groupMap map[string]map[string][]string
 
-func (gm groupMap) Add(g Group) bool {
+func (gm groupMap) Add(g Class) bool {
 	if gm[g.Domain][g.Name] != nil {
 		return false // Already present, can't add.
 	}
@@ -150,7 +150,14 @@ func readFileOrURL(source string) ([]byte, error) {
 			return nil, err
 		}
 		defer resp.Body.Close()
-		return io.ReadAll(resp.Body)
+		b, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return nil, err
+		}
+		if resp.StatusCode != 200 {
+			return nil, fmt.Errorf("%v", http.StatusText(resp.StatusCode))
+		}
+		return b, nil
 	} else {
 		return os.ReadFile(u.Path)
 	}
