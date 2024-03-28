@@ -73,6 +73,11 @@ IMPORTANT: you need a _public_ image repository on a public service like `quay.i
 Some services (including `quay.io`) make new repositories _private_ by default.
 You may need to log in and change settings so that your new repository is _public_.
 
+== Building the operator
+
+The operator code is in the `./operator` sub-directory of this repository.
+See link:operator/README.adoc[] and link:operator/Makefile[] for more details.
+
 == Contributing to documentation
 
 . Fork and clone the repository

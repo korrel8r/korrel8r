@@ -1,0 +1,5 @@
+= Templates for crd-ref-doc generator
+
+`*.tpl`:: Template files for generating korrel8r docs.
+`asciidoctor`:: Original asciidoctor templates for reference.
+`markdown`:: Original markdown templates for reference.

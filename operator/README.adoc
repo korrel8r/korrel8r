@@ -1,0 +1,184 @@
+= Korrel8r Operator
+:toc:
+include::../doc/attributes.adoc[]
+
+An operator to deploys Korrel8r as a custom resource in a Kubernetes cluster.
+User documentation in link:../doc/installing-korrel8r-ocp.adoc#installing-korrel8r-ocp[../doc]
+
+== Getting Started
+
+This project follows the Kubernetes
+https://kubernetes.io/docs/concepts/extend-kubernetes/operator/[Operator pattern].
+
+A https://kubernetes.io/docs/concepts/architecture/controller/[Controller],
+reconciles resources until the desired state is reached on the cluster.
+
+You’ll need a Kubernetes cluster to run against. You can use
+https://sigs.k8s.io/kind[KIND] to get a local cluster for testing, or
+run against a remote cluster. See the
+https://korrel8r.github.io/korrel8r/[Korrel8r Documentation] for more
+about setting up your cluster.
+
+*Note:* The controller will automatically use the current context in
+your kubeconfig file (i.e. whatever cluster `kubectl cluster-info` shows).
+
+== Testing the operator
+
+Start the operator using one of the methods below, then use this script
+to verify it is working:
+
+[source,sh]
+----
+hack/smoketest.sh
+----
+
+The script creates a `Korrel8r` instance and verifies that it responds
+to REST API calls. If your operator is working correctly it should print
+some messages ending with ``Success.''
+
+You can customize your own korrel8r resource, and use a browser or REST
+tools to query it.
+
+=== Running as a local process.
+
+You can run the controller on your own development machine, outside the
+cluster. This is ideal for debugging.
+
+[arabic]
+. Install the CRDs into the cluster:
+
+[source,sh]
+----
+make install
+----
+
+[arabic]
+. Run the controller (this will run in the foreground, so switch to a
+new terminal if you want to leave it running):
+
+[source,sh]
+----
+make run
+----
+
+*NOTE:* You can also run this in one step by running: `make install run`
+
+=== Deploying via kustomize
+
+[arabic]
+. Build and push your image to the location specified by `IMAGE`, which
+should be a base image name with no tag:
+
+[source,sh]
+----
+make image-build image-push IMAGE=<some-image>
+----
+
+[arabic]
+. Deploy the controller to the cluster with the image specified by
+`IMAGE`:
+
+[source,sh]
+----
+make deploy IMG=<some-image>
+----
+
+=== Deploy as a bundle image
+
+[arabic]
+. Build and push your image to the location specified by `IMAGE`, which
+should be a base image name with no tag. This will create images
+latexmath:[$(IMAGE):$](VERSION) and
+latexmath:[$(IMAGE)-bundle:$](VERSION)
+
+[source,sh]
+----
+make push-all IMAGE=<some-image>
+----
+
+[arabic]
+. Run the bundle image on your cluster.
+
+[source,sh]
+----
+make bundle-run IMAGE=<some-image>
+----
+
+=== Cleaning up
+
+.Delete the CRDs from the cluster.
+[source,sh]
+----
+make uninstall
+----
+
+.Undeploy the controller resources.
+[source,sh]
+----
+make undeploy
+----
+
+=== Debugging
+
+The `KORREL8R_VERBOSE` environment variable to a numeric value to enable debug logs for the operator:
+
+[start=0]
+. The default - some start-up messages, and a single suceess/fail message per reconcile.
+. Also list the objects modified during reconciliation.
+. Also print a diff of each object modified during reconciliation.
+
+== Contributing to Documentation
+
+TIP: This is the _operator_ documentation.
+For Korrel8r itself go to https://github.com/korrel8r/korrel8r::[the Korrel8r project]
+
+Operator documentation includes:
+
+- API documentation for the Korrel8r "Custom Resource".
+- Information displayed by OperatorHub to describe operators.
+
+The documentation is generated from comments and fields in `.go` and `.yaml` source files.
+Edit the source files directly, then generate a preview of your work as described below.
+
+TIP: Files with extra information for doc writers have `// DOCNOTE` comments.
+
+WARNING: Be careful not to change the surrounding code when editing documentation comments and fields.
+
+=== Custom Resource API documentation
+
+The API documentation is generated from Go source code comments.
+
+[NOTE]
+====
+Source file:: `../apis/korrel8r/v1alpha1/korrel8r_types.go`
+Generated file:: `../doc/zz_crd-ref.doc`
+Command:: `make doc`
+====
+
+TIP: `make` does nothing if the generated files are already up to date.
+Modify a source file to get make to create a new generated file.
+
+Go comments are marked up according to https://go.dev/doc/comment::[Go Doc Comment] rules.
+Generation starts at `type Korrel8r struct` and recursively descends into all the types it references.
+Normally all types that are relevant for documentation are grouped in the same `*_types.go` file.
+
+API comments are used in several contexts:
+
+- HTML pages for documentation web sites. The locally generated `../doc/zz_api-ref.doc` is an example.
+  Pages could be generated in other formats for specific sites.
+- The cluster itself serves the documentation via commands like `kubectl explain korrel8r`.
+- Console-like applications often provide this information to help the user in editing resources.
+
+=== OperatorHub descriptions
+
+OperatorHub uses `description` fields from the `ClusterServiceVersion` YAML file to display an operator.
+
+[NOTE]
+====
+Source file:: `../config/manifests/bases/korrel8r.clusterserviceversion.yaml`
+Online preview page:: https://operatorhub.io/preview
+How to preview:: Paste the contents of `../config/manifests/bases/korrel8r.clusterserviceversion.yaml` into the the form on the preview page.
+====
+
+CAUTION: Do not edit YAML files in the `../bundle/` directory. Your changes will be over-written.
+`../bundle` files are generated from the source files under the `../config` directory.

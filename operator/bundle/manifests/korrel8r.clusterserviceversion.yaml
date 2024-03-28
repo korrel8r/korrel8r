@@ -1,0 +1,272 @@
+apiVersion: operators.coreos.com/v1alpha1
+kind: ClusterServiceVersion
+metadata:
+  annotations:
+    alm-examples: |-
+      [
+        {
+          "apiVersion": "korrel8r.openshift.io/v1alpha1",
+          "kind": "Korrel8r",
+          "metadata": {
+            "name": "korrel8r-instance",
+            "namespace": "korrel8r"
+          }
+        }
+      ]
+    capabilities: Basic Install
+    categories: Observability
+    containerImage: quay.io/korrel8r/operator
+    createdAt: "2024-04-03T01:19:20Z"
+    description: Correlate cluster resources and observability data.
+    operators.operatorframework.io/builder: operator-sdk-unknown
+    operators.operatorframework.io/project_layout: go.kubebuilder.io/v4
+    repository: https://github.com/korrel8r/korrel8r
+    support: Korrel8r Project
+  name: korrel8r.v0.6.0
+  namespace: placeholder
+spec:
+  apiservicedefinitions: {}
+  customresourcedefinitions:
+    owned:
+    - description: Korrel8r is a service that correlates observabililty signals in
+        the cluster.
+      displayName: Korrel8r
+      kind: Korrel8r
+      name: korrel8rs.korrel8r.openshift.io
+      version: v1alpha1
+  description: |
+    Korrel8r helps navigate from problem symptoms to related resources and signal data that can reveal the cause.
+    It can follow relationships between disjointed observability "silos" (logs, metrics, alerts and more) to bring together all the data available to solve a problem.
+    This operator allows Korrel8r to be deployed as a cluster service with a REST API.
+    It can be used as a back-end for data correlation by the OpenShift console and other tools.
+  displayName: Korrel8r
+  icon:
+  - base64data: PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4KPCEtLSBDcmVhdGVkIHdpdGggSW5rc2NhcGUgKGh0dHA6Ly93d3cuaW5rc2NhcGUub3JnLykgLS0+Cjxzdmcgd2lkdGg9IjQwIiBoZWlnaHQ9IjQwIiB2ZXJzaW9uPSIxLjEiIHZpZXdCb3g9IjAgMCAxMC41ODMgMTAuNTgzIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxnIHRyYW5zZm9ybT0ibWF0cml4KC44MTUzIDAgMCAuNzkxOTkgLS4wMzkxNDQgLjkwNjM2KSIgc3Ryb2tlPSIjM2U0ODM3IiBzdHJva2Utd2lkdGg9Ii4yNjQ1OCI+PHBhdGggZD0ibTQuNTc4MyAyLjYxNCAxLjU0NDUgMC43MTExNiIgZmlsbD0ibm9uZSIvPjxlbGxpcHNlIGN4PSIxLjkzNjciIGN5PSI1LjczMSIgcng9Ii45NDE1OSIgcnk9Ii45OTczMSIgZmlsbD0iIzBmMCIvPjxlbGxpcHNlIGN4PSIzLjc0MjkiIGN5PSIyLjIyOTMiIHJ4PSIuOTEzNTEiIHJ5PSIuOTUwMjgiIGZpbGw9IiNmMGYiLz48cGF0aCBkPSJtMi4zODgxIDQuODU1OCAwLjkyMjg5LTEuNzg5MSIgZmlsbD0ibm9uZSIvPjxlbGxpcHNlIGN4PSIzLjQyNjgiIGN5PSI5LjA4MDEiIHJ4PSIuNjc2NTIiIHJ5PSIuNzE0OTkiIGZpbGw9IiNmYzAiLz48ZWxsaXBzZSBjeD0iNS4xNTcyIiBjeT0iNi4yMDE0IiByeD0iLjgzNzMiIHJ5PSIuOTAwNjciIGZpbGw9IiNkMzVmOGQiLz48ZWxsaXBzZSBjeD0iOC4xNjc5IiBjeT0iOC42MTQ3IiByeD0iLjkwMTY4IiByeT0iMS4wMTIzIiBmaWxsPSIjMDhhIi8+PGVsbGlwc2UgY3g9IjkuOTc4NiIgY3k9IjIuNzUxNyIgcng9Ii43NjcxIiByeT0iLjc5Nzk4IiBmaWxsPSIjMGZmIi8+PGVsbGlwc2UgY3g9IjYuODU2MiIgY3k9IjMuNjYyOSIgcng9Ii44MDIxNSIgcnk9Ii44MzQ0NCIgZmlsbD0iI2ZmMCIvPjxlbGxpcHNlIGN4PSIxMS4xNzIiIGN5PSI1Ljc4NjEiIHJ4PSIuOTEwMjYiIHJ5PSIuOTM0OTQiIGZpbGw9IiNmMDAiLz48ZyBmaWxsPSJub25lIj48cGF0aCBkPSJtMi4zMzggNi42MzMxIDAuODAwODUgMS44Ii8+PHBhdGggZD0ibTIuODY5NCA1Ljg2NzIgMS40NTgxIDAuMjEyOTgiLz48cGF0aCBkPSJtMy43ODk1IDguNDc2NiAwLjkxMzA2LTEuNTE4OSIvPjxwYXRoIGQ9Im0xMC4yNjkgMy40OTAzIDAuNTYxOCAxLjQyOSIvPjxwYXRoIGQ9Im03LjYyODYgMy40Mzc1IDEuNjExNC0wLjQ3MDI1Ii8+PHBhdGggZD0ibTUuOTkyOCA2LjE0MzcgNC4yNzA2LTAuMjk0ODMiLz48cGF0aCBkPSJtNS42NDY0IDUuNDcwNCAwLjc1MTQ2LTEuMTIyOCIvPjxwYXRoIGQ9Im01LjgyODYgNi43Mzk1IDEuNjA1NSAxLjI4NyIvPjxwYXRoIGQ9Im04Ljg1ODcgNy45NjQyIDEuNjQxOS0xLjU0NjIiLz48L2c+PC9nPjwvc3ZnPgo=
+    mediatype: image/svg+xml
+  install:
+    spec:
+      clusterPermissions:
+      - rules:
+        - apiGroups:
+          - apps
+          resources:
+          - deployments
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
+          - ""
+          resources:
+          - configmaps
+          - serviceaccounts
+          - services
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
+          - ""
+          resources:
+          - events
+          verbs:
+          - create
+          - patch
+        - apiGroups:
+          - ""
+          resources:
+          - pods
+          verbs:
+          - get
+          - list
+          - watch
+        - apiGroups:
+          - korrel8r.openshift.io
+          resources:
+          - korrel8rs
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
+          - korrel8r.openshift.io
+          resources:
+          - korrel8rs/finalizers
+          verbs:
+          - update
+        - apiGroups:
+          - korrel8r.openshift.io
+          resources:
+          - korrel8rs/status
+          verbs:
+          - get
+          - patch
+          - update
+        - apiGroups:
+          - route.openshift.io
+          resources:
+          - routes
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
+          - authentication.k8s.io
+          resources:
+          - tokenreviews
+          verbs:
+          - create
+        - apiGroups:
+          - authorization.k8s.io
+          resources:
+          - subjectaccessreviews
+          verbs:
+          - create
+        serviceAccountName: korrel8r-controller-manager
+      deployments:
+      - label:
+          app.kubernetes.io/component: operator
+          app.kubernetes.io/name: korrel8r
+          control-plane: controller-manager
+        name: korrel8r-controller-manager
+        spec:
+          replicas: 1
+          selector:
+            matchLabels:
+              app.kubernetes.io/name: korrel8r
+              control-plane: controller-manager
+          strategy: {}
+          template:
+            metadata:
+              annotations:
+                kubectl.kubernetes.io/default-container: manager
+              labels:
+                app.kubernetes.io/name: korrel8r
+                control-plane: controller-manager
+            spec:
+              affinity:
+                nodeAffinity:
+                  requiredDuringSchedulingIgnoredDuringExecution:
+                    nodeSelectorTerms:
+                    - matchExpressions:
+                      - key: kubernetes.io/arch
+                        operator: In
+                        values:
+                        - amd64
+                        - arm64
+                        - ppc64le
+                        - s390x
+                      - key: kubernetes.io/os
+                        operator: In
+                        values:
+                        - linux
+              containers:
+              - args:
+                - --health-probe-bind-address=:8081
+                - --metrics-bind-address=127.0.0.1:8080
+                command:
+                - /manager
+                env:
+                - name: KORREL8R_IMAGE
+                  value: quay.io/korrel8r/korrel8r:0.6.0
+                - name: HOME
+                  value: /tmp
+                image: quay.io/korrel8r/operator:0.6.0
+                livenessProbe:
+                  httpGet:
+                    path: /healthz
+                    port: 8081
+                  initialDelaySeconds: 15
+                  periodSeconds: 20
+                name: manager
+                readinessProbe:
+                  httpGet:
+                    path: /readyz
+                    port: 8081
+                  initialDelaySeconds: 5
+                  periodSeconds: 10
+                resources:
+                  limits:
+                    cpu: 500m
+                    memory: 128Mi
+                  requests:
+                    cpu: 10m
+                    memory: 64Mi
+                securityContext:
+                  allowPrivilegeEscalation: false
+                  capabilities:
+                    drop:
+                    - ALL
+              - args:
+                - --secure-listen-address=0.0.0.0:8443
+                - --upstream=http://127.0.0.1:8080/
+                - --logtostderr=true
+                - --v=0
+                image: gcr.io/kubebuilder/kube-rbac-proxy:v0.13.1
+                name: kube-rbac-proxy
+                ports:
+                - containerPort: 8443
+                  name: https
+                  protocol: TCP
+                resources:
+                  limits:
+                    cpu: 500m
+                    memory: 128Mi
+                  requests:
+                    cpu: 5m
+                    memory: 64Mi
+                securityContext:
+                  allowPrivilegeEscalation: false
+                  capabilities:
+                    drop:
+                    - ALL
+              securityContext:
+                runAsNonRoot: true
+                seccompProfile:
+                  type: RuntimeDefault
+              serviceAccountName: korrel8r-controller-manager
+              terminationGracePeriodSeconds: 10
+    strategy: deployment
+  installModes:
+  - supported: false
+    type: OwnNamespace
+  - supported: false
+    type: SingleNamespace
+  - supported: false
+    type: MultiNamespace
+  - supported: true
+    type: AllNamespaces
+  keywords:
+  - observability
+  - signal
+  - correlation
+  links:
+  - name: Documentation
+    url: https://korrel8r.github.io/korrel8r
+  - name: Source Code and Issues
+    url: https://github.com/korrel8r/korrel8r
+  maintainers:
+  - email: korrel8r@gmail.com
+    name: Korrel8r Project
+  maturity: alpha
+  minKubeVersion: 1.23.0
+  provider:
+    name: Korrel8r
+    url: https://github.com/korrel8r/korrel8r
+  version: 0.6.0

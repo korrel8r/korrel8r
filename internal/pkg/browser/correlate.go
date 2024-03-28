@@ -47,10 +47,11 @@ type correlate struct {
 	Diagram, DiagramTxt, DiagramImg string
 	ConsoleURL                      *url.URL
 	UpdateTime                      time.Duration
+
 	// Accumulated errors displayed on page
 	Err error
 
-	// Parent
+	Version string
 	browser *Browser
 }
 
@@ -65,9 +66,10 @@ func (c *correlate) reset(params url.Values) {
 		Neighbours:  params.Get("neighbours"),
 		ShortPaths:  params.Get("short") == "true",
 		RuleGraph:   params.Get("rules") == "true",
+		Version:     app.version,
+		browser:     app,
 	}
 	c.Goals = []string{"log", "k8s:Event", "metric:metric"}
-	c.browser = app
 	c.ConsoleURL = c.browser.console.BaseURL
 	c.Graph = c.browser.engine.Graph()
 	// Defaults

@@ -25,7 +25,7 @@ There is a short link:demos/openshift-console-browser/video.mov[demo video]
 To try the {rh-ocp} preview features, do the following:
 
 . link:{pages}#installing-korrel8r-ocp[Install the operator.]
-. xref:using-korrel8r.adoc#using-ocp-console[Try it out!]
+. link:{pages}#using-ocp-console[Try it out!]
 
 == Documentation
 

@@ -10,4 +10,6 @@
 :rh-ocp: {red-hat} OpenShift Container Platform
 :rh-console: link:https://docs.openshift.com/container-platform/latest/web_console/web-console-overview.html[{rh-ocp} web console]
 :logging: logging subsystem for {red-hat} OpenShift
-:operator: Korrel8r Community Operator
+:operator: Korrel8r Community Operato:
+// Keywords - all the misspellings
+:keywords: correlation, observability, signal, kubernetes, korrel8r, korrell8r, korell8r, korel8r, correl8r korrelater, korrelator, correlater, correlator.

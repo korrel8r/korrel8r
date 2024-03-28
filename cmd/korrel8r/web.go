@@ -54,7 +54,7 @@ var webCmd = &cobra.Command{
 		}
 		engine, configs := newEngine()
 		if *htmlFlag {
-			b := must.Must1(browser.New(engine, router))
+			b := must.Must1(browser.New(engine, router, rootCmd.Version))
 			defer b.Close()
 		}
 		if *restFlag {

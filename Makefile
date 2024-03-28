@@ -5,23 +5,22 @@ help: ## Display this help.
 	@echo; echo  = Variables =
 	@grep -E '^## [A-Z0-9_]+: ' Makefile | sed 's/^## \([A-Z0-9_]*\): \(.*\)/\1#\2/' | column -s'#' -t
 
-## VERSION: Semantic version for release. Use a -dev suffix for work in progress.
-VERSION?=0.5.9-dev
-## IMG: Base name of image to build or deploy, without version tag.
-IMG?=quay.io/korrel8r/korrel8r
+include .bingo/Variables.mk	# Versioned tools
+include Variables.mk
+IMG=$(KORREL8R_IMG)
+IMAGE=$(KORREL8R_IMAGE)
+
 ## OVERLAY: Name of kustomize directory for `make deploy`.
 OVERLAY?=config/overlays/dev
-## IMGTOOL: May be podman or docker.
-IMGTOOL?=$(shell which podman || which docker)
-
-include .bingo/Variables.mk	# Versioned tools
 
 check: generate lint test ## Lint and test code.
 
-all: check install _site image-build ## Build and test everything locally. Recommended before pushing.
+all: check install _site image-build operator ## Build and test everything locally. Recommended before pushing.
+	$(MAKE) -C operator all
 
 clean: ## Remove generated files, including checked-in files.
 	rm -vrf bin _site $(GENERATED) $(shell find -name 'zz_*')
+	$(MAKE) -C operator clean
 
 VERSION_TXT=cmd/korrel8r/version.txt
 
@@ -32,7 +31,7 @@ $(VERSION_TXT):
 	echo $(VERSION) > $@
 
 # List of generated files
-GENERATED_DOC=doc/zz_domains.adoc doc/zz_rest_api.adoc doc/zz_api-ref.adoc
+GENERATED_DOC=doc/zz_domains.adoc doc/zz_rest_api.adoc doc/zz_crd-ref.adoc
 GENERATED=$(VERSION_TXT) pkg/config/zz_generated.deepcopy.go pkg/rest/zz_docs $(GENERATED_DOC) .copyright
 
 generate: $(GENERATED) go.mod ## Generate code and doc.
@@ -75,14 +74,14 @@ CONFIG=etc/korrel8r/korrel8r.yaml
 run: $(GENERATED) ## Run `korrel8r web` using configuration in ./etc/korrel8r
 	go run ./cmd/korrel8r web -c $(CONFIG) $(ARGS)
 
-# Full name of image
-IMAGE=$(IMG):$(VERSION)
-
 image-build: $(VERSION_TXT) ## Build image locally, don't push.
 	$(IMGTOOL) build --tag=$(IMAGE) .
 
 image: image-build ## Build and push image. IMG must be set to a writable image repository.
 	$(IMGTOOL) push -q $(IMAGE)
+
+images: image
+	$(MAKE) -C operator images
 
 image-name: ## Print the full image name and tag.
 	@echo $(IMAGE)
@@ -119,15 +118,17 @@ _site: $(shell find doc) $(GENERATED_DOC) ## Generate the website HTML.
 	$(and $(shell type -p linkchecker),linkchecker --check-extern --ignore-url 'https?://localhost[:/].*' _site)
 	@touch $@
 
+.PHONY: doc
+doc: $(GENERATED_DOC)
+
 doc/zz_domains.adoc: $(shell find cmd/korrel8r-doc internal pkg -name '*.go')
 	go run ./cmd/korrel8r-doc pkg/domains/* > $@
 
 doc/zz_rest_api.adoc: pkg/rest/zz_docs $(shell find etc/swagger) $(SWAGGER)
 	$(SWAGGER) -q generate markdown -T etc/swagger -f $</swagger.json --output $@
 
-# FIXME manage relationship to operator branches. Move all API code here?
-doc/zz_api-ref.adoc:
-	curl -qf https://raw.githubusercontent.com/alanconway/operator/main/doc/zz_api-ref.adoc > doc/zz_api-ref.adoc
+doc/zz_crd-ref.adoc: $(shell find etc/crd-ref-docs operator/apis pkg/config) $(CRD_REF_DOCS)
+	$(CRD_REF_DOCS) --source-path=operator/apis --config=etc/crd-ref-docs/config.yaml --templates-dir=etc/crd-ref-docs/templates --output-path=$@
 
 release: release-commit release-push ## Create and push a new release tag and image. Set VERSION=vX.Y.Z.
 

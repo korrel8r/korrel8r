@@ -3,7 +3,6 @@
 :doctype: book
 :toc: left
 :toclevels: 3
-:keywords: correlation, observability, signal, kubernetes
 include::attributes.adoc[]
 
 [NOTE]
@@ -43,17 +42,11 @@ include::about-objects.adoc[leveloffset=+3]
 
 include::about-rules.adoc[leveloffset=+3]
 
-== Installing on a cluster
-
-include::installing-korrel8r-ocp.adoc[leveloffset=+2]
-
-include::korrel8r-resource.adoc[leveloffset=+2]
-
-include::using-korrel8r.adoc[leveloffset=+1]
+include::installing-korrel8r-ocp.adoc[leveloffset=+1]
 
 include::configuration.adoc[leveloffset=+1]
 
-include::troubleshooting.adoc[leveloffset=+2]
+include::troubleshooting.adoc[leveloffset=+1]
 
 [id="index-reference"]
 == Reference
@@ -69,4 +62,4 @@ include::zz_domains.adoc[leveloffset=+3]
 include::zz_rest_api.adoc[leveloffset=+2]
 
 [id="index-k8s-api-reference"]
-include::zz_api-ref.adoc[leveloffset=+1]
+include::zz_crd-ref.adoc[leveloffset=+1]
