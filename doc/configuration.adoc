@@ -14,7 +14,15 @@ Korrel8r loads configuration from the file specified by the `--config` flag:
 $ korrel8r --config <path_to_config_file>
 ----
 
-TIP: The Korrel8r project provides some link:{etc-korrel8r}[example configuration files]
+The default configuration can be loaded from the internet:
+----
+korrel8r -c https://raw.githubusercontent.com/korrel8r/korrel8r/main/etc/korrel8r/korrel8r.yaml get
+----
+
+[TIP]
+====
+You can examine the default configuration files at the Korrel8r project provides some link:{etc-korrel8r}[example configuration files]
+====
 
 The configuration file is a YAML file with the following sections:
 
@@ -33,7 +41,7 @@ stores:
     # Domain-specific fields <2>
 ----
 
-<1> Domain name of the store (requied).
+<1> Domain name of the store (required).
 <2> Domain-specific fields for connection parameters. See {xref-domain}.
 
 .Rules defines rules to relate different classes of data. See xref:_rules[].

@@ -5,7 +5,7 @@ Korrel8r works with data _objects_ which include _signals_ (data about events) a
 
 // TODO: JSON examples.
 
-[id="objects-signal-types_{context}"]
+[id="objects-signal-types"]
 == Signal types
 
 A Kubernetes cluster generates many types of _signals_, including the following:
@@ -27,7 +27,7 @@ nodes.
 |Network events |TCP and IP level network information.
 |===
 
-[id="objects-resource-types_{context}"]
+[id="objects-resource-types"]
 == Resource types
 
 A cluster also contains _resources_ which are not generally considered to be signals,

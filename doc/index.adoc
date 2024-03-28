@@ -38,28 +38,35 @@ link:{project}/issues/73[Issue 73: Authentication and Authorization for restrict
 === Architecture
 
 include::about-domains.adoc[leveloffset=+3]
+
 include::about-objects.adoc[leveloffset=+3]
+
 include::about-rules.adoc[leveloffset=+3]
 
-// OCP setup / installation docs
-include::installing-korrel8r-ocp.adoc[leveloffset=+1]
-// troubleshooting
-include::troubleshooting.adoc[leveloffset=+2]
+== Installing on a cluster
 
-// User guides
+include::installing-korrel8r-ocp.adoc[leveloffset=+2]
+
+include::korrel8r-resource.adoc[leveloffset=+2]
+
 include::using-korrel8r.adoc[leveloffset=+1]
+
 include::configuration.adoc[leveloffset=+1]
+
+include::troubleshooting.adoc[leveloffset=+2]
 
 [id="index-reference"]
 == Reference
 
-[id="index-api-reference"]
-// REST API
-include::zz_rest_api.adoc[leveloffset=+2]
-
 [id="index-domain-reference"]
-=== Domain Reference
+=== Domains
 
 Reference details for the for the classes, objects, queries and stores of each available domain.
 
 include::zz_domains.adoc[leveloffset=+3]
+
+[id="index-rest-api-reference"]
+include::zz_rest_api.adoc[leveloffset=+2]
+
+[id="index-k8s-api-reference"]
+include::zz_api-ref.adoc[leveloffset=+1]

@@ -1,0 +1,79 @@
+// Generated documentation. Please do not edit.
+:anchor_prefix: k8s-api
+
+[id="{p}-api-reference"]
+== Kubernetes API
+
+.Packages
+- xref:{anchor_prefix}-korrel8r-openshift-io-v1alpha1[$$korrel8r.openshift.io/v1alpha1$$]
+
+
+[id="{anchor_prefix}-korrel8r-openshift-io-v1alpha1"]
+=== korrel8r.openshift.io/v1alpha1
+
+Package v1alpha1 contains API Schema definitions for the korrel8r v1alpha1 API group.
+
+
+.Resource Types
+- xref:{anchor_prefix}-github-com-korrel8r-operator-api-v1alpha1-korrel8r[$$Korrel8r$$]
+
+
+
+[id="{anchor_prefix}-github-com-korrel8r-operator-api-v1alpha1-config"]
+==== Config
+
+Config wraps the korrel8r Config struct for API code generation.
+
+.Appears In:
+- xref:{anchor_prefix}-github-com-korrel8r-operator-api-v1alpha1-korrel8rspec[$$Korrel8rSpec$$]
+
+[cols="25a,75a", options="header"]
+|===
+| Field | Description
+| *`rules`* __xref:{anchor_prefix}-github-com-korrel8r-korrel8r-pkg-config-rule[$$Rule$$] array__ | Rules define the relationships that korrel8r will follow. +
+| *`groups`* __xref:{anchor_prefix}-github-com-korrel8r-korrel8r-pkg-config-group[$$Group$$] array__ | Groups defines short names for groups of related classes. +
+| *`stores`* __StoreConfig array__ | Stores is a list of store configurations. +
+| *`include`* __string array__ | Include lists additional configuration files or URLs to include. +
+|===
+
+
+[id="{anchor_prefix}-github-com-korrel8r-operator-api-v1alpha1-korrel8r"]
+==== Korrel8r
+
+Korrel8r is a service that correlates observabililty signals in the cluster.
+
+
+
+[cols="25a,75a", options="header"]
+|===
+| Field | Description
+| *`apiVersion`* __string__ | `korrel8r.openshift.io/v1alpha1`
+| *`kind`* __string__ | `Korrel8r`
+| *`metadata`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.29/#objectmeta-v1-meta[$$ObjectMeta$$]__ | Refer to Kubernetes API documentation for fields of `metadata`.
+
+| *`spec`* __xref:{anchor_prefix}-github-com-korrel8r-operator-api-v1alpha1-korrel8rspec[$$Korrel8rSpec$$]__ | 
+|===
+
+
+[id="{anchor_prefix}-github-com-korrel8r-operator-api-v1alpha1-korrel8rspec"]
+==== Korrel8rSpec
+
+Korrel8rSpec defines the desired state of Korrel8r
+
+.Appears In:
+- xref:{anchor_prefix}-github-com-korrel8r-operator-api-v1alpha1-korrel8r[$$Korrel8r$$]
+
+[cols="25a,75a", options="header"]
+|===
+| Field | Description
+| *`config`* __xref:{anchor_prefix}-github-com-korrel8r-operator-api-v1alpha1-config[$$Config$$]__ | Config is the configuration for a korrel8r deployment. +
+If not provided there is a default configuration suitable for use in an openshift cluster. +
+
+
+The "include" section can load additional configuration files provided at /etc/korrel8r +
+| *`verbose`* __integer__ | Verbose sets the numeric logging verbosity for the KORREL8R_VERBOSE environment variable. +
+|===
+
+
+
+

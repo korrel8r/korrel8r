@@ -32,7 +32,7 @@ $(VERSION_TXT):
 	echo $(VERSION) > $@
 
 # List of generated files
-GENERATED_DOC=doc/zz_domains.adoc doc/zz_rest_api.adoc
+GENERATED_DOC=doc/zz_domains.adoc doc/zz_rest_api.adoc doc/zz_api-ref.adoc
 GENERATED=$(VERSION_TXT) pkg/config/zz_generated.deepcopy.go pkg/rest/zz_docs $(GENERATED_DOC) .copyright
 
 generate: $(GENERATED) go.mod ## Generate code and doc.
@@ -105,16 +105,18 @@ undeploy: $(OVERLAY)
 	kubectl delete -k $(OVERLAY)
 
 # Run asciidoctor from an image.
-ADOC_RUN=$(IMGTOOL) run -iq -v./doc:/src:z -v./_site:/dst:z quay.io/rhdevdocs/devspaces-documentation
-ADOC_ARGS=-a revnumber=$(VERSION) -D/dst /src/index.adoc
+ADOC_RUN=$(IMGTOOL) run -iq -v./doc:/doc:z -v./_site:/_site:z quay.io/rhdevdocs/devspaces-documentation
+# From github.com:darshandsoni/asciidoctor-skins.git
+CSS?=adoc-readthedocs.css
+ADOC_ARGS=-a revnumber=$(VERSION) -a allow-uri-read -a stylesdir=css -a stylesheet=$(CSS) -D/_site /doc/index.adoc
 
 # _site is published to github pages by .github/workflows/asciidoctor-ghpages.yml.
 _site: $(shell find doc) $(GENERATED_DOC) ## Generate the website HTML.
 	@mkdir -p $@/etc
 	@cp -r doc/images $@
 	$(ADOC_RUN) asciidoctor $(ADOC_ARGS)
-	$(ADOC_RUN) asciidoctor-pdf -a allow-uri-read -o ebook.pdf $(ADOC_ARGS)
-	$(and $(shell type -p linkchecker),linkchecker _site)
+	$(ADOC_RUN) asciidoctor-pdf $(ADOC_ARGS) -o ebook.pdf
+	$(and $(shell type -p linkchecker),linkchecker --check-extern --ignore-url 'https?://localhost[:/].*' _site)
 	@touch $@
 
 doc/zz_domains.adoc: $(shell find cmd/korrel8r-doc internal pkg -name '*.go')
@@ -122,6 +124,10 @@ doc/zz_domains.adoc: $(shell find cmd/korrel8r-doc internal pkg -name '*.go')
 
 doc/zz_rest_api.adoc: pkg/rest/zz_docs $(shell find etc/swagger) $(SWAGGER)
 	$(SWAGGER) -q generate markdown -T etc/swagger -f $</swagger.json --output $@
+
+# FIXME manage relationship to operator branches. Move all API code here?
+doc/zz_api-ref.adoc:
+	curl -qf https://raw.githubusercontent.com/alanconway/operator/main/doc/zz_api-ref.adoc > doc/zz_api-ref.adoc
 
 release: release-commit release-push ## Create and push a new release tag and image. Set VERSION=vX.Y.Z.
 

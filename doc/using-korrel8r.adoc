@@ -7,7 +7,7 @@ include::attributes.adoc[]
 
 [IMPORTANT]
 ====
-Ensure that you have xref:installing-korrel8r-ocp.adoc#installing-korrel8r-ocp[installed Korrel8r]
+Ensure that you have xref:#installing-korrel8r-ocp[installed Korrel8r]
 ====
 
 . Refresh the web console
@@ -21,8 +21,29 @@ Not all alerts have a *see related logs* link. Only alerts that are _related_ to
 
 == Command Line
 
-🚧 #Under Construction# 🚧
-// TODO: move from README, use default config.
+=== Installing
+
+[source,terminal]
+.Install the korrel8r executable:
+----
+go install github.com/korrel8r/korrel8r/cmd/korrel8r@latest
+----
+
+=== Using
+
+[source,terminal]
+.Getting help
+----
+korrel8r -h
+korrel8r list -h
+----
+
+Log into your cluster with admin privileges to test korrel8r can read kubernetes resources:
+
+.Listing k8s resource types using default configuration URL.
+----
+korrel8r -c https://raw.githubusercontent.com/korrel8r/korrel8r/main/etc/korrel8r/korrel8r.yaml list k8s
+----
 
 == Browser
 

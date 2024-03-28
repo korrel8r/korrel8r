@@ -1,0 +1,3 @@
+[submodule "operator"]
+	path = operator
+	url = git@github.com:alanconway/operator.git
