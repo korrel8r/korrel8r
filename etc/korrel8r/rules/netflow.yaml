@@ -1,0 +1,10 @@
+rules:
+  - name: NetflowToPod
+    start:
+      domain: netflow
+    goal:
+      domain: k8s
+      classes: [Pod]
+    result:
+      query: |-
+        k8s:{{.SrcK8S_Type}}:{namespace: "{{.SrcK8S_Namespace}}", name: "{{.SrcK8S_Name}}"}
