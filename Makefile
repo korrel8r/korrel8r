@@ -12,7 +12,7 @@ IMG?=quay.io/korrel8r/korrel8r
 ## OVERLAY: Name of kustomize directory for `make deploy`.
 OVERLAY?=config/overlays/dev
 ## IMGTOOL: May be podman or docker.
-IMGTOOL?=$(shell which podman || which docker)
+IMGTOOL?=$(or $(shell podman info > /dev/null 2>&1 && which podman), $(shell docker info > /dev/null 2>&1 && which docker))
 
 include .bingo/Variables.mk	# Versioned tools
 
@@ -79,7 +79,7 @@ run: $(GENERATED) ## Run `korrel8r web` using configuration in ./etc/korrel8r
 IMAGE=$(IMG):$(VERSION)
 
 image-build: $(VERSION_TXT) ## Build image locally, don't push.
-	$(IMGTOOL) build --tag=$(IMAGE) .
+	$(IMGTOOL) build --tag=$(IMAGE) -f Containerfile .
 
 image: image-build ## Build and push image. IMG must be set to a writable image repository.
 	$(IMGTOOL) push -q $(IMAGE)
