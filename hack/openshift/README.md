@@ -5,6 +5,8 @@
   - [Create your cluster](#create-your-cluster)
   - [Installing Operators and Logging resources](#installing-operators-and-logging-resources)
     - [View logs](#view-logs)
+  - [Network Observability](#deploy-network-observability-operator)
+     - [View Network Flows](#view-network-flows)
   - [Metrics, Alerts](#metrics-alerts)
   - [Events](#events)
   - [Uninstalling](#uninstalling)
@@ -41,6 +43,19 @@ This will create resources in the `openshift-logging` namespace:
 ### View logs
 
 From the OpenShift console: Observe > Logs
+
+## Deploy Network Observability Operator
+
+- Create a namespace `oc create ns netobserv`
+- Deploy a Loki Operator in the `netobserv` namespace
+- Create a small Lokistack deployment for network flow storage. An example manifest file is provided.
+- Customize the manifest to create a secret, update the namespace and storage class as appropritate to the cluster.
+- Install Network Observability operator from Operator Hub using the documentation here - [Install Network Observailty operator](https://docs.openshift.com/container-platform/4.15/observability/network_observability/installing-operators.html#network-observability-operator-installation_network_observability)
+- Create the `FlowCollector` CR and make sure you select the spec.loki.mode as `Lokistack`
+
+### View Network Flows
+
+From the OpenShift console: Observe > Network Flows
 
 ## Metrics, Alerts
 

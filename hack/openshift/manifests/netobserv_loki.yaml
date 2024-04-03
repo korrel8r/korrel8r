@@ -1,0 +1,29 @@
+apiVersion: loki.grafana.com/v1
+kind: LokiStack
+metadata:
+  name: loki
+  namespace: netobserv
+spec:
+  # Check here for default limits: https://github.com/grafana/loki/blob/main/operator/internal/manifests/internal/sizes.go#L228
+  limits:
+    global:
+      ingestion:
+        ingestionBurstSize: 12
+        ingestionRate: 8
+        perStreamRateLimit: 10
+        perStreamRateLimitBurst: 30
+  tenants:
+    mode: openshift-network
+  managementState: Managed
+  replicationFactor: 1
+  storage:
+    schemas:
+    - version: v12
+      effectiveDate: '2022-06-01'
+    secret:
+      name: lokistack-dev-s3
+      type: s3
+  size: 1x.demo
+  # For Loki 5.7, use extra-small
+  # size: 1x.extra-small
+  storageClassName: gp3
