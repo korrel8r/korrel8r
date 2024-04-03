@@ -4,8 +4,46 @@ This is the project's commit log. It is placeholder until a more user-readable c
 
 This project uses semantic versioning (https://semver.org)
 
+## Version 0.6.0
+
+- Move operator into this repository.
+- Improved doc for operator install and use.
+- Rename pacakge api -> rest
+- Fix #69: Document configuration file, clean up related code.
+- Generated configuration doc with crd-ref-docs.
+- Use bingo to manage tool dependencies - fix #91
+- docs: update readme for setup on openshift
+- Minor improvements to deploy.sh
+- Support constraints for alerts, metrics, k8s.
+- Rename pkg/api to pkg/rest
+- feat: add deploy script to install the required operators and resources on OpenShift
+- Simplified log.Object.
+- Refactor to separate loki client from log domain.
+- Passing constraint test for log domain.
+- Refactor: move constraint from Rule.Apply to Store.Get
+- Fix route in make deploy.
+- Update OCP install section to use OperatorHub
+- Update icon, add to browser pages.
+- Renamed /docs -> /doc to follow Unix conventions.
+- Remove routes, minor display & log fixes.
+- Log korrel8r version in web mode.
+- Update docs/configuring-korrel8r.adoc, reword intro
+- Added config documentation and general clean up
+- Cleanup FAQ and other docs
+- Fix #78: Deduce class from LogQL query.
+- Update all all dependencies.
+- Fix Makefile improvements
+- Improved icon.
+- Added /objects to REST API, call from web UI
+- Doc fixes: logo, description
+- Enable gin logging based on KORREL8R_VERBOSE.
+- Bump golang.org/x/crypto from 0.15.0 to 0.17.0
+- Add FAQ, update install instructions, doc cleanup.
+- Remove feature request template.
+
 ## Version v0.5.9
 
+- Release v0.5.9
 - Fix syntax error in alert and log rules.
 - Fix github action cache settings.
 - Separate build and deploy actions

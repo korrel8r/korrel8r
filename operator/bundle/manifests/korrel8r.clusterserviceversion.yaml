@@ -16,7 +16,7 @@ metadata:
     capabilities: Basic Install
     categories: Observability
     containerImage: quay.io/korrel8r/operator
-    createdAt: "2024-04-03T01:19:20Z"
+    createdAt: "2024-04-03T01:49:05Z"
     description: Correlate cluster resources and observability data.
     operators.operatorframework.io/builder: operator-sdk-unknown
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v4
