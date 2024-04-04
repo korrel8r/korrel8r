@@ -1,10 +1,117 @@
+# Netflow format (upstream doc?): https://docs.openshift.com/container-platform/4.15/observability/network_observability/json-flows-format-reference.html
+#
+# Loki stream labels for the netflow store
+#   logcli --bearer-token=$(oc whoami -t) --tls-skip-verify --addr https://loki-netobserv.apps.snoflake.home/api/logs/v1/network labels
+#
+# DstK8S_Namespace
+# DstK8S_OwnerName
+# DstK8S_Type
+# FlowDirection
+# K8S_FlowLayer
+# SrcK8S_Namespace
+# SrcK8S_OwnerName
+# SrcK8S_Type
+#
+# FIXME update documentation:
+# - link to netflow format
+# - meaning of K8S_* vs K8S_Owner*
+
+aliases:
+  - name: netflowOwner
+    domain: k8s
+    classes:
+      - DaemonSet.apps
+      - Deployment.apps
+      - ReplicaSet.apps
+      - StatefulSet.apps
+
+  - name: netflowResource
+    domain: k8s
+    classes:
+      - Node
+      - Pod
+      - Service
 rules:
-  - name: NetflowToPod
+  # Netflows to related k8s resources.
+
+  - name: NetflowToSrcK8s
     start:
       domain: netflow
     goal:
       domain: k8s
-      classes: [Pod]
+      classes: [ netflowResource ]
     result:
       query: |-
         k8s:{{.SrcK8S_Type}}:{namespace: "{{.SrcK8S_Namespace}}", name: "{{.SrcK8S_Name}}"}
+
+  - name: NetflowToSrcK8sOwner
+    start:
+      domain: netflow
+    goal:
+      domain: k8s
+      classes: [ netflowOwner ]
+    result:
+      query: |-
+        k8s:{{.SrcK8S_OwnerType}}:{namespace: "{{.SrcK8S_Namespace}}", name: "{{.SrcK8S_OwnerName}}"}
+
+  - name: NetflowToDstK8s
+    start:
+      domain: netflow
+    goal:
+      domain: k8s
+      classes: [ netflowResource ]
+    result:
+      query: |-
+        k8s:{{.DstK8S_Type}}:{namespace: "{{.DstK8S_Namespace}}", name: "{{.DstK8S_Name}}"}
+
+  - name: NetflowToDstK8sOwner
+    start:
+      domain: netflow
+    goal:
+      domain: k8s
+      classes: [ netflowOwner ]
+    result:
+      query: |-
+        k8s:{{.DstK8S_OwnerType}}:{namespace: "{{.DstK8S_Namespace}}", name: "{{.DstK8S_OwnerName}}"}
+
+  # K8s resources to related netflows.
+
+  - name: K8sSrcToNetflow
+    start:
+      domain: k8s
+      classes: [netflowResource]
+    goal:
+      domain: netflow
+    result:
+      query: |-
+        netflow:network:{SrcK8S_Type="{{.Kind}}", SrcK8S_Namespace="{{.Namespace}}"} | json | SrcK8S_Name="{{.Name}}"
+
+  - name: K8sSrcOwnerToNetflow
+    start:
+      domain: k8s
+      classes: [netflowOwner]
+    goal:
+      domain: netflow
+    result:
+      query: |-
+        netflow:network:{SrcK8S_Namespace="{{.Namespace}}", SrcK8S_OwnerName=".Name"}
+
+  - name: K8sDstToNetflow
+    start:
+      domain: k8s
+      classes: [netflowResource]
+    goal:
+      domain: netflow
+    result:
+      query: |-
+        netflow:network:{DstK8S_Type="{{.Kind}}", DstK8S_Namespace="{{.Namespace}}"} | json | DstK8S_Name="{{.Name}}"
+
+  - name: K8sDstOwnerToNetflow
+    start:
+      domain: k8s
+      classes: [netflowOwner]
+    goal:
+      domain: netflow
+    result:
+      query: |-
+        netflow:network:{DstK8S_Namespace="{{.Namespace}}", DstK8S_OwnerName=".Name"}

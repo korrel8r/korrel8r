@@ -26,4 +26,4 @@ spec:
   size: 1x.demo
   # For Loki 5.7, use extra-small
   # size: 1x.extra-small
-  storageClassName: gp3
+  storageClassName: local-storage

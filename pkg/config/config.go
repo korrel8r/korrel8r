@@ -16,6 +16,7 @@ import (
 
 	"github.com/korrel8r/korrel8r/internal/pkg/logging"
 	"github.com/korrel8r/korrel8r/pkg/engine"
+	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"golang.org/x/exp/maps"
 	"golang.org/x/exp/slices"
 	"sigs.k8s.io/yaml"
@@ -61,29 +62,29 @@ func load(source string, configs Configs) (err error) {
 func (configs Configs) Apply(e *engine.Engine) error {
 	sources := maps.Keys(configs)
 	slices.Sort(sources) // Predictable order
-	groupMap := groupMap{}
-	// Gather groupMap first, before interpreting rules.
+	aliasMap := aliasMap{}
+	// Gather aliasMap first, before interpreting rules.
 	for _, source := range sources {
 		c := configs[source]
 		for _, g := range c.Aliases {
 			if _, err := e.DomainErr(g.Domain); err != nil {
-				return fmt.Errorf("%v: group %q: %w", source, g.Name, err)
+				return fmt.Errorf("%v: alias %q: %w", source, g.Name, err)
 			}
 			if len(g.Classes) == 0 {
-				return fmt.Errorf("%v: group %q: no classes", source, g.Name)
+				return fmt.Errorf("%v: alias %q: no classes", source, g.Name)
 			}
-			if !groupMap.Add(g) {
-				return fmt.Errorf("%v: group %q: duplicate name", source, g.Name)
+			if !aliasMap.Add(g) {
+				return fmt.Errorf("%v: alias %q: duplicate name", source, g.Name)
 			}
 		}
 	}
-	// Expand the groups themselves.
+	// Expand the aliases themselves.
 	for more := true; more; more = false {
-		for domain, groups := range groupMap {
-			for group, classes := range groups {
+		for domain, aliases := range aliasMap {
+			for alias, classes := range aliases {
 				n := len(classes)
-				groups[group] = groupMap.Expand(domain, classes)
-				more = more || len(groups[group]) > n // Keep going till there are no more expansions
+				aliases[alias] = aliasMap.Expand(domain, classes)
+				more = more || len(aliases[alias]) > n // Keep going till there are no more expansions
 			}
 		}
 	}
@@ -91,8 +92,8 @@ func (configs Configs) Apply(e *engine.Engine) error {
 	for _, source := range sources {
 		c := configs[source]
 		for _, r := range c.Rules {
-			r.Start.Classes = groupMap.Expand(r.Start.Domain, r.Start.Classes)
-			r.Goal.Classes = groupMap.Expand(r.Goal.Domain, r.Goal.Classes)
+			r.Start.Classes = aliasMap.Expand(r.Start.Domain, r.Start.Classes)
+			r.Goal.Classes = aliasMap.Expand(r.Goal.Domain, r.Goal.Classes)
 			if err := addRules(e, r); err != nil {
 				return fmt.Errorf("%v: %w", source, err)
 			}
@@ -100,7 +101,7 @@ func (configs Configs) Apply(e *engine.Engine) error {
 		for _, sc := range c.Stores {
 			sc = maps.Clone(sc)
 			if err := e.AddStoreConfig(sc); err != nil {
-				log.V(1).Error(err, "error configuring store", "config", source, "store", logging.JSON(sc))
+				log.V(1).Error(err, "error configuring store", "config", source, "domain", sc[korrel8r.StoreKeyDomain])
 			} else {
 				log.V(1).Info("configured store", "config", source, "store", logging.JSON(sc))
 			}
@@ -109,10 +110,10 @@ func (configs Configs) Apply(e *engine.Engine) error {
 	return nil
 }
 
-// map of domain names to group names with class name lists
-type groupMap map[string]map[string][]string
+// map of domain names to alias names with class name lists
+type aliasMap map[string]map[string][]string
 
-func (gm groupMap) Add(g Class) bool {
+func (gm aliasMap) Add(g Class) bool {
 	if gm[g.Domain][g.Name] != nil {
 		return false // Already present, can't add.
 	}
@@ -123,15 +124,15 @@ func (gm groupMap) Add(g Class) bool {
 	return true
 }
 
-func (gm groupMap) Expand(domain string, names []string) []string {
-	groups := gm[domain]
-	if groups == nil {
+func (gm aliasMap) Expand(domain string, names []string) []string {
+	aliases := gm[domain]
+	if aliases == nil {
 		return names
 	}
 	var result []string
 	for _, name := range names {
-		if groups[name] != nil {
-			result = append(result, groups[name]...)
+		if aliases[name] != nil {
+			result = append(result, aliases[name]...)
 		} else {
 			result = append(result, name)
 		}
