@@ -6,7 +6,7 @@ help: ## Display this help.
 	@grep -E '^## [A-Z0-9_]+: ' Makefile | sed 's/^## \([A-Z0-9_]*\): \(.*\)/\1#\2/' | column -s'#' -t
 
 ## VERSION: Semantic version for release. Use a -dev suffix for work in progress.
-VERSION?=0.5.9-dev
+VERSION?=0.5.10
 ## IMG: Base name of image to build or deploy, without version tag.
 IMG?=quay.io/korrel8r/korrel8r
 ## OVERLAY: Name of kustomize directory for `make deploy`.
@@ -35,16 +35,12 @@ $(VERSION_TXT):
 GENERATED_DOC=doc/zz_domains.adoc doc/zz_rest_api.adoc doc/zz_api-ref.adoc
 GENERATED=$(VERSION_TXT) pkg/config/zz_generated.deepcopy.go pkg/rest/zz_docs $(GENERATED_DOC) .copyright
 
-generate: $(GENERATED) go.mod ## Generate code and doc.
+generate: $(GENERATED) ## Generate code and doc.
 
 GO_SRC=$(shell find -name '*.go')
 
 .copyright: $(GO_SRC)
 	hack/copyright.sh	# Make sure files have copyright notice.
-	@touch $@
-
-go.mod: $(GO_SRC)
-	go mod tidy		# Keep modules up to date.
 	@touch $@
 
 pkg/config/zz_generated.deepcopy.go:  $(filter-out pkg/config/zz_generated.deepcopy.go,$(wildcard pkg/config/*.go)) $(CONTROLLER_GEN)
@@ -131,18 +127,8 @@ doc/zz_api-ref.adoc:
 
 release: release-commit release-push ## Create and push a new release tag and image. Set VERSION=vX.Y.Z.
 
-release-check:
-	@echo "$(VERSION)" | grep -qE "^[0-9]+\.[0-9]+\.[0-9]+$$" || { echo "VERSION=$(VERSION) must be semantic version X.Y.Z"; exit 1; }
-	$(MAKE) all
-	@test -z "$(shell git status --porcelain)" || { git status -s; echo Workspace is not clean; exit 1; }
-
-release-commit: release-check
-	hack/changelog.sh $(VERSION) > CHANGELOG.md	# Update change log
-	git commit -q  -m "Release $(VERSION)" -- $(VERSION_TXT) CHANGELOG.md
-	git tag $(VERSION) -a -m "Release $(VERSION)"
-
-release-push: release-check image
-	git push origin main --follow-tags
+tag-release:
+	hack/tag-release.sh $(VERSION)
 	$(IMGTOOL) push -q "$(IMAGE)" "$(IMG):latest"
 
 tools: $(BINGO) ## Download all tools needed for development
