@@ -1,8 +1,10 @@
 #!/bin/bash
-NAMESPACE=$1
-NAME=$2				# CSV name without version
+NAMESPACE=$1                    # Subscription namespace
+NAME=$2                         # Subscription name
 
-echo "waiting for $NAME to be created"
-until CSV=$(oc get -n openshift-logging csv -o name | grep $NAME); do sleep 3; done
-echo "waiting for $CSV to succeed"
-oc wait --for=jsonpath='{.status.phase}'=Succeeded -n openshift-logging $CSV
+until CSV=$(oc get -n $NAMESPACE subscription/$NAME -o jsonpath='{.status.currentCSV}') && [ -n "$CSV" ]; do
+  echo "waiting for current CSV for subscription/$NAME in namespace $NAMESPACE"
+  sleep 1
+done
+echo "waiting for $CSV to have phase Succeeded"
+oc wait --allow-missing-template-keys=true --for=jsonpath='{.status.phase}'=Succeeded -n $NAMESPACE csv/$CSV

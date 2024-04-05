@@ -167,3 +167,7 @@ Prometheus is the store, store configuration:
 domain: metric
 metric: URL_OF_PROMETHEUS
 ----
+
+= Domain `netflow`
+
+

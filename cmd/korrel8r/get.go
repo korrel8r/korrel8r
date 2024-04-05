@@ -23,7 +23,7 @@ var getCmd = &cobra.Command{
 		e, _ := newEngine()
 		q := must.Must1(e.Query(args[0]))
 		s := must.Must1(e.StoreErr(q.Class().Domain()))
-		log.V(3).Info("get", "query", q, "class", korrel8r.ClassName(q.Class()))
+		log.V(3).Info("get", "class", korrel8r.ClassName(q.Class()), "query", q.Class())
 		result := newPrinter(os.Stdout)
 		var constraint *korrel8r.Constraint // FIXME implement constraints
 		must.Must(s.Get(context.Background(), q, constraint, result))

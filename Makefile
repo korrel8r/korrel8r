@@ -15,6 +15,8 @@ OVERLAY?=config/overlays/dev
 ## IMGTOOL: May be podman or docker.
 IMGTOOL?=$(or $(shell podman info > /dev/null 2>&1 && which podman), $(shell docker info > /dev/null 2>&1 && which docker))
 
+include .bingo/Variables.mk	# Versioned tools
+
 check: generate lint test ## Lint and test code.
 
 all: check install _site image-build operator ## Build and test everything locally. Recommended before pushing.

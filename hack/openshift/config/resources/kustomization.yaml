@@ -1,0 +1,25 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - minio.yaml
+  - chat.yaml
+  - logging
+  - netobserv
+
+configMapGenerator:
+  - name: storage-env
+    envs:
+      - storage.env
+
+replacements:
+  - source:
+      kind: ConfigMap
+      name: storage-env
+      fieldPath: data.STORAGE_CLASS
+    targets:
+      - select:
+          kind: LokiStack
+        fieldPaths:
+          - spec.storageClassName
+
