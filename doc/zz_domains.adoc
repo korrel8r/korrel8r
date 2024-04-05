@@ -170,4 +170,36 @@ metric: URL_OF_PROMETHEUS
 
 = Domain `netflow`
 
+Domain `netflow` is a domain for network observability flow events stored in Loki or LokiStack.
 
+== Class
+
+There is a single class `netflow:network`
+
+== Object
+
+A log object is a JSON `map\[string]any` in https://docs.openshift.com/container-platform/latest/observability/network_observability/json-flows-format-reference.html[NetFlow] format.
+
+== Query
+
+A query is a https://grafana.com/docs/loki/latest/query/[LogQL] query string, prefixed by `netflow:network:`, for example:
+
+----
+netflow:network:{SrcK8S_Type="Pod", SrcK8S_Namespace="myNamespace"}
+----
+
+== Store
+
+To connect to a netflow lokiStack store use this configuration:
+
+----
+domain: netflow
+lokistack: URL_OF_LOKISTACK_PROXY
+----
+
+To connect to plain loki store use:
+
+----
+domain: netflow
+loki: URL_OF_LOKI
+----

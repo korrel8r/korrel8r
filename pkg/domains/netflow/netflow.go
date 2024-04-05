@@ -1,5 +1,35 @@
 // Copyright: This file is part of korrel8r, released under https://github.com/korrel8r/korrel8r/blob/main/LICENSE
 
+// Package netflow is a domain for network observability flow events stored in Loki or LokiStack.
+//
+// # Class
+//
+// There is a single class `netflow:network`
+//
+// # Object
+//
+// A log object is a JSON `map[string]any` in [NetFlow] format.
+//
+// # Query
+//
+// A query is a [LogQL] query string, prefixed by `netflow:network:`, for example:
+//
+//	netflow:network:{SrcK8S_Type="Pod", SrcK8S_Namespace="myNamespace"}
+//
+// # Store
+//
+// To connect to a netflow lokiStack store use this configuration:
+//
+//	domain: netflow
+//	lokistack: URL_OF_LOKISTACK_PROXY
+//
+// To connect to plain loki store use:
+//
+//	domain: netflow
+//	loki: URL_OF_LOKI
+//
+// [LogQL]: https://grafana.com/docs/loki/latest/query/
+// [NetFlow]: https://docs.openshift.com/container-platform/latest/observability/network_observability/json-flows-format-reference.html
 package netflow
 
 import (
@@ -102,14 +132,14 @@ func (c Class) Preview(x korrel8r.Object) (line string) { return Preview(x) }
 
 // Preview extracts the message from a Viaq log record.
 func Preview(x korrel8r.Object) (line string) {
-    if m := x.(Object)["SrcK8S_Namespace"]; m != nil {
+	if m := x.(Object)["SrcK8S_Namespace"]; m != nil {
 		s, _ := m.(string)
 		message := "Network Flows from :" + s
-        if m = x.(Object)["DstK8S_Namespace"]; m != nil {
-            d, _ := m.(string)
+		if m = x.(Object)["DstK8S_Namespace"]; m != nil {
+			d, _ := m.(string)
 			message = message + " to : " + d
-        }
-        return message
+		}
+		return message
 	}
 	return ""
 }
