@@ -1,0 +1,28 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  labels:
+    openshift.io/cluster-monitoring: "true"
+  name: openshift-netobserv-operator
+---
+apiVersion: operators.coreos.com/v1
+kind: OperatorGroup
+metadata:
+  annotations:
+    olm.providedAPIs: "FlowCollector.v1alpha1.flows.netobserv.io,FlowCollector.v1beta1.flows.netobserv.io,FlowCollector.v1beta2.flows.netobserv.io,FlowMetric.v1alpha1.flows.netobserv.io"
+  name: openshift-netobserv-operator-hack
+  namespace: openshift-netobserv-operator
+spec:
+  upgradeStrategy: Default
+---
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  name: netobserv-operator
+  namespace: openshift-netobserv-operator
+spec:
+  channel: stable
+  installPlanApproval: Automatic
+  name: netobserv-operator
+  source: redhat-operators
+  sourceNamespace: openshift-marketplace

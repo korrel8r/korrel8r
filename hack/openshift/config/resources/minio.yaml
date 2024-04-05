@@ -1,25 +1,27 @@
-# Deploy minio into the openshift-logging namepspace
-# Does not require an operator.
+# Deploy minio, does not require an operator.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: minio
 ---
+# Example secret, copy to client namespace.
 apiVersion: v1
 kind: Secret
 metadata:
   name: minio
-  namespace: openshift-logging
-  labels:
-    app.kubernetes.io/part-of: cluster-logging
+  namespace: minio
 stringData:
   access_key_id: minio
   access_key_secret: minio123
   bucketnames: loki
-  endpoint: http://minio.openshift-logging.svc:9000
+  endpoint: http://minio.minio.svc:9000
 type: Opaque
 ---
 apiVersion: v1
 kind: Service
 metadata:
   name: minio
-  namespace: openshift-logging
+  namespace: minio
 spec:
   ports:
   - port: 9000
@@ -32,8 +34,10 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
+  labels:
+    app.kubernetes.io/name: minio
   name: minio
-  namespace: openshift-logging
+  namespace: minio
 spec:
   selector:
     matchLabels:
@@ -75,7 +79,7 @@ metadata:
   labels:
     app.kubernetes.io/name: minio
   name: minio
-  namespace: openshift-logging
+  namespace: minio
 spec:
   accessModes:
   - ReadWriteOnce

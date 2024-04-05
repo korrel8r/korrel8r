@@ -1,0 +1,4 @@
+namespace: netobserv
+resources:
+  - lokistack.yaml
+  - flow_collector.yaml

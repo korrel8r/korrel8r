@@ -1,5 +1,4 @@
 # Generate application log messages.
----
 apiVersion: v1
 kind: Namespace
 metadata:
