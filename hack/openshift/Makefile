@@ -1,8 +1,7 @@
 # Deploy operators and resources for observability components.
 
-OPERATOR_NAMESPACES=$(shell grep -h namespace: config/operators/*.yaml | sort -u | cut -d: -f2)
-
-all: operators resources
+help:
+	Use: make [operators|resources|clean-operators|clean-resources]
 
 operators:
 	oc apply -k config/operators
@@ -40,6 +39,6 @@ resources:
 
 clean-operators:
 	oc delete --ignore-not-found -k config/operators
+
 clean-resources:
 	oc delete --ignore-not-found -k config/resources
-clean: clean-resources clean-operators
