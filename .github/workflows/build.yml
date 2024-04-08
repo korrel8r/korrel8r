@@ -7,21 +7,59 @@ on:
     branches: [ "main" ]
 
 jobs:
-
-  build:
+  generate_lint:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-go@v4
         with:
-          go-version: "1.21"
+          go-version: "1.22"
+
       - uses: actions/cache@v3
         with:
           path: ~/go
           key: cache-${{ runner.os }}-${{ runner.arch }}
 
       - name: Generate and Lint
-        run: make generate lint
+        run: |
+          make generate lint
+          git diff --exit-code
+
+  shellcheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v4
+        with:
+          go-version: "1.22"
+
+      - uses: actions/cache@v3
+        with:
+          path: ~/go
+          key: cache-${{ runner.os }}-${{ runner.arch }}
+
+      - name: Run ShellCheck
+        uses: ludeeus/action-shellcheck@master
+        with:
+          ignore_paths: ./demos/*
+        env:
+          SHELLCHECK_OPTS: -x
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v4
+        with:
+          go-version: "1.22"
+
+      - uses: actions/cache@v3
+        with:
+          path: ~/go
+          key: cache-${{ runner.os }}-${{ runner.arch }}
 
       - name: Test
         run: make test-skip

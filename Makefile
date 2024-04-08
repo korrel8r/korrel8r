@@ -21,7 +21,8 @@ check: generate lint test ## Lint and test code.
 all: check install _site image-build ## Build and test everything locally. Recommended before pushing.
 
 clean: ## Remove generated files, including checked-in files.
-	rm -vrf bin _site $(GENERATED) $(shell find -name 'zz_*')
+	rm -vrf bin _site $(GENERATED) $(shell find . -name 'zz_*')
+	$(MAKE) -C operator clean
 
 VERSION_TXT=cmd/korrel8r/version.txt
 
@@ -37,7 +38,7 @@ GENERATED=$(VERSION_TXT) pkg/config/zz_generated.deepcopy.go pkg/rest/zz_docs $(
 
 generate: $(GENERATED) ## Generate code and doc.
 
-GO_SRC=$(shell find -name '*.go')
+GO_SRC=$(shell find . -name '*.go')
 
 .copyright: $(GO_SRC)
 	hack/copyright.sh	# Make sure files have copyright notice.
@@ -52,8 +53,9 @@ pkg/rest/zz_docs: $(wildcard pkg/rest/*.go pkg/korrel8r/*.go) $(SWAG)
 	$(SWAG) fmt pkg/rest
 	@touch $@
 
-lint: $(VERSION_TXT) $(GOLANGCI_LINT) ## Run the linter to find and fix code style problems.
+lint: $(VERSION_TXT) $(GOLANGCI_LINT) $(SHFMT) ## Run the linter to find and fix code style problems.
 	$(GOLANGCI_LINT) run --fix
+	$(SHFMT) -l -w ./**/*.sh
 
 install: $(VERSION_TXT) ## Build and install the korrel8r binary in $GOBIN.
 	go install -tags netgo ./cmd/korrel8r
