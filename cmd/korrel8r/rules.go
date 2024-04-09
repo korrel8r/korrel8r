@@ -42,7 +42,7 @@ var rulesCmd = &cobra.Command{
 		} else { // Print rules as text
 			for _, r := range e.Rules() {
 				if test(r) {
-					fmt.Fprintln(w, korrel8r.RuleName(r))
+					fmt.Fprintln(w, r)
 				}
 			}
 		}

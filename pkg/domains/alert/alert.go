@@ -98,7 +98,7 @@ type Class struct{}
 
 func (c Class) Domain() korrel8r.Domain { return Domain }
 func (c Class) Name() string            { return "alert" }
-func (c Class) String() string          { return korrel8r.ClassName(c) }
+func (c Class) String() string          { return impl.ClassString(c) }
 func (c Class) Description() string {
 	return "An indication that some collection of metrics is outside of expected values."
 }
@@ -148,8 +148,8 @@ type Receiver struct {
 type Query map[string]string
 
 func (q Query) Class() korrel8r.Class { return Class{} }
-func (q Query) Query() string         { return korrel8r.JSONString(q) }
-func (q Query) String() string        { return korrel8r.QueryName(q) }
+func (q Query) Data() string          { return impl.JSONString(q) }
+func (q Query) String() string        { return impl.QueryString(q) }
 
 func (domain) ConsoleURLToQuery(u *url.URL) (korrel8r.Query, error) {
 	m := map[string]string{}

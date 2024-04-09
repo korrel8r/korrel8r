@@ -260,7 +260,7 @@ func (c *correlate) updateDiagram() {
 		result := n.Result.List()
 		a["style"] += ",filled"
 		a["label"] = fmt.Sprintf("%v\n%v", n.Class.Name(), len(result))
-		a["tooltip"] = fmt.Sprintf("%v (%v)", korrel8r.ClassName(n.Class), len(result))
+		a["tooltip"] = fmt.Sprintf("%v (%v)", n.Class.String(), len(result))
 		c.queryURLAttrs(a, n.Queries, n.Class.Domain())
 		if summary := summaryFunc(n.Class); summary != nil && len(result) > 0 {
 			if len(result) == 1 {
@@ -281,7 +281,7 @@ func (c *correlate) updateDiagram() {
 
 	g.EachLine(func(l *graph.Line) {
 		a := l.Attrs
-		a["tooltip"] = fmt.Sprintf("%v (%v)\n", korrel8r.RuleName(l.Rule), l.Queries.Total())
+		a["tooltip"] = fmt.Sprintf("%v (%v)\n", l.Rule, l.Queries.Total())
 		if count := l.Queries.Total(); count > 0 {
 			a["arrowsize"] = fmt.Sprintf("%v", math.Min(0.3+float64(count)*0.05, 1))
 			a["style"] = "bold"

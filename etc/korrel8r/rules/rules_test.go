@@ -57,7 +57,7 @@ func testTraverse(t *testing.T, e *engine.Engine, start, goal korrel8r.Class, st
 		}
 	}))
 	assert.NoError(t, f.Err)
-	assert.Contains(t, paths.NodeFor(goal).Queries, korrel8r.QueryName(want))
+	assert.Contains(t, paths.NodeFor(goal).Queries, want.String())
 }
 
 func TestPodToLogs(t *testing.T) {

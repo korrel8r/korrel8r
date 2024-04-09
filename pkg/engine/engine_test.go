@@ -108,7 +108,7 @@ func TestFollower_Traverse(t *testing.T) {
 				q4.String(): 1,
 			}, l.Queries)
 		default:
-			t.Fatalf("unexpected rule: %v", korrel8r.RuleName(l.Rule))
+			t.Fatalf("unexpected rule: %v", l.Rule)
 		}
 	})
 }

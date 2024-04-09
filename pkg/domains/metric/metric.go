@@ -105,7 +105,7 @@ type Class struct{} // Singleton class
 
 func (c Class) Domain() korrel8r.Domain { return Domain }
 func (c Class) Name() string            { return Domain.Name() }
-func (c Class) String() string          { return korrel8r.ClassName(c) }
+func (c Class) String() string          { return impl.ClassString(c) }
 func (c Class) Description() string     { return "A set of label:value pairs identifying a time-series." }
 func (c Class) New() korrel8r.Object    { var obj Object; return obj }
 func (c Class) Preview(o korrel8r.Object) string {
@@ -130,8 +130,8 @@ type Query struct {
 }
 
 func (q Query) Class() korrel8r.Class { return Class{} }
-func (q Query) Query() string         { return q.PromQL }
-func (q Query) String() string        { return korrel8r.QueryName(q) }
+func (q Query) Data() string          { return q.PromQL }
+func (q Query) String() string        { return impl.QueryString(q) }
 
 type Store struct{ api promv1.API }
 

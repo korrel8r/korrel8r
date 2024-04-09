@@ -133,7 +133,7 @@ func rule(l *graph.Line) (r Rule) {
 
 func node(n *graph.Node) Node {
 	return Node{
-		Class:   korrel8r.ClassName(n.Class),
+		Class:   n.Class.String(),
 		Queries: queryCounts(n.Queries),
 		Count:   len(n.Result.List()),
 	}
@@ -151,8 +151,8 @@ func nodes(g *graph.Graph) []Node {
 
 func edge(e *graph.Edge, withRules bool) Edge {
 	edge := Edge{
-		Start: korrel8r.ClassName(e.Start().Class),
-		Goal:  korrel8r.ClassName(e.Goal().Class),
+		Start: e.Start().Class.String(),
+		Goal:  e.Goal().Class.String(),
 	}
 	if withRules {
 		e.EachLine(func(l *graph.Line) {

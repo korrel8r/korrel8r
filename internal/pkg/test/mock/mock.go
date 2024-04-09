@@ -80,9 +80,9 @@ type Class struct {
 }
 
 func (c Class) Domain() korrel8r.Domain  { return c.domain }
-func (c Class) String() string           { return korrel8r.ClassName(c) }
+func (c Class) String() string           { return impl.ClassString(c) }
 func (c Class) Name() string             { return c.name }
-func (c Class) Description() string      { return fmt.Sprintf("mock class %v", korrel8r.ClassName(c)) }
+func (c Class) Description() string      { return fmt.Sprintf("mock class %v", c.String()) }
 func (c Class) ID(o korrel8r.Object) any { return o }
 func (c Class) New() korrel8r.Object     { return "" }
 
@@ -176,8 +176,8 @@ func NewQuery(c korrel8r.Class, results ...korrel8r.Object) korrel8r.Query {
 	return Query{class: c, Results: results}
 }
 func (q Query) Class() korrel8r.Class { return q.class }
-func (q Query) Query() string         { return korrel8r.JSONString(q.Results) }
-func (q Query) String() string        { return korrel8r.QueryName(q) }
+func (q Query) Data() string          { return impl.JSONString(q.Results) }
+func (q Query) String() string        { return impl.QueryString(q) }
 
 // Timestamper interface for objects with a Timestamp() method.
 type Timestamper interface{ Timestamp() time.Time }

@@ -72,10 +72,10 @@ type Store interface {
 type Query interface {
 	// Class returned by this query.
 	Class() Class
-	// Query  string without the "DOMAIN:CLASS" prefix. Format of the string depends on the domain.
-	// Note the QUERY part may contain any characters, including spaces.
-	Query() string
-	// String returns the full query string, same value as QueryName(q)
+	// Data is the query data without the "DOMAIN:CLASS" prefix. Format depends on the domain.
+	// Note the data part may contain any characters, including spaces.
+	Data() string
+	// String fully qualified DOMAIN:CLASS:DATA query string.
 	String() string
 }
 
@@ -123,6 +123,21 @@ type Constraint struct {
 	End   *time.Time `json:"end,omitempty"`   // Exclude results after End.
 }
 
+// CompareTime returns -1 if t is before the constraint interval, +1 if it is after,
+// and 0 if it is in the interval, or if there is no interval.
+// Safe to call with c == nil
+func (c *Constraint) CompareTime(t time.Time) int {
+	switch {
+	case c == nil:
+		return 0
+	case c.Start != nil && t.Before(*c.Start):
+		return -1
+	case c.End != nil && t.After(*c.End):
+		return +1
+	}
+	return 0
+}
+
 // Appender gathers results from Store.Get calls.
 //
 // Not required for a domain implementations: implemented by [Result]
@@ -140,6 +155,9 @@ type Rule interface {
 	Start() Class
 	// Class of desired result object(s), must not be nil.
 	Goal() Class
-	// Name is a short human-readable name for the rule.
+	// Name is a unique name for the rule.
 	Name() string
 }
+
+// NameSeparator used in DOMAIN:CLASS and DOMAIN:CLASS:QUERY strings.
+const NameSeparator = ":"

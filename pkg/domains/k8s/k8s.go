@@ -192,7 +192,7 @@ func (c Class) New() korrel8r.Object {
 	return nil
 }
 func (c Class) Name() string   { return fmt.Sprintf("%v.%v.%v", c.Kind, c.Version, c.Group) }
-func (c Class) String() string { return korrel8r.ClassName(c) }
+func (c Class) String() string { return impl.ClassString(c) }
 
 func (c Class) Description() string {
 	// k8s objects have SwaggerDoc() method that is not declared on the Object interface.
@@ -216,8 +216,8 @@ func NewQuery(c Class, namespace, name string, labels, fields map[string]string)
 }
 
 func (q Query) Class() korrel8r.Class { return q.class }
-func (q Query) Query() string         { return korrel8r.JSONString(q) }
-func (q Query) String() string        { return korrel8r.QueryName(q) }
+func (q Query) Data() string          { return impl.JSONString(q) }
+func (q Query) String() string        { return impl.QueryString(q) }
 
 // NewStore creates a new k8s store.
 func NewStore(c client.Client, cfg *rest.Config) (korrel8r.Store, error) {

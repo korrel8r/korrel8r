@@ -8,6 +8,7 @@ import (
 
 	"github.com/korrel8r/korrel8r/internal/pkg/test/mock"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
+	"github.com/korrel8r/korrel8r/pkg/korrel8r/impl"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -29,7 +30,7 @@ func c(i int) korrel8r.Class { return Class(i) }
 
 func (c Class) Domain() korrel8r.Domain  { return Domain }
 func (c Class) Name() string             { return fmt.Sprintf("%v", int(c)) }
-func (c Class) String() string           { return korrel8r.ClassName(c) }
+func (c Class) String() string           { return impl.ClassString(c) }
 func (c Class) Description() string      { return "" }
 func (c Class) ID(o korrel8r.Object) any { return int(c) }
 func (c Class) New() korrel8r.Object     { panic("not implemented") }

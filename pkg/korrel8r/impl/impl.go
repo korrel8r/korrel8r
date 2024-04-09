@@ -4,6 +4,7 @@
 package impl
 
 import (
+	"encoding/json"
 	"fmt"
 	"reflect"
 
@@ -24,9 +25,9 @@ func TypeAssert[T any](x any) (v T, err error) {
 }
 
 // ParseQueryString parses a query string into class and query parts.
-func ParseQueryString(domain korrel8r.Domain, query string) (class korrel8r.Class, queryString string, err error) {
-	d, c, q, ok := korrel8r.SplitClassData(query)
-	if !ok {
+func ParseQueryString(domain korrel8r.Domain, query string) (class korrel8r.Class, data string, err error) {
+	d, c, q := QuerySplit(query)
+	if q == "" {
 		return nil, "", fmt.Errorf("invalid query: %v", query)
 	}
 	if d != domain.Name() {
@@ -48,4 +49,13 @@ func UnmarshalQueryString(domain korrel8r.Domain, query string, data any) (korre
 		return c, fmt.Errorf("invalid query: %w: %v", err, qs)
 	}
 	return c, nil
+}
+
+// JSONString returns the JSON marshaled string from v, or the error message if marshal fails
+func JSONString(v any) string {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return fmt.Sprintf("%q", err.Error())
+	}
+	return string(b)
 }

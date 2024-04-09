@@ -24,8 +24,10 @@ type templateRule struct {
 	start, goal korrel8r.Class
 }
 
-func (r *templateRule) Name() string          { return r.query.Name() }
-func (r *templateRule) String() string        { return korrel8r.RuleName(r) }
+func (r *templateRule) Name() string { return r.query.Name() }
+func (r *templateRule) String() string {
+	return fmt.Sprintf("%v(%v)->%v", r.Name(), r.Start().String(), r.Goal().String())
+}
 func (r *templateRule) Start() korrel8r.Class { return r.start }
 func (r *templateRule) Goal() korrel8r.Class  { return r.goal }
 
@@ -43,7 +45,7 @@ func (r *templateRule) Apply(start korrel8r.Object) (korrel8r.Query, error) {
 	if err != nil {
 		return nil, err
 	}
-	if q.Query() == "" {
+	if q.Data() == "" {
 		return nil, fmt.Errorf("empty query")
 	}
 	if q.Class() != r.Goal() {

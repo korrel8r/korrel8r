@@ -4,6 +4,7 @@ package engine
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/korrel8r/korrel8r/pkg/graph"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
@@ -19,7 +20,7 @@ type Follower struct {
 
 func (f *Follower) Traverse(l *graph.Line) {
 	rule := graph.RuleFor(l)
-	log := log.WithValues("rule", korrel8r.RuleName(rule))
+	log := log.WithValues("rule", fmt.Sprint(rule))
 	startNode, goalNode := l.From().(*graph.Node), l.To().(*graph.Node)
 
 	starters := startNode.Result.List()
@@ -32,7 +33,7 @@ func (f *Follower) Traverse(l *graph.Line) {
 			log.V(4).Info("did not apply", "error", err)
 			continue
 		}
-		qs := korrel8r.QueryName(query)
+		qs := query.String()
 		log := log.WithValues("query", qs)
 		result := korrel8r.NewCountResult(goalNode.Result)
 		if err := f.Engine.Get(f.Context, query, f.Constraint, result); err != nil {
