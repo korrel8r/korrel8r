@@ -112,17 +112,18 @@ type Graph struct {
 	Edges []Edge `json:"edges,omitempty"`
 }
 
-func queryCounts(gq graph.Queries) (qc []QueryCount) {
-	for q, c := range gq {
-		qc = append(qc, QueryCount{Query: q, Count: c})
+func queryCounts(gq graph.Queries) []QueryCount {
+	qcs := make([]QueryCount, 0, len(gq))
+	for _, qc := range gq {
+		qcs = append(qcs, QueryCount{Query: qc.Query.String(), Count: qc.Count})
 	}
-	slices.SortFunc(qc, func(a, b QueryCount) int {
+	slices.SortFunc(qcs, func(a, b QueryCount) int {
 		if n := cmp.Compare(a.Count, b.Count); n != 0 {
 			return -n
 		}
 		return cmp.Compare(a.Query, b.Query)
 	})
-	return qc
+	return qcs
 }
 
 func rule(l *graph.Line) (r Rule) {

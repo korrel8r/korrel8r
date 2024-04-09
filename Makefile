@@ -6,7 +6,7 @@ help: ## Display this help.
 	@grep -E '^## [A-Z0-9_]+: ' Makefile | sed 's/^## \([A-Z0-9_]*\): \(.*\)/\1#\2/' | column -s'#' -t
 
 ## VERSION: Semantic version for release. Use a -dev suffix for work in progress.
-VERSION?=0.5.11-dev1
+VERSION?=0.6.0-dev
 ## IMG: Base name of image to build or deploy, without version tag.
 IMG?=quay.io/korrel8r/korrel8r
 ## IMGTOOL: May be podman or docker.
@@ -114,7 +114,7 @@ doc/zz_domains.adoc: $(shell find cmd/korrel8r-doc internal pkg -name '*.go')
 doc/zz_rest_api.adoc: pkg/rest/zz_docs $(shell find etc/swagger) $(SWAGGER)
 	$(SWAGGER) -q generate markdown -T etc/swagger -f $</swagger.json --output $@
 
-# FIXME manage relationship to operator branches. Move all API code here?
+# TODO CRD API doc is incomplete, need to fix this up.
 doc/zz_api-ref.adoc:
 	curl -qf https://raw.githubusercontent.com/alanconway/operator/main/doc/zz_api-ref.adoc > doc/zz_api-ref.adoc
 

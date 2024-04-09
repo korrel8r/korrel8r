@@ -94,9 +94,11 @@ func (configs Configs) Apply(e *engine.Engine) error {
 		for _, r := range c.Rules {
 			r.Start.Classes = aliasMap.Expand(r.Start.Domain, r.Start.Classes)
 			r.Goal.Classes = aliasMap.Expand(r.Goal.Domain, r.Goal.Classes)
-			if err := addRules(e, r); err != nil {
-				return fmt.Errorf("%v: %w", source, err)
+			rule, err := newRule(e, &r)
+			if err != nil {
+				return err
 			}
+			e.AddRules(rule)
 		}
 		for _, sc := range c.Stores {
 			sc = maps.Clone(sc)

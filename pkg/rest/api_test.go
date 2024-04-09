@@ -19,18 +19,11 @@ import (
 	"github.com/korrel8r/korrel8r/pkg/domains/log"
 	"github.com/korrel8r/korrel8r/pkg/domains/metric"
 	"github.com/korrel8r/korrel8r/pkg/engine"
-	"github.com/korrel8r/korrel8r/pkg/graph"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/exp/slices"
 )
-
-func Test_QueryCounts(t *testing.T) {
-	assert.Equal(t,
-		[]QueryCount{{"c", 3}, {"b", 2}, {"a", 1}, {"d", 1}},
-		queryCounts(graph.Queries{"a": 1, "b": 2, "c": 3, "d": 1}))
-}
 
 func TestAPI_GetDomains(t *testing.T) {
 	a := newTestAPI(mock.Domains("foo", "bar")...)
@@ -60,7 +53,7 @@ func TestAPI_ListGoals(t *testing.T) {
 		GoalsRequest{
 			Start: Start{
 				Class:   x.String(),
-				Queries: []string{x.String() + `:["a"]`, y.String() + `:["b"]`},
+				Queries: []string{x.String() + `:["a"]`},
 				Objects: []json.RawMessage{[]byte(`"b"`)},
 			},
 			Goals: []string{y.String(), z.String()},
@@ -69,25 +62,30 @@ func TestAPI_ListGoals(t *testing.T) {
 			{
 				Class: "bar:y",
 				Count: 2,
-				Queries: queryCounts(graph.Queries{
-					mock.NewQuery(y, "bb").String(): 1,
-					mock.NewQuery(y, "aa").String(): 1,
-				}),
+				Queries: []QueryCount{
+					{Query: mock.NewQuery(y, "bb").String(), Count: 1},
+					{Query: mock.NewQuery(y, "aa").String(), Count: 1},
+				},
 			},
 			{
 				Class: "bar:z",
 				Count: 1,
-				Queries: queryCounts(graph.Queries{
-					mock.NewQuery(z, "c").String(): 1,
-				}),
+				Queries: []QueryCount{
+					{Query: mock.NewQuery(z, "c").String(), Count: 1},
+				},
 			},
 		})
 }
 
 func TestAPI_GraphGoals_withRules(t *testing.T) {
 	a, x, y, z := apiWithRules()
-	yQueries := queryCounts(graph.Queries{mock.NewQuery(y, "aa").String(): 1, mock.NewQuery(y, "bb").String(): 1})
-	zQueries := queryCounts(graph.Queries{mock.NewQuery(z, "c").String(): 1})
+	yQueries := []QueryCount{
+		{Query: mock.NewQuery(y, "aa").String(), Count: 1},
+		{Query: mock.NewQuery(y, "bb").String(), Count: 1},
+	}
+	zQueries := []QueryCount{
+		{Query: mock.NewQuery(z, "c").String(), Count: 1},
+	}
 	xQuery := mock.NewQuery(x, "a").String()
 	assertDo(t, a, "POST", "/api/v1alpha1/graphs/goals?withRules=true",
 		GoalsRequest{
@@ -101,7 +99,7 @@ func TestAPI_GraphGoals_withRules(t *testing.T) {
 		200,
 		Graph{
 			Nodes: []Node{
-				{Class: "foo:x", Count: 2, Queries: queryCounts(graph.Queries{xQuery: 1})},
+				{Class: "foo:x", Count: 2, Queries: []QueryCount{{Query: xQuery, Count: 1}}},
 				{Class: "bar:y", Count: 2, Queries: yQueries},
 				{Class: "bar:z", Count: 1, Queries: zQueries},
 			},
@@ -114,7 +112,7 @@ func TestAPI_GraphGoals_withRules(t *testing.T) {
 
 func TestAPI_PostNeighbours_noRules(t *testing.T) {
 	a, x, y, _ := apiWithRules()
-	qc := queryCounts(graph.Queries{mock.NewQuery(y, "aa").String(): 1})
+	qc := []QueryCount{{Query: mock.NewQuery(y, "aa").String(), Count: 1}}
 	assertDo(t, a, "POST", "/api/v1alpha1/graphs/neighbours",
 		NeighboursRequest{
 			Start: Start{
@@ -210,6 +208,8 @@ func normalize(v any) {
 			normalize(r.Queries)
 			ruleCoverage[r.Name] = ruleCoverage[r.Name] + 1
 		}
+	case []QueryCount:
+		slices.SortFunc(v, func(a, b QueryCount) int { return strings.Compare(a.Query, b.Query) })
 	}
 }
 

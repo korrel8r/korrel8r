@@ -41,8 +41,7 @@ func New(domains ...korrel8r.Domain) *Engine {
 
 	// NOTE any channges to the template funcs should be reflected in doc/configuration.adoc
 	e.templateFuncs = template.FuncMap{
-		"rule": func() korrel8r.Rule { return nil }, // Placeholder, replaced by [Rule.Apply]
-		"get":  e.get,                               // Acess to
+		"get": e.get,
 	}
 	maps.Copy(e.templateFuncs, sprig.FuncMap())
 
@@ -168,7 +167,7 @@ func (e *Engine) DomainClass(domain, class string) (korrel8r.Class, error) {
 
 // Query parses a query string to a query object.
 func (e *Engine) Query(query string) (korrel8r.Query, error) {
-	d, _, ok := strings.Cut(query, ":")
+	d, _, ok := strings.Cut(query, korrel8r.NameSeparator)
 	if !ok {
 		return nil, fmt.Errorf("invalid query string: %v", query)
 	}
@@ -205,15 +204,51 @@ func (e *Engine) Follower(ctx context.Context, c *korrel8r.Constraint) *Follower
 	return &Follower{Engine: e, Context: ctx, Constraint: c}
 }
 
-// Goals does a goal directed search and returns the graph.
-func (e *Engine) Goals(starters []korrel8r.Object, start korrel8r.Class, goals []korrel8r.Class, constraint *korrel8r.Constraint) (*graph.Graph, error) {
-	g := e.Graph().AllPaths(start, goals...)
-	g.NodeFor(start).Result.Append(starters...)
-	f := e.Follower(context.Background(), constraint)
-	if err := g.Traverse(f.Traverse); err != nil {
-		return g, err
+// Start populates the start node for with objects and results of queries.
+// Queries and objects must be of the same class as the node.
+func (e *Engine) Start(ctx context.Context, start *graph.Node, objects []korrel8r.Object, queries []korrel8r.Query, constraint *korrel8r.Constraint) error {
+	start.Result.Append(objects...) // FIXME verify objects are of correct class...
+	for _, query := range queries {
+		if query.Class() != start.Class {
+			return fmt.Errorf("class mismatch in query %v: expected class %v", query, start)
+		}
+		count := 0
+		counter := korrel8r.FuncAppender(func(o korrel8r.Object) { start.Result.Append(o); count++ })
+		if err := e.Get(ctx, query, constraint, counter); err != nil {
+			return err
+		}
+		start.Queries.Set(query, count)
 	}
-	return g, f.Err
+	return nil
+}
+
+// GoalSearch does a goal directed search from starting objects and queries, and returns the result graph.
+func (e *Engine) GoalSearch(ctx context.Context, g *graph.Graph, start korrel8r.Class, objects []korrel8r.Object, queries []korrel8r.Query, constraint *korrel8r.Constraint, goals []korrel8r.Class) error {
+	if err := e.Start(ctx, g.NodeFor(start), objects, queries, constraint); err != nil {
+		return err
+	}
+	f := e.Follower(ctx, constraint)
+	if err := g.Traverse(f); err != nil {
+		return err
+	}
+	if f.Err != nil {
+		return f.Err
+	}
+	return nil
+}
+
+// Neighbours generates a neighbourhood graph from starting objects and queries.
+func (e *Engine) Neighbours(ctx context.Context, start korrel8r.Class, objects []korrel8r.Object, queries []korrel8r.Query, constraint *korrel8r.Constraint, depth int) (*graph.Graph, error) {
+	f := e.Follower(ctx, constraint)
+	g := e.Graph()
+	if err := e.Start(ctx, g.NodeFor(start), objects, queries, constraint); err != nil {
+		return nil, err
+	}
+	g = g.Neighbours(start, depth, f)
+	if f.Err != nil {
+		return nil, f.Err
+	}
+	return g, nil
 }
 
 // get implements the template function version of Get()

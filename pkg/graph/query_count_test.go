@@ -13,8 +13,9 @@ func TestQueries(t *testing.T) {
 	d := mock.Domain("x")
 	q := mock.NewQuery(d.Class("a"))
 	qs := Queries{}
-	qs[q.String()] = 3
-	n, ok := qs[q.String()]
-	assert.True(t, ok)
-	assert.Equal(t, 3, n)
+	assert.False(t, qs.Has(q))
+	assert.Equal(t, -1, qs.Get(q))
+	qs.Set(q, 3)
+	assert.True(t, qs.Has(q))
+	assert.Equal(t, 3, qs.Get(q))
 }

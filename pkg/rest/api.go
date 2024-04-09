@@ -165,12 +165,10 @@ func (a *API) GraphsNeighbours(c *gin.Context) {
 	if c.Errors != nil {
 		return
 	}
-	g := a.Engine.Graph()
-	if !a.setupStart(c, g, start, objects, queries, constraint) {
+	g, err := a.Engine.Neighbours(c.Request.Context(), start, objects, queries, constraint, depth)
+	if !check(c, http.StatusBadRequest, err) {
 		return
 	}
-	follower := a.Engine.Follower(c.Request.Context(), constraint)
-	g = g.Neighbours(start, depth, follower.Traverse)
 	c.JSON(http.StatusOK, Graph{Nodes: nodes(g), Edges: edges(g, &opts)})
 }
 
@@ -208,12 +206,8 @@ func (a *API) goalsRequest(c *gin.Context) (g *graph.Graph, goals []korrel8r.Cla
 		return nil, nil
 	}
 	g = a.Engine.Graph().AllPaths(start, goals...)
-	if !a.setupStart(c, g, start, objects, queries, constraint) {
-		return nil, nil
-	}
-
-	follower := a.Engine.Follower(c.Request.Context(), constraint)
-	if !check(c, http.StatusInternalServerError, g.Traverse(follower.Traverse)) {
+	err := a.Engine.GoalSearch(c.Request.Context(), g, start, objects, queries, constraint, goals)
+	if !check(c, http.StatusInternalServerError, err) {
 		return nil, nil
 	}
 	return g, goals
@@ -249,23 +243,6 @@ func (a *API) start(c *gin.Context, start *Start) (korrel8r.Class, []korrel8r.Ob
 	objects := a.objects(c, class, start.Objects)
 	queries := a.queries(c, start.Queries)
 	return class, objects, queries, start.Constraint
-}
-
-// setupStart sets up the start node of the graph
-func (a *API) setupStart(c *gin.Context, g *graph.Graph, start korrel8r.Class, objects []korrel8r.Object, queries []korrel8r.Query, constraint *korrel8r.Constraint) (ok bool) {
-	n := g.NodeFor(start)
-	result := n.Result
-	result.Append(objects...)
-	for _, query := range queries {
-		count := 0
-		counter := korrel8r.FuncAppender(func(o korrel8r.Object) { result.Append(o); count++ })
-		// TODO should we tolerate get failures and report in the response?
-		if check(c, http.StatusBadRequest, a.Engine.Get(c.Request.Context(), query, constraint, counter),
-			"query failed: %q", query.String()) {
-			n.Queries[query.String()] = count
-		}
-	}
-	return c.Errors == nil
 }
 
 func check(c *gin.Context, code int, err error, format ...any) (ok bool) {

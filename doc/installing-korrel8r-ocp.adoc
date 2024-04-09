@@ -19,6 +19,6 @@ It has been tested with {rh-ocp}, it may or may not work with other k8s clusters
   image:images/operatorhub-tile.png[Korrel8r Community Tile]
 . Click Install, Install again, and you are done!
 
-// FIXME install in korrel8r
+// FIXME should be installed in namespace `korrel8r` by default.
 NOTE: By default the operator is installed in namespace `openshift-operators`. +
 You can change this during install.

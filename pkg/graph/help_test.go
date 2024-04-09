@@ -14,6 +14,8 @@ import (
 
 var Domain = domain{}
 
+type rule = korrel8r.Rule
+
 type domain struct{}
 
 func (d domain) Name() string                                       { return "graphmock" }
@@ -34,8 +36,6 @@ func (c Class) String() string           { return impl.ClassString(c) }
 func (c Class) Description() string      { return "" }
 func (c Class) ID(o korrel8r.Object) any { return int(c) }
 func (c Class) New() korrel8r.Object     { panic("not implemented") }
-
-func r(i, j int) korrel8r.Rule { return mock.NewRule("", c(i), c(j)) }
 
 func testGraph(rules []korrel8r.Rule) *Graph {
 	d := NewData()

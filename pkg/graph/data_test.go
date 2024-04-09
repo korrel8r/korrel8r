@@ -10,6 +10,8 @@ import (
 )
 
 func TestNewData(t *testing.T) {
+	rm := ruleMap{}
+	r := func(i, j int) korrel8r.Rule { return rm.r(i, j) }
 	rules := []korrel8r.Rule{r(1, 2), r(3, 4), r(1, 3), r(2, 4)}
 	d := NewData(rules...)
 	assert.Equal(t, rules, d.Rules())
@@ -17,6 +19,8 @@ func TestNewData(t *testing.T) {
 }
 
 func TestData_Graph(t *testing.T) {
+	rm := ruleMap{}
+	r := func(i, j int) korrel8r.Rule { return rm.r(i, j) }
 	rules := []korrel8r.Rule{r(1, 2), r(3, 4), r(1, 3), r(2, 4)}
 	d := NewData(rules...)
 	g := d.EmptyGraph()

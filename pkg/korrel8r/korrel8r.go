@@ -147,15 +147,15 @@ type Appender interface{ Append(...Object) }
 // Rule.Apply() generates correlated queries from start objects.
 //
 // Not required for a domain implementations: implemented by [github.com/korrel8r/korrel8r/pkg/rules]
+// Rules types must be comparable.
 type Rule interface {
 	// Apply the rule to a start Object, return a Query for results.
-	// Apply may return (nil, nil) if the rule does not apply to the input. FIXME explicit ErrDoesNotApply
 	Apply(start Object) (Query, error)
-	// Class of start object. If nil, this is a "wildcard" rule that can start from any class it can be applied to.
-	Start() Class
-	// Class of desired result object(s), must not be nil.
-	Goal() Class
-	// Name is a unique name for the rule.
+	// Start returns a list of start classes that the rule can apply to, all in the same start domain.
+	Start() []Class
+	// Goal returns a list of goal classes that may result from this rule, all in the same goal domain.
+	Goal() []Class
+	// Name is a short, unique, human-readable name to identify the rule.
 	Name() string
 }
 

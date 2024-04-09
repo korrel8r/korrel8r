@@ -5,7 +5,7 @@ package log
 import "regexp"
 
 // TempalateFuncs returns template functions specific to this domain.
-func (domain) TemplateFuncs() map[string]any { return funcs } // FIXME doc mess
+func (domain) TemplateFuncs() map[string]any { return funcs } // TODO document template functions.
 
 var (
 	funcs    = map[string]any{"lokiFixLabel": FixLabel}

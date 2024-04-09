@@ -22,7 +22,7 @@ var (
 	_ korrel8r.Domain = Domain("")
 	_ korrel8r.Class  = Domain("").Class("")
 	_ korrel8r.Query  = Query{}
-	_ korrel8r.Rule   = Rule{}
+	_ korrel8r.Rule   = &Rule{}
 	_ korrel8r.Store  = NewStore(Domain(""), nil)
 )
 
@@ -88,33 +88,37 @@ func (c Class) New() korrel8r.Object     { return "" }
 
 type Rule struct {
 	name        string
-	start, goal korrel8r.Class
+	start, goal []korrel8r.Class
 }
 
-func NewRule(name string, start, goal korrel8r.Class) Rule {
-	return Rule{name: name, start: start, goal: goal}
+func NewRule(name string, start, goal korrel8r.Class) *Rule {
+	return &Rule{name: name, start: []korrel8r.Class{start}, goal: []korrel8r.Class{goal}}
 }
 
-func NewRules(rules ...korrel8r.Rule) (mocks []Rule) {
+func NewRuleMulti(name string, start, goal []korrel8r.Class) *Rule {
+	return &Rule{name: name, start: start, goal: goal}
+}
+
+func NewRules(rules ...korrel8r.Rule) (mocks []*Rule) {
 	for _, r := range rules {
-		mocks = append(mocks, NewRule(r.Name(), r.Start(), r.Goal()))
+		mocks = append(mocks, NewRuleMulti(r.Name(), r.Start(), r.Goal()))
 	}
 	return mocks
 }
 
-func (r Rule) Start() korrel8r.Class { return r.start }
-func (r Rule) Goal() korrel8r.Class  { return r.goal }
-func (r Rule) Name() string          { return r.name }
-func (r Rule) Apply(start korrel8r.Object) (korrel8r.Query, error) {
+func (r *Rule) Start() []korrel8r.Class { return r.start }
+func (r *Rule) Goal() []korrel8r.Class  { return r.goal }
+func (r *Rule) Name() string            { return r.name }
+func (r *Rule) Apply(start korrel8r.Object) (korrel8r.Query, error) {
 	panic("not implemented") // See ApplyRule
 }
 
 // RuleLess orders rules.
 func RuleLess(a, b korrel8r.Rule) int {
-	if a.Start().Name() != b.Start().Name() {
-		return strings.Compare(a.Start().Name(), b.Start().Name())
+	if a.Start()[0].Name() != b.Start()[0].Name() {
+		return strings.Compare(a.Start()[0].Name(), b.Start()[0].Name())
 	}
-	return strings.Compare(a.Goal().Name(), b.Goal().Name())
+	return strings.Compare(a.Goal()[0].Name(), b.Goal()[0].Name())
 }
 
 // SorRules  sorts rules by (start, goal) order.
@@ -122,15 +126,19 @@ func SortRules(rules []korrel8r.Rule) []korrel8r.Rule { slices.SortFunc(rules, R
 
 type ApplyFunc func(korrel8r.Object) (korrel8r.Query, error)
 type ApplyRule struct {
-	Rule
+	*Rule
 	apply ApplyFunc
 }
 
-func NewApplyRule(name string, start, goal korrel8r.Class, apply ApplyFunc) ApplyRule {
-	return ApplyRule{Rule: NewRule(name, start, goal), apply: apply}
+func NewApplyRule(name string, start, goal korrel8r.Class, apply ApplyFunc) *ApplyRule {
+	return &ApplyRule{Rule: NewRule(name, start, goal), apply: apply}
 }
 
-func NewQueryRule(name string, start korrel8r.Class, query korrel8r.Query) ApplyRule {
+func NewApplyRuleMulti(name string, start, goal []korrel8r.Class, apply ApplyFunc) *ApplyRule {
+	return &ApplyRule{Rule: NewRuleMulti(name, start, goal), apply: apply}
+}
+
+func NewQueryRule(name string, start korrel8r.Class, query korrel8r.Query) *ApplyRule {
 	return NewApplyRule(name, start, query.Class(), func(korrel8r.Object) (korrel8r.Query, error) {
 		return query, nil
 	})

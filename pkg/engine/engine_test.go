@@ -72,7 +72,7 @@ func TestFollower_Traverse(t *testing.T) {
 	g := e.Graph()
 	g.NodeFor(a).Result.Append(0)
 	f := e.Follower(context.Background(), nil)
-	assert.NoError(t, g.Traverse(f.Traverse))
+	assert.NoError(t, g.Traverse(f))
 	assert.NoError(t, f.Err)
 	// Check node results
 	assert.ElementsMatch(t, []korrel8r.Object{0}, g.NodeFor(a).Result.List())
@@ -85,13 +85,16 @@ func TestFollower_Traverse(t *testing.T) {
 		case "ab":
 			q, err := l.Rule.Apply(0)
 			require.NoError(t, err)
-			assert.Equal(t, graph.Queries{q.String(): 2}, l.Queries)
+			assert.Equal(t, 2, l.Queries.Get(q))
+			assert.Len(t, l.Queries, 1)
 		case "bc1", "bc2":
 			q1, err := l.Rule.Apply(1)
 			require.NoError(t, err)
 			q2, err := l.Rule.Apply(2)
 			require.NoError(t, err)
-			assert.Equal(t, graph.Queries{q1.String(): 1, q2.String(): 1}, l.Queries)
+			assert.Len(t, l.Queries, 2)
+			assert.Equal(t, 1, l.Queries.Get(q1))
+			assert.Equal(t, 1, l.Queries.Get(q2))
 		case "cz":
 			q1, err := l.Rule.Apply(1)
 			require.NoError(t, err)
@@ -101,12 +104,11 @@ func TestFollower_Traverse(t *testing.T) {
 			require.NoError(t, err)
 			q4, err := l.Rule.Apply(12)
 			require.NoError(t, err)
-			assert.Equal(t, graph.Queries{
-				q1.String(): 1,
-				q2.String(): 1,
-				q3.String(): 1,
-				q4.String(): 1,
-			}, l.Queries)
+			assert.Len(t, l.Queries, 4)
+			assert.Equal(t, 1, l.Queries.Get(q1))
+			assert.Equal(t, 1, l.Queries.Get(q2))
+			assert.Equal(t, 1, l.Queries.Get(q3))
+			assert.Equal(t, 1, l.Queries.Get(q4))
 		default:
 			t.Fatalf("unexpected rule: %v", l.Rule)
 		}
@@ -174,7 +176,9 @@ func TestEngine_PropagateConstraints(t *testing.T) {
 		}},
 	} {
 		t.Run(fmt.Sprintf("%+v", x.constraint), func(t *testing.T) {
-			g, err := e.Goals([]korrel8r.Object{obj{"a", ontime}}, a, []korrel8r.Class{c}, x.constraint)
+			goals := []korrel8r.Class{c}
+			g := e.Graph().AllPaths(a, goals...)
+			err := e.GoalSearch(context.Background(), g, a, []korrel8r.Object{obj{"a", ontime}}, nil, x.constraint, goals)
 			assert.NoError(t, err)
 			got := g.NodeFor(c).Result.List()
 			assert.ElementsMatch(t, x.want, got, "want %v got %v", x.want, got)

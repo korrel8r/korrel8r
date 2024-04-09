@@ -17,15 +17,16 @@ func TestLoad_More(t *testing.T) {
 	c, err := Load("testdata/config.json")
 	require.NoError(t, err)
 	foo, bar := mock.Domain("foo"), mock.Domain("bar")
+
 	e := engine.New(foo, bar)
 	require.NoError(t, c.Apply(e))
-	assert.Equal(t, []mock.Rule{
-		mock.NewRule("rule1", foo.Class("a"), bar.Class("z")),
-		mock.NewRule("rule1", foo.Class("b"), bar.Class("z")),
-		mock.NewRule("rule1", foo.Class("d"), bar.Class("z")),
-		mock.NewRule("rule1", foo.Class("e"), bar.Class("z")),
-		mock.NewRule("rule2", foo.Class("d"), bar.Class("q")),
-		mock.NewRule("rule2", foo.Class("e"), bar.Class("q")),
+	assert.Equal(t, []*mock.Rule{
+		mock.NewRuleMulti("rule1",
+			[]korrel8r.Class{foo.Class("a"), foo.Class("b"), foo.Class("d"), foo.Class("e")},
+			[]korrel8r.Class{bar.Class("z")}),
+		mock.NewRuleMulti("rule2",
+			[]korrel8r.Class{foo.Class("d"), foo.Class("e")},
+			[]korrel8r.Class{bar.Class("q")}),
 	}, mock.NewRules(e.Rules()...))
 }
 
@@ -50,13 +51,10 @@ func TestApply_ExpandGroups(t *testing.T) {
 	foo := mock.Domain("foo")
 	e := engine.New(foo)
 	require.NoError(t, c.Apply(e))
-	assert.Equal(t, []mock.Rule{
-		mock.NewRule("r", foo.Class("p"), foo.Class("u")),
-		mock.NewRule("r", foo.Class("p"), foo.Class("v")),
-		mock.NewRule("r", foo.Class("q"), foo.Class("u")),
-		mock.NewRule("r", foo.Class("q"), foo.Class("v")),
-		mock.NewRule("r", foo.Class("a"), foo.Class("u")),
-		mock.NewRule("r", foo.Class("a"), foo.Class("v")),
+	assert.Equal(t, []*mock.Rule{
+		mock.NewRuleMulti("r",
+			[]korrel8r.Class{foo.Class("p"), foo.Class("q"), foo.Class("a")},
+			[]korrel8r.Class{foo.Class("u"), foo.Class("v")}),
 	}, mock.NewRules(e.Rules()...))
 }
 
@@ -80,10 +78,10 @@ func TestApply_SameGroupDifferentDomain(t *testing.T) {
 	foo, bar := mock.Domain("foo"), mock.Domain("bar")
 	e := engine.New(foo, bar)
 	require.NoError(t, c.Apply(e))
-	assert.Equal(t, []mock.Rule{
-		mock.NewRule("r1", foo.Class("a"), bar.Class("bbq")),
-		mock.NewRule("r1", foo.Class("p"), bar.Class("bbq")),
-		mock.NewRule("r1", foo.Class("q"), bar.Class("bbq")),
+	assert.Equal(t, []*mock.Rule{
+		mock.NewRuleMulti("r1",
+			[]korrel8r.Class{foo.Class("a"), foo.Class("p"), foo.Class("q")},
+			[]korrel8r.Class{bar.Class("bbq")}),
 	}, mock.NewRules(e.Rules()...))
 }
 

@@ -14,13 +14,13 @@ import (
 )
 
 // rule makes a mock rule
-var mockRule = func(s, g korrel8r.Class) mock.Rule { return mock.NewRule("", s, g) }
+var mockRule = func(name string, s, g []korrel8r.Class) *mock.Rule { return mock.NewRuleMulti(name, s, g) }
 
 // mockRules copies public parts of korrel8r.Rule to a mock.Rule for easy comparison.
-func mockRules(k ...korrel8r.Rule) []mock.Rule {
-	m := make([]mock.Rule, len(k))
+func mockRules(k ...korrel8r.Rule) []*mock.Rule {
+	m := make([]*mock.Rule, len(k))
 	for i := range k {
-		m[i] = mockRule(k[i].Start(), k[i].Goal())
+		m[i] = mock.NewRuleMulti(k[i].Name(), k[i].Start(), k[i].Goal())
 	}
 	return m
 }
@@ -32,7 +32,7 @@ func TestRule_Rules(t *testing.T) {
 	_, _, z := bar.Class("x"), bar.Class("y"), bar.Class("z")
 	for _, x := range []struct {
 		rule string
-		want []korrel8r.Rule
+		want korrel8r.Rule
 	}{
 		{
 			rule: `
@@ -41,7 +41,7 @@ start:  {domain: "foo", classes: [a]}
 goal:   {domain: "bar", classes: [z]}
 result: {query: dummy, class: dummy}
 `,
-			want: []korrel8r.Rule{mockRule(a, z)},
+			want: mockRule("simple", []korrel8r.Class{a}, []korrel8r.Class{z}),
 		},
 		{
 			rule: `
@@ -50,7 +50,7 @@ start: {domain: foo, classes: [a, b, c]}
 goal:  {domain: bar, classes: [z]}
 result: {query: dummy, class: dummy}
 `,
-			want: []korrel8r.Rule{mockRule(a, z), mockRule(b, z), mockRule(c, z)},
+			want: mockRule("multistart", []korrel8r.Class{a, b, c}, []korrel8r.Class{z}),
 		},
 		{
 			rule: `
@@ -59,22 +59,17 @@ start: {domain: foo}
 goal: {domain: bar}
 result: {query: dummy, class: dummy}
 `,
-			want: func() (rules []korrel8r.Rule) {
-				for _, foo := range foo.Classes() {
-					for _, bar := range bar.Classes() {
-						rules = append(rules, mockRule(foo, bar))
-					}
-				}
-				return rules
-			}(),
+			want: mockRule("all-all", foo.Classes(), bar.Classes()),
 		},
 	} {
 		t.Run(x.rule, func(t *testing.T) {
 			var r Rule
 			require.NoError(t, yaml.Unmarshal([]byte(x.rule), &r))
 			e := engine.New(foo, bar)
-			require.NoError(t, addRules(e, r))
-			assert.ElementsMatch(t, mockRules(x.want...), mockRules(e.Rules()...))
+			rule, err := newRule(e, &r)
+			require.NoError(t, err)
+			e.AddRules(rule)
+			assert.Equal(t, x.want, mockRules(e.Rules()...)[0])
 		})
 	}
 }

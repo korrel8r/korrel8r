@@ -127,9 +127,9 @@ func (c *correlate) checkURL(u *url.URL, err error) *url.URL {
 }
 
 func (c *correlate) update(req *http.Request) {
-	updateStart := time.Now()
+	start := time.Now()
 	defer func() {
-		c.UpdateTime = time.Since(updateStart)
+		c.UpdateTime = time.Since(start)
 		log.V(2).Info("update complete", "duration", c.UpdateTime)
 	}()
 	c.reset(req.URL)
@@ -140,7 +140,7 @@ func (c *correlate) update(req *http.Request) {
 		if c.addErr(c.browser.engine.Get(context.Background(), c.StartQuery, constraint, start.Result)) {
 			return
 		}
-		start.Queries[c.StartQuery.String()] = len(start.Result.List())
+		start.Queries.Set(c.StartQuery, len(start.Result.List()))
 	}
 	c.addErr(c.updateGoal(), "goal")
 	if c.Err != nil {
@@ -156,14 +156,10 @@ func (c *correlate) update(req *http.Request) {
 		}
 	} else {
 		// Find Neighbours
-		traverse := follower.Traverse
-		if c.RuleGraph {
-			traverse = func(l *graph.Line) {}
-		}
-		c.Graph = c.Graph.Neighbours(c.StartClass, c.Depth, traverse)
+		c.Graph = c.Graph.Neighbours(c.StartClass, c.Depth, follower)
 	}
 	if !c.RuleGraph {
-		c.addErr(c.Graph.Traverse(follower.Traverse))
+		c.addErr(c.Graph.Traverse(follower))
 		c.Graph = c.Graph.Select(func(l *graph.Line) bool { // Remove lines with no queries
 			return l.Queries.Total() > 0
 		})
@@ -235,9 +231,9 @@ func (c *correlate) queryURLAttrs(a graph.Attrs, qs graph.Queries, d korrel8r.Do
 
 	// Find the biggest count
 	maxS, maxN := "", -1
-	for s, n := range qs {
-		if n > maxN {
-			maxS, maxN = s, n
+	for s, qc := range qs {
+		if qc.Count > maxN {
+			maxS, maxN = s, qc.Count
 		}
 	}
 	if maxS != "" {
@@ -296,7 +292,7 @@ func (c *correlate) updateDiagram() {
 		if count := l.Queries.Total(); count > 0 {
 			a["arrowsize"] = fmt.Sprintf("%v", math.Min(0.3+float64(count)*0.05, 1))
 			a["style"] = "bold"
-			c.queryURLAttrs(a, l.Queries, l.Rule.Goal().Domain())
+			c.queryURLAttrs(a, l.Queries, l.Rule.Goal()[0].Domain())
 		} else {
 			a["color"] = "gray"
 		}
@@ -318,10 +314,10 @@ func (c *correlate) updateDiagram() {
 			if !c.addErr(runDot("dot", "-v", "-Tsvg", "-o", svgFile, gvFile)) {
 				c.Diagram, _ = filepath.Rel(c.browser.dir, svgFile)
 				c.DiagramTxt, _ = filepath.Rel(c.browser.dir, gvFile)
-			}
-			pngFile := baseName + ".png"
-			if !c.addErr(runDot("dot", "-v", "-Tpng", "-o", pngFile, gvFile)) {
-				c.DiagramImg, _ = filepath.Rel(c.browser.dir, pngFile)
+				pngFile := baseName + ".png"
+				if !c.addErr(runDot("dot", "-v", "-Tpng", "-o", pngFile, gvFile)) {
+					c.DiagramImg, _ = filepath.Rel(c.browser.dir, pngFile)
+				}
 			}
 		}
 	}
@@ -330,7 +326,11 @@ func (c *correlate) updateDiagram() {
 func runDot(cmdName string, args ...string) error {
 	cmd := exec.Command(cmdName, args[1:]...)
 	log.V(1).Info("run", "cmd", cmdName, "args", args)
-	return cmd.Run()
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("%v %w: %v", cmdName, err, string(out))
+	}
+	return err
 }
 
 func summaryFunc(c korrel8r.Class) func(any) string {

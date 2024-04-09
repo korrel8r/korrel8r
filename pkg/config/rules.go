@@ -12,34 +12,34 @@ import (
 	"github.com/korrel8r/korrel8r/pkg/unique"
 )
 
-func addRules(e *engine.Engine, r Rule) (err error) {
-	if r.Name == "" {
-		r.Name = fmt.Sprintf("%v=%v", r.Start, r.Goal)
-	}
+func newRule(e *engine.Engine, r *Rule) (rule korrel8r.Rule, err error) {
 	defer func() {
 		if err != nil {
 			err = fmt.Errorf("rule %v: %w", r.Name, err)
 		}
 	}()
-	newTemplate := func(name, text string) (*template.Template, error) {
-		return template.New(name).Option("missingkey=error").Funcs(e.TemplateFuncs()).Parse(text)
-	}
-	query, err := newTemplate(r.Name, r.Result.Query)
+	start, err := classes(e, &r.Start)
 	if err != nil {
-		return fmt.Errorf("error in query %q: %w", r.Result.Query, err)
+		return nil, err
 	}
-	return eachClass(e, &r.Start, func(start korrel8r.Class) error {
-		return eachClass(e, &r.Goal, func(goal korrel8r.Class) error {
-			e.AddRules(rules.NewTemplateRule(start, goal, query))
-			return nil
-		})
-	})
+	goal, err := classes(e, &r.Goal)
+	if err != nil {
+		return nil, err
+	}
+	if len(start) == 0 || len(goal) == 0 || r.Name == "" {
+		return nil, fmt.Errorf("invalid: %#v", r)
+	}
+	tmpl, err := template.New(r.Name).Option("missingkey=error").Funcs(e.TemplateFuncs()).Parse(r.Result.Query)
+	if err != nil {
+		return nil, err
+	}
+	return rules.NewTemplateRule(start, goal, tmpl), nil
 }
 
-func eachClass(e *engine.Engine, spec *ClassSpec, f func(korrel8r.Class) error) error {
+func classes(e *engine.Engine, spec *ClassSpec) ([]korrel8r.Class, error) {
 	d, err := e.DomainErr(spec.Domain)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	list := unique.NewList[korrel8r.Class]()
 	if len(spec.Classes) == 0 {
@@ -48,15 +48,10 @@ func eachClass(e *engine.Engine, spec *ClassSpec, f func(korrel8r.Class) error) 
 		for _, class := range spec.Classes {
 			c := d.Class(class)
 			if c == nil {
-				return korrel8r.ClassNotFoundErr{Class: class, Domain: d}
+				return nil, korrel8r.ClassNotFoundErr{Class: class, Domain: d}
 			}
 			list.Append(c)
 		}
 	}
-	for _, c := range list.List {
-		if err := f(c); err != nil {
-			return err
-		}
-	}
-	return nil
+	return list.List, nil
 }

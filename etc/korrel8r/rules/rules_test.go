@@ -50,12 +50,14 @@ func testTraverse(t *testing.T, e *engine.Engine, start, goal korrel8r.Class, st
 	paths := e.Graph().AllPaths(start, goal)
 	paths.NodeFor(start).Result.Append(starters...)
 	f := e.Follower(context.Background(), nil)
-	assert.NoError(t, paths.Traverse(func(l *graph.Line) {
-		f.Traverse(l)
-		if len(l.Queries) > 0 { // Only consider the rule used if it generated some queries
-			rulesUsed.Add(l.Rule.Name())
-		}
-	}))
+	assert.NoError(t, paths.Traverse(graph.MakeVisitor(
+		f.Visit,
+		func(l *graph.Line) {
+			f.Traverse(l)
+			if len(l.Queries) > 0 { // Only consider the rule used if it generated some queries
+				rulesUsed.Add(l.Rule.Name())
+			}
+		})))
 	assert.NoError(t, f.Err)
 	assert.Contains(t, paths.NodeFor(goal).Queries, want.String())
 }
@@ -99,7 +101,7 @@ func TestSelectorToLogsRules(t *testing.T) {
 	classes := unique.NewList[korrel8r.Class]()
 	for _, r := range e.Rules() {
 		if r.Name() == "SelectorToLogs" {
-			classes.Append(r.Start())
+			classes.Append(r.Start()...)
 		}
 	}
 	want := []korrel8r.Class{
@@ -180,23 +182,6 @@ func TestK8sAllToMetric(t *testing.T) {
 	pod := k8s.New[corev1.Pod]("aNamespace", "foo")
 	want := &metric.Query{PromQL: "{namespace=\"aNamespace\",pod=\"foo\"}"}
 	testTraverse(t, e, k8s.ClassOf(pod), metric.Class{}, []korrel8r.Object{pod}, want)
-}
-
-func TestNamespace(t *testing.T) {
-	e := setup()
-	ns := k8s.New[corev1.Namespace]("", "ns")
-	poda := k8s.New[corev1.Pod]("ns", "a")
-
-	// TODO this rule is disabled, see TODO comment in k8s.yaml
-	// t.Run("PodToNamespace", func(t *testing.T) {
-	// 	want := k8s.NewQuery(k8s.ClassOf(ns), "", "ns", nil, nil)
-	// 	testTraverse(t, e, k8s.ClassOf(poda), k8s.ClassOf(ns), []korrel8r.Object{poda, podb}, want)
-	// })
-
-	t.Run("NamespaceToPods", func(t *testing.T) {
-		want := k8s.NewQuery(k8s.ClassOf(poda), "ns", "", nil, nil)
-		testTraverse(t, e, k8s.ClassOf(ns), k8s.ClassOf(poda), []korrel8r.Object{ns}, want)
-	})
 }
 
 func TestMain(m *testing.M) {

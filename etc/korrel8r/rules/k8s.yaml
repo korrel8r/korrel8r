@@ -110,35 +110,6 @@ rules:
      result:
        query: |-
          log:{{ k8sLogType .Namespace }}:{kubernetes_namespace_name="{{.Namespace}}",kubernetes_pod_name="{{.Name}}"}
-
-   # TODO see  https://github.com/korrel8r/korrel8r/issues/52
-   #
-   # This rule is a little to "eager", it connects all resources in the same nameppace.
-   # which in turn connect to all kinds of other stuff.
-   # Do we need a "priority" or "cost" for rules, to choose broad vs focused results?
-   #
-   # - name: ResourceToNamespace
-   #   start:
-   #     domain: k8s
-   #     classes: [namespacedResources]
-   #   goal:
-   #     domain: k8s
-   #     classes: [Namespace]
-   #   result:
-   #     query: |-
-   #       { Version: v1, Kind: Namespace, Name: {{.Namespace}} }
-
-   - name: NamespaceToResource
-     start:
-       domain: k8s
-       classes: [Namespace]
-     goal:
-       domain: k8s
-       classes: [namespacedResources]
-     result:
-       query: |-
-         {{rule.Goal}}:{namespace: {{.Name -}} }
-
    - name: NamespaceToAlert
      start:
        domain: k8s
@@ -168,7 +139,7 @@ rules:
        classes: [Pod]
      result:
        query: |-
-         {{rule.Goal}}:{namespace: {{.Namespace}}, labels: {{.Spec.Selector.MatchLabels | toJson -}} }
+         k8s:Pod:{namespace: {{.Namespace}}, labels: {{.Spec.Selector.MatchLabels | toJson -}} }
 
    - name: EventToAll
      start:
@@ -192,7 +163,7 @@ rules:
        classes: [Event.]
      result:
        query: |-
-         {{rule.Goal}}:{"fields":{
+         k8s:Event:{"fields":{
                       "involvedObject.namespace":"{{.Namespace}}",
                       "involvedObject.name": "{{.Name}}",
                       "involvedObject.kind": "{{.Kind}}",
@@ -205,4 +176,4 @@ rules:
        domain: metric
      result:
        query: |-
-         {{rule.Goal}}:{namespace="{{.Namespace}}",{{lower .Kind}}="{{.Name}}"}
+         metric:metric:{namespace="{{.Namespace}}",{{lower .Kind}}="{{.Name}}"}

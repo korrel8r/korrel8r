@@ -24,7 +24,7 @@ func TypeAssert[T any](x any) (v T, err error) {
 	return v, err
 }
 
-// ParseQueryString parses a query string into class and query parts.
+// ParseQueryString parses a query string into class and data parts.
 func ParseQueryString(domain korrel8r.Domain, query string) (class korrel8r.Class, data string, err error) {
 	d, c, q := QuerySplit(query)
 	if q == "" {

@@ -7,7 +7,7 @@ rules:
       classes: [Deployment.apps]
     result:
       query: |-
-        {{rule.Goal}}:{namespace: "{{.Labels.namespace}}", name: "{{.Labels.deployment}}"}
+        k8s.Deployment.apps:{namespace: "{{.Labels.namespace}}", name: "{{.Labels.deployment}}"}
 
   - name: AlertToPod
     start:
@@ -17,7 +17,7 @@ rules:
       classes: [Pod.]
     result:
       query: |-
-        {{rule.Goal}}:{namespace: "{{.Labels.namespace}}", name: "{{.Labels.pod}}"}
+        k8s.Pod.:{namespace: "{{.Labels.namespace}}", name: "{{.Labels.pod}}"}
 
   - name: AlertToDaemonSet
     start:
@@ -27,7 +27,7 @@ rules:
       classes: [DaemonSet.apps]
     result:
       query: |-
-        {{rule.Goal}}:{namespace: "{{.Labels.namespace}}", name: "{{.Labels.daemonset}}"}
+        k8s:DaemonSet.apps:{namespace: "{{.Labels.namespace}}", name: "{{.Labels.daemonset}}"}
 
   - name: AlertToStatefulSet
     start:
@@ -37,7 +37,7 @@ rules:
       classes: [StatefulSet.apps]
     result:
       query: |-
-        {{rule.Goal}}:{namespace: "{{.Labels.namespace}}", name: "{{.Labels.statefulset}}"}
+        k8s:StatefulSet.apps:{namespace: "{{.Labels.namespace}}", name: "{{.Labels.statefulset}}"}
 
   - name: AlertToMetric
     start:
@@ -46,4 +46,4 @@ rules:
       domain: metric
     result:
       query: |-
-        {{rule.Goal}}:{{.Expression}}
+        metric:metric:{{.Expression}}

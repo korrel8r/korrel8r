@@ -25,7 +25,7 @@ var getCmd = &cobra.Command{
 		s := must.Must1(e.StoreErr(q.Class().Domain()))
 		log.V(3).Info("get", "query", q.String())
 		result := newPrinter(os.Stdout)
-		var constraint *korrel8r.Constraint // FIXME implement constraints
+		var constraint *korrel8r.Constraint // FIXME implement constraints as arguments
 		must.Must(s.Get(context.Background(), q, constraint, result))
 	},
 }

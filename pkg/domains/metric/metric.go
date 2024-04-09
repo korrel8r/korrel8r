@@ -53,7 +53,7 @@ var (
 	// Validate implementation of interfaces.
 	_ korrel8r.Domain = Domain
 	_ korrel8r.Class  = Class{}
-	_ korrel8r.Query  = &Query{}
+	_ korrel8r.Query  = Query{}
 	_ korrel8r.Store  = &Store{}
 )
 
@@ -93,7 +93,7 @@ func (domain) ConsoleURLToQuery(u *url.URL) (korrel8r.Query, error) {
 }
 
 func (domain) QueryToConsoleURL(query korrel8r.Query) (*url.URL, error) {
-	q, err := impl.TypeAssert[*Query](query)
+	q, err := impl.TypeAssert[Query](query)
 	if err != nil {
 		return nil, err
 	}

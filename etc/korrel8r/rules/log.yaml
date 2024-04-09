@@ -7,4 +7,4 @@ rules:
       classes: [Pod]
     result:
       query: |-
-        {{rule.Goal}}:{namespace: "{{.kubernetes.namespace_name}}", name: "{{.kubernetes.pod_name}}"}
+        k8s:Pod:{namespace: "{{.kubernetes.namespace_name}}", name: "{{.kubernetes.pod_name}}"}

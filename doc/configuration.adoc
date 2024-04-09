@@ -120,31 +120,8 @@ The _query-details_ part depends on the domain, see {xref-domain}
 .Example of rules and aliases.
 [source,yaml]
 ----
-aliases:
-  - name: namespacedResources <1>
-    domain: k8s
-    classes:
-      - Pod
-      - Deployment.apps
-      # ... [snip] lists other goal classes for the NamespaceToResource rule
-
-rules:
-   - name: NamespaceToResource <2>
-     start:
-       domain: k8s
-       classes: [Namespace]
-     goal:
-       domain: k8s
-       classes: [namespacedResources] <3>
-     result:
-       query: '{{rule.Goal}}:{namespace: {{.Name -}} }'  <4>
+FIXME NEED EAMPLE.
 ----
-
-<1> The alias "namespacedResources" includes multiple k8s classes representing namespace resources.
-<2> This rule relates namespaces to resources in the namespace.
-<3> The query template uses `{{rule.Goal}}` to get the actual goal class. See xref:_templates[].
-It  selects objects with namespace of `.Name`, the name field of the current start object which is a namespace.
-Note the capitalization, k8s queries operate on deserialized Go objects representing resources.
 
 == Templates
 
@@ -153,18 +130,5 @@ This is the same template syntax used by the Kubernetes `kubectl` tool with the 
 Korrel8r provides some additional _template functions_ that can be used in configuration templates.
 
 .Additional template functions
-****
-rule::
 
-Returns the link:{pkg-korrel8r}#Rule[korrel8r.Rule] object being applied, available in rule query templates only.
-This is useful for rules that have more than one possible goal class, the current goal class is `{{rule.Goal}}`
-See xref:_rules[] for an example.
-
-get QUERY::
-Executes QUERY and returns a list of result objects.
-Used to dynamically configuration stores at run-time, see xref:_stores[] for an example.
-
-{slim-sprig} is a library of general-purpose functions that are always available.
-
-Domain-specific functions are documented in {xref-domain}.
-****
+FIXME DOCUMENT

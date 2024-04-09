@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"regexp"
+	"slices"
 	"text/tabwriter"
 
 	"github.com/korrel8r/korrel8r/internal/pkg/must"
@@ -31,8 +32,8 @@ var rulesCmd = &cobra.Command{
 		}
 		name := must.Must1(regexp.Compile(*ruleName))
 		test := func(r korrel8r.Rule) bool {
-			return (start == nil || r.Start() == start) &&
-				(goal == nil || r.Goal() == goal) &&
+			return (start == nil || slices.Contains(r.Start(), start)) &&
+				(goal == nil || slices.Contains(r.Goal(), goal)) &&
 				name.MatchString(r.Name())
 		}
 		if *ruleGraph {
