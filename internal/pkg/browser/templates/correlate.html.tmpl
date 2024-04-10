@@ -86,7 +86,7 @@
                 <li><code>{{.Rule.String}}</code></li>
                 <ul>
                   {{range $q, $c := .Queries}}
-                    <li>{{$c}}: <a href="/api/v1alpha1/objects?query={{$q|urlquery}}" target="_blank">{{$q}}</a></li>
+                    <li>{{$c}}: <a href="{{$.NewStartURL $q}}">{{$q}}</a> <a href="/api/v1alpha1/objects?query={{$q|urlquery}}" target="_blank">Raw</a></li>
                   {{end}}
                 </ul>
               {{end}}

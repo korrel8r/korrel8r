@@ -27,6 +27,7 @@ import (
 
 // correlate web page handler.
 type correlate struct {
+	URL *url.URL
 	// URL Query parameter fields
 	Start       string // Starting point, console URL or query string.
 	StartDomain string
@@ -55,9 +56,11 @@ type correlate struct {
 }
 
 // reset the fields to contain only URL query parameters
-func (c *correlate) reset(params url.Values) {
+func (c *correlate) reset(url *url.URL) {
+	params := url.Query()
 	app := c.browser // Save
 	*c = correlate{  // Overwrite
+		URL:         url,
 		Start:       params.Get("start"),
 		StartDomain: params.Get("domain"),
 		Goal:        params.Get("goal"),
@@ -92,6 +95,14 @@ func (c *correlate) HTML(gc *gin.Context) {
 	gc.HTML(http.StatusOK, "correlate.html.tmpl", c)
 }
 
+func (c *correlate) NewStartURL(query string) *url.URL {
+	values := c.URL.Query()
+	values.Set("start", query) // Replace start query
+	u := url.URL(*c.URL)       // Copy
+	u.RawQuery = values.Encode()
+	return &u
+}
+
 // addErr adds an error to be displayed on the page.
 func (c *correlate) addErr(err error, msg ...any) bool {
 	if err == nil {
@@ -121,7 +132,7 @@ func (c *correlate) update(req *http.Request) {
 		c.UpdateTime = time.Since(updateStart)
 		log.V(2).Info("update complete", "duration", c.UpdateTime)
 	}()
-	c.reset(req.URL.Query())
+	c.reset(req.URL)
 	var constraint *korrel8r.Constraint // FIXME implement constraints
 	if !c.addErr(c.updateStart(), "start") {
 		// Prime the start node with initial results
