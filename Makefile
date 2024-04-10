@@ -13,6 +13,12 @@ IMG?=quay.io/korrel8r/korrel8r
 ## IMGTOOL: May be podman or docker.
 IMGTOOL?=$(or $(shell podman info > /dev/null 2>&1 && which podman), $(shell docker info > /dev/null 2>&1 && which docker))
 
+# Setting GOENV
+GOOS := $(shell go env GOOS)
+GOARCH := $(shell go env GOARCH)
+
+LOCALBIN ?= $(shell pwd)/tmp/bin
+
 include .bingo/Variables.mk	# Versioned tools
 
 check: generate lint test ## Lint and test code.
@@ -51,10 +57,16 @@ pkg/rest/zz_docs: $(wildcard pkg/rest/*.go pkg/korrel8r/*.go) $(SWAG)
 	$(SWAG) fmt pkg/rest
 	@touch $@
 
-lint: $(VERSION_TXT) $(GOLANGCI_LINT) $(SHFMT) ## Run the linter to find and fix code style problems.
+
+SHELLCHECK:= $(LOCALBIN)/shellcheck
+$(SHELLCHECK):
+	./hack/shellcheck.sh
+
+lint: $(VERSION_TXT) $(GOLANGCI_LINT) $(SHFMT) $(SHELLCHECK) ## Run the linter to find and fix code style problems.
 	$(GOLANGCI_LINT) run --fix
 	$(SHFMT) -l -w ./**/*.sh
 	go mod tidy
+	$(SHELLCHECK) -x -S style hack/*.sh
 
 install: $(VERSION_TXT) ## Build and install the korrel8r binary in $GOBIN.
 	go install -tags netgo ./cmd/korrel8r

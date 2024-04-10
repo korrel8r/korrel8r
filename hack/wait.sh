@@ -31,7 +31,7 @@ subscription() {
 		shift
 	fi
 	for NAME in "$@"; do
-		until CSV=$(oc get $NS_FLAG subscription/"$NAME" -o jsonpath='{.status.currentCSV}') && [ -n "$CSV" ]; do
+		until CSV=$(oc get "$NS_FLAG" subscription/"$NAME" -o jsonpath='{.status.currentCSV}') && [ -n "$CSV" ]; do
 			echo "waiting for CSV for subscription/$NAME $NS_FLAG"
 			sleep "$RETRY_DELAY"
 		done
@@ -40,7 +40,7 @@ subscription() {
 			sleep "$RETRY_DELAY"
 		done
 		echo "waiting for $CSV to have phase Succeeded"
-		oc wait --allow-missing-template-keys=true --for=jsonpath='{.status.phase}'=Succeeded $NS_FLAG csv/"$CSV" || return 1
+		oc wait --allow-missing-template-keys=true --for=jsonpath='{.status.phase}'=Succeeded "$NS_FLAG" csv/"$CSV" || return 1
 	done
 }
 
