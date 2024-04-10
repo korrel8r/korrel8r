@@ -21,12 +21,12 @@ $ operator-sdk -n default run bundle quay.io/korrel8r/operator-bundle:latest
 +
 [source,terminal]
 ----
-$ oc label ns/korrel8r pod-security.kubernetes.io/enforce=privileged --overwrite
+$ kubectl label ns/korrel8r pod-security.kubernetes.io/enforce=privileged --overwrite
 ----
 +
 [source,terminal]
 ----
-$ oc label ns/korrel8r pod-security.kubernetes.io/warn=privileged --overwrite
+$ kubectl label ns/korrel8r pod-security.kubernetes.io/warn=privileged --overwrite
 ----
 
 See also https://issues.redhat.com/browse/OU-304.
@@ -88,4 +88,4 @@ The log collector does not collect its own logs. Doing so might create a circula
 
 To avoid this risk, the log collector does not collect any logs from pods that are part of the logging system.
 
-You can still see view {logging} logs by using the `oc logs` command directly.
+You can still see view {logging} logs by using the `kubectl logs` command directly.

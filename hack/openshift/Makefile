@@ -4,13 +4,13 @@ help:
 	Use: make [operators|resources|clean-operators|clean-resources]
 
 operators:
-	oc apply -k config/operators
+	kubectl apply -k config/operators
 	../wait.sh subscription -n openshift-logging cluster-logging
 	../wait.sh subscription -n openshift-operators-redhat loki-operator
 	../wait.sh subscription -n openshift-netobserv-operator netobserv-operator
-	oc patch consoles.operator.openshift.io/cluster --type=merge --patch '{ "spec": { "plugins": ["monitoring-plugin", "logging-view-plugin", "netobserv-plugin"]}}'
+	kubectl patch consoles.operator.openshift.io/cluster --type=merge --patch '{ "spec": { "plugins": ["monitoring-plugin", "logging-view-plugin", "netobserv-plugin"]}}'
 
-STORAGE_CLASS?=$(shell oc get storageclass -o=jsonpath='{.items[?(@.metadata.annotations.storageclass\.kubernetes\.io/is-default-class=="true")].metadata.name}')
+STORAGE_CLASS?=$(shell kubectl get storageclass -o=jsonpath='{.items[?(@.metadata.annotations.storageclass\.kubernetes\.io/is-default-class=="true")].metadata.name}')
 
 MINIO_ROLLOUT=../wait.sh rollout -n minio deployment/minio
 
@@ -32,13 +32,13 @@ deployment.apps/netobserv-plugin
 
 resources:
 	echo "STORAGE_CLASS=$(STORAGE_CLASS)" > config/resources/storage.env
-	oc apply -k config/resources
+	kubectl apply -k config/resources
 	$(MINIO_ROLLOUT)
 	$(LOGGING_ROLLOUT)
 	$(NETOBSERV_ROLLOUT)
 
 clean-operators:
-	oc delete --ignore-not-found -k config/operators
-
+	kubectl delete --ignore-not-found -k config/operators
 clean-resources:
-	oc delete --ignore-not-found -k config/resources
+	kubectl delete --ignore-not-found -k config/resources
+clean-all: clean-resources clean-operators

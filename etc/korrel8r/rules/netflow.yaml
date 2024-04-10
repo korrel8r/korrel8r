@@ -1,7 +1,7 @@
 # Netflow format (upstream doc?): https://docs.openshift.com/container-platform/4.15/observability/network_observability/json-flows-format-reference.html
 #
 # Loki stream labels for the netflow store
-#   logcli --bearer-token=$(oc whoami -t) --tls-skip-verify --addr https://loki-netobserv.apps.snoflake.home/api/logs/v1/network labels
+#   logcli --bearer-token=$(kubectl whoami -t) --tls-skip-verify --addr https://loki-netobserv.apps.snoflake.home/api/logs/v1/network labels
 #
 # DstK8S_Namespace
 # DstK8S_OwnerName

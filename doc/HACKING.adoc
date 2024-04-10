@@ -9,7 +9,7 @@ You need to be logged-in as `kubeadmin` to your cluster:
 
 [source,bash]
 ----
-kubectl apply -k https://github.com/korrel8r/korrel8r/config/base
+kubectl apply -k https://github.com/korrel8r/korrel8r/base
 ----
 
 On {rh-ocp}, you can create a `route` to the service with `make route`.

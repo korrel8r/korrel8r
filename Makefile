@@ -6,11 +6,9 @@ help: ## Display this help.
 	@grep -E '^## [A-Z0-9_]+: ' Makefile | sed 's/^## \([A-Z0-9_]*\): \(.*\)/\1#\2/' | column -s'#' -t
 
 ## VERSION: Semantic version for release. Use a -dev suffix for work in progress.
-VERSION?=0.5.10
+VERSION?=0.5.11-dev
 ## IMG: Base name of image to build or deploy, without version tag.
 IMG?=quay.io/korrel8r/korrel8r
-## OVERLAY: Name of kustomize directory for `make deploy`.
-OVERLAY?=config/overlays/dev
 ## IMGTOOL: May be podman or docker.
 IMGTOOL?=$(or $(shell podman info > /dev/null 2>&1 && which podman), $(shell docker info > /dev/null 2>&1 && which docker))
 
@@ -84,22 +82,16 @@ image: image-build ## Build and push image. IMG must be set to a writable image 
 image-name: ## Print the full image name and tag.
 	@echo $(IMAGE)
 
-$(OVERLAY): $(OVERLAY)/kustomization.yaml
-	mkdir -p  $@
-	hack/replace-image.sh "quay.io/korrel8r/korrel8r" $(IMG) $(VERSION) > $<
-
 WATCH=kubectl get events -A --watch-only& trap "kill %%" EXIT;
-HAS_ROUTE={ oc api-versions | grep -q route.openshift.io/v1 ; }
 
-# NOTE: deploy does not depend on 'image', since it may be used to deploy pre-existing images.
-# To build and deploy a new image do `make image deploy`
-deploy: $(IMAGE_KUSTOMIZATION)	## Deploy to current cluster using kustomize.
-	$(WATCH) kubectl apply -k $(OVERLAY)
-	$(HAS_ROUTE) && kubectl apply -k config/base/route
+deploy: image $(KUSTOMIZE)	## Deploy to current cluster using kustomize.
+	cd config; $(KUSTOMIZE) edit set image "quay.io/korrel8r/korrel8r=$(IMAGE)"
+	kubectl apply -k config
+	kubectl apply -k config/route || echo "skipping route"
 	$(WATCH) kubectl wait -n korrel8r --for=condition=available --timeout=60s deployment.apps/korrel8r
 
-undeploy: $(OVERLAY)
-	kubectl delete -k $(OVERLAY)
+undeploy:
+	kubectl delete -k config
 
 # Run asciidoctor from an image.
 ADOC_RUN=$(IMGTOOL) run -iq -v./doc:/doc:z -v./_site:/_site:z quay.io/rhdevdocs/devspaces-documentation
