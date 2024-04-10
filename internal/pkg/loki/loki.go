@@ -51,20 +51,16 @@ func (c *Client) GetStack(logQL, tenant string, constraint *korrel8r.Constraint,
 }
 
 const ( // Query URL keywords
-	query      = "query"
-	queryRange = "query_range"
-	direction  = "direction"
-	forward    = "forward"
-	limit      = "limit"
+	query     = "query"
+	direction = "direction"
+	forward   = "FORWARD"
+	limit     = "limit"
 
-	lokiPath       = "/loki/api/v1/"
 	lokiStackPath  = "/api/logs/v1/"
-	queryPath      = lokiPath + query
-	queryRangePath = lokiPath + queryRange
+	queryRangePath = "/loki/api/v1/query_range"
 )
 
 func (c *Client) queryURL(logQL string, constraint *korrel8r.Constraint) *url.URL {
-	path := queryPath // Assume point query
 	v := url.Values{}
 	v.Add(query, logQL)
 	v.Add("direction", "forward")
@@ -74,14 +70,12 @@ func (c *Client) queryURL(logQL string, constraint *korrel8r.Constraint) *url.UR
 		}
 		if constraint.Start != nil {
 			v.Add("start", fmt.Sprintf("%v", constraint.Start.UnixNano()))
-			path = queryRangePath
 		}
 		if constraint.End != nil {
 			v.Add("end", fmt.Sprintf("%v", constraint.End.UnixNano()))
-			path = queryRangePath
 		}
 	}
-	return &url.URL{Path: path, RawQuery: v.Encode()}
+	return &url.URL{Path: queryRangePath, RawQuery: v.Encode()}
 }
 
 func (c *Client) get(u *url.URL, collect CollectFunc) error {

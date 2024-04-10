@@ -211,26 +211,23 @@ func NewPlainLokiStore(base *url.URL, h *http.Client) (korrel8r.Store, error) {
 type store struct{ *loki.Client }
 
 func (store) Domain() korrel8r.Domain { return Domain }
-func (s *store) Get(ctx context.Context, query korrel8r.Query, c *korrel8r.Constraint, result korrel8r.Appender) error {
+
+func (s *store) Get(ctx context.Context, query korrel8r.Query, constraint *korrel8r.Constraint, result korrel8r.Appender) error {
 	q, err := impl.TypeAssert[Query](query)
 	if err != nil {
 		return err
 	}
-	return s.Client.Get(q.logQL, c, func(e *loki.Entry) { result.Append(NewObject(e.Line)) })
+	return s.Client.Get(q.Data(), constraint, func(e *loki.Entry) { result.Append(NewObject(e.Line)) })
 }
 
 type stackStore struct{ store }
 
-func (s *stackStore) Get(ctx context.Context, query korrel8r.Query, c *korrel8r.Constraint, result korrel8r.Appender) error {
+func (s *stackStore) Get(ctx context.Context, query korrel8r.Query, constraint *korrel8r.Constraint, result korrel8r.Appender) error {
 	q, err := impl.TypeAssert[Query](query)
 	if err != nil {
 		return err
 	}
-	class := queryClass(q.logQL)
-	if c == nil {
-		class = Application
-	}
-	return s.Client.GetStack(q.logQL, class.Name(), c, func(e *loki.Entry) { result.Append(NewObject(e.Line)) })
+	return s.Client.GetStack(q.Data(), q.Class().Name(), constraint, func(e *loki.Entry) { result.Append(NewObject(e.Line)) })
 }
 
 var logTypeRe = regexp.MustCompile(`{[^}]*log_type(=~*)"([^"]+)"}`)
@@ -269,13 +266,13 @@ func (domain) QueryToConsoleURL(query korrel8r.Query) (*url.URL, error) {
 }
 
 func (domain) ConsoleURLToQuery(u *url.URL) (korrel8r.Query, error) {
-	q := u.Query().Get("q")
+	logQL := u.Query().Get("q")
 	c := classMap[u.Query().Get("tenant")]
 	if c == nil {
-		c = queryClass(q)
+		c = queryClass(logQL)
 	}
 	if c == nil {
 		return nil, fmt.Errorf("not a valid Loki URL: %v", u)
 	}
-	return NewQuery(c.(Class), q), nil
+	return NewQuery(c.(Class), logQL), nil
 }
