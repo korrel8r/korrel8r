@@ -93,7 +93,7 @@ func (domain) ConsoleURLToQuery(u *url.URL) (korrel8r.Query, error) {
 }
 
 func (domain) QueryToConsoleURL(query korrel8r.Query) (*url.URL, error) {
-	q, err := impl.TypeAssert[Query](query)
+	q, err := impl.TypeAssert[*Query](query)
 	if err != nil {
 		return nil, err
 	}
