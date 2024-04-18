@@ -56,7 +56,7 @@ const (
 func init() {
 	panicOnErr = rootCmd.PersistentFlags().Bool("panic", false, "panic on error instead of exit code 1")
 	output = rootCmd.PersistentFlags().StringP("output", "o", "yaml", "Output format: [json, json-pretty, yaml]")
-	verbose = rootCmd.PersistentFlags().IntP("verbose", "v", 0, "Verbosity for logging")
+	verbose = rootCmd.PersistentFlags().IntP("verbose", "v", 0, "Verbosity for logging (0 = notice, 1 = info, 2 = debug, 3 = trace)")
 	configuration = rootCmd.PersistentFlags().StringP("config", "c", getConfig(), "Configuration file")
 	profileType = rootCmd.PersistentFlags().String("profile", "", "Enable profiling, one of [cpu mem trace]")
 

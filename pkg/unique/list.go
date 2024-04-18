@@ -8,7 +8,11 @@ type List[T any] struct {
 	List []T
 }
 
-func NewList[T any]() List[T] { return List[T]{seen: map[any]struct{}{}} }
+func NewList[T any](values ...T) List[T] {
+	l := List[T]{seen: map[any]struct{}{}}
+	l.Append(values...)
+	return l
+}
 
 // Add a value if not already present, return true if the value was added.
 func (l *List[T]) Add(v T) bool {

@@ -103,7 +103,7 @@ func (configs Configs) Apply(e *engine.Engine) error {
 		for _, sc := range c.Stores {
 			sc = maps.Clone(sc)
 			if err := e.AddStoreConfig(sc); err != nil {
-				log.V(1).Error(err, "error configuring store", "config", source, "domain", sc[korrel8r.StoreKeyDomain])
+				log.V(1).Error(err, "Error configuring store", "config", source, "domain", sc[korrel8r.StoreKeyDomain])
 			} else {
 				log.V(1).Info("configured store", "config", source, "store", logging.JSON(sc))
 			}

@@ -58,7 +58,6 @@ func TestLokiStoreGet_Constraint(t *testing.T) {
 	before, during, after := []string{"too", "early"}, []string{"on", "time"}, []string{"too", "late"}
 	labels := map[string]string{"test": "netflowlabel"}
 
-	// FIXME need a faster test?
 	require.NoError(t, l.Push(labels, before...))
 	time.Sleep(time.Second / 10)
 	t1 := time.Now()

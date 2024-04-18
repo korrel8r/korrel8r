@@ -201,7 +201,7 @@ func (e *Engine) Get(ctx context.Context, q korrel8r.Query, constraint *korrel8r
 
 // Follower creates a follower. Constraint can be nil.
 func (e *Engine) Follower(ctx context.Context, c *korrel8r.Constraint) *Follower {
-	return &Follower{Engine: e, Context: ctx, Constraint: c}
+	return &Follower{Engine: e, Context: ctx, Constraint: c, rules: map[appliedRule]graph.Queries{}}
 }
 
 // Start populates the start node for with objects and results of queries.
@@ -228,9 +228,7 @@ func (e *Engine) GoalSearch(ctx context.Context, g *graph.Graph, start korrel8r.
 		return err
 	}
 	f := e.Follower(ctx, constraint)
-	if err := g.Traverse(f); err != nil {
-		return err
-	}
+	g.Traverse(start, goals, f.Traverse)
 	if f.Err != nil {
 		return f.Err
 	}
@@ -244,7 +242,7 @@ func (e *Engine) Neighbours(ctx context.Context, start korrel8r.Class, objects [
 	if err := e.Start(ctx, g.NodeFor(start), objects, queries, constraint); err != nil {
 		return nil, err
 	}
-	g = g.Neighbours(start, depth, f)
+	g.Neighbours(start, depth, f.Traverse)
 	if f.Err != nil {
 		return nil, f.Err
 	}

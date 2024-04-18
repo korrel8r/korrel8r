@@ -86,7 +86,7 @@ func New(e *engine.Engine, router *gin.Engine) (*Browser, error) {
 // Close should be called on shutdown to clean up external resources.
 func (b *Browser) Close() {
 	if err := os.RemoveAll(b.dir); err != nil {
-		log.Error(err, "closing")
+		log.Error(err, "Closing")
 	}
 }
 
@@ -116,7 +116,7 @@ func httpError(c *gin.Context, err error, code int) bool {
 	if err != nil {
 		_ = c.Error(err)
 		c.HTML(code, "error.html.tmpl", c)
-		log.Error(err, "page error")
+		log.Error(err, "Page error")
 	}
 	return err != nil
 }

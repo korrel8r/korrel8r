@@ -72,7 +72,7 @@ func TestFollower_Traverse(t *testing.T) {
 	g := e.Graph()
 	g.NodeFor(a).Result.Append(0)
 	f := e.Follower(context.Background(), nil)
-	assert.NoError(t, g.Traverse(f))
+	g.Traverse(a, []korrel8r.Class{z}, f.Traverse)
 	assert.NoError(t, f.Err)
 	// Check node results
 	assert.ElementsMatch(t, []korrel8r.Object{0}, g.NodeFor(a).Result.List())

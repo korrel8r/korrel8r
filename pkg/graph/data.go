@@ -50,12 +50,11 @@ func (d *Data) NodeFor(c korrel8r.Class) *Node {
 	}
 	id := int64(len(d.Nodes))
 	n := &Node{
-		Node:         multi.Node(id),
-		Class:        c,
-		Attrs:        Attrs{},
-		Result:       korrel8r.NewResult(c),
-		Queries:      Queries{},
-		RulesApplied: map[korrel8r.Rule][]korrel8r.Query{},
+		Node:    multi.Node(id),
+		Class:   c,
+		Attrs:   Attrs{},
+		Result:  korrel8r.NewResult(c),
+		Queries: Queries{},
 	}
 	d.Nodes = append(d.Nodes, n)
 	d.nodeID[cname] = id
@@ -100,11 +99,10 @@ func (d *Data) Classes() []korrel8r.Class {
 // Node is a graph Node, corresponds to a Class.
 type Node struct {
 	multi.Node
-	Attrs        // GraphViz Attributer
-	Class        korrel8r.Class
-	Result       korrel8r.Result                    // Accumulate incoming query results.
-	Queries      Queries                            // All queries leading to this node.
-	RulesApplied map[korrel8r.Rule][]korrel8r.Query // Rules applied starting from this node.
+	Attrs   // GraphViz Attributer
+	Class   korrel8r.Class
+	Result  korrel8r.Result // Accumulate incoming query results.
+	Queries Queries         // All queries leading to this node.
 }
 
 func NodeFor(n graph.Node) *Node           { return n.(*Node) }

@@ -89,7 +89,7 @@ func (c *correlate) reset(url *url.URL) {
 func (c *correlate) HTML(gc *gin.Context) {
 	c.update(gc.Request)
 	if c.Err != nil {
-		log.Error(c.Err, "page errors")
+		log.Error(c.Err, "Page errors")
 		c.Graph = graph.New(nil) // Don't show empty graph on error
 	}
 	gc.HTML(http.StatusOK, "correlate.html.tmpl", c)
@@ -148,25 +148,12 @@ func (c *correlate) update(req *http.Request) {
 	}
 	follower := c.browser.engine.Follower(context.Background(), constraint)
 
-	if c.GoalClasses != nil { // Find paths from start to goal.
-		if c.ShortPaths {
-			c.Graph = c.Graph.ShortestPaths(c.StartClass, c.GoalClasses...)
-		} else {
-			c.Graph = c.Graph.AllPaths(c.StartClass, c.GoalClasses...)
-		}
-	} else {
-		// Find Neighbours
-		c.Graph = c.Graph.Neighbours(c.StartClass, c.Depth, follower)
-	}
-	if !c.RuleGraph {
-		c.addErr(c.Graph.Traverse(follower))
-		c.Graph = c.Graph.Select(func(l *graph.Line) bool { // Remove lines with no queries
-			return l.Queries.Total() > 0
-		})
-		if c.GoalClasses != nil {
-			// Only include paths to goal, remove dead-ends.
-			c.Graph = c.Graph.AllPaths(c.StartClass, c.GoalClasses...)
-		}
+	if c.GoalClasses != nil { // Find paths from start to goals.
+		c.Graph = c.Graph.Traverse(c.StartClass, c.GoalClasses, follower.Traverse)
+		// Only include paths to a goal, remove dead-ends.
+		c.Graph = c.Graph.AllPaths(c.StartClass, c.GoalClasses...)
+	} else { // Find Neighbours
+		c.Graph = c.Graph.Neighbours(c.StartClass, c.Depth, follower.Traverse)
 	}
 	// Add start node even if empty.
 	c.addClassNode(c.StartClass)

@@ -22,7 +22,6 @@ spec:
         image: "quay.io/korrel8r/korrel8r"
         imagePullPolicy: Always
         command: ["korrel8r", "--verbose=4", "web", "--https", ":8443", "--cert", "/etc/secrets/tls.crt", "--key", "/etc/secrets/tls.key"]
-# FIXME        /var/run/secrets/kubernetes.io/serviceaccount/token
         volumeMounts:
           - name: secrets
             readOnly: true

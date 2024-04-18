@@ -120,7 +120,7 @@ The _query-details_ part depends on the domain, see {xref-domain}
 .Example of rules and aliases.
 [source,yaml]
 ----
-FIXME NEED EAMPLE.
+FIXME NEED EXAMPLE.
 ----
 
 == Templates
