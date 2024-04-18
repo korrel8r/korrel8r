@@ -47,19 +47,18 @@ var rulesUsed = unique.Set[string]{}
 
 func testTraverse(t *testing.T, e *engine.Engine, start, goal korrel8r.Class, starters []korrel8r.Object, want korrel8r.Query) {
 	t.Helper()
-	paths := e.Graph().AllPaths(start, goal)
-	paths.NodeFor(start).Result.Append(starters...)
+	g := e.Graph()
+	g.NodeFor(start).Result.Append(starters...)
 	f := e.Follower(context.Background(), nil)
-	assert.NoError(t, paths.Traverse(graph.MakeVisitor(
-		f.Visit,
-		func(l *graph.Line) {
-			f.Traverse(l)
-			if len(l.Queries) > 0 { // Only consider the rule used if it generated some queries
-				rulesUsed.Add(l.Rule.Name())
-			}
-		})))
+	g = g.Traverse(start, []korrel8r.Class{goal}, func(l *graph.Line) bool {
+		f.Traverse(l)
+		if len(l.Queries) > 0 { // Only consider the rule used if it generated some queries
+			rulesUsed.Add(l.Rule.Name())
+		}
+		return true
+	})
 	assert.NoError(t, f.Err)
-	assert.Contains(t, paths.NodeFor(goal).Queries, want.String())
+	assert.Contains(t, g.NodeFor(goal).Queries, want.String())
 }
 
 func TestPodToLogs(t *testing.T) {
@@ -70,6 +69,7 @@ func TestPodToLogs(t *testing.T) {
 	} {
 		t.Run(pod.Name, func(t *testing.T) {
 			want := log.NewQuery(log.Class(pod.Name), fmt.Sprintf(`{kubernetes_namespace_name="%v",kubernetes_pod_name="%v"}`, pod.Namespace, pod.Name))
+
 			testTraverse(t, e, k8s.ClassOf(pod), log.Domain.Class(pod.Name), []korrel8r.Object{pod}, want)
 		})
 	}

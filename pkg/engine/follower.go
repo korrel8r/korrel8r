@@ -4,60 +4,74 @@ package engine
 
 import (
 	"context"
+	"errors"
 	"fmt"
-	"slices"
+	"maps"
 
 	"github.com/korrel8r/korrel8r/pkg/graph"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 )
+
+type appliedRule struct {
+	Rule  korrel8r.Rule
+	Start korrel8r.Class
+}
 
 // Follower provides Vist() and Traverse() methods to follow rules and collect results in a graph.
 type Follower struct {
 	Engine     *Engine
 	Context    context.Context
 	Constraint *korrel8r.Constraint
-	Err        error // Collect errors using multierror
-}
+	Err        error // Collect errors using errors.Join
 
-func (f *Follower) Visit(node *graph.Node, eachLine graph.Lines) {}
+	// temporary store for results of rules that need to be saved for a later line.
+	rules map[appliedRule]graph.Queries
+}
 
 // Traverse a line gets all queries provided by Visit() on the From node,
 // and stores results on the To node.
-func (f *Follower) Traverse(l *graph.Line) {
+func (f *Follower) Traverse(l *graph.Line) bool {
 	rule := graph.RuleFor(l)
-	log := log.WithValues("rule", fmt.Sprint(rule))
-	star, goal := l.From().(*graph.Node), l.To().(*graph.Node)
-	// Apply rule only if not already applied
-	if _, ok := star.RulesApplied[rule]; !ok {
-		star.RulesApplied[rule] = applyTo(rule, star)
-	}
-	// Remove queries for this line's goal, leave others to be evaluated by the matching line.
-	star.RulesApplied[rule] = slices.DeleteFunc(star.RulesApplied[rule], func(q korrel8r.Query) bool {
-		if q.Class() != goal.Class {
-			return false // Wrong class, leave for the matching line.
+	start, goal := l.From().(*graph.Node), l.To().(*graph.Node)
+	log := log.WithValues("rule", rule.Name(), "start", start.Class.String(), "goal", goal.Class.String())
+
+	// Check if rule was already applied with this start class.
+	key := appliedRule{Start: start.Class, Rule: rule}
+	if _, applied := f.rules[key]; !applied { // Not yet applied.
+		f.rules[key] = graph.Queries{}
+		for _, s := range start.Result.List() { // Apply to each start object
+			q, err := rule.Apply(s)
+			if err != nil {
+				f.Err = errors.Join(f.Err, fmt.Errorf("Error applying rule %v(%v): %w", rule.Name(), start.Class, err))
+				log.V(2).Info("Error applying rule", "error", err)
+				continue
+			}
+			f.rules[key].Set(q, -1)
 		}
-		log = log.WithValues("query", q.String())
-		if !goal.Queries.Has(q) { // Not already evaluated for goal
+	}
+	// Take queries that match this line's goal, leave the rest.
+	maps.DeleteFunc(f.rules[key], func(s string, qc graph.QueryCount) bool {
+		q := qc.Query
+		log := log.WithValues("query", q.String())
+		switch {
+		case q.Class() != goal.Class: // Wrong goal, leave it for another line.
+			return false
+		case goal.Queries.Has(q): // Already evaluated on goal node.
+			l.Queries.Set(q, qc.Count) // Record on the link
+			return true
+		default: // Evaluate the query and store the results
 			result := korrel8r.NewCountResult(goal.Result) // Store in goal, but count the contribution.
 			if err := f.Engine.Get(f.Context, q, f.Constraint, result); err != nil {
-				log.V(3).Info("get", "error", err)
+				// TODO distinguish between expected "not found" errors and unexpected "can't talk to store" errors.
+				log.V(2).Info("Get error", "error", err)
 			}
 			l.Queries.Set(q, result.Count)
-			goal.Queries.Set(q, result.Count) // TODO duplication
-			log.V(3).Info("results", "count", result.Count)
+			goal.Queries.Set(q, result.Count)
+			if result.Count > 0 {
+				log.V(3).Info("Query result", "count", result.Count)
+			}
+			return true
 		}
-		return true
 	})
-}
-
-func applyTo(rule korrel8r.Rule, node *graph.Node) []korrel8r.Query {
-	queries := make([]korrel8r.Query, 0, len(node.Result.List()))
-	for _, s := range node.Result.List() {
-		if q, err := rule.Apply(s); err != nil || q == nil {
-			log.V(3).Info("did not apply", "error", err)
-		} else {
-			queries = append(queries, q)
-		}
-	}
-	return queries
+	return l.Queries.Total() > 0
 }

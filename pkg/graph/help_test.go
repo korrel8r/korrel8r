@@ -4,6 +4,7 @@ package graph
 
 import (
 	"fmt"
+	"slices"
 	"testing"
 
 	"github.com/korrel8r/korrel8r/internal/pkg/test/mock"
@@ -53,7 +54,7 @@ func graphRules(g *Graph) (rules []korrel8r.Rule) {
 
 // assertComponentOrder components is an ordered list of unordered sets of rules.
 // Asserts that the rules list is in an order that is compatible with components
-func assertComponentOrder(t *testing.T, components [][]korrel8r.Rule, rules []korrel8r.Rule) bool {
+func assertComponentOrder(t *testing.T, components [][]string, rules []string) bool {
 	msg := "out of order\nrules:      %v\ncomponents: %v\n"
 	t.Helper()
 	j := 0 // rules index
@@ -61,7 +62,10 @@ func assertComponentOrder(t *testing.T, components [][]korrel8r.Rule, rules []ko
 		if !assert.LessOrEqual(t, j+len(c), len(rules), "rule[%v], component[%v] len %v\n"+msg, j, i, len(c), rules, components) {
 			return false
 		}
-		if !assert.Equal(t, mock.SortRules(c), mock.SortRules(rules[j:j+len(c)]), msg, rules, components) {
+		slices.Sort(c)
+		sub := rules[j : j+len(c)]
+		slices.Sort(sub)
+		if !assert.Equal(t, c, sub, msg, rules, components) {
 			return false
 		}
 		j += len(c)
