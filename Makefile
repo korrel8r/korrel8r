@@ -6,7 +6,7 @@ help: ## Display this help.
 	@grep -E '^## [A-Z0-9_]+: ' Makefile | sed 's/^## \([A-Z0-9_]*\): \(.*\)/\1#\2/' | column -s'#' -t
 
 ## VERSION: Semantic version for release. Use a -dev suffix for work in progress.
-VERSION?=0.6.0-dev
+VERSION?=0.6.0
 ## IMG: Base name of image to build or deploy, without version tag.
 IMG?=quay.io/korrel8r/korrel8r
 ## IMGTOOL: May be podman or docker.
@@ -118,11 +118,9 @@ doc/zz_rest_api.adoc: pkg/rest/zz_docs $(shell find etc/swagger) $(SWAGGER)
 doc/zz_api-ref.adoc:
 	curl -qf https://raw.githubusercontent.com/alanconway/operator/main/doc/zz_api-ref.adoc > doc/zz_api-ref.adoc
 
-release: release-commit release-push ## Create and push a new release tag and image. Set VERSION=vX.Y.Z.
-
-tag-release:
+release: all image ## Create a release tag and latest image. Working tree must be clean.
 	hack/tag-release.sh $(VERSION)
 	$(IMGTOOL) push -q "$(IMAGE)" "$(IMG):latest"
 
-tools: $(BINGO) ## Download all tools needed for development
+Tools: $(BINGO) ## Download all tools needed for development
 	$(BINGO) get

@@ -1,7 +1,6 @@
 # Deploy operators and resources for observability components.
 
-help:
-	Use: make [operators|resources|clean-operators|clean-resources]
+all: operators resources
 
 operators:
 	kubectl apply -k config/operators
@@ -39,6 +38,6 @@ resources:
 
 clean-operators:
 	kubectl delete --ignore-not-found -k config/operators
-clean-resources:
+clean-resources:g
 	kubectl delete --ignore-not-found -k config/resources
 clean-all: clean-resources clean-operators
