@@ -67,7 +67,7 @@ func New(e *engine.Engine, router *gin.Engine) (*Browser, error) {
 	if err != nil {
 		return nil, err
 	}
-	b.console = openshift.NewConsole(consoleURL, e)
+	b.console = openshift.NewConsole(consoleURL, kc)
 	c := &correlate{browser: b}
 
 	tmpl := template.Must(template.New("").Funcs(b.engine.TemplateFuncs()).ParseFS(templates, "templates/*.tmpl"))

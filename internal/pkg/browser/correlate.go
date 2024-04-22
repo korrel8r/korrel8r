@@ -166,7 +166,7 @@ func (c *correlate) updateStart() (err error) {
 	case ok && (prefix == "http" || prefix == "https"): // Looks like URL
 		var u *url.URL
 		if u, err = url.Parse(c.Start); err == nil {
-			c.StartQuery, err = c.browser.console.ConsoleURLToQuery(u)
+			c.StartQuery, err = c.browser.console.QueryFromURL(u)
 		}
 	case ok: // Try as a query
 		c.StartQuery, err = c.browser.engine.Query(c.Start)
@@ -228,7 +228,7 @@ func (c *correlate) queryURLAttrs(a graph.Attrs, qs graph.Queries, d korrel8r.Do
 		if err != nil {
 			a["URL"] = c.checkURL(&url.URL{}, err).String()
 		} else {
-			a["URL"] = c.checkURL(c.browser.console.QueryToConsoleURL(q)).String()
+			a["URL"] = c.checkURL(c.browser.console.URLFromQuery(q)).String()
 		}
 		a["target"] = "_blank"
 	}

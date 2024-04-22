@@ -43,19 +43,17 @@ import (
 	"github.com/korrel8r/korrel8r/pkg/domains/k8s"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r/impl"
-	"github.com/korrel8r/korrel8r/pkg/openshift"
 	"golang.org/x/exp/maps"
 )
 
 var (
 	// Verify implementing interfaces.
-	_ korrel8r.Domain     = Domain
-	_ openshift.Converter = Domain
-	_ korrel8r.Store      = &store{}
-	_ korrel8r.Store      = &stackStore{}
-	_ korrel8r.Query      = Query{}
-	_ korrel8r.Class      = Class{}
-	_ korrel8r.Previewer  = Class{}
+	_ korrel8r.Domain    = Domain
+	_ korrel8r.Store     = &store{}
+	_ korrel8r.Store     = &stackStore{}
+	_ korrel8r.Query     = Query{}
+	_ korrel8r.Class     = Class{}
+	_ korrel8r.Previewer = Class{}
 )
 
 // Domain for log records produced by openshift-logging.
@@ -210,20 +208,4 @@ func (s *stackStore) Get(ctx context.Context, query korrel8r.Query, c *korrel8r.
 	}
 
 	return s.Client.GetStack(q.logQL, "network", c, func(e *loki.Entry) { result.Append(NewObject(e)) })
-}
-
-func (domain) QueryToConsoleURL(query korrel8r.Query) (*url.URL, error) {
-	q, err := impl.TypeAssert[Query](query)
-	if err != nil {
-		return nil, err
-	}
-	v := url.Values{}
-	v.Add("q", q.logQL+"|json")
-	v.Add("tenant", "network")
-	return &url.URL{Path: "/netflow-traffic", RawQuery: v.Encode()}, nil
-}
-
-func (domain) ConsoleURLToQuery(u *url.URL) (korrel8r.Query, error) {
-	q := u.Query().Get("q")
-	return NewQuery(q), nil
 }

@@ -32,14 +32,12 @@ import (
 	"context"
 	"fmt"
 	"net/url"
-	"path"
 	"reflect"
 	"strings"
 
 	"github.com/korrel8r/korrel8r/internal/pkg/must"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r/impl"
-	"github.com/korrel8r/korrel8r/pkg/openshift"
 	"golang.org/x/exp/slices"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -67,8 +65,8 @@ type Query struct {
 	Labels client.MatchingLabels `json:"labels,omitempty"`
 	// Fields restricts the search to objects with matching field values (optional)
 	Fields client.MatchingFields `json:"fields,omitempty"`
-
-	class Class
+	// K8sClass is the underlying k8s.Class object.
+	K8sClass Class
 }
 
 // Store implements a korrel8r.Store using the kubernetes API server.
@@ -80,11 +78,10 @@ type Store struct {
 
 // Validate interfaces
 var (
-	_ korrel8r.Domain     = Domain
-	_ korrel8r.Class      = Class{}
-	_ korrel8r.Object     = Object(nil)
-	_ korrel8r.Query      = &Query{}
-	_ openshift.Converter = &Store{}
+	_ korrel8r.Domain = Domain
+	_ korrel8r.Class  = Class{}
+	_ korrel8r.Object = Object(nil)
+	_ korrel8r.Query  = &Query{}
 )
 
 // domain implementation
@@ -152,7 +149,7 @@ func (d domain) Query(s string) (korrel8r.Query, error) {
 	if err != nil {
 		return nil, err
 	}
-	q.class = c.(Class)
+	q.K8sClass = c.(Class)
 	return &q, nil
 }
 
@@ -207,7 +204,7 @@ func (c Class) GVK() schema.GroupVersionKind { return schema.GroupVersionKind(c)
 
 func NewQuery(c Class, namespace, name string, labels, fields map[string]string) *Query {
 	return &Query{
-		class:     c,
+		K8sClass:  c,
 		Namespace: namespace,
 		Name:      name,
 		Labels:    labels,
@@ -215,7 +212,7 @@ func NewQuery(c Class, namespace, name string, labels, fields map[string]string)
 	}
 }
 
-func (q Query) Class() korrel8r.Class { return q.class }
+func (q Query) Class() korrel8r.Class { return q.K8sClass }
 func (q Query) Data() string          { return impl.JSONString(q) }
 func (q Query) String() string        { return impl.QueryString(q) }
 
@@ -267,7 +264,7 @@ func setMeta(o Object) Object {
 }
 
 func (s *Store) getObject(ctx context.Context, q *Query, result korrel8r.Appender) error {
-	o, err := Scheme.New(q.class.GVK())
+	o, err := Scheme.New(q.K8sClass.GVK())
 	if err != nil {
 		return err
 	}
@@ -284,7 +281,7 @@ func (s *Store) getObject(ctx context.Context, q *Query, result korrel8r.Appende
 }
 
 func (s *Store) getList(ctx context.Context, q *Query, result korrel8r.Appender) error {
-	gvk := q.class.GVK()
+	gvk := q.K8sClass.GVK()
 	gvk.Kind = gvk.Kind + "List"
 	o, err := Scheme.New(gvk)
 	if err != nil {
@@ -317,126 +314,6 @@ func (s *Store) getList(ctx context.Context, q *Query, result korrel8r.Appender)
 		result.Append(setMeta(items.Index(i).Addr().Interface().(client.Object)))
 	}
 	return nil
-}
-
-func (s *Store) resource(gvk schema.GroupVersionKind) (schema.GroupVersionResource, error) {
-	rm, err := s.c.RESTMapper().RESTMappings(gvk.GroupKind(), gvk.Version)
-	if err != nil {
-		return schema.GroupVersionResource{}, err
-	}
-	if len(rm) == 0 {
-		return schema.GroupVersionResource{}, fmt.Errorf("no resource mapping found for: %v", gvk)
-	}
-	return rm[0].Resource, nil
-}
-
-func (s *Store) QueryToConsoleURL(query korrel8r.Query) (*url.URL, error) {
-	q, err := impl.TypeAssert[*Query](query)
-	if err != nil {
-		return nil, err
-	}
-	gvr, err := s.resource(q.class.GVK())
-	if err != nil {
-		return nil, err
-	}
-	var u url.URL
-	switch {
-	case q.class.GVK() == eventGVK && len(q.Fields) != 0:
-		return s.eventQueryToConsoleURL(q) // Special case
-	case len(q.Labels) > 0: // Label search
-		// Search using label selector
-		u.Path = path.Join("search", "ns", q.Namespace) // TODO non-namespaced searches?
-		v := url.Values{}
-		gvk := q.class.GVK()
-		v.Add("kind", fmt.Sprintf("%v~%v~%v", gvk.Group, gvk.Version, gvk.Kind))
-		v.Add("q", selectorString(q.Labels))
-		u.RawQuery = v.Encode()
-	default: // Named resource
-		if q.Namespace != "" { // Namespaced resource
-			u.Path = path.Join("k8s", "ns", q.Namespace, gvr.Resource, q.Name)
-		} else { // Cluster resource
-			u.Path = path.Join("k8s", "cluster", gvr.Resource, q.Name)
-		}
-	}
-	return &u, nil
-}
-
-const (
-	// Event.involvedObject field names
-	iKind       = "involvedObject.kind"
-	iName       = "involvedObject.name"
-	iNamespace  = "involvedObject.namespace"
-	iAPIVersion = "involvedObject.apiVersion"
-)
-
-func (s *Store) eventQueryToConsoleURL(q *Query) (*url.URL, error) {
-	gv, err := schema.ParseGroupVersion(q.Fields[iAPIVersion])
-	if err != nil {
-		return nil, err
-	}
-	u, err := s.QueryToConsoleURL(&Query{ // URL for involved object
-		class:     Class(gv.WithKind(q.Fields[iKind])),
-		Namespace: q.Fields[iNamespace],
-		Name:      q.Fields[iName],
-	})
-	if err != nil {
-		return nil, err
-	}
-	u.Path = path.Join(u.Path, "events")
-	return u, nil
-}
-
-var eventGVK = schema.GroupVersionKind{Version: "v1", Kind: "Event"}
-
-func (s *Store) ConsoleURLToQuery(u *url.URL) (korrel8r.Query, error) {
-	namespace, resource, name, events, err := parsePath(u)
-	if err != nil {
-		return nil, err
-	}
-	if resource == "projects" { // Openshift alias for namespace
-		resource = "namespaces"
-	}
-
-	uq := u.Query()
-	var gvk schema.GroupVersionKind
-	switch {
-	case strings.Contains(resource, "~"):
-		gvk = parseGVK(resource)
-	case resource != "":
-		gvks, err := s.c.RESTMapper().KindsFor(schema.GroupVersionResource{Resource: resource})
-		if err != nil {
-			return nil, err
-		}
-		gvk = gvks[0]
-	default:
-		gvk = parseGVK(uq.Get("kind"))
-	}
-	if gvk.Version == "" { // Fill in a partial GVK
-		rm, err := s.c.RESTMapper().RESTMapping(gvk.GroupKind(), gvk.Version)
-		if err != nil {
-			return nil, err
-		}
-		gvk = rm.GroupVersionKind
-	}
-	if events { // Query events involving the object, not the object itself
-		q := &Query{
-			class: Class(eventGVK),
-			Fields: map[string]string{
-				iNamespace:  namespace,
-				iName:       name,
-				iAPIVersion: gvk.GroupVersion().String(),
-				iKind:       gvk.Kind,
-			}}
-		return q, nil
-	} else {
-		q := Query{Namespace: namespace, Name: name, class: Class(gvk)}
-		if labels := uq.Get("q"); labels != "" {
-			if q.Labels, err = parseSelector(labels); err != nil {
-				return nil, err
-			}
-		}
-		return &q, nil
-	}
 }
 
 func NamespacedName(namespace, name string) types.NamespacedName {

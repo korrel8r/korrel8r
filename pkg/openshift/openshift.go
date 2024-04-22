@@ -1,6 +1,9 @@
 // Copyright: This file is part of korrel8r, released under https://github.com/korrel8r/korrel8r/blob/main/LICENSE
 
-// package openshift provides contants and functions for accessing an openshift cluster.
+// package openshift provides tools for interacting with OpenShift clusters.
+//
+// - Convert between OpenShift console URL and korrel8r Query.
+// - Locate default observability services deployed in an OpenShift cluster.
 package openshift
 
 import (
@@ -66,3 +69,5 @@ func ConsoleURL(ctx context.Context, c client.Client) (*url.URL, error) {
 		Host:   host,
 	}, err
 }
+
+// FIXME still needed?

@@ -1,8 +1,5 @@
 // Copyright: This file is part of korrel8r, released under https://github.com/korrel8r/korrel8r/blob/main/LICENSE
 
-// package console helps convert queries to and from console  URLs.
-//
-// The Query type for domains that support console URLs must implement the Query interface
 package openshift
 
 import (
@@ -11,65 +8,55 @@ import (
 	"path"
 	"strings"
 
-	"github.com/korrel8r/korrel8r/pkg/engine"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-// Converter interface must be implemented by korrel8r.Domain and/or korrel8r.Store implementations
-// that support console URL conversion.
-type Converter interface {
-	QueryToConsoleURL(korrel8r.Query) (*url.URL, error)
-	ConsoleURLToQuery(*url.URL) (korrel8r.Query, error)
-}
-
+// Console convert console URL to/from korrel8r Query.
 type Console struct {
 	BaseURL *url.URL
-	e       *engine.Engine
+	c       client.Client
 }
 
-func NewConsole(baseURL *url.URL, e *engine.Engine) *Console {
-	return &Console{BaseURL: baseURL, e: e}
+func NewConsole(baseURL *url.URL, c client.Client) *Console {
+	return &Console{BaseURL: baseURL, c: c}
 }
 
-func (c *Console) converter(domain string) Converter {
-	if d := c.e.Domain(domain); d != nil {
-		if converter, ok := d.(Converter); ok {
-			return converter
-		}
-		for _, s := range c.e.StoresFor(d) {
-			if converter, ok := s.(Converter); ok {
-				return converter
-			}
-		}
+func (c *Console) URLFromQuery(q korrel8r.Query) (u *url.URL, err error) {
+	defer func() {
+		u = c.BaseURL.ResolveReference(u)
+	}()
+	switch q.Class().Domain().Name() {
+	case "k8s":
+		return c.k8sURL(q)
+	case "netflow":
+		return c.netflowURL(q)
+	case "metric":
+		return c.metricURL(q)
+	case "alert":
+		return c.alertURL(q)
+	case "log":
+		return c.logURL(q)
+	default:
+		return nil, fmt.Errorf("cannot convert query to console URL: %v", q)
 	}
-	return nil
 }
 
-func (c *Console) ConsoleURLToQuery(u *url.URL) (q korrel8r.Query, err error) {
-	for _, x := range []struct{ prefix, domain string }{
-		{"/k8s", "k8s"},
-		{"/search", "k8s"},
-		{"/monitoring/alerts", "alert"},
-		{"/monitoring/logs", "log"},
-		{"/monitoring/query-browser", "metric"},
+func (c *Console) QueryFromURL(u *url.URL) (q korrel8r.Query, err error) {
+	for _, x := range []struct {
+		prefix  string
+		convert func(*url.URL) (korrel8r.Query, error)
+	}{
+		{"/k8s", c.k8sQuery},
+		{"/search", c.k8sQuery},
+		{"/monitoring/alerts", c.alertQuery},
+		{"/monitoring/logs", c.logQuery},
+		{"/monitoring/query-browser", c.metricQuery},
+		{"/netflow-traffic", c.netflowQuery},
 	} {
 		if strings.HasPrefix(path.Join("/", u.Path), x.prefix) {
-			if qc := c.converter(x.domain); qc != nil {
-				return qc.ConsoleURLToQuery(u)
-			}
-			break
+			return x.convert(u)
 		}
 	}
-	return nil, fmt.Errorf("cannot convert console URL to query: %v", u)
-}
-
-func (c *Console) QueryToConsoleURL(q korrel8r.Query) (u *url.URL, err error) {
-	if qc := c.converter(q.Class().Domain().Name()); qc != nil {
-		u, err := qc.QueryToConsoleURL(q)
-		if err != nil {
-			return nil, err
-		}
-		return c.BaseURL.ResolveReference(u), nil
-	}
-	return nil, fmt.Errorf("cannot convert query to console URL: %v", q)
+	return nil, fmt.Errorf("Cannot convert console URL to query: %v", u)
 }

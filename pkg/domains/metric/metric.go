@@ -34,8 +34,6 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"net/url"
-	"strings"
 	"time"
 
 	"github.com/korrel8r/korrel8r/pkg/domains/k8s"
@@ -77,28 +75,6 @@ func (domain) Store(sc korrel8r.StoreConfig) (korrel8r.Store, error) {
 		return nil, err
 	}
 	return NewStore(sc[StoreKeyMetricURL], hc)
-}
-
-const (
-	consolePath = "/monitoring/query-browser"
-	promQLParam = "query0"
-)
-
-func (domain) ConsoleURLToQuery(u *url.URL) (korrel8r.Query, error) {
-	promQL := u.Query().Get(promQLParam)
-	if promQL == "" || !strings.HasPrefix(u.Path, consolePath) {
-		return nil, fmt.Errorf("not a metric console query: %v", u)
-	}
-	return &Query{PromQL: promQL}, nil
-}
-
-func (domain) QueryToConsoleURL(query korrel8r.Query) (*url.URL, error) {
-	q, err := impl.TypeAssert[Query](query)
-	if err != nil {
-		return nil, err
-	}
-	v := url.Values{promQLParam: []string{q.PromQL}}
-	return &url.URL{Path: consolePath, RawQuery: v.Encode()}, nil
 }
 
 type Class struct{} // Singleton class

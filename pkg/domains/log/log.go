@@ -47,18 +47,16 @@ import (
 	"github.com/korrel8r/korrel8r/pkg/domains/k8s"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r/impl"
-	"github.com/korrel8r/korrel8r/pkg/openshift"
 )
 
 var (
 	// Verify implementing interfaces.
-	_ korrel8r.Domain     = Domain
-	_ openshift.Converter = Domain
-	_ korrel8r.Store      = &store{}
-	_ korrel8r.Store      = &stackStore{}
-	_ korrel8r.Query      = Query{}
-	_ korrel8r.Class      = Class("")
-	_ korrel8r.Previewer  = Class("")
+	_ korrel8r.Domain    = Domain
+	_ korrel8r.Store     = &store{}
+	_ korrel8r.Store     = &stackStore{}
+	_ korrel8r.Query     = Query{}
+	_ korrel8r.Class     = Class("")
+	_ korrel8r.Previewer = Class("")
 )
 
 // Domain for log records produced by openshift-logging.
@@ -175,7 +173,12 @@ type Query struct {
 	class Class  // `json:",omitempty"`
 }
 
-func NewQuery(c Class, logQL string) korrel8r.Query { return Query{class: c, logQL: logQL} }
+func NewQuery(c Class, logQL string) korrel8r.Query {
+	if c == "" {
+		c = logQueryClass(logQL)
+	}
+	return Query{class: c, logQL: logQL}
+}
 
 const (
 	Application    Class = "application"
@@ -233,46 +236,23 @@ func (s *stackStore) Get(ctx context.Context, query korrel8r.Query, constraint *
 var logTypeRe = regexp.MustCompile(`{[^}]*log_type(=~*)"([^"]+)"}`)
 
 // queryClass get the class name implied by a LogQL query or nil.
-func queryClass(logQL string) korrel8r.Class {
+func logQueryClass(logQL string) Class {
 	// Parser at github.com/grafana/loki/logql does not work with go modules.
 	// See https://github.com/grafana/loki/issues/2826][v2 go module semantic versioning
 	// Use a simple regexp approach instead.
 	if m := logTypeRe.FindStringSubmatch(logQL); m != nil {
 		switch m[1] {
 		case "=":
-			return classMap[m[2]]
+			return Class(m[2])
 		case "=~":
 			if re, err := regexp.Compile(m[2]); err == nil {
-				for k, v := range classMap {
-					if re.MatchString(k) {
-						return v
+				for _, c := range classes {
+					if re.MatchString(c.Name()) {
+						return c.(Class)
 					}
 				}
 			}
 		}
 	}
-	return nil
-}
-
-func (domain) QueryToConsoleURL(query korrel8r.Query) (*url.URL, error) {
-	q, err := impl.TypeAssert[Query](query)
-	if err != nil {
-		return nil, err
-	}
-	v := url.Values{}
-	v.Add("q", q.logQL+"|json")
-	v.Add("tenant", q.Class().Name())
-	return &url.URL{Path: "/monitoring/logs", RawQuery: v.Encode()}, nil
-}
-
-func (domain) ConsoleURLToQuery(u *url.URL) (korrel8r.Query, error) {
-	logQL := u.Query().Get("q")
-	c := classMap[u.Query().Get("tenant")]
-	if c == nil {
-		c = queryClass(logQL)
-	}
-	if c == nil {
-		return nil, fmt.Errorf("not a valid Loki URL: %v", u)
-	}
-	return NewQuery(c.(Class), logQL), nil
+	return Application
 }

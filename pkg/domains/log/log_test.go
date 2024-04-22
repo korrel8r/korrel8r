@@ -1,6 +1,6 @@
 // Copyright: This file is part of korrel8r, released under https://github.com/korrel8r/korrel8r/blob/main/LICENSE
 
-package log
+package log_test
 
 import (
 	"context"
@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/korrel8r/korrel8r/internal/pkg/test"
+	"github.com/korrel8r/korrel8r/pkg/domains/log"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"github.com/korrel8r/korrel8r/pkg/openshift"
 	"github.com/stretchr/testify/assert"
@@ -26,7 +27,7 @@ var ctx = context.Background()
 func logs(lines []string) []korrel8r.Object {
 	logs := make([]korrel8r.Object, len(lines))
 	for i := range lines {
-		logs[i] = NewObject(lines[i])
+		logs[i] = log.NewObject(lines[i])
 	}
 	return logs
 }
@@ -45,9 +46,9 @@ func TestLokiStore_Get(t *testing.T) {
 	l := test.RequireLokiServer(t)
 	err := l.Push(map[string]string{"test": "log"}, lines...)
 	require.NoError(t, err)
-	s, err := NewPlainLokiStore(l.URL(), http.DefaultClient)
+	s, err := log.NewPlainLokiStore(l.URL(), http.DefaultClient)
 	require.NoError(t, err)
-	q := Query{logQL: `{test="log"}`}
+	q := log.NewQuery("", `{test="log"}`)
 	result := korrel8r.NewListResult()
 	require.NoError(t, s.Get(ctx, q, nil, result))
 	assert.Equal(t, want, result.List())
@@ -69,7 +70,7 @@ func TestLokiStoreGet_Constraint(t *testing.T) {
 	time.Sleep(time.Second / 10)
 	require.NoError(t, l.Push(labels, after...))
 
-	s, err := NewPlainLokiStore(l.URL(), http.DefaultClient)
+	s, err := log.NewPlainLokiStore(l.URL(), http.DefaultClient)
 	require.NoError(t, err)
 	for _, x := range []struct {
 		c    *korrel8r.Constraint
@@ -90,7 +91,7 @@ func TestLokiStoreGet_Constraint(t *testing.T) {
 	} {
 		t.Run(fmt.Sprintf("%v", x.want), func(t *testing.T) {
 			var result korrel8r.ListResult
-			assert.NoError(t, s.Get(ctx, Query{logQL: `{test="log"}`}, x.c, &result))
+			assert.NoError(t, s.Get(ctx, log.NewQuery("", `{test="log"}`), x.c, &result))
 			assert.Equal(t, logs(x.want), result.List())
 		})
 	}
@@ -123,11 +124,11 @@ func TestLokiStackStore_Get(t *testing.T) {
 	require.NoError(t, err)
 	hc, err := rest.HTTPClientFor(test.RESTConfig)
 	require.NoError(t, err)
-	s, err := NewLokiStackStore(&url.URL{Scheme: "https", Host: host}, hc)
+	s, err := log.NewLokiStackStore(&url.URL{Scheme: "https", Host: host}, hc)
 	require.NoError(t, err)
 
 	logQL := fmt.Sprintf(`{kubernetes_pod_name="%v", kubernetes_namespace_name="%v"}`, pod.Name, pod.Namespace)
-	q := Query{logQL: logQL, class: "application"}
+	q := log.NewQuery(log.Application, logQL)
 	var result korrel8r.ListResult
 	assert.Eventually(t, func() bool {
 		result = nil
@@ -138,7 +139,7 @@ func TestLokiStackStore_Get(t *testing.T) {
 	}, 30*time.Second, time.Second)
 	var got []string
 	for _, o := range result {
-		got = append(got, o.(Object)["message"].(string))
+		got = append(got, o.(log.Object)["message"].(string))
 	}
 	assert.Equal(t, lines, got)
 }

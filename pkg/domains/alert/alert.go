@@ -151,35 +151,6 @@ func (q Query) Class() korrel8r.Class { return Class{} }
 func (q Query) Data() string          { return impl.JSONString(q) }
 func (q Query) String() string        { return impl.QueryString(q) }
 
-func (domain) ConsoleURLToQuery(u *url.URL) (korrel8r.Query, error) {
-	m := map[string]string{}
-	uq := u.Query()
-	for k := range uq {
-		m[k] = uq.Get(k)
-	}
-	return Query(m), nil
-}
-
-func (domain) QueryToConsoleURL(query korrel8r.Query) (*url.URL, error) {
-	q, err := impl.TypeAssert[Query](query)
-	if err != nil {
-		return nil, err
-	}
-	uq := url.Values{
-		"rowFilter-alert-state": []string{""}, // do not filter by alert state.
-	}
-	alertFilter := make([]string, 0, len(q))
-	for k, v := range q {
-		alertFilter = append(alertFilter, fmt.Sprintf("%s=%s", k, v))
-	}
-	uq.Add("alerts", strings.Join(alertFilter, ","))
-
-	return &url.URL{
-		Path:     "/monitoring/alerts",
-		RawQuery: uq.Encode(),
-	}, nil
-}
-
 // Store is a client of Prometheus and AlertManager.
 type Store struct {
 	alertmanagerAPI *client.AlertmanagerAPI
