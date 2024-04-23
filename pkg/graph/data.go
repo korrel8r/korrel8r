@@ -10,29 +10,33 @@ import (
 	"gonum.org/v1/gonum/graph/multi"
 )
 
-// Data contains the class nodes and rule lines for rule/class graphs.
-// All graphs based on the same Data have stable, consistent node and line IDs.
-// Note new rules can be added to a Data instance but never removed.
+// Data contains a set of class nodes and rule lines to be used in rule/class graphs.
+// Graphs based on the same Data have consistent node and line IDs.
+//
+// Concurrency: Data is immutable once created.
 type Data struct {
 	Nodes  []*Node          // Nodes slice index == Node.ID()
 	Lines  []*Line          // Lines slice index == Line.ID()
 	nodeID map[string]int64 // Map by full class name
 }
 
+// NewData creates a new data set from a list of rules.
+//
+// Concurrency: Data is immutable once created.
 func NewData(rules ...korrel8r.Rule) *Data {
 	d := Data{nodeID: make(map[string]int64)}
 	for _, r := range rules {
-		d.AddRule(r)
+		d.addRule(r)
 	}
 	return &d
 }
 
-func (d *Data) AddRule(r korrel8r.Rule) {
+func (d *Data) addRule(r korrel8r.Rule) {
 	for _, start := range r.Start() {
 		for _, goal := range r.Goal() {
 			id := int64(len(d.Lines))
 			l := &Line{
-				Line:    multi.Line{F: d.NodeFor(start), T: d.NodeFor(goal), UID: id},
+				Line:    multi.Line{F: d.addClass(start), T: d.addClass(goal), UID: id},
 				Rule:    r,
 				Attrs:   Attrs{},
 				Queries: Queries{},
@@ -42,11 +46,10 @@ func (d *Data) AddRule(r korrel8r.Rule) {
 	}
 }
 
-// NodeFor returns the Node for class c, creating it if necessary.
-func (d *Data) NodeFor(c korrel8r.Class) *Node {
-	cname := c.String()
-	if id, ok := d.nodeID[cname]; ok {
-		return d.Nodes[id]
+// addClass creates a node for c or returns the existing node.
+func (d *Data) addClass(c korrel8r.Class) *Node {
+	if n := d.NodeFor(c); n != nil {
+		return n
 	}
 	id := int64(len(d.Nodes))
 	n := &Node{
@@ -57,15 +60,23 @@ func (d *Data) NodeFor(c korrel8r.Class) *Node {
 		Queries: Queries{},
 	}
 	d.Nodes = append(d.Nodes, n)
-	d.nodeID[cname] = id
+	d.nodeID[c.String()] = id
 	return n
 }
 
-// EmptyGraph returns a new emptpy graph based on this Data.
+// NodeFor returns the Node for class c, or nil if absent.
+func (d *Data) NodeFor(c korrel8r.Class) *Node {
+	if id, ok := d.nodeID[c.String()]; ok {
+		return d.Nodes[id]
+	}
+	return nil
+}
+
+// EmptyGraph returns a new emptpy graph.
 func (d *Data) EmptyGraph() *Graph { return New(d) }
 
-// NewGraph returns a new graph of all the Data.
-func (d *Data) NewGraph() *Graph {
+// FullGraph returns a new graph of all the Data.
+func (d *Data) FullGraph() *Graph {
 	g := New(d)
 	for _, l := range d.Lines {
 		g.SetLine(l)
@@ -80,6 +91,7 @@ func (d *Data) NewGraph() *Graph {
 	return g
 }
 
+// Rules returns a copy of the complete list of rules.
 func (d *Data) Rules() []korrel8r.Rule {
 	var rules []korrel8r.Rule
 	for _, l := range d.Lines {
@@ -88,6 +100,7 @@ func (d *Data) Rules() []korrel8r.Rule {
 	return rules
 }
 
+// Classes returns a copy of the complete list of classes.
 func (d *Data) Classes() []korrel8r.Class {
 	var classs []korrel8r.Class
 	for _, n := range d.Nodes {
@@ -96,7 +109,7 @@ func (d *Data) Classes() []korrel8r.Class {
 	return classs
 }
 
-// Node is a graph Node, corresponds to a Class.
+// Node is a graph Node, contains a Class.
 type Node struct {
 	multi.Node
 	Attrs   // GraphViz Attributer

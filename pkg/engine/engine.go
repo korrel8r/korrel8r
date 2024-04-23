@@ -183,7 +183,7 @@ func (e *Engine) Rules() []korrel8r.Rule { return e.rules }
 func (e *Engine) AddRules(rules ...korrel8r.Rule) { e.rules = append(e.rules, rules...) }
 
 // Graph creates a new graph of the rules and classes of this engine.
-func (e *Engine) Graph() *graph.Graph { return graph.NewData(e.rules...).NewGraph() }
+func (e *Engine) Graph() *graph.Graph { return graph.NewData(e.rules...).FullGraph() }
 
 // TemplateFuncs returns template helper functions for stores and domains known to this engine.
 // See text/template.Template.Funcs

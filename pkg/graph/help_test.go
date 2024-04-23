@@ -41,9 +41,9 @@ func (c Class) New() korrel8r.Object     { panic("not implemented") }
 func testGraph(rules []korrel8r.Rule) *Graph {
 	d := NewData()
 	for _, r := range rules {
-		d.AddRule(r)
+		d.addRule(r)
 	}
-	return d.NewGraph()
+	return d.FullGraph()
 }
 
 func graphRules(g *Graph) (rules []korrel8r.Rule) {
