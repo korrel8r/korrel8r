@@ -29,7 +29,7 @@ func newRule(e *engine.Engine, r *Rule) (rule korrel8r.Rule, err error) {
 	if len(start) == 0 || len(goal) == 0 || r.Name == "" {
 		return nil, fmt.Errorf("invalid: %#v", r)
 	}
-	tmpl, err := template.New(r.Name).Option("missingkey=error").Funcs(e.TemplateFuncs()).Parse(r.Result.Query)
+	tmpl, err := template.New(r.Name).Funcs(e.TemplateFuncs()).Parse(r.Result.Query)
 	if err != nil {
 		return nil, err
 	}

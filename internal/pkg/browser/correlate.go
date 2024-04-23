@@ -34,10 +34,7 @@ type correlate struct {
 	Goal        string
 	Other       string
 	Neighbours  string
-
-	ShortPaths bool     // All paths
-	RuleGraph  bool     // Rules graph without results
-	Goals      []string // Goals for radio option
+	Goals       []string // Goals for radio option
 
 	// Computed fields used by page template.
 	StartQuery                      korrel8r.Query
@@ -48,10 +45,11 @@ type correlate struct {
 	Diagram, DiagramTxt, DiagramImg string
 	ConsoleURL                      *url.URL
 	UpdateTime                      time.Duration
-	// Accumulated errors displayed on page
-	Err error
 
-	// Parent
+	// Other context
+	Version string
+	Err     error // Accumulated errors from template.
+
 	browser *Browser
 }
 
@@ -66,11 +64,10 @@ func (c *correlate) reset(url *url.URL) {
 		Goal:        params.Get("goal"),
 		Other:       params.Get("other"),
 		Neighbours:  params.Get("neighbours"),
-		ShortPaths:  params.Get("short") == "true",
-		RuleGraph:   params.Get("rules") == "true",
+		Version:     app.version,
+		browser:     app,
 	}
 	c.Goals = []string{"log", "k8s:Event", "metric:metric"}
-	c.browser = app
 	c.ConsoleURL = c.browser.console.BaseURL
 	c.Graph = c.browser.engine.Graph()
 	// Defaults
@@ -312,7 +309,7 @@ func (c *correlate) updateDiagram() {
 
 func runDot(cmdName string, args ...string) error {
 	cmd := exec.Command(cmdName, args[1:]...)
-	log.V(1).Info("run", "cmd", cmdName, "args", args)
+	log.V(2).Info("run", "cmd", cmdName, "args", args)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("%v %w: %v", cmdName, err, string(out))

@@ -33,6 +33,7 @@ var (
 
 // Browser implements HTTP handlers for web browsers.
 type Browser struct {
+	version    string
 	engine     *engine.Engine
 	console    *openshift.Console
 	router     *gin.Engine
@@ -40,11 +41,12 @@ type Browser struct {
 	dir, files string
 }
 
-func New(e *engine.Engine, router *gin.Engine) (*Browser, error) {
+func New(e *engine.Engine, router *gin.Engine, version string) (*Browser, error) {
 	b := &Browser{
-		engine: e,
-		router: router,
-		images: http.FS(must.Must1(fs.Sub(images, "images"))),
+		engine:  e,
+		router:  router,
+		version: version,
+		images:  http.FS(must.Must1(fs.Sub(images, "images"))),
 	}
 	var err error
 	if b.dir, err = os.MkdirTemp("", "korrel8r"); err == nil {
@@ -78,7 +80,9 @@ func New(e *engine.Engine, router *gin.Engine) (*Browser, error) {
 	router.StaticFS("/images", b.images)
 	router.GET("/stores/:domain", b.stores)
 	// Display errors converted into URLs.
-	router.GET("/error", func(c *gin.Context) { httpError(c, errors.New(c.Request.URL.Query().Get("err")), http.StatusNotFound) })
+	router.GET("/error", func(c *gin.Context) {
+		httpError(c, errors.New(c.Request.URL.Query().Get("err")), http.StatusNotFound)
+	})
 
 	return b, nil
 }

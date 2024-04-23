@@ -1,10 +1,5 @@
-{{template "header.html.tmpl"}}
+{{template "header.html.tmpl" .}}
 <body>
-  <h1>Korrel8r</h1>
-  <p>
-    Links: <a href="https://github.com/korrel8r/korrel8r#readme">About Korrel8r</a>, <a href="../api">REST API</a>
-  </p>
-  <hr>
   <form onsubmit="return validate()">
     <div style="white-space: nowrap">
       <label for="start" title="Consule URL or korrel8r query"><b>Start: </b></label>
@@ -29,13 +24,6 @@
       <label for="neighbours"> <b>Neighbours</b>
         <input type="text" name="neighbours" id="neighboursText" value="{{.Depth}}" size="4">
       </label>
-    </p>
-    <p>
-      <b>Options:</b>
-      <input type="checkbox" name="short" id="short" value="true" {{if .ShortPaths}}checked{{end}}/>
-      <label for="short" title="Follow shortest paths, instead of all paths.">Shortest paths</label>
-      <input type="checkbox" name="rules" id="rules" value="true" {{if .RuleGraph}}checked{{end}}/>
-      <label for="rules" title="Graph rules without getting results.">Rules</label>
     </p>
     <p>
       <input type="submit" id="submit" value="Update Graph">
