@@ -17,6 +17,7 @@ import (
 
 func TestEngine_Class(t *testing.T) {
 	domain := mock.Domain("mock")
+	rule := mock.NewRule(domain.Name(), domain.Class("foo"), domain.Class("bar"))
 	for _, x := range []struct {
 		name string
 		want korrel8r.Class
@@ -30,7 +31,9 @@ func TestEngine_Class(t *testing.T) {
 		{"bad:foo", nil, `domain not found: "bad"`},
 	} {
 		t.Run(x.name, func(t *testing.T) {
-			e := New(domain)
+			e, err := Build().Rules(rule).Engine()
+			require.NoError(t, err)
+			assert.Equal(t, []korrel8r.Domain{domain}, e.Domains())
 			c, err := e.Class(x.name)
 			if x.err == "" {
 				require.NoError(t, err)
@@ -42,19 +45,11 @@ func TestEngine_Class(t *testing.T) {
 	}
 }
 
-func TestEngine_Domains(t *testing.T) {
-	domains := []korrel8r.Domain{mock.Domain("a"), mock.Domain("b"), mock.Domain("c")}
-	e := New(domains...)
-	assert.Equal(t, domains, e.Domains())
-}
-
 func TestFollower_Traverse(t *testing.T) {
 	d := mock.Domain("mock")
 	s := mock.NewStore(d, nil)
-	e := New(d)
 	a, b, c, z := d.Class("a"), d.Class("b"), d.Class("c"), d.Class("z")
-	require.NoError(t, e.AddStore(s))
-	e.AddRules(
+	e, err := Build().Rules(
 		// Return 2 results, must follow both
 		mock.NewApplyRule("ab", a, b, func(korrel8r.Object) (korrel8r.Query, error) {
 			return mock.NewQuery(b, 1, 2), nil
@@ -68,7 +63,8 @@ func TestFollower_Traverse(t *testing.T) {
 		}),
 		mock.NewApplyRule("cz", c, z, func(start korrel8r.Object) (korrel8r.Query, error) {
 			return mock.NewQuery(z, start), nil
-		}))
+		})).Stores(s).Engine()
+	require.NoError(t, err)
 	g := e.Graph()
 	g.NodeFor(a).Result.Append(0)
 	f := e.Follower(context.Background(), nil)
@@ -131,22 +127,19 @@ func TestEngine_PropagateConstraints(t *testing.T) {
 	end := start.Add(time.Minute)
 	early, ontime, late := start.Add(-1), start.Add(1), end.Add(1)
 
+	s := mock.NewStore(d, nil)
+	s.ConstraintFunc = func(c *korrel8r.Constraint, o korrel8r.Object) bool { return c.CompareTime(o.(obj).Time) == 0 }
+
 	// Rules to test constraints.
-	e := New(d)
-	e.AddRules(
+	e, err := Build().Rules(
 		// Generate objects with timepoints.
 		mock.NewQueryRule("ab", a, mock.NewQuery(b, obj{"x", early}, obj{"y", ontime}, obj{"z", late})),
 		// Generate objects with timeponts and record name of previous object.
 		mock.NewApplyRule("bc", b, c, func(o korrel8r.Object) (korrel8r.Query, error) {
 			name := o.(obj).Name
 			return mock.NewQuery(c, obj{"u" + name, early}, obj{"v" + name, ontime}, obj{"w" + name, late}), nil
-		}))
-	// Mock store that enforces time constraints.
-	s := mock.NewStore(d, nil)
-	s.ConstraintFunc = func(c *korrel8r.Constraint, o korrel8r.Object) bool {
-		return c.CompareTime(o.(obj).Time) == 0
-	}
-	require.NoError(t, e.AddStore(s))
+		})).Stores(s).Engine()
+	require.NoError(t, err)
 
 	// Test traversals, verify constraints are applied.
 	for _, x := range []struct {

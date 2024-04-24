@@ -18,8 +18,8 @@ func TestLoad_More(t *testing.T) {
 	require.NoError(t, err)
 	foo, bar := mock.Domain("foo"), mock.Domain("bar")
 
-	e := engine.New(foo, bar)
-	require.NoError(t, c.Apply(e))
+	e, err := engine.Build().Domains(foo, bar).Apply(c).Engine()
+	require.NoError(t, err)
 	assert.Equal(t, []*mock.Rule{
 		mock.NewRuleMulti("rule1",
 			[]korrel8r.Class{foo.Class("a"), foo.Class("b"), foo.Class("d"), foo.Class("e")},
@@ -49,8 +49,8 @@ func TestApply_ExpandGroups(t *testing.T) {
 		},
 	}
 	foo := mock.Domain("foo")
-	e := engine.New(foo)
-	require.NoError(t, c.Apply(e))
+	e, err := engine.Build().Domains(foo).Apply(c).Engine()
+	require.NoError(t, err)
 	assert.Equal(t, []*mock.Rule{
 		mock.NewRuleMulti("r",
 			[]korrel8r.Class{foo.Class("p"), foo.Class("q"), foo.Class("a")},
@@ -76,8 +76,8 @@ func TestApply_SameGroupDifferentDomain(t *testing.T) {
 		},
 	}
 	foo, bar := mock.Domain("foo"), mock.Domain("bar")
-	e := engine.New(foo, bar)
-	require.NoError(t, c.Apply(e))
+	e, err := engine.Build().Domains(foo, bar).Apply(c).Engine()
+	require.NoError(t, err)
 	assert.Equal(t, []*mock.Rule{
 		mock.NewRuleMulti("r1",
 			[]korrel8r.Class{foo.Class("a"), foo.Class("p"), foo.Class("q")},
@@ -97,8 +97,8 @@ func TestApply_bad_stores(t *testing.T) {
 		"a": &Config{Stores: []korrel8r.StoreConfig{{"domain": "foo", "x": "y"}}},
 		"b": &Config{Stores: []korrel8r.StoreConfig{{"domain": "bar", "a": "b"}}},
 	}
-	e := engine.New(foo, bar)
-	require.NoError(t, c.Apply(e))
+	e, err := engine.Build().Domains(foo, bar).Apply(c).Engine()
+	require.NoError(t, err)
 	// Check for expected errors
 	assert.Equal(t, "bad store: map[domain:foo x:y]", e.StoreConfigsFor(foo)[0][korrel8r.StoreKeyError])
 	// Check that we did apply the good stores
@@ -114,8 +114,8 @@ func TestApply_store_templates(t *testing.T) {
 		"a": &Config{Stores: []korrel8r.StoreConfig{{"domain": "foo", "x": `{{ "fooStore" }}`}}},
 		"b": &Config{Stores: []korrel8r.StoreConfig{{"domain": "bar", "y": `{{ get "foo:a:[1,2,3]" }}`}}},
 	}
-	e := engine.New(foo, bar)
-	require.NoError(t, c.Apply(e))
+	e, err := engine.Build().Domains(foo, bar).Apply(c).Engine()
+	require.NoError(t, err)
 	// Check there are no errors
 	assert.Empty(t, e.StoreConfigsFor(foo)[0][korrel8r.StoreKeyError])
 	assert.Empty(t, e.StoreConfigsFor(bar)[0][korrel8r.StoreKeyError])

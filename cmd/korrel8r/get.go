@@ -22,10 +22,9 @@ var getCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		e, _ := newEngine()
 		q := must.Must1(e.Query(args[0]))
-		s := must.Must1(e.StoreErr(q.Class().Domain()))
 		result := newPrinter(os.Stdout)
 		var constraint *korrel8r.Constraint // FIXME implement constraints as arguments
-		must.Must(s.Get(context.Background(), q, constraint, result))
+		must.Must(e.Get(context.Background(), q, constraint, result))
 	},
 }
 

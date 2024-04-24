@@ -12,32 +12,27 @@ import (
 	"github.com/korrel8r/korrel8r/pkg/unique"
 )
 
-func newRule(e *engine.Engine, r *Rule) (rule korrel8r.Rule, err error) {
-	defer func() {
-		if err != nil {
-			err = fmt.Errorf("rule %v: %w", r.Name, err)
-		}
-	}()
-	start, err := classes(e, &r.Start)
+func newRule(b *engine.Builder, r *Rule) (rule korrel8r.Rule, err error) {
+	start, err := classes(b, &r.Start)
 	if err != nil {
 		return nil, err
 	}
-	goal, err := classes(e, &r.Goal)
+	goal, err := classes(b, &r.Goal)
 	if err != nil {
 		return nil, err
 	}
 	if len(start) == 0 || len(goal) == 0 || r.Name == "" {
 		return nil, fmt.Errorf("invalid: %#v", r)
 	}
-	tmpl, err := template.New(r.Name).Funcs(e.TemplateFuncs()).Parse(r.Result.Query)
+	tmpl, err := template.New(r.Name).Funcs(b.GetTemplateFuncs()).Parse(r.Result.Query)
 	if err != nil {
 		return nil, err
 	}
 	return rules.NewTemplateRule(start, goal, tmpl), nil
 }
 
-func classes(e *engine.Engine, spec *ClassSpec) ([]korrel8r.Class, error) {
-	d, err := e.DomainErr(spec.Domain)
+func classes(b *engine.Builder, spec *ClassSpec) ([]korrel8r.Class, error) {
+	d, err := b.GetDomain(spec.Domain)
 	if err != nil {
 		return nil, err
 	}

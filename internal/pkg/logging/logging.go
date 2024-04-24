@@ -67,3 +67,10 @@ func (l logJSON) MarshalLog() any { return JSONString(l.v) }
 
 // JSON wraps a value so it will be printed as JSON if logged.
 func JSON(v any) logr.Marshaler { return logJSON{v: v} }
+
+type logGo struct{ v any }
+
+func (l logGo) MarshalLog() any { return fmt.Sprintf("%#v", l.v) }
+
+// Go wraps a value so it will be printed in Go %#v style if logged.
+func Go(v any) logr.Marshaler { return logGo{v: v} }

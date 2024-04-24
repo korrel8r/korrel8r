@@ -5,25 +5,14 @@ package k8s
 import (
 	"fmt"
 	"regexp"
-	"strings"
 
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
-// TODO document template functions with the domain - both store and domain functions.
-
-func (s *Store) TemplateFuncs() map[string]any {
-	return map[string]any{
-		"k8sMetricLabelKind": s.metricLabelKind,
-		"k8sResource": func(kind, apiVersion string) (string, error) {
-			return kindToResource(s.c.RESTMapper(), kind, apiVersion)
-		}}
-}
-
+// TemplateFuncs for the k8s domain
 func (domain) TemplateFuncs() map[string]any {
 	return map[string]any{
-
 		"k8sClass":        k8sClass,
 		"k8sQueryClass":   k8sQueryClass,
 		"k8sGroupVersion": schema.ParseGroupVersion,
@@ -70,24 +59,4 @@ func logType(namespace string) string {
 		return "infrastructure"
 	}
 	return "application"
-}
-
-// metricLabelKind attempt to match a metric label to a k8s Kind name.
-func (s *Store) metricLabelKind(label string) *schema.GroupVersionKind {
-	for _, gv := range s.groups {
-		for kind := range Scheme.KnownTypes(gv) {
-			if matchLabel(label, kind) {
-				gvk := gv.WithKind(kind)
-				return &gvk
-			}
-		}
-	}
-	return nil
-}
-
-func matchLabel(label, kind string) bool {
-	label, kind = strings.ToLower(label), strings.ToLower(kind)
-	return label == kind ||
-		strings.TrimSuffix(label, "_name") == kind ||
-		strings.TrimSuffix(label, "name") == kind
 }

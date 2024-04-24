@@ -38,8 +38,8 @@ import (
 	"github.com/korrel8r/korrel8r/internal/pkg/must"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r/impl"
-	"golang.org/x/exp/slices"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/rest"
@@ -71,9 +71,8 @@ type Query struct {
 
 // Store implements a korrel8r.Store using the kubernetes API server.
 type Store struct {
-	c      client.Client
-	base   *url.URL
-	groups []schema.GroupVersion
+	c    client.Client
+	base *url.URL
 }
 
 // Validate interfaces
@@ -223,23 +222,19 @@ func NewStore(c client.Client, cfg *rest.Config) (korrel8r.Store, error) {
 		host = "localhost"
 	}
 	base, _, err := rest.DefaultServerURL(host, cfg.APIPath, schema.GroupVersion{}, true)
-
-	// TODO should be using discovery client?
-	groups := Scheme.PreferredVersionAllGroups()
-	slices.SortFunc(groups, func(a, b schema.GroupVersion) int { // Move core and openshift to front.
-		if a.Group == "" || (strings.Contains(a.Group, ".openshift.io/") && b.Group != "") {
-			return -1
-		}
-		return 0
-	})
-
-	return &Store{c: c, base: base, groups: groups}, err
+	return &Store{c: c, base: base}, err
 }
 
 func (s Store) Domain() korrel8r.Domain { return Domain }
 func (s Store) Client() client.Client   { return s.c }
 
 func (s *Store) Get(ctx context.Context, query korrel8r.Query, c *korrel8r.Constraint, result korrel8r.Appender) (err error) {
+	defer func() {
+		if errors.IsNotFound(err) {
+			err = nil // Finding nothing is not an error.
+		}
+	}()
+
 	q, err := impl.TypeAssert[*Query](query)
 	if err != nil {
 		return err

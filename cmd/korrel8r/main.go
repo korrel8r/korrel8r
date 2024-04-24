@@ -85,7 +85,8 @@ func main() {
 			if !ok || *panicOnErr {
 				panic(r)
 			}
-			log.Error(err, "Fatal error")
+			log.Error(err, "Fatal", "details", logging.Go(err))
+			fmt.Fprintf(os.Stderr, "\n%v\n", err)
 			os.Exit(1)
 		}
 		os.Exit(0)
@@ -94,9 +95,9 @@ func main() {
 }
 
 func newEngine() (*engine.Engine, config.Configs) {
-	e := engine.New(k8s.Domain, logdomain.Domain, netflow.Domain, alert.Domain, metric.Domain, mock.Domain("mock"))
 	c := must.Must1(config.Load(*configuration))
-	must.Must(c.Apply(e))
+	e, err := engine.Build().Domains(k8s.Domain, logdomain.Domain, netflow.Domain, alert.Domain, metric.Domain, mock.Domain("mock")).Apply(c).Engine()
+	must.Must(err)
 	return e, c
 }
 

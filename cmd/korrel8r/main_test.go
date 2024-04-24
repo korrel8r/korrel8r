@@ -25,12 +25,12 @@ func TestMain_list(t *testing.T) {
 	out, err := command(t, "list").Output()
 	require.NoError(t, test.ExecError(err))
 	want := `
+alert     Alerts that metric values are out of bounds.
 k8s       Resource objects in a Kubernetes API server
 log       Records from container and node logs.
-netflow   Network flows from source nodes to destination nodes.
-alert     Alerts that metric values are out of bounds.
 metric    Time-series of measured values
 mock      Mock domain.
+netflow   Network flows from source nodes to destination nodes.
 `
 	assert.Equal(t, strings.TrimSpace(want), strings.TrimSpace(string(out)))
 }
@@ -122,7 +122,14 @@ func TestMain_server_insecure(t *testing.T) {
 	test.SkipIfNoCluster(t)
 	t.Run("insecure", func(t *testing.T) {
 		u := startServer(t, http.DefaultClient, "http").String() + "/domains"
-		assertDo(t, http.DefaultClient, `[{"name":"k8s"},{"name":"log"},{"name":"netflow"}, {"name":"alert"},{"name":"metric"},{"name":"mock","stores":[{"domain":"mock"}]}]`, "GET", u, "")
+		assertDo(t, http.DefaultClient, `[
+{"name":"alert"},
+{"name":"k8s"},
+{"name":"log"},
+{"name":"metric"},
+{"name":"mock","stores":[{"domain":"mock"}]},
+{"name":"netflow"}
+]`, "GET", u, "")
 	})
 }
 
@@ -132,7 +139,15 @@ func TestMain_server_secure(t *testing.T) {
 	h := &http.Client{Transport: &http.Transport{TLSClientConfig: clientTLS}}
 	t.Run("secure", func(t *testing.T) {
 		u := startServer(t, h, "https", "--cert", filepath.Join(tmpDir, "tls.crt"), "--key", filepath.Join(tmpDir, "tls.key")).String() + "/domains"
-		assertDo(t, h, `[{"name":"k8s"},{"name":"log"},{"name":"netflow"},{"name":"alert"},{"name":"metric"},{"name":"mock","stores":[{"domain":"mock"}]}]`, "GET", u, "")
+		assertDo(t, h, `[
+{"name":"alert"},
+{"name":"k8s"},
+{"name":"log"},
+{"name":"metric"},
+{"name":"mock","stores":[{"domain":"mock"}]},
+{"name":"netflow"}
+]`,
+			"GET", u, "")
 	})
 }
 

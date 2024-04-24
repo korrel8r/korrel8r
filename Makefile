@@ -7,6 +7,7 @@ help: ## Display this help.
 
 ## VERSION: Semantic version for release. Use a -dev suffix for work in progress.
 VERSION?=0.6.2-dev
+
 ## IMG: Base name of image to build or deploy, without version tag.
 IMG?=quay.io/korrel8r/korrel8r
 ## IMGTOOL: May be podman or docker.

@@ -65,10 +65,11 @@ result: {query: dummy, class: dummy}
 		t.Run(x.rule, func(t *testing.T) {
 			var r Rule
 			require.NoError(t, yaml.Unmarshal([]byte(x.rule), &r))
-			e := engine.New(foo, bar)
-			rule, err := newRule(e, &r)
+			b := engine.Build().Domains(foo, bar)
+			rule, err := newRule(b, &r)
 			require.NoError(t, err)
-			e.AddRules(rule)
+			e, err := b.Rules(rule).Engine()
+			require.NoError(t, err)
 			assert.Equal(t, x.want, mockRules(e.Rules()...)[0])
 		})
 	}

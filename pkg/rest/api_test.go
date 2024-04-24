@@ -26,17 +26,21 @@ import (
 )
 
 func TestAPI_GetDomains(t *testing.T) {
-	a := newTestAPI(mock.Domains("foo", "bar")...)
-	require.NoError(t, a.Engine.AddStoreConfig(korrel8r.StoreConfig{"domain": "foo", "a": "1"}))
-	require.NoError(t, a.Engine.AddStoreConfig(korrel8r.StoreConfig{"domain": "foo", "b": "2"}))
-	require.NoError(t, a.Engine.AddStoreConfig(korrel8r.StoreConfig{"domain": "bar", "x": "y"}))
+	a := newTestAPI(test.Must(engine.Build().
+		Domains(mock.Domains("foo", "bar")...).
+		StoreConfigs(
+			korrel8r.StoreConfig{"domain": "foo", "a": "1"},
+			korrel8r.StoreConfig{"domain": "foo", "b": "2"},
+			korrel8r.StoreConfig{"domain": "bar", "x": "y"},
+		).Engine()))
 	assertDo(t, a, "GET", "/api/v1alpha1/domains", nil, 200, []Domain{
-		{Name: "foo", Stores: []korrel8r.StoreConfig{{"a": "1", "domain": "foo"}, {"b": "2", "domain": "foo"}}},
-		{Name: "bar", Stores: []korrel8r.StoreConfig{{"domain": "bar", "x": "y"}}}})
+		{Name: "bar", Stores: []korrel8r.StoreConfig{{"domain": "bar", "x": "y"}}},
+		{Name: "foo", Stores: []korrel8r.StoreConfig{{"domain": "foo", "a": "1"}, {"domain": "foo", "b": "2"}}},
+	})
 }
 
 func TestAPI_GetDomainClasses(t *testing.T) {
-	a := newTestAPI(log.Domain, metric.Domain)
+	a := newTestAPI(test.Must(engine.Build().Domains(log.Domain, metric.Domain).Engine()))
 	assertDo(t, a, "GET", "/api/v1alpha1/domains/log/classes", nil, 200, Classes{
 		"application":    log.Application.Description(),
 		"audit":          log.Audit.Description(),
@@ -139,17 +143,17 @@ func TestAPI_GetObjects(t *testing.T) {
 	d := mock.Domain("x")
 	c := d.Class("y")
 	q := mock.NewQuery(c, want...)
-	a := newTestAPI(d)
-	assert.NoError(t, a.Engine.AddStore(mock.NewStore(d, nil)))
+	e, err := engine.Build().Domains(d).Stores(mock.NewStore(d, nil)).Engine()
+	require.NoError(t, err)
+	a := newTestAPI(e)
 	assertDo(t, a, "GET", "/api/v1alpha1/objects?query="+url.QueryEscape(q.String()), nil, 200, want)
 }
 
 func ginEngine() *gin.Engine {
 	if os.Getenv(gin.EnvGinMode) == "" { // Don't override an explicit env setting.
-		gin.SetMode(gin.ReleaseMode)
+		gin.SetMode(gin.TestMode)
 	}
 	r := gin.New()
-	r.Use(gin.Logger())
 	return r
 }
 
@@ -158,9 +162,9 @@ type testAPI struct {
 	Router *gin.Engine
 }
 
-func newTestAPI(domains ...korrel8r.Domain) *testAPI {
+func newTestAPI(e *engine.Engine) *testAPI {
 	r := ginEngine()
-	return &testAPI{API: test.Must(New(engine.New(domains...), nil, r)), Router: r}
+	return &testAPI{API: test.Must(New(e, nil, r)), Router: r}
 }
 
 func do(t *testing.T, a *testAPI, method, url string, body any) *httptest.ResponseRecorder {
@@ -206,7 +210,6 @@ func normalize(v any) {
 	case Edge:
 		for _, r := range v.Rules {
 			normalize(r.Queries)
-			ruleCoverage[r.Name] = ruleCoverage[r.Name] + 1
 		}
 	case []QueryCount:
 		slices.SortFunc(v, func(a, b QueryCount) int { return strings.Compare(a.Query, b.Query) })
@@ -221,7 +224,7 @@ func assertDo[T any](t *testing.T, a *testAPI, method, url string, req any, code
 		if assert.NoError(t, json.Unmarshal(w.Body.Bytes(), &got), "body: %v", w.Body.String()) {
 			normalize(want)
 			normalize(got)
-			if assert.Equal(t, test.JSONPretty(want), test.JSONPretty(got)) {
+			if assert.JSONEq(t, test.JSONPretty(want), test.JSONPretty(got)) {
 				return
 			}
 		}
@@ -238,18 +241,11 @@ func doubleFunc(goal korrel8r.Class) func(korrel8r.Object) (korrel8r.Query, erro
 
 func apiWithRules() (a *testAPI, x, y, z korrel8r.Class) {
 	foo, bar := mock.Domain("foo"), mock.Domain("bar")
-	api := newTestAPI(foo, bar)
 	x, y, z = foo.Class("x"), bar.Class("y"), bar.Class("z")
-	test.PanicErr(api.Engine.AddStore(mock.NewStore(foo, nil)))
-	test.PanicErr(api.Engine.AddStore(mock.NewStore(bar, nil)))
-	api.Engine.AddRules(mock.NewApplyRule("x-y", x, y, doubleFunc(y)))
-	api.Engine.AddRules(mock.NewQueryRule("y-z", y, mock.NewQuery(z, "c")))
+	api := newTestAPI(test.Must(engine.Build().
+		Domains(foo, bar).
+		Stores(mock.NewStore(foo, nil), mock.NewStore(bar, nil)).
+		Rules(mock.NewApplyRule("x-y", x, y, doubleFunc(y)), mock.NewQueryRule("y-z", y, mock.NewQuery(z, "c"))).
+		Engine()))
 	return api, x, y, z
-}
-
-var ruleCoverage = map[string]int{}
-
-func TestMain(m *testing.M) {
-	m.Run()
-	fmt.Println(test.JSONPretty((ruleCoverage)))
 }

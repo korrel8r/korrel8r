@@ -18,9 +18,7 @@ import (
 	"github.com/korrel8r/korrel8r/internal/pkg/must"
 	"github.com/korrel8r/korrel8r/pkg/domains/k8s"
 	"github.com/korrel8r/korrel8r/pkg/engine"
-	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"github.com/korrel8r/korrel8r/pkg/openshift"
-	"go.uber.org/multierr"
 )
 
 var (
@@ -78,7 +76,6 @@ func New(e *engine.Engine, router *gin.Engine, version string) (*Browser, error)
 	router.GET("/correlate", c.HTML)
 	router.Static("/files", b.files)
 	router.StaticFS("/images", b.images)
-	router.GET("/stores/:domain", b.stores)
 	// Display errors converted into URLs.
 	router.GET("/error", func(c *gin.Context) {
 		httpError(c, errors.New(c.Request.URL.Query().Get("err")), http.StatusNotFound)
@@ -92,28 +89,6 @@ func (b *Browser) Close() {
 	if err := os.RemoveAll(b.dir); err != nil {
 		log.Error(err, "Closing")
 	}
-}
-
-func (b *Browser) stores(c *gin.Context) {
-	domain, err := b.engine.DomainErr(c.Param("domain"))
-	if httpError(c, err, http.StatusNotFound) {
-		return
-	}
-	stores := b.engine.StoresFor(domain)
-	if len(stores) == 0 {
-		_ = httpError(c, korrel8r.StoreNotFoundErr{Domain: domain}, http.StatusNotFound)
-		return
-	}
-	query, err := domain.Query(c.Request.URL.Query().Get("query"))
-	if httpError(c, err, http.StatusNotFound) {
-		return
-	}
-	result := korrel8r.NewResult(query.Class())
-	var constraint *korrel8r.Constraint // FIXME implement constraints in browser
-	for _, store := range stores {
-		err = multierr.Append(err, store.Get(context.Background(), query, constraint, result))
-	}
-	c.HTML(http.StatusOK, "stores.html.tmpl", map[string]any{"query": query, "err": err, "result": result.List()})
 }
 
 func httpError(c *gin.Context, err error, code int) bool {

@@ -58,23 +58,24 @@ func load(source string, configs Configs) (err error) {
 	return nil
 }
 
-// Apply normalized configurations to an engine.
-func (configs Configs) Apply(e *engine.Engine) error {
+// Apply configuration to an engine.Builder.
+func (configs Configs) Apply(b *engine.Builder) error {
 	sources := maps.Keys(configs)
 	slices.Sort(sources) // Predictable order
 	aliasMap := aliasMap{}
+
 	// Gather aliasMap first, before interpreting rules.
 	for _, source := range sources {
 		c := configs[source]
-		for _, g := range c.Aliases {
-			if _, err := e.DomainErr(g.Domain); err != nil {
-				return fmt.Errorf("%v: alias %q: %w", source, g.Name, err)
+		for _, a := range c.Aliases {
+			if _, err := b.GetDomain(a.Domain); err != nil {
+				return fmt.Errorf("%v: alias %q: %w", source, a.Name, err)
 			}
-			if len(g.Classes) == 0 {
-				return fmt.Errorf("%v: alias %q: no classes", source, g.Name)
+			if len(a.Classes) == 0 {
+				return fmt.Errorf("%v: alias %q: no classes", source, a.Name)
 			}
-			if !aliasMap.Add(g) {
-				return fmt.Errorf("%v: alias %q: duplicate name", source, g.Name)
+			if !aliasMap.Add(a) {
+				return fmt.Errorf("%v: alias %q: duplicate name", source, a.Name)
 			}
 		}
 	}
@@ -88,25 +89,30 @@ func (configs Configs) Apply(e *engine.Engine) error {
 			}
 		}
 	}
-	// Add rules and stores to the engine
+	// Add stores
+	for _, source := range sources {
+		c := configs[source]
+		for _, sc := range c.Stores {
+			sc = maps.Clone(sc)
+			b.StoreConfigs(sc)
+			if b.Err() != nil {
+				log.V(1).Error(b.Err(), "Error configuring store", "config", source, "domain", sc[korrel8r.StoreKeyDomain])
+			} else {
+				log.V(1).Info("configured store", "config", source, "store", logging.JSON(sc))
+			}
+		}
+	}
+	// Add rules
 	for _, source := range sources {
 		c := configs[source]
 		for _, r := range c.Rules {
 			r.Start.Classes = aliasMap.Expand(r.Start.Domain, r.Start.Classes)
 			r.Goal.Classes = aliasMap.Expand(r.Goal.Domain, r.Goal.Classes)
-			rule, err := newRule(e, &r)
+			rule, err := newRule(b, &r)
 			if err != nil {
-				return err
+				return fmt.Errorf("%v: rule %v: %w", source, r.Name, err)
 			}
-			e.AddRules(rule)
-		}
-		for _, sc := range c.Stores {
-			sc = maps.Clone(sc)
-			if err := e.AddStoreConfig(sc); err != nil {
-				log.V(1).Error(err, "Error configuring store", "config", source, "domain", sc[korrel8r.StoreKeyDomain])
-			} else {
-				log.V(1).Info("configured store", "config", source, "store", logging.JSON(sc))
-			}
+			b.Rules(rule)
 		}
 	}
 	return nil
