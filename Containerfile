@@ -1,5 +1,5 @@
 # Build the korrel8r binary
-FROM golang:1.21.4 as builder
+FROM docker.io/golang:1.21.9 as builder
 
 WORKDIR /workspace
 # Download and cache go modules before building.

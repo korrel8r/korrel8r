@@ -6,7 +6,7 @@ help: ## Display this help.
 	@grep -E '^## [A-Z0-9_]+: ' Makefile | sed 's/^## \([A-Z0-9_]*\): \(.*\)/\1#\2/' | column -s'#' -t
 
 ## VERSION: Semantic version for release. Use a -dev suffix for work in progress.
-VERSION?=0.6.1
+VERSION?=0.6.2-dev
 ## IMG: Base name of image to build or deploy, without version tag.
 IMG?=quay.io/korrel8r/korrel8r
 ## IMGTOOL: May be podman or docker.
@@ -53,6 +53,7 @@ pkg/rest/zz_docs: $(wildcard pkg/rest/*.go pkg/korrel8r/*.go) $(SWAG)
 lint: $(VERSION_TXT) $(GOLANGCI_LINT) $(SHFMT) ## Run the linter to find and fix code style problems.
 	$(GOLANGCI_LINT) run --fix
 	$(SHFMT) -l -w ./**/*.sh
+	go mod tidy
 
 install: $(VERSION_TXT) ## Build and install the korrel8r binary in $GOBIN.
 	go install -tags netgo ./cmd/korrel8r
