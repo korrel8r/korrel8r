@@ -4,7 +4,7 @@
 set -e -o pipefail
 
 RETRY_LIMIT=${RETRY_LIMIT:-6}
-RETRY_DELAY=${RETRY_DELAY:-5s}
+RETRY_DELAY=${RETRY_DELAY:-5}
 TIMEOUT=5m
 
 retry() {

@@ -13,23 +13,26 @@ STORAGE_CLASS?=$(shell kubectl get storageclass -o=jsonpath='{.items[?(@.metadat
 
 MINIO_ROLLOUT=../wait.sh rollout -n minio deployment/minio
 
-LOGGING_ROLLOUT=../wait.sh rollout -n openshift-logging	\
-deployment.apps/cluster-logging-operator		\
-deployment.apps/logging-loki-distributor		\
-deployment.apps/logging-loki-gateway			\
-deployment.apps/logging-loki-querier			\
-deployment.apps/logging-loki-query-frontend		\
+LOGGING_ROLLOUT=../wait.sh rollout -n openshift-logging \
+deployment.apps/cluster-logging-operator \
+deployment.apps/logging-loki-distributor \
+deployment.apps/logging-loki-gateway \
+deployment.apps/logging-loki-querier \
+deployment.apps/logging-loki-query-frontend \
 deployment.apps/logging-view-plugin
 
 
-NETOBSERV_ROLLOUT=../wait.sh rollout -n netobserv	\
-deployment.apps/loki-distributor			\
-deployment.apps/loki-gateway				\
-deployment.apps/loki-querier				\
-deployment.apps/loki-query-frontend			\
+NETOBSERV_ROLLOUT=../wait.sh rollout -n netobserv \
+deployment.apps/loki-distributor \
+deployment.apps/loki-gateway \
+deployment.apps/loki-querier \
+deployment.apps/loki-query-frontend \
 deployment.apps/netobserv-plugin
 
 resources:
+ifeq ($(strip $(STORAGE_CLASS)),)
+		$(error cannot determine storage class of cluster. exitting)
+endif
 	echo "STORAGE_CLASS=$(STORAGE_CLASS)" > config/resources/storage.env
 	kubectl apply -k config/resources
 	$(MINIO_ROLLOUT)
