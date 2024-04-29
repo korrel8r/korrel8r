@@ -58,9 +58,9 @@ type Store interface {
 	// Domain of the Store
 	Domain() Domain
 
-	// Get requests objects selected by the Query.
-	// Collected objects are appended to the Appender.
+	// Get objects selected by the Query and append to the Appender.
 	// If Constraint is non-nil, only objects satisfying the constraint are returned.
+	// Note: a "not found" condition should give an empty result, it should not be reported as an error.
 	Get(context.Context, Query, *Constraint, Appender) error
 }
 
@@ -112,8 +112,9 @@ type StoreConfig map[string]string
 
 // Store keys that may be used by any stores.
 const (
-	StoreKeyDomain = "domain" // Required domain name
-	StoreKeyError  = "error"  // Error message if store failed to load.
+	StoreKeyDomain     = "domain"     // Required domain name
+	StoreKeyError      = "error"      // Error message if store failed to load.
+	StoreKeyErrorCount = "errorCount" // Count of errors on a store.
 )
 
 // Constraint included in a reference to restrict the resulting objects.

@@ -38,21 +38,16 @@ var webCmd = &cobra.Command{
 				panic(fmt.Errorf("--cert and --key are required for https"))
 			}
 		}
+
+		engine, configs := newEngine()
 		gin.DefaultWriter = logging.LogWriter()
-		ginDebug := *verbose >= 4 // Include gin logging & debugging
-		if ginDebug {
-			gin.SetMode(gin.DebugMode)
-		} else {
-			gin.SetMode(gin.ReleaseMode)
-		}
+		gin.SetMode(gin.ReleaseMode)
+		gin.DisableConsoleColor()
 		router := gin.New()
-		s.Handler = router
-		pprof.Register(router) // Enable profiling
 		router.Use(gin.Recovery())
-		if ginDebug {
+		if *verbose >= 2 {
 			router.Use(gin.Logger())
 		}
-		engine, configs := newEngine()
 		if *htmlFlag {
 			b := must.Must1(browser.New(engine, router, rootCmd.Version))
 			defer b.Close()
@@ -61,6 +56,8 @@ var webCmd = &cobra.Command{
 			r := must.Must1(rest.New(engine, configs, router))
 			defer r.Close()
 		}
+		s.Handler = router
+		pprof.Register(router) // Enable profiling
 
 		if *httpFlag != "" {
 			log.Info("listening for http", "addr", s.Addr, "version", rootCmd.Version)

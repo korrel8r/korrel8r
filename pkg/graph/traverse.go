@@ -24,7 +24,8 @@ func (g *Graph) Traverse(start korrel8r.Class, goals []korrel8r.Class, f func(*L
 				return false
 			})
 		}}
-	bf.Walk(g, g.NodeFor(start), nil)
+	bf.
+		Walk(g, g.NodeFor(start), nil)
 	return sub
 }
 

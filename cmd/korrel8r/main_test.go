@@ -1,161 +1,24 @@
 // Copyright: This file is part of korrel8r, released under https://github.com/korrel8r/korrel8r/blob/main/LICENSE
 
-package main
+package main_test
 
 import (
-	"io"
-	"net"
-	"net/http"
-	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strconv"
-	"strings"
 	"testing"
-	"time"
 
 	"github.com/korrel8r/korrel8r/internal/pkg/test"
-	"github.com/korrel8r/korrel8r/pkg/rest"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
-func TestMain_list(t *testing.T) {
-	out, err := command(t, "list").Output()
-	require.NoError(t, test.ExecError(err))
-	want := `
-alert     Alerts that metric values are out of bounds.
-k8s       Resource objects in a Kubernetes API server
-log       Records from container and node logs.
-metric    Time-series of measured values
-mock      Mock domain.
-netflow   Network flows from source nodes to destination nodes.
-`
-	assert.Equal(t, strings.TrimSpace(want), strings.TrimSpace(string(out)))
-}
-
-func TestMain_list_domain(t *testing.T) {
-	out, err := command(t, "list", "metric").Output()
-	require.NoError(t, test.ExecError(err))
-	want := "metric   A set of label:value pairs identifying a time-series."
-	assert.Equal(t, want, strings.TrimSpace(string(out)))
-}
-
-func TestMain_get(t *testing.T) {
-	out, err := command(t, "get", "-o", "json", `mock:foo:["hello"]`).Output()
-	require.NoError(t, test.ExecError(err))
-	assert.Equal(t, "\"hello\"\n", string(out))
-}
-
-func TestMain_describe_domain(t *testing.T) {
-	out, err := command(t, "describe", "log").Output()
-	require.NoError(t, test.ExecError(err))
-	want := "Records from container and node logs."
-	assert.Equal(t, want, strings.TrimSpace(string(out)))
-}
-
-func TestMain_describe_class(t *testing.T) {
-	out, err := command(t, "describe", "log:audit").Output()
-	require.NoError(t, test.ExecError(err))
-	want := "Audit logs from the node operating system (/var/log/audit) and the cluster API servers"
-	assert.Equal(t, want, strings.TrimSpace(string(out)))
-}
-
-func TestMain_rules(t *testing.T) {
-	for _, x := range []struct {
-		args []string
-		want string
-	}{
-		{
-			args: []string{"rules"},
-			want: "foobar\nbarfoo",
-		},
-		{
-			args: []string{"rules", "--start", "mock:foo"},
-			want: "foobar",
-		},
-		{
-			args: []string{"rules", "--goal", "mock:foo"},
-			want: "barfoo",
-		},
-	} {
-		t.Run(strings.Join(x.args, " "), func(t *testing.T) {
-			out, err := command(t, x.args...).Output()
-			require.NoError(t, test.ExecError(err))
-			assert.Equal(t, x.want, strings.TrimSpace(string(out)))
-		})
-	}
-}
-
-func startServer(t *testing.T, h *http.Client, proto string, args ...string) *url.URL {
-	t.Helper()
-	port, err := test.ListenPort()
-	require.NoError(t, err)
-	addr := net.JoinHostPort("localhost", strconv.Itoa(port))
-	cmd := command(t, append([]string{"web", "--" + proto, addr}, args...)...)
-	cmd.Stderr = os.Stderr
-	require.NoError(t, cmd.Start())
-	// Wait till server is available.
-	require.Eventually(t, func() bool {
-		_, err = h.Get(proto + "://" + addr)
-		return err == nil
-	}, 10*time.Second, time.Second/10, "timeout error: %v", err)
-	t.Cleanup(func() {
-		_ = cmd.Process.Kill()
-	})
-	return &url.URL{Scheme: proto, Host: addr, Path: rest.BasePath}
-}
-
-func assertDo(t *testing.T, h *http.Client, want, method, url, body string) {
-	t.Helper()
-	req, err := http.NewRequest(method, url, strings.NewReader(body))
-	require.NoError(t, err)
-	res, err := h.Do(req)
-	require.NoError(t, err)
-	b, err := io.ReadAll(res.Body)
-	require.NoError(t, err)
-	assert.JSONEq(t, want, string(b))
-}
-
-func TestMain_server_insecure(t *testing.T) {
-	test.SkipIfNoCluster(t)
-	t.Run("insecure", func(t *testing.T) {
-		u := startServer(t, http.DefaultClient, "http").String() + "/domains"
-		assertDo(t, http.DefaultClient, `[
-{"name":"alert"},
-{"name":"k8s"},
-{"name":"log"},
-{"name":"metric"},
-{"name":"mock","stores":[{"domain":"mock"}]},
-{"name":"netflow"}
-]`, "GET", u, "")
-	})
-}
-
-func TestMain_server_secure(t *testing.T) {
-	test.SkipIfNoCluster(t)
-	_, clientTLS := certSetup(tmpDir)
-	h := &http.Client{Transport: &http.Transport{TLSClientConfig: clientTLS}}
-	t.Run("secure", func(t *testing.T) {
-		u := startServer(t, h, "https", "--cert", filepath.Join(tmpDir, "tls.crt"), "--key", filepath.Join(tmpDir, "tls.key")).String() + "/domains"
-		assertDo(t, h, `[
-{"name":"alert"},
-{"name":"k8s"},
-{"name":"log"},
-{"name":"metric"},
-{"name":"mock","stores":[{"domain":"mock"}]},
-{"name":"netflow"}
-]`,
-			"GET", u, "")
-	})
-}
-
+// TestMain builds the korrel8r executable for functional testing,
+// with support for code coverage measurements.
 func TestMain(m *testing.M) {
 	// Build korrel8r once to run in tests, much faster than using 'go run' for each test.
 	tmpDir = test.Must(os.MkdirTemp("", "korrel8r_test"))
 	defer func() { _ = os.RemoveAll(tmpDir) }()
-	cmd := exec.Command("go", "build", "-o", tmpDir)
+	test.PanicErr(os.MkdirAll(coverDir, 0777))
+	cmd := exec.Command("go", "build", "-cover", "-o", tmpDir)
 	cmd.Stderr = os.Stderr
 	test.PanicErr(cmd.Run())
 	os.Exit(m.Run())
@@ -163,9 +26,18 @@ func TestMain(m *testing.M) {
 
 var tmpDir string
 
+const coverDir = "_covdata" // Not in tmpDir, accumulate results over multiple runs.
+
+type testWriter struct{ t *testing.T }
+
+func (w *testWriter) Write(data []byte) (int, error) { w.t.Log(string(data)); return len(data), nil }
+
+// command returns an exec.Cmd to run the korrel8r executable in the context of a testing.T test.
 func command(t *testing.T, args ...string) *exec.Cmd {
-	commonArgs := []string{"-v9", "-c", "testdata/korrel8r.yaml", "--panic"}
-	cmd := exec.Command(filepath.Join(tmpDir, "korrel8r"), append(commonArgs, args...)...)
-	cmd.Stderr = os.Stderr
+	t.Helper()
+	cmd := exec.Command(filepath.Join(tmpDir, "korrel8r"), args...)
+	// Redirect stderr to test output.
+	cmd.Stderr = &testWriter{t: t}
+	cmd.Env = append(cmd.Env, "GOCOVERDIR="+coverDir)
 	return cmd
 }

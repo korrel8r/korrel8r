@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 	"slices"
+	"strconv"
 	"strings"
 	"text/template"
 
@@ -24,8 +25,7 @@ var log = logging.Log()
 // Once created (see [Build()]) an engine is immutable.
 type Engine struct {
 	domains       map[string]korrel8r.Domain
-	stores        map[korrel8r.Domain][]korrel8r.Store
-	storeConfigs  map[korrel8r.Domain][]korrel8r.StoreConfig
+	stores        map[korrel8r.Domain]stores
 	templateFuncs template.FuncMap
 	rulesByName   map[string]korrel8r.Rule
 	rules         []korrel8r.Rule
@@ -46,31 +46,20 @@ func (e *Engine) DomainErr(name string) (korrel8r.Domain, error) {
 	return nil, korrel8r.DomainNotFoundErr{Domain: name}
 }
 
-// StoresFor returns the known stores for a domain.
-func (e *Engine) StoresFor(d korrel8r.Domain) []korrel8r.Store {
-	return slices.Clone(e.stores[d])
-}
-
-// StoreConfigsFor returns store configurations added with AddStoreConfig
+// StoreConfigsFor returns the expanded store configurations and status.
 func (e *Engine) StoreConfigsFor(d korrel8r.Domain) []korrel8r.StoreConfig {
-	return slices.Clone(e.storeConfigs[d])
-}
-
-// expandStoreConfig expands templates in store config values providing the engine's
-func (e *Engine) expandStoreConfig(sc korrel8r.StoreConfig) error {
-	for k, v := range sc {
-		t, err := template.New(k + ": " + v).Funcs(e.TemplateFuncs()).Parse(v)
-		if err != nil {
-			return err
+	var ret []korrel8r.StoreConfig
+	for _, s := range e.stores[d] {
+		sc := maps.Clone(s.Expanded)
+		if s.Err != nil {
+			sc[korrel8r.StoreKeyError] = s.Err.Error()
 		}
-		w := &bytes.Buffer{}
-		err = t.Execute(w, nil)
-		if err != nil {
-			return err
+		if s.ErrCount > 0 {
+			sc[korrel8r.StoreKeyErrorCount] = strconv.Itoa(s.ErrCount)
 		}
-		sc[k] = w.String()
+		ret = append(ret, sc)
 	}
-	return nil
+	return ret
 }
 
 // Class parses a full class name and returns the
@@ -119,12 +108,9 @@ func (e *Engine) TemplateFuncs() map[string]any { return e.templateFuncs }
 
 // Get results for query from all stores for the query domain.
 func (e *Engine) Get(ctx context.Context, q korrel8r.Query, constraint *korrel8r.Constraint, result korrel8r.Appender) error {
-	for _, store := range e.stores[q.Class().Domain()] {
-		if err := store.Get(ctx, q, constraint, result); err != nil {
-			return err
-		}
-	}
-	return nil
+	expand := func(s string) (string, error) { return e.execTemplate(s, nil) }
+	ss := e.stores[q.Class().Domain()]
+	return ss.Get(ctx, q, constraint, result, expand)
 }
 
 // Follower creates a follower. Constraint can be nil.
@@ -151,16 +137,16 @@ func (e *Engine) Start(ctx context.Context, start *graph.Node, objects []korrel8
 }
 
 // GoalSearch does a goal directed search from starting objects and queries, and returns the result graph.
-func (e *Engine) GoalSearch(ctx context.Context, g *graph.Graph, start korrel8r.Class, objects []korrel8r.Object, queries []korrel8r.Query, constraint *korrel8r.Constraint, goals []korrel8r.Class) error {
+func (e *Engine) GoalSearch(ctx context.Context, g *graph.Graph, start korrel8r.Class, objects []korrel8r.Object, queries []korrel8r.Query, constraint *korrel8r.Constraint, goals []korrel8r.Class) (*graph.Graph, error) {
 	if err := e.Start(ctx, g.NodeFor(start), objects, queries, constraint); err != nil {
-		return err
+		return nil, err
 	}
 	f := e.Follower(ctx, constraint)
-	g.Traverse(start, goals, f.Traverse)
+	paths := g.Traverse(start, goals, f.Traverse)
 	if f.Err != nil {
-		return f.Err
+		return nil, f.Err
 	}
-	return nil
+	return paths, nil
 }
 
 // Neighbours generates a neighbourhood graph from starting objects and queries.
@@ -170,11 +156,11 @@ func (e *Engine) Neighbours(ctx context.Context, start korrel8r.Class, objects [
 	if err := e.Start(ctx, g.NodeFor(start), objects, queries, constraint); err != nil {
 		return nil, err
 	}
-	g.Neighbours(start, depth, f.Traverse)
+	neighbours := g.Neighbours(start, depth, f.Traverse)
 	if f.Err != nil {
 		return nil, f.Err
 	}
-	return g, nil
+	return neighbours, nil
 }
 
 // get implements the template function version of Get()
@@ -186,4 +172,16 @@ func (e *Engine) get(query string) ([]korrel8r.Object, error) {
 	results := korrel8r.NewResult(q.Class())
 	err = e.Get(context.Background(), q, nil, results)
 	return results.List(), err
+}
+
+func (e *Engine) execTemplate(tmplString string, data any) (string, error) {
+	tmpl, err := template.New(tmplString).Funcs(e.TemplateFuncs()).Parse(tmplString)
+	if err != nil {
+		return "", err
+	}
+	w := &bytes.Buffer{}
+	if err := tmpl.Execute(w, data); err != nil {
+		return "", err
+	}
+	return w.String(), nil
 }

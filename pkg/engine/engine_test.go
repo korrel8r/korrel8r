@@ -5,6 +5,7 @@ package engine
 import (
 	"context"
 	"fmt"
+	"slices"
 	"testing"
 	"time"
 
@@ -171,10 +172,19 @@ func TestEngine_PropagateConstraints(t *testing.T) {
 		t.Run(fmt.Sprintf("%+v", x.constraint), func(t *testing.T) {
 			goals := []korrel8r.Class{c}
 			g := e.Graph().AllPaths(a, goals...)
-			err := e.GoalSearch(context.Background(), g, a, []korrel8r.Object{obj{"a", ontime}}, nil, x.constraint, goals)
+			g, err := e.GoalSearch(context.Background(), g, a, []korrel8r.Object{obj{"a", ontime}}, nil, x.constraint, goals)
 			assert.NoError(t, err)
 			got := g.NodeFor(c).Result.List()
-			assert.ElementsMatch(t, x.want, got, "want %v got %v", x.want, got)
+			assert.Equal(t, asStrings(x.want), asStrings(got), "want %v got %v", x.want, got)
 		})
 	}
+}
+
+func asStrings[T any](v []T) []string {
+	s := make([]string, len(v))
+	for i := range v {
+		s[i] = fmt.Sprint(v[i])
+	}
+	slices.Sort(s)
+	return s
 }

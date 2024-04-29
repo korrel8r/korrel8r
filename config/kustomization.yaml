@@ -16,4 +16,4 @@ resources:
 images:
 - name: quay.io/korrel8r/korrel8r
   newName: quay.io/korrel8r/korrel8r
-  newTag: 0.5.11-dev1
+  newTag: 0.6.2-dev

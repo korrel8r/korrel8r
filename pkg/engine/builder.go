@@ -25,10 +25,9 @@ type Builder struct {
 
 func Build() *Builder {
 	e := &Engine{
-		domains:      map[string]korrel8r.Domain{},
-		stores:       map[korrel8r.Domain][]korrel8r.Store{},
-		storeConfigs: map[korrel8r.Domain][]korrel8r.StoreConfig{},
-		rulesByName:  map[string]korrel8r.Rule{},
+		domains:     map[string]korrel8r.Domain{},
+		stores:      map[korrel8r.Domain]stores{},
+		rulesByName: map[string]korrel8r.Rule{},
 	}
 	e.templateFuncs = template.FuncMap{"get": e.get}
 	maps.Copy(e.templateFuncs, sprig.FuncMap())
@@ -67,45 +66,24 @@ func (b *Builder) Stores(stores ...korrel8r.Store) *Builder {
 		if b.Err() != nil {
 			return b
 		}
-		b.e.stores[d] = append(b.e.stores[d], s)
+		b.e.stores[d] = append(b.e.stores[d], &store{Store: s})
 	}
 	return b
 }
 
 func (b *Builder) StoreConfigs(storeConfigs ...korrel8r.StoreConfig) *Builder {
 	for _, sc := range storeConfigs {
-		if b.Err() != nil {
-			return b
+		d, err := b.GetDomain(sc[korrel8r.StoreKeyDomain])
+		if b.error(err) {
+			continue
 		}
-		b.storeConfig(sc)
+		ss := b.e.stores[d]
+		if slices.IndexFunc(ss, func(s *store) bool { return reflect.DeepEqual(sc, s.Original) }) >= 0 {
+			continue // Already present
+		}
+		b.e.stores[d] = append(ss, &store{Original: sc})
 	}
 	return b
-}
-
-func (b *Builder) storeConfig(sc korrel8r.StoreConfig) *Builder {
-	d, err := b.GetDomain(sc[korrel8r.StoreKeyDomain])
-	if b.error(err) {
-		return b
-	}
-	// Ignore if already present (FIXME clash with error status)
-	if slices.IndexFunc(b.e.storeConfigs[d], func(sc2 korrel8r.StoreConfig) bool { return reflect.DeepEqual(sc, sc2) }) >= 0 {
-		return b // Configuration is already present.
-	}
-	b.e.storeConfigs[d] = append(b.e.storeConfigs[d], sc)
-	if err := b.e.expandStoreConfig(sc); err != nil { // Fix me move to builder
-		sc[korrel8r.StoreKeyError] = err.Error()
-		return b
-	}
-	store, err := d.Store(sc)
-	if err != nil {
-		sc[korrel8r.StoreKeyError] = err.Error()
-		return b
-	}
-	if err := b.e.expandStoreConfig(sc); err != nil { // Fix me move to builder
-		sc[korrel8r.StoreKeyError] = err.Error()
-		return b
-	}
-	return b.Stores(store)
 }
 
 func (b *Builder) Rules(rules ...korrel8r.Rule) *Builder {
@@ -131,6 +109,13 @@ func (b *Builder) Rules(rules ...korrel8r.Rule) *Builder {
 func (b *Builder) Engine() (*Engine, error) {
 	e := b.e
 	b.e = nil
+	// Create all the stores so we have status if there are any problems.
+	for d, ss := range e.stores {
+		for _, s := range ss {
+			// Not an error if create fails, will be registered in stores.
+			_ = s.Ensure(d, func(s string) (string, error) { return e.execTemplate(s, nil) })
+		}
+	}
 	return e, b.Err()
 }
 

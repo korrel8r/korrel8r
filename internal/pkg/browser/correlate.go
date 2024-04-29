@@ -309,7 +309,6 @@ func (c *correlate) updateDiagram() {
 
 func runDot(cmdName string, args ...string) error {
 	cmd := exec.Command(cmdName, args[1:]...)
-	log.V(2).Info("run", "cmd", cmdName, "args", args)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("%v %w: %v", cmdName, err, string(out))
