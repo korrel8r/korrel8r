@@ -3,7 +3,7 @@
 package main
 
 import (
-	"fmt"
+	"io"
 	"os"
 
 	"text/template"
@@ -14,13 +14,18 @@ import (
 
 var templateCmd = &cobra.Command{
 	Use:   "template [--file FILE|--template STRING]",
-	Short: "Apply a Go template to the korrel8r engine.",
+	Short: `Apply a Go template to the korrel8r engine.`,
+	Long: `Apply a Go template to the korrel8r engine.
+Reads stdin by default if neither --file nor --template is provided.
+Useful for testing rule and store templates.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		if (*templateFile == "" && *templateString == "") || (*templateFile != "" && *templateString != "") {
-			must.Must(fmt.Errorf("exactly one of --file or --template must be provided"))
-		}
-		if *templateFile != "" {
-			*templateString = string(must.Must1(os.ReadFile(*templateFile)))
+		if *templateString == "" { // Read from file
+			switch *templateFile {
+			case "", "-":
+				*templateString = string(must.Must1(io.ReadAll(os.Stdin)))
+			default:
+				*templateString = string(must.Must1(os.ReadFile(*templateFile)))
+			}
 		}
 		e, _ := newEngine()
 		t := template.Must(template.New(*templateString).Funcs(e.TemplateFuncs()).Parse(*templateString))

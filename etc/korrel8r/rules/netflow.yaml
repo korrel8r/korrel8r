@@ -94,7 +94,7 @@ rules:
       domain: netflow
     result:
       query: |-
-        netflow:network:{SrcK8S_Namespace="{{.Namespace}}", SrcK8S_OwnerName=".Name"}
+        netflow:network:{SrcK8S_Namespace="{{.Namespace}}", SrcK8S_OwnerName="{{.Name}}"}
 
   - name: K8sDstToNetflow
     start:
@@ -114,4 +114,4 @@ rules:
       domain: netflow
     result:
       query: |-
-        netflow:network:{DstK8S_Namespace="{{.Namespace}}", DstK8S_OwnerName=".Name"}
+        netflow:network:{DstK8S_Namespace="{{.Namespace}}", DstK8S_OwnerName="{{.Name}}"}

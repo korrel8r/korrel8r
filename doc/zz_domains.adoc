@@ -79,8 +79,7 @@ type Query struct {
 	Labels	client.MatchingLabels	`json:"labels,omitempty"`
 	// Fields restricts the search to objects with matching field values (optional)
 	Fields	client.MatchingFields	`json:"fields,omitempty"`
-	// K8sClass is the underlying k8s.Class object.
-	K8sClass	Class
+	// contains filtered or unexported fields
 }
 ----
 

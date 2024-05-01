@@ -53,7 +53,7 @@ include::using-korrel8r.adoc[leveloffset=+1]
 
 include::configuration.adoc[leveloffset=+1]
 
-include::troubleshooting.adoc[leveloffset=+2]
+include::troubleshooting.adoc[leveloffset=+1]
 
 [id="index-reference"]
 == Reference

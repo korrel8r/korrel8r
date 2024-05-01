@@ -84,22 +84,20 @@ aliases:
 
 Every entry in the `stores` section has a `domain` field to identify the domain.
 Other fields depend on the domain, see {xref-domain}.
-Store fields can contain URL strings or templates to compute URLs at run-time.
+Store fields can contain URL strings or xref:_templates[templates].
 
 [source,yaml]
 .Example: configuring a store URL from an Openshift Route resource.
 ----
 stores:
   - domain: log
-    lokiStack: |-
-      {{- $routes := (get "k8s:Route:{namespace: openshift-logging, name: logging-loki}") -}} <1>
-      {{- $route = first $routes -}} <2>
-      https://{{$route.Spec.Host -}} <3>
+    lokiStack: <-
+      {{$r := get "k8s:Route:{namespace: openshift-logging, name: logging-loki}" -}} <1>
+      https://{{ (first $r).Spec.Host -}} <2>
 ----
 
-<1> Get returns a list of routes in the "openshift-logging" namespace named "logging-loki".
-<2> `first` is a {slim-sprig} function that returns the first element of the list.
-<3> The template uses the .Spec.Host field for the URL.
+<1> Get a list of routes in "openshift-logging" named "logging-loki".
+<2> Use the .Spec.Host field of the first route as the host for the store URL.
 
 == Rules
 
@@ -130,5 +128,7 @@ This is the same template syntax used by the Kubernetes `kubectl` tool with the 
 Korrel8r provides some additional _template functions_ that can be used in configuration templates.
 
 .Additional template functions
-
-FIXME DOCUMENT
+- General purpose functions from the {slim-sprig} library are always available.
+- Some domains provide additional functions, see {xref-domain}.
+- The following functions are always available: +
+  FIXME DOCUMENT TEMPLATE FUNCTIONS

@@ -4,7 +4,6 @@ aliases:
     classes:
       - Pod
       - Deployment.apps
-      - DeploymentConfig.apps.openshift.io
       - StatefulSet.apps
       - Secret
       - ConfigMap
@@ -56,7 +55,6 @@ aliases:
       - Deployment.apps
       - ReplicaSet.apps
       - StatefulSet.apps
-      - DeploymentConfig.apps.openshift.io
       - Job.batch
       - PodDisruptionBudget.policy
 #      - ClusterOperator
@@ -76,7 +74,6 @@ aliases:
     classes:
       - Pod
       - Deployment.apps
-      - DeploymentConfig.apps.openshift.io
       - StatefulSet.apps
       - CronJob.batch
       - Job.batch
@@ -110,15 +107,6 @@ rules:
      result:
        query: |-
          log:{{ k8sLogType .Namespace }}:{kubernetes_namespace_name="{{.Namespace}}",kubernetes_pod_name="{{.Name}}"}
-   - name: NamespaceToAlert
-     start:
-       domain: k8s
-       classes: [Namespace]
-     goal:
-       domain: alert
-     result:
-       query: |-
-         alert:alert:{"namespace": "{{.Name}}"}
 
    - name: PodToAlert
      start:

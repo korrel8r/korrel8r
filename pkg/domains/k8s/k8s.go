@@ -65,8 +65,8 @@ type Query struct {
 	Labels client.MatchingLabels `json:"labels,omitempty"`
 	// Fields restricts the search to objects with matching field values (optional)
 	Fields client.MatchingFields `json:"fields,omitempty"`
-	// K8sClass is the underlying k8s.Class object.
-	K8sClass Class
+
+	class Class // class is the underlying k8s.Class object. Implied by query name prefix.
 }
 
 // Store implements a korrel8r.Store using the kubernetes API server.
@@ -148,7 +148,7 @@ func (d domain) Query(s string) (korrel8r.Query, error) {
 	if err != nil {
 		return nil, err
 	}
-	q.K8sClass = c.(Class)
+	q.class = c.(Class)
 	return &q, nil
 }
 
@@ -203,17 +203,18 @@ func (c Class) GVK() schema.GroupVersionKind { return schema.GroupVersionKind(c)
 
 func NewQuery(c Class, namespace, name string, labels, fields map[string]string) *Query {
 	return &Query{
-		K8sClass:  c,
 		Namespace: namespace,
 		Name:      name,
 		Labels:    labels,
 		Fields:    fields,
+		class:     c,
 	}
 }
 
-func (q Query) Class() korrel8r.Class { return q.K8sClass }
-func (q Query) Data() string          { return impl.JSONString(q) }
-func (q Query) String() string        { return impl.QueryString(q) }
+func (q Query) Class() korrel8r.Class        { return q.class }
+func (q Query) Data() string                 { return impl.JSONString(q) }
+func (q Query) String() string               { return impl.QueryString(q) }
+func (q Query) GVK() schema.GroupVersionKind { return q.class.GVK() }
 
 // NewStore creates a new k8s store.
 func NewStore(c client.Client, cfg *rest.Config) (korrel8r.Store, error) {
@@ -259,7 +260,7 @@ func setMeta(o Object) Object {
 }
 
 func (s *Store) getObject(ctx context.Context, q *Query, result korrel8r.Appender) error {
-	o, err := Scheme.New(q.K8sClass.GVK())
+	o, err := Scheme.New(q.class.GVK())
 	if err != nil {
 		return err
 	}
@@ -276,7 +277,7 @@ func (s *Store) getObject(ctx context.Context, q *Query, result korrel8r.Appende
 }
 
 func (s *Store) getList(ctx context.Context, q *Query, result korrel8r.Appender) error {
-	gvk := q.K8sClass.GVK()
+	gvk := q.class.GVK()
 	gvk.Kind = gvk.Kind + "List"
 	o, err := Scheme.New(gvk)
 	if err != nil {

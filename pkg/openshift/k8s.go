@@ -130,13 +130,13 @@ func (c *Console) k8sURL(query korrel8r.Query) (*url.URL, error) {
 	if err != nil {
 		return nil, err
 	}
-	gvr, err := c.resource(q.K8sClass.GVK())
+	gvr, err := c.resource(q.GVK())
 	if err != nil {
 		return nil, err
 	}
 	var u url.URL
 	switch {
-	case q.K8sClass.GVK() == eventGVK && len(q.Fields) != 0:
+	case q.GVK() == eventGVK && len(q.Fields) != 0:
 		gv, err := schema.ParseGroupVersion(q.Fields[involvedAPIVersion])
 		if err != nil {
 			return nil, err
@@ -153,7 +153,7 @@ func (c *Console) k8sURL(query korrel8r.Query) (*url.URL, error) {
 		// Search using label selector
 		u.Path = path.Join("search", "ns", q.Namespace) // TODO non-namespaced searches?
 		v := url.Values{}
-		gvk := q.K8sClass.GVK()
+		gvk := q.GVK()
 		v.Add("kind", fmt.Sprintf("%v~%v~%v", gvk.Group, gvk.Version, gvk.Kind))
 		v.Add("q", selectorString(q.Labels))
 		u.RawQuery = v.Encode()

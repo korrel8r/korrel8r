@@ -99,6 +99,8 @@ func (e *Engine) Query(query string) (korrel8r.Query, error) {
 
 func (e *Engine) Rules() []korrel8r.Rule { return slices.Clone(e.rules) }
 
+func (e *Engine) Rule(name string) korrel8r.Rule { return e.rulesByName[name] }
+
 // Graph creates a new graph of the engine's rules.
 func (e *Engine) Graph() *graph.Graph { return graph.NewData(e.Rules()...).FullGraph() }
 

@@ -1,4 +1,5 @@
-# For OpenShift clusters. Use default routes to find store URLs.
+# Default configuraiton for OpenShift clusters.
+# Get host names from default store routes to construct the store URLs.
 stores:
   - domain: k8s
   - domain: alert
