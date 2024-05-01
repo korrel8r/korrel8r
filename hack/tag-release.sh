@@ -2,14 +2,13 @@
 # Apply and push a release tag.
 set -e
 VERSION=$1
-[[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || {
+[[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[^[:space:]]+)?$ ]] || {
 	echo "not a semantic version X.Y.Z: $VERSION"
 	exit 1
 }
 [ "$(git status -sb)" = "## main...origin/main" ] || {
-	echo "working directory not clean"
-	echo
 	git status
+	echo "working directory not clean"
 	exit 1
 }
 set -x
