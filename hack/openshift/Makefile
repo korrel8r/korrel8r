@@ -38,6 +38,6 @@ resources:
 
 clean-operators:
 	kubectl delete --ignore-not-found -k config/operators
-clean-resources:g
+clean-resources:
 	kubectl delete --ignore-not-found -k config/resources
 clean-all: clean-resources clean-operators
