@@ -15,10 +15,6 @@ import (
 	"path/filepath"
 
 	"github.com/korrel8r/korrel8r/internal/pkg/logging"
-	"github.com/korrel8r/korrel8r/pkg/engine"
-	"github.com/korrel8r/korrel8r/pkg/korrel8r"
-	"golang.org/x/exp/maps"
-	"golang.org/x/exp/slices"
 	"sigs.k8s.io/yaml"
 )
 
@@ -28,11 +24,52 @@ var log = logging.Log()
 type Configs map[string]*Config
 
 // Load loads all configurations from a file or URL.
+//
 // If a configuration has an Include section, also loads all referenced configurations.
 // Relative paths in Include are relative to the location of file containing them.
 func Load(fileOrURL string) (Configs, error) {
 	configs := Configs{}
 	return configs, load(fileOrURL, configs)
+}
+
+// Expand aliases in all rules.
+func (configs Configs) Expand() error {
+	// Gather am first.
+	am := aliasMap{}
+	for source, c := range configs {
+		for _, a := range c.Aliases {
+			if len(a.Domain) == 0 {
+				return fmt.Errorf("%v: alias %q: no domain", source, a.Name)
+			}
+			if len(a.Classes) == 0 {
+				return fmt.Errorf("%v: alias %q: no classes", source, a.Name)
+			}
+			if !am.Add(a) {
+				return fmt.Errorf("%v: alias %q: duplicate alias name", source, a.Name)
+			}
+		}
+		c.Aliases = nil // Erase unused aliases
+	}
+	// Expand aliases within aliases.
+	for more := true; more; more = false {
+		for domain, aliases := range am {
+			for alias, classes := range aliases {
+				n := len(classes)
+				aliases[alias] = am.Expand(domain, classes)
+				more = more || len(aliases[alias]) > n // Keep going till there are no more expansions
+			}
+		}
+	}
+	// Expand aliases in rules
+	for _, c := range configs {
+		for i := range c.Rules {
+			r := &c.Rules[i]
+			r.Start.Classes = am.Expand(r.Start.Domain, r.Start.Classes)
+			r.Goal.Classes = am.Expand(r.Goal.Domain, r.Goal.Classes)
+		}
+	}
+
+	return nil
 }
 
 func load(source string, configs Configs) (err error) {
@@ -58,82 +95,22 @@ func load(source string, configs Configs) (err error) {
 	return nil
 }
 
-// Apply configuration to an engine.Builder.
-func (configs Configs) Apply(b *engine.Builder) error {
-	sources := maps.Keys(configs)
-	slices.Sort(sources) // Predictable order
-	aliasMap := aliasMap{}
-
-	// Gather aliasMap first, before interpreting rules.
-	for _, source := range sources {
-		c := configs[source]
-		for _, a := range c.Aliases {
-			if _, err := b.GetDomain(a.Domain); err != nil {
-				return fmt.Errorf("%v: alias %q: %w", source, a.Name, err)
-			}
-			if len(a.Classes) == 0 {
-				return fmt.Errorf("%v: alias %q: no classes", source, a.Name)
-			}
-			if !aliasMap.Add(a) {
-				return fmt.Errorf("%v: alias %q: duplicate name", source, a.Name)
-			}
-		}
-	}
-	// Expand the aliases themselves.
-	for more := true; more; more = false {
-		for domain, aliases := range aliasMap {
-			for alias, classes := range aliases {
-				n := len(classes)
-				aliases[alias] = aliasMap.Expand(domain, classes)
-				more = more || len(aliases[alias]) > n // Keep going till there are no more expansions
-			}
-		}
-	}
-	// Add stores
-	for _, source := range sources {
-		c := configs[source]
-		for _, sc := range c.Stores {
-			sc = maps.Clone(sc)
-			b.StoreConfigs(sc)
-			if b.Err() != nil {
-				log.V(1).Error(b.Err(), "Error configuring store", "config", source, "domain", sc[korrel8r.StoreKeyDomain])
-			} else {
-				log.V(1).Info("configured store", "config", source, "store", logging.JSON(sc))
-			}
-		}
-	}
-	// Add rules
-	for _, source := range sources {
-		c := configs[source]
-		for _, r := range c.Rules {
-			r.Start.Classes = aliasMap.Expand(r.Start.Domain, r.Start.Classes)
-			r.Goal.Classes = aliasMap.Expand(r.Goal.Domain, r.Goal.Classes)
-			rule, err := newRule(b, &r)
-			if err != nil {
-				return fmt.Errorf("%v: rule %v: %w", source, r.Name, err)
-			}
-			b.Rules(rule)
-		}
-	}
-	return nil
-}
-
 // map of domain names to alias names with class name lists
 type aliasMap map[string]map[string][]string
 
-func (gm aliasMap) Add(g Class) bool {
-	if gm[g.Domain][g.Name] != nil {
-		return false // Already present, can't add.
+func (am aliasMap) Add(c Class) bool {
+	if am[c.Domain][c.Name] != nil {
+		return false // Already present.
 	}
-	if gm[g.Domain] == nil { // Create domain map if missing.
-		gm[g.Domain] = map[string][]string{}
+	if am[c.Domain] == nil { // Create domain map if missing.
+		am[c.Domain] = map[string][]string{}
 	}
-	gm[g.Domain][g.Name] = g.Classes
+	am[c.Domain][c.Name] = c.Classes
 	return true
 }
 
-func (gm aliasMap) Expand(domain string, names []string) []string {
-	aliases := gm[domain]
+func (am aliasMap) Expand(domain string, names []string) []string {
+	aliases := am[domain]
 	if aliases == nil {
 		return names
 	}

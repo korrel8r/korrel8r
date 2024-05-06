@@ -39,6 +39,7 @@ import (
 
 	openapiclient "github.com/go-openapi/runtime/client"
 	"github.com/go-openapi/strfmt"
+	"github.com/korrel8r/korrel8r/pkg/config"
 	"github.com/korrel8r/korrel8r/pkg/domains/k8s"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r/impl"
@@ -76,8 +77,12 @@ const (
 	StoreKeyAlertmanager = "alertmanager"
 )
 
-func (domain) Store(sc korrel8r.StoreConfig) (korrel8r.Store, error) {
-	metrics, alertmanager := sc[StoreKeyMetrics], sc[StoreKeyAlertmanager]
+func (domain) Store(s any) (korrel8r.Store, error) {
+	cs, err := impl.TypeAssert[config.Store](s)
+	if err != nil {
+		return nil, err
+	}
+	metrics, alertmanager := cs[StoreKeyMetrics], cs[StoreKeyAlertmanager]
 	metricsURL, err := url.Parse(metrics)
 	if err != nil {
 		return nil, err

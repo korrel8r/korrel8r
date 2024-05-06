@@ -24,12 +24,12 @@ import (
 //
 // Must be implemented by a korrel8r domain.
 type Domain interface {
-	Class(string) Class               // Class finds a class by name, returns nil if not found.
-	Classes() []Class                 // Classes returns a list of known classes in the Domain.
-	Name() string                     // Name of the domain. Domain names must not contain the character ':'.
-	Description() string              // Description for human-readable documentation.
-	Query(string) (Query, error)      // Query converts a query string to a Query object.
-	Store(StoreConfig) (Store, error) // Store creates a new store for this domain.
+	Class(string) Class              // Class finds a class by name, returns nil if not found.
+	Classes() []Class                // Classes returns a list of known classes in the Domain.
+	Name() string                    // Name of the domain. Domain names must not contain the character ':'.
+	Description() string             // Description for human-readable documentation.
+	Query(string) (Query, error)     // Query converts a query string to a Query object.
+	Store(config any) (Store, error) // Store creates a new store for this domain from a store configuration value.
 }
 
 // Class identifies a subset of objects with the same schema.
@@ -105,17 +105,6 @@ type IDer interface {
 type Previewer interface {
 	Preview(Object) string
 }
-
-// StoreConfig is a map of name:value attributes used to connect to a store.
-// The names and values depend on the type of store.
-type StoreConfig map[string]string
-
-// Store keys that may be used by any stores.
-const (
-	StoreKeyDomain     = "domain"     // Required domain name
-	StoreKeyError      = "error"      // Error message if store failed to load.
-	StoreKeyErrorCount = "errorCount" // Count of errors on a store.
-)
 
 // Constraint included in a reference to restrict the resulting objects.
 type Constraint struct {

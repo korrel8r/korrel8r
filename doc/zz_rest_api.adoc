@@ -417,7 +417,7 @@ If absent, all classes in the domain are selected. |
 
 	| rules | []link:#config-rule[ConfigRule]| `[]*ConfigRule` |  | | Rules define the relationships that korrel8r will follow. | 
 
-	| stores | []link:#korrel8r-store-config[Korrel8rStoreConfig]| `[]Korrel8rStoreConfig` |  | | Stores is a list of store configurations. | 
+	| stores | []link:#config-store[ConfigStore]| `[]ConfigStore` |  | | Stores is a list of store configurations. | 
 
 |===
 
@@ -474,6 +474,14 @@ If any template yields a blank string or an error, the rule does not apply. |
 
 |===
 
+[id=config-store]
+=== config.Store
+
+
+  
+
+link:#config-store[ConfigStore]
+
 [id=korrel8r-constraint]
 === korrel8r.Constraint
 
@@ -495,14 +503,6 @@ If any template yields a blank string or an error, the rule does not apply. |
 	| start | string| `string` |  | | Exclude results before Start. | 
 
 |===
-
-[id=korrel8r-store-config]
-=== korrel8r.StoreConfig
-
-
-  
-
-link:#korrel8r-store-config[Korrel8rStoreConfig]
 
 [id=rest-classes]
 === rest.Classes
@@ -536,7 +536,7 @@ link:#rest-classes[RestClasses]
 
 	| name | string| `string` |  | |  | 
 
-	| stores | []link:#korrel8r-store-config[Korrel8rStoreConfig]| `[]Korrel8rStoreConfig` |  | |  | 
+	| stores | []link:#config-store[ConfigStore]| `[]ConfigStore` |  | |  | 
 
 |===
 

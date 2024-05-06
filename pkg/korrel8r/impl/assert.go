@@ -36,4 +36,4 @@ func AssertRule[T interface {
 }
 
 // AssertStore will fail to compile if its argument is not a valid korrel8r.Store.
-func StoreOK(korrel8r.Store) nothing { return nil }
+func AssertStore(korrel8r.Store) nothing { return nil }

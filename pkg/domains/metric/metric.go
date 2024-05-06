@@ -36,6 +36,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/korrel8r/korrel8r/pkg/config"
 	"github.com/korrel8r/korrel8r/pkg/domains/k8s"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r/impl"
@@ -69,12 +70,16 @@ func (d domain) Query(s string) (korrel8r.Query, error) {
 
 const StoreKeyMetricURL = "metric"
 
-func (domain) Store(sc korrel8r.StoreConfig) (korrel8r.Store, error) {
+func (domain) Store(s any) (korrel8r.Store, error) {
+	cs, err := impl.TypeAssert[config.Store](s)
+	if err != nil {
+		return nil, err
+	}
 	hc, err := k8s.NewHTTPClient()
 	if err != nil {
 		return nil, err
 	}
-	return NewStore(sc[StoreKeyMetricURL], hc)
+	return NewStore(cs[StoreKeyMetricURL], hc)
 }
 
 type Class struct{} // Singleton class

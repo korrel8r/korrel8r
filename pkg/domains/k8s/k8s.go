@@ -89,7 +89,7 @@ type domain struct{}
 func (d domain) Name() string        { return "k8s" }
 func (d domain) String() string      { return d.Name() }
 func (d domain) Description() string { return "Resource objects in a Kubernetes API server" }
-func (d domain) Store(sc korrel8r.StoreConfig) (s korrel8r.Store, err error) {
+func (d domain) Store(_ any) (s korrel8r.Store, err error) {
 	cfg, err := GetConfig()
 	if err != nil {
 		return nil, err

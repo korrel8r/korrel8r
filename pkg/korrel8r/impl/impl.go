@@ -45,11 +45,14 @@ func UnmarshalQueryString(domain korrel8r.Domain, query string, data any) (korre
 	if err != nil {
 		return nil, err
 	}
-	if err := yaml.Unmarshal([]byte(qs), data); err != nil {
+	if err := Unmarshal(qs, data); err != nil {
 		return c, fmt.Errorf("invalid query: %w: %v", err, qs)
 	}
 	return c, nil
 }
+
+// Unmarshal a JSON or YAML string into a Go value.
+func Unmarshal(s string, data any) error { return yaml.Unmarshal([]byte(s), data) }
 
 // JSONString returns the JSON marshaled string from v, or the error message if marshal fails
 func JSONString(v any) string {

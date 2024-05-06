@@ -19,13 +19,13 @@ type rule = korrel8r.Rule
 
 type domain struct{}
 
-func (d domain) Name() string                                       { return "graphmock" }
-func (d domain) String() string                                     { return d.Name() }
-func (d domain) Description() string                                { return "" }
-func (d domain) Class(name string) korrel8r.Class                   { panic("not implemented") }
-func (d domain) Classes() (classes []korrel8r.Class)                { panic("not implemented") }
-func (d domain) Query(s string) (korrel8r.Query, error)             { panic("not implemented") }
-func (d domain) Store(korrel8r.StoreConfig) (korrel8r.Store, error) { panic("not implemented") }
+func (d domain) Name() string                         { return "graphmock" }
+func (d domain) String() string                       { return d.Name() }
+func (d domain) Description() string                  { return "" }
+func (d domain) Class(name string) korrel8r.Class     { panic("not implemented") }
+func (d domain) Classes() (classes []korrel8r.Class)  { panic("not implemented") }
+func (d domain) Query(string) (korrel8r.Query, error) { panic("not implemented") }
+func (d domain) Store(any) (korrel8r.Store, error)    { panic("not implemented") }
 
 type Class int
 

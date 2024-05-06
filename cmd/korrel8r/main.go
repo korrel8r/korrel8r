@@ -96,7 +96,10 @@ func main() {
 
 func newEngine() (*engine.Engine, config.Configs) {
 	c := must.Must1(config.Load(*configuration))
-	e, err := engine.Build().Domains(k8s.Domain, logdomain.Domain, netflow.Domain, alert.Domain, metric.Domain, mock.Domain("mock")).Apply(c).Engine()
+	e, err := engine.Build().
+		Domains(k8s.Domain, logdomain.Domain, netflow.Domain, alert.Domain, metric.Domain, mock.Domain("mock")).
+		Apply(c).
+		Engine()
 	must.Must(err)
 	return e, c
 }

@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/korrel8r/korrel8r/pkg/config"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r/impl"
 	"golang.org/x/exp/slices"
@@ -23,17 +24,17 @@ var (
 	_ korrel8r.Class  = Domain("").Class("")
 	_ korrel8r.Query  = Query{}
 	_ korrel8r.Rule   = &Rule{}
-	_ korrel8r.Store  = NewStore(Domain(""), nil)
+	_ korrel8r.Store  = &Store{}
 )
 
 type Domain string
 
-func (d Domain) Name() string                                          { return string(d) }
-func (d Domain) String() string                                        { return d.Name() }
-func (d Domain) Description() string                                   { return "Mock domain." }
-func (d Domain) Class(name string) korrel8r.Class                      { return Class{name: name, domain: d} }
-func (d Domain) Classes() (classes []korrel8r.Class)                   { return nil }
-func (d Domain) Store(sc korrel8r.StoreConfig) (korrel8r.Store, error) { return NewStore(d, sc), nil }
+func (d Domain) Name() string                        { return string(d) }
+func (d Domain) String() string                      { return d.Name() }
+func (d Domain) Description() string                 { return "Mock domain." }
+func (d Domain) Class(name string) korrel8r.Class    { return Class{name: name, domain: d} }
+func (d Domain) Classes() (classes []korrel8r.Class) { return nil }
+func (d Domain) Store(s any) (korrel8r.Store, error) { return NewStore(d, s) }
 func (d Domain) Query(s string) (korrel8r.Query, error) {
 	var (
 		q   Query
@@ -152,13 +153,17 @@ func (r ApplyRule) Apply(start korrel8r.Object) (korrel8r.Query, error) {
 type Store struct {
 	domain korrel8r.Domain
 	// Optional StoreConfig
-	StoreConfig korrel8r.StoreConfig
+	StoreConfig config.Store
 	// Optional constraint testing function: return true if object is accepted.
 	ConstraintFunc func(*korrel8r.Constraint, korrel8r.Object) bool
 }
 
-func NewStore(d korrel8r.Domain, sc korrel8r.StoreConfig) Store {
-	return Store{domain: d, StoreConfig: sc}
+func NewStore(d korrel8r.Domain, s any) (Store, error) {
+	sc, err := impl.TypeAssert[config.Store](s)
+	if s != nil && err != nil {
+		return Store{}, err
+	}
+	return Store{domain: d, StoreConfig: sc}, nil
 }
 
 func (s Store) Domain() korrel8r.Domain { return s.domain }

@@ -275,7 +275,7 @@
                     "description": "Stores is a list of store configurations.",
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/korrel8r.StoreConfig"
+                        "$ref": "#/definitions/config.Store"
                     }
                 }
             }
@@ -328,6 +328,12 @@
                 }
             }
         },
+        "config.Store": {
+            "type": "object",
+            "additionalProperties": {
+                "type": "string"
+            }
+        },
         "korrel8r.Constraint": {
             "type": "object",
             "properties": {
@@ -343,12 +349,6 @@
                     "description": "Exclude results before Start.",
                     "type": "string"
                 }
-            }
-        },
-        "korrel8r.StoreConfig": {
-            "type": "object",
-            "additionalProperties": {
-                "type": "string"
             }
         },
         "rest.Classes": {
@@ -374,7 +374,7 @@
                 "stores": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/korrel8r.StoreConfig"
+                        "$ref": "#/definitions/config.Store"
                     }
                 }
             }

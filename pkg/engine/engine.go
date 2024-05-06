@@ -13,6 +13,7 @@ import (
 	"text/template"
 
 	"github.com/korrel8r/korrel8r/internal/pkg/logging"
+	"github.com/korrel8r/korrel8r/pkg/config"
 	"github.com/korrel8r/korrel8r/pkg/graph"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r/impl"
@@ -46,16 +47,18 @@ func (e *Engine) DomainErr(name string) (korrel8r.Domain, error) {
 	return nil, korrel8r.DomainNotFoundError{Domain: name}
 }
 
+// FIXME rename as part of status API
+
 // StoreConfigsFor returns the expanded store configurations and status.
-func (e *Engine) StoreConfigsFor(d korrel8r.Domain) []korrel8r.StoreConfig {
-	var ret []korrel8r.StoreConfig
+func (e *Engine) StoreConfigsFor(d korrel8r.Domain) []config.Store {
+	var ret []config.Store
 	for _, s := range e.stores[d] {
 		sc := maps.Clone(s.Expanded)
 		if s.Err != nil {
-			sc[korrel8r.StoreKeyError] = s.Err.Error()
+			sc[config.StoreKeyError] = s.Err.Error()
 		}
 		if s.ErrCount > 0 {
-			sc[korrel8r.StoreKeyErrorCount] = strconv.Itoa(s.ErrCount)
+			sc[config.StoreKeyErrorCount] = strconv.Itoa(s.ErrCount)
 		}
 		ret = append(ret, sc)
 	}

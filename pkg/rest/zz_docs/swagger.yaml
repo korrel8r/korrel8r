@@ -49,7 +49,7 @@ definitions:
       stores:
         description: Stores is a list of store configurations.
         items:
-          $ref: '#/definitions/korrel8r.StoreConfig'
+          $ref: '#/definitions/config.Store'
         type: array
     type: object
   config.Configs:
@@ -86,6 +86,10 @@ definitions:
         - $ref: '#/definitions/config.ClassSpec'
         description: Start specifies the set of classes that this rule can apply to.
     type: object
+  config.Store:
+    additionalProperties:
+      type: string
+    type: object
   korrel8r.Constraint:
     properties:
       end:
@@ -97,10 +101,6 @@ definitions:
       start:
         description: Exclude results before Start.
         type: string
-    type: object
-  korrel8r.StoreConfig:
-    additionalProperties:
-      type: string
     type: object
   rest.Classes:
     additionalProperties:
@@ -118,7 +118,7 @@ definitions:
         type: string
       stores:
         items:
-          $ref: '#/definitions/korrel8r.StoreConfig'
+          $ref: '#/definitions/config.Store'
         type: array
     type: object
   rest.Edge:

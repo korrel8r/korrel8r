@@ -16,6 +16,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/korrel8r/korrel8r/internal/pkg/test"
 	"github.com/korrel8r/korrel8r/internal/pkg/test/mock"
+	"github.com/korrel8r/korrel8r/pkg/config"
 	"github.com/korrel8r/korrel8r/pkg/domains/log"
 	"github.com/korrel8r/korrel8r/pkg/domains/metric"
 	"github.com/korrel8r/korrel8r/pkg/engine"
@@ -29,13 +30,13 @@ func TestAPI_GetDomains(t *testing.T) {
 	a := newTestAPI(test.Must(engine.Build().
 		Domains(mock.Domains("foo", "bar")...).
 		StoreConfigs(
-			korrel8r.StoreConfig{"domain": "foo", "a": "1"},
-			korrel8r.StoreConfig{"domain": "foo", "b": "2"},
-			korrel8r.StoreConfig{"domain": "bar", "x": "y"},
+			config.Store{"domain": "foo", "a": "1"},
+			config.Store{"domain": "foo", "b": "2"},
+			config.Store{"domain": "bar", "x": "y"},
 		).Engine()))
 	assertDo(t, a, "GET", "/api/v1alpha1/domains", nil, 200, []Domain{
-		{Name: "bar", Stores: []korrel8r.StoreConfig{{"domain": "bar", "x": "y"}}},
-		{Name: "foo", Stores: []korrel8r.StoreConfig{{"domain": "foo", "a": "1"}, {"domain": "foo", "b": "2"}}},
+		{Name: "bar", Stores: []config.Store{{"domain": "bar", "x": "y"}}},
+		{Name: "foo", Stores: []config.Store{{"domain": "foo", "a": "1"}, {"domain": "foo", "b": "2"}}},
 	})
 }
 
@@ -143,7 +144,9 @@ func TestAPI_GetObjects(t *testing.T) {
 	d := mock.Domain("x")
 	c := d.Class("y")
 	q := mock.NewQuery(c, want...)
-	e, err := engine.Build().Domains(d).Stores(mock.NewStore(d, nil)).Engine()
+	s, err := mock.NewStore(d, nil)
+	require.NoError(t, err)
+	e, err := engine.Build().Domains(d).Stores(s).Engine()
 	require.NoError(t, err)
 	a := newTestAPI(e)
 	assertDo(t, a, "GET", "/api/v1alpha1/objects?query="+url.QueryEscape(q.String()), nil, 200, want)
@@ -244,7 +247,7 @@ func apiWithRules() (a *testAPI, x, y, z korrel8r.Class) {
 	x, y, z = foo.Class("x"), bar.Class("y"), bar.Class("z")
 	api := newTestAPI(test.Must(engine.Build().
 		Domains(foo, bar).
-		Stores(mock.NewStore(foo, nil), mock.NewStore(bar, nil)).
+		Stores(test.Must(mock.NewStore(foo, nil)), test.Must(mock.NewStore(bar, nil))).
 		Rules(mock.NewApplyRule("x-y", x, y, doubleFunc(y)), mock.NewQueryRule("y-z", y, mock.NewQuery(z, "c"))).
 		Engine()))
 	return api, x, y, z

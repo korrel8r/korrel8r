@@ -2,8 +2,6 @@
 
 package config
 
-import "github.com/korrel8r/korrel8r/pkg/korrel8r"
-
 // Config defines the configuration for an instance of korrel8r.
 // Configuration files may be JSON or YAML.
 type Config struct {
@@ -14,11 +12,22 @@ type Config struct {
 	Aliases []Class `json:"aliases,omitempty"`
 
 	// Stores is a list of store configurations.
-	Stores []korrel8r.StoreConfig `json:"stores,omitempty"`
+	Stores []Store `json:"stores,omitempty"`
 
 	// Include lists additional configuration files or URLs to include.
 	Include []string `json:"include,omitempty"`
 }
+
+// Store is a map of name:value attributes used to connect to a store.
+// The names and values depend on the type of store.
+type Store map[string]string
+
+// Store keys that may be used by any stores.
+const (
+	StoreKeyDomain     = "domain"     // Required domain name
+	StoreKeyError      = "error"      // Error message if store failed to load.
+	StoreKeyErrorCount = "errorCount" // Count of errors on a store.
+)
 
 // Rule specifies a template rule.
 // It generates one or more korrel8r.Rule.
