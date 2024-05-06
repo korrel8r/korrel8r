@@ -48,7 +48,8 @@ func TestEngine_Class(t *testing.T) {
 
 func TestFollower_Traverse(t *testing.T) {
 	d := mock.Domain("mock")
-	s := mock.NewStore(d, nil)
+	s, err := mock.NewStore(d, nil)
+	require.NoError(t, err)
 	a, b, c, z := d.Class("a"), d.Class("b"), d.Class("c"), d.Class("z")
 	e, err := Build().Rules(
 		// Return 2 results, must follow both
@@ -128,7 +129,8 @@ func TestEngine_PropagateConstraints(t *testing.T) {
 	end := start.Add(time.Minute)
 	early, ontime, late := start.Add(-1), start.Add(1), end.Add(1)
 
-	s := mock.NewStore(d, nil)
+	s, err := mock.NewStore(d, nil)
+	require.NoError(t, err)
 	s.ConstraintFunc = func(c *korrel8r.Constraint, o korrel8r.Object) bool { return c.CompareTime(o.(obj).Time) == 0 }
 
 	// Rules to test constraints.

@@ -5,15 +5,16 @@ package rest
 import (
 	"encoding/json"
 
+	"github.com/korrel8r/korrel8r/pkg/config"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 )
 
 // FIXME here
 // @description Domain configuration information.
 type Domain struct {
-	Name   string                 `json:"name"`
-	Stores []korrel8r.StoreConfig `json:"stores,omitempty"`
-	Errors []string               `json:"errors,omitempty"`
+	Name   string         `json:"name"`
+	Stores []config.Store `json:"stores,omitempty"`
+	Errors []string       `json:"errors,omitempty"`
 }
 
 // @description Classes maps class names to a short description.

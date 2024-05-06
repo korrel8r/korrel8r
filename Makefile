@@ -12,6 +12,10 @@ VERSION?=0.6.2-dev1
 IMG?=quay.io/korrel8r/korrel8r
 ## IMGTOOL: May be podman or docker.
 IMGTOOL?=$(or $(shell podman info > /dev/null 2>&1 && which podman), $(shell docker info > /dev/null 2>&1 && which docker))
+## NAMESPACE: Namespace for `make deploy`
+NAMESPACE=korrel8r
+## CONFIG: Configuration file for `make run`
+CONFIG?=etc/korrel8r/korrel8r.yaml
 
 # Setting GOENV
 GOOS := $(shell go env GOOS)
@@ -80,7 +84,6 @@ cover: ## Run tests and show code coverage in browser.
 	go test -coverprofile=test.cov ./...
 	go tool cover --html test.cov; sleep 2 # Sleep required to let browser start up.
 
-CONFIG=etc/korrel8r/korrel8r.yaml
 run: $(GENERATED) ## Run `korrel8r web` using configuration in ./etc/korrel8r
 	go run ./cmd/korrel8r web -c $(CONFIG) $(ARGS)
 
@@ -97,15 +100,33 @@ image-name: ## Print the full image name and tag.
 	@echo $(IMAGE)
 
 WATCH=kubectl get events -A --watch-only& trap "kill %%" EXIT;
+WAIT_DEPLOYMENT=$(WATCH) kubectl wait -n $(NAMESPACE) --for=condition=available --timeout=60s deployment.apps/korrel8r
+DEPLOY_ROUTE=kubectl apply -k config/route -n $(NAMESPACE) || echo "skipping route" # Non-openshift cluster
 
-deploy: image $(KUSTOMIZE)	## Deploy to current cluster using kustomize.
-	cd config; $(KUSTOMIZE) edit set image "quay.io/korrel8r/korrel8r=$(IMAGE)"
+kustomize-edit: $(KUSTOMIZE)
+	cd config;								\
+	$(KUSTOMIZE) edit set image "quay.io/korrel8r/korrel8r=$(IMAGE)";	\
+	$(KUSTOMIZE) edit set namespace "$(NAMESPACE)"
+
+deploy: image kustomize-edit	## Deploy to current cluster using kustomize.
 	kubectl apply -k config
-	kubectl apply -k config/route || echo "skipping route"
-	$(WATCH) kubectl wait -n korrel8r --for=condition=available --timeout=60s deployment.apps/korrel8r
+	$(DEPLOY_ROUTE)
+	$(WAIT_DEPLOYMENT)
+
+deploy-ns: image kustomize-edit	## Deploy only namespace-scoped resources.
+	@rm -rf tmp/resources; mkdir -p tmp/resources
+	kustomize build config -o tmp/resources
+	kubectl apply -f tmp/resources/apps_v1_deployment_korrel8r.yaml -f tmp/resources/v1_service_korrel8r.yaml
+	$(DEPLOY_ROUTE)
+	$(WAIT_DEPLOYMENT)
+
+restart:			## Force restart of pods.
+	kubectl get -n $(NAMESPACE) pod -o name | xargs -r oc delete -n $(NAMESPACE)
+	$(WAIT_DEPLOYMENT)
 
 undeploy:
-	kubectl delete -k config
+	@kubectl delete -k config/route || true
+	@kubectl delete -k config || true
 
 # Run asciidoctor from an image.
 ADOC_RUN=$(IMGTOOL) run -iq -v./doc:/doc:z -v./_site:/_site:z quay.io/rhdevdocs/devspaces-documentation

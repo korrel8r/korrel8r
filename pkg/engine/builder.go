@@ -3,15 +3,18 @@
 package engine
 
 import (
-	"errors"
 	"fmt"
-	"maps"
 	"reflect"
 	"slices"
 	"text/template"
 
+	"maps"
+
 	sprig "github.com/go-task/slim-sprig"
+	"github.com/korrel8r/korrel8r/pkg/config"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
+	"github.com/korrel8r/korrel8r/pkg/rules"
+	"github.com/korrel8r/korrel8r/pkg/unique"
 )
 
 //  FIXME config stuff here from config package.
@@ -34,14 +37,6 @@ func Build() *Builder {
 	return &Builder{e: e}
 }
 
-// Err returns a non-nil error if anything goes wrong during building.
-func (b *Builder) Err() error { return b.err }
-
-func (b *Builder) error(err error) bool {
-	b.err = errors.Join(b.err, err)
-	return b.err != nil
-}
-
 func (b *Builder) Domains(domains ...korrel8r.Domain) *Builder {
 	for _, d := range domains {
 		switch b.e.domains[d.Name()] {
@@ -52,7 +47,7 @@ func (b *Builder) Domains(domains ...korrel8r.Domain) *Builder {
 				maps.Copy(b.e.templateFuncs, tf.TemplateFuncs())
 			}
 		default:
-			b.error(fmt.Errorf("Duplicate domain name: %v", d.Name()))
+			b.err = fmt.Errorf("Duplicate domain name: %v", d.Name())
 			return b
 		}
 	}
@@ -63,7 +58,7 @@ func (b *Builder) Stores(stores ...korrel8r.Store) *Builder {
 	for _, s := range stores {
 		d := s.Domain()
 		b.Domains(d)
-		if b.Err() != nil {
+		if b.err != nil {
 			return b
 		}
 		b.e.stores[d] = append(b.e.stores[d], &store{Store: s})
@@ -71,15 +66,20 @@ func (b *Builder) Stores(stores ...korrel8r.Store) *Builder {
 	return b
 }
 
-func (b *Builder) StoreConfigs(storeConfigs ...korrel8r.StoreConfig) *Builder {
+func (b *Builder) StoreConfigs(storeConfigs ...config.Store) *Builder {
 	for _, sc := range storeConfigs {
-		d, err := b.GetDomain(sc[korrel8r.StoreKeyDomain])
-		if b.error(err) {
-			continue
+		if b.err != nil {
+			return b
+		}
+		sc = maps.Clone(sc)
+		d := b.getDomain(sc[config.StoreKeyDomain])
+		if b.err != nil {
+			return b
 		}
 		ss := b.e.stores[d]
-		if slices.IndexFunc(ss, func(s *store) bool { return reflect.DeepEqual(sc, s.Original) }) >= 0 {
-			continue // Already present
+		if slices.ContainsFunc(ss, func(s *store) bool { return reflect.DeepEqual(sc, s.Original) }) {
+			b.err = fmt.Errorf("duplicate store configuration: %v", sc)
+			return b
 		}
 		b.e.stores[d] = append(ss, &store{Original: sc})
 	}
@@ -88,16 +88,33 @@ func (b *Builder) StoreConfigs(storeConfigs ...korrel8r.StoreConfig) *Builder {
 
 func (b *Builder) Rules(rules ...korrel8r.Rule) *Builder {
 	for _, r := range rules {
+		if b.err != nil {
+			return b
+		}
 		r2 := b.e.rulesByName[r.Name()]
-		switch {
-		case r2 == nil:
-			b.Domains(r.Start()[0].Domain(), r.Goal()[0].Domain())
-			b.e.rulesByName[r.Name()] = r
-			b.e.rules = append(b.e.rules, r)
-		case reflect.DeepEqual(r, r2):
-			// Rule is already present, ignore
-		default:
-			_ = b.error(fmt.Errorf("Duplicate rule name: %v", r.Name()))
+		if r2 != nil {
+			b.err = fmt.Errorf("Duplicate rule name: %v", r.Name())
+			return b
+		}
+		b.Domains(r.Start()[0].Domain(), r.Goal()[0].Domain())
+		b.e.rulesByName[r.Name()] = r
+		b.e.rules = append(b.e.rules, r)
+	}
+	return b
+}
+
+// Apply an engine.Builder.
+func (b *Builder) Apply(configs config.Configs) *Builder {
+	if b.err != nil {
+		return b
+	}
+	if b.err = configs.Expand(); b.err != nil {
+		return b
+	}
+	for source, c := range configs {
+		b.config(source, c)
+		if b.err != nil {
+			b.err = fmt.Errorf("%v: %w", source, b.err)
 			return b
 		}
 	}
@@ -109,19 +126,67 @@ func (b *Builder) Rules(rules ...korrel8r.Rule) *Builder {
 func (b *Builder) Engine() (*Engine, error) {
 	e := b.e
 	b.e = nil
-	// Create all the stores so we have status if there are any problems.
+	// Create all stores to report problems early.
 	for d, ss := range e.stores {
 		for _, s := range ss {
 			// Not an error if create fails, will be registered in stores.
 			_ = s.Ensure(d, func(s string) (string, error) { return e.execTemplate(s, nil) })
 		}
 	}
-	return e, b.Err()
+	return e, b.err
 }
 
-type Applier interface{ Apply(*Builder) error }
+func (b *Builder) config(source string, c *config.Config) {
+	if b.err != nil {
+		return
+	}
+	b.StoreConfigs(c.Stores...)
+	for _, r := range c.Rules {
+		if b.err != nil {
+			return
+		}
+		start := b.classes(&r.Start)
+		if b.err != nil {
+			return
+		}
+		goal := b.classes(&r.Goal)
+		if b.err != nil {
+			return
+		}
+		var tmpl *template.Template
+		tmpl, b.err = template.New(r.Name).Funcs(b.e.TemplateFuncs()).Parse(r.Result.Query)
+		if b.err != nil {
+			return
+		}
+		b.Rules(rules.NewTemplateRule(start, goal, tmpl))
+	}
+}
 
-func (b *Builder) Apply(a Applier) *Builder { b.err = errors.Join(b.err, a.Apply(b)); return b }
+func (b *Builder) classes(spec *config.ClassSpec) []korrel8r.Class {
+	d := b.getDomain(spec.Domain)
+	if b.err != nil {
+		return nil
+	}
+	list := unique.NewList[korrel8r.Class]()
+	if len(spec.Classes) == 0 {
+		list.Append(d.Classes()...) // Missing class list means all classes in domain.
+	} else {
+		for _, class := range spec.Classes {
+			c := d.Class(class)
+			if c == nil {
+				b.err = korrel8r.ClassNotFoundError{Class: class, Domain: d}
+				return nil
+			}
+			list.Append(c)
+		}
+	}
+	if len(list.List) == 0 {
+		b.err = fmt.Errorf("invalid class specification: %#+v", *spec)
+	}
+	return list.List
+}
 
-func (b *Builder) GetDomain(name string) (korrel8r.Domain, error) { return b.e.DomainErr(name) }
-func (b *Builder) GetTemplateFuncs() map[string]any               { return b.e.TemplateFuncs() }
+func (b *Builder) getDomain(name string) (d korrel8r.Domain) {
+	d, b.err = b.e.DomainErr(name)
+	return
+}

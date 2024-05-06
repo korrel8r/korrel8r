@@ -278,7 +278,7 @@ const docTemplate = `{
                     "description": "Stores is a list of store configurations.",
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/korrel8r.StoreConfig"
+                        "$ref": "#/definitions/config.Store"
                     }
                 }
             }
@@ -331,6 +331,12 @@ const docTemplate = `{
                 }
             }
         },
+        "config.Store": {
+            "type": "object",
+            "additionalProperties": {
+                "type": "string"
+            }
+        },
         "korrel8r.Constraint": {
             "type": "object",
             "properties": {
@@ -346,12 +352,6 @@ const docTemplate = `{
                     "description": "Exclude results before Start.",
                     "type": "string"
                 }
-            }
-        },
-        "korrel8r.StoreConfig": {
-            "type": "object",
-            "additionalProperties": {
-                "type": "string"
             }
         },
         "rest.Classes": {
@@ -377,7 +377,7 @@ const docTemplate = `{
                 "stores": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/korrel8r.StoreConfig"
+                        "$ref": "#/definitions/config.Store"
                     }
                 }
             }

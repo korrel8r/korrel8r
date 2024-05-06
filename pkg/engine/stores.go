@@ -8,17 +8,18 @@ import (
 	"io"
 	"sync"
 
+	"github.com/korrel8r/korrel8r/pkg/config"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 )
 
 type store struct {
 	lock sync.Mutex
 
-	Original korrel8r.StoreConfig // Original templated config to create the store.
-	Expanded korrel8r.StoreConfig // Expanded template used for last creation attempt.
-	Store    korrel8r.Store       // Store client. Nil if store needs to be re-created.
-	Err      error                // Last non-nil error from Store.Get() or Domain.Store()
-	ErrCount int                  // Count of errors from Store.Get() and Domain.Store()
+	Original config.Store   // Original templated config to create the store.
+	Expanded config.Store   // Expanded template used for last creation attempt.
+	Store    korrel8r.Store // Store client. Nil if store needs to be re-created.
+	Err      error          // Last non-nil error from Store.Get() or Domain.Store()
+	ErrCount int            // Count of errors from Store.Get() and Domain.Store()
 }
 
 func (s *store) Get(ctx context.Context, q korrel8r.Query, constraint *korrel8r.Constraint, result korrel8r.Appender, expand func(string) (string, error)) (err error) {
@@ -67,7 +68,7 @@ func (s *store) ensure(d korrel8r.Domain, expand func(string) (string, error)) (
 		}
 	}()
 	// Expand the store config each time - the results may change.
-	s.Expanded = korrel8r.StoreConfig{}
+	s.Expanded = config.Store{}
 	for k, v := range s.Original {
 		vv, err := expand(v)
 		if err != nil {
