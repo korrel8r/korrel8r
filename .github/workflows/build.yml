@@ -21,7 +21,9 @@ jobs:
           key: cache-${{ runner.os }}-${{ runner.arch }}
 
       - name: Generate and Lint
-        run: make generate lint
+        run: |
+          make generate lint
+          git diff --exit-code
 
       - name: Test
         run: make test-skip
