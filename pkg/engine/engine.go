@@ -43,7 +43,7 @@ func (e *Engine) DomainErr(name string) (korrel8r.Domain, error) {
 	if d := e.Domain(name); d != nil {
 		return d, nil
 	}
-	return nil, korrel8r.DomainNotFoundErr{Domain: name}
+	return nil, korrel8r.DomainNotFoundError{Domain: name}
 }
 
 // StoreConfigsFor returns the expanded store configurations and status.
@@ -79,7 +79,7 @@ func (e *Engine) DomainClass(domain, class string) (korrel8r.Class, error) {
 	}
 	c := d.Class(class)
 	if c == nil {
-		return nil, korrel8r.ClassNotFoundErr{Class: class, Domain: d}
+		return nil, korrel8r.ClassNotFoundError{Class: class, Domain: d}
 	}
 	return c, nil
 }

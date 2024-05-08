@@ -43,7 +43,7 @@ func classes(b *engine.Builder, spec *ClassSpec) ([]korrel8r.Class, error) {
 		for _, class := range spec.Classes {
 			c := d.Class(class)
 			if c == nil {
-				return nil, korrel8r.ClassNotFoundErr{Class: class, Domain: d}
+				return nil, korrel8r.ClassNotFoundError{Class: class, Domain: d}
 			}
 			list.Append(c)
 		}
