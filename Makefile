@@ -6,7 +6,7 @@ help: ## Display this help.
 	@grep -E '^## [A-Z0-9_]+: ' Makefile | sed 's/^## \([A-Z0-9_]*\): \(.*\)/\1#\2/' | column -s'#' -t
 
 ## VERSION: Semantic version for release. Use a -dev suffix for work in progress.
-VERSION?=0.6.2-dev1
+VERSION?=0.6.2-dev3
 
 ## IMG: Base name of image to build or deploy, without version tag.
 IMG?=quay.io/korrel8r/korrel8r
@@ -15,7 +15,7 @@ IMGTOOL?=$(or $(shell podman info > /dev/null 2>&1 && which podman), $(shell doc
 ## NAMESPACE: Namespace for `make deploy`
 NAMESPACE=korrel8r
 ## CONFIG: Configuration file for `make run`
-CONFIG?=etc/korrel8r/korrel8r.yaml
+CONFIG?=etc/korrel8r/openshift-route.yaml
 
 # Setting GOENV
 GOOS := $(shell go env GOOS)
@@ -99,8 +99,7 @@ image: image-build ## Build and push image. IMG must be set to a writable image 
 image-name: ## Print the full image name and tag.
 	@echo $(IMAGE)
 
-WATCH=kubectl get events -A --watch-only& trap "kill %%" EXIT;
-WAIT_DEPLOYMENT=$(WATCH) kubectl wait -n $(NAMESPACE) --for=condition=available --timeout=60s deployment.apps/korrel8r
+WAIT_DEPLOYMENT=hack/wait.sh deployment -n $(NAMESPACE) deployment.apps/korrel8r
 DEPLOY_ROUTE=kubectl apply -k config/route -n $(NAMESPACE) || echo "skipping route" # Non-openshift cluster
 
 kustomize-edit: $(KUSTOMIZE)
@@ -157,5 +156,5 @@ release: all image ## Create a release tag and latest image. Working tree must b
 	hack/tag-release.sh $(VERSION)
 	$(IMGTOOL) push -q "$(IMAGE)" "$(IMG):latest"
 
-Tools: $(BINGO) ## Download all tools needed for development
+tools: $(BINGO) ## Download all tools needed for development
 	$(BINGO) get

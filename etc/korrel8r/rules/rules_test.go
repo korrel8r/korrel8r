@@ -31,7 +31,7 @@ import (
 )
 
 func setup() *engine.Engine {
-	configs := test.Must(config.Load("../korrel8r.yaml"))
+	configs := test.Must(config.Load("all.yaml"))
 	for _, c := range configs {
 		c.Stores = nil // Use fake stores, not configured defaults.
 	}

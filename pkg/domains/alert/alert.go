@@ -91,7 +91,7 @@ func (domain) Store(s any) (korrel8r.Store, error) {
 	if err != nil {
 		return nil, err
 	}
-	hc, err := k8s.NewHTTPClient()
+	hc, err := k8s.NewHTTPClient(cs)
 	if err != nil {
 		return nil, err
 	}

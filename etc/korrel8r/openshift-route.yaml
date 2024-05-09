@@ -1,5 +1,5 @@
-# Default configuraiton for OpenShift clusters.
-# Get host names from default store routes to construct the store URLs.
+# Configuration for running Korrel8r outside of an OpenShift cluster.
+# Template URLs get the store host from routes provided when stores are installed in their default locations.
 stores:
   - domain: k8s
   - domain: alert
@@ -12,6 +12,5 @@ stores:
   - domain: netflow
     lokiStack: 'https://{{(get "k8s:Route:{namespace: netobserv, name: loki}" | first).Spec.Host}}'
 
-# Include all rules
 include:
   - rules/all.yaml
