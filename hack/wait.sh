@@ -44,6 +44,12 @@ subscription() {
 	done
 }
 
+# Wait for a deployment to be available.
+deployment() {
+	exists "$@" >/dev/null || return 1
+	kubectl wait "$@" --for=condition=available --timeout=60s
+}
+
 # Wait for a workload to roll out.
 rollout() {
 	retry oc get "$@" >/dev/null || return 1
@@ -52,7 +58,9 @@ rollout() {
 }
 
 case "$1" in
-exists | subscription | rollout)
+exists | subscription | rollout | deployment)
+	kubectl get events -A --watch-only &
+	trap "kill %%" EXIT
 	"$@"
 	;;
 *)

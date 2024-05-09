@@ -1,0 +1,20 @@
+# Default configuration for deploying Korrel8r as a service in an OpenShift cluster.
+# Store service URLs assume that stores are installed in their default locations.
+stores:
+  - domain: k8s
+  - domain: alert
+    metrics: https://thanos-querier.openshift-monitoring.svc:9091
+    alertmanager: https://alertmanager-main.openshift-monitoring.svc:9094
+    certificateAuthority: ./run/secrets/kubernetes.io/serviceaccount/service-ca.crt
+  - domain: log
+    lokiStack: https://logging-loki-gateway-http.openshift-logging.svc:8080
+    certificateAuthority: ./run/secrets/kubernetes.io/serviceaccount/service-ca.crt
+  - domain: metric
+    metric: https://thanos-querier.openshift-monitoring.svc:9091
+    certificateAuthority: ./run/secrets/kubernetes.io/serviceaccount/service-ca.crt
+  - domain: netflow
+    lokiStack: https://loki-gateway-http.netobserv.svc:8080
+    certificateAuthority: ./run/secrets/kubernetes.io/serviceaccount/service-ca.crt
+
+include:
+  - rules/all.yaml

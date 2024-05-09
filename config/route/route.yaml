@@ -7,4 +7,4 @@ spec:
     kind: Service
     name: korrel8r
   tls:
-    termination: passthrough
+    termination: reencrypt

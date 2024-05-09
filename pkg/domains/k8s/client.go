@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
+	kconfig "github.com/korrel8r/korrel8r/pkg/config"
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
@@ -30,11 +31,15 @@ func NewClient(cfg *rest.Config) (c client.Client, err error) {
 	return client.New(cfg, client.Options{Scheme: Scheme})
 }
 
-// NewHTTPClient returns a new client for GetConfig()
-func NewHTTPClient() (*http.Client, error) {
+// NewHTTPClient returns a new client with TLS settingsn from Store config.
+func NewHTTPClient(s kconfig.Store) (*http.Client, error) {
 	cfg, err := GetConfig()
 	if err != nil {
 		return nil, err
+	}
+	ca := s[kconfig.StoreKeyCA]
+	if ca != "" {
+		cfg.TLSClientConfig.CAFile = ca
 	}
 	return rest.HTTPClientFor(cfg)
 }

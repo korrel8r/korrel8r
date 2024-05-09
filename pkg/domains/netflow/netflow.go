@@ -86,16 +86,16 @@ const (
 )
 
 func (domain) Store(s any) (korrel8r.Store, error) {
-	sc, err := impl.TypeAssert[config.Store](s)
+	cs, err := impl.TypeAssert[config.Store](s)
 	if err != nil {
 		return nil, err
 	}
-	hc, err := k8s.NewHTTPClient()
+	hc, err := k8s.NewHTTPClient(cs)
 	if err != nil {
 		return nil, err
 	}
 
-	loki, lokiStack := sc[StoreKeyLoki], sc[StoreKeyLokiStack]
+	loki, lokiStack := cs[StoreKeyLoki], cs[StoreKeyLokiStack]
 	switch {
 
 	case loki != "" && lokiStack != "":

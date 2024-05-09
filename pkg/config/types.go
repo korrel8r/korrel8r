@@ -24,9 +24,10 @@ type Store map[string]string
 
 // Store keys that may be used by any stores.
 const (
-	StoreKeyDomain     = "domain"     // Required domain name
-	StoreKeyError      = "error"      // Error message if store failed to load.
-	StoreKeyErrorCount = "errorCount" // Count of errors on a store.
+	StoreKeyDomain     = "domain"               // Required domain name
+	StoreKeyError      = "error"                // Error message if store failed to load.
+	StoreKeyErrorCount = "errorCount"           // Count of errors on a store.
+	StoreKeyCA         = "certificateAuthority" // Path to CA certificate.
 )
 
 // Rule specifies a template rule.

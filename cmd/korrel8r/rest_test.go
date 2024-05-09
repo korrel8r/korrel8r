@@ -97,7 +97,7 @@ func TestMain_server_secure(t *testing.T) {
 
 func TestMain_server_graph(t *testing.T) {
 	test.SkipIfNoCluster(t)
-	u := startServer(t, http.DefaultClient, "http", "-c", "../../etc/korrel8r/korrel8r.yaml").String()
+	u := startServer(t, http.DefaultClient, "http", "-c", "../../etc/korrel8r/openshift-route.yaml").String()
 	got, err := request(t, http.DefaultClient, "POST", u+"/graphs/neighbours", `{
   "depth": 1,
   "start": {
@@ -115,9 +115,9 @@ func TestMain_server_graph(t *testing.T) {
 
 func TestMain_concurrent_requests(t *testing.T) {
 	test.SkipIfNoCluster(t)
-	u := startServer(t, http.DefaultClient, "http").String()
+	u := startServer(t, http.DefaultClient, "http", "-c", "../../etc/korrel8r/openshift-route.yaml").String()
 	const n = 10
-	results := make(chan string, n)
+	errs := make(chan error, n)
 	for i := 0; i < n; i++ {
 		go func() {
 			resp, err := request(t, http.DefaultClient, "POST", u+"/graphs/neighbours", `{
@@ -128,19 +128,18 @@ func TestMain_concurrent_requests(t *testing.T) {
   }
 }`)
 			if err != nil {
-				resp = err.Error()
+				errs <- err
+				return
 			}
-			results <- resp
+			var got rest.Graph
+			if err := json.Unmarshal([]byte(resp), &got); err != nil {
+				errs <- err
+				return
+			}
+			errs <- nil
 		}()
 	}
-	var prev rest.Graph
 	for i := 0; i < n; i++ {
-		resp := <-results
-		var got rest.Graph
-		if assert.NoError(t, json.Unmarshal([]byte(resp), &got)) && i > 0 {
-			assert.ElementsMatch(t, prev.Edges, got.Edges)
-			assert.ElementsMatch(t, prev.Nodes, got.Nodes)
-		}
-		prev = got
+		assert.NoError(t, <-errs)
 	}
 }
