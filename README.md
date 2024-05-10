@@ -26,5 +26,5 @@ Rules form a _graph_. Walking the graph can correlate data via indirect relation
 
 ⚠️ **NOTE**: _Early development, no compatibility guarantees_ ⚠️
 
-<!-- NOTE: All documentation on this site uses asciidoc, exccept for this README -->
-<!--       This README is in markdown due to limitations of pkg.dev.go -->
+<!-- ❗NOTE❗ All documentation on this site uses asciidoc, exccept for this README. -->
+<!-- This README is markdown to display properly on pkg.go.dev, for Go package documentation. -->
