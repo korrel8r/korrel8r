@@ -1,6 +1,6 @@
 module github.com/korrel8r/korrel8r
 
-go 1.21.5
+go 1.21
 
 // Bogus version that gets incorrectly required if not excluded.
 exclude k8s.io/client-go v12.0.0+incompatible
