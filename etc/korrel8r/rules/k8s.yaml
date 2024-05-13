@@ -18,7 +18,6 @@ aliases:
     domain: k8s
     classes:
       - Service
-      - Route.route.openshift.io
       - Ingress.networking.k8s.io
       - NetworkPolicy.networking.k8s.io
 
@@ -33,8 +32,6 @@ aliases:
   - name: users
     domain: k8s
     classes:
-#      - User.users.openshift.io
-#      - Group.users.openshift.io
       - ServiceAccount
       - Role.rbac.authorization.k8s.io
       - RoleBinding.rbac.authorization.k8s.io
@@ -57,17 +54,6 @@ aliases:
       - StatefulSet.apps
       - Job.batch
       - PodDisruptionBudget.policy
-#      - ClusterOperator
-#      - MachineHealthCheck
-#      - MachineSet
-#      - PodMonitor
-#      - ServiceMonitor
-#      - ClusterServiceVersion
-#      - OperatorGroup
-#      - Operator
-#      - PackageManifest
-#      - AppliedClusterResourceQuota
-#      - ClusterResourceQuota
 
   - name: namespacedResources
     domain: k8s
@@ -82,7 +68,6 @@ aliases:
       - ReplicationController
       - PersistentVolumeClaim
       - Service
-      - Route.route.openshift.io
       - Ingress.networking.k8s.io
 
 rules:
