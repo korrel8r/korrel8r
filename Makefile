@@ -5,8 +5,8 @@ help: ## Display this help.
 	@echo; echo  = Variables =
 	@grep -E '^## [A-Z0-9_]+: ' Makefile | sed 's/^## \([A-Z0-9_]*\): \(.*\)/\1#\2/' | column -s'#' -t
 
-## VERSION: Semantic version, default is pre-release based on git-describe.
-VERSION?=$(shell hack/semver-describe.sh)
+## VERSION: Semantic version for release, use -dev for development pre-release versions.
+VERSION?=0.6.3
 ## IMG_ORG: org name for images, for example quay.io/alanconway.
 IMG_ORG?=$(error Set IMG_ORG to organization prefix for images, e.g. IMG_ORG=quay.io/alanconway)
 ## IMGTOOL: May be podman or docker.
@@ -152,7 +152,9 @@ doc/zz_rest_api.adoc: pkg/rest/zz_docs $(shell find etc/swagger) $(SWAGGER)
 doc/zz_api-ref.adoc:
 	curl -qf https://raw.githubusercontent.com/alanconway/operator/main/doc/zz_api-ref.adoc > doc/zz_api-ref.adoc
 
-release: all image ## Create a release tag and latest image. Working tree must be clean.
+pre-release: all image ## Set VERISON and IMG_ORG to build release artifacts. Commit before doing 'make release'.
+
+release: pre-release		## Set VERISON and IMG_ORG to push release tags and images.
 	hack/tag-release.sh $(VERSION)
 	$(IMGTOOL) push -q "$(IMAGE)" "$(IMG):latest"
 

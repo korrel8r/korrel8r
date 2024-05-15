@@ -4,11 +4,12 @@ Steps to release a new version X.Y.Z, for maintainers.
 
 On branch `main`:
 
-. `make all image VERSION=X.Y.Z IMG_ORG=quay.io/korrel8r` must pass without errors.
-. Commit changes (they should only be version related) as 'Release X.Y.Z'
+. Edit Makefile and set 'VERSION=X.Y.Z'
+. `make pre-release IMG_ORG=quay.io/korrel8r`
+. Verify all changes are version related, commit with message 'Release X.Y.Z'
 +
 NOTE: Normally the only changes in a release commit are `Makefile` and `version.txt`
-. `make release VERSION=X.Y.Z IMG_ORG=quay.io/korrel8r` - does the following:
-  - Re-run `make all image`
-  - Run `hack/tag-release.sh`: check the working tree is clean, create and push the git vX.Y.Z tag.
-  - Push a `:latest` tag for the korrel8r image.
+. `make release IMG_ORG=quay.io/korrel8r`
+  - Re-runs 'make pre-release', verifies the working tree is clean.
+  - Creates and pushs the git tag 'vX.Y.Z'
+  - Pushes ':latest' tag for images.
