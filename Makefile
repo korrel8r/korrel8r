@@ -5,17 +5,20 @@ help: ## Display this help.
 	@echo; echo  = Variables =
 	@grep -E '^## [A-Z0-9_]+: ' Makefile | sed 's/^## \([A-Z0-9_]*\): \(.*\)/\1#\2/' | column -s'#' -t
 
-## VERSION: Semantic version for release. Use a -dev suffix for work in progress.
-VERSION?=0.6.3-dev
-
-## IMG: Base name of image to build or deploy, without version tag.
-IMG?=quay.io/korrel8r/korrel8r
+## VERSION: Semantic version, default is pre-release based on git-describe.
+VERSION?=$(shell hack/semver-describe.sh)
+## IMG_ORG: org name for images, for example quay.io/alanconway.
+IMG_ORG?=$(error Set IMG_ORG to organization prefix for images, e.g. IMG_ORG=quay.io/alanconway)
 ## IMGTOOL: May be podman or docker.
 IMGTOOL?=$(or $(shell podman info > /dev/null 2>&1 && which podman), $(shell docker info > /dev/null 2>&1 && which docker))
 ## NAMESPACE: Namespace for `make deploy`
 NAMESPACE=korrel8r
 ## CONFIG: Configuration file for `make run`
 CONFIG?=etc/korrel8r/openshift-route.yaml
+
+# Name of image.
+IMG?=$(IMG_ORG)/korrel8r
+IMAGE=$(IMG):$(VERSION)
 
 # Setting GOENV
 GOOS := $(shell go env GOOS)
@@ -86,9 +89,6 @@ cover: ## Run tests and show code coverage in browser.
 
 run: $(GENERATED) ## Run `korrel8r web` using configuration in ./etc/korrel8r
 	go run ./cmd/korrel8r web -c $(CONFIG) $(ARGS)
-
-# Full name of image
-IMAGE=$(IMG):$(VERSION)
 
 image-build: $(VERSION_TXT) ## Build image locally, don't push.
 	$(IMGTOOL) build --tag=$(IMAGE) -f Containerfile .

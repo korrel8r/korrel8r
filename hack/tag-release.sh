@@ -6,11 +6,11 @@ VERSION=$1
 	echo "not a semantic version X.Y.Z: $VERSION"
 	exit 1
 }
-[ "$(git status -sb)" = "## main...origin/main" ] || {
+[ "$(git status -s)" = "" ] || {
 	git status
 	echo "working directory not clean"
 	exit 1
 }
 set -x
 git tag "v$VERSION" -a -m "Release $VERSION"
-git push origin "v$VERSION"
+git push --follow-tags

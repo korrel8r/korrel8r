@@ -1,15 +1,14 @@
 = Releasing a new version
 
-Steps to release a new version, for maintainers.
+Steps to release a new version X.Y.Z, for maintainers.
 
 On branch `main`:
 
-. Update the VERSION variable in `Makefile` to the semantic version number of the release (no leading "v")
-. `make all image` - must pass with no errors.
-. Commit and push your changes with comment "Release X.Y.Z".
+. `make all image VERSION=X.Y.Z IMG_ORG=quay.io/korrel8r` must pass without errors.
+. Commit changes (they should only be version related) as 'Release X.Y.Z'
 +
 NOTE: Normally the only changes in a release commit are `Makefile` and `version.txt`
-. `make release` - does the following:
+. `make release VERSION=X.Y.Z IMG_ORG=quay.io/korrel8r` - does the following:
   - Re-run `make all image`
   - Run `hack/tag-release.sh`: check the working tree is clean, create and push the git vX.Y.Z tag.
   - Push a `:latest` tag for the korrel8r image.
