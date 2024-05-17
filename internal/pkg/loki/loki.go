@@ -7,12 +7,14 @@ package loki
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"path"
 	"strconv"
 	"time"
 
+	"github.com/korrel8r/korrel8r/internal/pkg/logging"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 )
 
@@ -80,13 +82,17 @@ func (c *Client) queryURL(logQL string, constraint *korrel8r.Constraint) *url.UR
 
 func (c *Client) get(u *url.URL, collect CollectFunc) error {
 	u = c.base.ResolveReference(u)
+	logging.Log().V(4).Info("loki get", "url", u)
 	resp, err := c.c.Get(u.String())
 	if err != nil {
 		return fmt.Errorf("%w: %v", err, u)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode/100 != 2 {
-		return fmt.Errorf("%v: %v", resp.Status, u)
+		if b, err := io.ReadAll(resp.Body); err == nil && len(b) > 0 {
+			return fmt.Errorf("%v: %v", resp.Status, string(b))
+		}
+		return fmt.Errorf("%v", resp.Status)
 	}
 	qr := response{}
 	if err = json.NewDecoder(resp.Body).Decode(&qr); err != nil {

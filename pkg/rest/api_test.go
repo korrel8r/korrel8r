@@ -17,7 +17,7 @@ import (
 	"github.com/korrel8r/korrel8r/internal/pkg/test"
 	"github.com/korrel8r/korrel8r/internal/pkg/test/mock"
 	"github.com/korrel8r/korrel8r/pkg/config"
-	"github.com/korrel8r/korrel8r/pkg/domains/log"
+	logDomain "github.com/korrel8r/korrel8r/pkg/domains/log"
 	"github.com/korrel8r/korrel8r/pkg/domains/metric"
 	"github.com/korrel8r/korrel8r/pkg/engine"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
@@ -41,11 +41,11 @@ func TestAPI_GetDomains(t *testing.T) {
 }
 
 func TestAPI_GetDomainClasses(t *testing.T) {
-	a := newTestAPI(test.Must(engine.Build().Domains(log.Domain, metric.Domain).Engine()))
+	a := newTestAPI(test.Must(engine.Build().Domains(logDomain.Domain, metric.Domain).Engine()))
 	assertDo(t, a, "GET", "/api/v1alpha1/domains/log/classes", nil, 200, Classes{
-		"application":    log.Application.Description(),
-		"audit":          log.Audit.Description(),
-		"infrastructure": log.Infrastructure.Description(),
+		"application":    logDomain.Application.Description(),
+		"audit":          logDomain.Audit.Description(),
+		"infrastructure": logDomain.Infrastructure.Description(),
 	})
 	assertDo(t, a, "GET", "/api/v1alpha1/domains/metric/classes", nil, 200, Classes{
 		"metric": metric.Domain.Classes()[0].Description(),

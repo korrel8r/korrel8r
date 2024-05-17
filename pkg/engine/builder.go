@@ -17,8 +17,6 @@ import (
 	"github.com/korrel8r/korrel8r/pkg/unique"
 )
 
-//  FIXME config stuff here from config package.
-
 // Builder initializes the state of an engine.
 // Engine() returns the immutable engine instance.
 type Builder struct {

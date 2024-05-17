@@ -28,14 +28,10 @@ func (s *store) Get(ctx context.Context, q korrel8r.Query, constraint *korrel8r.
 	if err := s.ensure(q.Class().Domain(), expand); err != nil {
 		return err
 	}
-	defer func() {
-		if err != nil {
-			log.V(2).Info("Get error", "error", err, "query", q)
-			s.Err = err
-			s.ErrCount++
-		}
-	}()
-	if err := s.Store.Get(ctx, q, constraint, result); err != nil {
+	err = s.Store.Get(ctx, q, constraint, result)
+	if err != nil {
+		s.Err = err
+		s.ErrCount++
 		if s.Original != nil { // Only re-create if there is some configuration.
 			// Close the broken store if it is an io.Closer()
 			if c, ok := s.Store.(io.Closer); ok {
@@ -43,9 +39,8 @@ func (s *store) Get(ctx context.Context, q korrel8r.Query, constraint *korrel8r.
 			}
 			s.Store = nil // Re-create on next use
 		}
-		return err
 	}
-	return nil
+	return err
 }
 
 // Ensure the store is connected.
@@ -74,7 +69,7 @@ func (s *store) ensure(d korrel8r.Domain, expand func(string) (string, error)) (
 		if err != nil {
 			return err
 		}
-		s.Expanded[k] = vv // FIXME CONCURRENT HERE
+		s.Expanded[k] = vv
 	}
 	// Create the store
 	ns, err := d.Store(s.Expanded)

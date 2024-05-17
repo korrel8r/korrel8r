@@ -83,7 +83,7 @@ func main() {
 			if !ok || *panicOnErr {
 				panic(r)
 			}
-			log.Error(err, "Fatal", "details", logging.Go(err))
+			log.Error(err, "Fatal")
 			fmt.Fprintf(os.Stderr, "\n%v\n", err)
 			os.Exit(1)
 		}
@@ -93,6 +93,7 @@ func main() {
 }
 
 func newEngine() (*engine.Engine, config.Configs) {
+	log.V(1).Info("loading configuration", "config", *configuration)
 	c := must.Must1(config.Load(*configuration))
 	e, err := engine.Build().
 		Domains(k8s.Domain, logdomain.Domain, netflow.Domain, alert.Domain, metric.Domain, mock.Domain("mock")).

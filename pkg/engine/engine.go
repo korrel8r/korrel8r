@@ -47,8 +47,6 @@ func (e *Engine) DomainErr(name string) (korrel8r.Domain, error) {
 	return nil, korrel8r.DomainNotFoundError{Domain: name}
 }
 
-// FIXME rename as part of status API
-
 // StoreConfigsFor returns the expanded store configurations and status.
 func (e *Engine) StoreConfigsFor(d korrel8r.Domain) []config.Store {
 	var ret []config.Store
@@ -126,7 +124,7 @@ func (e *Engine) Follower(ctx context.Context, c *korrel8r.Constraint) *Follower
 // Start populates the start node for with objects and results of queries.
 // Queries and objects must be of the same class as the node.
 func (e *Engine) Start(ctx context.Context, start *graph.Node, objects []korrel8r.Object, queries []korrel8r.Query, constraint *korrel8r.Constraint) error {
-	start.Result.Append(objects...) // FIXME verify objects are of correct class...
+	start.Result.Append(objects...)
 	for _, query := range queries {
 		if query.Class() != start.Class {
 			return fmt.Errorf("class mismatch in query %v: expected class %v", query, start)

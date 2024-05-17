@@ -9,7 +9,6 @@ import (
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 )
 
-// FIXME here
 // @description Domain configuration information.
 type Domain struct {
 	Name   string         `json:"name"`
@@ -109,9 +108,4 @@ type Edge struct {
 type Graph struct {
 	Nodes []Node `json:"nodes"`
 	Edges []Edge `json:"edges,omitempty"`
-}
-
-// @description StoreStatus contains status of known stores.
-type StoresStatus struct {
-	// FIXME
 }

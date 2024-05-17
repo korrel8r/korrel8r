@@ -11,5 +11,5 @@ On branch `main`:
 NOTE: Normally the only changes in a release commit are `Makefile` and `version.txt`
 . `make release IMG_ORG=quay.io/korrel8r`
   - Re-runs 'make pre-release', verifies the working tree is clean.
-  - Creates and pushs the git tag 'vX.Y.Z'
+  - Creates and pushes the git tag 'vX.Y.Z'
   - Pushes ':latest' tag for images.

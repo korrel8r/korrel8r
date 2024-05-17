@@ -12,7 +12,7 @@
 # SrcK8S_OwnerName
 # SrcK8S_Type
 #
-# FIXME update documentation:
+# TODO update documentation:
 # - link to netflow format
 # - meaning of K8S_* vs K8S_Owner*
 

@@ -110,7 +110,6 @@ func TestMain_server_graph(t *testing.T) {
 	require.NoError(t, json.Unmarshal([]byte(got), &g))
 	require.NotEmpty(t, g.Nodes)
 	require.NotEmpty(t, g.Edges)
-	// FIXME better tests.
 }
 
 func TestMain_concurrent_requests(t *testing.T) {

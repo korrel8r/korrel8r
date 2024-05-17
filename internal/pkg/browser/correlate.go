@@ -130,7 +130,7 @@ func (c *correlate) update(req *http.Request) {
 		log.V(2).Info("update complete", "duration", c.UpdateTime)
 	}()
 	c.reset(req.URL)
-	var constraint *korrel8r.Constraint // FIXME implement constraints
+	var constraint *korrel8r.Constraint
 	if !c.addErr(c.updateStart(), "start") {
 		// Prime the start node with initial results
 		start := c.Graph.NodeFor(c.StartClass)

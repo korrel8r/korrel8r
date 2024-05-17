@@ -118,7 +118,7 @@ The _query-details_ part depends on the domain, see {xref-domain}
 .Example of rules and aliases.
 [source,yaml]
 ----
-FIXME NEED EXAMPLE.
+TODOo: Example
 ----
 
 == Templates
@@ -131,4 +131,3 @@ Korrel8r provides some additional _template functions_ that can be used in confi
 - General purpose functions from the {slim-sprig} library are always available.
 - Some domains provide additional functions, see {xref-domain}.
 - The following functions are always available: +
-  FIXME DOCUMENT TEMPLATE FUNCTIONS

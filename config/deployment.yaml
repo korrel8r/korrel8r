@@ -22,10 +22,11 @@ spec:
         command:
           - "korrel8r"
           - "web"
+          - "--verbose=2"
           - "--https=:8443"
           - "--cert=/etc/secrets/tls.crt"
           - "--key=/etc/secrets/tls.key"
-          - "--config=etc/korrel8r/openshift-svc.yaml"
+          - "--config=/etc/korrel8r/openshift-svc.yaml"
         volumeMounts:
           - name: secrets
             readOnly: true

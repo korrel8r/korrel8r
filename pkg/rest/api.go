@@ -20,11 +20,15 @@
 package rest
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/korrel8r/korrel8r/internal/pkg/logging"
 	"github.com/korrel8r/korrel8r/pkg/config"
 	"github.com/korrel8r/korrel8r/pkg/engine"
 	"github.com/korrel8r/korrel8r/pkg/graph"
@@ -34,6 +38,8 @@ import (
 	swaggoFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 )
+
+var log = logging.Log()
 
 // BasePath is the versioned base path for the current version of the REST API.
 var BasePath = docs.SwaggerInfo.BasePath
@@ -46,6 +52,7 @@ type API struct {
 // New API instance, registers  handlers with a gin Engine.
 func New(e *engine.Engine, c config.Configs, r *gin.Engine) (*API, error) {
 	a := &API{Engine: e, Configs: c}
+	r.Use(a.logRequest)
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggoFiles.Handler))
 	r.GET("/api", func(c *gin.Context) { c.Redirect(http.StatusPermanentRedirect, "/swagger/index.html") })
 	v := r.Group(docs.SwaggerInfo.BasePath)
@@ -269,4 +276,18 @@ func (a *API) classes(c *gin.Context, apiClasses []string) (classes []korrel8r.C
 		}
 	}
 	return classes
+}
+
+func (a *API) logRequest(c *gin.Context) {
+	start := time.Now()
+	log := log.WithValues("from", c.Request.RemoteAddr, "method", c.Request.Method, "url", c.Request.URL)
+	if c.Request != nil && c.Request.Body != nil && log.V(2).Enabled() {
+		body, _ := io.ReadAll(c.Request.Body)
+		c.Request.Body = io.NopCloser(bytes.NewReader(body))
+		log.V(2).Info("request received", "body", string(body))
+	}
+	defer func() {
+		log.V(2).Info("request complete", "duration", time.Since(start))
+	}()
+	c.Next()
 }

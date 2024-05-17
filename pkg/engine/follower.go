@@ -67,8 +67,11 @@ func (f *Follower) Traverse(l *graph.Line) bool {
 			}
 			l.Queries.Set(q, result.Count)
 			goal.Queries.Set(q, result.Count)
-			if result.Count > 0 {
+			switch {
+			case result.Count > 0:
 				log.V(3).Info("Query result", "count", result.Count)
+			case log.V(4).Enabled():
+				log.V(3).Info("Query result empty")
 			}
 			return true
 		}

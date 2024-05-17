@@ -69,5 +69,3 @@ func ConsoleURL(ctx context.Context, c client.Client) (*url.URL, error) {
 		Host:   host,
 	}, err
 }
-
-// FIXME still needed?

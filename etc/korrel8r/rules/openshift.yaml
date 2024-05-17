@@ -1,4 +1,3 @@
-# FIXME optional ruleset based on existence of classes?
 rules:
    - name: ConsolePluginToService
      start:

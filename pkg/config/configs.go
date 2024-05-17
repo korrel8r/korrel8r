@@ -64,6 +64,9 @@ func (configs Configs) Expand() error {
 	for _, c := range configs {
 		for i := range c.Rules {
 			r := &c.Rules[i]
+			if r.Name == "" {
+				return fmt.Errorf("rule has no name: %#+v", *r)
+			}
 			r.Start.Classes = am.Expand(r.Start.Domain, r.Start.Classes)
 			r.Goal.Classes = am.Expand(r.Goal.Domain, r.Goal.Classes)
 		}
