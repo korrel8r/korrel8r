@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func Test_AlertToDeployment(t *testing.T) {
+func TestAlertTRules(t *testing.T) {
 	e := setup()
 	for _, x := range []struct {
 		rule  string
@@ -35,6 +35,11 @@ func Test_AlertToDeployment(t *testing.T) {
 			rule:  "AlertToStatefulSet",
 			start: alert.Object{Labels: map[string]string{"namespace": "foo", "statefulset": "bar"}},
 			want:  `k8s:StatefulSet.v1.apps:{"namespace":"foo","name":"bar"}`,
+		},
+		{
+			rule:  "AlertToPodDisruptionBudget",
+			start: alert.Object{Labels: map[string]string{"namespace": "foo", "poddisruptionbudget": "bar"}},
+			want:  `k8s:PodDisruptionBudget.v1.policy:{"namespace":"foo","name":"bar"}`,
 		},
 		{
 			rule:  "AlertToMetric",

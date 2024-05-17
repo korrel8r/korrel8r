@@ -4,6 +4,7 @@ package k8s
 
 import (
 	appsv1 "github.com/openshift/api/apps/v1"
+	consolev1 "github.com/openshift/api/console/v1"
 	oauthv1 "github.com/openshift/api/oauth/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	securityv1 "github.com/openshift/api/security/v1"
@@ -19,12 +20,17 @@ var Scheme = apiruntime.NewScheme()
 
 // TODO extend this set, consider using discover or dynamic objects?
 func init() {
-	runtime.Must(scheme.AddToScheme(Scheme))
-	runtime.Must(appsv1.AddToScheme(Scheme))
-	runtime.Must(oauthv1.AddToScheme(Scheme))
-	runtime.Must(routev1.AddToScheme(Scheme))
-	runtime.Must(securityv1.AddToScheme(Scheme))
-	runtime.Must(storagev1.AddToScheme(Scheme))
-	runtime.Must(userv1.AddToScheme(Scheme))
-	runtime.Must(operators.AddToScheme(Scheme))
+	for _, add := range []func(*apiruntime.Scheme) error{
+		scheme.AddToScheme,
+		appsv1.AddToScheme,
+		oauthv1.AddToScheme,
+		routev1.AddToScheme,
+		securityv1.AddToScheme,
+		storagev1.AddToScheme,
+		userv1.AddToScheme,
+		operators.AddToScheme,
+		consolev1.AddToScheme,
+	} {
+		runtime.Must(add(Scheme))
+	}
 }

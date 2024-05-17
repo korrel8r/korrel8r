@@ -75,4 +75,9 @@ func TestMain(m *testing.M) {
 // tested marks a rule as having been tested.
 func tested(ruleName string) { rules.Remove(ruleName) }
 
+func apply(e *engine.Engine, ruleName string, start korrel8r.Object) (korrel8r.Query, error) {
+	tested(ruleName)
+	return e.Rule(ruleName).Apply(start)
+}
+
 var rules = unique.Set[string]{}

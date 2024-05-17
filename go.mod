@@ -13,7 +13,7 @@ require (
 	github.com/go-openapi/runtime v0.26.2
 	github.com/go-openapi/strfmt v0.22.0
 	github.com/go-task/slim-sprig v2.20.0+incompatible
-	github.com/openshift/api v0.0.0-20240116232628-6d48d55c0598
+	github.com/openshift/api v0.0.0-20240517002838-931fa9860c01
 	github.com/operator-framework/api v0.21.0
 	github.com/pkg/profile v1.7.0
 	github.com/prometheus/alertmanager v0.26.0
