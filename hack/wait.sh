@@ -1,70 +1,76 @@
-#!/bin/bash
-# Wait for resources and conditions
+#!/usr/bin/env bash
 
 set -e -o pipefail
 
-RETRY_LIMIT=${RETRY_LIMIT:-6}
-RETRY_DELAY=${RETRY_DELAY:-5}
-TIMEOUT=5m
-
-retry() {
-	until "$@"; do
-		echo "waiting for: $*"
-		sleep "$RETRY_DELAY"
-		if [ $((++n)) = "$RETRY_LIMIT" ]; then
-			echo "timed out: $*"
-			return 1
-		fi
-	done
-}
-
-# Wait for resources to exist.
-exists() {
-	retry oc get "$@"
-}
+declare RETRY_LIMIT=${RETRY_LIMIT:-6}
+declare RETRY_DELAY=${RETRY_DELAY:-5}
+declare -r ROLLOUT_TIMEOUT=5m
 
 # Wait for a subscription to have a CSV with phase=succeeded.
 subscription() {
-	if [ "$1" = "-n" ]; then
-		NS_FLAG="-n $2"
-		shift
-		shift
-	fi
+	local ns=$1
+	shift 1
+	local csv=""
 	for NAME in "$@"; do
-		until CSV=$(oc get "$NS_FLAG" subscription/"$NAME" -o jsonpath='{.status.currentCSV}') && [ -n "$CSV" ]; do
-			echo "waiting for CSV for subscription/$NAME $NS_FLAG"
-			sleep "$RETRY_DELAY"
-		done
-		until [[ -n $(oc get -n "$NAMESPACE" csv/"$CSV" -o jsonpath='{.status.phase}') ]]; do
-			echo "waiting for csv/$CSV status $NS_FLAG"
-			sleep "$RETRY_DELAY"
-		done
-		echo "waiting for $CSV to have phase Succeeded"
-		oc wait --allow-missing-template-keys=true --for=jsonpath='{.status.phase}'=Succeeded "$NS_FLAG" csv/"$CSV" || return 1
+		wait_for_resource "$ns" get subscription/"$NAME" -o jsonpath='{.status.currentCSV}' || return 1
+		csv=$(kubectl get -n "$ns" subscription/"$NAME" -o jsonpath='{.status.currentCSV}')
+		wait_for_resource "$ns" get csv/"$csv" -o jsonpath='{.status.phase}' || return 1
+		oc wait --allow-missing-template-keys=true --for=jsonpath='{.status.phase}'=Succeeded -n "$ns" csv/"$csv" || return 1
 	done
 }
 
-# Wait for a deployment to be available.
-deployment() {
-	exists "$@" >/dev/null || return 1
-	kubectl wait "$@" --for=condition=available --timeout=60s
+# Wait for a specific condition in a resource.
+wait_for_resource() {
+	local ns=$1
+	local cmd=$2
+	shift 2
+	echo "Waiting for $* to be satisfied in $ns"
+	local -i tries=0
+	while ! kubectl "$cmd" -n "$ns" "$@" >/dev/null && [[ $tries -lt $RETRY_LIMIT ]]; do
+		tries=$((tries + 1))
+		echo "...[$tries / $RETRY_LIMIT]: waiting for $* to be satisfied in $ns"
+		sleep "$RETRY_DELAY"
+	done
+	kubectl "$cmd" -n "$ns" "$@" >/dev/null || {
+		echo "failed to get $* in $ns"
+		return 1
+	}
+	return 0
 }
 
 # Wait for a workload to roll out.
 rollout() {
-	retry oc get "$@" >/dev/null || return 1
+	local ns=$1
+	shift 1
+	wait_for_resource "$ns" get "$@" || return 1
 	echo "waiting for rollout status: $*"
-	oc rollout status --watch --timeout="$TIMEOUT" "$@" || return 1
+	wait_for_resource "$ns" rollout status --watch --timeout="$ROLLOUT_TIMEOUT" "$@" || return 1
 }
 
-case "$1" in
-exists | subscription | rollout | deployment)
-	kubectl get events -A --watch-only &
-	trap "kill %%" EXIT
-	"$@"
-	;;
-*)
-	echo "$0 [$CMDS] [-n NAMESPACE] [RESOURCE...]"
-	exit 1
-	;;
-esac
+# Show usage.
+show_usage() {
+	echo "Usage: $0 {subscription|rollout} [NAMESPACE] [RESOURCE...]"
+}
+
+main() {
+	[[ "$#" -lt 1 ]] && {
+		show_usage
+		return 1
+	}
+	local op=$1
+	shift
+	case "$op" in
+	subscription | rollout)
+		kubectl get events -A --watch-only &
+		trap "kill %%" EXIT
+		"$op" "$@"
+		return $?
+		;;
+	*)
+		show_usage
+		return 1
+		;;
+	esac
+}
+
+main "$@"
