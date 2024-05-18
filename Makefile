@@ -99,7 +99,7 @@ image: image-build ## Build and push image. IMG must be set to a writable image 
 image-name: ## Print the full image name and tag.
 	@echo $(IMAGE)
 
-WAIT_DEPLOYMENT=hack/wait.sh deployment -n $(NAMESPACE) deployment.apps/korrel8r
+WAIT_DEPLOYMENT=hack/wait.sh rollout $(NAMESPACE) deployment.apps/korrel8r
 DEPLOY_ROUTE=kubectl apply -k config/route -n $(NAMESPACE) || echo "skipping route" # Non-openshift cluster
 
 kustomize-edit: $(KUSTOMIZE)
