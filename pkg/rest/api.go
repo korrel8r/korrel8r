@@ -205,7 +205,7 @@ func (a *API) goalsRequest(c *gin.Context) (g *graph.Graph, goals []korrel8r.Cla
 	if c.Errors != nil {
 		return nil, nil
 	}
-	g = a.Engine.Graph().AllPaths(start, goals...)
+	g = a.Engine.Graph().ShortestPaths(start, goals...)
 	var err error
 	g, err = a.Engine.GoalSearch(c.Request.Context(), g, start, objects, queries, constraint, goals)
 	if !check(c, http.StatusInternalServerError, err) {
