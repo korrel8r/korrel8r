@@ -6,7 +6,7 @@ help: ## Display this help.
 	@grep -E '^## [A-Z0-9_]+: ' Makefile | sed 's/^## \([A-Z0-9_]*\): \(.*\)/\1#\2/' | column -s'#' -t
 
 ## VERSION: Semantic version for release, use -dev for development pre-release versions.
-VERSION?=0.6.3
+VERSION?=0.6.4-dev
 ## IMG_ORG: org name for images, for example quay.io/alanconway.
 IMG_ORG?=$(error Set IMG_ORG to organization prefix for images, e.g. IMG_ORG=quay.io/alanconway)
 ## IMGTOOL: May be podman or docker.
@@ -28,14 +28,14 @@ LOCALBIN ?= $(shell pwd)/tmp/bin
 
 include .bingo/Variables.mk	# Versioned tools
 
-check: generate lint test ## Lint and test code.
+check: lint test ## Lint and test code.
 
 all: check install _site image-build ## Build and test everything locally. Recommended before pushing.
 
 clean: ## Remove generated files, including checked-in files.
 	rm -vrf bin _site $(GENERATED) $(shell find . -name 'zz_*')
 
-VERSION_TXT=cmd/korrel8r/version.txt
+VERSION_TXT=pkg/build/version.txt
 
 ifneq ($(VERSION),$(file <$(VERSION_TXT)))
 .PHONY: $(VERSION_TXT) # Force update if VERSION_TXT does not match $(VERSION)
@@ -69,7 +69,7 @@ SHELLCHECK:= $(LOCALBIN)/shellcheck
 $(SHELLCHECK):
 	./hack/shellcheck.sh
 
-lint: $(VERSION_TXT) $(GOLANGCI_LINT) $(SHFMT) $(SHELLCHECK) ## Run the linter to find and fix code style problems.
+lint: generate $(GOLANGCI_LINT) $(SHFMT) $(SHELLCHECK) ## Run the linter to find and fix code style problems.
 	$(GOLANGCI_LINT) run --fix
 	$(SHFMT) -l -w ./**/*.sh
 	go mod tidy

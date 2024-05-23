@@ -16,6 +16,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/korrel8r/korrel8r/internal/pkg/logging"
 	"github.com/korrel8r/korrel8r/internal/pkg/must"
+	"github.com/korrel8r/korrel8r/pkg/build"
 	"github.com/korrel8r/korrel8r/pkg/domains/k8s"
 	"github.com/korrel8r/korrel8r/pkg/engine"
 	"github.com/korrel8r/korrel8r/pkg/openshift"
@@ -39,11 +40,11 @@ type Browser struct {
 	dir, files string
 }
 
-func New(e *engine.Engine, router *gin.Engine, version string) (*Browser, error) {
+func New(e *engine.Engine, router *gin.Engine) (*Browser, error) {
 	b := &Browser{
 		engine:  e,
 		router:  router,
-		version: version,
+		version: build.Version,
 		images:  http.FS(must.Must1(fs.Sub(images, "images"))),
 	}
 	var err error

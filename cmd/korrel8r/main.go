@@ -11,6 +11,7 @@ import (
 	"github.com/korrel8r/korrel8r/internal/pkg/logging"
 	"github.com/korrel8r/korrel8r/internal/pkg/must"
 	"github.com/korrel8r/korrel8r/internal/pkg/test/mock"
+	"github.com/korrel8r/korrel8r/pkg/build"
 	"github.com/korrel8r/korrel8r/pkg/config"
 	"github.com/korrel8r/korrel8r/pkg/domains/alert"
 	"github.com/korrel8r/korrel8r/pkg/domains/k8s"
@@ -23,13 +24,10 @@ import (
 )
 
 var (
-	//go:embed version.txt
-	version string
-
 	rootCmd = &cobra.Command{
 		Use:     "korrel8r",
 		Short:   "Observability signal correlation tool.",
-		Version: strings.TrimSpace(version),
+		Version: strings.TrimSpace(build.Version),
 	}
 	log = logging.Log()
 
@@ -107,7 +105,7 @@ func newEngine() (*engine.Engine, config.Configs) {
 var versionCmd = &cobra.Command{
 	Use:   "version",
 	Short: "Print version.",
-	Run:   func(cmd *cobra.Command, args []string) { fmt.Println(rootCmd.Version) },
+	Run:   func(cmd *cobra.Command, args []string) { fmt.Println(build.Version) },
 }
 
 func init() { rootCmd.AddCommand(versionCmd) }
