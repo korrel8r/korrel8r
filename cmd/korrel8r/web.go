@@ -8,7 +8,6 @@ import (
 
 	"github.com/gin-contrib/pprof"
 	"github.com/gin-gonic/gin"
-	"github.com/korrel8r/korrel8r/internal/pkg/browser"
 	"github.com/korrel8r/korrel8r/internal/pkg/logging"
 	"github.com/korrel8r/korrel8r/internal/pkg/must"
 	"github.com/korrel8r/korrel8r/pkg/build"
@@ -17,10 +16,13 @@ import (
 )
 
 var webCmd = &cobra.Command{
-	Use:   "web [ADDR] [flags]",
-	Short: "Start web server listening on host:port address ADDR (default :8080 for http, :8443 for https)",
+	Use:   "web [flags]",
+	Short: "Start REST server. Listening address must be  provided via --http or --https.",
 	Args:  cobra.NoArgs,
 	Run: func(_ *cobra.Command, args []string) {
+		if *htmlFlag || *restFlag {
+			log.Info("DEPRECATED --html and --rest are deprecated. HTML server no longer supported.")
+		}
 		if *httpFlag == "" && *httpsFlag == "" {
 			*httpFlag = ":8080" // Default if no port specified.
 		}
@@ -49,38 +51,34 @@ var webCmd = &cobra.Command{
 		if *verbose >= 2 {
 			router.Use(gin.Logger())
 		}
-		if *htmlFlag {
-			b := must.Must1(browser.New(engine, router))
-			defer b.Close()
-		}
-		if *restFlag {
-			r := must.Must1(rest.New(engine, configs, router))
-			defer r.Close()
-		}
+		r := must.Must1(rest.New(engine, configs, router))
+		defer r.Close()
 		s.Handler = router
 		pprof.Register(router) // Enable profiling
 
 		if *httpFlag != "" {
-			log.Info("listening for http", "addr", s.Addr, "version", build.Version)
+			log.Info("listening for http", "addr", s.Addr, "version", build.Version())
 			must.Must(s.ListenAndServe())
 		} else {
-			log.Info("listening for https", "addr", s.Addr, "version", build.Version)
+			log.Info("listening for https", "addr", s.Addr, "version", build.Version())
 			must.Must(s.ListenAndServeTLS(*certFlag, *keyFlag))
 		}
 	},
 }
 
 var (
-	htmlFlag, restFlag                     *bool
 	httpFlag, httpsFlag, certFlag, keyFlag *string
+	htmlFlag, restFlag                     *bool
 )
 
 func init() {
 	rootCmd.AddCommand(webCmd)
-	htmlFlag = webCmd.Flags().Bool("html", true, "serve human-readabe HTML web pages")
-	restFlag = webCmd.Flags().Bool("rest", true, "serve machine readable REST API")
 	httpFlag = webCmd.Flags().String("http", "", "host:port address for insecure http listener")
 	httpsFlag = webCmd.Flags().String("https", "", "host:port address for secure https listener")
 	certFlag = webCmd.Flags().String("cert", "", "TLS certificate file (PEM format) for https")
 	keyFlag = webCmd.Flags().String("key", "", "Private key (PEM format) for https")
+
+	// DEPRECATED: remove in future version.
+	htmlFlag = webCmd.Flags().Bool("html", false, "DEPRECATED - use korrel8rcli instead.")
+	restFlag = webCmd.Flags().Bool("rest", true, "DEPRECATED - always enabled.")
 }

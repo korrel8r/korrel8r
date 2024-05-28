@@ -5,7 +5,10 @@ package build
 
 import (
 	_ "embed"
+	"strings"
 )
 
 //go:embed version.txt
-var Version string
+var version string
+
+func Version() string { return strings.TrimSpace(version) }

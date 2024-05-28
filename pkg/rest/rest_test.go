@@ -53,9 +53,9 @@ func TestAPI_GetDomainClasses(t *testing.T) {
 }
 
 func TestAPI_ListGoals(t *testing.T) {
-	a, x, y, z := apiWithRules()
+	a, x, y, z := apiRules()
 	assertDo(t, a, "POST", "/api/v1alpha1/lists/goals",
-		GoalsRequest{
+		Goals{
 			Start: Start{
 				Class:   x.String(),
 				Queries: []string{x.String() + `:["a"]`},
@@ -82,8 +82,8 @@ func TestAPI_ListGoals(t *testing.T) {
 		})
 }
 
-func TestAPI_GraphGoals_withRules(t *testing.T) {
-	a, x, y, z := apiWithRules()
+func TestAPI_GraphGoals_rules(t *testing.T) {
+	a, x, y, z := apiRules()
 	yQueries := []QueryCount{
 		{Query: mock.NewQuery(y, "aa").String(), Count: 1},
 		{Query: mock.NewQuery(y, "bb").String(), Count: 1},
@@ -92,8 +92,8 @@ func TestAPI_GraphGoals_withRules(t *testing.T) {
 		{Query: mock.NewQuery(z, "c").String(), Count: 1},
 	}
 	xQuery := mock.NewQuery(x, "a").String()
-	assertDo(t, a, "POST", "/api/v1alpha1/graphs/goals?withRules=true",
-		GoalsRequest{
+	assertDo(t, a, "POST", "/api/v1alpha1/graphs/goals?rules=true",
+		Goals{
 			Start: Start{
 				Class:   x.String(),
 				Queries: []string{xQuery},
@@ -116,10 +116,10 @@ func TestAPI_GraphGoals_withRules(t *testing.T) {
 }
 
 func TestAPI_PostNeighbours_noRules(t *testing.T) {
-	a, x, y, _ := apiWithRules()
+	a, x, y, _ := apiRules()
 	qc := []QueryCount{{Query: mock.NewQuery(y, "aa").String(), Count: 1}}
 	assertDo(t, a, "POST", "/api/v1alpha1/graphs/neighbours",
-		NeighboursRequest{
+		Neighbours{
 			Start: Start{
 				Class:   x.String(),
 				Objects: []json.RawMessage{[]byte(`"a"`)},
@@ -242,7 +242,7 @@ func doubleFunc(goal korrel8r.Class) func(korrel8r.Object) (korrel8r.Query, erro
 	}
 }
 
-func apiWithRules() (a *testAPI, x, y, z korrel8r.Class) {
+func apiRules() (a *testAPI, x, y, z korrel8r.Class) {
 	foo, bar := mock.Domain("foo"), mock.Domain("bar")
 	x, y, z = foo.Class("x"), bar.Class("y"), bar.Class("z")
 	api := newTestAPI(test.Must(engine.Build().

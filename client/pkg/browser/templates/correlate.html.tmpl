@@ -1,0 +1,47 @@
+{{template "header.html.tmpl" .}}
+<body>
+  <form onsubmit="return validate()">
+    <div style="white-space: nowrap">
+      <label for="start" title="start query"><b>Start: </b></label>
+      <input type="text" id="start" name="start" value="{{.Start}}" size="50" accesskey="k">
+      <br>
+    </div>
+    <div style="white-space: nowrap">
+      <label for="goal" title="goal class or neighbourhood depth"><b>Goal/Depth: </b></label>
+      <input type="text" id="goal" name="goal" value="{{.Goal}}" size="50" accesskey="k">
+      <br>
+    </div>
+    <p>
+      <input type="submit" id="submit" value="Update Graph">
+      <span id="waiting" style="display:none;"><img src="images/gears.gif" id="loading"></span>
+    </p>
+  </form>
+
+  <script type="text/javascript">
+   <!-- Show spinner while waiting -->
+   function validate(form) {
+     document.getElementById("submit").style.display="none";
+     document.getElementById("results").style.display="none";
+     document.getElementById("waiting").style.display="";
+     return true;
+   }
+  </script>
+
+  <div id="results">
+    {{with .Err}}
+      <hr>
+      <h2>Errors</h2>
+      <div style="white-space: pre-line; border-width:2px; border-style:solid; border-color:red"> {{printf "%+v" .}}</div>
+    {{end}}
+
+    {{if .Diagram}}
+      <hr>
+      <h3>Diagram</h3>
+      <p align="center">
+        <object type="image/svg+xml" data="{{.Diagram}}"></object><br>
+        <a href="{{.DiagramImg}}" target="_blank">Image</a>
+        <a href="{{.DiagramTxt}}" target="_blank">Source</a>
+      </p>
+    {{end}}
+  </div>
+</body>

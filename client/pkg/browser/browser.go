@@ -9,21 +9,19 @@ import (
 	"errors"
 	"html/template"
 	"io/fs"
+	"log"
 	"net/http"
 	"os"
 	"path/filepath"
 
 	"github.com/gin-gonic/gin"
-	"github.com/korrel8r/korrel8r/internal/pkg/logging"
+	"github.com/korrel8r/korrel8r/client/pkg/swagger/client"
 	"github.com/korrel8r/korrel8r/internal/pkg/must"
-	"github.com/korrel8r/korrel8r/pkg/build"
 	"github.com/korrel8r/korrel8r/pkg/domains/k8s"
-	"github.com/korrel8r/korrel8r/pkg/engine"
 	"github.com/korrel8r/korrel8r/pkg/openshift"
 )
 
 var (
-	log = logging.Log()
 	//go:embed templates
 	templates embed.FS
 	//go:embed images
@@ -33,29 +31,28 @@ var (
 // Browser implements HTTP handlers for web browsers.
 type Browser struct {
 	version    string
-	engine     *engine.Engine
+	client     *client.RESTAPI
 	console    *openshift.Console
 	router     *gin.Engine
 	images     http.FileSystem
 	dir, files string
 }
 
-func New(e *engine.Engine, router *gin.Engine) (*Browser, error) {
+func New(restClient *client.RESTAPI, router *gin.Engine) (*Browser, error) {
 	b := &Browser{
-		engine:  e,
-		router:  router,
-		version: build.Version,
-		images:  http.FS(must.Must1(fs.Sub(images, "images"))),
+		client: restClient,
+		router: router,
+		images: http.FS(must.Must1(fs.Sub(images, "images"))),
 	}
 	var err error
 	if b.dir, err = os.MkdirTemp("", "korrel8r"); err == nil {
-		log.V(1).Info("working directory", "dir", b.dir)
 		b.files = filepath.Join(b.dir, "files")
 		err = os.Mkdir(b.files, 0700)
 	}
 	if err != nil {
 		return nil, err
 	}
+	log.Println("Using temporary directory: ", b.dir)
 	cfg, err := k8s.GetConfig()
 	if err != nil {
 		return nil, err
@@ -69,9 +66,9 @@ func New(e *engine.Engine, router *gin.Engine) (*Browser, error) {
 		return nil, err
 	}
 	b.console = openshift.NewConsole(consoleURL, kc)
-	c := &correlate{browser: b}
+	c := &correlate{Browser: b}
 
-	tmpl := template.Must(template.New("").Funcs(b.engine.TemplateFuncs()).ParseFS(templates, "templates/*.tmpl"))
+	tmpl := template.Must(template.New("").ParseFS(templates, "templates/*.tmpl"))
 	router.SetHTMLTemplate(tmpl)
 	router.GET("/", func(c *gin.Context) { c.Redirect(http.StatusMovedPermanently, "/correlate") })
 	router.GET("/correlate", c.HTML)
@@ -86,17 +83,12 @@ func New(e *engine.Engine, router *gin.Engine) (*Browser, error) {
 }
 
 // Close should be called on shutdown to clean up external resources.
-func (b *Browser) Close() {
-	if err := os.RemoveAll(b.dir); err != nil {
-		log.Error(err, "Closing")
-	}
-}
+func (b *Browser) Close() { _ = os.RemoveAll(b.dir) }
 
 func httpError(c *gin.Context, err error, code int) bool {
 	if err != nil {
 		_ = c.Error(err)
 		c.HTML(code, "error.html.tmpl", c)
-		log.Error(err, "Page error")
 	}
 	return err != nil
 }

@@ -28,36 +28,23 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
-        "/configuration": {
-            "get": {
-                "tags": [
-                    "configuration"
-                ],
-                "summary": "Dump configuration files and their contents.",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/config.Configs"
-                        }
-                    }
-                }
-            }
-        },
         "/domains": {
             "get": {
-                "tags": [
-                    "configuration"
-                ],
-                "summary": "List all configured domains and stores.",
+                "summary": "Get name, configuration and status for each domain.",
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/rest.Domain"
+                                "$ref": "#/definitions/Domain"
                             }
+                        }
+                    },
+                    "default": {
+                        "description": "",
+                        "schema": {
+                            "type": "string"
                         }
                     }
                 }
@@ -65,14 +52,11 @@ const docTemplate = `{
         },
         "/domains/{domain}/classes": {
             "get": {
-                "tags": [
-                    "configuration"
-                ],
-                "summary": "Get class names and descriptions for the domain.",
+                "summary": "Get class names and descriptions for a domain.",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Domain to get classes from.",
+                        "description": "Domain name",
                         "name": "domain",
                         "in": "path",
                         "required": true
@@ -82,7 +66,13 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/rest.Classes"
+                            "$ref": "#/definitions/Classes"
+                        }
+                    },
+                    "default": {
+                        "description": "",
+                        "schema": {
+                            "type": "string"
                         }
                     }
                 }
@@ -90,24 +80,21 @@ const docTemplate = `{
         },
         "/graphs/goals": {
             "post": {
-                "tags": [
-                    "search"
-                ],
                 "summary": "Create a correlation graph from start objects to goal queries.",
                 "parameters": [
                     {
                         "type": "boolean",
                         "description": "include rules in graph edges",
-                        "name": "withRules",
+                        "name": "rules",
                         "in": "query"
                     },
                     {
                         "description": "search from start to goal classes",
-                        "name": "start",
+                        "name": "request",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/rest.GoalsRequest"
+                            "$ref": "#/definitions/Goals"
                         }
                     }
                 ],
@@ -115,7 +102,13 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/rest.Graph"
+                            "$ref": "#/definitions/Graph"
+                        }
+                    },
+                    "default": {
+                        "description": "",
+                        "schema": {
+                            "type": "string"
                         }
                     }
                 }
@@ -123,24 +116,21 @@ const docTemplate = `{
         },
         "/graphs/neighbours": {
             "post": {
-                "tags": [
-                    "search"
-                ],
-                "summary": "Create a correlation graph of neighbours of a start object to a given depth.",
+                "summary": "Create a neighbourhood graph around a start object to a given depth.",
                 "parameters": [
                     {
                         "type": "boolean",
                         "description": "include rules in graph edges",
-                        "name": "withRules",
+                        "name": "rules",
                         "in": "query"
                     },
                     {
                         "description": "search from neighbours",
-                        "name": "start",
+                        "name": "request",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/rest.NeighboursRequest"
+                            "$ref": "#/definitions/Neighbours"
                         }
                     }
                 ],
@@ -148,7 +138,13 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/rest.Graph"
+                            "$ref": "#/definitions/Graph"
+                        }
+                    },
+                    "default": {
+                        "description": "",
+                        "schema": {
+                            "type": "string"
                         }
                     }
                 }
@@ -156,18 +152,15 @@ const docTemplate = `{
         },
         "/lists/goals": {
             "post": {
-                "tags": [
-                    "search"
-                ],
-                "summary": "Generate a list of goal nodes related to a starting point.",
+                "summary": "Create a list of goal nodes related to a starting point.",
                 "parameters": [
                     {
                         "description": "search from start to goal classes",
-                        "name": "start",
+                        "name": "request",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/rest.GoalsRequest"
+                            "$ref": "#/definitions/Goals"
                         }
                     }
                 ],
@@ -177,36 +170,14 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/rest.Node"
+                                "$ref": "#/definitions/Node"
                             }
                         }
-                    }
-                }
-            }
-        },
-        "/objects": {
-            "get": {
-                "tags": [
-                    "search"
-                ],
-                "summary": "Execute a query, returns a list of JSON objects.",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "query string",
-                        "name": "query",
-                        "in": "query",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
+                    },
+                    "default": {
+                        "description": "",
                         "schema": {
-                            "type": "array",
-                            "items": {
-                                "type": "object"
-                            }
+                            "type": "string"
                         }
                     }
                 }
@@ -214,175 +185,32 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "config.Class": {
-            "type": "object",
-            "properties": {
-                "classes": {
-                    "description": "Classes are the names of classes in this group.",
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "domain": {
-                    "description": "Domain of the classes, all must be in the same domain.",
-                    "type": "string"
-                },
-                "name": {
-                    "description": "Name is the short name for a group of classes.",
-                    "type": "string"
-                }
-            }
-        },
-        "config.ClassSpec": {
-            "type": "object",
-            "properties": {
-                "classes": {
-                    "description": "Classes is a list of class names to be selected from the domain.\nIf absent, all classes in the domain are selected.",
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "domain": {
-                    "description": "Domain is the domain for selected classes.",
-                    "type": "string"
-                }
-            }
-        },
-        "config.Config": {
-            "type": "object",
-            "properties": {
-                "aliases": {
-                    "description": "Aliases defines short names for groups of related classes.",
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/config.Class"
-                    }
-                },
-                "include": {
-                    "description": "Include lists additional configuration files or URLs to include.",
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "rules": {
-                    "description": "Rules define the relationships that korrel8r will follow.",
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/config.Rule"
-                    }
-                },
-                "stores": {
-                    "description": "Stores is a list of store configurations.",
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/config.Store"
-                    }
-                }
-            }
-        },
-        "config.Configs": {
-            "type": "object",
-            "additionalProperties": {
-                "$ref": "#/definitions/config.Config"
-            }
-        },
-        "config.ResultSpec": {
-            "type": "object",
-            "properties": {
-                "query": {
-                    "description": "Query template generates a query object suitable for the goal store.",
-                    "type": "string"
-                }
-            }
-        },
-        "config.Rule": {
-            "type": "object",
-            "properties": {
-                "goal": {
-                    "description": "Goal specifies the set of classes that this rule can produce.",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/config.ClassSpec"
-                        }
-                    ]
-                },
-                "name": {
-                    "description": "Name is a short, descriptive name.\nIf omitted, a name is generated from Start and Goal.",
-                    "type": "string"
-                },
-                "result": {
-                    "description": "TemplateResult contains templates to generate the result of applying this rule.\nEach template is applied to an object from one of the ` + "`" + `start` + "`" + ` classes.\nIf any template yields a blank string or an error, the rule does not apply.",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/config.ResultSpec"
-                        }
-                    ]
-                },
-                "start": {
-                    "description": "Start specifies the set of classes that this rule can apply to.",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/config.ClassSpec"
-                        }
-                    ]
-                }
-            }
-        },
-        "config.Store": {
+        "Classes": {
+            "description": "Classes is a map from class names to a short description.",
             "type": "object",
             "additionalProperties": {
                 "type": "string"
             }
         },
-        "korrel8r.Constraint": {
-            "type": "object",
-            "properties": {
-                "end": {
-                    "description": "Exclude results after End.",
-                    "type": "string"
-                },
-                "limit": {
-                    "description": "Max number of entries to return.",
-                    "type": "integer"
-                },
-                "start": {
-                    "description": "Exclude results before Start.",
-                    "type": "string"
-                }
-            }
-        },
-        "rest.Classes": {
-            "description": "Classes maps class names to a short description.",
-            "type": "object",
-            "additionalProperties": {
-                "type": "string"
-            }
-        },
-        "rest.Domain": {
+        "Domain": {
             "description": "Domain configuration information.",
             "type": "object",
             "properties": {
-                "errors": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
                 "name": {
+                    "description": "Name of the domain.",
                     "type": "string"
                 },
                 "stores": {
+                    "description": "Stores configured for the domain.",
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/config.Store"
+                        "$ref": "#/definitions/Store"
                     }
                 }
             }
         },
-        "rest.Edge": {
+        "Edge": {
+            "description": "Directed edge in the result graph, from Start to Goal classes.",
             "type": "object",
             "properties": {
                 "goal": {
@@ -391,11 +219,12 @@ const docTemplate = `{
                     "example": "domain:class"
                 },
                 "rules": {
-                    "description": "Rules is the set of rules followed along this edge (optional).",
+                    "description": "Rules is the set of rules followed along this edge.",
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/rest.Rule"
-                    }
+                        "$ref": "#/definitions/Rule"
+                    },
+                    "x-omitempty": true
                 },
                 "start": {
                     "description": "Start is the class name of the start node.",
@@ -403,7 +232,7 @@ const docTemplate = `{
                 }
             }
         },
-        "rest.GoalsRequest": {
+        "Goals": {
             "description": "Starting point for a goals search.",
             "type": "object",
             "properties": {
@@ -418,34 +247,29 @@ const docTemplate = `{
                     ]
                 },
                 "start": {
-                    "description": "Start of correlation search.",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/rest.Start"
-                        }
-                    ]
+                    "$ref": "#/definitions/Start"
                 }
             }
         },
-        "rest.Graph": {
+        "Graph": {
             "description": "Graph resulting from a correlation search.",
             "type": "object",
             "properties": {
                 "edges": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/rest.Edge"
+                        "$ref": "#/definitions/Edge"
                     }
                 },
                 "nodes": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/rest.Node"
+                        "$ref": "#/definitions/Node"
                     }
                 }
             }
         },
-        "rest.NeighboursRequest": {
+        "Neighbours": {
             "description": "Starting point for a neighbours search.",
             "type": "object",
             "properties": {
@@ -454,16 +278,11 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "start": {
-                    "description": "Start of correlation search.",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/rest.Start"
-                        }
-                    ]
+                    "$ref": "#/definitions/Start"
                 }
             }
         },
-        "rest.Node": {
+        "Node": {
             "type": "object",
             "properties": {
                 "class": {
@@ -479,12 +298,12 @@ const docTemplate = `{
                     "description": "Queries yielding results for this class.",
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/rest.QueryCount"
+                        "$ref": "#/definitions/QueryCount"
                     }
                 }
             }
         },
-        "rest.QueryCount": {
+        "QueryCount": {
             "description": "Query run during a correlation with a count of results found.",
             "type": "object",
             "properties": {
@@ -498,7 +317,7 @@ const docTemplate = `{
                 }
             }
         },
-        "rest.Rule": {
+        "Rule": {
             "type": "object",
             "properties": {
                 "name": {
@@ -509,37 +328,57 @@ const docTemplate = `{
                     "description": "Queries generated while following this rule.",
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/rest.QueryCount"
+                        "$ref": "#/definitions/QueryCount"
                     }
                 }
             }
         },
-        "rest.Start": {
-            "description": "Starting point for correlation.",
+        "Start": {
+            "description": "Start identifies a set of starting objects for correlation.",
             "type": "object",
             "properties": {
                 "class": {
-                    "description": "Class of starting objects",
+                    "description": "Class for ` + "`" + `objects` + "`" + `",
                     "type": "string"
                 },
                 "constraint": {
-                    "description": "Constraint (optional) to limit the results.",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/korrel8r.Constraint"
-                        }
-                    ]
+                    "$ref": "#/definitions/rest.Constraint"
                 },
                 "objects": {
-                    "description": "Objects serialized as JSON to, must be of start class.",
+                    "description": "Objects of ` + "`" + `class` + "`" + ` serialized as JSON",
                     "type": "object"
                 },
                 "queries": {
-                    "description": "Queries for starting objects, must return the start class.",
+                    "description": "Queries for starting objects",
                     "type": "array",
                     "items": {
                         "type": "string"
                     }
+                }
+            }
+        },
+        "Store": {
+            "description": "Store is a map of name:value attributes used to connect to a store.",
+            "type": "object",
+            "additionalProperties": {
+                "type": "string"
+            }
+        },
+        "rest.Constraint": {
+            "description": "Constraint constrains the objects that will be included in search results.",
+            "type": "object",
+            "properties": {
+                "end": {
+                    "description": "End of time interval to include.",
+                    "type": "string"
+                },
+                "limit": {
+                    "description": "Limit number of objects returned per query.",
+                    "type": "integer"
+                },
+                "start": {
+                    "description": "Start of time interval to include.",
+                    "type": "string"
                 }
             }
         }

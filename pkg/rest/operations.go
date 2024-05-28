@@ -2,9 +2,9 @@
 
 // Package rest implements a REST API for korrel8r.
 //
-// Note: Comments starting with "@" are used to generate a swagger spec via 'go generate'.
-// Static swagger doc is available at ./doc/swagger.md.
-// dynamic HTML doc is available from korrel8r at the "/api" endpoint.
+// Dynamic HTML doc is available from korrel8r at the "/api" endpoint.
+//
+// Note: Comments starting with "@" are used to generate a swagger spec.
 //
 //	@title			REST API
 //	@description	REST API for the Korrel8r correlation engine.
@@ -25,7 +25,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/korrel8r/korrel8r/internal/pkg/logging"
@@ -56,9 +55,8 @@ func New(e *engine.Engine, c config.Configs, r *gin.Engine) (*API, error) {
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggoFiles.Handler))
 	r.GET("/api", func(c *gin.Context) { c.Redirect(http.StatusPermanentRedirect, "/swagger/index.html") })
 	v := r.Group(docs.SwaggerInfo.BasePath)
-	v.GET("/configuration", a.GetConfiguration)
-	v.GET("/domains", a.GetDomains)
-	v.GET("/domains/:domain/classes", a.GetDomainClasses)
+	v.GET("/domains", a.Domains)
+	v.GET("/domains/:domain/classes", a.DomainClasses)
 	v.POST("/graphs/goals", a.GraphsGoals)
 	v.POST("/lists/goals", a.ListsGoals)
 	v.POST("/graphs/neighbours", a.GraphsNeighbours)
@@ -69,23 +67,13 @@ func New(e *engine.Engine, c config.Configs, r *gin.Engine) (*API, error) {
 // Close cleans any persistent resources.
 func (a *API) Close() {}
 
-// GetConfiguration handler
-//
-//	@router		/configuration [get]
-//	@summary	Dump configuration files and their contents.
-//	@tags		configuration
-//	@success	200	{object}	config.Configs
-func (a *API) GetConfiguration(c *gin.Context) {
-	c.JSON(http.StatusOK, a.Configs)
-}
-
-// GetDomains handler
+// Domains handler
 //
 //	@router		/domains [get]
-//	@summary	List all configured domains and stores.
-//	@tags		configuration
-//	@success	200	{array}	Domain
-func (a *API) GetDomains(c *gin.Context) {
+//	@summary	Get name, configuration and status for each domain.
+//	@success	200		{array}		Domain
+//	@failure	default	{string}	string
+func (a *API) Domains(c *gin.Context) {
 	var domains []Domain
 	for _, d := range a.Engine.Domains() {
 		domains = append(domains, Domain{
@@ -96,14 +84,14 @@ func (a *API) GetDomains(c *gin.Context) {
 	c.JSON(http.StatusOK, domains)
 }
 
-// GetDomainClasses handler
+// DomainClasses handler
 //
 //	@router		/domains/{domain}/classes [get]
-//	@summary	Get class names and descriptions for the domain.
-//	@param		domain	path	string	true	"Domain to get classes from."
-//	@tags		configuration
-//	@success	200	{object}	Classes
-func (a *API) GetDomainClasses(c *gin.Context) {
+//	@summary	Get class names and descriptions for a domain.
+//	@param		domain	path		string	true	"Domain name"
+//	@success	200		{object}	Classes
+//	@failure	default	{string}	string
+func (a *API) DomainClasses(c *gin.Context) {
 	d, err := a.Engine.DomainErr(c.Params.ByName("domain"))
 	check(c, http.StatusNotFound, err)
 	classes := Classes{}
@@ -117,14 +105,14 @@ func (a *API) GetDomainClasses(c *gin.Context) {
 //
 //	@router		/graphs/goals [post]
 //	@summary	Create a correlation graph from start objects to goal queries.
-//	@param		withRules	query	bool			false	"include rules in graph edges"
-//	@param		start		body	GoalsRequest	true	"search from start to goal classes"
-//	@tags		search
-//	@success	200	{object}	Graph
+//	@param		rules	query		bool	false	"include rules in graph edges"
+//	@param		request	body		Goals	true	"search from start to goal classes"
+//	@success	200		{object}	Graph
+//	@failure	default	{string}	string
 func (a *API) GraphsGoals(c *gin.Context) {
-	opts := &GraphOptions{}
+	opts := &Options{}
 	if check(c, http.StatusBadRequest, c.BindQuery(opts)) {
-		if g, _ := a.goalsRequest(c); g != nil {
+		if g, _ := a.goals(c); g != nil {
 			c.JSON(http.StatusOK, Graph{Nodes: nodes(g), Edges: edges(g, opts)})
 		}
 	}
@@ -133,13 +121,13 @@ func (a *API) GraphsGoals(c *gin.Context) {
 // ListsGoals handler.
 //
 //	@router		/lists/goals [post]
-//	@summary	Generate a list of goal nodes related to a starting point.
-//	@param		start	body	GoalsRequest	true	"search from start to goal classes"
-//	@tags		search
-//	@success	200	{array}	Node
+//	@summary	Create a list of goal nodes related to a starting point.
+//	@param		request	body		Goals	true	"search from start to goal classes"
+//	@success	200		{array}		Node
+//	@failure	default	{string}	string
 func (a *API) ListsGoals(c *gin.Context) {
 	nodes := []Node{} // return [] not null for empty
-	g, goals := a.goalsRequest(c)
+	g, goals := a.goals(c)
 	if g == nil {
 		return
 	}
@@ -155,16 +143,14 @@ func (a *API) ListsGoals(c *gin.Context) {
 // GraphsNeighbours handler
 //
 //	@router		/graphs/neighbours [post]
-//	@summary	Create a correlation graph of neighbours of a start object to a given depth.
-//	@param		withRules	query	bool				false	"include rules in graph edges"
-//	@param		start		body	NeighboursRequest	true	"search from neighbours"
-//	@tags		search
-//	@success	200	{object}	Graph
+//	@summary	Create a neighbourhood graph around a start object to a given depth.
+//	@param		rules	query		bool		false	"include rules in graph edges"
+//	@param		request	body		Neighbours	true	"search from neighbours"
+//	@success	200		{object}	Graph
+//	@failure	default	{string}	string
 func (a *API) GraphsNeighbours(c *gin.Context) {
-	r, opts := NeighboursRequest{}, GraphOptions{}
-	check(c, http.StatusBadRequest, c.BindJSON(&r))
-	check(c, http.StatusBadRequest, c.BindUri(&opts))
-	if c.Errors != nil {
+	r, opts := Neighbours{}, Options{}
+	if !(check(c, http.StatusBadRequest, c.BindJSON(&r)) && check(c, http.StatusBadRequest, c.BindUri(&opts))) {
 		return
 	}
 	start, objects, queries, constraint := a.start(c, &r.Start)
@@ -181,13 +167,14 @@ func (a *API) GraphsNeighbours(c *gin.Context) {
 
 // GetObjects handler
 //
-//	@router		/objects [get]
+// swagger:route GET		/objects
+//
 //	@summary	Execute a query, returns a list of JSON objects.
-//	@param		query	query	string	true	"query string"
-//	@tags		search
-//	@success	200	{array}	any
+//	@param		query	query		string	true	"query string"
+//	@success	200		{array}		any
+//	@failure	default	{string}	string
 func (a *API) GetObjects(c *gin.Context) {
-	opts := &QueryOptions{}
+	opts := &Objects{}
 	if !check(c, http.StatusBadRequest, c.BindQuery(opts)) {
 		return
 	}
@@ -202,8 +189,8 @@ func (a *API) GetObjects(c *gin.Context) {
 	c.JSON(http.StatusOK, result.List())
 }
 
-func (a *API) goalsRequest(c *gin.Context) (g *graph.Graph, goals []korrel8r.Class) {
-	r := GoalsRequest{}
+func (a *API) goals(c *gin.Context) (g *graph.Graph, goals []korrel8r.Class) {
+	r := Goals{}
 	if !check(c, http.StatusBadRequest, c.BindJSON(&r)) {
 		return nil, nil
 	}
@@ -244,12 +231,17 @@ func (a *API) objects(c *gin.Context, class korrel8r.Class, raw []json.RawMessag
 
 // start validates and extracts data from the Start part of a request.
 func (a *API) start(c *gin.Context, start *Start) (korrel8r.Class, []korrel8r.Object, []korrel8r.Query, *korrel8r.Constraint) {
-	class := a.class(c, start.Class)
+	queries := a.queries(c, start.Queries)
+	var class korrel8r.Class
+	if start.Class == "" && len(queries) > 0 {
+		class = queries[0].Class()
+	} else {
+		class = a.class(c, start.Class)
+	}
+	objects := a.objects(c, class, start.Objects)
 	if c.Errors != nil {
 		return nil, nil, nil, nil
 	}
-	objects := a.objects(c, class, start.Objects)
-	queries := a.queries(c, start.Queries)
 	return class, objects, queries, start.Constraint
 }
 
@@ -258,7 +250,9 @@ func check(c *gin.Context, code int, err error, format ...any) (ok bool) {
 		if len(format) > 0 {
 			err = fmt.Errorf("%v: %w", fmt.Sprintf(format[0].(string), format[1:]...), err)
 		}
-		c.AbortWithStatusJSON(code, c.Error(err).JSON())
+		_ = c.Error(err)
+		c.AbortWithStatusJSON(code, c.Errors)
+		log.Error(err, "abort request", "url", c.Request.URL, "code", code, "errors", c.Errors)
 	}
 	return err == nil
 }
@@ -279,15 +273,13 @@ func (a *API) classes(c *gin.Context, apiClasses []string) (classes []korrel8r.C
 }
 
 func (a *API) logRequest(c *gin.Context) {
-	start := time.Now()
-	log := log.WithValues("from", c.Request.RemoteAddr, "method", c.Request.Method, "url", c.Request.URL)
-	if c.Request != nil && c.Request.Body != nil && log.V(2).Enabled() {
-		body, _ := io.ReadAll(c.Request.Body)
-		c.Request.Body = io.NopCloser(bytes.NewReader(body))
-		log.V(2).Info("request received", "body", string(body))
+	if log.V(2).Enabled() {
+		var body []byte
+		if c.Request != nil && c.Request.Body != nil {
+			body, _ = io.ReadAll(c.Request.Body)
+			c.Request.Body = io.NopCloser(bytes.NewReader(body))
+		}
+		log.V(2).Info("request received", "from", c.Request.RemoteAddr, "method", c.Request.Method, "url", c.Request.URL, "body", string(body))
 	}
-	defer func() {
-		log.V(2).Info("request complete", "duration", time.Since(start))
-	}()
 	c.Next()
 }

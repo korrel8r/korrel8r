@@ -2,7 +2,7 @@
 :anchor_prefix: k8s-api
 
 [id="{p}-api-reference"]
-== Kubernetes API
+== API Reference
 
 .Packages
 - xref:{anchor_prefix}-korrel8r-openshift-io-v1alpha1[$$korrel8r.openshift.io/v1alpha1$$]

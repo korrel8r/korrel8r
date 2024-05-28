@@ -28,7 +28,7 @@ func startServer(t *testing.T, h *http.Client, scheme string, args ...string) *u
 	port, err := test.ListenPort()
 	require.NoError(t, err)
 	addr := net.JoinHostPort("localhost", strconv.Itoa(port))
-	cmd := command(t, append([]string{"web", "--html=false", "--" + scheme, addr}, args...)...)
+	cmd := command(t, append([]string{"web", "--" + scheme, addr}, args...)...)
 	require.NoError(t, cmd.Start())
 	// Wait till server is available.
 	require.Eventually(t, func() bool {

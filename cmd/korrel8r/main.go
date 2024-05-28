@@ -6,7 +6,6 @@ import (
 	_ "embed"
 	"fmt"
 	"os"
-	"strings"
 
 	"github.com/korrel8r/korrel8r/internal/pkg/logging"
 	"github.com/korrel8r/korrel8r/internal/pkg/must"
@@ -26,8 +25,8 @@ import (
 var (
 	rootCmd = &cobra.Command{
 		Use:     "korrel8r",
-		Short:   "Observability signal correlation tool.",
-		Version: strings.TrimSpace(build.Version),
+		Short:   "Correlation of observability signal data from command line or as a REST service",
+		Version: build.Version(),
 	}
 	log = logging.Log()
 
@@ -106,7 +105,9 @@ func newEngine() (*engine.Engine, config.Configs) {
 var versionCmd = &cobra.Command{
 	Use:   "version",
 	Short: "Print version.",
-	Run:   func(cmd *cobra.Command, args []string) { fmt.Println(build.Version) },
+	Run:   func(cmd *cobra.Command, args []string) { fmt.Println(build.Version()) },
 }
 
-func init() { rootCmd.AddCommand(versionCmd) }
+func init() {
+	rootCmd.AddCommand(versionCmd)
+}

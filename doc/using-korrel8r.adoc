@@ -27,16 +27,19 @@ Not all alerts have a *see related logs* link. Only alerts that are _related_ to
 .Install the korrel8r executable:
 ----
 go install github.com/korrel8r/korrel8r/cmd/korrel8r@latest
+go install github.com/korrel8r/korrel8r/cmd/korrel8rcli@latest
 ----
 
-=== Using
+=== Commands
 
-[source,terminal]
-.Getting help
-----
-korrel8r -h
-korrel8r list -h
-----
+{korrel8r-help}[korrel8r]::
+The correlation engine. Can be used from the command line or as a REST server.
+The REST API can be deployed as a service in a cluster, or run outside the cluster and connect to signal stores inside the cluster.
+{korrel8r-help}[korrel8r help]
+
+{korrel8rcli-help}[korrel8rcli]::
+A command line client to query a remote `korrel8r` server.
+{korrel8rcli-help}[korrel8rcli help]
 
 Log into your cluster with admin privileges to test korrel8r can read kubernetes resources:
 
@@ -45,19 +48,11 @@ Log into your cluster with admin privileges to test korrel8r can read kubernetes
 korrel8r -c https://raw.githubusercontent.com/korrel8r/korrel8r/main/etc/korrel8r/korrel8r.yaml list k8s
 ----
 
-== Browser
-
-[WARNING]
-====
-The browser interface is experimental may be dropped in future. Other consoles or tools acting as korrel8r clients can provide better visualization.
-====
-
-The `korrel8r web` command provides browser access to:
-
-- Interactive queries and correlation graphs `http://localhost:8080/correlate`
-- Interactive REST API documentation on `http://localhost:8080/api`
-
-== REST Service
+== Running as a Service
 
 🚧 #Under Construction# 🚧
 // TODO: move from README. Link to reference. Curl examples of API, use swagger UI.#
+
+== Using the client
+
+🚧 #Under Construction# 🚧

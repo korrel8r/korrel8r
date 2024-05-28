@@ -108,9 +108,9 @@ type Previewer interface {
 
 // Constraint included in a reference to restrict the resulting objects.
 type Constraint struct {
-	Limit *uint      `json:"limit,omitempty"` // Max number of entries to return.
-	Start *time.Time `json:"start,omitempty"` // Exclude results before Start.
-	End   *time.Time `json:"end,omitempty"`   // Exclude results after End.
+	Limit *uint      `json:"limit,omitempty"` // Limit number of objects returned per query.
+	Start *time.Time `json:"start,omitempty"` // Start of time interval to include.
+	End   *time.Time `json:"end,omitempty"`   // End of time interval to include.
 }
 
 // CompareTime returns -1 if t is before the constraint interval, +1 if it is after,

@@ -5,34 +5,35 @@
 :toclevels: 3
 :keywords: correlation, observability, signal, kubernetes
 include::attributes.adoc[]
+include::gen/attributes.adoc[]
 
-[NOTE]
-====
-This documentation is part of the {project}[Korrel8r project]. +
-It is available in {pages}/index.html[HTML] and {pages}/ebook.pdf[PDF] format.
-====
+[.metadata]
+{author} -- version {revnumber}, {revdate}
 
 [id="index-overview"]
 == Overview
 
-Many observability tools and observable systems use their own unique data models, storage technologies, query languages, and related nomenclature.
+Observing a cluster involves many types of signal; for examples logs, metrics, traces, cluster events, cluster alerts, network events and so on.
+This usually means using several Observability tools, which often have their own unique data models, storage technologies, query languages, and related nomenclature.
+These differences make it difficult to recognize relationships between different signals and resources.
+As a result, troubleshooting and identifying resources affected by issues in your cluster can be time consuming and difficult.
 
-The differences between these nomenclatures can make it difficult for users to recognize relationships between different Kubernetes cluster resources. As a result, troubleshooting and identifying resources affected by issues in your cluster can be time consuming and difficult.
+Korrel8r is a _correlation engine_ for observable signals and Kubernetes resources from multiple _domains_.
+A _domain_ is a data set with consistent labelling, storage, and schema. Examples of domains include:
 
-Korrel8r is a correlation engine for observable signals that relates Kubernetes objects to different types of signal data. Given a _start_ object, Korrel8r searches for a chain of rules to related _goal_ objects. Korrel8r can also show the _neighbourhood_ of all data related to an object of interest.
+- Resources managed by the Kubernetes API server itself.
+- Metrics stored in Prometheus.
+- Logs stored in Loki in a known format.
 
-A REST API can be used by clients to make correlation queries. The REST API can be deployed as a service in a cluster, or run outside the cluster and connect to signal stores inside the cluster.
 
-Signal data can be stored in separate signal stores, and encoded using different schema.
+Korrel8r uses an extendable set of _rules_ to define relationships between data in _multiple_ domains.
+For example, rules can define
 
-[IMPORTANT]
-====
-To navigate between correlated data, Korrel8r needs access to the cluster API and several data stores.
-Currently Korrel8r can only be deployed by a user with the `cluster-admin` role.
+- How to find logs or metrics related to Kubernetes resources and vice-versa.
+- How to find Kubernetes resources related to network events.
+- How to find logs, metrics or resources related to Prometheus Alerts
 
-This may change in future, see:
-link:{project}/issues/73[Issue 73: Authentication and Authorization for restricted access.]
-====
+Given a _start_ object, Korrel8r can searches its graph of rules to find related _goal_ objects, or to show the _neighbourhood_ data related to the start object.
 
 [id="index-architecture"]
 === Architecture
@@ -63,10 +64,7 @@ include::troubleshooting.adoc[leveloffset=+1]
 
 Reference details for the for the classes, objects, queries and stores of each available domain.
 
-include::zz_domains.adoc[leveloffset=+3]
+include::gen/domains.adoc[leveloffset=+3]
 
 [id="index-rest-api-reference"]
-include::zz_rest_api.adoc[leveloffset=+2]
-
-[id="index-k8s-api-reference"]
-include::zz_api-ref.adoc[leveloffset=+1]
+include::gen/rest_api.adoc[leveloffset=+2]

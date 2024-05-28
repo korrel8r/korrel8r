@@ -47,12 +47,12 @@ func nodes(g *graph.Graph) []Node {
 	return nodes
 }
 
-func edge(e *graph.Edge, withRules bool) Edge {
+func edge(e *graph.Edge, rules bool) Edge {
 	edge := Edge{
 		Start: e.Start().Class.String(),
 		Goal:  e.Goal().Class.String(),
 	}
-	if withRules {
+	if rules {
 		e.EachLine(func(l *graph.Line) {
 			if l.Queries.Total() != 0 {
 				edge.Rules = append(edge.Rules, rule(l))
@@ -62,10 +62,10 @@ func edge(e *graph.Edge, withRules bool) Edge {
 	return edge
 }
 
-func edges(g *graph.Graph, opts *GraphOptions) (edges []Edge) {
+func edges(g *graph.Graph, opts *Options) (edges []Edge) {
 	g.EachEdge(func(e *graph.Edge) {
 		if !e.Goal().Empty() { // Skip edges that lead to an empty node.
-			edges = append(edges, edge(e, opts.WithRules))
+			edges = append(edges, edge(e, opts.Rules))
 		}
 	})
 	return edges
