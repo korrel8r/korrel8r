@@ -7,10 +7,10 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/korrel8r/korrel8r/internal/pkg/build"
 	"github.com/korrel8r/korrel8r/internal/pkg/logging"
 	"github.com/korrel8r/korrel8r/internal/pkg/must"
 	"github.com/korrel8r/korrel8r/internal/pkg/test/mock"
-	"github.com/korrel8r/korrel8r/pkg/build"
 	"github.com/korrel8r/korrel8r/pkg/config"
 	"github.com/korrel8r/korrel8r/pkg/domains/alert"
 	"github.com/korrel8r/korrel8r/pkg/domains/k8s"

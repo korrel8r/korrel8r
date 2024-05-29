@@ -36,7 +36,7 @@ clean: ## Remove generated files, including checked-in files.
 	rm -rf bin _site $(GENERATED) doc/gen/*
 
 # Generated files
-VERSION_TXT=pkg/build/version.txt
+VERSION_TXT=internal/pkg/build/version.txt
 SWAGGER_SPEC=pkg/rest/docs/swagger.json
 SWAGGER_CLIENT=client/pkg/swagger
 

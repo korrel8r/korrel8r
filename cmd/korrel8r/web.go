@@ -8,9 +8,9 @@ import (
 
 	"github.com/gin-contrib/pprof"
 	"github.com/gin-gonic/gin"
+	"github.com/korrel8r/korrel8r/internal/pkg/build"
 	"github.com/korrel8r/korrel8r/internal/pkg/logging"
 	"github.com/korrel8r/korrel8r/internal/pkg/must"
-	"github.com/korrel8r/korrel8r/pkg/build"
 	"github.com/korrel8r/korrel8r/pkg/rest"
 	"github.com/spf13/cobra"
 )
