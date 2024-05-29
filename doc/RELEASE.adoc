@@ -4,12 +4,13 @@ Steps to release a new version X.Y.Z, for maintainers.
 
 On branch `main`:
 
+. Update CHANGELOG.md to reflect changes since last release, add the new release header.
+  Follow http://keepachangelog.com[these guidelines]. +
+  To list changes: `git log --oneline $(git describe --abbrev=0)..`
 . Edit Makefile and set 'VERSION=X.Y.Z'
 . `make pre-release IMG_ORG=quay.io/korrel8r`
-. Verify all changes are version related, commit with message 'Release X.Y.Z'
-+
-NOTE: Normally the only changes in a release commit are `Makefile` and `version.txt`
+. Verify all changes are version related (Makefile, version.txt, gen/attributes.adoc)
+. Commit with message 'Release X.Y.Z'
 . `make release IMG_ORG=quay.io/korrel8r`
-  - Re-runs 'make pre-release', verifies the working tree is clean.
   - Creates and pushes the git tag 'vX.Y.Z'
   - Pushes ':latest' tag for images.

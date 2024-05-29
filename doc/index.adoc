@@ -3,14 +3,12 @@
 :doctype: book
 :toc: left
 :toclevels: 3
-:keywords: correlation, observability, signal, kubernetes
 include::attributes.adoc[]
-include::gen/attributes.adoc[]
-
-[.metadata]
-{author} -- version {revnumber}, {revdate}
 
 [id="index-overview"]
+
+Documentation for the {project}[Korrel8r Project image:images/icon.svg[width=32]]
+
 == Overview
 
 Observing a cluster involves many types of signal; for examples logs, metrics, traces, cluster events, cluster alerts, network events and so on.
