@@ -13,8 +13,9 @@ import (
 
 func init() {
 	docCmd := &cobra.Command{
-		Use:   "doc",
-		Short: "Generate documentation",
+		Use:    "doc",
+		Short:  "Generate documentation",
+		Hidden: true,
 	}
 	rootCmd.AddCommand(docCmd)
 

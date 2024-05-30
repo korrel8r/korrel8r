@@ -32,7 +32,7 @@ import (
 	"github.com/korrel8r/korrel8r/pkg/engine"
 	"github.com/korrel8r/korrel8r/pkg/graph"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
-	docs "github.com/korrel8r/korrel8r/pkg/rest/zz_docs"
+	"github.com/korrel8r/korrel8r/pkg/rest/docs"
 	"github.com/korrel8r/korrel8r/pkg/unique"
 	swaggoFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"

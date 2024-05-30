@@ -5,6 +5,7 @@ package main
 import (
 	"fmt"
 	"net/http"
+	"os"
 
 	"github.com/gin-contrib/pprof"
 	"github.com/gin-gonic/gin"
@@ -12,6 +13,7 @@ import (
 	"github.com/korrel8r/korrel8r/internal/pkg/logging"
 	"github.com/korrel8r/korrel8r/internal/pkg/must"
 	"github.com/korrel8r/korrel8r/pkg/rest"
+	"github.com/korrel8r/korrel8r/pkg/rest/docs"
 	"github.com/spf13/cobra"
 )
 
@@ -23,6 +25,16 @@ var webCmd = &cobra.Command{
 		if *htmlFlag || *restFlag {
 			log.Info("DEPRECATED --html and --rest are deprecated. HTML server no longer supported.")
 		}
+		if *specFlag != "" {
+			spec := docs.SwaggerInfo.ReadDoc()
+			if *specFlag == "-" {
+				fmt.Println(spec)
+			} else {
+				must.Must(os.WriteFile(*specFlag, []byte(spec), 0666))
+			}
+			return
+		}
+
 		if *httpFlag == "" && *httpsFlag == "" {
 			*httpFlag = ":8080" // Default if no port specified.
 		}
@@ -67,8 +79,10 @@ var webCmd = &cobra.Command{
 }
 
 var (
-	httpFlag, httpsFlag, certFlag, keyFlag *string
-	htmlFlag, restFlag                     *bool
+	httpFlag, httpsFlag *string
+	certFlag, keyFlag   *string
+	specFlag            *string
+	htmlFlag, restFlag  *bool
 )
 
 func init() {
@@ -77,6 +91,7 @@ func init() {
 	httpsFlag = webCmd.Flags().String("https", "", "host:port address for secure https listener")
 	certFlag = webCmd.Flags().String("cert", "", "TLS certificate file (PEM format) for https")
 	keyFlag = webCmd.Flags().String("key", "", "Private key (PEM format) for https")
+	specFlag = webCmd.Flags().String("spec", "", "Dump swagger spec to a file, '-' for stdout.")
 
 	// DEPRECATED: remove in future version.
 	htmlFlag = webCmd.Flags().Bool("html", false, "DEPRECATED - use korrel8rcli instead.")

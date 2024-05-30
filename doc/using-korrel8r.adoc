@@ -24,10 +24,10 @@ Not all alerts have a *see related logs* link. Only alerts that are _related_ to
 === Installing
 
 [source,terminal]
-.Install the korrel8r executable:
+.Install the korrel8r executables:
 ----
 go install github.com/korrel8r/korrel8r/cmd/korrel8r@latest
-go install github.com/korrel8r/korrel8r/cmd/korrel8rcli@latest
+go install github.com/korrel8r/client/cmd/korrel8rcli@latest
 ----
 
 === Commands

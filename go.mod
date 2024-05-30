@@ -5,8 +5,6 @@ go 1.21
 // Bogus version that gets incorrectly required if not excluded.
 exclude k8s.io/client-go v12.0.0+incompatible
 
-replace github.com/korrel8r/korrel8r/client => ./client
-
 require (
 	github.com/gin-contrib/pprof v1.4.0
 	github.com/gin-gonic/gin v1.10.0
@@ -15,7 +13,6 @@ require (
 	github.com/go-openapi/runtime v0.28.0
 	github.com/go-openapi/strfmt v0.23.0
 	github.com/go-task/slim-sprig v2.20.0+incompatible
-	github.com/korrel8r/korrel8r/client v0.0.0-00010101000000-000000000000
 	github.com/openshift/api v0.0.0-20240517002838-931fa9860c01
 	github.com/operator-framework/api v0.21.0
 	github.com/pkg/profile v1.7.0

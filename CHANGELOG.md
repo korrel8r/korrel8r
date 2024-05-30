@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Removed
 
 - Korrel8r web API server has been removed from the `korrel8r` command.
-  The new `korrel8rcli` command provides a similar feature.
+  Replaced by http://github.com/korrel8r/client, a REST client and visualization tool.
 
 ### Deprecated
 
@@ -22,13 +22,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Added
 
-- New `korrel8rcli` command at ./client/cmd/korrel8rcli
-  - REST client, command line access to a remote korrel8r server. See `korrel8rcli --help`
-  - Web browser API using data from remote korrel8r server, see `korrel8rcli web --help`
-  - Client packages for 3rd party use, see ./client/pkg/swagger
 -  [New rules: ConsolePlugin, PodDisruptionBudget](https://github.com/korrel8r/korrel8r/commit/98f449b8a764e213dfb0c5c8ae37763bb6b88907)
+- `korrel8r web --spec` dumps the swagger specification for korrel8r to stdout or a file.
 
-### Fixed 
+### Fixed
 
 - [Fix in-cluster service accounts and certs.](https://github.com/korrel8r/korrel8r/issues/116)
 - [OSC-8 Korrel8r does not deply on Openshift 4.15 due to security profile restrictions bug](https://github.com/korrel8r/korrel8r/issues/105)

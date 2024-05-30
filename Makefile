@@ -6,7 +6,7 @@ help: ## Display this help.
 	@grep -E '^## [A-Z0-9_]+: ' Makefile | sed 's/^## \([A-Z0-9_]*\): \(.*\)/\1#\2/' | column -s'#' -t
 
 ## VERSION: Semantic version for release, use -dev for development pre-release versions.
-VERSION?=0.6.4
+VERSION?=0.6.4-dev
 ## IMG_ORG: org name for images, for example quay.io/alanconway.
 IMG_ORG?=$(error Set IMG_ORG to organization prefix for images, e.g. IMG_ORG=quay.io/alanconway)
 ## IMGTOOL: May be podman or docker.
@@ -30,9 +30,13 @@ PATH:=$(LOCALBIN):$(PATH)
 
 include .bingo/Variables.mk	# Versioned tools
 
-check: lint test ## Lint and test code.
+KORREL8R=$(abspath bin/korrel8r)
+build: $(KORREL8R)
+$(KORREL8R): generate $(shell find -name *.go)
+	@mkdir -p $(dir $@)
+	go build -cover -o $@ ./cmd/korrel8r
 
-all: check install _site image-build ## Build and test everything locally. Recommended before pushing.
+all: build lint test _site image-build ## Build and test everything locally. Recommended before pushing.
 
 clean: ## Remove generated files, including checked-in files.
 	rm -rf bin _site $(GENERATED) doc/gen tmp
@@ -40,9 +44,8 @@ clean: ## Remove generated files, including checked-in files.
 # Generated files
 VERSION_TXT=internal/pkg/build/version.txt
 SWAGGER_SPEC=pkg/rest/docs/swagger.json
-SWAGGER_CLIENT=client/pkg/swagger
 
-GEN_SRC=$(VERSION_TXT) $(SWAGGER_SPEC) $(SWAGGER_CLIENT) pkg/config/zz_generated.deepcopy.go .copyright
+GENERATED=$(VERSION_TXT) $(SWAGGER_SPEC) pkg/config/zz_generated.deepcopy.go
 
 ifneq ($(VERSION),$(file <$(VERSION_TXT)))
 .PHONY: $(VERSION_TXT) # Force update if VERSION_TXT does not match $(VERSION)
@@ -50,7 +53,7 @@ endif
 $(VERSION_TXT):
 	echo $(VERSION) > $@
 
-generate: $(GEN_SRC) ## Generate code and doc.
+generate: $(GENERATED) .copyright ## Generate code and doc.
 
 .copyright: $(shell find . -name '*.go')
 	hack/copyright.sh	# Make sure files have copyright notice.
@@ -75,31 +78,21 @@ lint: generate $(GOLANGCI_LINT) $(SHFMT) $(SHELLCHECK) ## Run the linter to find
 	go mod tidy
 	$(SHELLCHECK) -x -S style hack/*.sh
 
-install: $(KORREL8R) $(KORREL8RCLI) ## Build and install binaries in $GOBIN.
-
-KORREL8R=$(GOBIN)/korrel8r
-$(KORREL8R): $(GEN_SRC)
-	go install -tags netgo ./cmd/korrel8r
-
-KORREL8RCLI=$(GOBIN)/korrel8rcli
-$(KORREL8RCLI): $(GEN_SRC)
-	go install -tags netgo ./client/cmd/korrel8rcli
-
 .PHONY: test
 test: ## Run all tests, requires a cluster.
 	$(MAKE) TEST_NO_SKIP=1 test-skip
 
-test-skip: $(GEN_SRC) ## Run all tests but skip those requiring a cluster if not logged in.
+test-skip: generate ## Run all tests but skip those requiring a cluster if not logged in.
 	go test -timeout=1m -race ./...
 
 cover: ## Run tests and show code coverage in browser.
 	go test -coverprofile=test.cov ./...
 	go tool cover --html test.cov; sleep 2 # Sleep required to let browser start up.
 
-run: $(GEN_SRC) ## Run `korrel8r web` using configuration in ./etc/korrel8r
+run: generate ## Run `korrel8r web` using configuration in ./etc/korrel8r
 	go run ./cmd/korrel8r web -c $(CONFIG) $(ARGS)
 
-image-build: $(GEN_SRC) ## Build image locally, don't push.
+image-build: generate ## Build image locally, don't push.
 	$(IMGTOOL) build --tag=$(IMAGE) -f Containerfile .
 
 image: image-build ## Build and push image. IMG must be set to a writable image repository.
@@ -152,16 +145,19 @@ _site: doc _site/man $(ASCIIDOCTOR) ## Generate the website HTML.
 	@mkdir -p $@/etc
 	@cp -r doc/images $@
 	$(ASCIIDOCTOR) $(ADOC_FLAGS) -D_site doc/index.adoc
-
-
 	$(ASCIIDOCTOR) $(ADOC_FLAGS) -D_site/gen/cmd doc/gen/cmd/*.adoc
 	$(and $(shell type -p linkchecker),linkchecker --check-extern --ignore-url 'https?://localhost[:/].*' _site)
 	@touch $@
 
+_site/man: generate	## Generated man pages documentation.
+	@mkdir -p $@
+	go run ./cmd/korrel8r doc man $@
+	touch $@
+
 doc: $(shell find doc -type f) doc/gen/domains.adoc doc/gen/rest_api.adoc doc/gen/cmd
 	touch $@
 
-doc/gen/domains.adoc: $(shell find cmd/korrel8r-doc internal pkg -name '*.go') $(GEN_SRC)
+doc/gen/domains.adoc: $(shell find cmd/korrel8r-doc internal pkg -name '*.go') generate
 	@mkdir -p $(dir $@)
 	go run ./cmd/korrel8r-doc pkg/domains/* > $@
 
@@ -169,20 +165,13 @@ doc/gen/rest_api.adoc: $(SWAGGER_SPEC) $(shell find etc/swagger) $(SWAGGER)
 	@mkdir -p $(dir $@)
 	$(SWAGGER) -q generate markdown -T etc/swagger -f $(SWAGGER_SPEC) --output $@
 
-_site/man: $(GEN_SRC)	## Generated man pages documentation.
-	@mkdir -p $@
-	go run ./cmd/korrel8r doc man $@
-	go run ./client/cmd/korrel8rcli doc man $@
-	touch $@
-
 KRAMDOC:=$(LOCALBIN)/kramdoc
 $(KRAMDOC):
 	gem install kramdown-asciidoc --user-install --bindir $(LOCALBIN)
 
-doc/gen/cmd: $(GEN_SRC) $(KRAMDOC) ## Generated command documentation
+doc/gen/cmd: generate $(KRAMDOC) ## Generated command documentation
 	@mkdir -p $@
 	go run ./cmd/korrel8r doc markdown $@
-	go run ./client/cmd/korrel8rcli doc markdown $@
 	cd $@ && for F in $$(basename -s .md *.md); do $(KRAMDOC) --heading-offset=-1 -o $$F.adoc $$F.md; done
 	rm $@/*.md
 	touch $@
@@ -196,10 +185,3 @@ release: pre-release		## Set VERISON and IMG_ORG to push release tags and images
 tools: $(BINGO) $(ASCIIDOCTOR) $(KRAMDOC) ## Download all tools needed for development
 	$(BINGO) get
 	go mod tidy
-
-# The REST client package is in a separate Go module with minimal dependencies.
-
-$(SWAGGER_CLIENT): $(SWAGGER_SPEC) $(SWAGGER) ## Generate client packages.
-	mkdir -p $@
-	cd $@ && $(SWAGGER) generate -q client -f $(abspath $(SWAGGER_SPEC)) && go mod tidy
-	touch $@
