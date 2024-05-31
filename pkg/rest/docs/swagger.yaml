@@ -142,6 +142,7 @@ definitions:
         description: Start of time interval to include.
         type: string
     type: object
+host: localhost:8080
 info:
   contact:
     name: Project Korrel8r

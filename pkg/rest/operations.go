@@ -13,6 +13,7 @@
 //	@license.url	https://github.com/korrel8r/korrel8r/blob/main/LICENSE
 //	@contact.name	Project Korrel8r
 //	@contact.url	https://github.com/korrel8r/korrel8r
+//	@host			localhost:8080
 //	@basePath		/api/v1alpha1
 //	@schemes		http https
 //	@accept			json

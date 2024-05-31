@@ -23,6 +23,7 @@
         },
         "version": "v1alpha1"
     },
+    "host": "localhost:8080",
     "basePath": "/api/v1alpha1",
     "paths": {
         "/domains": {
