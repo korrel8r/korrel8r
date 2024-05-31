@@ -6,9 +6,9 @@ help: ## Display this help.
 	@grep -E '^## [A-Z0-9_]+: ' Makefile | sed 's/^## \([A-Z0-9_]*\): \(.*\)/\1#\2/' | column -s'#' -t
 
 ## VERSION: Semantic version for release, use -dev for development pre-release versions.
-VERSION?=0.6.5-dev
-## IMG_ORG: org name for images, for example quay.io/alanconway.
-IMG_ORG?=$(error Set IMG_ORG to organization prefix for images, e.g. IMG_ORG=quay.io/alanconway)
+VERSION?=0.6.5
+## IMG_ORG: org name for images, for example quay.io/myorg.
+IMG_ORG?=$(error Set IMG_ORG to organization prefix for images, e.g. IMG_ORG=quay.io/myorg)
 ## IMGTOOL: May be podman or docker.
 IMGTOOL?=$(or $(shell podman info > /dev/null 2>&1 && which podman), $(shell docker info > /dev/null 2>&1 && which docker))
 ## NAMESPACE: Namespace for `make deploy`
@@ -36,7 +36,7 @@ $(KORREL8R): generate $(shell find -name *.go)
 	@mkdir -p $(dir $@)
 	go build -cover -o $@ ./cmd/korrel8r
 
-all: build lint test _site image-build ## Build and test everything locally. Recommended before pushing.
+all: build lint test _site image-build kustomize-edit ## Build and test everything locally. Recommended before pushing.
 
 clean: ## Remove generated files, including checked-in files.
 	rm -rf bin _site $(GENERATED) doc/gen tmp

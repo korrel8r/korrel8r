@@ -8,7 +8,7 @@ On branch `main`:
   Follow http://keepachangelog.com[these guidelines]. +
   To list changes: `git log --oneline $(git describe --abbrev=0)..`
 . Edit Makefile and set 'VERSION=X.Y.Z'
-. `make pre-release IMG_ORG=quay.io/korrel8r`
+. `make clean; make pre-release IMG_ORG=quay.io/korrel8r`
 . Verify all changes are version related (Makefile, version.txt, gen/attributes.adoc)
 . Commit with message 'Release X.Y.Z'
 . `make release IMG_ORG=quay.io/korrel8r`
