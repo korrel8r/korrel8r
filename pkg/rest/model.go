@@ -17,7 +17,7 @@ import (
 type Store = config.Store // @name Store
 
 // @description Constraint constrains the objects that will be included in search results.
-type Constraint = korrel8r.Constraint
+type Constraint = korrel8r.Constraint // @name Constraint
 
 // @description Domain configuration information.
 type Domain struct {

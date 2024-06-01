@@ -1,0 +1,100 @@
+= The korrel8rcli command
+include::attributes.adoc[]
+
+See {korrel8rcli-help}[korrel8cli help] for more details.
+
+`korrel8rcli` is a client that can  make requests on a korrel8r server and visualize the results.
+It is intended for development and experimentation.
+In production use korrel8r normally functions as a back-end for a console or other visualization or analysis tool.
+
+.Install the korrel8rcli client
+[source,terminal]
+----
+go install github.com/korrel8r/korrel8r/client/cmd/korrel8rcli@latest
+----
+
+== Examples
+:korrel8rcli-url: http://korrel8r.example
+
+Every `korrel8rcli` command requires a URL for the remote Korrel8r engine.
+
+If you run the engine on your local host as described xref:korrel8r-command.adoc[here],  the URL is `http://localhost:8080`.
+
+If you run the engine as a cluster service, use the external URL for the service.
+For example if you deploy korrel8r with a `route` as described xref:in-cluster.adoc[here] then the URL would be:
+
+----
+https://$(oc get -n korrel8r route/korrel8r -o template='{{.spec.host}}')
+----
+
+=== Domains
+
+.Get the list of known domains with store status for each one.
+[source,terminal]
+----
+korrel8rcli domains {korrel8rcli-url}
+----
+
+.Example output
+[source,yaml]
+----
+- name: alert
+  stores:
+  - alertmanager: https://alertmanager-main.openshift-monitoring.svc:9094
+    certificateAuthority: ./run/secrets/kubernetes.io/serviceaccount/service-ca.crt
+    domain: alert
+    metrics: https://thanos-querier.openshift-monitoring.svc:9091
+- name: k8s
+  stores:
+  - domain: k8s
+- name: log
+  stores:
+  - certificateAuthority: ./run/secrets/kubernetes.io/serviceaccount/service-ca.crt
+    domain: log
+    lokiStack: https://logging-loki-gateway-http.openshift-logging.svc:8080
+- name: metric
+  stores:
+  - certificateAuthority: ./run/secrets/kubernetes.io/serviceaccount/service-ca.crt
+    domain: metric
+    metric: https://thanos-querier.openshift-monitoring.svc:9091
+- name: mock
+  stores: null
+- name: netflow
+  stores:
+  - certificateAuthority: ./run/secrets/kubernetes.io/serviceaccount/service-ca.crt
+    domain: netflow
+    lokiStack: https://loki-gateway-http.netobserv.svc:8080
+----
+
+=== Neighbours
+
+.Get the neighbours graph of the korreler deployment
+----
+korrel8rcli -o json neighbours {korrel8rcli-url} --query 'k8s:Deployment:{namespace: korrel8r}'
+----
+
+.Output is a JSON-encoded graph, not intended for human consumption.
+[source,json]
+----
+{"edges":[{"goal":"k8s:Pod.v1.","start":"k8s:Deployment.v1.apps"},...
+ "nodes":[{"class":"log:application","count":15,"queries":[...
+----
+
+=== Web server
+
+CAUTION: This tool is experimental and may change dramatically or be dropped in future.
+
+`korrel8rcli` can run as a web server that shows interactive query results as a graph in a browser.
+
+.Run a web server to vizualize results.
+[source,terminal,subs=attributes+]
+----
+korrel8rcli web {korrel8rcli-url} --addr :9090
+----
+
+Open `localhost:9090` in a web browser.
+You can type a korrel8r query in the `Start` box, and a numeric depth (for neighbours) or korrel8r class name (for goal search).
+You should see a graph of the correlations, like this.
+
+.Example graph.
+image::images/korrel8rcli-example.png[Screenshot]

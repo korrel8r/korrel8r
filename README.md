@@ -8,13 +8,8 @@
 There are many tools that collect observability signals from a Kubernetes clusters.
 Each tool may use different labelling conventions, data stores, and query languages for the data it collects. 
 
-Korrel8r calls each distinct set of tools and conventions a _domain_, for example.
-- Container logs stored in Loki.
-- Metrics and alerts stored in Prometheus.
-- Kubernetes resources stored in thea API server.
-
-Korrel8r uses _rules_ to define relationships between data in different domains.
-Rules form a _graph_. Walking the graph can correlate data via indirect relationships that span multiple domains.
+Korrel8r uses an extendable set of _rules_ to follow relationships between different types of signal data,
+even when they use incompatible schema and query languages.
 
 ## Documentation
 

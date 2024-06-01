@@ -2,67 +2,70 @@
 = Korrel8r User Guide
 :doctype: book
 :toc: left
-:toclevels: 3
 include::attributes.adoc[]
 
 [id="index-overview"]
 
-Documentation for the {project}[Korrel8r Project image:images/icon.svg[width=32]]
+Documentation for the {project}#readme[Korrel8r Project image:images/icon.svg[width=32]]
 
 == Overview
 
-Observing a cluster involves many types of signal; for examples logs, metrics, traces, cluster events, cluster alerts, network events and so on.
-This usually means using several Observability tools, which often have their own unique data models, storage technologies, query languages, and related nomenclature.
-These differences make it difficult to recognize relationships between different signals and resources.
-As a result, troubleshooting and identifying resources affected by issues in your cluster can be time consuming and difficult.
+Observing a cluster involves different types of signal; for examples logs, metrics, traces, cluster events, cluster alerts, network events and so on.
+This usually means using several Observability tools, each with their own data model, storage technology, and query language.
+These differences make it difficult to recognize relationships between different signals and resources in a cluster.
 
-Korrel8r is a _correlation engine_ for observable signals and Kubernetes resources from multiple _domains_.
-A _domain_ is a data set with consistent labelling, storage, and schema. Examples of domains include:
+Korrel8r is a _correlation engine_ for observable signals and Kubernetes resources.
+Each distinct data set, with its own labelling, storage, and schema, is known as a _domain_.
+Examples of domains include:
 
-- Resources managed by the Kubernetes API server itself.
+- Kubernetes Resources, managed by the Kubernetes API server.
 - Metrics stored in Prometheus.
 - Logs stored in Loki in a known format.
 
+New domains can be added to deal with new signal types, for example Network Observability Events.
 
-Korrel8r uses an extendable set of _rules_ to define relationships between data in _multiple_ domains.
+Korrel8r uses an extendable set of _rules_ to define relationships between data items.
+Rules can define relationships within a domain, or _between different domains_.
 For example, rules can define
 
 - How to find logs or metrics related to Kubernetes resources and vice-versa.
 - How to find Kubernetes resources related to network events.
 - How to find logs, metrics or resources related to Prometheus Alerts
 
-Given a _start_ object, Korrel8r can searches its graph of rules to find related _goal_ objects, or to show the _neighbourhood_ data related to the start object.
+Given a _start_ object (resource or signal), Korrel8r searches its rule graph to find a network of related objects.
+There are two types of search:
+
+_Goal_ search:: given a a _goal_ data type (log, metric, Pod etc.), find all paths from __start_ to objects of the goal type.
+_Neighbourhood_ search:: given a numeric _depth_  find all objects reachable from _start_ by following _depth_ rules or less.
+
+
+== Architecture
+
+include::about-domains.adoc[leveloffset=+2]
+
+include::about-rules.adoc[leveloffset=+2]
+
+== Getting Started
+
+include::korrel8r-command.adoc[leveloffset=+2]
+
+include::in-cluster.adoc[leveloffset=+2]
+
+include::korrel8rcli-command.adoc[leveloffset=+2]
 
 [id="index-architecture"]
-=== Architecture
-
-include::about-domains.adoc[leveloffset=+3]
-
-include::about-objects.adoc[leveloffset=+3]
-
-include::about-rules.adoc[leveloffset=+3]
-
-== Installing on a cluster
-
-include::installing-korrel8r-ocp.adoc[leveloffset=+2]
-
-include::korrel8r-resource.adoc[leveloffset=+2]
-
-include::using-korrel8r.adoc[leveloffset=+1]
-
 include::configuration.adoc[leveloffset=+1]
 
-include::troubleshooting.adoc[leveloffset=+1]
-
 [id="index-reference"]
-== Reference
+= Reference
 
 [id="index-domain-reference"]
-=== Domains
-
+== Domains
 Reference details for the for the classes, objects, queries and stores of each available domain.
 
-include::gen/domains.adoc[leveloffset=+3]
+include::gen/domains.adoc[leveloffset=+2]
 
 [id="index-rest-api-reference"]
-include::gen/rest_api.adoc[leveloffset=+2]
+include::gen/rest_api.adoc[leveloffset=+1]
+
+include::troubleshooting.adoc[leveloffset=+1]

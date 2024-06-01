@@ -1,0 +1,49 @@
+= Deploying in a cluster
+
+== Deploy resources from github
+
+You can deploy `korrel8r` deployment and service in namespace `korrel8r` like this:
+
+.Deploy the latest from github.
+[source,terminal]
+----
+oc apply -k github.com/korrel8r/korrel8r/config/?version=main
+----
+
+Replace `version=main` with `version=vX.Y.Z` to deploy a specific version.
+
+On an {rh-ocp} cluster you can create a `route` to the korrel8r service like this:
+
+.Deploy a route to the korrel8r service.
+[source,terminal]
+----
+oc apply -k github.com/korrel8r/korrel8r/config/route?version=main
+----
+
+You can use the deployment files as a guide to create your own deployment resources.
+
+include::installing-korrel8r-ocp.adoc[leveloffset=+1]
+
+== Using Korrel8r via the Openshift Console
+
+The {rh-console} has links that are powered by korrel8r.
+
+. Navigate to *Observe* -> *Logs*. Click the *Metrics* link to see correlated metrics of each log record.
+. Navigate to *Observe* -> *Alerting*, and click an alert. Alerts that have related logs have a *see related logs* link.
+
+[TIP]
+====
+Not all alerts have a *see related logs* link. Only alerts that are _related_ to container workloads can have related logs.
+For example, `KubePodCrashLooping` is related to a pod and so can have related logs.
+See the xref:troubleshooting.adoc#troubleshooting-no-related-logs[There is no "see related logs" link] documentation for more information.
+====
+
+== Using korrel8rcli
+
+The xref:korrel8rcli-command[korrel8rcli] command can query and display data from a korrel8r cluster service.
+
+If you deploy korrel8r with a `route` as described above, then the engine URL is:
+
+----
+https://$(oc get -n korrel8r route/korrel8r -o template='{{.spec.host}}')
+----

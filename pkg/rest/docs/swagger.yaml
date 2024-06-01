@@ -7,6 +7,20 @@ definitions:
       type: string
     description: Classes is a map from class names to a short description.
     type: object
+  Constraint:
+    description: Constraint constrains the objects that will be included in search
+      results.
+    properties:
+      end:
+        description: End of time interval to include.
+        type: string
+      limit:
+        description: Limit number of objects returned per query.
+        type: integer
+      start:
+        description: Start of time interval to include.
+        type: string
+    type: object
   Domain:
     description: Domain configuration information.
     properties:
@@ -113,7 +127,7 @@ definitions:
         description: Class for `objects`
         type: string
       constraint:
-        $ref: '#/definitions/rest.Constraint'
+        $ref: '#/definitions/Constraint'
       objects:
         description: Objects of `class` serialized as JSON
         type: object
@@ -127,20 +141,6 @@ definitions:
     additionalProperties:
       type: string
     description: Store is a map of name:value attributes used to connect to a store.
-    type: object
-  rest.Constraint:
-    description: Constraint constrains the objects that will be included in search
-      results.
-    properties:
-      end:
-        description: End of time interval to include.
-        type: string
-      limit:
-        description: Limit number of objects returned per query.
-        type: integer
-      start:
-        description: Start of time interval to include.
-        type: string
     type: object
 host: localhost:8080
 info:

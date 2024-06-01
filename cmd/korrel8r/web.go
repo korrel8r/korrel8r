@@ -22,7 +22,7 @@ var webCmd = &cobra.Command{
 	Short: "Start REST server. Listening address must be  provided via --http or --https.",
 	Args:  cobra.NoArgs,
 	Run: func(_ *cobra.Command, args []string) {
-		if *htmlFlag || *restFlag {
+		if *htmlFlag || !*restFlag {
 			log.Info("DEPRECATED --html and --rest are deprecated. HTML server no longer supported.")
 		}
 		if *specFlag != "" {
@@ -44,11 +44,14 @@ var webCmd = &cobra.Command{
 			panic(fmt.Errorf("only one of --http or --https may be present"))
 		case *httpFlag != "":
 			s.Addr = *httpFlag
+			docs.SwaggerInfo.Schemes = []string{"http", "https"}
 			if *certFlag != "" || *keyFlag != "" {
 				panic(fmt.Errorf("--cert and --key not allowed with --http"))
 			}
+
 		case *httpsFlag != "":
 			s.Addr = *httpsFlag
+			docs.SwaggerInfo.Schemes = []string{"https", "http"}
 			if *certFlag == "" || *keyFlag == "" {
 				panic(fmt.Errorf("--cert and --key are required for https"))
 			}
@@ -69,10 +72,10 @@ var webCmd = &cobra.Command{
 		pprof.Register(router) // Enable profiling
 
 		if *httpFlag != "" {
-			log.Info("listening for http", "addr", s.Addr, "version", build.Version())
+			log.Info("listening for http", "addr", s.Addr, "version", build.Version)
 			must.Must(s.ListenAndServe())
 		} else {
-			log.Info("listening for https", "addr", s.Addr, "version", build.Version())
+			log.Info("listening for https", "addr", s.Addr, "version", build.Version)
 			must.Must(s.ListenAndServeTLS(*certFlag, *keyFlag))
 		}
 	},

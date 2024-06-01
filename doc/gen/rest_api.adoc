@@ -339,6 +339,31 @@ Status: OK
 
 link:#classes[Classes]
 
+[id=constraint]
+=== Constraint
+
+
+> Constraint constrains the objects that will be included in search results.
+  
+
+
+
+
+
+**Properties**
+
+[%autowidth]
+|===
+| Name | Type | Go type | Required | Default | Description | Example
+
+	| end | string| `string` |  | | End of time interval to include. | 
+
+	| limit | integer| `int64` |  | | Limit number of objects returned per query. | 
+
+	| start | string| `string` |  | | Start of time interval to include. | 
+
+|===
+
 [id=domain]
 === Domain
 
@@ -540,7 +565,7 @@ link:#classes[Classes]
 
 	| class | string| `string` |  | | Class for `objects` | 
 
-	| constraint | link:#rest-constraint[RestConstraint]| `RestConstraint` |  | |  | 
+	| constraint | link:#constraint[Constraint]| `Constraint` |  | |  | 
 
 	| objects | link:#interface[interface{}]| `interface{}` |  | | Objects of `class` serialized as JSON | 
 
@@ -558,28 +583,3 @@ link:#classes[Classes]
 
 
 link:#store[Store]
-
-[id=rest-constraint]
-=== rest.Constraint
-
-
-> Constraint constrains the objects that will be included in search results.
-  
-
-
-
-
-
-**Properties**
-
-[%autowidth]
-|===
-| Name | Type | Go type | Required | Default | Description | Example
-
-	| end | string| `string` |  | | End of time interval to include. | 
-
-	| limit | integer| `int64` |  | | Limit number of objects returned per query. | 
-
-	| start | string| `string` |  | | Start of time interval to include. | 
-
-|===

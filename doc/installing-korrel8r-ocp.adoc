@@ -17,4 +17,6 @@ It has been tested with {rh-ocp}, it may or may not work with other k8s clusters
 . In the {rh-console} go to `Home > Console > Operators > OperatorHub`
 . Type "korrel8r" in the filter box and select the Korrel8r Community tile +
   image:images/operatorhub-tile.png[Korrel8r Community Tile]
-. Click Install, Install again, and you are done!
+. Click Install, Install again.
+. You will be asked to create a Korrel8r instance - accept the default settings.
+. Korrel8r is now running in your cluster!

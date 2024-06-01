@@ -17,5 +17,5 @@ labels:
 
 images:
 - name: quay.io/korrel8r/korrel8r
-  newName: quay.io/korrel8r/korrel8r
-  newTag: 0.6.5
+  newName: quay.io/alanconway/korrel8r
+  newTag: 0.6.5-dev

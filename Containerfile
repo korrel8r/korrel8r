@@ -13,7 +13,6 @@ COPY internal internal
 RUN --mount=type=cache,target="/root/.cache/go-build" CGO_ENABLED=0 GOOS=linux GOFLAGS=-mod=readonly go build -tags netgo ./cmd/korrel8r
 RUN true # Commit build cache
 
-# See https://github.com/GoogleContainerTools/distroless for more details
 FROM registry.access.redhat.com/ubi9/ubi-micro
 WORKDIR /
 COPY --from=builder /src/korrel8r /bin/korrel8r

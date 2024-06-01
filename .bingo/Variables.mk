@@ -35,6 +35,12 @@ $(GOLANGCI_LINT): $(BINGO_DIR)/golangci-lint.mod
 	@echo "(re)installing $(GOBIN)/golangci-lint-v1.57.2"
 	@cd $(BINGO_DIR) && GOWORK=off $(GO) build -mod=mod -modfile=golangci-lint.mod -o=$(GOBIN)/golangci-lint-v1.57.2 "github.com/golangci/golangci-lint/cmd/golangci-lint"
 
+KORREL8RCLI := $(GOBIN)/korrel8rcli-v0.0.2
+$(KORREL8RCLI): $(BINGO_DIR)/korrel8rcli.mod
+	@# Install binary/ries using Go 1.14+ build command. This is using bwplotka/bingo-controlled, separate go module with pinned dependencies.
+	@echo "(re)installing $(GOBIN)/korrel8rcli-v0.0.2"
+	@cd $(BINGO_DIR) && GOWORK=off $(GO) build -mod=mod -modfile=korrel8rcli.mod -o=$(GOBIN)/korrel8rcli-v0.0.2 "github.com/korrel8r/client/cmd/korrel8rcli"
+
 KUSTOMIZE := $(GOBIN)/kustomize-v5.3.0
 $(KUSTOMIZE): $(BINGO_DIR)/kustomize.mod
 	@# Install binary/ries using Go 1.14+ build command. This is using bwplotka/bingo-controlled, separate go module with pinned dependencies.

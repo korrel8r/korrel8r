@@ -35,8 +35,8 @@ import (
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"github.com/korrel8r/korrel8r/pkg/rest/docs"
 	"github.com/korrel8r/korrel8r/pkg/unique"
-	swaggoFiles "github.com/swaggo/files"
-	ginSwagger "github.com/swaggo/gin-swagger"
+	swaggofiles "github.com/swaggo/files"
+	ginswagger "github.com/swaggo/gin-swagger"
 )
 
 var log = logging.Log()
@@ -53,8 +53,9 @@ type API struct {
 func New(e *engine.Engine, c config.Configs, r *gin.Engine) (*API, error) {
 	a := &API{Engine: e, Configs: c}
 	r.Use(a.logRequest)
-	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggoFiles.Handler))
-	r.GET("/api", func(c *gin.Context) { c.Redirect(http.StatusPermanentRedirect, "/swagger/index.html") })
+	r.GET("/", func(c *gin.Context) { c.Redirect(http.StatusTemporaryRedirect, "/swagger/index.html") })
+	r.GET("/api", func(c *gin.Context) { c.Redirect(http.StatusTemporaryRedirect, "/swagger/index.html") })
+	r.GET("/swagger/*any", ginswagger.WrapHandler(swaggofiles.Handler))
 	v := r.Group(docs.SwaggerInfo.BasePath)
 	v.GET("/domains", a.Domains)
 	v.GET("/domains/:domain/classes", a.DomainClasses)

@@ -5,11 +5,12 @@
 :description: Correlation of observability signal data
 // URLs
 :github: https://github.com/korrel8r
-:project: {github}/korrel8r#readme
-:etc-korrel8r: {project}/tree/main/etc/korrel8r
+:project: {github}/korrel8r
 :pages: https://korrel8r.github.io/korrel8r
+:raw-etc-korrel8r: https://raw.githubusercontent.com/korrel8r/korrel8r/main/etc/korrel8r
+:etc-korrel8r: {project}/blob/main/etc/korrel8r
 :korrel8r-help: xref:gen/cmd/korrel8r.adoc
-:korrel8rcli-help: https://github.com/korrel8r/client
+:korrel8rcli-help: xref:gen/cmd/korrel8rcli.adoc
 // abbreviations
 :red-hat: Red{nbsp}Hat
 :rh-ocp: {red-hat} OpenShift Container Platform

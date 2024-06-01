@@ -8,7 +8,10 @@ import (
 	"strings"
 )
 
-//go:embed version.txt
-var version string
+var (
+	//go:embed version.txt
+	version string
 
-func Version() string { return strings.TrimSpace(version) }
+	// Version of the current build, a semver string.
+	Version = strings.TrimSpace(version)
+)

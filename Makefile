@@ -6,7 +6,7 @@ help: ## Display this help.
 	@grep -E '^## [A-Z0-9_]+: ' Makefile | sed 's/^## \([A-Z0-9_]*\): \(.*\)/\1#\2/' | column -s'#' -t
 
 ## VERSION: Semantic version for release, use -dev for development pre-release versions.
-VERSION?=0.6.5
+VERSION?=0.6.5-dev
 ## IMG_ORG: org name for images, for example quay.io/myorg.
 IMG_ORG?=$(error Set IMG_ORG to organization prefix for images, e.g. IMG_ORG=quay.io/myorg)
 ## IMGTOOL: May be podman or docker.
@@ -30,30 +30,28 @@ PATH:=$(LOCALBIN):$(PATH)
 
 include .bingo/Variables.mk	# Versioned tools
 
-KORREL8R=$(abspath bin/korrel8r)
+KORREL8R=cmd/korrel8r/korrel8r
 build: $(KORREL8R)
-$(KORREL8R): generate $(shell find -name *.go)
-	@mkdir -p $(dir $@)
+$(KORREL8R): $(GEN_SRC) $(shell find -name *.go)
+	go mod tidy
 	go build -cover -o $@ ./cmd/korrel8r
 
-all: build lint test _site image-build kustomize-edit ## Build and test everything locally. Recommended before pushing.
+all: lint build test _site image-build kustomize-edit ## Build and test everything locally. Recommended before pushing.
 
 clean: ## Remove generated files, including checked-in files.
-	rm -rf bin _site $(GENERATED) doc/gen tmp
+	rm -rf bin _site $(GEN_SRC) $(GEN_DOC) doc/gen tmp
 
 # Generated files
 VERSION_TXT=internal/pkg/build/version.txt
 SWAGGER_SPEC=pkg/rest/docs/swagger.json
-
-GENERATED=$(VERSION_TXT) $(SWAGGER_SPEC) pkg/config/zz_generated.deepcopy.go
+GEN_SRC=$(VERSION_TXT) $(SWAGGER_SPEC) pkg/config/zz_generated.deepcopy.go .copyright
+GEN_DOC=doc/gen/domains.adoc doc/gen/rest_api.adoc doc/gen/cmd
 
 ifneq ($(VERSION),$(file <$(VERSION_TXT)))
 .PHONY: $(VERSION_TXT) # Force update if VERSION_TXT does not match $(VERSION)
 endif
 $(VERSION_TXT):
 	echo $(VERSION) > $@
-
-generate: $(GENERATED) .copyright ## Generate code and doc.
 
 .copyright: $(shell find . -name '*.go')
 	hack/copyright.sh	# Make sure files have copyright notice.
@@ -72,27 +70,26 @@ SHELLCHECK:= $(LOCALBIN)/shellcheck
 $(SHELLCHECK):
 	./hack/shellcheck.sh
 
-lint: generate $(GOLANGCI_LINT) $(SHFMT) $(SHELLCHECK) ## Run the linter to find and fix code style problems.
+lint: $(GEN_SRC) $(GOLANGCI_LINT) $(SHFMT) $(SHELLCHECK) ## Run the linter to find and fix code style problems.
 	$(GOLANGCI_LINT) run --fix
 	$(SHFMT) -l -w ./**/*.sh
-	go mod tidy
 	$(SHELLCHECK) -x -S style hack/*.sh
 
 .PHONY: test
 test: ## Run all tests, requires a cluster.
 	$(MAKE) TEST_NO_SKIP=1 test-skip
 
-test-skip: generate ## Run all tests but skip those requiring a cluster if not logged in.
+test-skip: ## Run all tests but skip those requiring a cluster if not logged in.
 	go test -timeout=1m -race ./...
 
 cover: ## Run tests and show code coverage in browser.
 	go test -coverprofile=test.cov ./...
 	go tool cover --html test.cov; sleep 2 # Sleep required to let browser start up.
 
-run: generate ## Run `korrel8r web` using configuration in ./etc/korrel8r
+run: $(GEN_SRC) ## Run `korrel8r web` using configuration in ./etc/korrel8r
 	go run ./cmd/korrel8r web -c $(CONFIG) $(ARGS)
 
-image-build: generate ## Build image locally, don't push.
+image-build: $(GEN_SRC) ## Build image locally, don't push.
 	$(IMGTOOL) build --tag=$(IMAGE) -f Containerfile .
 
 image: image-build ## Build and push image. IMG must be set to a writable image repository.
@@ -129,9 +126,6 @@ undeploy:
 	@kubectl delete -k config/route || true
 	@kubectl delete -k config || true
 
-
-
-
 ASCIIDOCTOR:=$(LOCALBIN)/asciidoctor
 $(ASCIIDOCTOR):
 	gem install asciidoctor --user-install --bindir $(LOCALBIN)
@@ -141,23 +135,23 @@ CSS?=adoc-readthedocs.css
 ADOC_FLAGS=-a allow-uri-read -a stylesdir=$(shell pwd)/doc/css -a stylesheet=$(CSS)  -a revnumber=$(VERSION) -a revdate=$(shell date -I)
 
 # _site is published to github pages by .github/workflows/asciidoctor-ghpages.yml.
-_site: doc _site/man $(ASCIIDOCTOR) ## Generate the website HTML.
+_site: $(shell find etc) doc _site/man $(ASCIIDOCTOR) ## Generate the website HTML.
 	@mkdir -p $@/etc
-	@cp -r doc/images $@
+	@cp -r doc/images etc $@
 	$(ASCIIDOCTOR) $(ADOC_FLAGS) -D_site doc/index.adoc
 	$(ASCIIDOCTOR) $(ADOC_FLAGS) -D_site/gen/cmd doc/gen/cmd/*.adoc
 	$(and $(shell type -p linkchecker),linkchecker --check-extern --ignore-url 'https?://localhost[:/].*' _site)
 	@touch $@
 
-_site/man: generate	## Generated man pages documentation.
+_site/man: $(GEN_SRC)	## Generated man pages documentation.
 	@mkdir -p $@
 	go run ./cmd/korrel8r doc man $@
 	touch $@
 
-doc: $(shell find doc -type f) doc/gen/domains.adoc doc/gen/rest_api.adoc doc/gen/cmd
+doc: $(shell find doc -type f) $(GEN_DOC)
 	touch $@
 
-doc/gen/domains.adoc: $(shell find cmd/korrel8r-doc internal pkg -name '*.go') generate
+doc/gen/domains.adoc: $(shell find cmd/korrel8r-doc internal pkg -name '*.go') $(GEN_SRC)
 	@mkdir -p $(dir $@)
 	go run ./cmd/korrel8r-doc pkg/domains/* > $@
 
@@ -169,9 +163,10 @@ KRAMDOC:=$(LOCALBIN)/kramdoc
 $(KRAMDOC):
 	gem install kramdown-asciidoc --user-install --bindir $(LOCALBIN)
 
-doc/gen/cmd: generate $(KRAMDOC) ## Generated command documentation
+doc/gen/cmd: $(KORREL8R) $(KORREL8RCLI) $(KRAMDOC) ## Generated command documentation
 	@mkdir -p $@
-	go run ./cmd/korrel8r doc markdown $@
+	$(KORREL8R) doc markdown $@
+	$(KORREL8RCLI) doc markdown $@
 	cd $@ && for F in $$(basename -s .md *.md); do $(KRAMDOC) --heading-offset=-1 -o $$F.adoc $$F.md; done
 	rm $@/*.md
 	touch $@
@@ -184,4 +179,3 @@ release: pre-release		## Set VERISON and IMG_ORG to push release tags and images
 
 tools: $(BINGO) $(ASCIIDOCTOR) $(KRAMDOC) ## Download all tools needed for development
 	$(BINGO) get
-	go mod tidy

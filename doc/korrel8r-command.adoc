@@ -1,0 +1,59 @@
+= The korrel8r command
+include::attributes.adoc[]
+
+See {korrel8r-help}[korrel8r help] for more details.
+
+The `korrel8r` command implements the correlation engine.
+    It loads correlation rules and connects to data stores based on a xref:configuration.adoc[configuration file]
+
+
+.Install the korrel8r engine
+[source,terminal]
+----
+go install github.com/korrel8r/korrel8r/cmd/korrel8r@latest
+----
+
+== Configuration
+
+There are some example configuration files to get started.
+You can download them locally or use them directly by URL.
+
+link:{raw-etc-korrel8r}/openshift-route.yaml[openshift-route.yaml]::
+Run korrel8r outside the cluster, connect to stores via routes:
+
+link:{raw-etc-korrel8r}/openshift-svc.yaml[openshift-svc.yaml]::
+Used to run korrel8r as a clutser service, connect to stores via service URLs.
+See xref:in-cluster.adoc[] for more about running as a cluster service.
+
+== Examples
+
+=== Command line
+
+.List the known korrel8r domains.
+[source,terminal,subs=attributes+]
+----
+korrel8r --config {raw-etc-korrel8r}/openshift-route.yaml list
+----
+
+.List korrel8r classes in the k8s domain.
+[source,terminal,subs=attributes+]
+----
+korrel8r --config {raw-etc-korrel8r}/openshift-route.yaml list k8s
+----
+
+=== Run as a service
+
+.Run the korrel8r engine outside the cluster, with REST API at localhost:8080.
+[source,terminal,subs=attributes+]
+----
+korrel8r -c {raw-etc-korrel8r}/openshift-route.yaml web --http=localhost:8080
+----
+
+This runs the engine as a REST service that can be queried by other services.
+For example, the {rh-console} uses Korrel8r to implement "related data" links
+and a troubleshooting panel.
+
+You can also use the xref:korrel8rcli-command.adoc[korrel8rcli] command to query
+a korrel8r engine from the command line.
+
+Korrel8r can also run as a xref:in-cluster.adoc[cluster service]
