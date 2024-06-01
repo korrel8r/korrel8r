@@ -41,6 +41,7 @@ endif
 
 clean-operators:
 	kubectl delete --ignore-not-found -k config/operators
+	kubectl patch consoles.operator.openshift.io/cluster --type=merge --patch '{ "spec": { "plugins": [] }}'
 clean-resources:
 	kubectl delete --ignore-not-found -k config/resources
 clean-all: clean-resources clean-operators
