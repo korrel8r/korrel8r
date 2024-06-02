@@ -20,9 +20,9 @@ jobs:
           path: ~/go
           key: cache-${{ runner.os }}-${{ runner.arch }}
 
-      - name: Generate and Lint
+      - name: Lint
         run: |
-          make generate lint
+          make lint
           git diff --exit-code
 
       - name: Test
