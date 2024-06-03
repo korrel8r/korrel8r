@@ -1,8 +1,5 @@
-/config/overlays/dev/
-/hack/kind/jsonnet/vendor/
-/_site/
-/bin/
-/tmp/
-.*.made
-_covdata/
 /cmd/korrel8r/korrel8r
+/_bin/
+/_site/
+/_cover/
+/hack/kind/jsonnet/vendor/

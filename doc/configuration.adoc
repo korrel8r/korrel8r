@@ -3,7 +3,7 @@
 :xref-domain: xref:index.adoc#index-domain-reference[Domain Reference]
 :go-templates: https://pkg.go.dev/text/template[Go templates]
 :pkg-korrel8r: https://pkg.go.dev/github.com/korrel8/korrel8/pkg/korrel8
-:slim-sprig: https://go-task.github.io/slim-sprig[slim-sprig]
+:slim-sprig: https://go-task.github.io/slim-sprig/[slim-sprig]
 
 include::attributes.adoc[]
 

@@ -20,42 +20,38 @@ CONFIG?=etc/korrel8r/openshift-route.yaml
 IMG?=$(IMG_ORG)/korrel8r
 IMAGE=$(IMG):$(VERSION)
 
-# Setting GOENV
-GOOS := $(shell go env GOOS)
-GOARCH := $(shell go env GOARCH)
-
-LOCALBIN ?= $(shell pwd)/tmp/bin
-$(shell mkdir -p $(LOCALBIN))
-PATH:=$(LOCALBIN):$(PATH)
-
 include .bingo/Variables.mk	# Versioned tools
 
-KORREL8R=cmd/korrel8r/korrel8r
-build: $(KORREL8R)
-$(KORREL8R): $(GEN_SRC) $(shell find -name *.go)
-	go mod tidy
-	go build -cover -o $@ ./cmd/korrel8r
+BIN ?= $(shell pwd)/_bin
+export PATH := $(abspath $(BIN)):$(PATH)
+export GOCOVERDIR := $(abspath _cover)
 
-all: lint build test _site image-build kustomize-edit ## Build and test everything locally. Recommended before pushing.
-
-clean: ## Remove generated files, including checked-in files.
-	rm -rf bin _site $(GEN_SRC) $(GEN_DOC) doc/gen tmp
+$(BIN):
+	@mkdir -p $(BIN)
 
 # Generated files
 VERSION_TXT=internal/pkg/build/version.txt
 SWAGGER_SPEC=pkg/rest/docs/swagger.json
-GEN_SRC=$(VERSION_TXT) $(SWAGGER_SPEC) pkg/config/zz_generated.deepcopy.go .copyright
+GEN_SRC=$(VERSION_TXT) $(SWAGGER_SPEC) pkg/config/zz_generated.deepcopy.go
 GEN_DOC=doc/gen/domains.adoc doc/gen/rest_api.adoc doc/gen/cmd
+
+all: lint build test _site image-build ## Build and test everything locally. Recommended before pushing.
+
+KORREL8R=cmd/korrel8r/korrel8r
+build: $(KORREL8R)
+$(KORREL8R): $(GEN_SRC) $(shell find -name *.go) $(BIN)
+	@mkdir -p $(dir $@)
+	go mod tidy
+	go build -cover -o $@ ./cmd/korrel8r
+
+clean: ## Remove generated files, including checked-in files.
+	rm -rf bin _site $(GEN_SRC) doc/gen tmp $(BIN) $(KORREL8R)
 
 ifneq ($(VERSION),$(file <$(VERSION_TXT)))
 .PHONY: $(VERSION_TXT) # Force update if VERSION_TXT does not match $(VERSION)
 endif
 $(VERSION_TXT):
 	echo $(VERSION) > $@
-
-.copyright: $(shell find . -name '*.go')
-	hack/copyright.sh	# Make sure files have copyright notice.
-	@touch $@
 
 pkg/config/zz_generated.deepcopy.go:  $(filter-out pkg/config/zz_generated.deepcopy.go,$(wildcard pkg/config/*.go)) $(CONTROLLER_GEN)
 	$(CONTROLLER_GEN) object paths=./pkg/config/...
@@ -66,37 +62,36 @@ $(SWAGGER_SPEC): $(wildcard pkg/rest/*.go) $(SWAG)
 	$(SWAG) fmt pkg/rest
 	@touch $@
 
-SHELLCHECK:= $(LOCALBIN)/shellcheck
-$(SHELLCHECK):
-	./hack/shellcheck.sh
+SHELLCHECK:= $(BIN)/shellcheck
+$(SHELLCHECK):  $(BIN)
+	./hack/install-shellcheck.sh $(BIN) 0.10.0
 
 lint: $(GEN_SRC) $(GOLANGCI_LINT) $(SHFMT) $(SHELLCHECK) ## Run the linter to find and fix code style problems.
+	hack/copyright.sh
 	$(GOLANGCI_LINT) run --fix
 	$(SHFMT) -l -w ./**/*.sh
 	$(SHELLCHECK) -x -S style hack/*.sh
 
 .PHONY: test
-test: ## Run all tests, requires a cluster.
+test:				## Run all tests, requires a cluster.
 	$(MAKE) TEST_NO_SKIP=1 test-skip
 
-test-skip: ## Run all tests but skip those requiring a cluster if not logged in.
-	go test -timeout=1m -race ./...
+test-skip: $(KORREL8R) $(GOCOVERDIR) ## Run all tests but skip those requiring a cluster if not logged in.
+	go test -timeout=1m -cover -race ./...
+	@echo -e "\\n# Accumulated coverage from main_test"
+	go tool covdata percent -i $(GOCOVERDIR)
 
-cover: ## Run tests and show code coverage in browser.
-	go test -coverprofile=test.cov ./...
-	go tool cover --html test.cov; sleep 2 # Sleep required to let browser start up.
+$(GOCOVERDIR):
+	@mkdir -p $@
 
-run: $(GEN_SRC) ## Run `korrel8r web` using configuration in ./etc/korrel8r
-	go run ./cmd/korrel8r web -c $(CONFIG) $(ARGS)
+run: $(KORREL8R) ## Run `korrel8r web` using configuration in ./etc/korrel8r
+	$(KORREL8R) web -c $(CONFIG) $(ARGS)
 
-image-build: $(GEN_SRC) ## Build image locally, don't push.
+image-build:  $(GEN_SRC) ## Build image locally, don't push.
 	$(IMGTOOL) build --tag=$(IMAGE) -f Containerfile .
 
 image: image-build ## Build and push image. IMG must be set to a writable image repository.
 	$(IMGTOOL) push -q $(IMAGE)
-
-image-name: ## Print the full image name and tag.
-	@echo $(IMAGE)
 
 WAIT_DEPLOYMENT=hack/wait.sh rollout $(NAMESPACE) deployment.apps/korrel8r
 DEPLOY_ROUTE=kubectl apply -k config/route -n $(NAMESPACE) || echo "skipping route" # Non-openshift cluster
@@ -111,44 +106,35 @@ deploy: image kustomize-edit	## Deploy to current cluster using kustomize.
 	$(DEPLOY_ROUTE)
 	$(WAIT_DEPLOYMENT)
 
-deploy-ns: image kustomize-edit	## Deploy only namespace-scoped resources.
-	@rm -rf tmp/resources; mkdir -p tmp/resources
-	kustomize build config -o tmp/resources
-	kubectl apply -f tmp/resources/apps_v1_deployment_korrel8r.yaml -f tmp/resources/v1_service_korrel8r.yaml
-	$(DEPLOY_ROUTE)
-	$(WAIT_DEPLOYMENT)
-
-restart:			## Force restart of pods.
-	kubectl get -n $(NAMESPACE) pod -o name | xargs -r oc delete -n $(NAMESPACE)
-	$(WAIT_DEPLOYMENT)
-
-undeploy:
-	@kubectl delete -k config/route || true
+undeploy:			# Delete resources created by `make deploy`
+	@kubectl delete -k config/route || truel
 	@kubectl delete -k config || true
 
-ASCIIDOCTOR:=$(LOCALBIN)/asciidoctor
-$(ASCIIDOCTOR):
-	gem install asciidoctor --user-install --bindir $(LOCALBIN)
+## Documentation
+
+ASCIIDOCTOR:=$(BIN)/asciidoctor
+$(ASCIIDOCTOR): $(BIN)
+	gem install asciidoctor --user-install --bindir $(BIN)
 
 # From github.com:darshandsoni/asciidoctor-skins.git
 CSS?=adoc-readthedocs.css
 ADOC_FLAGS=-a allow-uri-read -a stylesdir=$(shell pwd)/doc/css -a stylesheet=$(CSS)  -a revnumber=$(VERSION) -a revdate=$(shell date -I)
 
 # _site is published to github pages by .github/workflows/asciidoctor-ghpages.yml.
-_site: $(shell find etc) doc _site/man $(ASCIIDOCTOR) ## Generate the website HTML.
-	@mkdir -p $@/etc
-	@cp -r doc/images etc $@
+_site: doc $(kustomize-edit) $(shell find doc/images etc/korrel8r) $(ASCIIDOCTOR) $(MAKEFILE_LIST) ## Generate the website HTML.
+	@mkdir -p $@
+	@cp -r doc/images etc/korrel8r $@
 	$(ASCIIDOCTOR) $(ADOC_FLAGS) -D_site doc/index.adoc
 	$(ASCIIDOCTOR) $(ADOC_FLAGS) -D_site/gen/cmd doc/gen/cmd/*.adoc
-	$(and $(shell type -p linkchecker),linkchecker --check-extern --ignore-url 'https?://localhost[:/].*' _site)
+	$(and $(shell type -p linkchecker),linkchecker --no-warnings --check-extern --ignore-url 'https?://localhost[:/].*' _site)
 	@touch $@
 
-_site/man: $(GEN_SRC)	## Generated man pages documentation.
+_site/man: $(KORREL8R)	## Generated man pages.
 	@mkdir -p $@
-	go run ./cmd/korrel8r doc man $@
-	touch $@
+	$(KORREL8R) doc man $@
+	@touch $@
 
-doc: $(shell find doc -type f) $(GEN_DOC)
+doc: $(GEN_DOC)
 	touch $@
 
 doc/gen/domains.adoc: $(shell find cmd/korrel8r-doc internal pkg -name '*.go') $(GEN_SRC)
@@ -159,23 +145,30 @@ doc/gen/rest_api.adoc: $(SWAGGER_SPEC) $(shell find etc/swagger) $(SWAGGER)
 	@mkdir -p $(dir $@)
 	$(SWAGGER) -q generate markdown -T etc/swagger -f $(SWAGGER_SPEC) --output $@
 
-KRAMDOC:=$(LOCALBIN)/kramdoc
-$(KRAMDOC):
-	gem install kramdown-asciidoc --user-install --bindir $(LOCALBIN)
+KRAMDOC:=$(BIN)/kramdoc
+$(KRAMDOC): $(BIN)
+	gem install kramdown-asciidoc --user-install --bindir $(BIN)
 
 doc/gen/cmd: $(KORREL8R) $(KORREL8RCLI) $(KRAMDOC) ## Generated command documentation
 	@mkdir -p $@
 	$(KORREL8R) doc markdown $@
 	$(KORREL8RCLI) doc markdown $@
-	cd $@ && for F in $$(basename -s .md *.md); do $(KRAMDOC) --heading-offset=-1 -o $$F.adoc $$F.md; done
-	rm $@/*.md
-	touch $@
+	hack/md-to-adoc.sh $(KRAMDOC) $@/*.md
+	@touch $@
 
-pre-release: all image ## Set VERISON and IMG_ORG to build release artifacts. Commit before doing "make release".
+pre-release: all image		## Prepare for a release. Push results before `make release`
+	@echo Ready to release $(VERSION), images at $(IMG_ORG)
 
-release: pre-release		## Set VERISON and IMG_ORG to push release tags and images.
+release:			## Push images and release tags for a release.
+	$(MAKE) clean
+	$(MAKE) pre-release
 	hack/tag-release.sh $(VERSION)
 	$(IMGTOOL) push -q "$(IMAGE)" "$(IMG):latest"
+	@echo Released $(VERSION), images at $(IMG_ORG)
 
-tools: $(BINGO) $(ASCIIDOCTOR) $(KRAMDOC) ## Download all tools needed for development
+BINGO=$(GOBIN)/bingo
+$(BINGO): # Bootstrap bingo
+	go install github.com/bwplotka/bingo@v0.9.0
+
+tools: $(BINGO) $(ASCIIDOCTOR) $(KRAMDOC) $(SHELLCHECK) ## Download all tools needed for development
 	$(BINGO) get

@@ -102,7 +102,7 @@ func TestMain_server_graph(t *testing.T) {
   "depth": 1,
   "start": {
     "class": "k8s:Deployment",
-    "queries": [ "k8s:Deployment:{namespace: korrel8r}" ]
+    "queries": [ "k8s:Deployment:{namespace: openshift-apiserver}" ]
   }
 }`)
 	require.NoError(t, err)
