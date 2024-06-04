@@ -166,7 +166,7 @@ paths:
         default:
           description: ""
           schema:
-            type: string
+            type: object
       summary: Get name, configuration and status for each domain.
   /domains/{domain}/classes:
     get:
@@ -184,7 +184,7 @@ paths:
         default:
           description: ""
           schema:
-            type: string
+            type: object
       summary: Get class names and descriptions for a domain.
   /graphs/goals:
     post:
@@ -207,7 +207,7 @@ paths:
         default:
           description: ""
           schema:
-            type: string
+            type: object
       summary: Create a correlation graph from start objects to goal queries.
   /graphs/neighbours:
     post:
@@ -230,7 +230,7 @@ paths:
         default:
           description: ""
           schema:
-            type: string
+            type: object
       summary: Create a neighbourhood graph around a start object to a given depth.
   /lists/goals:
     post:
@@ -251,8 +251,28 @@ paths:
         default:
           description: ""
           schema:
-            type: string
+            type: object
       summary: Create a list of goal nodes related to a starting point.
+  /objects:
+    get:
+      parameters:
+      - description: query string
+        in: query
+        name: query
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              type: object
+            type: array
+        default:
+          description: ""
+          schema:
+            type: object
+      summary: Execute a query, returns a list of JSON objects.
 produces:
 - application/json
 schemes:

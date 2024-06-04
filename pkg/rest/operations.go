@@ -60,10 +60,10 @@ func New(e *engine.Engine, c config.Configs, r *gin.Engine) (*API, error) {
 	v := r.Group(docs.SwaggerInfo.BasePath)
 	v.GET("/domains", a.Domains)
 	v.GET("/domains/:domain/classes", a.DomainClasses)
-	v.POST("/graphs/goals", a.GraphsGoals)
-	v.POST("/lists/goals", a.ListsGoals)
-	v.POST("/graphs/neighbours", a.GraphsNeighbours)
 	v.GET("/objects", a.GetObjects)
+	v.POST("/graphs/goals", a.GraphsGoals)
+	v.POST("/graphs/neighbours", a.GraphsNeighbours)
+	v.POST("/lists/goals", a.ListsGoals)
 	return a, nil
 }
 
@@ -86,7 +86,7 @@ var swaggerInfoLock sync.Mutex
 //	@router		/domains [get]
 //	@summary	Get name, configuration and status for each domain.
 //	@success	200		{array}		Domain
-//	@failure	default	{string}	string
+//	@failure	default	{object}	any
 func (a *API) Domains(c *gin.Context) {
 	var domains []Domain
 	for _, d := range a.Engine.Domains() {
@@ -104,7 +104,7 @@ func (a *API) Domains(c *gin.Context) {
 //	@summary	Get class names and descriptions for a domain.
 //	@param		domain	path		string	true	"Domain name"
 //	@success	200		{object}	Classes
-//	@failure	default	{string}	string
+//	@failure	default	{object}	any
 func (a *API) DomainClasses(c *gin.Context) {
 	d, err := a.Engine.DomainErr(c.Params.ByName("domain"))
 	check(c, http.StatusNotFound, err)
@@ -122,7 +122,7 @@ func (a *API) DomainClasses(c *gin.Context) {
 //	@param		rules	query		bool	false	"include rules in graph edges"
 //	@param		request	body		Goals	true	"search from start to goal classes"
 //	@success	200		{object}	Graph
-//	@failure	default	{string}	string
+//	@failure	default	{object}	any
 func (a *API) GraphsGoals(c *gin.Context) {
 	opts := &Options{}
 	if check(c, http.StatusBadRequest, c.BindQuery(opts)) {
@@ -138,7 +138,7 @@ func (a *API) GraphsGoals(c *gin.Context) {
 //	@summary	Create a list of goal nodes related to a starting point.
 //	@param		request	body		Goals	true	"search from start to goal classes"
 //	@success	200		{array}		Node
-//	@failure	default	{string}	string
+//	@failure	default	{object}	any
 func (a *API) ListsGoals(c *gin.Context) {
 	nodes := []Node{} // return [] not null for empty
 	g, goals := a.goals(c)
@@ -161,7 +161,7 @@ func (a *API) ListsGoals(c *gin.Context) {
 //	@param		rules	query		bool		false	"include rules in graph edges"
 //	@param		request	body		Neighbours	true	"search from neighbours"
 //	@success	200		{object}	Graph
-//	@failure	default	{string}	string
+//	@failure	default	{object}	any
 func (a *API) GraphsNeighbours(c *gin.Context) {
 	r, opts := Neighbours{}, Options{}
 	if !(check(c, http.StatusBadRequest, c.BindJSON(&r)) && check(c, http.StatusBadRequest, c.BindUri(&opts))) {
@@ -181,12 +181,11 @@ func (a *API) GraphsNeighbours(c *gin.Context) {
 
 // GetObjects handler
 //
-// swagger:route GET		/objects
-//
+//	@router		/objects [get]
 //	@summary	Execute a query, returns a list of JSON objects.
 //	@param		query	query		string	true	"query string"
 //	@success	200		{array}		any
-//	@failure	default	{string}	string
+//	@failure	default	{object}	any
 func (a *API) GetObjects(c *gin.Context) {
 	opts := &Objects{}
 	if !check(c, http.StatusBadRequest, c.BindQuery(opts)) {

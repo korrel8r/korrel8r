@@ -31,6 +31,8 @@ Produces::
 
 | GET | /api/v1alpha1/domains/{domain}/classes | link:#get-domains-domain-classes[get domains domain classes] | Get class names and descriptions for a domain.
 
+| GET | /api/v1alpha1/objects | link:#get-objects[get objects] | Execute a query, returns a list of JSON objects.
+
 | POST | /api/v1alpha1/graphs/goals | link:#post-graphs-goals[post graphs goals] | Create a correlation graph from start objects to goal queries.
 
 | POST | /api/v1alpha1/graphs/neighbours | link:#post-graphs-neighbours[post graphs neighbours] | Create a neighbourhood graph around a start object to a given depth.
@@ -83,7 +85,7 @@ Status: OK
 
   
 
-
+any
 
 [id=get-domains-domain-classes]
 === Get class names and descriptions for a domain.
@@ -144,7 +146,68 @@ link:#classes[Classes]
 
   
 
+any
 
+[id=get-objects]
+=== Execute a query, returns a list of JSON objects.
+
+----
+GET /api/v1alpha1/objects
+----
+
+==== Parameters
+
+[%autowidth]
+|===
+| Name | Source | Type | Go type | Separator | Required | Default | Description
+
+| query
+| `query`
+| string
+| `string`
+| 
+| required
+| 
+| query string
+
+|===
+
+==== All responses
+
+[%autowidth]
+|===
+| Code | Status | Description | Has headers | Schema
+
+| link:#get-objects-200[200] | OK | OK |  | link:#get-objects-200-schema[schema]
+
+| link:#get-objects-default[default] | |  |  | link:#get-objects-default-schema[schema]
+
+|===
+
+==== Responses
+  
+
+[id=get-objects-200]
+=====  200 - OK
+Status: OK
+
+[id=get-objects-200-schema]
+====== Schema
+
+  
+
+[]link:#interface[interface{}]
+
+[id=get-objects-default]
+===== Default Response
+
+
+[id=get-objects-default-schema]
+====== Schema
+
+  
+
+any
 
 [id=post-graphs-goals]
 === Create a correlation graph from start objects to goal queries.
@@ -207,7 +270,7 @@ link:#graph)[Graph]
 
   
 
-
+any
 
 [id=post-graphs-neighbours]
 === Create a neighbourhood graph around a start object to a given depth.
@@ -270,7 +333,7 @@ link:#graph)[Graph]
 
   
 
-
+any
 
 [id=post-lists-goals]
 === Create a list of goal nodes related to a starting point.
@@ -324,7 +387,7 @@ Status: OK
 
   
 
-
+any
 
 == Models
 

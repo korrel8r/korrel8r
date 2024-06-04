@@ -44,7 +44,7 @@ const docTemplate = `{
                     "default": {
                         "description": "",
                         "schema": {
-                            "type": "string"
+                            "type": "object"
                         }
                     }
                 }
@@ -72,7 +72,7 @@ const docTemplate = `{
                     "default": {
                         "description": "",
                         "schema": {
-                            "type": "string"
+                            "type": "object"
                         }
                     }
                 }
@@ -108,7 +108,7 @@ const docTemplate = `{
                     "default": {
                         "description": "",
                         "schema": {
-                            "type": "string"
+                            "type": "object"
                         }
                     }
                 }
@@ -144,7 +144,7 @@ const docTemplate = `{
                     "default": {
                         "description": "",
                         "schema": {
-                            "type": "string"
+                            "type": "object"
                         }
                     }
                 }
@@ -177,7 +177,38 @@ const docTemplate = `{
                     "default": {
                         "description": "",
                         "schema": {
-                            "type": "string"
+                            "type": "object"
+                        }
+                    }
+                }
+            }
+        },
+        "/objects": {
+            "get": {
+                "summary": "Execute a query, returns a list of JSON objects.",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "query string",
+                        "name": "query",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "type": "object"
+                            }
+                        }
+                    },
+                    "default": {
+                        "description": "",
+                        "schema": {
+                            "type": "object"
                         }
                     }
                 }
