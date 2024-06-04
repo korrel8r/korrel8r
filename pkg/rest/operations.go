@@ -15,7 +15,7 @@
 //	@contact.url	https://github.com/korrel8r/korrel8r
 //	@host			localhost:8080
 //	@basePath		/api/v1alpha1
-//	@schemes		http https
+//	@schemes		https http
 //	@accept			json
 //	@produce		json
 package rest
@@ -26,6 +26,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"sync"
 
 	"github.com/gin-gonic/gin"
 	"github.com/korrel8r/korrel8r/internal/pkg/logging"
@@ -55,7 +56,7 @@ func New(e *engine.Engine, c config.Configs, r *gin.Engine) (*API, error) {
 	r.Use(a.logRequest)
 	r.GET("/", func(c *gin.Context) { c.Redirect(http.StatusTemporaryRedirect, "/swagger/index.html") })
 	r.GET("/api", func(c *gin.Context) { c.Redirect(http.StatusTemporaryRedirect, "/swagger/index.html") })
-	r.GET("/swagger/*any", ginswagger.WrapHandler(swaggofiles.Handler))
+	r.GET("/swagger/*any", a.handleSwagger)
 	v := r.Group(docs.SwaggerInfo.BasePath)
 	v.GET("/domains", a.Domains)
 	v.GET("/domains/:domain/classes", a.DomainClasses)
@@ -68,6 +69,17 @@ func New(e *engine.Engine, c config.Configs, r *gin.Engine) (*API, error) {
 
 // Close cleans any persistent resources.
 func (a *API) Close() {}
+
+func (a *API) handleSwagger(c *gin.Context) {
+	// Set the SwaggerInfo Host to be consistent with the incoming request URL so the test UI will work.
+	// Note this may not work properly if there are concurrent requests with different URLs.
+	swaggerInfoLock.Lock()
+	docs.SwaggerInfo.Host = c.Request.URL.Host
+	defer swaggerInfoLock.Unlock()
+	ginswagger.WrapHandler(swaggofiles.Handler)(c)
+}
+
+var swaggerInfoLock sync.Mutex
 
 // Domains handler
 //

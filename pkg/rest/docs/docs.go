@@ -390,7 +390,7 @@ var SwaggerInfo = &swag.Spec{
 	Version:          "v1alpha1",
 	Host:             "localhost:8080",
 	BasePath:         "/api/v1alpha1",
-	Schemes:          []string{"http", "https"},
+	Schemes:          []string{"https", "http"},
 	Title:            "REST API",
 	Description:      "REST API for the Korrel8r correlation engine.",
 	InfoInstanceName: "swagger",
