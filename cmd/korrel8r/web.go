@@ -44,14 +44,14 @@ var webCmd = &cobra.Command{
 			panic(fmt.Errorf("only one of --http or --https may be present"))
 		case *httpFlag != "":
 			s.Addr = *httpFlag
-			docs.SwaggerInfo.Schemes = []string{"http", "https"}
+			docs.SwaggerInfo.Schemes = []string{"http"}
 			if *certFlag != "" || *keyFlag != "" {
 				panic(fmt.Errorf("--cert and --key not allowed with --http"))
 			}
 
 		case *httpsFlag != "":
 			s.Addr = *httpsFlag
-			docs.SwaggerInfo.Schemes = []string{"https", "http"}
+			docs.SwaggerInfo.Schemes = []string{"https"}
 			if *certFlag == "" || *keyFlag == "" {
 				panic(fmt.Errorf("--cert and --key are required for https"))
 			}
