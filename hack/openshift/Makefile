@@ -29,11 +29,10 @@ deployment.apps/loki-querier \
 deployment.apps/loki-query-frontend \
 deployment.apps/netobserv-plugin
 
-resources:
+resources: config/resources/storage.env
 ifeq ($(strip $(STORAGE_CLASS)),)
 		$(error cannot determine storage class of cluster. exitting)
 endif
-	echo "STORAGE_CLASS=$(STORAGE_CLASS)" > config/resources/storage.env
 	kubectl apply -k config/resources
 	$(MINIO_ROLLOUT)
 	$(LOGGING_ROLLOUT)
@@ -42,6 +41,9 @@ endif
 clean-operators:
 	kubectl delete --ignore-not-found -k config/operators
 	kubectl patch consoles.operator.openshift.io/cluster --type=merge --patch '{ "spec": { "plugins": [] }}'
-clean-resources:
+clean-resources: config/resources/storage.env
 	kubectl delete --ignore-not-found -k config/resources
 clean-all: clean-resources clean-operators
+
+config/resources/storage.env: $(MAKEFILE_LIST)
+	echo "STORAGE_CLASS=$(STORAGE_CLASS)" > $@
