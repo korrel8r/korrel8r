@@ -63,9 +63,6 @@ var webCmd = &cobra.Command{
 		gin.DisableConsoleColor()
 		router := gin.New()
 		router.Use(gin.Recovery())
-		if *verbose >= 2 {
-			router.Use(gin.Logger())
-		}
 		r := must.Must1(rest.New(engine, configs, router))
 		defer r.Close()
 		s.Handler = router
