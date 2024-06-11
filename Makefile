@@ -109,7 +109,7 @@ deploy: image kustomize-edit	## Deploy to current cluster using kustomize.
 	$(WAIT_DEPLOYMENT)
 
 undeploy:			# Delete resources created by `make deploy`
-	@kubectl delete -k config/route || truel
+	@kubectl delete -k config/route || true
 	@kubectl delete -k config || true
 
 ## Documentation
