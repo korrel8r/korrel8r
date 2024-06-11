@@ -85,7 +85,7 @@ func load(source string, configs Configs) (err error) {
 		return fmt.Errorf("%v: %w", source, err)
 	}
 	c := &Config{}
-	if err := yaml.Unmarshal(b, c); err != nil {
+	if err := yaml.UnmarshalStrict(b, c); err != nil {
 		return fmt.Errorf("%v: %w", source, err)
 	}
 	configs[source] = c

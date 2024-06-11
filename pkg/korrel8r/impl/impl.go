@@ -52,7 +52,7 @@ func UnmarshalQueryString(domain korrel8r.Domain, query string, data any) (korre
 }
 
 // Unmarshal a JSON or YAML string into a Go value.
-func Unmarshal(s string, data any) error { return yaml.Unmarshal([]byte(s), data) }
+func Unmarshal(s string, data any) error { return yaml.UnmarshalStrict([]byte(s), data) }
 
 // JSONString returns the JSON marshaled string from v, or the error message if marshal fails
 func JSONString(v any) string {
