@@ -6,6 +6,9 @@ metadata:
     flows.netobserv.io/flpparent-namespace: netobserv
   name: cluster
 spec:
+  kafka:
+    sasl:
+      type: Disabled
   agent:
     ebpf:
       cacheActiveTimeout: 5s
