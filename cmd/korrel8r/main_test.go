@@ -12,9 +12,12 @@ import (
 
 // TestMain builds the korrel8r executable for functional testing.
 func TestMain(m *testing.M) {
-	// Build korrel8r once to run in tests, much faster than using 'go run' for each test.
 	tmpDir = test.Must(os.MkdirTemp("", "korrel8r_test"))
 	defer func() { _ = os.RemoveAll(tmpDir) }()
+	// Build korrel8r once to run in tests, much faster than using 'go run' for each test.
+	cmd := exec.Command("go", "build", "-cover", ".")
+	cmd.Stderr = os.Stderr
+	test.PanicErr(cmd.Run())
 	os.Exit(m.Run())
 }
 

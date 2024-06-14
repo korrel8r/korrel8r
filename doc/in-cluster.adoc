@@ -14,13 +14,15 @@ Replace `version=main` with `version=vX.Y.Z` to deploy a specific version.
 
 On an {rh-ocp} cluster you can create a `route` to the korrel8r service like this:
 
-.Deploy a route to the korrel8r service.
+.Deploy a route to the korrel8r service
 [source,terminal]
 ----
 oc apply -k github.com/korrel8r/korrel8r/config/route?version=main
 ----
 
 You can use the deployment files as a guide to create your own deployment resources.
+
+NOTE: See xref:korrel8r-command.adoc#_authentication_and_authorization[Authentication and Authorization] for details about access control.
 
 include::installing-korrel8r-ocp.adoc[leveloffset=+1]
 
@@ -38,12 +40,3 @@ For example, `KubePodCrashLooping` is related to a pod and so can have related l
 See the xref:troubleshooting.adoc#troubleshooting-no-related-logs[There is no "see related logs" link] documentation for more information.
 ====
 
-== Using korrel8rcli
-
-The xref:korrel8rcli-command[korrel8rcli] command can query and display data from a korrel8r cluster service.
-
-If you deploy korrel8r with a `route` as described above, then the engine URL is:
-
-----
-https://$(oc get -n korrel8r route/korrel8r -o template='{{.spec.host}}')
-----

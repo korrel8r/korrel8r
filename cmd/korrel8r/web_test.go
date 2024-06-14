@@ -44,6 +44,9 @@ func startServer(t *testing.T, h *http.Client, scheme string, args ...string) *u
 func request(t *testing.T, h *http.Client, method, url, body string) (string, error) {
 	t.Helper()
 	req, err := http.NewRequest(method, url, strings.NewReader(body))
+	if test.RESTConfig != nil && test.RESTConfig.BearerToken != "" {
+		req.Header.Set("Authorization", "Bearer "+test.RESTConfig.BearerToken)
+	}
 	if err != nil {
 		return "", err
 	}
@@ -51,8 +54,9 @@ func request(t *testing.T, h *http.Client, method, url, body string) (string, er
 	if err != nil {
 		return "", err
 	}
-	if res.Status[0] != '2' {
-		return "", fmt.Errorf("bad stauts: %v", res.Status)
+	if res.StatusCode/100 != 2 {
+		b, _ := io.ReadAll(res.Body)
+		return "", fmt.Errorf("%v: %v", res.Status, string(b))
 	}
 	b, err := io.ReadAll(res.Body)
 	if err != nil {
@@ -101,7 +105,6 @@ func TestMain_server_graph(t *testing.T) {
 	got, err := request(t, http.DefaultClient, "POST", u+"/graphs/neighbours", `{
   "depth": 1,
   "start": {
-    "class": "k8s:Deployment",
     "queries": [ "k8s:Deployment:{namespace: openshift-apiserver}" ]
   }
 }`)
@@ -122,7 +125,6 @@ func TestMain_concurrent_requests(t *testing.T) {
 			resp, err := request(t, http.DefaultClient, "POST", u+"/graphs/neighbours", `{
   "depth": 1,
   "start": {
-    "class": "k8s:Deployment",
     "queries": [ "k8s:Deployment:{namespace: korrel8r}" ]
   }
 }`)
