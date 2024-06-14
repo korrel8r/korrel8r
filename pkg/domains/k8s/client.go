@@ -8,6 +8,7 @@ import (
 
 	"github.com/go-logr/logr"
 	kconfig "github.com/korrel8r/korrel8r/pkg/config"
+	"github.com/korrel8r/korrel8r/pkg/rest/auth"
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
@@ -50,10 +51,10 @@ func GetConfig() (*rest.Config, error) {
 	if err != nil {
 		return nil, err
 	}
-	// TODO configurable settings for k8s client.
-	// Reduce client-side throttling for rapid results.
+	// TODO make these configurable.
 	cfg.QPS = 100
 	cfg.Burst = 1000
 	cfg.Timeout = 5 * time.Second
+	cfg.Wrap(auth.Wrap)
 	return cfg, nil
 }

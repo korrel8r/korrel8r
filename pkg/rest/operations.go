@@ -34,6 +34,7 @@ import (
 	"github.com/korrel8r/korrel8r/pkg/engine"
 	"github.com/korrel8r/korrel8r/pkg/graph"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
+	"github.com/korrel8r/korrel8r/pkg/rest/auth"
 	"github.com/korrel8r/korrel8r/pkg/rest/docs"
 	"github.com/korrel8r/korrel8r/pkg/unique"
 	swaggofiles "github.com/swaggo/files"
@@ -172,7 +173,7 @@ func (a *API) GraphsNeighbours(c *gin.Context) {
 	if c.Errors != nil {
 		return
 	}
-	g, err := a.Engine.Neighbours(c.Request.Context(), start, objects, queries, constraint, depth)
+	g, err := a.Engine.Neighbours(auth.Context(c.Request), start, objects, queries, constraint, depth)
 	if !check(c, http.StatusBadRequest, err) {
 		return
 	}
@@ -196,7 +197,7 @@ func (a *API) GetObjects(c *gin.Context) {
 		return
 	}
 	result := korrel8r.NewResult(query.Class())
-	if !check(c, http.StatusInternalServerError, a.Engine.Get(c.Request.Context(), query, (*korrel8r.Constraint)(opts.Constraint), result)) {
+	if !check(c, http.StatusInternalServerError, a.Engine.Get(auth.Context(c.Request), query, (*korrel8r.Constraint)(opts.Constraint), result)) {
 		return
 	}
 	c.JSON(http.StatusOK, result.List())
@@ -214,7 +215,7 @@ func (a *API) goals(c *gin.Context) (g *graph.Graph, goals []korrel8r.Class) {
 	}
 	g = a.Engine.Graph().ShortestPaths(start, goals...)
 	var err error
-	g, err = a.Engine.GoalSearch(c.Request.Context(), g, start, objects, queries, constraint, goals)
+	g, err = a.Engine.GoalSearch(auth.Context(c.Request), g, start, objects, queries, constraint, goals)
 	if !check(c, http.StatusInternalServerError, err) {
 		return nil, nil
 	}

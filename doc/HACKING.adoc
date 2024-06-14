@@ -54,8 +54,6 @@ There are scripts and examples to help set up logging, metrics and other observa
 
 Log into your cluster as `kubeadmin` or other admin user.
 
-
-w
 If you are interested in helping to develop Korrel8r:
 - clone this repository
 - `make help` will list make targets with brief explanation.

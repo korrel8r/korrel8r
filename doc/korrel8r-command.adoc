@@ -13,6 +13,24 @@ The `korrel8r` command implements the correlation engine.
 go install github.com/korrel8r/korrel8r/cmd/korrel8r@latest
 ----
 
+== Authentication and Authorization
+
+Korrel8r queries observability signal stores with sensitive data.
+It requires a _Bearer Token_ to ensure that only authorized data is returned.
+
+On the command line, korrel8r uses the token associated with your kubectl login.
+When run as a REST server, it uses the bearer token from the incoming request to impersonate the client.
+
+This means you need to be logged on as an admin cluster user to run korrel8r locally, and you need to use
+an appropriate bearer token with clients like https://curl.se[curl] or xref:korrel8rcli-command.adoc[korrel8rcli].
+
+If you are logged in to an {rh-ocp} cluster, you can get your bearer token with
+
+[source,terminal]
+----
+oc whoami -t
+----
+
 == Configuration
 
 There are some example configuration files to get started.
@@ -25,9 +43,7 @@ link:{raw-etc-korrel8r}/openshift-svc.yaml[openshift-svc.yaml]::
 Used to run korrel8r as a clutser service, connect to stores via service URLs.
 See xref:in-cluster.adoc[] for more about running as a cluster service.
 
-== Examples
-
-=== Command line
+== Command-line Examples
 
 .List the known korrel8r domains.
 [source,terminal,subs=attributes+]
@@ -41,12 +57,12 @@ korrel8r --config {raw-etc-korrel8r}/openshift-route.yaml list
 korrel8r --config {raw-etc-korrel8r}/openshift-route.yaml list k8s
 ----
 
-=== Run as a service
+== Run as a REST service
 
 .Run the korrel8r engine outside the cluster, with REST API at localhost:8080.
 [source,terminal,subs=attributes+]
 ----
-korrel8r -c {raw-etc-korrel8r}/openshift-route.yaml web --http=localhost:8080
+korrel8r --config {raw-etc-korrel8r}/openshift-route.yaml web --http=localhost:8080
 ----
 
 This runs the engine as a REST service that can be queried by other services.
@@ -55,5 +71,7 @@ and a troubleshooting panel.
 
 You can also use the xref:korrel8rcli-command.adoc[korrel8rcli] command to query
 a korrel8r engine from the command line.
+
+NOTE: See xref:_authentication_and_authorization[] for details about access control.
 
 Korrel8r can also run as a xref:in-cluster.adoc[cluster service]
