@@ -5,7 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## [Unreleased] - 2024-05-29
+## [Unreleased]
+
+### Fixed
+
+- [Delegate HTTP header credentials from REST API to stores](https://github.com/korrel8r/korrel8r/issues/120)
+  Korrel8r now impersonates the Authorization header to act on behalf-of its callers.
+- [Use strict parsing to catch query errors.](https://github.com/korrel8r/korrel8r/issues/107)
 
 ## [0.6.4] - 2024-05-29
 

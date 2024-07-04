@@ -8,9 +8,9 @@ It has been tested with {rh-ocp}, it may or may not work with other k8s clusters
 .Prerequisites
 
 * You have administrator permissions on an {rh-ocp} cluster version 4.12 or newer.
-* You have installed the https://docs.openshift.com/container-platform/latest/logging/cluster-logging-deploying.html[Red Hat OpenShift Logging Operator] version 5.8.1 or newer provided by {red-hat}.
-* You have installed the https://docs.openshift.com/container-platform/latest/logging/log_storage/installing-log-storage.html#logging-loki-gui-install_installing-log-storage[Loki Operator] version 5.8.1 or newer provided by {red-hat}, and have created a `LokiStack` custom resource (CR).
-* You have https://docs.openshift.com/container-platform/latest/logging/cluster-logging-deploying.html#configuring-log-storage-cr_cluster-logging-deploying[created a `ClusterLogging` CR] that configures LokiStack as the log store.
+* You have installed the link:{rh-logging}/cluster-logging-deploying.html[Red Hat OpenShift Logging Operator] version 5.8.1 or newer provided by {red-hat}.
+* You have installed the link:{rh-logging}/log_storage/installing-log-storage.html#logging-loki-gui-install_installing-log-storage[Loki Operator] version 5.8.1 or newer provided by {red-hat}, and have created a `LokiStack` custom resource (CR).
+* You have link:{rh-logging}/cluster-logging-deploying.html#configuring-log-storage-cr_cluster-logging-deploying[created a `ClusterLogging` CR] that configures LokiStack as the log store.
 
 .Procedure
 

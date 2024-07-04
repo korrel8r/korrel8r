@@ -11,6 +11,7 @@
 :etc-korrel8r: {project}/blob/main/etc/korrel8r
 :korrel8r-help: xref:gen/cmd/korrel8r.adoc
 :korrel8rcli-help: xref:gen/cmd/korrel8rcli.adoc
+:rh-logging: https://docs.openshift.com/container-platform/latest/observability/logging
 // abbreviations
 :red-hat: Red{nbsp}Hat
 :rh-ocp: {red-hat} OpenShift Container Platform

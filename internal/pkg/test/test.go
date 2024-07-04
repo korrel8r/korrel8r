@@ -122,12 +122,13 @@ func TempNamespace(t *testing.T, c client.Client) string {
 	}
 	require.NoError(t, c.Create(context.Background(), &ns))
 	require.NotEmpty(t, ns.Name)
-	t.Logf("namespace for %v: %v", t.Name(), ns.Name)
 	t.Cleanup(func() {
 		t.Helper()
-		if t.Failed() && os.Getenv("KORREL8R_TEST_KEEP_NS") != "" {
-			t.Logf("test namespace not deleted: %v", ns.Name)
+		const env = "KORREL8R_TEST_KEEP_NS"
+		if t.Failed() && os.Getenv(env) != "" {
+			t.Logf("keeping test namespace: %v", ns.Name)
 		} else {
+			t.Logf("deleting test namespace: %v - To keep test namespace set environment %v=1", ns.Name, env)
 			_ = c.Delete(context.Background(), &ns)
 		}
 	})

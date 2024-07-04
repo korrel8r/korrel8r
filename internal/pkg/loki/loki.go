@@ -85,7 +85,7 @@ func (c *Client) get(u *url.URL, collect CollectFunc) error {
 	logging.Log().V(4).Info("loki get", "url", u)
 	resp, err := c.c.Get(u.String())
 	if err != nil {
-		return fmt.Errorf("%w: %v", err, u)
+		return err
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode/100 != 2 {

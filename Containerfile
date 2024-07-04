@@ -16,7 +16,7 @@ RUN true # Commit build cache
 FROM registry.access.redhat.com/ubi8/ubi-micro
 
 WORKDIR /
-COPY --from=builder /src/korrel8r /bin/korrel8r
+COPY --from=builder /src/korrel8r /usr/bin/korrel8r
 COPY etc/korrel8r /etc/korrel8r
 USER 1000
-ENTRYPOINT ["/bin/korrel8r", "web"]
+ENTRYPOINT ["/usr/bin/korrel8r", "web"]
