@@ -96,6 +96,7 @@ func (a *API) Domains(c *gin.Context) {
 			Stores: a.Engine.StoreConfigsFor(d),
 		})
 	}
+	log.V(2).Info("response OK", "domains", logging.JSON(domains))
 	c.JSON(http.StatusOK, domains)
 }
 
@@ -108,11 +109,14 @@ func (a *API) Domains(c *gin.Context) {
 //	@failure	default	{object}	any
 func (a *API) DomainClasses(c *gin.Context) {
 	d, err := a.Engine.DomainErr(c.Params.ByName("domain"))
-	check(c, http.StatusNotFound, err)
+	if !check(c, http.StatusNotFound, err) {
+		return
+	}
 	classes := Classes{}
 	for _, c := range d.Classes() {
 		classes[c.Name()] = c.Description()
 	}
+	log.V(2).Info("response OK", "classes", logging.JSON(classes))
 	c.JSON(http.StatusOK, classes)
 }
 
@@ -126,11 +130,16 @@ func (a *API) DomainClasses(c *gin.Context) {
 //	@failure	default	{object}	any
 func (a *API) GraphsGoals(c *gin.Context) {
 	opts := &Options{}
-	if check(c, http.StatusBadRequest, c.BindQuery(opts)) {
-		if g, _ := a.goals(c); g != nil {
-			c.JSON(http.StatusOK, Graph{Nodes: nodes(g), Edges: edges(g, opts)})
-		}
+	if !check(c, http.StatusBadRequest, c.BindQuery(opts)) {
+		return
 	}
+	g, _ := a.goals(c)
+	if c.IsAborted() {
+		return
+	}
+	gr := Graph{Nodes: nodes(g), Edges: edges(g, opts)}
+	log.V(2).Info("response OK", "classes", logging.JSON(gr))
+	c.JSON(http.StatusOK, gr)
 }
 
 // ListsGoals handler.
@@ -152,6 +161,7 @@ func (a *API) ListsGoals(c *gin.Context) {
 			nodes = append(nodes, node(n))
 		}
 	})
+	log.V(2).Info("response OK", "goals", logging.JSON(nodes))
 	c.JSON(http.StatusOK, nodes)
 }
 
@@ -170,14 +180,16 @@ func (a *API) GraphsNeighbours(c *gin.Context) {
 	}
 	start, objects, queries, constraint := a.start(c, &r.Start)
 	depth := r.Depth
-	if c.Errors != nil {
+	if c.IsAborted() {
 		return
 	}
 	g, err := a.Engine.Neighbours(auth.Context(c.Request), start, objects, queries, constraint, depth)
 	if !check(c, http.StatusBadRequest, err) {
 		return
 	}
-	c.JSON(http.StatusOK, Graph{Nodes: nodes(g), Edges: edges(g, &opts)})
+	gr := Graph{Nodes: nodes(g), Edges: edges(g, &opts)}
+	log.V(2).Info("response OK", "goals", logging.JSON(gr))
+	c.JSON(http.StatusOK, gr)
 }
 
 // GetObjects handler
@@ -200,6 +212,7 @@ func (a *API) GetObjects(c *gin.Context) {
 	if !check(c, http.StatusInternalServerError, a.Engine.Get(auth.Context(c.Request), query, (*korrel8r.Constraint)(opts.Constraint), result)) {
 		return
 	}
+	log.V(2).Info("response OK", "objects", logging.JSON(result.List))
 	c.JSON(http.StatusOK, result.List())
 }
 
@@ -252,23 +265,22 @@ func (a *API) start(c *gin.Context, start *Start) (korrel8r.Class, []korrel8r.Ob
 	} else {
 		class = a.class(c, start.Class)
 	}
-	objects := a.objects(c, class, start.Objects)
-	if c.Errors != nil {
+	if class == nil {
 		return nil, nil, nil, nil
 	}
+	objects := a.objects(c, class, start.Objects)
 	return class, objects, queries, start.Constraint
 }
 
 func check(c *gin.Context, code int, err error, format ...any) (ok bool) {
-	if err != nil {
+	if err != nil && !c.IsAborted() {
 		if len(format) > 0 {
 			err = fmt.Errorf("%v: %w", fmt.Sprintf(format[0].(string), format[1:]...), err)
 		}
-		_ = c.Error(err)
-		c.AbortWithStatusJSON(code, c.Errors)
-		log.Error(err, "abort request", "url", c.Request.URL, "code", code, "errors", c.Errors)
+		c.AbortWithStatusJSON(code, c.Error(err).JSON())
+		log.Error(err, "abort request", "url", c.Request.URL, "code", code, "error", err)
 	}
-	return err == nil
+	return err == nil && !c.IsAborted()
 }
 
 func (a *API) class(c *gin.Context, className string) korrel8r.Class {

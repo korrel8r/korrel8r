@@ -131,12 +131,14 @@ func TestLokiStackStore_Get(t *testing.T) {
 	q := log.NewQuery(log.Application, logQL)
 	var result korrel8r.ListResult
 	assert.Eventually(t, func() bool {
-		result = nil
 		err = s.Get(ctx, q, nil, &result)
-		require.NoError(t, err)
-		t.Logf("waiting for %v logs, got %v. %v%v", len(lines), len(result), s, q)
-		return len(result) >= len(lines)
+		done := (err != nil || len(result) >= len(lines))
+		if !done {
+			t.Logf("waiting for %v logs, got %v. %v%v", len(lines), len(result), s, q)
+		}
+		return done
 	}, 30*time.Second, time.Second)
+	require.NoError(t, err)
 	var got []string
 	for _, o := range result {
 		got = append(got, o.(log.Object)["message"].(string))
