@@ -5,6 +5,7 @@
 package loki
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -40,16 +41,16 @@ type Client struct {
 func New(c *http.Client, base *url.URL) *Client { return &Client{c: c, base: base} }
 
 // Get uses the plain Loki API to get logs for a LogQL query with a Constraint.
-func (c *Client) Get(logQL string, constraint *korrel8r.Constraint, collect CollectFunc) error {
+func (c *Client) Get(ctx context.Context, logQL string, constraint *korrel8r.Constraint, collect CollectFunc) error {
 	u := c.queryURL(logQL, constraint)
-	return c.get(u, collect)
+	return c.get(ctx, u, collect)
 }
 
 // GetStack uses the LokiStack tenant API to get logs for a LogQL query with a Constraint.
-func (c *Client) GetStack(logQL, tenant string, constraint *korrel8r.Constraint, collect CollectFunc) error {
+func (c *Client) GetStack(ctx context.Context, logQL, tenant string, constraint *korrel8r.Constraint, collect CollectFunc) error {
 	u := c.queryURL(logQL, constraint)
 	u.Path = path.Join(lokiStackPath, tenant, u.Path)
-	return c.get(u, collect)
+	return c.get(ctx, u, collect)
 }
 
 const ( // Query URL keywords
@@ -80,10 +81,14 @@ func (c *Client) queryURL(logQL string, constraint *korrel8r.Constraint) *url.UR
 	return &url.URL{Path: queryRangePath, RawQuery: v.Encode()}
 }
 
-func (c *Client) get(u *url.URL, collect CollectFunc) error {
+func (c *Client) get(ctx context.Context, u *url.URL, collect CollectFunc) error {
 	u = c.base.ResolveReference(u)
 	logging.Log().V(4).Info("loki get", "url", u)
-	resp, err := c.c.Get(u.String())
+	req, err := http.NewRequestWithContext(ctx, "GET", u.String(), nil)
+	if err != nil {
+		return err
+	}
+	resp, err := c.c.Do(req)
 	if err != nil {
 		return err
 	}

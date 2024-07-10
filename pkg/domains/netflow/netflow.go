@@ -200,7 +200,7 @@ func (s *store) Get(ctx context.Context, query korrel8r.Query, c *korrel8r.Const
 	if err != nil {
 		return err
 	}
-	return s.Client.Get(q.logQL, c, func(e *loki.Entry) { result.Append(NewObject(e)) })
+	return s.Client.Get(ctx, q.logQL, c, func(e *loki.Entry) { result.Append(NewObject(e)) })
 }
 
 type stackStore struct{ store }
@@ -212,5 +212,5 @@ func (s *stackStore) Get(ctx context.Context, query korrel8r.Query, c *korrel8r.
 		return err
 	}
 
-	return s.Client.GetStack(q.logQL, "network", c, func(e *loki.Entry) { result.Append(NewObject(e)) })
+	return s.Client.GetStack(ctx, q.logQL, "network", c, func(e *loki.Entry) { result.Append(NewObject(e)) })
 }

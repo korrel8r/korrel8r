@@ -212,7 +212,7 @@ func (a *API) GetObjects(c *gin.Context) {
 	if !check(c, http.StatusInternalServerError, a.Engine.Get(auth.Context(c.Request), query, (*korrel8r.Constraint)(opts.Constraint), result)) {
 		return
 	}
-	log.V(2).Info("response OK", "objects", logging.JSON(result.List))
+	log.V(2).Info("response OK", "objects", len(result.List()))
 	c.JSON(http.StatusOK, result.List())
 }
 
