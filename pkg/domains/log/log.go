@@ -225,7 +225,7 @@ func (s *store) Get(ctx context.Context, query korrel8r.Query, constraint *korre
 	if err != nil {
 		return err
 	}
-	return s.Client.Get(q.Data(), constraint, func(e *loki.Entry) { result.Append(NewObject(e.Line)) })
+	return s.Client.Get(ctx, q.Data(), constraint, func(e *loki.Entry) { result.Append(NewObject(e.Line)) })
 }
 
 type stackStore struct{ store }
@@ -235,7 +235,7 @@ func (s *stackStore) Get(ctx context.Context, query korrel8r.Query, constraint *
 	if err != nil {
 		return err
 	}
-	return s.Client.GetStack(q.Data(), q.Class().Name(), constraint, func(e *loki.Entry) { result.Append(NewObject(e.Line)) })
+	return s.Client.GetStack(ctx, q.Data(), q.Class().Name(), constraint, func(e *loki.Entry) { result.Append(NewObject(e.Line)) })
 }
 
 var logTypeRe = regexp.MustCompile(`{[^}]*log_type(=~*)"([^"]+)"}`)
