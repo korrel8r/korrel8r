@@ -12,20 +12,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-go@v4
-        with:
-          go-version: "1.22"
-      - uses: actions/cache@v4
-        with:
-          path: |
-            ~/go
-            ~/.cache/golangci-lint
-          key: cache-${{ runner.os }}-${{ runner.arch }}
 
-      - name: Lint
-        run: |
-          make GOLANGCI_LINT_CACHE=~/.cache/golangci-lint lint
-          git diff --exit-code
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.22.5'
 
-      - name: Test
+      - name: lint
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: 'v1.59.1'
+          args: "--timeout=3m"
+
+      - name: test
         run: make test-skip

@@ -30,8 +30,17 @@ const (
 	StoreKeyCA         = "certificateAuthority" // Path to CA certificate.
 )
 
-// Rule specifies a template rule.
-// It generates one or more korrel8r.Rule.
+// Rule configures a template rule.
+//
+// The rule template is applied to a instance of the start object.
+// It should generate one of the following:
+// - a goal query string of the form DOAMAIN:CLASS:QUERY_DATA.
+// - a blank (whitespace-only) string if the rule does not apply to the given object.
+// - an error if something unexpected goes wrong.
+//
+// If a rule returns an invalid query this will be logged as an error but will not prevent the
+// progress on other rules. For expected conditions, returning blank generates less noise than an
+// error.
 type Rule struct {
 	// Name is a short, descriptive name.
 	// If omitted, a name is generated from Start and Goal.

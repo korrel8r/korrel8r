@@ -63,7 +63,8 @@ var webCmd = &cobra.Command{
 		gin.DisableConsoleColor()
 		router := gin.New()
 		router.Use(gin.Recovery())
-		r := must.Must1(rest.New(engine, configs, router))
+		r, err := rest.New(engine, configs, router)
+		must.Must(err)
 		defer r.Close()
 		s.Handler = router
 		pprof.Register(router) // Enable profiling

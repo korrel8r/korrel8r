@@ -7,6 +7,7 @@ import (
 
 	"github.com/korrel8r/korrel8r/pkg/domains/k8s"
 	"github.com/korrel8r/korrel8r/pkg/domains/netflow"
+	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"github.com/stretchr/testify/assert"
 	appv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -47,6 +48,46 @@ func Test_NetflowToK8S(t *testing.T) {
 			if assert.NoError(t, err) {
 				assert.Equal(t, x.want, got.String())
 			}
+		})
+	}
+}
+
+func Test_NetflowToK8S_skipped(t *testing.T) {
+	// Get correct error when rules are skipped (as opposed to a bad query or an error.)
+	e := setup()
+	for _, x := range []struct {
+		rule  string
+		start netflow.Object
+		want  string
+	}{
+		{
+			rule:  "NetflowToSrcK8s",
+			start: netflow.Object{"SrcK8S_Namespace": "foo", "SrcK8S_Name": "bar"},
+			want:  `k8s:Pod.v1.:{"namespace":"foo","name":"bar"}`,
+		},
+		{
+			rule:  "NetflowToSrcK8sOwner",
+			start: netflow.Object{"SrcK8S_Namespace": "foo", "SrcK8S_OwnerName": "bar"},
+			want:  `k8s:Deployment.v1.apps:{"namespace":"foo","name":"bar"}`,
+		},
+		{
+			rule:  "NetflowToDstK8s",
+			start: netflow.Object{"DstK8S_Namespace": "foo", "DstK8S_Name": "bar"},
+			want:  `k8s:Pod.v1.:{"namespace":"foo","name":"bar"}`,
+		},
+		{
+			rule:  "NetflowToDstK8sOwner",
+			start: netflow.Object{"DstK8S_Namespace": "foo", "DstK8S_OwnerName": "bar"},
+			want:  `k8s:Deployment.v1.apps:{"namespace":"foo","name":"bar"}`,
+		},
+	} {
+		t.Run(x.rule, func(t *testing.T) {
+			tested(x.rule)
+			r := e.Rule(x.rule)
+			got, err := r.Apply(x.start)
+			assert.ErrorIs(t, err, korrel8r.RuleSkipped{Rule: r})
+			assert.True(t, korrel8r.IsRuleSkipped(err))
+			assert.Nil(t, got)
 		})
 	}
 }
