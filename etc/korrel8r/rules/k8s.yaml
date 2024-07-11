@@ -71,28 +71,6 @@ aliases:
       - Ingress.networking.k8s.io
 
 rules:
-   - name: SelectorToLogs
-     start:
-       domain: k8s
-       classes: [selectors]
-     goal:
-       domain: log
-     result:
-       query: |-
-         log:{{k8sLogType .Namespace}}:{kubernetes_namespace_name="{{.Namespace}}"}|toJson
-             {{- range $k,$v:=.Spec.Selector.MatchLabels}}|kubernetes_labels_{{lokiFixLabel $k}}="{{$v}}"{{end -}}
-             |line_format{{"\"{{__line__}}\""}}
-
-   - name: PodToLogs
-     start:
-       domain: k8s
-       classes: [Pod]
-     goal:
-       domain: log
-     result:
-       query: |-
-         log:{{ k8sLogType .Namespace }}:{kubernetes_namespace_name="{{.Namespace}}",kubernetes_pod_name="{{.Name}}"}
-
    - name: PodToAlert
      start:
        domain: k8s
@@ -112,7 +90,8 @@ rules:
        classes: [Pod]
      result:
        query: |-
-         k8s:Pod:{namespace: {{.Namespace}}, labels: {{.Spec.Selector.MatchLabels | toJson -}} }
+         k8s:Pod:{"namespace": "{{.Namespace}}"
+         {{- with .Spec.Selector.MatchLabels}}, "labels": {{mustToJson . -}}{{end -}} }
 
    - name: EventToAll
      start:

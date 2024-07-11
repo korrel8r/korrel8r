@@ -1,5 +1,10 @@
 // Copyright: This file is part of korrel8r, released under https://github.com/korrel8r/korrel8r/blob/main/LICENSE
 
+// # Template Functions
+//
+//	query
+//	    Executes its argument as a korrel8r query, returns []any.
+//	    May return an error.
 package engine
 
 import (
@@ -10,7 +15,7 @@ import (
 
 	"maps"
 
-	sprig "github.com/go-task/slim-sprig"
+	"github.com/Masterminds/sprig/v3"
 	"github.com/korrel8r/korrel8r/pkg/config"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"github.com/korrel8r/korrel8r/pkg/rules"
@@ -30,8 +35,8 @@ func Build() *Builder {
 		stores:      map[korrel8r.Domain]stores{},
 		rulesByName: map[string]korrel8r.Rule{},
 	}
-	e.templateFuncs = template.FuncMap{"get": e.get}
-	maps.Copy(e.templateFuncs, sprig.FuncMap())
+	e.templateFuncs = template.FuncMap{"query": e.query}
+	maps.Copy(e.templateFuncs, sprig.TxtFuncMap())
 	return &Builder{e: e}
 }
 
@@ -152,7 +157,7 @@ func (b *Builder) config(source string, c *config.Config) {
 			return
 		}
 		var tmpl *template.Template
-		tmpl, b.err = template.New(r.Name).Funcs(b.e.TemplateFuncs()).Parse(r.Result.Query)
+		tmpl, b.err = b.e.NewTemplate(r.Name).Parse(r.Result.Query)
 		if b.err != nil {
 			return
 		}

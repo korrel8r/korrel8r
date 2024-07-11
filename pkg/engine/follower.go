@@ -4,8 +4,6 @@ package engine
 
 import (
 	"context"
-	"errors"
-	"fmt"
 	"maps"
 
 	"github.com/korrel8r/korrel8r/pkg/graph"
@@ -22,7 +20,6 @@ type Follower struct {
 	Engine     *Engine
 	Context    context.Context
 	Constraint *korrel8r.Constraint
-	Err        error // Collect errors using errors.Join
 
 	// temporary store for results of rules that need to be saved for a later line.
 	rules map[appliedRule]graph.Queries
@@ -42,14 +39,13 @@ func (f *Follower) Traverse(l *graph.Line) bool {
 		for _, s := range start.Result.List() { // Apply to each start object
 			q, err := rule.Apply(s)
 			if err != nil {
-				f.Err = errors.Join(f.Err, fmt.Errorf("Error applying rule %v(%v): %w", rule.Name(), start.Class, err))
-				log.V(2).Info("Error applying rule", "error", err)
+				log.V(2).Info("Apply error", "error", err)
 				continue
 			}
 			f.rules[key].Set(q, -1)
 		}
 	}
-	// Take queries that match this line's goal, leave the rest.
+	// Process and remove queries that match this line's goal, leave the rest.
 	maps.DeleteFunc(f.rules[key], func(s string, qc graph.QueryCount) bool {
 		q := qc.Query
 		log := log.WithValues("query", q.String())
@@ -62,17 +58,11 @@ func (f *Follower) Traverse(l *graph.Line) bool {
 		default: // Evaluate the query and store the results
 			result := korrel8r.NewCountResult(goal.Result) // Store in goal, but count the contribution.
 			if err := f.Engine.Get(f.Context, q, f.Constraint, result); err != nil {
-				// TODO distinguish between expected "not found" errors and unexpected "can't talk to store" errors.
+				// TODO distinguish between expected "not found"/"rule mismatch" errors and unexpected "can't talk to store".
 				log.V(2).Info("Get error", "error", err)
 			}
 			l.Queries.Set(q, result.Count)
 			goal.Queries.Set(q, result.Count)
-			switch {
-			case result.Count > 0:
-				log.V(3).Info("Query result", "count", result.Count)
-			case log.V(4).Enabled():
-				log.V(3).Info("Query result empty")
-			}
 			return true
 		}
 	})

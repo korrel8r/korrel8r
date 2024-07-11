@@ -8,6 +8,7 @@ import (
 
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"github.com/korrel8r/korrel8r/pkg/unique"
+	"github.com/stretchr/testify/assert"
 )
 
 type collecter struct {
@@ -55,7 +56,8 @@ func TestTraverse(t *testing.T) {
 		t.Run(x.name, func(t *testing.T) {
 			g := testGraph(x.graph)
 			var got collecter
-			g.Traverse(x.graph[0].Start()[0], x.graph[len(x.graph)-1].Goal(), got.Traverse)
+			_, err := g.Traverse(x.graph[0].Start()[0], x.graph[len(x.graph)-1].Goal(), got.Traverse)
+			assert.NoError(t, err)
 			assertComponentOrder(t, x.rules, got.rules)
 		})
 	}
@@ -85,7 +87,8 @@ func TestNeighbours(t *testing.T) {
 	} {
 		t.Run(fmt.Sprintf("depth=%v", x.depth), func(t *testing.T) {
 			var got collecter
-			g.Neighbours(c(1), x.depth, got.Traverse)
+			_, err := g.Neighbours(c(1), x.depth, got.Traverse)
+			assert.NoError(t, err)
 			assertComponentOrder(t, x.want, got.rules)
 		})
 	}
