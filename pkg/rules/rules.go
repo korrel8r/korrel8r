@@ -1,9 +1,12 @@
 // Copyright: This file is part of korrel8r, released under https://github.com/korrel8r/korrel8r/blob/main/LICENSE
 
-// Package rules uses templates to generate goal queries from start objects.
+// Package rules uses Go templates to generate goal queries from start objects.
+//
+// See [github.com/korrel8r/korrel8r/pkg/config.Rule] for details of configuring a rule.
 package rules
 
 import (
+	"strings"
 	"text/template"
 
 	"bytes"
@@ -35,6 +38,10 @@ func (r *templateRule) Apply(start korrel8r.Object) (korrel8r.Query, error) {
 	err := r.query.Execute(b, start)
 	if err != nil {
 		return nil, err
+	}
+	s := strings.TrimSpace(string(b.String()))
+	if s == "" { // Blank query means rule was skipped.
+		return nil, korrel8r.RuleSkipped{Rule: r}
 	}
 	return r.Goal()[0].Domain().Query(b.String())
 }

@@ -5,6 +5,7 @@ package engine
 import (
 	"context"
 	"maps"
+	"time"
 
 	"github.com/korrel8r/korrel8r/pkg/graph"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
@@ -32,19 +33,27 @@ func (f *Follower) Traverse(l *graph.Line) bool {
 	start, goal := l.From().(*graph.Node), l.To().(*graph.Node)
 	log := log.WithValues("rule", rule.Name(), "start", start.Class.String(), "goal", goal.Class.String())
 
-	// Check if rule was already applied with this start class.
+	// Apply rule to each start object unless it was already applied to this start class.
 	key := appliedRule{Start: start.Class, Rule: rule}
+	count := 0
 	if _, applied := f.rules[key]; !applied { // Not yet applied.
 		f.rules[key] = graph.Queries{}
-		for _, s := range start.Result.List() { // Apply to each start object
+		for _, s := range start.Result.List() {
+			count++
 			q, err := rule.Apply(s)
 			if err != nil {
-				log.V(2).Info("Apply error", "error", err)
+				if !korrel8r.IsRuleSkipped(err) { // Don't log deliberate skips.
+					log.V(2).Info("Apply error", "error", err)
+				}
 				continue
 			}
 			f.rules[key].Set(q, -1)
 		}
 	}
+	if count > 0 {
+		log.V(3).Info("Applied", "count", count) // Trace logs, very verbose!
+	}
+
 	// Process and remove queries that match this line's goal, leave the rest.
 	maps.DeleteFunc(f.rules[key], func(s string, qc graph.QueryCount) bool {
 		q := qc.Query
@@ -57,14 +66,30 @@ func (f *Follower) Traverse(l *graph.Line) bool {
 			return true
 		default: // Evaluate the query and store the results
 			result := korrel8r.NewCountResult(goal.Result) // Store in goal, but count the contribution.
-			if err := f.Engine.Get(f.Context, q, f.Constraint, result); err != nil {
-				// TODO distinguish between expected "not found"/"rule mismatch" errors and unexpected "can't talk to store".
+			var err error
+			delay := duration(log.V(3).Enabled(), func() {
+				err = f.Engine.Get(f.Context, q, f.Constraint, result)
+			})
+			if err != nil {
 				log.V(2).Info("Get error", "error", err)
 			}
 			l.Queries.Set(q, result.Count)
 			goal.Queries.Set(q, result.Count)
+			if result.Count > 0 {
+				log.V(3).Info("Get", "results", result.Count, "duration", delay)
+			}
 			return true
 		}
 	})
+
 	return l.Queries.Total() > 0
+}
+
+func duration(enabled bool, f func()) time.Duration {
+	var start time.Time
+	if !enabled { // Avoid time calls unless required, expensive.
+		start = time.Now()
+	}
+	f()
+	return time.Since(start)
 }

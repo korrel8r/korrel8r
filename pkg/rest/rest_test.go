@@ -27,13 +27,15 @@ import (
 )
 
 func TestAPI_GetDomains(t *testing.T) {
-	a := newTestAPI(test.Must(engine.Build().
+	e, err := engine.Build().
 		Domains(mock.Domains("foo", "bar")...).
 		StoreConfigs(
 			config.Store{"domain": "foo", "a": "1"},
 			config.Store{"domain": "foo", "b": "2"},
 			config.Store{"domain": "bar", "x": "y"},
-		).Engine()))
+		).Engine()
+	require.NoError(t, err)
+	a := newTestAPI(t, e)
 	assertDo(t, a, "GET", "/api/v1alpha1/domains", nil, 200, []Domain{
 		{Name: "bar", Stores: []config.Store{{"domain": "bar", "x": "y"}}},
 		{Name: "foo", Stores: []config.Store{{"domain": "foo", "a": "1"}, {"domain": "foo", "b": "2"}}},
@@ -41,7 +43,9 @@ func TestAPI_GetDomains(t *testing.T) {
 }
 
 func TestAPI_GetDomainClasses(t *testing.T) {
-	a := newTestAPI(test.Must(engine.Build().Domains(logDomain.Domain, metric.Domain).Engine()))
+	e, err := engine.Build().Domains(logDomain.Domain, metric.Domain).Engine()
+	require.NoError(t, err)
+	a := newTestAPI(t, e)
 	assertDo(t, a, "GET", "/api/v1alpha1/domains/log/classes", nil, 200, Classes{
 		"application":    logDomain.Application.Description(),
 		"audit":          logDomain.Audit.Description(),
@@ -53,7 +57,7 @@ func TestAPI_GetDomainClasses(t *testing.T) {
 }
 
 func TestAPI_ListGoals(t *testing.T) {
-	a, x, y, z := apiRules()
+	a, x, y, z := apiRules(t)
 	assertDo(t, a, "POST", "/api/v1alpha1/lists/goals",
 		Goals{
 			Start: Start{
@@ -83,7 +87,7 @@ func TestAPI_ListGoals(t *testing.T) {
 }
 
 func TestAPI_GraphGoals_rules(t *testing.T) {
-	a, x, y, z := apiRules()
+	a, x, y, z := apiRules(t)
 	yQueries := []QueryCount{
 		{Query: mock.NewQuery(y, "aa").String(), Count: 1},
 		{Query: mock.NewQuery(y, "bb").String(), Count: 1},
@@ -116,7 +120,7 @@ func TestAPI_GraphGoals_rules(t *testing.T) {
 }
 
 func TestAPI_PostNeighbours_noRules(t *testing.T) {
-	a, x, y, _ := apiRules()
+	a, x, y, _ := apiRules(t)
 	qc := []QueryCount{{Query: mock.NewQuery(y, "aa").String(), Count: 1}}
 	assertDo(t, a, "POST", "/api/v1alpha1/graphs/neighbours",
 		Neighbours{
@@ -148,7 +152,7 @@ func TestAPI_GetObjects(t *testing.T) {
 	require.NoError(t, err)
 	e, err := engine.Build().Domains(d).Stores(s).Engine()
 	require.NoError(t, err)
-	a := newTestAPI(e)
+	a := newTestAPI(t, e)
 	assertDo(t, a, "GET", "/api/v1alpha1/objects?query="+url.QueryEscape(q.String()), nil, 200, want)
 }
 
@@ -165,9 +169,11 @@ type testAPI struct {
 	Router *gin.Engine
 }
 
-func newTestAPI(e *engine.Engine) *testAPI {
+func newTestAPI(t *testing.T, e *engine.Engine) *testAPI {
 	r := ginEngine()
-	return &testAPI{API: test.Must(New(e, nil, r)), Router: r}
+	a, err := New(e, nil, r)
+	require.NoError(t, err)
+	return &testAPI{API: a, Router: r}
 }
 
 func do(t *testing.T, a *testAPI, method, url string, body any) *httptest.ResponseRecorder {
@@ -242,13 +248,21 @@ func doubleFunc(goal korrel8r.Class) func(korrel8r.Object) (korrel8r.Query, erro
 	}
 }
 
-func apiRules() (a *testAPI, x, y, z korrel8r.Class) {
+func apiRules(t *testing.T) (a *testAPI, x, y, z korrel8r.Class) {
 	foo, bar := mock.Domain("foo"), mock.Domain("bar")
 	x, y, z = foo.Class("x"), bar.Class("y"), bar.Class("z")
-	api := newTestAPI(test.Must(engine.Build().
+	var stores []korrel8r.Store
+	for _, d := range []korrel8r.Domain{foo, bar} {
+		s, err := mock.NewStore(d, nil)
+		require.NoError(t, err)
+		stores = append(stores, s)
+	}
+	e, err := engine.Build().
 		Domains(foo, bar).
-		Stores(test.Must(mock.NewStore(foo, nil)), test.Must(mock.NewStore(bar, nil))).
+		Stores(stores...).
 		Rules(mock.NewApplyRule("x-y", x, y, doubleFunc(y)), mock.NewQueryRule("y-z", y, mock.NewQuery(z, "c"))).
-		Engine()))
+		Engine()
+	require.NoError(t, err)
+	api := newTestAPI(t, e)
 	return api, x, y, z
 }

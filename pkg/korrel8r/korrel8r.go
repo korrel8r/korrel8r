@@ -136,7 +136,8 @@ type Appender interface{ Append(...Object) }
 // Rule describes a relationship for finding correlated objects.
 // Rule.Apply() generates correlated queries from start objects.
 //
-// Not required for a domain implementations: implemented by [github.com/korrel8r/korrel8r/pkg/rules]
+// Not required for a domain implementations.
+// Template-based rules are implemented by [github.com/korrel8r/korrel8r/pkg/rules]
 // Rules types must be comparable.
 type Rule interface {
 	// Apply the rule to a start Object, return a Query for results.

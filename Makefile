@@ -70,7 +70,7 @@ $(SHELLCHECK):  $(BIN)
 
 lint: $(GEN_SRC) $(GOLANGCI_LINT) $(SHFMT) $(SHELLCHECK) ## Run the linter to find and fix code style problems.
 	hack/copyright.sh
-	$(GOLANGCI_LINT) run --fix --timeout 2m
+	$(GOLANGCI_LINT) run --fix
 	$(SHFMT) -l -w ./**/*.sh
 	$(SHELLCHECK) -x -S style hack/*.sh
 
@@ -87,7 +87,7 @@ $(GOCOVERDIR):
 	@mkdir -p $@
 
 run: $(KORREL8R) ## Run `korrel8r web` for debugging.
-	$(KORREL8R) web -c $(CONFIG) -v 2
+	$(KORREL8R) web -c $(CONFIG)
 
 image-build:  $(GEN_SRC) ## Build image locally, don't push.
 	$(IMGTOOL) build --tag=$(IMAGE) -f Containerfile .
