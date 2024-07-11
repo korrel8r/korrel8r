@@ -105,10 +105,6 @@ func (e *Engine) Rule(name string) korrel8r.Rule { return e.rulesByName[name] }
 // Graph creates a new graph of the engine's rules.
 func (e *Engine) Graph() *graph.Graph { return graph.NewData(e.Rules()...).FullGraph() }
 
-// TemplateFuncs returns template helper functions for stores and domains known to this engine.
-// See text/template.Template.Funcs
-func (e *Engine) TemplateFuncs() map[string]any { return e.templateFuncs }
-
 // Get results for query from all stores for the query domain.
 func (e *Engine) Get(ctx context.Context, q korrel8r.Query, constraint *korrel8r.Constraint, result korrel8r.Appender) error {
 	expand := func(s string) (string, error) { return e.execTemplate(s, nil) }
@@ -145,11 +141,7 @@ func (e *Engine) GoalSearch(ctx context.Context, g *graph.Graph, start korrel8r.
 		return nil, err
 	}
 	f := e.Follower(ctx, constraint)
-	paths := g.Traverse(start, goals, f.Traverse)
-	if f.Err != nil {
-		return nil, f.Err
-	}
-	return paths, nil
+	return g.Traverse(start, goals, f.Traverse)
 }
 
 // Neighbours generates a neighbourhood graph from starting objects and queries.
@@ -159,15 +151,11 @@ func (e *Engine) Neighbours(ctx context.Context, start korrel8r.Class, objects [
 	if err := e.Start(ctx, g.NodeFor(start), objects, queries, constraint); err != nil {
 		return nil, err
 	}
-	neighbours := g.Neighbours(start, depth, f.Traverse)
-	if f.Err != nil {
-		return nil, f.Err
-	}
-	return neighbours, nil
+	return g.Neighbours(start, depth, f.Traverse)
 }
 
-// get implements the template function version of Get()
-func (e *Engine) get(query string) ([]korrel8r.Object, error) {
+// query implements the template function.
+func (e *Engine) query(query string) ([]korrel8r.Object, error) {
 	q, err := e.Query(query)
 	if err != nil {
 		return nil, err
@@ -177,8 +165,16 @@ func (e *Engine) get(query string) ([]korrel8r.Object, error) {
 	return results.List(), err
 }
 
+// NewTemplate returns a template set up with options and funcs for this engine.
+// See package documentation for more.
+func (e *Engine) NewTemplate(name string) *template.Template {
+	// missingkey defines behaviour on lookup of a non-existent map key.
+	// Returning a zero is more intuitive for rules than the arbitrary default "<no value>".
+	return template.New(name).Funcs(e.templateFuncs)
+}
+
 func (e *Engine) execTemplate(tmplString string, data any) (string, error) {
-	tmpl, err := template.New(tmplString).Funcs(e.TemplateFuncs()).Parse(tmplString)
+	tmpl, err := e.NewTemplate(tmplString).Parse(tmplString)
 	if err != nil {
 		return "", err
 	}

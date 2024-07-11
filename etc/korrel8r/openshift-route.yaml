@@ -1,16 +1,16 @@
 # Configuration for running Korrel8r outside of an OpenShift cluster.
-# Template URLs get the store host from routes provided when stores are installed in their default locations.
+# Template URLs query the store host from routes provided when stores are installed in their default locations.
 stores:
   - domain: k8s
   - domain: alert
-    metrics: 'https://{{(get "k8s:Route:{namespace: openshift-monitoring, name: thanos-querier}" | first).Spec.Host}}'
-    alertmanager: 'https://{{(get "k8s:Route:{namespace: openshift-monitoring, name: alertmanager-main}" | first).Spec.Host}}'
+    metrics: 'https://{{(query "k8s:Route:{namespace: openshift-monitoring, name: thanos-querier}" | first).Spec.Host}}'
+    alertmanager: 'https://{{(query "k8s:Route:{namespace: openshift-monitoring, name: alertmanager-main}" | first).Spec.Host}}'
   - domain: log
-    lokiStack: 'https://{{(get "k8s:Route:{namespace: openshift-logging, name: logging-loki}" | first).Spec.Host}}'
+    lokiStack: 'https://{{(query "k8s:Route:{namespace: openshift-logging, name: logging-loki}" | first).Spec.Host}}'
   - domain: metric
-    metric: 'https://{{(get "k8s:Route:{namespace: openshift-monitoring, name: thanos-querier}" | first).Spec.Host}}'
+    metric: 'https://{{(query "k8s:Route:{namespace: openshift-monitoring, name: thanos-querier}" | first).Spec.Host}}'
   - domain: netflow
-    lokiStack: 'https://{{(get "k8s:Route:{namespace: netobserv, name: loki}" | first).Spec.Host}}'
+    lokiStack: 'https://{{(query "k8s:Route:{namespace: netobserv, name: loki}" | first).Spec.Host}}'
 
 include:
   - rules/all.yaml

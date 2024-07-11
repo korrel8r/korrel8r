@@ -3,7 +3,7 @@
 :xref-domain: xref:index.adoc#index-domain-reference[Domain Reference]
 :go-templates: https://pkg.go.dev/text/template[Go templates]
 :pkg-korrel8r: https://pkg.go.dev/github.com/korrel8/korrel8/pkg/korrel8
-:slim-sprig: https://go-task.github.io/slim-sprig/[slim-sprig]
+:sprig: https://github.com/Masterminds/sprig[sprig]
 
 include::attributes.adoc[]
 
@@ -80,11 +80,11 @@ aliases:
 <2> Domain for classes in this alias.
 <3> Classes belonging to this alias.
 
-== Stores
+== Connecting to Stores
 
 Every entry in the `stores` section has a `domain` field to identify the domain.
 Other fields depend on the domain, see {xref-domain}.
-Store fields can contain URL strings or xref:_templates[templates].
+Store fields can contain plain URL strings or xref:_templates[templates] that expand to URLs.
 
 [source,yaml]
 .Example: configuring a store URL from an Openshift Route resource.
@@ -99,13 +99,16 @@ stores:
 <1> Get a list of routes in "openshift-logging" named "logging-loki".
 <2> Use the .Spec.Host field of the first route as the host for the store URL.
 
-== Rules
+== Writing Rules
+
+Korrel8r comes with a good set of default rules, but you can modify them or add your own.
 
 A rule has the following key elements:
 
 * A set of _start_ classes. The rule can apply to objects belonging to one of these classes.
 * A set of _goal_ classes. The rule can generate queries for any of these classes.
-* A result query xref:_templates[template] that generates a goal query from a start object.
+* A Go template to generate a goal query from a start object.
+  See the section on xref:_templates[templates] below for more about writing rule templates.
 
 The query template should generate a string of the form:
 
@@ -118,16 +121,23 @@ The _query-details_ part depends on the domain, see {xref-domain}
 .Example of rules and aliases.
 [source,yaml]
 ----
-TODOo: Example
+TODO: Examples
 ----
 
 == Templates
 
 Some fields in the `stores` and `rules` section are {go-templates}.
-This is the same template syntax used by the Kubernetes `kubectl` tool with the `--output=template` option.
-Korrel8r provides some additional _template functions_ that can be used in configuration templates.
+Go template syntax is also used by the Kubernetes `kubectl` tool when run with the `--output=template` option.
+Korrel8r provides additional _template functions_ to simplify writing rule and configuration templates.
 
 .Additional template functions
-- General purpose functions from the {slim-sprig} library are always available.
+- The {sprig} library of general purpose template functions is always available.
 - Some domains provide additional functions, see {xref-domain}.
-- The following functions are always available: +
+
+The following functions are always available:
+
+query::
+Executes its argument as a korrel8r query, returns []any.
+May return an error.
+
+// TODO: automate the above, get this from pkg/engine doc comments.

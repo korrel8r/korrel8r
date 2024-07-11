@@ -26,22 +26,3 @@ func TestKindToResource(t *testing.T) {
 	_, err := kindToResource(rm, "x", "y")
 	assert.EqualError(t, err, "no matches for kind \"x\" in version \"y\"")
 }
-
-func TestLogType(t *testing.T) {
-	for _, x := range [][]string{
-		{"default", "infrastructure"},
-		{"openshift", "infrastructure"},
-		{"openshift-", "infrastructure"},
-		{"openshift-foo", "infrastructure"},
-		{"kube", "infrastructure"}, {"kube", "infrastructure"},
-		{"kube-", "infrastructure"},
-		{"kube-foo", "infrastructure"},
-		{"foo", "application"},
-		{"foo-kube", "application"},
-		{"foo-openshift", "application"},
-	} {
-		t.Run(x[0], func(t *testing.T) {
-			assert.Equal(t, x[1], logType(x[0]))
-		})
-	}
-}

@@ -97,6 +97,16 @@ k8s stores connects to the current logged-in Kubernetes cluster, no other config
 domain: k8s
 ----
 
+Copyright: This file is part of korrel8r, released under https://github.com/korrel8r/korrel8r/blob/main/LICENSE[https://github.com/korrel8r/korrel8r/blob/main/LICENSE]
+
+== Template Functions
+
+----
+k8sClass
+    Takes string arguments (apiVersion, kind).
+    Returns the korrel8r.Class implied by the arguments, or an error.
+----
+
 = Domain `log`
 
 Domain `log` is a domain for openshift-logging ViaQ logs stored in Loki or LokiStack.
@@ -137,6 +147,19 @@ To connect to plain loki store use:
 ----
 domain: log
 loki: URL_OF_LOKI
+----
+
+Copyright: This file is part of korrel8r, released under https://github.com/korrel8r/korrel8r/blob/main/LICENSE[https://github.com/korrel8r/korrel8r/blob/main/LICENSE]
+
+== Template Functions
+
+----
+logTypeForNamespace
+    Takes a namespace string argument.
+    Returns the log type ("application" or "infrastructure") of a container in the namespace.
+
+logSafeLabel
+    Convert the string argument into a  safe label containing only alphanumerics '_' and ':'.
 ----
 
 = Domain `metric`

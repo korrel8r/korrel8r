@@ -8,3 +8,24 @@ rules:
     result:
       query: |-
         k8s:Pod:{namespace: "{{.kubernetes.namespace_name}}", name: "{{.kubernetes.pod_name}}"}
+
+  - name: SelectorToLogs
+    start:
+      domain: k8s
+      classes: [selectors]
+    goal:
+      domain: log
+    result:
+      query: |-
+        log:{{logTypeForNamespace .Namespace}}:{kubernetes_namespace_name="{{.Namespace}}"}|json
+            {{- range $k,$v:=.Spec.Selector.MatchLabels}}|kubernetes_labels_{{logSafeLabel $k}}="{{$v}}"{{end -}}
+
+  - name: PodToLogs
+    start:
+      domain: k8s
+      classes: [Pod]
+    goal:
+      domain: log
+    result:
+      query: |-
+        log:{{ logTypeForNamespace .Namespace }}:{kubernetes_namespace_name="{{.Namespace}}",kubernetes_pod_name="{{.Name}}"}
