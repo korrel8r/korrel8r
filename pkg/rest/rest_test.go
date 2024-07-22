@@ -72,8 +72,8 @@ func TestAPI_ListGoals(t *testing.T) {
 				Class: "bar:y",
 				Count: 2,
 				Queries: []QueryCount{
-					{Query: mock.NewQuery(y, "bb").String(), Count: 1},
 					{Query: mock.NewQuery(y, "aa").String(), Count: 1},
+					{Query: mock.NewQuery(y, "bb").String(), Count: 1},
 				},
 			},
 			{
@@ -154,6 +154,20 @@ func TestAPI_GetObjects(t *testing.T) {
 	require.NoError(t, err)
 	a := newTestAPI(t, e)
 	assertDo(t, a, "GET", "/api/v1alpha1/objects?query="+url.QueryEscape(q.String()), nil, 200, want)
+}
+
+func TestAPI_GetObjects_empty(t *testing.T) {
+	d := mock.Domain("x")
+	c := d.Class("y")
+	q := mock.NewQuery(c)
+	s, err := mock.NewStore(d, nil)
+	require.NoError(t, err)
+	e, err := engine.Build().Domains(d).Stores(s).Engine()
+	require.NoError(t, err)
+	a := newTestAPI(t, e)
+	w := do(t, a, "GET", "/api/v1alpha1/objects?query="+url.QueryEscape(q.String()), nil)
+	require.Equal(t, 200, w.Code)
+	require.Equal(t, "[]", w.Body.String())
 }
 
 func ginEngine() *gin.Engine {

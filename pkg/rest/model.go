@@ -9,6 +9,16 @@ import (
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 )
 
+// Array is a slice that serializes to JSON as '[]' not 'null' for a nil value.
+type Array[T any] []T
+
+func (a Array[T]) MarshalJSON() ([]byte, error) {
+	if a == nil {
+		return json.Marshal([]T{})
+	}
+	return json.Marshal([]T(a))
+}
+
 // NOTE: Swag oddity - fields with struct or enum types will use the @description of the type.
 // They should normally NOT have a doc comment of their own or the generated schema will have a strange `allOf`
 // wrapper to preserve the multiple comments.
@@ -24,7 +34,7 @@ type Domain struct {
 	// Name of the domain.
 	Name string `json:"name"`
 	// Stores configured for the domain.
-	Stores []Store `json:"stores,omitempty"`
+	Stores Array[Store] `json:"stores,omitempty"`
 } // @name Domain
 
 // @description Classes is a map from class names to a short description.
@@ -38,16 +48,16 @@ type Classes map[string]string // @name Classes
 // - results from getting each of the [Start.Queries]
 // - unmarshalled objects from [Start.Objects]
 type Start struct {
-	Queries    []string          `json:"queries,omitempty"`                      // Queries for starting objects
+	Queries    Array[string]          `json:"queries,omitempty"`                      // Queries for starting objects
 	Class      string            `json:"class,omitempty"`                        // Class for `objects`
-	Objects    []json.RawMessage `json:"objects,omitempty" swaggertype:"object"` // Objects of `class` serialized as JSON
+	Objects    Array[json.RawMessage] `json:"objects,omitempty" swaggertype:"object"` // Objects of `class` serialized as JSON
 	Constraint *Constraint       `json:"constraint,omitempty"`
 } // @name Start
 
 // @description	Starting point for a goals search.
 type Goals struct {
 	Start Start    `json:"start"`
-	Goals []string `json:"goals,omitempty" example:"domain:class"` // Goal classes for correlation.
+	Goals Array[string] `json:"goals,omitempty" example:"domain:class"` // Goal classes for correlation.
 } // @name Goals
 
 // @description	Starting point for a neighbours search.
@@ -80,7 +90,7 @@ type Rule struct {
 	// Name is an optional descriptive name.
 	Name string `json:"name,omitempty"`
 	// Queries generated while following this rule.
-	Queries []QueryCount `json:"queries,omitempty"`
+	Queries Array[QueryCount] `json:"queries,omitempty"`
 } // @name Rule
 
 // Node in the result graph, contains results for a single class.
@@ -88,7 +98,7 @@ type Node struct {
 	// Class is the full class name in "DOMAIN:CLASS" form.
 	Class string `json:"class" example:"domain:class"`
 	// Queries yielding results for this class.
-	Queries []QueryCount `json:"queries,omitempty"`
+	Queries Array[QueryCount] `json:"queries,omitempty"`
 	// Count of results found for this class, after de-duplication.
 	Count int `json:"count"`
 } // @name Node
@@ -100,11 +110,11 @@ type Edge struct {
 	// Goal is the class name of the goal node.
 	Goal string `json:"goal" example:"domain:class"`
 	// Rules is the set of rules followed along this edge.
-	Rules []Rule `json:"rules,omitempty" extensions:"x-omitempty"`
+	Rules Array[Rule] `json:"rules,omitempty" extensions:"x-omitempty"`
 } // @name Edge
 
 // @description	Graph resulting from a correlation search.
 type Graph struct {
-	Nodes []Node `json:"nodes"`
-	Edges []Edge `json:"edges,omitempty"`
+	Nodes Array[Node] `json:"nodes"`
+	Edges Array[Edge] `json:"edges,omitempty"`
 } // @name Graph
