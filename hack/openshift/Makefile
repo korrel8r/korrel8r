@@ -9,7 +9,11 @@ operators:
 	../wait.sh subscription openshift-netobserv-operator netobserv-operator
 	kubectl patch consoles.operator.openshift.io/cluster --type=merge --patch '{ "spec": { "plugins": ["monitoring-plugin", "logging-view-plugin", "netobserv-plugin"]}}'
 
-STORAGE_CLASS?=$(shell kubectl get storageclass -o=jsonpath='{.items[?(@.metadata.annotations.storageclass\.kubernetes\.io/is-default-class=="true")].metadata.name}')
+# Find default storage class.
+STORAGE_CLASS?=$(strip $(shell kubectl get storageclass -o=jsonpath='{.items[?(@.metadata.annotations.storageclass\.kubernetes\.io/is-default-class=="true")].metadata.name}'))
+ifeq ($(STORAGE_CLASS),)
+$(error cannot determine storage class of cluster, set STORAGE_CLASS.)
+endif
 
 MINIO_ROLLOUT=../wait.sh rollout minio deployment/minio
 
@@ -29,10 +33,7 @@ deployment.apps/loki-querier \
 deployment.apps/loki-query-frontend \
 deployment.apps/netobserv-plugin
 
-resources: config/resources/storage.env
-ifeq ($(strip $(STORAGE_CLASS)),)
-		$(error cannot determine storage class of cluster. exitting)
-endif
+resources: $(STORAGE_ENV)
 	kubectl apply -k config/resources
 	$(MINIO_ROLLOUT)
 	$(LOGGING_ROLLOUT)
@@ -41,9 +42,17 @@ endif
 clean-operators:
 	kubectl delete --ignore-not-found -k config/operators
 	kubectl patch consoles.operator.openshift.io/cluster --type=merge --patch '{ "spec": { "plugins": [] }}'
-clean-resources: config/resources/storage.env
+
+clean-resources:
+	touch $(STORAGE_ENV)	# So kustomize won't choke on the missing file.
 	kubectl delete --ignore-not-found -k config/resources
+	rm $(STORAGE_ENV)
+
 clean-all: clean-resources clean-operators
 
-config/resources/storage.env: $(MAKEFILE_LIST)
+STORAGE_ENV=config/resources/storage.env
+ifneq ($(STORAGE_CLASS),$(file < $(STORAGE_ENV)))
+.PHONY: $(STORAGE_ENV)
+endif
+$(STORAGE_ENV):
 	echo "STORAGE_CLASS=$(STORAGE_CLASS)" > $@
