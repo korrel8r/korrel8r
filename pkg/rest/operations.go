@@ -206,7 +206,8 @@ func (a *API) GetObjects(c *gin.Context) {
 	if !check(c, http.StatusInternalServerError, a.Engine.Get(auth.Context(c.Request), query, (*korrel8r.Constraint)(opts.Constraint), result)) {
 		return
 	}
-	c.JSON(http.StatusOK, result.List())
+	log.V(2).Info("response OK", "objects", len(result.List()))
+	c.JSON(http.StatusOK, Array[any](result.List()))
 }
 
 func (a *API) goals(c *gin.Context) (g *graph.Graph, goals []korrel8r.Class) {
