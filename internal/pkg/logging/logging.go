@@ -63,7 +63,14 @@ func JSONString(v any) string {
 
 type logJSON struct{ v any }
 
-func (l logJSON) MarshalLog() any { return JSONString(l.v) }
+func truncate(s string, n int) string {
+	if len(s) <= n {
+		return s
+	}
+	return s[:n] + "..."
+}
+
+func (l logJSON) MarshalLog() any { return truncate(JSONString(l.v), 80) }
 
 // JSON wraps a value so it will be printed as JSON if logged.
 func JSON(v any) logr.Marshaler { return logJSON{v: v} }

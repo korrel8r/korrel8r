@@ -10,7 +10,6 @@ import (
 	"github.com/gin-contrib/pprof"
 	"github.com/gin-gonic/gin"
 	"github.com/korrel8r/korrel8r/internal/pkg/build"
-	"github.com/korrel8r/korrel8r/internal/pkg/logging"
 	"github.com/korrel8r/korrel8r/internal/pkg/must"
 	"github.com/korrel8r/korrel8r/pkg/rest"
 	"github.com/korrel8r/korrel8r/pkg/rest/docs"
@@ -58,9 +57,7 @@ var webCmd = &cobra.Command{
 		}
 
 		engine, configs := newEngine()
-		gin.DefaultWriter = logging.LogWriter()
 		gin.SetMode(gin.ReleaseMode)
-		gin.DisableConsoleColor()
 		router := gin.New()
 		router.Use(gin.Recovery())
 		r, err := rest.New(engine, configs, router)

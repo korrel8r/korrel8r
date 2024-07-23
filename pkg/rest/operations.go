@@ -21,12 +21,11 @@
 package rest
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"sync"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/korrel8r/korrel8r/internal/pkg/logging"
@@ -54,7 +53,7 @@ type API struct {
 // New API instance, registers  handlers with a gin Engine.
 func New(e *engine.Engine, c config.Configs, r *gin.Engine) (*API, error) {
 	a := &API{Engine: e, Configs: c}
-	r.Use(a.logRequest)
+	r.Use(a.logger)
 	r.GET("/", func(c *gin.Context) { c.Redirect(http.StatusTemporaryRedirect, "/swagger/index.html") })
 	r.GET("/api", func(c *gin.Context) { c.Redirect(http.StatusTemporaryRedirect, "/swagger/index.html") })
 	r.GET("/swagger/*any", a.handleSwagger)
@@ -96,7 +95,6 @@ func (a *API) Domains(c *gin.Context) {
 			Stores: a.Engine.StoreConfigsFor(d),
 		})
 	}
-	log.V(2).Info("response OK", "domains", logging.JSON(domains))
 	c.JSON(http.StatusOK, domains)
 }
 
@@ -116,7 +114,6 @@ func (a *API) DomainClasses(c *gin.Context) {
 	for _, c := range d.Classes() {
 		classes[c.Name()] = c.Description()
 	}
-	log.V(2).Info("response OK", "classes", logging.JSON(classes))
 	c.JSON(http.StatusOK, classes)
 }
 
@@ -138,7 +135,6 @@ func (a *API) GraphsGoals(c *gin.Context) {
 		return
 	}
 	gr := Graph{Nodes: nodes(g), Edges: edges(g, opts)}
-	log.V(2).Info("response OK", "classes", logging.JSON(gr))
 	c.JSON(http.StatusOK, gr)
 }
 
@@ -161,7 +157,6 @@ func (a *API) ListsGoals(c *gin.Context) {
 			nodes = append(nodes, node(n))
 		}
 	})
-	log.V(2).Info("response OK", "goals", logging.JSON(nodes))
 	c.JSON(http.StatusOK, nodes)
 }
 
@@ -188,7 +183,6 @@ func (a *API) GraphsNeighbours(c *gin.Context) {
 		return
 	}
 	gr := Graph{Nodes: nodes(g), Edges: edges(g, &opts)}
-	log.V(2).Info("response OK", "goals", logging.JSON(gr))
 	c.JSON(http.StatusOK, gr)
 }
 
@@ -212,7 +206,6 @@ func (a *API) GetObjects(c *gin.Context) {
 	if !check(c, http.StatusInternalServerError, a.Engine.Get(auth.Context(c.Request), query, (*korrel8r.Constraint)(opts.Constraint), result)) {
 		return
 	}
-	log.V(2).Info("response OK", "objects", len(result.List()))
 	c.JSON(http.StatusOK, result.List())
 }
 
@@ -298,14 +291,24 @@ func (a *API) classes(c *gin.Context, apiClasses []string) (classes []korrel8r.C
 	return classes
 }
 
-func (a *API) logRequest(c *gin.Context) {
-	if log.V(2).Enabled() {
-		var body []byte
-		if c.Request != nil && c.Request.Body != nil {
-			body, _ = io.ReadAll(c.Request.Body)
-			c.Request.Body = io.NopCloser(bytes.NewReader(body))
+// logger is a Gin handler to log requests.
+func (a *API) logger(c *gin.Context) {
+	start := time.Now()
+	defer func() {
+		log := log.WithValues(
+			"method", c.Request.Method,
+			"url", c.Request.URL,
+			"from", c.Request.RemoteAddr,
+			"status", c.Writer.Status(),
+			"latency", time.Since(start))
+		if len(c.Errors) > 0 {
+			log = log.WithValues("errors", c.Errors.Errors())
 		}
-		log.V(2).Info("request received", "from", c.Request.RemoteAddr, "method", c.Request.Method, "url", c.Request.URL, "body", string(body))
-	}
+		if len(c.Errors) > 0 || c.Writer.Status() > 500 {
+			log.Info("request failed")
+		} else {
+			log.V(1).Info("request OK")
+		}
+	}()
 	c.Next()
 }

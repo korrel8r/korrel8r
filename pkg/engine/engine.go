@@ -117,7 +117,7 @@ func (e *Engine) Follower(ctx context.Context, c *korrel8r.Constraint) *Follower
 	return &Follower{Engine: e, Context: ctx, Constraint: c, rules: map[appliedRule]graph.Queries{}}
 }
 
-// Start populates the start node for with objects and results of queries.
+// Start populates the start node with objects and results of queries.
 // Queries and objects must be of the same class as the node.
 func (e *Engine) Start(ctx context.Context, start *graph.Node, objects []korrel8r.Object, queries []korrel8r.Query, constraint *korrel8r.Constraint) error {
 	start.Result.Append(objects...)
