@@ -5,7 +5,6 @@ package engine
 import (
 	"context"
 	"maps"
-	"time"
 
 	"github.com/korrel8r/korrel8r/pkg/graph"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
@@ -43,7 +42,7 @@ func (f *Follower) Traverse(l *graph.Line) bool {
 			q, err := rule.Apply(s)
 			if err != nil {
 				if !korrel8r.IsRuleSkipped(err) { // Don't log deliberate skips.
-					log.V(2).Info("Apply error", "error", err)
+					log.V(2).Info("Apply error", "error", err, "id", korrel8r.GetID(start.Class, s))
 				}
 				continue
 			}
@@ -66,30 +65,17 @@ func (f *Follower) Traverse(l *graph.Line) bool {
 			return true
 		default: // Evaluate the query and store the results
 			result := korrel8r.NewCountResult(goal.Result) // Store in goal, but count the contribution.
-			var err error
-			delay := duration(log.V(3).Enabled(), func() {
-				err = f.Engine.Get(f.Context, q, f.Constraint, result)
-			})
-			if err != nil {
+			if err := f.Engine.Get(f.Context, q, f.Constraint, result); err != nil {
 				log.V(2).Info("Get error", "error", err)
 			}
 			l.Queries.Set(q, result.Count)
 			goal.Queries.Set(q, result.Count)
 			if result.Count > 0 {
-				log.V(3).Info("Get", "results", result.Count, "duration", delay)
+				log.V(3).Info("Got results", "count", result.Count)
 			}
 			return true
 		}
 	})
 
 	return l.Queries.Total() > 0
-}
-
-func duration(enabled bool, f func()) time.Duration {
-	var start time.Time
-	if !enabled { // Avoid time calls unless required, expensive.
-		start = time.Now()
-	}
-	f()
-	return time.Since(start)
 }

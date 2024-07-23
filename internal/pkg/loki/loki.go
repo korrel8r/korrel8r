@@ -15,7 +15,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/korrel8r/korrel8r/internal/pkg/logging"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 )
 
@@ -83,7 +82,6 @@ func (c *Client) queryURL(logQL string, constraint *korrel8r.Constraint) *url.UR
 
 func (c *Client) get(ctx context.Context, u *url.URL, collect CollectFunc) error {
 	u = c.base.ResolveReference(u)
-	logging.Log().V(4).Info("loki get", "url", u)
 	req, err := http.NewRequestWithContext(ctx, "GET", u.String(), nil)
 	if err != nil {
 		return err

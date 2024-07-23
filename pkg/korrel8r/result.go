@@ -3,6 +3,8 @@
 package korrel8r
 
 import (
+	"fmt"
+
 	"github.com/korrel8r/korrel8r/pkg/unique"
 )
 
@@ -12,10 +14,18 @@ type Result interface {
 	List() []Object
 }
 
+// GetID returns the object ID using if class is an IDer, "" otherwise.
+func GetID(class Class, object Object) string {
+	if ider, _ := class.(IDer); ider != nil {
+		return fmt.Sprintf("%v", ider.ID(object))
+	}
+	return ""
+}
+
 // NewResult returns a SetResult if class implements IDer, a ListResult otherwise.
 func NewResult(class Class) Result {
-	if id, _ := class.(IDer); id != nil {
-		return NewSetResult(id)
+	if ider, _ := class.(IDer); ider != nil {
+		return NewSetResult(ider)
 	}
 	return NewListResult()
 }
