@@ -9,8 +9,6 @@ package engine
 
 import (
 	"fmt"
-	"reflect"
-	"slices"
 	"text/template"
 
 	"maps"
@@ -32,7 +30,7 @@ type Builder struct {
 func Build() *Builder {
 	e := &Engine{
 		domains:     map[string]korrel8r.Domain{},
-		stores:      map[korrel8r.Domain]stores{},
+		stores:      map[korrel8r.Domain]*stores{},
 		rulesByName: map[string]korrel8r.Rule{},
 	}
 	e.templateFuncs = template.FuncMap{"query": e.query}
@@ -46,6 +44,7 @@ func (b *Builder) Domains(domains ...korrel8r.Domain) *Builder {
 		case d: // Already present
 		case nil:
 			b.e.domains[d.Name()] = d
+			b.e.stores[d] = newStores(b.e, d)
 			if tf, ok := d.(interface{ TemplateFuncs() map[string]any }); ok {
 				maps.Copy(b.e.templateFuncs, tf.TemplateFuncs())
 			}
@@ -59,13 +58,17 @@ func (b *Builder) Domains(domains ...korrel8r.Domain) *Builder {
 
 func (b *Builder) Stores(stores ...korrel8r.Store) *Builder {
 	for _, s := range stores {
+		if b.err != nil {
+			return b
+		}
 		d := s.Domain()
 		b.Domains(d)
 		if b.err != nil {
 			return b
 		}
-		b.e.stores[d] = append(b.e.stores[d], &store{Store: s})
+		b.err = b.e.stores[d].Add(&store{domain: d, Store: s})
 	}
+
 	return b
 }
 
@@ -74,17 +77,11 @@ func (b *Builder) StoreConfigs(storeConfigs ...config.Store) *Builder {
 		if b.err != nil {
 			return b
 		}
-		sc = maps.Clone(sc)
 		d := b.getDomain(sc[config.StoreKeyDomain])
 		if b.err != nil {
 			return b
 		}
-		ss := b.e.stores[d]
-		if slices.ContainsFunc(ss, func(s *store) bool { return reflect.DeepEqual(sc, s.Original) }) {
-			b.err = fmt.Errorf("duplicate store configuration: %v", sc)
-			return b
-		}
-		b.e.stores[d] = append(ss, &store{Original: sc})
+		b.err = b.e.stores[d].Add(&store{domain: d, Original: maps.Clone(sc)})
 	}
 	return b
 }
@@ -124,17 +121,23 @@ func (b *Builder) Apply(configs config.Configs) *Builder {
 	return b
 }
 
+func (b *Builder) ConfigFile(file string) *Builder {
+	cfg, err := config.Load(file)
+	if err != nil {
+		b.err = err
+		return b
+	}
+	return b.Apply(cfg)
+}
+
 // Engine returns the final engine, which can no longer be modified.
 // The Builder must not be used after calling Engine()
 func (b *Builder) Engine() (*Engine, error) {
 	e := b.e
 	b.e = nil
 	// Create all stores to report problems early.
-	for d, ss := range e.stores {
-		for _, s := range ss {
-			// Not an error if create fails, will be registered in stores.
-			_ = s.Ensure(d, func(s string) (string, error) { return e.execTemplate(s, nil) })
-		}
+	for _, ss := range e.stores {
+		ss.Ensure()
 	}
 	return e, b.err
 }

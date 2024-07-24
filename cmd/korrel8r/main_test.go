@@ -30,7 +30,7 @@ func (w *testWriter) Write(data []byte) (int, error) { w.t.Log(string(data)); re
 // command returns an exec.Cmd to run the korrel8r executable in the context of a testing.T test.
 func command(t *testing.T, args ...string) *exec.Cmd {
 	t.Helper()
-	cmd := exec.Command("./korrel8r", args...)
+	cmd := exec.Command("./korrel8r", append([]string{"--panic"}, args...)...)
 	// Redirect stderr to test output.
 	cmd.Stderr = &testWriter{t: t}
 	return cmd

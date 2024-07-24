@@ -40,6 +40,7 @@ func ParseQueryString(domain korrel8r.Domain, query string) (class korrel8r.Clas
 	return class, q, nil
 }
 
+// UnmarshalQueryString unmarshals JSON query data as a Go map.
 func UnmarshalQueryString(domain korrel8r.Domain, query string, data any) (korrel8r.Class, error) {
 	c, qs, err := ParseQueryString(domain, query)
 	if err != nil {

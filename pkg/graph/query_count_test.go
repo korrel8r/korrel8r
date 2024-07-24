@@ -11,7 +11,7 @@ import (
 
 func TestQueries(t *testing.T) {
 	d := mock.Domain("x")
-	q := mock.NewQuery(d.Class("a"))
+	q := mock.NewQuery(d.Class("a"), "")
 	qs := Queries{}
 	assert.False(t, qs.Has(q))
 	assert.Equal(t, -1, qs.Get(q))

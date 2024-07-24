@@ -8,7 +8,6 @@ import (
 	"context"
 	"fmt"
 	"slices"
-	"strconv"
 	"strings"
 	"text/template"
 
@@ -26,7 +25,7 @@ var log = logging.Log()
 // Once created (see [Build()]) an engine is immutable.
 type Engine struct {
 	domains       map[string]korrel8r.Domain
-	stores        map[korrel8r.Domain]stores
+	stores        map[korrel8r.Domain]*stores
 	templateFuncs template.FuncMap
 	rulesByName   map[string]korrel8r.Rule
 	rules         []korrel8r.Rule
@@ -47,20 +46,17 @@ func (e *Engine) DomainErr(name string) (korrel8r.Domain, error) {
 	return nil, korrel8r.DomainNotFoundError{Domain: name}
 }
 
+// StoreFor returns the store for a domain, may be nil.
+func (e *Engine) StoreFor(d korrel8r.Domain) korrel8r.Store {
+	return e.stores[d]
+}
+
 // StoreConfigsFor returns the expanded store configurations and status.
 func (e *Engine) StoreConfigsFor(d korrel8r.Domain) []config.Store {
-	var ret []config.Store
-	for _, s := range e.stores[d] {
-		sc := maps.Clone(s.Expanded)
-		if s.Err != nil {
-			sc[config.StoreKeyError] = s.Err.Error()
-		}
-		if s.ErrCount > 0 {
-			sc[config.StoreKeyErrorCount] = strconv.Itoa(s.ErrCount)
-		}
-		ret = append(ret, sc)
+	if ss, ok := e.stores[d]; ok {
+		return ss.Configs()
 	}
-	return ret
+	return nil
 }
 
 // Class parses a full class name and returns the
@@ -107,9 +103,11 @@ func (e *Engine) Graph() *graph.Graph { return graph.NewData(e.Rules()...).FullG
 
 // Get results for query from all stores for the query domain.
 func (e *Engine) Get(ctx context.Context, q korrel8r.Query, constraint *korrel8r.Constraint, result korrel8r.Appender) error {
-	expand := func(s string) (string, error) { return e.execTemplate(s, nil) }
-	ss := e.stores[q.Class().Domain()]
-	return ss.Get(ctx, q, constraint, result, expand)
+	if ss, ok := e.stores[q.Class().Domain()]; ok {
+		return ss.Get(ctx, q, constraint, result)
+	} else {
+		return korrel8r.StoreNotFoundError{Domain: q.Class().Domain()}
+	}
 }
 
 // Follower creates a follower. Constraint can be nil.
@@ -173,6 +171,7 @@ func (e *Engine) NewTemplate(name string) *template.Template {
 	return template.New(name).Funcs(e.templateFuncs)
 }
 
+// execTemplate is a convenience to call NewTemplate, execute the template and stringify the result.
 func (e *Engine) execTemplate(tmplString string, data any) (string, error) {
 	tmpl, err := e.NewTemplate(tmplString).Parse(tmplString)
 	if err != nil {
