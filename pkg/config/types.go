@@ -27,6 +27,7 @@ const (
 	StoreKeyDomain     = "domain"               // Required domain name
 	StoreKeyError      = "error"                // Error message if store failed to load.
 	StoreKeyErrorCount = "errorCount"           // Count of errors on a store.
+	StoreKeyMock       = "mockData"             // Store loads mock data from a file.
 	StoreKeyCA         = "certificateAuthority" // Path to CA certificate.
 )
 
