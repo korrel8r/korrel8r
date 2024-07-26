@@ -10,10 +10,15 @@ operators:
 	kubectl patch consoles.operator.openshift.io/cluster --type=merge --patch '{ "spec": { "plugins": ["monitoring-plugin", "logging-view-plugin", "netobserv-plugin"]}}'
 
 # Find default storage class.
-STORAGE_CLASS?=$(strip $(shell kubectl get storageclass -o=jsonpath='{.items[?(@.metadata.annotations.storageclass\.kubernetes\.io/is-default-class=="true")].metadata.name}'))
-ifeq ($(STORAGE_CLASS),)
-$(error cannot determine storage class of cluster, set STORAGE_CLASS.)
+DEFAULT_SC=$(shell kubectl get storageclass -o=jsonpath='{.items[?(@.metadata.annotations.storageclass\.kubernetes\.io/is-default-class=="true")].metadata.name}')
+STORAGE_CLASS?=$(or $(strip $(DEFAULT_SC)),$(error Cannot determine storage class, must set STORAGE_CLASS.))
+STORAGE_ENV=config/resources/storage.env
+
+ifneq ($(STORAGE_CLASS),$(file < $(STORAGE_ENV)))
+.PHONY: $(STORAGE_ENV)
 endif
+$(STORAGE_ENV):
+	echo "STORAGE_CLASS=$(STORAGE_CLASS)" > $@
 
 MINIO_ROLLOUT=../wait.sh rollout minio deployment/minio
 
@@ -49,10 +54,3 @@ clean-resources:
 	rm $(STORAGE_ENV)
 
 clean-all: clean-resources clean-operators
-
-STORAGE_ENV=config/resources/storage.env
-ifneq ($(STORAGE_CLASS),$(file < $(STORAGE_ENV)))
-.PHONY: $(STORAGE_ENV)
-endif
-$(STORAGE_ENV):
-	echo "STORAGE_CLASS=$(STORAGE_CLASS)" > $@

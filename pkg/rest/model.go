@@ -14,7 +14,7 @@ type Array[T any] []T
 
 func (a Array[T]) MarshalJSON() ([]byte, error) {
 	if a == nil {
-		return json.Marshal([]T{})
+		return []byte("[]"), nil
 	}
 	return json.Marshal([]T(a))
 }
@@ -49,14 +49,14 @@ type Classes map[string]string // @name Classes
 // - unmarshalled objects from [Start.Objects]
 type Start struct {
 	Queries    Array[string]          `json:"queries,omitempty"`                      // Queries for starting objects
-	Class      string            `json:"class,omitempty"`                        // Class for `objects`
+	Class      string                 `json:"class,omitempty"`                        // Class for `objects`
 	Objects    Array[json.RawMessage] `json:"objects,omitempty" swaggertype:"object"` // Objects of `class` serialized as JSON
-	Constraint *Constraint       `json:"constraint,omitempty"`
+	Constraint *Constraint            `json:"constraint,omitempty"`
 } // @name Start
 
 // @description	Starting point for a goals search.
 type Goals struct {
-	Start Start    `json:"start"`
+	Start Start         `json:"start"`
 	Goals Array[string] `json:"goals,omitempty" example:"domain:class"` // Goal classes for correlation.
 } // @name Goals
 
