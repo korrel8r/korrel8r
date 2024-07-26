@@ -1,1 +1,3 @@
 "mock:foo:hello": ["hello"]
+"mock:foo:x": ["foo.x"]
+"mock:bar:y": ["bar.y"]

@@ -3,6 +3,7 @@
 package rest
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -10,11 +11,9 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"os"
-	"strings"
 	"testing"
 
 	"github.com/gin-gonic/gin"
-	"github.com/korrel8r/korrel8r/internal/pkg/test"
 	"github.com/korrel8r/korrel8r/internal/pkg/test/mock"
 	"github.com/korrel8r/korrel8r/pkg/config"
 	logDomain "github.com/korrel8r/korrel8r/pkg/domains/log"
@@ -22,7 +21,6 @@ import (
 	"github.com/korrel8r/korrel8r/pkg/engine"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"golang.org/x/exp/slices"
 )
 
 func TestAPI_GetDomains(t *testing.T) {
@@ -184,7 +182,9 @@ func do(t *testing.T, a *testAPI, method, url string, body any) *httptest.Respon
 	w := httptest.NewRecorder()
 	var r io.Reader
 	if body != nil {
-		r = strings.NewReader(test.JSONString(body))
+		j, err := json.Marshal(body)
+		require.NoError(t, err)
+		r = bytes.NewReader(j)
 	}
 	req, err := http.NewRequest(method, url, r)
 	if err != nil {
@@ -194,39 +194,6 @@ func do(t *testing.T, a *testAPI, method, url string, body any) *httptest.Respon
 		a.Router.ServeHTTP(w, req)
 	}
 	return w
-}
-
-// normalize values by sorting slices to avoid test failure due to ordering inconsistency.
-func normalize(v any) {
-	switch v := v.(type) {
-	case Graph:
-		normalize(v.Nodes)
-		normalize(v.Edges)
-	case Array[Node]:
-		slices.SortFunc(v, func(a, b Node) int { return strings.Compare(a.Class, b.Class) })
-		for _, n := range v {
-			normalize(n)
-		}
-	case Array[Edge]:
-		slices.SortFunc(v, func(a, b Edge) int {
-			if n := strings.Compare(a.Start, b.Start); n != 0 {
-				return n
-			} else {
-				return strings.Compare(a.Goal, b.Goal)
-			}
-		})
-		for _, e := range v {
-			normalize(e)
-		}
-	case Node:
-		normalize(v.Queries)
-	case Edge:
-		for _, r := range v.Rules {
-			normalize(r.Queries)
-		}
-	case []QueryCount:
-		slices.SortFunc(v, func(a, b QueryCount) int { return strings.Compare(a.Query, b.Query) })
-	}
 }
 
 func assertDo[T any](t *testing.T, a *testAPI, method, url string, req any, code int, want T) {
@@ -239,8 +206,8 @@ func assertDo[T any](t *testing.T, a *testAPI, method, url string, req any, code
 	if !assert.NoError(t, json.Unmarshal(w.Body.Bytes(), &got), "body: %v", w.Body.String()) {
 		return
 	}
-	normalize(want)
-	normalize(got)
+	Normalize(want)
+	Normalize(got)
 	assert.Equal(t, want, got, "request: %+v", req)
 
 }

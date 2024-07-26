@@ -24,4 +24,4 @@ jobs:
           args: "--timeout=3m"
 
       - name: test
-        run: make test-skip
+        run: go test -race ./pkg/... ./cmd/... ./internal/... ./etc/korrel8r/rules/...

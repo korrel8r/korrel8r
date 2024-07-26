@@ -5,6 +5,7 @@ package rest
 import (
 	"cmp"
 	"slices"
+	"strings"
 
 	"github.com/korrel8r/korrel8r/pkg/graph"
 )
@@ -69,4 +70,39 @@ func edges(g *graph.Graph, opts *Options) (edges []Edge) {
 		}
 	})
 	return edges
+}
+
+// Normalize API values by sorting slices in a predictable order.
+// Useful for tests that need to compare actual and expected results.
+func Normalize(v any) any {
+	switch v := v.(type) {
+	case Graph:
+		Normalize(v.Nodes)
+		Normalize(v.Edges)
+	case Array[Node]:
+		slices.SortFunc(v, func(a, b Node) int { return strings.Compare(a.Class, b.Class) })
+		for _, n := range v {
+			Normalize(n)
+		}
+	case Array[Edge]:
+		slices.SortFunc(v, func(a, b Edge) int {
+			if n := strings.Compare(a.Start, b.Start); n != 0 {
+				return n
+			} else {
+				return strings.Compare(a.Goal, b.Goal)
+			}
+		})
+		for _, e := range v {
+			Normalize(e)
+		}
+	case Node:
+		Normalize(v.Queries)
+	case Edge:
+		for _, r := range v.Rules {
+			Normalize(r.Queries)
+		}
+	case []QueryCount:
+		slices.SortFunc(v, func(a, b QueryCount) int { return strings.Compare(a.Query, b.Query) })
+	}
+	return v
 }

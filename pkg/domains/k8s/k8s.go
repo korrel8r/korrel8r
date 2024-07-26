@@ -30,6 +30,7 @@ package k8s
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/url"
 	"reflect"
@@ -212,7 +213,7 @@ func NewQuery(c Class, namespace, name string, labels, fields map[string]string)
 }
 
 func (q Query) Class() korrel8r.Class        { return q.class }
-func (q Query) Data() string                 { return impl.JSONString(q) }
+func (q Query) Data() string                 { b, _ := json.Marshal(q); return string(b) }
 func (q Query) String() string               { return impl.QueryString(q) }
 func (q Query) GVK() schema.GroupVersionKind { return q.class.GVK() }
 

@@ -5,7 +5,6 @@ package k8s
 import (
 	"context"
 
-	"github.com/korrel8r/korrel8r/internal/pkg/test"
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
@@ -16,7 +15,10 @@ func New[T any, PT interface {
 	*T
 }](namespace, name string) PT {
 	o := PT(new(T))
-	gvk := test.Must(apiutil.GVKForObject(o, Scheme))
+	gvk, err := apiutil.GVKForObject(o, Scheme)
+	if err != nil {
+		panic(err)
+	}
 	o.GetObjectKind().SetGroupVersionKind(gvk)
 	o.SetNamespace(namespace)
 	o.SetName(name)
