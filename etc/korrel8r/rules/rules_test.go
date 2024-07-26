@@ -12,7 +12,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/korrel8r/korrel8r/internal/pkg/test"
 	"github.com/korrel8r/korrel8r/pkg/config"
 	"github.com/korrel8r/korrel8r/pkg/domains/alert"
 	"github.com/korrel8r/korrel8r/pkg/domains/k8s"
@@ -31,16 +30,25 @@ import (
 )
 
 func setup() *engine.Engine {
-	configs := test.Must(config.Load("all.yaml"))
+	configs, err := config.Load("all.yaml")
+	if err != nil {
+		panic(err)
+	}
 	for _, c := range configs {
 		c.Stores = nil // Use fake stores, not configured defaults.
 	}
 	c := fake.NewClientBuilder().WithRESTMapper(testrestmapper.TestOnlyStaticRESTMapper(k8s.Scheme)).Build()
+	s, err := k8s.NewStore(c, &rest.Config{})
+	if err != nil {
+		panic(err)
+	}
 	e, err := engine.Build().
 		Domains(k8s.Domain, log.Domain, netflow.Domain, alert.Domain, metric.Domain).
 		Apply(configs).
-		Stores(test.Must(k8s.NewStore(c, &rest.Config{}))).Engine()
-	test.PanicErr(err)
+		Stores(s).Engine()
+	if err != nil {
+		panic(err)
+	}
 	return e
 }
 

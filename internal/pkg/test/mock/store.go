@@ -89,7 +89,11 @@ func (s *Store) Add(queries QueryMap) { maps.Copy(s.queries, queries) }
 
 // NewQuery returns a query that will get the result. The query data is the JSON string of the result.
 func (s *Store) NewQuery(c korrel8r.Class, result ...korrel8r.Object) korrel8r.Query {
-	q := NewQuery(c, impl.JSONString(result))
+	b, err := json.Marshal(result)
+	if err != nil {
+		panic(err)
+	}
+	q := NewQuery(c, string(b))
 	s.Add(QueryMap{q.String(): result})
 	return q
 }

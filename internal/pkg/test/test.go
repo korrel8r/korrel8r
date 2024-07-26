@@ -5,13 +5,11 @@ package test
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net"
 	"net/http"
 	"os"
 	"os/exec"
-	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -34,7 +32,6 @@ var (
 	clusterErr     error
 
 	// These variables are initialized if HasCluster succeeds.
-	// Safe for use in tests after calling SkipIfNoCluster.
 	RESTConfig *rest.Config
 	K8sClient  client.WithWatch
 	HTTPClient *http.Client
@@ -60,36 +57,6 @@ func HasCluster() error {
 		clusterErr = K8sClient.Get(ctx, types.NamespacedName{Name: "default"}, ns)
 	})
 	return clusterErr
-}
-
-// SkipIfNoCluster calls t.Skip if no cluster is detected.
-func SkipIfNoCluster(t *testing.T) {
-	t.Helper()
-	if os.Getenv("TEST_NO_CLUSTER") != "" {
-		skipf(t, "Skipping TEST_NO_CLUSTER is set")
-	}
-	if err := HasCluster(); err != nil {
-		skipf(t, "no cluster available: %v", err)
-	}
-}
-
-// SkipIfNoCommand skips a test if the cmd is not found in PATH
-func SkipIfNoCommand(t *testing.T, cmd string) {
-	t.Helper()
-	if _, err := exec.LookPath(cmd); err != nil {
-		skipf(t, "command %q not available", cmd)
-	}
-}
-
-func skipf(t *testing.T, format string, args ...interface{}) {
-	t.Helper()
-	msg := fmt.Sprintf(format, args...)
-	noSkip := os.Getenv("TEST_NO_SKIP")
-	if noSkip != "" {
-		t.Fatalf("TEST_NO_SKIP=%v failing: %v", noSkip, msg)
-	} else {
-		t.Skipf(msg)
-	}
 }
 
 // ListenPort returns a free ephemeral port for listening.
@@ -133,36 +100,6 @@ func TempNamespace(t *testing.T, c client.Client) string {
 		}
 	})
 	return ns.Name
-}
-
-// PanicErr panics if err is not nil
-func PanicErr(err error) {
-	if err != nil {
-		panic(err)
-	}
-}
-
-// Must panics if err is not nil, else returns v.
-func Must[T any](v T, err error) T { PanicErr(err); return v }
-
-// JSONString returns the JSON marshaled string from v, or the error message if marshal fails
-func JSONString(v any) string {
-	w := &strings.Builder{}
-	if err := json.NewEncoder(w).Encode(v); err != nil {
-		return err.Error()
-	}
-	return w.String()
-}
-
-// JSONPretty returns an indented JSON string, or error message if marshal fails.
-func JSONPretty(v any) string {
-	w := &strings.Builder{}
-	e := json.NewEncoder(w)
-	e.SetIndent("", "  ")
-	if err := e.Encode(v); err != nil {
-		return err.Error()
-	}
-	return w.String()
 }
 
 // Watch in a loop, call f for each event, return when f returns true.

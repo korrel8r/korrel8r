@@ -24,12 +24,12 @@ IMAGE=$(IMG):$(VERSION)
 
 include .bingo/Variables.mk	# Versioned tools
 
-BIN ?= $(shell pwd)/_bin
+BIN ?= _bin
 export PATH := $(abspath $(BIN)):$(PATH)
 export GOCOVERDIR := $(abspath _cover)
 
 $(BIN):
-	@mkdir -p $(BIN)
+	mkdir -p $(BIN)
 
 # Generated files
 VERSION_TXT=internal/pkg/build/version.txt
@@ -39,11 +39,9 @@ GEN_DOC=doc/gen/domains.adoc doc/gen/rest_api.adoc doc/gen/cmd
 
 all: lint build test _site image-build ## Build and test everything locally. Recommended before pushing.
 
-KORREL8R=cmd/korrel8r/korrel8r
+KORREL8R=./cmd/korrel8r/korrel8r
 build: $(KORREL8R)
 $(KORREL8R): $(GEN_SRC) $(shell find -name *.go) $(BIN)
-	@mkdir -p $(dir $@)
-	go mod tidy
 	go build -cover -o $@ ./cmd/korrel8r
 
 clean: ## Remove generated files, including checked-in files.
@@ -65,20 +63,20 @@ $(SWAGGER_SPEC): $(wildcard pkg/rest/*.go) $(SWAG)
 	@touch $@
 
 SHELLCHECK:= $(BIN)/shellcheck
-$(SHELLCHECK):  $(BIN)
+$(SHELLCHECK):
+	@mkdir -p $(dir $@)
 	./hack/install-shellcheck.sh $(BIN) 0.10.0
 
 lint: $(GEN_SRC) $(GOLANGCI_LINT) $(SHFMT) $(SHELLCHECK) ## Run the linter to find and fix code style problems.
 	hack/copyright.sh
+	go mod tidy
 	$(GOLANGCI_LINT) run --fix
 	$(SHFMT) -l -w ./**/*.sh
 	$(SHELLCHECK) -x -S style hack/*.sh
 
 .PHONY: test
-test:				## Run all tests, requires a cluster.
-	$(MAKE) TEST_NO_SKIP=1 test-skip
 
-test-skip: $(KORREL8R) $(GOCOVERDIR) ## Run all tests but skip those requiring a cluster if not logged in.
+test: $(GOCOVERDIR)		## Run all tests, requires a cluster.
 	go test -timeout=1m -cover -race ./...
 	@echo -e "\\n# Accumulated coverage from main_test"
 	go tool covdata percent -i $(GOCOVERDIR)
@@ -115,7 +113,8 @@ undeploy:			# Delete resources created by `make deploy`
 ## Documentation
 
 ASCIIDOCTOR:=$(BIN)/asciidoctor
-$(ASCIIDOCTOR): $(BIN)
+$(ASCIIDOCTOR):
+	@mkdir -p $(dir $@)
 	gem install asciidoctor --user-install --bindir $(BIN)
 
 # From github.com:darshandsoni/asciidoctor-skins.git
@@ -148,7 +147,8 @@ doc/gen/rest_api.adoc: $(SWAGGER_SPEC) $(shell find etc/swagger) $(SWAGGER)
 	$(SWAGGER) -q generate markdown -T etc/swagger -f $(SWAGGER_SPEC) --output $@
 
 KRAMDOC:=$(BIN)/kramdoc
-$(KRAMDOC): $(BIN)
+$(KRAMDOC):
+	@mkdir -p $(dir $@)
 	gem install kramdown-asciidoc --user-install --bindir $(BIN)
 
 doc/gen/cmd: $(KORREL8R) $(KORREL8RCLI) $(KRAMDOC) ## Generated command documentation

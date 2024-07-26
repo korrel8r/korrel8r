@@ -12,8 +12,11 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"testing"
 	"time"
+
+	"sync/atomic"
 
 	"github.com/korrel8r/korrel8r/internal/pkg/test"
 	"github.com/korrel8r/korrel8r/pkg/rest"
@@ -85,7 +88,7 @@ func TestMain_server_insecure(t *testing.T) {
 }
 
 func TestMain_server_secure(t *testing.T) {
-	_, clientTLS := certSetup(tmpDir)
+	_, clientTLS := certSetup(t, tmpDir)
 	h := &http.Client{Transport: &http.Transport{TLSClientConfig: clientTLS}}
 	u := startServer(t, h, "https", "--cert", filepath.Join(tmpDir, "tls.crt"), "--key", filepath.Join(tmpDir, "tls.key"), "-c", "testdata/korrel8r.yaml").String() + "/domains"
 	assertDo(t, h, `[
@@ -99,48 +102,42 @@ func TestMain_server_secure(t *testing.T) {
 		"GET", u, "")
 }
 
+const testRequest = `{  "depth": 1, "start": { "queries": [ "mock:foo:x" ] }}`
+
+var testResponse = rest.Normalize(rest.Graph{
+	Nodes: rest.Array[rest.Node]{
+		rest.Node{Class: "mock:foo", Queries: rest.Array[rest.QueryCount]{rest.QueryCount{Query: "mock:foo:x", Count: 1}}, Count: 1},
+		rest.Node{Class: "mock:bar", Queries: rest.Array[rest.QueryCount]{rest.QueryCount{Query: "mock:bar:y", Count: 1}}, Count: 1}},
+	Edges: rest.Array[rest.Edge]{rest.Edge{Start: "mock:foo", Goal: "mock:bar", Rules: rest.Array[rest.Rule](nil)}},
+})
+
 func TestMain_server_graph(t *testing.T) {
-	test.SkipIfNoCluster(t)
-	u := startServer(t, http.DefaultClient, "http", "-c", "../../etc/korrel8r/openshift-route.yaml").String()
-	got, err := request(t, http.DefaultClient, "POST", u+"/graphs/neighbours", `{
-  "depth": 1,
-  "start": {
-    "queries": [ "k8s:Deployment:{namespace: openshift-apiserver}" ]
-  }
-}`)
+	u := startServer(t, http.DefaultClient, "http", "-c", "testdata/korrel8r.yaml").String()
+	resp, err := request(t, http.DefaultClient, "POST", u+"/graphs/neighbours", testRequest)
 	require.NoError(t, err)
-	var g rest.Graph
-	require.NoError(t, json.Unmarshal([]byte(got), &g))
-	require.NotEmpty(t, g.Nodes)
-	require.NotEmpty(t, g.Edges)
+	var got rest.Graph
+	assert.NoError(t, json.Unmarshal([]byte(resp), &got))
+	require.Equal(t, testResponse, rest.Normalize(got))
 }
 
 func TestMain_concurrent_requests(t *testing.T) {
-	test.SkipIfNoCluster(t)
-	u := startServer(t, http.DefaultClient, "http", "-c", "../../etc/korrel8r/openshift-route.yaml").String()
-	const n = 10
-	errs := make(chan error, n)
-	for i := 0; i < n; i++ {
+	u := startServer(t, http.DefaultClient, "http", "-c", "testdata/korrel8r.yaml").String()
+	workers := sync.WaitGroup{}
+	failed := atomic.Uint32{}
+	for i := 0; i < 10; i++ {
+		workers.Add(1)
 		go func() {
-			resp, err := request(t, http.DefaultClient, "POST", u+"/graphs/neighbours", `{
-  "depth": 1,
-  "start": {
-    "queries": [ "k8s:Deployment:{namespace: korrel8r}" ]
-  }
-}`)
-			if err != nil {
-				errs <- err
-				return
-			}
+			defer workers.Done()
+			resp, err := request(t, http.DefaultClient, "POST", u+"/graphs/neighbours", testRequest)
 			var got rest.Graph
-			if err := json.Unmarshal([]byte(resp), &got); err != nil {
-				errs <- err
-				return
+			ok := assert.NoError(t, err) &&
+				assert.NoError(t, json.Unmarshal([]byte(resp), &got)) &&
+				assert.Equal(t, rest.Normalize(testResponse), rest.Normalize(got))
+			if !ok {
+				failed.Add(1)
 			}
-			errs <- nil
 		}()
 	}
-	for i := 0; i < n; i++ {
-		assert.NoError(t, <-errs)
-	}
+	workers.Wait()
+	assert.Zero(t, failed.Load())
 }

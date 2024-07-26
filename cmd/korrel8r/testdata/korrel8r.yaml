@@ -12,8 +12,7 @@ rules:
       domain: mock
       classes: [bar]
     result:
-      query: |-
-        {"class":"bar","results":["z"]}
+      query: "mock:bar:y"
 
   - name: barfoo
     start:
@@ -23,5 +22,4 @@ rules:
       domain: mock
       classes: [foo]
     result:
-      query: |-
-        {"class":"foo,"results":["y"]}
+      query: "mock:foo:x"

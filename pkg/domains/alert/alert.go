@@ -31,6 +31,7 @@ package alert
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -153,7 +154,7 @@ type Receiver struct {
 type Query map[string]string
 
 func (q Query) Class() korrel8r.Class { return Class{} }
-func (q Query) Data() string          { return impl.JSONString(q) }
+func (q Query) Data() string          { b, _ := json.Marshal(q); return string(b) }
 func (q Query) String() string        { return impl.QueryString(q) }
 
 // Store is a client of Prometheus and AlertManager.
