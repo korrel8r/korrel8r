@@ -6,7 +6,7 @@ help: ## Display this help.
 	@grep -E '^## [A-Z0-9_]+: ' Makefile | sed 's/^## \([A-Z0-9_]*\): \(.*\)/\1#\2/' | column -s'#' -t
 
 ## VERSION: Semantic version for release, use -dev for development pre-release versions.
-VERSION?=0.7.0-dev
+VERSION?=0.7.0
 ## REGISTRY: Name of image registry
 REGISTRY?=quay.io
 ## REGISTRY_ORG: Name of registry organization.
