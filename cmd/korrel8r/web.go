@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"strconv"
 
 	"github.com/gin-contrib/pprof"
 	"github.com/gin-gonic/gin"
@@ -21,9 +22,6 @@ var webCmd = &cobra.Command{
 	Short: "Start REST server. Listening address must be  provided via --http or --https.",
 	Args:  cobra.NoArgs,
 	Run: func(_ *cobra.Command, args []string) {
-		if *htmlFlag || !*restFlag {
-			log.Info("DEPRECATED --html and --rest are deprecated. HTML server no longer supported.")
-		}
 		if *specFlag != "" {
 			spec := docs.SwaggerInfo.ReadDoc()
 			if *specFlag == "-" {
@@ -64,8 +62,9 @@ var webCmd = &cobra.Command{
 		must.Must(err)
 		defer r.Close()
 		s.Handler = router
-		pprof.Register(router) // Enable profiling
-
+		if *profileFlag {
+			pprof.Register(router)
+		}
 		if *httpFlag != "" {
 			log.Info("listening for http", "addr", s.Addr, "version", build.Version)
 			must.Must(s.ListenAndServe())
@@ -80,7 +79,11 @@ var (
 	httpFlag, httpsFlag *string
 	certFlag, keyFlag   *string
 	specFlag            *string
-	htmlFlag, restFlag  *bool
+	profileFlag         *bool
+)
+
+const (
+	profileEnv = "KORREL8R_PROFILE"
 )
 
 func init() {
@@ -90,8 +93,6 @@ func init() {
 	certFlag = webCmd.Flags().String("cert", "", "TLS certificate file (PEM format) for https")
 	keyFlag = webCmd.Flags().String("key", "", "Private key (PEM format) for https")
 	specFlag = webCmd.Flags().String("spec", "", "Dump swagger spec to a file, '-' for stdout.")
-
-	// DEPRECATED: remove in future version.
-	htmlFlag = webCmd.Flags().Bool("html", false, "DEPRECATED - use korrel8rcli instead.")
-	restFlag = webCmd.Flags().Bool("rest", true, "DEPRECATED - always enabled.")
+	profileDefault, _ := strconv.ParseBool(os.Getenv(profileEnv))
+	profileFlag = webCmd.Flags().Bool("profile", profileDefault, "Enable HTTP profiling, see https://pkg.go.dev/net/http/pprof")
 }

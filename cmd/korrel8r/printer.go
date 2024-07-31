@@ -16,7 +16,7 @@ import (
 type printer struct{ Print func(any) }
 
 func newPrinter(w io.Writer) printer {
-	switch *output {
+	switch *outputFlag {
 
 	case "json":
 		return printer{Print: func(v any) {
@@ -36,7 +36,7 @@ func newPrinter(w io.Writer) printer {
 		return printer{Print: func(v any) { fmt.Fprintf(w, "---\n%s", must.Must1(yaml.Marshal(v))) }}
 
 	default:
-		must.Must(fmt.Errorf("invalid output type: %v", *output))
+		must.Must(fmt.Errorf("invalid output type: %v", *outputFlag))
 		return printer{}
 	}
 }

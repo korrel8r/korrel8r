@@ -164,7 +164,7 @@ logSafeLabel
 
 = Domain `metric`
 
-Domain `metric` represents Prometheus metric samples as objects.
+Domain `metric` represents Prometheus metric time-series as objects.
 
 == Class
 
@@ -172,14 +172,14 @@ There is only one class: `metric:metric`
 
 == Object
 
-A https://pkg.go.dev/github.com/prometheus/common@v0.45.0/model#Sample[metric sample], which includes a metric time series (name and labels), a timestamp and a value.
+A https://pkg.go.dev/github.com/prometheus/common@v0.45.0/model#Metric[Metric] is a time series identified by a label set. Korrel8r does not consider load the sample data for a time series, or use it in rules. If a korrel8r search time constraints, then metrics that have no values that meet the constraint are ignored.
 
 == Query
 
-Queries are https://prometheus.io/docs/prometheus/latest/querying/basics/#time-series-selectors[PromQL] time series selector strings, prefixed by `metric:metric:` for example:
+Query data is a PromQL https://prometheus.io/docs/prometheus/latest/querying/basics/#instant-vector-selectors[instant vector selector], for example:
 
 ----
-metric:metric:http_requests_total{environment=~"staging|testing|development",method!="GET"}
+metric:metric:http_requests_total{environment=~"staging|testing",method!="GET"}
 ----
 
 == Store

@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Removed
+
+- Removed deprecated `korrel8r web` command line flags `--http` and `--rest`
+- Removed `korrel8r --profile=<type>` flag, use `korrel8r web --profile`
+
+### Added
+-  `korrel8r web --profile` to enable/disable http profiles.
+
 ## [0.7.0]
 
 ### Fixed
