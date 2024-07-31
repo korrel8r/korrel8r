@@ -9,8 +9,8 @@ On branch `main`:
   To list changes: `git log --oneline $(git describe --abbrev=0)..`
 . Edit Makefile and set 'VERSION=X.Y.Z'
 . `make clean; make pre-release REGISTRY_ORG=korrel8r`
-. Verify all changes are version related (Makefile, version.txt, gen/attributes.adoc)
-. Commit with message 'Release X.Y.Z'
+. Verify all git changes are version related (Makefile, version.txt, gen/attributes.adoc)
+. commit and merge to `origin/main` with message 'Release X.Y.Z'
 . `make release REGISTRY_ORG=korrel8r`
   - Creates and pushes the git tag 'vX.Y.Z'
   - Pushes ':latest' tag for images.

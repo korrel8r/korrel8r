@@ -6,7 +6,7 @@ help: ## Display this help.
 	@grep -E '^## [A-Z0-9_]+: ' Makefile | sed 's/^## \([A-Z0-9_]*\): \(.*\)/\1#\2/' | column -s'#' -t
 
 ## VERSION: Semantic version for release, use -dev for development pre-release versions.
-VERSION?=0.7.0-dev
+VERSION?=0.7.0
 ## REGISTRY: Name of image registry
 REGISTRY?=quay.io
 ## REGISTRY_ORG: Name of registry organization.
@@ -160,7 +160,7 @@ doc/gen/cmd: $(KORREL8R) $(KORREL8RCLI) $(KRAMDOC) ## Generated command document
 
 pre-release:	## Prepare for a release. Push results before `make release`
 	@[ "$(origin REGISTRY_ORG)" = "command line" ] || { echo "REGISTRY_ORG must be set on the command line for a release."; exit 1; }
-	$(MAKE) all image
+	$(MAKE) all image kustomize-edit
 	@echo Ready to release $(VERSION), images at $(REGISTRY_ORG)
 
 release:			## Push images and release tags for a release.
