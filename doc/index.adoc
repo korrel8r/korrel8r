@@ -35,7 +35,7 @@ For example, rules can define
 Given a _start_ object (resource or signal), Korrel8r searches its rule graph to find a network of related objects.
 There are two types of search:
 
-_Goal_ search:: given a a _goal_ data type (log, metric, Pod etc.), find all paths from the _start_ to objects of the goal type.
+_Goal_ search:: given a _goal_ data type (log, metric, Pod etc.), find all paths from the _start_ to objects of the goal type.
 _Neighbourhood_ search:: given a numeric _depth_  find all objects reachable from _start_ by following _depth_ rules or less.
 
 
