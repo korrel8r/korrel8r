@@ -10,7 +10,6 @@ import (
 	"os"
 
 	"github.com/korrel8r/korrel8r/internal/pkg/must"
-	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"github.com/spf13/cobra"
 )
 
@@ -23,8 +22,7 @@ var getCmd = &cobra.Command{
 		e, _ := newEngine()
 		q := must.Must1(e.Query(args[0]))
 		result := newPrinter(os.Stdout)
-		var constraint *korrel8r.Constraint
-		must.Must(e.Get(context.Background(), q, constraint, result))
+		must.Must(e.Get(context.Background(), q, nil, result))
 	},
 }
 

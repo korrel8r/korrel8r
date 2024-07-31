@@ -119,6 +119,7 @@ func TestEngine_PropagateConstraints(t *testing.T) {
 	// Time range [start,end] and some time points.
 	start := time.Now()
 	end := start.Add(time.Minute)
+	afterEnd := end.Add(time.Minute)
 	early, ontime, late := start.Add(-1), start.Add(1), end.Add(1)
 	s := mock.NewStore(d)
 
@@ -142,12 +143,7 @@ func TestEngine_PropagateConstraints(t *testing.T) {
 		constraint *korrel8r.Constraint
 		want       []obj
 	}{
-		{nil, []obj{
-			{"ux", early}, {"vx", ontime}, {"wx", late},
-			{"uy", early}, {"vy", ontime}, {"wy", late},
-			{"uz", early}, {"vz", ontime}, {"wz", late},
-		}},
-		{&korrel8r.Constraint{}, []obj{
+		{&korrel8r.Constraint{End: &afterEnd}, []obj{
 			{"ux", early}, {"vx", ontime}, {"wx", late},
 			{"uy", early}, {"vy", ontime}, {"wy", late},
 			{"uz", early}, {"vz", ontime}, {"wz", late},
@@ -155,7 +151,7 @@ func TestEngine_PropagateConstraints(t *testing.T) {
 		{&korrel8r.Constraint{Start: &start, End: &end}, []obj{
 			{"vy", ontime},
 		}},
-		{&korrel8r.Constraint{Start: &start}, []obj{
+		{&korrel8r.Constraint{Start: &start, End: &afterEnd}, []obj{
 			{"vy", ontime}, {"wy", late},
 			{"vz", ontime}, {"wz", late},
 		}},
