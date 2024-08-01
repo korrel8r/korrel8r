@@ -103,8 +103,8 @@ func (b *Builder) Rules(rules ...korrel8r.Rule) *Builder {
 	return b
 }
 
-// Apply an engine.Builder.
-func (b *Builder) Apply(configs config.Configs) *Builder {
+// Config an engine.Builder.
+func (b *Builder) Config(configs config.Configs) *Builder {
 	if b.err != nil {
 		return b
 	}
@@ -127,7 +127,7 @@ func (b *Builder) ConfigFile(file string) *Builder {
 		b.err = err
 		return b
 	}
-	return b.Apply(cfg)
+	return b.Config(cfg)
 }
 
 // Engine returns the final engine, which can no longer be modified.

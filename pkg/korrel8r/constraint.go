@@ -2,7 +2,11 @@
 
 package korrel8r
 
-import "time"
+import (
+	"time"
+
+	"github.com/korrel8r/korrel8r/pkg/ptr"
+)
 
 // Constraint included in a reference to restrict the resulting objects.
 type Constraint struct {
@@ -30,26 +34,18 @@ var (
 	// DefaultDuration is the global default duration for query constraints.
 	DefaultDuration = time.Minute * 10
 	// DefaultLimit is the global default max items limit for query constraints.
-	DefaultLimit uint = 10000
+	DefaultLimit uint = 1000
 )
 
-// Default returns constraint with missing values replaced by defaults.
-// Safe to call on a nil constraint.
+// Default returns a default constraint if c is nil, c otherwise.
 func (c *Constraint) Default() *Constraint {
 	if c == nil {
-		var dc Constraint
-		return dc.Default()
-	}
-	if c.End == nil {
-		c.End = ptrTo(time.Now())
-	}
-	if c.Start == nil {
-		c.Start = ptrTo(c.End.Add(-DefaultDuration))
-	}
-	if c.Limit == nil {
-		c.Limit = ptrTo(DefaultLimit)
+		now := time.Now()
+		return &Constraint{
+			Start: ptr.To(now.Add(-DefaultDuration)),
+			End:   ptr.To(now),
+			Limit: ptr.To(DefaultLimit),
+		}
 	}
 	return c
 }
-
-func ptrTo[T any](v T) *T { return &v }

@@ -31,10 +31,10 @@ var (
 	}
 
 	// Global Flags
-	outputFlag  *string
-	verboseFlag *int
-	configFlag  *string
-	panicFlag   *bool
+	outputFlag  = rootCmd.PersistentFlags().StringP("output", "o", "yaml", "Output format: [json, json-pretty, yaml]")
+	verboseFlag = rootCmd.PersistentFlags().IntP("verbose", "v", 0, "Verbosity for logging (0 = notice, 1 = info, 2 = debug, 3 = trace)")
+	configFlag  = rootCmd.PersistentFlags().StringP("config", "c", getConfig(), "Configuration file")
+	panicFlag   = rootCmd.PersistentFlags().Bool("panic", false, "Panic on error")
 )
 
 const (
@@ -43,11 +43,6 @@ const (
 )
 
 func init() {
-	outputFlag = rootCmd.PersistentFlags().StringP("output", "o", "yaml", "Output format: [json, json-pretty, yaml]")
-	verboseFlag = rootCmd.PersistentFlags().IntP("verbose", "v", 0, "Verbosity for logging (0 = notice, 1 = info, 2 = debug, 3 = trace)")
-	configFlag = rootCmd.PersistentFlags().StringP("config", "c", getConfig(), "Configuration file")
-	panicFlag = rootCmd.PersistentFlags().Bool("panic", false, "Panic on error")
-
 	_ = rootCmd.PersistentFlags().MarkHidden("panic")
 	rootCmd.CompletionOptions.HiddenDefaultCmd = true
 
@@ -87,7 +82,7 @@ func newEngine() (*engine.Engine, config.Configs) {
 	c := must.Must1(config.Load(*configFlag))
 	e, err := engine.Build().
 		Domains(k8s.Domain, logdomain.Domain, netflow.Domain, alert.Domain, metric.Domain, mock.Domain("mock")).
-		Apply(c).
+		Config(c).
 		Engine()
 	must.Must(err)
 	return e, c

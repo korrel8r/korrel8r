@@ -40,6 +40,7 @@ import (
 	"github.com/korrel8r/korrel8r/pkg/domains/k8s"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r/impl"
+	"github.com/korrel8r/korrel8r/pkg/ptr"
 	"github.com/prometheus/client_golang/api"
 	prometheus "github.com/prometheus/client_golang/api/prometheus/v1"
 	"github.com/prometheus/common/model"
@@ -118,15 +119,14 @@ func (s *Store) Get(ctx context.Context, query korrel8r.Query, c *korrel8r.Const
 	if _, err := impl.TypeAssert[Query](query); err != nil {
 		return err
 	}
-	c = c.Default()
-	labelSets, _, err := s.api.Series(ctx, []string{query.Data()}, *c.Start, *c.End)
+	labelSets, _, err := s.api.Series(ctx, []string{query.Data()}, ptr.ValueOf(c.Start), ptr.ValueOf(c.End))
 	if err != nil {
 		return err
 	}
 	for i, v := range labelSets {
 		// FIXME Next release of "github.com/prometheus/client_golang/api/prometheus/v1" will include
 		// WithLimit(*c.Limit) to set limit in the query. Until then, ignore excess results.
-		if uint(i) >= *c.Limit {
+		if c.Limit != nil && uint(i) >= *c.Limit {
 			break
 		}
 		result.Append(v)

@@ -44,7 +44,7 @@ func setup() *engine.Engine {
 	}
 	e, err := engine.Build().
 		Domains(k8s.Domain, log.Domain, netflow.Domain, alert.Domain, metric.Domain).
-		Apply(configs).
+		Config(configs).
 		Stores(s).Engine()
 	if err != nil {
 		panic(err)

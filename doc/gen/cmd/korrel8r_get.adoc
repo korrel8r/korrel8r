@@ -9,7 +9,10 @@ korrel8r get DOMAIN:CLASS:QUERY [flags]
 == Options
 
 ----
-  -h, --help   help for get
+  -h, --help             help for get
+      --limit uint       Limit total number of results.
+      --since duration   Only get results since this long ago.
+      --until duration   Only get results until this long ago.
 ----
 
 == Options inherited from parent commands
