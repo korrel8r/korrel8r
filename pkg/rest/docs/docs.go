@@ -223,24 +223,6 @@ const docTemplate = `{
                 "type": "string"
             }
         },
-        "Constraint": {
-            "description": "Constraint constrains the objects that will be included in search results.",
-            "type": "object",
-            "properties": {
-                "end": {
-                    "description": "End of time interval to include.",
-                    "type": "string"
-                },
-                "limit": {
-                    "description": "Limit number of objects returned per query.",
-                    "type": "integer"
-                },
-                "start": {
-                    "description": "Start of time interval to include.",
-                    "type": "string"
-                }
-            }
-        },
         "Domain": {
             "description": "Domain configuration information.",
             "type": "object",
@@ -282,23 +264,7 @@ const docTemplate = `{
             }
         },
         "Goals": {
-            "description": "Starting point for a goals search.",
-            "type": "object",
-            "properties": {
-                "goals": {
-                    "description": "Goal classes for correlation.",
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    },
-                    "example": [
-                        "domain:class"
-                    ]
-                },
-                "start": {
-                    "$ref": "#/definitions/Start"
-                }
-            }
+            "type": "object"
         },
         "Graph": {
             "description": "Graph resulting from a correlation search.",
@@ -383,28 +349,7 @@ const docTemplate = `{
             }
         },
         "Start": {
-            "description": "Start identifies a set of starting objects for correlation.",
-            "type": "object",
-            "properties": {
-                "class": {
-                    "description": "Class for ` + "`" + `objects` + "`" + `",
-                    "type": "string"
-                },
-                "constraint": {
-                    "$ref": "#/definitions/Constraint"
-                },
-                "objects": {
-                    "description": "Objects of ` + "`" + `class` + "`" + ` serialized as JSON",
-                    "type": "object"
-                },
-                "queries": {
-                    "description": "Queries for starting objects",
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                }
-            }
+            "type": "object"
         },
         "Store": {
             "description": "Store is a map of name:value attributes used to connect to a store.",

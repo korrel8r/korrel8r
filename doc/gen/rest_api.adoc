@@ -402,31 +402,6 @@ any
 
 link:#classes[Classes]
 
-[id=constraint]
-=== Constraint
-
-
-> Constraint constrains the objects that will be included in search results.
-  
-
-
-
-
-
-**Properties**
-
-[%autowidth]
-|===
-| Name | Type | Go type | Required | Default | Description | Example
-
-	| end | string| `string` |  | | End of time interval to include. | 
-
-	| limit | integer| `int64` |  | | Limit number of objects returned per query. | 
-
-	| start | string| `string` |  | | Start of time interval to include. | 
-
-|===
-
 [id=domain]
 === Domain
 
@@ -479,24 +454,9 @@ link:#classes[Classes]
 === Goals
 
 
-> Starting point for a goals search.
   
 
-
-
-
-
-**Properties**
-
-[%autowidth]
-|===
-| Name | Type | Go type | Required | Default | Description | Example
-
-	| goals | []string| `[]string` |  | | Goal classes for correlation. | `["domain:class"]`
-
-	| start | link:#start[Start]| `Start` |  | |  | 
-
-|===
+link:#interface[interface{}]
 
 [id=graph]
 === Graph
@@ -613,28 +573,9 @@ link:#classes[Classes]
 === Start
 
 
-> Start identifies a set of starting objects for correlation.
   
 
-
-
-
-
-**Properties**
-
-[%autowidth]
-|===
-| Name | Type | Go type | Required | Default | Description | Example
-
-	| class | string| `string` |  | | Class for `objects` | 
-
-	| constraint | link:#constraint[Constraint]| `Constraint` |  | |  | 
-
-	| objects | link:#interface[interface{}]| `interface{}` |  | | Objects of `class` serialized as JSON | 
-
-	| queries | []string| `[]string` |  | | Queries for starting objects | 
-
-|===
+link:#interface[interface{}]
 
 [id=store]
 === Store

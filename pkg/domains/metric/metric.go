@@ -53,6 +53,7 @@ var (
 	_ korrel8r.Class  = Class{}
 	_ korrel8r.Query  = Query("")
 	_ korrel8r.Store  = &Store{}
+	_ korrel8r.Object = Object{}
 )
 
 type domain struct{}
@@ -63,7 +64,7 @@ func (domain) Description() string              { return "Time-series of measure
 func (domain) Class(name string) korrel8r.Class { return Class{} }
 func (domain) Classes() []korrel8r.Class        { return []korrel8r.Class{Class{}} }
 func (d domain) Query(s string) (korrel8r.Query, error) {
-	_, qs, err := impl.ParseQueryString(d, s)
+	_, qs, err := impl.ParseQuery(d, s)
 	return Query(qs), err
 }
 
@@ -89,6 +90,12 @@ func (c Class) String() string                              { return impl.ClassS
 func (c Class) Description() string                         { return "A set of label:value pairs identifying a time-series." }
 func (c Class) Unmarshal(b []byte) (korrel8r.Object, error) { return impl.UnmarshalAs[Object](b) }
 func (c Class) Preview(o korrel8r.Object) string            { return Preview(o) }
+func (c Class) ID(o korrel8r.Object) any {
+	if o := o.(Object); o != nil {
+		return o.Fingerprint()
+	}
+	return nil
+}
 
 type Object = model.Metric
 

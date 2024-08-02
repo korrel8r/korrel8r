@@ -8,7 +8,6 @@ package main
 import (
 	"context"
 	"os"
-
 	"time"
 
 	"github.com/korrel8r/korrel8r/internal/pkg/must"
@@ -31,8 +30,12 @@ var (
 			q := must.Must1(e.Query(args[0]))
 			result := newPrinter(os.Stdout)
 			c := &korrel8r.Constraint{}
-			c.Limit = limitFlag
-			c.Timeout = timeoutFlag
+			if *limitFlag > 0 {
+				c.Limit = limitFlag
+			}
+			if *timeoutFlag > 0 {
+				c.Timeout = timeoutFlag
+			}
 			now := time.Now()
 			if *sinceFlag > 0 {
 				c.Start = ptr.To(now.Add(-*sinceFlag))

@@ -4,10 +4,9 @@
 package impl
 
 import (
+	"encoding/json"
 	"fmt"
 	"reflect"
-
-	"sigs.k8s.io/yaml"
 )
 
 // TypeName returns the name of the static type of its argument, which may be an interface.
@@ -22,12 +21,9 @@ func TypeAssert[T any](x any) (v T, err error) {
 	return v, err
 }
 
-// Unmarshal JSON or YAML into a Go value using k8s YAML decoding (respect JSON tags).
-func Unmarshal(b []byte, data any) error { return yaml.UnmarshalStrict(b, data) }
-
-// UnmarshalAs is a generic typed version of [Unmarshal], returns the new value.
+// UnmarshalAs is a generic typed version of [json.Unmarshal], returns the new value.
 func UnmarshalAs[T any](b []byte) (T, error) {
 	var v T
-	err := Unmarshal(b, &v)
+	err := json.Unmarshal(b, &v)
 	return v, err
 }

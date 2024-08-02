@@ -43,7 +43,7 @@ func (s *store) Domain() korrel8r.Domain { return s.domain }
 func (s *store) Get(ctx context.Context, q korrel8r.Query, constraint *korrel8r.Constraint, result korrel8r.Appender) (err error) {
 	s.lock.Lock() // Lock for duration of Get() - serialize Get per store.
 	defer s.lock.Unlock()
-	if err := s.ensure(); err != nil {
+	if _, err := s.ensure(); err != nil {
 		return err
 	}
 	err = s.Store.Get(ctx, q, constraint, result)
@@ -62,16 +62,18 @@ func (s *store) Get(ctx context.Context, q korrel8r.Query, constraint *korrel8r.
 }
 
 // Ensure the store is connected.
-func (s *store) Ensure() (err error) {
+func (s *store) Ensure() (korrel8r.Store, error) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
-	return s.ensure()
+	ks, err := s.ensure()
+	return ks, err
 }
 
 // ensure is unsafe, must be called with lock held, via Ensure()
-func (s *store) ensure() (err error) {
+func (s *store) ensure() (korrel8r.Store, error) {
+	var err error
 	if s.Store != nil {
-		return nil // Already exists.
+		return s.Store, nil // Already exists.
 	}
 	defer func() {
 		if err != nil {
@@ -84,7 +86,7 @@ func (s *store) ensure() (err error) {
 	s.Expanded = config.Store{}
 	for k, v := range s.Original {
 		if v, err = s.expand(v); err != nil {
-			return err
+			return nil, err
 		}
 		s.Expanded[k] = v
 	}
@@ -98,7 +100,7 @@ func (s *store) ensure() (err error) {
 	if err != nil {
 		s.Store = nil
 	}
-	return err
+	return s.Store, err
 }
 
 // stores contains multiple configured stores and iterates over them in Get.
@@ -162,9 +164,12 @@ func (ss *stores) Configs() (ret []config.Store) {
 }
 
 // Ensure calls [configuredStore.Ensure] on all configured stores.
-func (ss *stores) Ensure() {
+func (ss *stores) Ensure() (ks []korrel8r.Store) {
 	for _, s := range ss.stores {
 		// Not an error if create fails, will be registered in stores.
-		_ = s.Ensure()
+		if k, err := s.Ensure(); err == nil && k != nil {
+			ks = append(ks, k)
+		}
 	}
+	return ks
 }

@@ -41,13 +41,13 @@ func New(c *http.Client, base *url.URL) *Client { return &Client{c: c, base: bas
 
 // Get uses the plain Loki API to get logs for a LogQL query with a Constraint.
 func (c *Client) Get(ctx context.Context, logQL string, constraint *korrel8r.Constraint, collect CollectFunc) error {
-	u := c.queryURL(logQL, constraint)
+	u := queryURL(logQL, constraint)
 	return c.get(ctx, u, collect)
 }
 
 // GetStack uses the LokiStack tenant API to get logs for a LogQL query with a Constraint.
 func (c *Client) GetStack(ctx context.Context, logQL, tenant string, constraint *korrel8r.Constraint, collect CollectFunc) error {
-	u := c.queryURL(logQL, constraint)
+	u := queryURL(logQL, constraint)
 	u.Path = path.Join(lokiStackPath, tenant, u.Path)
 	return c.get(ctx, u, collect)
 }
@@ -55,30 +55,34 @@ func (c *Client) GetStack(ctx context.Context, logQL, tenant string, constraint 
 const ( // Query URL keywords
 	query     = "query"
 	direction = "direction"
-	forward   = "FORWARD"
+	backward  = "BACKWARD"
 	limit     = "limit"
 
 	lokiStackPath  = "/api/logs/v1/"
 	queryRangePath = "/loki/api/v1/query_range"
 )
 
-func (c *Client) queryURL(logQL string, constraint *korrel8r.Constraint) *url.URL {
+func queryURL(logQL string, c *korrel8r.Constraint) *url.URL {
 	v := url.Values{}
 	v.Add(query, logQL)
-	v.Add("direction", "forward")
-	if constraint != nil {
-		if limit := constraint.GetLimit(); limit > 0 {
-			v.Add("limit", fmt.Sprintf("%v", limit))
-		}
-		if constraint.Start != nil {
-			v.Add("start", fmt.Sprintf("%v", constraint.Start.UnixNano()))
-		}
-		if constraint.End != nil {
-			v.Add("end", fmt.Sprintf("%v", constraint.End.UnixNano()))
+	v.Add(direction, backward)
+	if c.GetLimit() > 0 {
+		v.Add("limit", fmt.Sprintf("%v", c.GetLimit()))
+	}
+	start, end := c.GetStart(), c.GetEnd()
+	if !end.IsZero() {
+		v.Add("end", formatTime(end))
+	}
+	if !c.Start.IsZero() {
+		v.Add("start", formatTime(start))
+		if end.IsZero() { // Can't have start without end.
+			v.Add("end", formatTime(time.Now()))
 		}
 	}
 	return &url.URL{Path: queryRangePath, RawQuery: v.Encode()}
 }
+
+func formatTime(t time.Time) string { return strconv.FormatInt(t.UTC().UnixNano(), 10) }
 
 func (c *Client) get(ctx context.Context, u *url.URL, collect CollectFunc) error {
 	u = c.base.ResolveReference(u)
@@ -98,9 +102,9 @@ func (c *Client) get(ctx context.Context, u *url.URL, collect CollectFunc) error
 
 // least returns index of non-empty stream with the smallest timestamp, or -1 if all are empty.
 func least(streams []stream) int {
-	// NOTE assumes query direction is "forward"
+	// NOTE assumes query direction is "backward"
 	i := -1
-	ts := func(i int) time.Time { return streams[i].Values[0].Time }
+	ts := func(i int) time.Time { v := streams[i].Values; return v[len(v)-1].Time }
 	for j := range streams {
 		if len(streams[j].Values) > 0 {
 			if i < 0 || ts(j).Before(ts(i)) {

@@ -30,22 +30,23 @@ export GOCOVERDIR := $(abspath _cover)
 
 $(BIN):
 	mkdir -p $(BIN)
+_cover:
+	mkdir -p _cover
 
 # Generated files
 VERSION_TXT=internal/pkg/build/version.txt
 SWAGGER_SPEC=pkg/rest/docs/swagger.json
-GEN_SRC=$(VERSION_TXT) $(SWAGGER_SPEC) pkg/config/zz_generated.deepcopy.go
-GEN_DOC=doc/gen/domains.adoc doc/gen/rest_api.adoc doc/gen/cmd
+GEN_SRC=$(VERSION_TXT) $(SWAGGER_SPEC) pkg/config/zz_generated.deepcopy.go _cover
 
-all: lint build test _site image-build ## Build and test everything locally. Recommended before pushing.
+all: lint test _site image-build ## Build and test everything locally. Recommended before pushing.
 
-KORREL8R=./cmd/korrel8r/korrel8r
-build: $(KORREL8R)
-$(KORREL8R): $(GEN_SRC) $(shell find -name *.go) $(BIN)
-	go build -cover -o $@ ./cmd/korrel8r
+build: $(GEN_SRC)
+	go build ./cmd/korrel8r
+install: $(GEN_SRC)
+	go install ./cmd/korrel8r
 
 clean: ## Remove generated files, including checked-in files.
-	rm -rf bin _site $(GEN_SRC) doc/gen tmp $(BIN) $(KORREL8R)
+	rm -rf bin korrel8r _site $(GEN_SRC) doc/gen tmp $(BIN) $(GOCOVERDIR)
 
 ifneq ($(VERSION),$(file <$(VERSION_TXT)))
 .PHONY: $(VERSION_TXT) # Force update if VERSION_TXT does not match $(VERSION)
@@ -57,7 +58,7 @@ pkg/config/zz_generated.deepcopy.go:  $(filter-out pkg/config/zz_generated.deepc
 	$(CONTROLLER_GEN) object paths=./pkg/config/...
 
 $(SWAGGER_SPEC): $(wildcard pkg/rest/*.go) $(SWAG)
-	@mkdir -p $(dir $@)
+	@rm -f $@; mkdir -p $(dir $@)
 	$(SWAG) init -q -g pkg/rest/operations.go -o $(dir $@)
 	$(SWAG) fmt pkg/rest
 	@touch $@
@@ -75,17 +76,27 @@ lint: $(GEN_SRC) $(GOLANGCI_LINT) $(SHFMT) $(SHELLCHECK) ## Run the linter to fi
 	$(SHELLCHECK) -x -S style hack/*.sh
 
 .PHONY: test
+test: $(GEN_SRC)		## Run all tests, requires an openshift cluster.
+	go test -race ./...
 
-test: $(GOCOVERDIR)		## Run all tests, requires a cluster.
-	go test -timeout=1m -cover -race ./...
-	@echo -e "\\n# Accumulated coverage from main_test"
+test-no-cluster: $(GEN_SRC)	## Run all tests that don't require an openshift cluster.
+	go test -race -skip '.*/Openshift' ./...
+
+cover:  $(GOCOVERDIR) ## Run tests with accumulated coverage stats in _cover. Use 'make -i' to see coverage when tests fail.
+	@echo == Individual package test coverage.
+	go test -cover ./... -test.gocoverdir=$(GOCOVERDIR)
+	@echo == Aggregate coverage across all tests.
 	go tool covdata percent -i $(GOCOVERDIR)
+
+bench: $(GEN_SRC)		## Run all benchmarks.
+	go test -bench=. -run=NONE ./... | { type benchstat >/dev/null && benchstat /dev/stdin; }
+
 
 $(GOCOVERDIR):
 	@mkdir -p $@
 
-run: $(KORREL8R) ## Run `korrel8r web` for debugging.
-	$(KORREL8R) web -c $(CONFIG)
+run: ## Run `korrel8r web` for debugging.
+	go run ./cmd/korrel8r web -c $(CONFIG)
 
 image-build:  $(GEN_SRC) ## Build image locally, don't push.
 	$(IMGTOOL) build --tag=$(IMAGE) -f Containerfile .
@@ -122,7 +133,7 @@ CSS?=adoc-readthedocs.css
 ADOC_FLAGS=-a allow-uri-read -a stylesdir=$(shell pwd)/doc/css -a stylesheet=$(CSS)  -a revnumber=$(VERSION) -a revdate=$(shell date -I)
 
 # _site is published to github pages by .github/workflows/asciidoctor-ghpages.yml.
-_site: doc $(shell find doc/images etc/korrel8r) $(ASCIIDOCTOR) $(MAKEFILE_LIST) ## Generate the website HTML.
+_site: doc $(shell find doc/images etc/korrel8r) $(ASCIIDOCTOR) ## Generate the website HTML.
 	@mkdir -p $@
 	@cp -r doc/images etc/korrel8r $@
 	$(ASCIIDOCTOR) $(ADOC_FLAGS) -D_site doc/index.adoc
@@ -130,13 +141,13 @@ _site: doc $(shell find doc/images etc/korrel8r) $(ASCIIDOCTOR) $(MAKEFILE_LIST)
 	$(and $(shell type -p linkchecker),linkchecker --no-warnings --check-extern --ignore-url 'https?://localhost[:/].*' _site)
 	@touch $@
 
-_site/man: $(KORREL8R)	## Generated man pages.
+_site/man: $(shell find ./cmd)	## Generated man pages.
 	@mkdir -p $@
-	$(KORREL8R) doc man $@
+	go run ./cmd/korrel8r doc man $@
 	@touch $@
 
-doc: $(GEN_DOC)
-	touch $@
+doc: doc/gen/domains.adoc doc/gen/rest_api.adoc doc/gen/cmd
+	@touch $@
 
 doc/gen/domains.adoc: $(shell find cmd/korrel8r-doc internal pkg -name '*.go') $(GEN_SRC)
 	@mkdir -p $(dir $@)
@@ -151,9 +162,9 @@ $(KRAMDOC):
 	@mkdir -p $(dir $@)
 	gem install kramdown-asciidoc --user-install --bindir $(BIN)
 
-doc/gen/cmd: $(KORREL8R) $(KORREL8RCLI) $(KRAMDOC) ## Generated command documentation
+doc/gen/cmd: $(shell find ./cmd/korrel8r) $(KORREL8RCLI) $(KRAMDOC) ## Generated command documentation
 	@mkdir -p $@
-	$(KORREL8R) doc markdown $@
+	go run ./cmd/korrel8r doc markdown $@
 	$(KORREL8RCLI) doc markdown $@
 	hack/md-to-adoc.sh $(KRAMDOC) $@/*.md
 	@touch $@

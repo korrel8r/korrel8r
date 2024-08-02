@@ -76,7 +76,7 @@ func (domain) Description() string              { return "Records from container
 func (domain) Class(name string) korrel8r.Class { return classMap[name] }
 func (domain) Classes() []korrel8r.Class        { return classes }
 func (d domain) Query(s string) (korrel8r.Query, error) {
-	c, s, err := impl.ParseQueryString(d, s)
+	c, s, err := impl.ParseQuery(d, s)
 	if err != nil {
 		return nil, err
 	}
@@ -126,9 +126,21 @@ func (domain) Store(s any) (korrel8r.Store, error) {
 // Class is the log_type name.
 type Class string
 
-func (c Class) Domain() korrel8r.Domain { return Domain }
-func (c Class) Name() string            { return string(c) }
-func (c Class) String() string          { return impl.ClassString(c) }
+func (c Class) Domain() korrel8r.Domain                     { return Domain }
+func (c Class) Name() string                                { return string(c) }
+func (c Class) String() string                              { return impl.ClassString(c) }
+func (c Class) Unmarshal(b []byte) (korrel8r.Object, error) { return impl.UnmarshalAs[Object](b) }
+func (c Class) Preview(o korrel8r.Object) (line string)     { return Preview(o) }
+
+// Preview extracts the message from a Viaq log record.
+func Preview(x korrel8r.Object) (line string) {
+	if m := x.(Object)["message"]; m != nil {
+		s, _ := m.(string)
+		return s
+	}
+	return ""
+}
+
 func (c Class) Description() string {
 	switch c {
 	case Application:
@@ -142,22 +154,10 @@ func (c Class) Description() string {
 	}
 }
 
-func (c Class) Unmarshal(b []byte) (korrel8r.Object, error) { return impl.UnmarshalAs[Object](b) }
-
-// Preview extracts the message from a Viaq log record.
-func (c Class) Preview(x korrel8r.Object) (line string) { return Preview(x) }
-
-// Preview extracts the message from a Viaq log record.
-func Preview(x korrel8r.Object) (line string) {
-	if m := x.(Object)["message"]; m != nil {
-		s, _ := m.(string)
-		return s
-	}
-	return ""
-}
-
 // Object is a map in Viaq format.
 type Object map[string]any
+
+func NewObject(line string) Object { o, _ := impl.UnmarshalAs[Object]([]byte(line)); return o }
 
 func (o *Object) UnmarshalJSON(line []byte) error {
 	if err := json.Unmarshal([]byte(line), (*map[string]any)(o)); err != nil {
@@ -219,7 +219,7 @@ func (s *store) Get(ctx context.Context, query korrel8r.Query, constraint *korre
 	if err != nil {
 		return err
 	}
-	return s.Client.Get(ctx, q.Data(), constraint, func(e *loki.Entry) { result.Append(FromLine(e.Line)) })
+	return s.Client.Get(ctx, q.Data(), constraint, func(e *loki.Entry) { result.Append(NewObject(e.Line)) })
 }
 
 type stackStore struct{ store }
@@ -229,10 +229,8 @@ func (s *stackStore) Get(ctx context.Context, query korrel8r.Query, constraint *
 	if err != nil {
 		return err
 	}
-	return s.Client.GetStack(ctx, q.Data(), q.Class().Name(), constraint, func(e *loki.Entry) { result.Append(FromLine(e.Line)) })
+	return s.Client.GetStack(ctx, q.Data(), q.Class().Name(), constraint, func(e *loki.Entry) { result.Append(NewObject(e.Line)) })
 }
-
-func FromLine(line string) Object { o, _ := impl.UnmarshalAs[Object]([]byte(line)); return o }
 
 var logTypeRe = regexp.MustCompile(`{[^}]*log_type(=~*)"([^"]+)"}`)
 
