@@ -87,6 +87,6 @@ func TestK8sEvent(t *testing.T) {
 func TestK8sAllToMetric(t *testing.T) {
 	e := setup()
 	pod := k8s.New[corev1.Pod]("aNamespace", "foo")
-	want := &metric.Query{PromQL: "{namespace=\"aNamespace\",pod=\"foo\"}"}
-	testTraverse(t, e, k8s.ClassOf(pod), metric.Class{}, []korrel8r.Object{pod}, want)
+	want := metric.Query("{namespace=\"aNamespace\",pod=\"foo\"}")
+	testTraverse(t, e, k8s.ClassOf(pod), want.Class(), []korrel8r.Object{pod}, want)
 }

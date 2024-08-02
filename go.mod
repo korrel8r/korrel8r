@@ -12,7 +12,6 @@ require (
 	github.com/go-openapi/strfmt v0.23.0
 	github.com/openshift/api v0.0.0-20240710000542-465787efd0d6
 	github.com/operator-framework/api v0.26.0
-	github.com/pkg/profile v1.7.0
 	github.com/prometheus/alertmanager v0.27.0
 	github.com/prometheus/client_golang v1.19.1
 	github.com/prometheus/common v0.55.0
@@ -45,7 +44,6 @@ require (
 	github.com/emicklei/go-restful/v3 v3.11.2 // indirect
 	github.com/evanphx/json-patch v4.12.0+incompatible // indirect
 	github.com/evanphx/json-patch/v5 v5.9.0 // indirect
-	github.com/felixge/fgprof v0.9.3 // indirect
 	github.com/gabriel-vasile/mimetype v1.4.3 // indirect
 	github.com/gin-contrib/sse v0.1.0 // indirect
 	github.com/go-openapi/analysis v0.23.0 // indirect

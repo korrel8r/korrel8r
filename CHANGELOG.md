@@ -7,11 +7,37 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Removed
+
+- Removed deprecated `korrel8r web` command line flags `--http` and `--rest`
+- Removed `korrel8r --profile=<type>` flag, use `korrel8r web --profile`
+
+### Added
+-  `korrel8r web --profile` to enable/disable http profiles.
+
+## [0.7.0]
+
 ### Fixed
 
 - [Delegate HTTP header credentials from REST API to stores](https://github.com/korrel8r/korrel8r/issues/120)
   Korrel8r now impersonates the Authorization header to act on behalf-of its callers.
+- [Authentication and Authorization for restricted access](https://github.com/korrel8r/korrel8r/issues/73)
 - [Use strict parsing to catch query errors.](https://github.com/korrel8r/korrel8r/issues/107)
+- REST API fix invalid JSON in responses, return [] instead of null for empty lists.
+
+### Added
+
+- Mock store for unit tests, moved cluster tests to test/openshift.
+
+## [0.6.6] - 2024-06-04
+
+### Added
+- "objects" operation on REST APIs
+
+### Fixed
+- Error messages for REST API.
+- Swagger page to use host from URL for "try it out"
+- Switch to ubi8 base image, Makefile cleanup.
 
 ## [0.6.4] - 2024-05-29
 

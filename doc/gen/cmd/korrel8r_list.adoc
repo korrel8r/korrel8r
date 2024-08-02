@@ -15,13 +15,11 @@ korrel8r list [DOMAIN] [flags]
 == Options inherited from parent commands
 
 ----
-  -c, --config string    Configuration file (default "/etc/korrel8r/korrel8r.yaml")
-  -o, --output string    Output format: [json, json-pretty, yaml] (default "yaml")
-      --panic            panic on error instead of exit code 1
-      --profile string   Enable profiling, one of [cpu mem trace]
-  -v, --verbose int      Verbosity for logging (0 = notice, 1 = info, 2 = debug, 3 = trace)
+  -c, --config string   Configuration file (default "/etc/korrel8r/korrel8r.yaml")
+  -o, --output string   Output format: [json, json-pretty, yaml] (default "yaml")
+  -v, --verbose int     Verbosity for logging (0 = notice, 1 = info, 2 = debug, 3 = trace)
 ----
 
 == SEE ALSO
 
-* xref:korrel8r.adoc[korrel8r]	 - Correlation of observability signal data from command line or as a REST service
+* xref:korrel8r.adoc[korrel8r]	 - REST service to correlate observability data

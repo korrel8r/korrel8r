@@ -11,24 +11,21 @@ korrel8r web [flags]
 ----
       --cert string    TLS certificate file (PEM format) for https
   -h, --help           help for web
-      --html           DEPRECATED - use korrel8rcli instead.
       --http string    host:port address for insecure http listener
       --https string   host:port address for secure https listener
       --key string     Private key (PEM format) for https
-      --rest           DEPRECATED - always enabled. (default true)
+      --profile        Enable HTTP profiling, see https://pkg.go.dev/net/http/pprof
       --spec string    Dump swagger spec to a file, '-' for stdout.
 ----
 
 == Options inherited from parent commands
 
 ----
-  -c, --config string    Configuration file (default "/etc/korrel8r/korrel8r.yaml")
-  -o, --output string    Output format: [json, json-pretty, yaml] (default "yaml")
-      --panic            panic on error instead of exit code 1
-      --profile string   Enable profiling, one of [cpu mem trace]
-  -v, --verbose int      Verbosity for logging (0 = notice, 1 = info, 2 = debug, 3 = trace)
+  -c, --config string   Configuration file (default "/etc/korrel8r/korrel8r.yaml")
+  -o, --output string   Output format: [json, json-pretty, yaml] (default "yaml")
+  -v, --verbose int     Verbosity for logging (0 = notice, 1 = info, 2 = debug, 3 = trace)
 ----
 
 == SEE ALSO
 
-* xref:korrel8r.adoc[korrel8r]	 - Correlation of observability signal data from command line or as a REST service
+* xref:korrel8r.adoc[korrel8r]	 - REST service to correlate observability data

@@ -104,7 +104,7 @@ func (e *Engine) Graph() *graph.Graph { return graph.NewData(e.Rules()...).FullG
 // Get results for query from all stores for the query domain.
 func (e *Engine) Get(ctx context.Context, q korrel8r.Query, constraint *korrel8r.Constraint, result korrel8r.Appender) error {
 	if ss, ok := e.stores[q.Class().Domain()]; ok {
-		return ss.Get(ctx, q, constraint, result)
+		return ss.Get(ctx, q, constraint.Default(), result)
 	} else {
 		return korrel8r.StoreNotFoundError{Domain: q.Class().Domain()}
 	}
@@ -112,7 +112,7 @@ func (e *Engine) Get(ctx context.Context, q korrel8r.Query, constraint *korrel8r
 
 // Follower creates a follower. Constraint can be nil.
 func (e *Engine) Follower(ctx context.Context, c *korrel8r.Constraint) *Follower {
-	return &Follower{Engine: e, Context: ctx, Constraint: c, rules: map[appliedRule]graph.Queries{}}
+	return &Follower{Engine: e, Context: ctx, Constraint: c.Default(), rules: map[appliedRule]graph.Queries{}}
 }
 
 // Start populates the start node with objects and results of queries.
