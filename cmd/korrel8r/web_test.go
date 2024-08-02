@@ -20,8 +20,10 @@ import (
 
 	"github.com/korrel8r/korrel8r/internal/pkg/test"
 	"github.com/korrel8r/korrel8r/pkg/rest"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"sigs.k8s.io/controller-runtime/pkg/client/config"
 )
 
 // Functional tests for the korrel8r REST API.
@@ -47,8 +49,9 @@ func startServer(t *testing.T, h *http.Client, scheme string, args ...string) *u
 func request(t *testing.T, h *http.Client, method, url, body string) (string, error) {
 	t.Helper()
 	req, err := http.NewRequest(method, url, strings.NewReader(body))
-	if test.RESTConfig != nil && test.RESTConfig.BearerToken != "" {
-		req.Header.Set("Authorization", "Bearer "+test.RESTConfig.BearerToken)
+	require.NoError(t, err)
+	if cfg, err := config.GetConfig(); err == nil && cfg != nil && cfg.BearerToken != "" {
+		req.Header.Set("Authorization", "Bearer "+cfg.BearerToken)
 	}
 	if err != nil {
 		return "", err

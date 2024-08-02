@@ -52,7 +52,7 @@ var (
 	_ korrel8r.Domain    = Domain
 	_ korrel8r.Store     = &store{}
 	_ korrel8r.Store     = &stackStore{}
-	_ korrel8r.Query     = Query{}
+	_ korrel8r.Query     = Query("")
 	_ korrel8r.Class     = Class{}
 	_ korrel8r.Previewer = Class{}
 )
@@ -73,11 +73,11 @@ func (domain) Description() string              { return "Network flows from sou
 func (domain) Class(name string) korrel8r.Class { return Class{} }
 func (domain) Classes() []korrel8r.Class        { return []korrel8r.Class{Class{}} }
 func (d domain) Query(s string) (korrel8r.Query, error) {
-	_, s, err := impl.ParseQueryString(d, s)
+	_, s, err := impl.ParseQuery(d, s)
 	if err != nil {
 		return nil, err
 	}
-	return Query{logQL: s}, nil
+	return Query(s), nil
 }
 
 const (
@@ -127,12 +127,11 @@ func (c Class) Domain() korrel8r.Domain { return Domain }
 func (c Class) Name() string            { return "network" }
 func (c Class) String() string          { return impl.ClassString(c) }
 func (c Class) Description() string     { return "A set of label:value pairs identifying a netflow." }
-func (c Class) Unmarshal(data []byte) (korrel8r.Object, error) {
-	return impl.UnmarshalAs[loki.Entry](data)
-}
+
+func (c Class) Unmarshal(data []byte) (korrel8r.Object, error) { return impl.UnmarshalAs[Object](data) }
 
 // Preview extracts the message from a Viaq log record.
-func (c Class) Preview(x korrel8r.Object) (line string) { return Preview(x) }
+func (c Class) Preview(o korrel8r.Object) (line string) { return Preview(o) }
 
 // Preview extracts the message from a Viaq log record.
 func Preview(x korrel8r.Object) (line string) {
@@ -165,22 +164,13 @@ func NewObject(entry *loki.Entry) Object {
 	return o
 }
 
-func (o *Object) UnmarshalJSON(line []byte) error {
-	if err := json.Unmarshal([]byte(line), (*map[string]any)(o)); err != nil {
-		*o = map[string]any{"message": line}
-	}
-	return nil
-}
-
 // Query is a LogQL query string
-type Query struct {
-	logQL string // `json:",omitempty"`
-}
+type Query string
 
-func NewQuery(logQL string) korrel8r.Query { return Query{logQL: logQL} }
+func NewQuery(logQL string) korrel8r.Query { return Query(logQL) }
 
 func (q Query) Class() korrel8r.Class { return Class{} }
-func (q Query) Data() string          { return q.logQL }
+func (q Query) Data() string          { return string(q) }
 func (q Query) String() string        { return impl.QueryString(q) }
 
 // NewLokiStackStore returns a store that uses a LokiStack observatorium-style URLs.
@@ -201,7 +191,7 @@ func (s *store) Get(ctx context.Context, query korrel8r.Query, c *korrel8r.Const
 	if err != nil {
 		return err
 	}
-	return s.Client.Get(ctx, q.logQL, c, func(e *loki.Entry) { result.Append(NewObject(e)) })
+	return s.Client.Get(ctx, q.Data(), c, func(e *loki.Entry) { result.Append(NewObject(e)) })
 }
 
 type stackStore struct{ store }
@@ -213,5 +203,5 @@ func (s *stackStore) Get(ctx context.Context, query korrel8r.Query, c *korrel8r.
 		return err
 	}
 
-	return s.Client.GetStack(ctx, q.logQL, "network", c, func(e *loki.Entry) { result.Append(NewObject(e)) })
+	return s.Client.GetStack(ctx, q.Data(), "network", c, func(e *loki.Entry) { result.Append(NewObject(e)) })
 }

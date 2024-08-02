@@ -47,9 +47,17 @@ func (e *Engine) DomainErr(name string) (korrel8r.Domain, error) {
 	return nil, korrel8r.DomainNotFoundError{Domain: name}
 }
 
-// StoreFor returns the store for a domain, may be nil.
+// StoreFor returns the aggregated store for a domain, may be nil.
 func (e *Engine) StoreFor(d korrel8r.Domain) korrel8r.Store {
 	return e.stores[d]
+}
+
+// StoresFor returns the list of individual stores for a domain.
+func (e *Engine) StoresFor(d korrel8r.Domain) []korrel8r.Store {
+	if ss := e.stores[d]; ss != nil {
+		return ss.Ensure()
+	}
+	return nil
 }
 
 // StoreConfigsFor returns the expanded store configurations and status.

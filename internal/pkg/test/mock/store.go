@@ -18,11 +18,11 @@ import (
 
 // Store is a mock store with a map of queries to  result functions.
 type Store struct {
-	// ConstraintFunc (optoinal) returns true if object is accepted.
+	// ConstraintFunc (optional) returns true if object is accepted.
 	ConstraintFunc func(*korrel8r.Constraint, korrel8r.Object) bool
 
 	domain  korrel8r.Domain
-	queries QueryMap
+	Queries QueryMap
 }
 
 // QueryMap keys are query strings, values are one of these types:
@@ -34,10 +34,10 @@ type QueryMap map[string]any
 
 type QueryFunc func(korrel8r.Query) []korrel8r.Object
 
-func NewStore(d korrel8r.Domain) *Store { return &Store{domain: d, queries: QueryMap{}} }
+func NewStore(d korrel8r.Domain) *Store { return &Store{domain: d, Queries: QueryMap{}} }
 
 func NewStoreWith(d korrel8r.Domain, m QueryMap) *Store {
-	return &Store{domain: d, queries: m}
+	return &Store{domain: d, Queries: m}
 }
 
 func NewStoreConfig(d korrel8r.Domain, cfg any) (*Store, error) {
@@ -63,7 +63,7 @@ func (s *Store) Domain() korrel8r.Domain { return s.domain }
 
 func (s *Store) Get(ctx context.Context, q korrel8r.Query, constraint *korrel8r.Constraint, r korrel8r.Appender) error {
 	var result []korrel8r.Object
-	data := s.queries[q.String()]
+	data := s.Queries[q.String()]
 	switch data := data.(type) {
 	case nil:
 		return nil
@@ -88,7 +88,7 @@ func (s *Store) Get(ctx context.Context, q korrel8r.Query, constraint *korrel8r.
 func (s *Store) Resolve(korrel8r.Query) *url.URL { panic("not implemented") }
 
 // Add queries and results
-func (s *Store) Add(queries QueryMap) { maps.Copy(s.queries, queries) }
+func (s *Store) Add(queries QueryMap) { maps.Copy(s.Queries, queries) }
 
 // NewQuery returns a query that will get the result. The query data is the JSON string of the result.
 func (s *Store) NewQuery(c korrel8r.Class, result ...korrel8r.Object) korrel8r.Query {

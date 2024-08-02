@@ -1,8 +1,0 @@
-= OpenShift end-to-end tests
-
-Tests to verify that korrel8r can connect to default stores  deployed in an OpensShift cluster.
-
-See cluster set-up scripts in ../../hack/openshift
-
-You can create a local test cluster on a development machine using
-https://developers.redhat.com/products/openshift-local/overview[OpenShift Local]

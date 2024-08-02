@@ -36,7 +36,7 @@ func (d Domain) Classes() (classes []korrel8r.Class)   { return nil }
 func (d Domain) Store(cfg any) (korrel8r.Store, error) { return NewStoreConfig(d, cfg) }
 
 func (d Domain) Query(s string) (korrel8r.Query, error) {
-	class, data, err := impl.ParseQueryString(d, s)
+	class, data, err := impl.ParseQuery(d, s)
 	return NewQuery(class, data), err
 }
 

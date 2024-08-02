@@ -18,8 +18,8 @@ import (
 func TestLogToPod(t *testing.T) {
 	e := setup()
 	for _, o := range []log.Object{
-		log.FromLine(`{"kubernetes":{"namespace_name":"foo","pod_name":"bar"}, "message":"hello"}`),
-		log.FromLine(`{"kubernetes":{"namespace_name":"default","pod_name":"baz"}, "message":"bye"}`),
+		log.NewObject(`{"kubernetes":{"namespace_name":"foo","pod_name":"bar"}, "message":"hello"}`),
+		log.NewObject(`{"kubernetes":{"namespace_name":"default","pod_name":"baz"}, "message":"bye"}`),
 	} {
 		t.Run(log.Preview(o), func(t *testing.T) {
 			k := o["kubernetes"].(map[string]any)

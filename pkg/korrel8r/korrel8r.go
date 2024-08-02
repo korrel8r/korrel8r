@@ -47,7 +47,7 @@ type Class interface {
 	Name() string                     // Name of the class within the domain. Class names must not contain the character ':'.
 	String() string                   // Fully qualified domain:class name
 	Description() string              // Description for human-readable documentation.
-	Unmarshal([]byte) (Object, error) // Unmarshal an encoded object of the class type.
+	Unmarshal([]byte) (Object, error) // Unmarshal a JSON-encoded object of this class.
 }
 
 // Store is a source of signal data that can be queried.

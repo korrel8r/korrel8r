@@ -34,7 +34,7 @@ func (c *Constraint) CompareTime(when time.Time) int {
 // Default values can be modified in init() or main(), but not after korrel8r functions are called.
 var (
 	// DefaultDuration is the global default duration for query constraints.
-	DefaultDuration = time.Minute * 10
+	DefaultDuration = time.Hour
 	// DefaultLimit is the global default max items limit for query constraints.
 	DefaultLimit = 1000
 	// DefaultTimeout is default max timeout for queries.
@@ -52,26 +52,25 @@ func (c *Constraint) Default() *Constraint {
 	if c.Timeout == nil {
 		c.Timeout = ptr.To(DefaultTimeout)
 	}
-	if c.Start == nil || c.End == nil {
-		now := time.Now() // Avoid excessive calls to time.Now() on critical path.
-		c.Start = ptr.To(now.Add(-DefaultDuration))
-	}
 	if c.End == nil {
 		c.End = ptr.To(time.Now())
+	}
+	if c.Start == nil {
+		c.Start = ptr.To(c.End.Add(-DefaultDuration))
 	}
 	return c
 }
 
 // GetLimit returns limit or 0, safe to call with c == nil
 func (c *Constraint) GetLimit() int {
-	if c != nil && c.Limit != nil && *c.Limit > 0 {
+	if c != nil && c.Limit != nil {
 		return *c.Limit
 	}
 	return 0
 }
 
 func (c *Constraint) GetTimeout() time.Duration {
-	if c != nil && c.Timeout != nil && *c.Timeout > 0 {
+	if c != nil && c.Timeout != nil {
 		return *c.Timeout
 	}
 	return 0
@@ -89,4 +88,18 @@ func (c *Constraint) GetEnd() time.Time {
 		return *c.End
 	}
 	return time.Time{}
+}
+
+// MarshalLog for logging uses RFC3339Nano format for time.Time.
+func (c *Constraint) MarshalLog() any {
+	return struct {
+		Limit      *int
+		Timeout    *time.Duration
+		Start, End string
+	}{
+		Limit:   c.Limit,
+		Timeout: c.Timeout,
+		Start:   c.Start.Format(time.RFC3339Nano),
+		End:     c.End.Format(time.RFC3339Nano),
+	}
 }

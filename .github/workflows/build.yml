@@ -24,4 +24,4 @@ jobs:
           args: "--timeout=3m"
 
       - name: test
-        run: go test -race ./pkg/... ./cmd/... ./internal/... ./etc/korrel8r/rules/...
+        run: make test-no-cluster

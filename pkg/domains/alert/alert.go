@@ -56,6 +56,7 @@ var (
 	_ korrel8r.Class  = Class{}
 	_ korrel8r.Query  = Query{}
 	_ korrel8r.Store  = &Store{}
+	_ korrel8r.Object = &Object{}
 )
 
 var Domain = domain{}
@@ -107,22 +108,22 @@ func (c Class) String() string          { return impl.ClassString(c) }
 func (c Class) Description() string {
 	return "An indication that some collection of metrics is outside of expected values."
 }
-func (c Class) Unmarshal(b []byte) (korrel8r.Object, error) { return impl.UnmarshalAs[Object](b) }
+func (c Class) Unmarshal(b []byte) (korrel8r.Object, error) { return impl.UnmarshalAs[*Object](b) }
 func (c Class) ID(o korrel8r.Object) any {
-	if o, _ := o.(*Object); o != nil {
-		// The identity of an alert is defined by its labels.
+	if o, ok := o.(*Object); ok {
 		return o.Fingerprint
 	}
 	return nil
 }
+
 func (c Class) Preview(o korrel8r.Object) string {
-	if o, _ := o.(*Object); o != nil {
+	if o, ok := o.(*Object); ok {
 		return o.Labels["alertname"]
 	}
 	return ""
 }
 
-// Object is represented by the JSON serialization the following type.
+// Object contains alert data, passed as *Object when used as a korrel8r.Object.
 type Object struct {
 	// Common fields.
 	Labels      map[string]string `json:"labels"`

@@ -183,7 +183,7 @@ func (c Class) Preview(o korrel8r.Object) string {
 func (c Class) Domain() korrel8r.Domain { return Domain }
 func (c Class) Unmarshal(b []byte) (korrel8r.Object, error) {
 	if o, err := Scheme.New(schema.GroupVersionKind(c)); err == nil {
-		err := impl.Unmarshal(b, &o)
+		err := json.Unmarshal(b, &o)
 		return o, err
 	}
 	return nil, fmt.Errorf("unknown k8s type: %v", c)
