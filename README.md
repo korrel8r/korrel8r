@@ -1,7 +1,8 @@
 # Signal correlation for Kubernetes
 
-[![Build](https://github.com/korrel8r/korrel8r/actions/workflows/build.yml/badge.svg)](https://github.com/korrel8r/korrel8r/actions/workflows/build.yml)
 [![Go Reference](https://pkg.go.dev/badge/github.com/korrel8r/korrel8r.svg)](https://pkg.go.dev/github.com/korrel8r/korrel8r)
+[![Build](https://github.com/korrel8r/korrel8r/actions/workflows/build.yml/badge.svg)](https://github.com/korrel8r/korrel8r/actions/workflows/build.yml)
+[![Publish](https://github.com/korrel8r/korrel8r/actions/workflows/publish.yml/badge.svg)](https://github.com/korrel8r/korrel8r/actions/workflows/publish.yml)
 
 ## Overview
 
