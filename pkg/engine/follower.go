@@ -30,7 +30,7 @@ type Follower struct {
 func (f *Follower) Traverse(l *graph.Line) bool {
 	rule := graph.RuleFor(l)
 	start, goal := l.From().(*graph.Node), l.To().(*graph.Node)
-	log := log.WithValues("rule", rule.Name(), "start", start.Class.String(), "goal", goal.Class.String())
+	log.V(3).Info("Applying rule", "rule", rule.Name(), "start", start.Class.String(), "goal", goal.Class.String())
 
 	// Apply rule to each start object unless it was already applied to this start class.
 	key := appliedRule{Start: start.Class, Rule: rule}
@@ -49,14 +49,10 @@ func (f *Follower) Traverse(l *graph.Line) bool {
 			f.rules[key].Set(q, -1)
 		}
 	}
-	if count > 0 {
-		log.V(3).Info("Applied", "count", count) // Trace logs, very verbose!
-	}
 
 	// Process and remove queries that match this line's goal, leave the rest.
 	maps.DeleteFunc(f.rules[key], func(s string, qc graph.QueryCount) bool {
 		q := qc.Query
-		log := log.WithValues("query", q.String())
 		switch {
 		case q.Class() != goal.Class: // Wrong goal, leave it for another line.
 			return false
@@ -64,15 +60,11 @@ func (f *Follower) Traverse(l *graph.Line) bool {
 			l.Queries.Set(q, qc.Count) // Record on the link
 			return true
 		default: // Evaluate the query and store the results
-			result := korrel8r.NewCountResult(goal.Result) // Store in goal, but count the contribution.
-			if err := f.Engine.Get(f.Context, q, f.Constraint, result); err != nil {
-				log.V(2).Info("Get error", "error", err)
-			}
-			l.Queries.Set(q, result.Count)
-			goal.Queries.Set(q, result.Count)
-			if result.Count > 0 {
-				log.V(3).Info("Got results", "count", result.Count)
-			}
+			var count int
+			result := korrel8r.FuncAppender(func(o korrel8r.Object) { goal.Result.Append(o); count++ })
+			_ = f.Engine.Get(f.Context, q, f.Constraint, result)
+			l.Queries.Set(q, count)
+			goal.Queries.Set(q, count)
 			return true
 		}
 	})

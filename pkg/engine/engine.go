@@ -10,6 +10,7 @@ import (
 	"slices"
 	"strings"
 	"text/template"
+	"time"
 
 	"github.com/korrel8r/korrel8r/internal/pkg/logging"
 	"github.com/korrel8r/korrel8r/pkg/config"
@@ -102,12 +103,29 @@ func (e *Engine) Rule(name string) korrel8r.Rule { return e.rulesByName[name] }
 func (e *Engine) Graph() *graph.Graph { return graph.NewData(e.Rules()...).FullGraph() }
 
 // Get results for query from all stores for the query domain.
-func (e *Engine) Get(ctx context.Context, q korrel8r.Query, constraint *korrel8r.Constraint, result korrel8r.Appender) error {
-	if ss, ok := e.stores[q.Class().Domain()]; ok {
-		return ss.Get(ctx, q, constraint.Default(), result)
-	} else {
-		return korrel8r.StoreNotFoundError{Domain: q.Class().Domain()}
+func (e *Engine) Get(ctx context.Context, query korrel8r.Query, constraint *korrel8r.Constraint, result korrel8r.Appender) (err error) {
+	constraint = constraint.Default()
+	defer func() {
+		if err != nil {
+			log.V(2).Info("Get failed", "error", err, "query", query, "constraint", constraint)
+		}
+	}()
+	ss := e.stores[query.Class().Domain()]
+	if ss == nil {
+		return korrel8r.StoreNotFoundError{Domain: query.Class().Domain()}
 	}
+	r := result
+	if log.V(3).Enabled() { // Don't add overhead unless trace logging is enabled.
+		start := time.Now() // Measure latency
+		count := 0          // Count results
+		r = korrel8r.FuncAppender(func(o korrel8r.Object) { result.Append(o); count++ })
+		defer func() {
+			if err == nil {
+				log.V(3).Info("Get succeeded", "count", count, "latency", time.Since(start), "query", query, "constraint", constraint)
+			}
+		}()
+	}
+	return ss.Get(ctx, query, constraint, r)
 }
 
 // Follower creates a follower. Constraint can be nil.
