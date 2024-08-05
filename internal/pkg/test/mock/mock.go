@@ -24,6 +24,8 @@ var (
 	_ korrel8r.Store  = &Store{}
 )
 
+type Object any // mock.Object is any JSON-marshalable object.
+
 type Domain string
 
 func (d Domain) Name() string                          { return string(d) }
@@ -74,12 +76,12 @@ type Class struct {
 	domain korrel8r.Domain
 }
 
-func (c Class) Domain() korrel8r.Domain  { return c.domain }
-func (c Class) String() string           { return impl.ClassString(c) }
-func (c Class) Name() string             { return c.name }
-func (c Class) Description() string      { return fmt.Sprintf("mock class %v", c.String()) }
-func (c Class) ID(o korrel8r.Object) any { return o }
-func (c Class) New() korrel8r.Object     { return "" }
+func (c Class) Domain() korrel8r.Domain                     { return c.domain }
+func (c Class) String() string                              { return impl.ClassString(c) }
+func (c Class) Name() string                                { return c.name }
+func (c Class) Description() string                         { return fmt.Sprintf("mock class %v", c.String()) }
+func (c Class) ID(o korrel8r.Object) any                    { return o }
+func (c Class) Unmarshal(b []byte) (korrel8r.Object, error) { return impl.UnmarshalAs[Object](b) }
 
 type Rule struct {
 	name        string

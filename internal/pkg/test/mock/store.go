@@ -120,8 +120,8 @@ func (s *Store) LoadData(data []byte) error {
 		}
 		var result []korrel8r.Object
 		for _, r := range raw {
-			o := q.Class().New()
-			if err := yaml.Unmarshal(r, &o); err != nil {
+			o, err := q.Class().Unmarshal([]byte(r))
+			if err != nil {
 				return err
 			}
 			result = append(result, o)

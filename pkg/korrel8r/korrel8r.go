@@ -43,11 +43,11 @@ type Domain interface {
 //
 // Must be implemented by a korrel8r domain.
 type Class interface {
-	Domain() Domain      // Domain of this class.
-	Name() string        // Name of the class within the domain. Class names must not contain the character ':'.
-	String() string      // Fully qualified domain:class name
-	Description() string // Description for human-readable documentation.
-	New() Object         // Return a blank instance of the class, can be unmarshaled from JSON.
+	Domain() Domain                   // Domain of this class.
+	Name() string                     // Name of the class within the domain. Class names must not contain the character ':'.
+	String() string                   // Fully qualified domain:class name
+	Description() string              // Description for human-readable documentation.
+	Unmarshal([]byte) (Object, error) // Unmarshal an encoded object of the class type.
 }
 
 // Store is a source of signal data that can be queried.

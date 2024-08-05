@@ -2,7 +2,9 @@
 
 package impl
 
-import "fmt"
+import (
+	"fmt"
+)
 
 func Preview[T any](o any, preview func(T) string) string {
 	if o, ok := o.(T); ok {
