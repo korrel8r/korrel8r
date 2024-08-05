@@ -142,7 +142,7 @@ func (c Class) Description() string {
 	}
 }
 
-func (c Class) New() korrel8r.Object { return NewObject("") }
+func (c Class) Unmarshal(b []byte) (korrel8r.Object, error) { return impl.UnmarshalAs[Object](b) }
 
 // Preview extracts the message from a Viaq log record.
 func (c Class) Preview(x korrel8r.Object) (line string) { return Preview(x) }
@@ -158,12 +158,6 @@ func Preview(x korrel8r.Object) (line string) {
 
 // Object is a map in Viaq format.
 type Object map[string]any
-
-func NewObject(line string) Object {
-	var o Object
-	_ = json.Unmarshal([]byte(line), &o)
-	return o
-}
 
 func (o *Object) UnmarshalJSON(line []byte) error {
 	if err := json.Unmarshal([]byte(line), (*map[string]any)(o)); err != nil {
@@ -225,7 +219,7 @@ func (s *store) Get(ctx context.Context, query korrel8r.Query, constraint *korre
 	if err != nil {
 		return err
 	}
-	return s.Client.Get(ctx, q.Data(), constraint, func(e *loki.Entry) { result.Append(NewObject(e.Line)) })
+	return s.Client.Get(ctx, q.Data(), constraint, func(e *loki.Entry) { result.Append(FromLine(e.Line)) })
 }
 
 type stackStore struct{ store }
@@ -235,8 +229,10 @@ func (s *stackStore) Get(ctx context.Context, query korrel8r.Query, constraint *
 	if err != nil {
 		return err
 	}
-	return s.Client.GetStack(ctx, q.Data(), q.Class().Name(), constraint, func(e *loki.Entry) { result.Append(NewObject(e.Line)) })
+	return s.Client.GetStack(ctx, q.Data(), q.Class().Name(), constraint, func(e *loki.Entry) { result.Append(FromLine(e.Line)) })
 }
+
+func FromLine(line string) Object { o, _ := impl.UnmarshalAs[Object]([]byte(line)); return o }
 
 var logTypeRe = regexp.MustCompile(`{[^}]*log_type(=~*)"([^"]+)"}`)
 

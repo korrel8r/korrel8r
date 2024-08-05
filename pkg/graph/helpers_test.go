@@ -3,40 +3,20 @@
 package graph
 
 import (
-	"fmt"
 	"slices"
+	"strconv"
 	"testing"
 
 	"github.com/korrel8r/korrel8r/internal/pkg/test/mock"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
-	"github.com/korrel8r/korrel8r/pkg/korrel8r/impl"
 	"github.com/stretchr/testify/assert"
 )
 
-var Domain = domain{}
+var Domain = mock.Domain("graphmock")
 
 type rule = korrel8r.Rule
 
-type domain struct{}
-
-func (d domain) Name() string                         { return "graphmock" }
-func (d domain) String() string                       { return d.Name() }
-func (d domain) Description() string                  { return "" }
-func (d domain) Class(name string) korrel8r.Class     { panic("not implemented") }
-func (d domain) Classes() (classes []korrel8r.Class)  { panic("not implemented") }
-func (d domain) Query(string) (korrel8r.Query, error) { panic("not implemented") }
-func (d domain) Store(any) (korrel8r.Store, error)    { panic("not implemented") }
-
-type Class int
-
-func c(i int) korrel8r.Class { return Class(i) }
-
-func (c Class) Domain() korrel8r.Domain  { return Domain }
-func (c Class) Name() string             { return fmt.Sprintf("%v", int(c)) }
-func (c Class) String() string           { return impl.ClassString(c) }
-func (c Class) Description() string      { return "" }
-func (c Class) ID(o korrel8r.Object) any { return int(c) }
-func (c Class) New() korrel8r.Object     { panic("not implemented") }
+func c(i int) korrel8r.Class { return Domain.Class(strconv.Itoa(i)) }
 
 func testGraph(rules []korrel8r.Rule) *Graph {
 	d := NewData()

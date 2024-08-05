@@ -68,9 +68,8 @@ func (domain) Description() string         { return "Alerts that metric values a
 func (domain) Class(string) korrel8r.Class { return Class{} }
 func (domain) Classes() []korrel8r.Class   { return []korrel8r.Class{Class{}} }
 func (d domain) Query(s string) (korrel8r.Query, error) {
-	var q Query
-	_, err := impl.UnmarshalQueryString(d, s, &q)
-	return q, err
+	_, query, err := impl.UnmarshalQueryString[Query](d, s)
+	return query, err
 }
 
 const (
@@ -108,7 +107,7 @@ func (c Class) String() string          { return impl.ClassString(c) }
 func (c Class) Description() string {
 	return "An indication that some collection of metrics is outside of expected values."
 }
-func (c Class) New() korrel8r.Object { return &Object{} }
+func (c Class) Unmarshal(b []byte) (korrel8r.Object, error) { return impl.UnmarshalAs[Object](b) }
 func (c Class) ID(o korrel8r.Object) any {
 	if o, _ := o.(*Object); o != nil {
 		// The identity of an alert is defined by its labels.

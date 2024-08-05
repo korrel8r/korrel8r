@@ -144,13 +144,12 @@ func (d domain) Classes() (classes []korrel8r.Class) {
 }
 
 func (d domain) Query(s string) (korrel8r.Query, error) {
-	var q Query
-	c, err := impl.UnmarshalQueryString(d, s, &q)
+	class, query, err := impl.UnmarshalQueryString[Query](d, s)
 	if err != nil {
 		return nil, err
 	}
-	q.class = c.(Class)
-	return &q, nil
+	query.class = class.(Class)
+	return &query, nil
 }
 
 // ClassOf returns the Class of o, which must be a pointer to a typed API resource struct.
@@ -182,20 +181,24 @@ func (c Class) Preview(o korrel8r.Object) string {
 }
 
 func (c Class) Domain() korrel8r.Domain { return Domain }
-func (c Class) New() korrel8r.Object {
+func (c Class) Unmarshal(b []byte) (korrel8r.Object, error) {
 	if o, err := Scheme.New(schema.GroupVersionKind(c)); err == nil {
-		return o
+		err := impl.Unmarshal(b, &o)
+		return o, err
 	}
-	return nil
+	return nil, fmt.Errorf("unknown k8s type: %v", c)
 }
 func (c Class) Name() string   { return fmt.Sprintf("%v.%v.%v", c.Kind, c.Version, c.Group) }
 func (c Class) String() string { return impl.ClassString(c) }
 
 func (c Class) Description() string {
-	// k8s objects have SwaggerDoc() method that is not declared on the Object interface.
-	if o, _ := c.New().(interface{ SwaggerDoc() map[string]string }); o != nil {
-		// Result is a map of property decriptions, where "" is mapped to the overall type description.
-		return o.SwaggerDoc()[""]
+	if o, _ := Scheme.New(schema.GroupVersionKind(c)); o != nil {
+		// Try to extract SwaggerDoc field from object.
+		type documented interface{ SwaggerDoc() map[string]string }
+		if d, _ := o.(documented); d != nil {
+			// Result is a map of property decriptions, where "" is mapped to the overall type description.
+			return d.SwaggerDoc()[""]
+		}
 	}
 	return ""
 }

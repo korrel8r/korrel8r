@@ -30,7 +30,6 @@
 package metric
 
 // TODO: doc comment needs to show model.Metric structure or link to it properly.
-// FIXME: metrics are only usable as goals.
 
 import (
 	"context"
@@ -83,12 +82,12 @@ func (domain) Store(s any) (korrel8r.Store, error) {
 
 type Class struct{} // Singleton class
 
-func (c Class) Domain() korrel8r.Domain          { return Domain }
-func (c Class) Name() string                     { return Domain.Name() }
-func (c Class) String() string                   { return impl.ClassString(c) }
-func (c Class) Description() string              { return "A set of label:value pairs identifying a time-series." }
-func (c Class) New() korrel8r.Object             { var obj Object; return obj }
-func (c Class) Preview(o korrel8r.Object) string { return Preview(o) }
+func (c Class) Domain() korrel8r.Domain                     { return Domain }
+func (c Class) Name() string                                { return Domain.Name() }
+func (c Class) String() string                              { return impl.ClassString(c) }
+func (c Class) Description() string                         { return "A set of label:value pairs identifying a time-series." }
+func (c Class) Unmarshal(b []byte) (korrel8r.Object, error) { return impl.UnmarshalAs[Object](b) }
+func (c Class) Preview(o korrel8r.Object) string            { return Preview(o) }
 
 type Object = model.Metric
 

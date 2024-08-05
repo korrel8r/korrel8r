@@ -30,7 +30,7 @@ func init() {
 func logObjects(lines []string) []korrel8r.Object {
 	logs := make([]korrel8r.Object, len(lines))
 	for i := range lines {
-		logs[i] = log.NewObject(lines[i])
+		logs[i] = log.FromLine(lines[i])
 	}
 	return logs
 }

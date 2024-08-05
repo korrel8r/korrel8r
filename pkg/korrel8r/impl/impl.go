@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"sigs.k8s.io/yaml"
 )
 
@@ -23,33 +22,12 @@ func TypeAssert[T any](x any) (v T, err error) {
 	return v, err
 }
 
-// ParseQueryString parses a query string into class and data parts.
-func ParseQueryString(domain korrel8r.Domain, query string) (class korrel8r.Class, data string, err error) {
-	d, c, q := QuerySplit(query)
-	if q == "" {
-		return nil, "", fmt.Errorf("invalid query: %v", query)
-	}
-	if d != domain.Name() {
-		return nil, "", fmt.Errorf("wrong query domain, want %v: %v", domain, query)
-	}
-	class = domain.Class(c)
-	if class == nil {
-		return nil, "", korrel8r.ClassNotFoundError{Domain: domain, Class: c}
-	}
-	return class, q, nil
-}
+// Unmarshal JSON or YAML into a Go value using k8s YAML decoding (respect JSON tags).
+func Unmarshal(b []byte, data any) error { return yaml.UnmarshalStrict(b, data) }
 
-// UnmarshalQueryString unmarshals JSON query data as a Go map.
-func UnmarshalQueryString(domain korrel8r.Domain, query string, data any) (korrel8r.Class, error) {
-	c, qs, err := ParseQueryString(domain, query)
-	if err != nil {
-		return nil, err
-	}
-	if err := Unmarshal(qs, data); err != nil {
-		return c, fmt.Errorf("invalid query: %w: %v", err, qs)
-	}
-	return c, nil
+// UnmarshalAs is a generic typed version of [Unmarshal], returns the new value.
+func UnmarshalAs[T any](b []byte) (T, error) {
+	var v T
+	err := Unmarshal(b, &v)
+	return v, err
 }
-
-// Unmarshal a JSON or YAML string into a Go value.
-func Unmarshal(s string, data any) error { return yaml.UnmarshalStrict([]byte(s), data) }
