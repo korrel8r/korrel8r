@@ -33,15 +33,16 @@ package metric
 
 import (
 	"context"
+	"fmt"
 	"net/http"
+	"net/url"
+	"strconv"
+	"time"
 
 	"github.com/korrel8r/korrel8r/pkg/config"
 	"github.com/korrel8r/korrel8r/pkg/domains/k8s"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r/impl"
-	"github.com/korrel8r/korrel8r/pkg/ptr"
-	"github.com/prometheus/client_golang/api"
-	prometheus "github.com/prometheus/client_golang/api/prometheus/v1"
 	"github.com/prometheus/common/model"
 )
 
@@ -102,33 +103,60 @@ func (q Query) Class() korrel8r.Class { return Class{} }
 func (q Query) Data() string          { return string(q) }
 func (q Query) String() string        { return impl.QueryString(q) }
 
-type Store struct{ api prometheus.API }
+type Store struct {
+	*http.Client
+	baseURL *url.URL
+}
 
 func NewStore(baseURL string, hc *http.Client) (korrel8r.Store, error) {
-	c, err := api.NewClient(api.Config{Address: baseURL, Client: hc})
+	u, err := url.Parse(baseURL)
 	if err != nil {
 		return nil, err
 	}
-	return &Store{prometheus.NewAPI(c)}, nil
+	return &Store{Client: hc, baseURL: u.JoinPath("/api/v1")}, nil
 }
 
 func (s *Store) Domain() korrel8r.Domain { return Domain }
+
+type response struct {
+	Status string `json:"status"`
+	Data   []model.Metric
+}
 
 func (s *Store) Get(ctx context.Context, query korrel8r.Query, c *korrel8r.Constraint, result korrel8r.Appender) error {
 	if _, err := impl.TypeAssert[Query](query); err != nil {
 		return err
 	}
-	labelSets, _, err := s.api.Series(ctx, []string{query.Data()}, ptr.ValueOf(c.Start), ptr.ValueOf(c.End))
-	if err != nil {
+	// NOTE: Store does not use github.com/prometheus/client_golang because the current version v1.19.1
+	// does not allow setting the "limit" query parameter. Hand code the REST query.
+	q := url.Values{}
+	q.Add("match[]", query.Data())
+	if c != nil {
+		if c.Start != nil && !c.Start.IsZero() {
+			q.Set("start", formatTime(*c.Start))
+		}
+		if c.End != nil && !c.End.IsZero() {
+			q.Set("end", formatTime(*c.End))
+		}
+		if c.Limit != nil && *c.Limit > 0 {
+			q.Set("limit", strconv.Itoa(*c.Limit))
+		}
+	}
+	u := s.baseURL.JoinPath("series")
+	u.RawQuery = q.Encode()
+	var r response
+	if err := impl.Get(ctx, u, s.Client, &r); err != nil {
 		return err
 	}
-	for i, v := range labelSets {
-		// FIXME Next release of "github.com/prometheus/client_golang/api/prometheus/v1" will include
-		// WithLimit(*c.Limit) to set limit in the query. Until then, ignore excess results.
-		if c.Limit != nil && uint(i) >= *c.Limit {
-			break
-		}
-		result.Append(v)
+	if r.Status != "success" {
+		return fmt.Errorf("GET %v: unexpected status: %v", u, r.Status)
+	}
+	for _, m := range r.Data {
+		result.Append(m)
 	}
 	return nil
+}
+
+func formatTime(t time.Time) string {
+	return strconv.FormatFloat(float64(t.Unix())+float64(t.Nanosecond())/1e9, 'f', -1, 64)
 }

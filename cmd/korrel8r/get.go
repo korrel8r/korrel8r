@@ -19,8 +19,8 @@ import (
 
 // getCmd represents the get command
 var (
-	sinceFlag, untilFlag *time.Duration
-	limitFlag            *uint
+	sinceFlag, untilFlag, timeoutFlag *time.Duration
+	limitFlag                         *int
 
 	getCmd = &cobra.Command{
 		Use:   "get DOMAIN:CLASS:QUERY",
@@ -31,9 +31,8 @@ var (
 			q := must.Must1(e.Query(args[0]))
 			result := newPrinter(os.Stdout)
 			c := &korrel8r.Constraint{}
-			if *limitFlag > 0 {
-				c.Limit = limitFlag
-			}
+			c.Limit = limitFlag
+			c.Timeout = timeoutFlag
 			now := time.Now()
 			if *sinceFlag > 0 {
 				c.Start = ptr.To(now.Add(-*sinceFlag))
@@ -47,8 +46,9 @@ var (
 )
 
 func init() {
+	limitFlag = getCmd.Flags().Int("limit", 0, "Limit total number of results.")
 	sinceFlag = getCmd.Flags().Duration("since", 0, "Only get results since this long ago.")
 	untilFlag = getCmd.Flags().Duration("until", 0, "Only get results until this long ago.")
-	limitFlag = getCmd.Flags().Uint("limit", 0, "Limit total number of results.")
+	timeoutFlag = getCmd.Flags().Duration("timeout", 0, "Timeout for store requests.")
 	rootCmd.AddCommand(getCmd)
 }

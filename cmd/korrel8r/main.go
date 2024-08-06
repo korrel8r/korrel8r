@@ -80,10 +80,9 @@ func main() {
 func newEngine() (*engine.Engine, config.Configs) {
 	log.V(1).Info("loading configuration", "config", *configFlag)
 	c := must.Must1(config.Load(*configFlag))
-	e, err := engine.Build().
+	e := must.Must1(engine.Build().
 		Domains(k8s.Domain, logdomain.Domain, netflow.Domain, alert.Domain, metric.Domain, mock.Domain("mock")).
 		Config(c).
-		Engine()
-	must.Must(err)
+		Engine())
 	return e, c
 }
