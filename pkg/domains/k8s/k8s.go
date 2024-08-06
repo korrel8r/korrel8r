@@ -253,7 +253,7 @@ func (s *Store) Get(ctx context.Context, query korrel8r.Query, c *korrel8r.Const
 	if q.Name != "" { // Request for single object.
 		return s.getObject(ctx, q, appender)
 	} else {
-		return s.getList(ctx, q, appender)
+		return s.getList(ctx, q, appender, c)
 	}
 }
 
@@ -280,7 +280,7 @@ func (s *Store) getObject(ctx context.Context, q *Query, result korrel8r.Appende
 	return nil
 }
 
-func (s *Store) getList(ctx context.Context, q *Query, result korrel8r.Appender) error {
+func (s *Store) getList(ctx context.Context, q *Query, result korrel8r.Appender, c *korrel8r.Constraint) error {
 	gvk := q.class.GVK()
 	gvk.Kind = gvk.Kind + "List"
 	o, err := Scheme.New(gvk)
@@ -300,6 +300,9 @@ func (s *Store) getList(ctx context.Context, q *Query, result korrel8r.Appender)
 	}
 	if len(q.Fields) > 0 {
 		opts = append(opts, q.Fields)
+	}
+	if limit := c.GetLimit(); limit > 0 {
+		opts = append(opts, client.Limit(int64(limit)))
 	}
 	if err := s.c.List(ctx, list, opts...); err != nil {
 		return err

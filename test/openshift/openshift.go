@@ -10,7 +10,6 @@ import (
 	"context"
 	"fmt"
 	"net"
-	"net/url"
 
 	routev1 "github.com/openshift/api/route/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -58,14 +57,4 @@ func ServiceHost(ctx context.Context, c client.Client, nn types.NamespacedName) 
 	host := fmt.Sprintf("%v.%v.svc", nn.Name, nn.Namespace)
 	_, err := net.DefaultResolver.LookupHost(ctx, host)
 	return host, err
-}
-
-// ConsoleURL returns the base URL for the Openshift console on the current cluster.
-func ConsoleURL(ctx context.Context, c client.Client) (*url.URL, error) {
-	host, err := RouteHost(ctx, c, ConsoleNSName)
-	return &url.URL{
-		Scheme: "https",
-		Path:   "/",
-		Host:   host,
-	}, err
 }

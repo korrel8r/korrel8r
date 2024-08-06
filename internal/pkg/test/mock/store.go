@@ -74,8 +74,11 @@ func (s *Store) Get(ctx context.Context, q korrel8r.Query, constraint *korrel8r.
 	default:
 		result = []korrel8r.Object{data}
 	}
-	for _, o := range result {
-		if constraint == nil || s.ConstraintFunc == nil || s.ConstraintFunc(constraint, o) {
+	for i, o := range result {
+		if limit := constraint.GetLimit(); limit > 0 && i >= limit {
+			break
+		}
+		if s.ConstraintFunc == nil || constraint == nil || s.ConstraintFunc(constraint, o) {
 			r.Append(o)
 		}
 	}

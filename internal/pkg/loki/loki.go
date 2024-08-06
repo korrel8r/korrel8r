@@ -8,7 +8,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"net/url"
 	"path"
@@ -16,6 +15,7 @@ import (
 	"time"
 
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
+	"github.com/korrel8r/korrel8r/pkg/korrel8r/impl"
 )
 
 // Labels map of labels associated with a stream.
@@ -67,8 +67,8 @@ func (c *Client) queryURL(logQL string, constraint *korrel8r.Constraint) *url.UR
 	v.Add(query, logQL)
 	v.Add("direction", "forward")
 	if constraint != nil {
-		if constraint.Limit != nil {
-			v.Add("limit", fmt.Sprintf("%v", *constraint.Limit))
+		if limit := constraint.GetLimit(); limit > 0 {
+			v.Add("limit", fmt.Sprintf("%v", limit))
 		}
 		if constraint.Start != nil {
 			v.Add("start", fmt.Sprintf("%v", constraint.Start.UnixNano()))
@@ -82,23 +82,8 @@ func (c *Client) queryURL(logQL string, constraint *korrel8r.Constraint) *url.UR
 
 func (c *Client) get(ctx context.Context, u *url.URL, collect CollectFunc) error {
 	u = c.base.ResolveReference(u)
-	req, err := http.NewRequestWithContext(ctx, "GET", u.String(), nil)
-	if err != nil {
-		return err
-	}
-	resp, err := c.c.Do(req)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode/100 != 2 {
-		if b, err := io.ReadAll(resp.Body); err == nil && len(b) > 0 {
-			return fmt.Errorf("%v: %v", resp.Status, string(b))
-		}
-		return fmt.Errorf("%v", resp.Status)
-	}
 	qr := response{}
-	if err = json.NewDecoder(resp.Body).Decode(&qr); err != nil {
+	if err := impl.Get(ctx, u, c.c, &qr); err != nil {
 		return err
 	}
 	if qr.Status != "success" {

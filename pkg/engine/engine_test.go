@@ -123,7 +123,9 @@ func TestEngine_PropagateConstraints(t *testing.T) {
 	early, ontime, late := start.Add(-1), start.Add(1), end.Add(1)
 	s := mock.NewStore(d)
 
-	s.ConstraintFunc = func(c *korrel8r.Constraint, o korrel8r.Object) bool { return c.CompareTime(o.(obj).Time) == 0 }
+	s.ConstraintFunc = func(c *korrel8r.Constraint, o korrel8r.Object) bool {
+		return c.CompareTime(o.(obj).Time) == 0
+	}
 
 	// Rules to test constraints.
 	e, err := Build().Rules(
@@ -139,17 +141,17 @@ func TestEngine_PropagateConstraints(t *testing.T) {
 	require.NoError(t, err)
 
 	// Test traversals, verify constraints are applied.
-	for _, x := range []struct {
+	for i, x := range []struct {
 		constraint *korrel8r.Constraint
 		want       []obj
 	}{
+		{&korrel8r.Constraint{Start: &start, End: &end}, []obj{
+			{"vy", ontime},
+		}},
 		{&korrel8r.Constraint{End: &afterEnd}, []obj{
 			{"ux", early}, {"vx", ontime}, {"wx", late},
 			{"uy", early}, {"vy", ontime}, {"wy", late},
 			{"uz", early}, {"vz", ontime}, {"wz", late},
-		}},
-		{&korrel8r.Constraint{Start: &start, End: &end}, []obj{
-			{"vy", ontime},
 		}},
 		{&korrel8r.Constraint{Start: &start, End: &afterEnd}, []obj{
 			{"vy", ontime}, {"wy", late},
@@ -160,7 +162,7 @@ func TestEngine_PropagateConstraints(t *testing.T) {
 			{"uy", early}, {"vy", ontime},
 		}},
 	} {
-		t.Run(fmt.Sprintf("%+v", x.constraint), func(t *testing.T) {
+		t.Run(fmt.Sprintf("%v", i), func(t *testing.T) {
 			goals := []korrel8r.Class{c}
 			g := e.Graph().AllPaths(a, goals...)
 			g, err := e.GoalSearch(context.Background(), g, a, []korrel8r.Object{obj{"a", ontime}}, nil, x.constraint, goals)

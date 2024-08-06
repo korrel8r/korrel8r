@@ -4,10 +4,10 @@ package k8s
 
 import (
 	"net/http"
-	"time"
 
 	"github.com/go-logr/logr"
 	kconfig "github.com/korrel8r/korrel8r/pkg/config"
+	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"github.com/korrel8r/korrel8r/pkg/rest/auth"
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -52,9 +52,8 @@ func GetConfig() (*rest.Config, error) {
 		return nil, err
 	}
 	// TODO make these configurable.
-	cfg.QPS = 100
-	cfg.Burst = 1000
-	cfg.Timeout = 5 * time.Second
+	cfg.QPS = float32(korrel8r.DefaultLimit)
+	cfg.Burst = korrel8r.DefaultLimit
 	cfg.Wrap(auth.Wrap)
 	return cfg, nil
 }
