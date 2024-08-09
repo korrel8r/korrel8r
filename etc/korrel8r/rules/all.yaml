@@ -3,4 +3,5 @@ include:
   - k8s.yaml
   - log.yaml
   - netflow.yaml
+  - trace.yaml
   - openshift.yaml
