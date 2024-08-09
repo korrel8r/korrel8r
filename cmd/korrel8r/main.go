@@ -17,6 +17,7 @@ import (
 	logdomain "github.com/korrel8r/korrel8r/pkg/domains/log"
 	"github.com/korrel8r/korrel8r/pkg/domains/metric"
 	"github.com/korrel8r/korrel8r/pkg/domains/netflow"
+	"github.com/korrel8r/korrel8r/pkg/domains/trace"
 	"github.com/korrel8r/korrel8r/pkg/engine"
 	"github.com/spf13/cobra"
 )
@@ -81,7 +82,7 @@ func newEngine() (*engine.Engine, config.Configs) {
 	log.V(1).Info("loading configuration", "config", *configFlag)
 	c := must.Must1(config.Load(*configFlag))
 	e := must.Must1(engine.Build().
-		Domains(k8s.Domain, logdomain.Domain, netflow.Domain, alert.Domain, metric.Domain, mock.Domain("mock")).
+		Domains(k8s.Domain, logdomain.Domain, netflow.Domain, trace.Domain, alert.Domain, metric.Domain, mock.Domain("mock")).
 		Config(c).
 		Engine())
 	return e, c

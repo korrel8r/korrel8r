@@ -15,6 +15,8 @@ stores:
   - domain: netflow
     lokiStack: https://loki-gateway-http.netobserv.svc:8080
     certificateAuthority: ./run/secrets/kubernetes.io/serviceaccount/service-ca.crt
-
+  - domain: trace
+    tempoStack: https://tempo-platform-gateway.openshift-tempo-operator.svc.cluster.local:8080/api/traces/v1/platform/tempo/api/search
+    certificateAuthority: ./run/secrets/kubernetes.io/serviceaccount/service-ca.crt
 include:
   - rules/all.yaml

@@ -28,6 +28,7 @@ log       Records from container and node logs.
 metric    Time-series of measured values
 mock      Mock domain.
 netflow   Network flows from source nodes to destination nodes.
+trace     Traces from Pods and Nodes.
 `
 	assert.Equal(t, strings.TrimSpace(want), strings.TrimSpace(string(out)))
 }
