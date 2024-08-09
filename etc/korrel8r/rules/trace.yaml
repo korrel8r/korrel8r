@@ -1,0 +1,20 @@
+rules:
+- name: TraceToPod
+  start:
+    domain: trace
+  goal:
+    domain: k8s
+    classes: [Pod]
+  result:
+    query: |-
+      k8s:Pod:{namespace: "{{.Labels.k8s_namespace_name}}", name: "{{.Labels.k8s_pod_name}}"}
+
+- name: PodToTrace
+  start:
+    domain: k8s
+    classes: [Pod]
+  goal:
+    domain: trace
+  result:
+    query: |-
+      trace:trace:{resource.k8s.namespace.name="{{.Namespace}}" && resource.k8s.pod.name="{{.Name}}"}
