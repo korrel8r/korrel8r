@@ -49,8 +49,7 @@ clean-operators:
 	kubectl patch consoles.operator.openshift.io/cluster --type=merge --patch '{ "spec": { "plugins": [] }}'
 
 clean-resources:
-	touch $(STORAGE_ENV)	# So kustomize won't choke on the missing file.
-	kubectl delete --ignore-not-found -k config/resources
-	rm $(STORAGE_ENV)
+	test -f $(STORAGE_ENV) || echo STORAGE_CLASS=dummy > $(STORAGE_ENV) # Kustomize needs this file.
+	trap "rm $(STORAGE_ENV)" EXIT; kubectl delete --ignore-not-found -k config/resources
 
 clean-all: clean-resources clean-operators
