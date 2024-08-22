@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## [Unreleased]
+## [0.7.1]
 
 ### Removed
 
@@ -24,10 +24,17 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - [Authentication and Authorization for restricted access](https://github.com/korrel8r/korrel8r/issues/73)
 - [Use strict parsing to catch query errors.](https://github.com/korrel8r/korrel8r/issues/107)
 - REST API fix invalid JSON in responses, return [] instead of null for empty lists.
+- Bugs in forwarding REST authorization tokens to stores.
+- Various other bug fixes.
 
 ### Added
-
+- Trace domain to support traces in a Grafana Tempo store.
 - Mock store for unit tests, moved cluster tests to test/openshift.
+- Default constraints and timeouts to avoid slow response times caused by excessively large responses.
+  - Defaults can be over-ridden by REST and command-line options.
+  - DefaultDuration queries for only an hour of of data.
+  - DefaultLimit restricts queries to at most 1000 result objects.
+  - DefaultTimeout limits query latency to 5 seconds.
 
 ## [0.6.6] - 2024-06-04
 
