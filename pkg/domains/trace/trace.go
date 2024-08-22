@@ -28,7 +28,7 @@
 //	domain: trace
 //	tempo: URL_OF_TEMPO
 //
-// [TraceQL]: https://grafana.com/docs/tempo/latest/query/
+// [TraceQL]: https://grafana.com/docs/tempo/latest/traceql
 //
 // [Trace]: https://docs.openshift.com/container-platform/4.16/observability/distr_tracing/distr_tracing_tempo/distr-tracing-tempo-installing.html
 package trace

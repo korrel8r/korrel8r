@@ -124,7 +124,6 @@ func (c *Client) get(ctx context.Context, u *url.URL, collect CollectFunc) error
 
 	// Process and print the traces
 	for _, trace := range qr.Traces {
-		fmt.Printf("TraceID: %s\n", trace.TraceID)
 		for _, spans := range trace.SpanSet.Spans {
 			collect(&TraceObject{TraceID: trace.TraceID, SpanID: spans.SpanID, Labels: convertLabelSetToMap(spans.Attributes)})
 		}
