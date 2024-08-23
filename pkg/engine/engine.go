@@ -121,6 +121,7 @@ func (e *Engine) Get(ctx context.Context, query korrel8r.Query, constraint *korr
 	defer func() {
 		if err != nil {
 			log.V(2).Info("Get failed", "error", err, "query", query, "constraint", constraint)
+			err = fmt.Errorf("Get failed: %v : %w", query, err)
 		}
 	}()
 	ss := e.stores[query.Class().Domain()]
@@ -199,7 +200,7 @@ func (e *Engine) query(query string) ([]korrel8r.Object, error) {
 func (e *Engine) NewTemplate(name string) *template.Template {
 	// missingkey defines behaviour on lookup of a non-existent map key.
 	// Returning a zero is more intuitive for rules than the arbitrary default "<no value>".
-	return template.New(name).Funcs(e.templateFuncs).Option("missingkey=zero")
+	return template.New(name).Funcs(e.templateFuncs).Option("missingkey=error")
 }
 
 // execTemplate is a convenience to call NewTemplate, execute the template and stringify the result.

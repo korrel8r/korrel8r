@@ -3,7 +3,6 @@
 package korrel8r
 
 import (
-	"errors"
 	"fmt"
 )
 
@@ -26,16 +25,4 @@ type StoreNotFoundError struct {
 
 func (e StoreNotFoundError) Error() string {
 	return fmt.Sprintf("no stores found for domain %v", e.Domain)
-}
-
-// RuleSkipped is returned from Rule.Apply if the rule has pre-conditions that are not met by the starting object.
-// This signals an "expected" skipping of the rule, rather than a template error or returning a bad query.
-type RuleSkipped struct{ Rule Rule }
-
-func (e RuleSkipped) Error() string {
-	return fmt.Sprintf("rule skipped, not applicable: %v", e.Rule)
-}
-
-func IsRuleSkipped(err error) bool {
-	return errors.As(err, &RuleSkipped{})
 }

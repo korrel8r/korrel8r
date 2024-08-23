@@ -7,7 +7,6 @@ import (
 
 	"github.com/korrel8r/korrel8r/pkg/domains/k8s"
 	"github.com/korrel8r/korrel8r/pkg/domains/netflow"
-	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"github.com/stretchr/testify/assert"
 	appv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -53,7 +52,7 @@ func Test_NetflowToK8S(t *testing.T) {
 }
 
 func Test_NetflowToK8S_skipped(t *testing.T) {
-	// Get correct error when rules are skipped (as opposed to a bad query or an error.)
+	// Get expected error when fields are missing.
 	e := setup()
 	for _, x := range []struct {
 		rule  string
@@ -85,8 +84,7 @@ func Test_NetflowToK8S_skipped(t *testing.T) {
 			tested(x.rule)
 			r := e.Rule(x.rule)
 			got, err := r.Apply(x.start)
-			assert.ErrorIs(t, err, korrel8r.RuleSkipped{Rule: r})
-			assert.True(t, korrel8r.IsRuleSkipped(err))
+			assert.ErrorContains(t, err, "map has no entry")
 			assert.Nil(t, got)
 		})
 	}
