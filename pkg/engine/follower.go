@@ -41,9 +41,7 @@ func (f *Follower) Traverse(l *graph.Line) bool {
 			count++
 			q, err := rule.Apply(s)
 			if err != nil {
-				if !korrel8r.IsRuleSkipped(err) { // Don't log deliberate skips.
-					log.V(2).Info("Apply error", "error", err, "id", korrel8r.GetID(start.Class, s))
-				}
+				log.V(3).Info("Apply error", "error", err, "id", korrel8r.GetID(start.Class, s))
 				continue
 			}
 			f.rules[key].Set(q, -1)

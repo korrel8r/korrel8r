@@ -6,6 +6,7 @@
 package rules
 
 import (
+	"fmt"
 	"strings"
 	"text/template"
 
@@ -37,11 +38,11 @@ func (r *templateRule) Apply(start korrel8r.Object) (korrel8r.Query, error) {
 	b := &bytes.Buffer{}
 	err := r.query.Execute(b, start)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("Error applying rule %v: %w", r, err)
 	}
-	s := strings.TrimSpace(string(b.String()))
-	if s == "" { // Blank query means rule was skipped.
-		return nil, korrel8r.RuleSkipped{Rule: r}
+	query := strings.TrimSpace(string(b.String()))
+	if query == "" { // Blank query means rule does not apply.
+		return nil, fmt.Errorf("No query from rule %v: %w", r, err)
 	}
-	return r.Goal()[0].Domain().Query(b.String())
+	return r.Goal()[0].Domain().Query(query)
 }

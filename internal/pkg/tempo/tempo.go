@@ -105,7 +105,6 @@ func (c *Client) get(ctx context.Context, u *url.URL, collect CollectFunc) error
 
 	// Check for response status
 	if resp.StatusCode != http.StatusOK {
-		fmt.Println("Non-OK HTTP status:", resp.StatusCode)
 		return fmt.Errorf("%v", resp.Status)
 	}
 
