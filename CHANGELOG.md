@@ -9,12 +9,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 _Note unreleased changes here_
 
-## [0.7.2]
+## [0.7.2] - 2024-08-23
 
 ### Fixed
 - #156: Enable errors for missing values in templates
 
-## [0.7.1]
+## [0.7.1] - 2024-08-22
 
 ### Removed
 
@@ -24,7 +24,7 @@ _Note unreleased changes here_
 ### Added
 -  `korrel8r web --profile` to enable/disable http profiles.
 
-## [0.7.0]
+## [0.7.0] - 2024-08-22
 
 ### Fixed
 
