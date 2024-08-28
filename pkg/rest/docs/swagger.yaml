@@ -7,6 +7,25 @@ definitions:
       type: string
     description: Classes is a map from class names to a short description.
     type: object
+  Constraint:
+    description: Constraint constrains the objects that will be included in search
+      results.
+    properties:
+      end:
+        description: End of time interval, quoted RFC 3339 format.
+        format: date-time
+        type: string
+      limit:
+        description: Limit number of objects returned per query, <=0 means no limit.
+        type: integer
+      start:
+        description: Start of time interval, quoted RFC 3339 format.
+        format: date-time
+        type: string
+      timeout:
+        description: Timeout per request, h/m/s/ms/ns format
+        type: string
+    type: object
   Domain:
     description: Domain configuration information.
     properties:
@@ -37,6 +56,17 @@ definitions:
         type: string
     type: object
   Goals:
+    description: Starting point for a goals search.
+    properties:
+      goals:
+        description: Goal classes for correlation.
+        example:
+        - domain:class
+        items:
+          type: string
+        type: array
+      start:
+        $ref: '#/definitions/Start'
     type: object
   Graph:
     description: Graph resulting from a correlation search.
@@ -60,6 +90,7 @@ definitions:
         $ref: '#/definitions/Start'
     type: object
   Node:
+    description: Node in the result graph, contains results for a single class.
     properties:
       class:
         description: Class is the full class name in "DOMAIN:CLASS" form.
@@ -85,6 +116,8 @@ definitions:
         type: string
     type: object
   Rule:
+    description: Rule is a correlation rule with a list of queries and results counts
+      found during navigation.
     properties:
       name:
         description: Name is an optional descriptive name.
@@ -96,6 +129,21 @@ definitions:
         type: array
     type: object
   Start:
+    description: Start identifies a set of starting objects for correlation.
+    properties:
+      class:
+        description: Class for `objects`
+        type: string
+      constraint:
+        $ref: '#/definitions/Constraint'
+      objects:
+        description: Objects of `class` serialized as JSON
+        type: object
+      queries:
+        description: Queries for starting objects
+        items:
+          type: string
+        type: array
     type: object
   Store:
     additionalProperties:

@@ -8,12 +8,12 @@ import (
 	"github.com/korrel8r/korrel8r/pkg/ptr"
 )
 
-// Constraint included in a reference to restrict the resulting objects.
+// Constraint included in a store Get operation to restrict the resulting objects.
 type Constraint struct {
-	Limit   *int           `json:"limit,omitempty"`   // Limit number of objects returned per query, <=0 means no limit.
-	Timeout *time.Duration `json:"timeout,omitempty"` // Timeout per request.
-	Start   *time.Time     `json:"start,omitempty"`   // Start of time interval to include.
-	End     *time.Time     `json:"end,omitempty"`     // End of time interval to include.
+	Limit   *int           `json:"limit,omitempty"`                                         // Limit number of objects returned per query, <=0 means no limit.
+	Timeout *time.Duration `json:"timeout,omitempty" swaggertype:"string"`                  // Timeout per request, h/m/s/ms/ns format
+	Start   *time.Time     `json:"start,omitempty" swaggertype:"string" format:"date-time"` // Start of time interval, quoted RFC 3339 format.
+	End     *time.Time     `json:"end,omitempty" swaggertype:"string" format:"date-time"`   // End of time interval, quoted RFC 3339 format.
 }
 
 // CompareTime returns -1 if t is before the constraint interval, +1 if it is after,
