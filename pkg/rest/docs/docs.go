@@ -223,6 +223,30 @@ const docTemplate = `{
                 "type": "string"
             }
         },
+        "Constraint": {
+            "description": "Constraint constrains the objects that will be included in search results.",
+            "type": "object",
+            "properties": {
+                "end": {
+                    "description": "End of time interval, quoted RFC 3339 format.",
+                    "type": "string",
+                    "format": "date-time"
+                },
+                "limit": {
+                    "description": "Limit number of objects returned per query, \u003c=0 means no limit.",
+                    "type": "integer"
+                },
+                "start": {
+                    "description": "Start of time interval, quoted RFC 3339 format.",
+                    "type": "string",
+                    "format": "date-time"
+                },
+                "timeout": {
+                    "description": "Timeout per request, h/m/s/ms/ns format",
+                    "type": "string"
+                }
+            }
+        },
         "Domain": {
             "description": "Domain configuration information.",
             "type": "object",
@@ -264,7 +288,23 @@ const docTemplate = `{
             }
         },
         "Goals": {
-            "type": "object"
+            "description": "Starting point for a goals search.",
+            "type": "object",
+            "properties": {
+                "goals": {
+                    "description": "Goal classes for correlation.",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "domain:class"
+                    ]
+                },
+                "start": {
+                    "$ref": "#/definitions/Start"
+                }
+            }
         },
         "Graph": {
             "description": "Graph resulting from a correlation search.",
@@ -298,6 +338,7 @@ const docTemplate = `{
             }
         },
         "Node": {
+            "description": "Node in the result graph, contains results for a single class.",
             "type": "object",
             "properties": {
                 "class": {
@@ -333,6 +374,7 @@ const docTemplate = `{
             }
         },
         "Rule": {
+            "description": "Rule is a correlation rule with a list of queries and results counts found during navigation.",
             "type": "object",
             "properties": {
                 "name": {
@@ -349,7 +391,28 @@ const docTemplate = `{
             }
         },
         "Start": {
-            "type": "object"
+            "description": "Start identifies a set of starting objects for correlation.",
+            "type": "object",
+            "properties": {
+                "class": {
+                    "description": "Class for ` + "`" + `objects` + "`" + `",
+                    "type": "string"
+                },
+                "constraint": {
+                    "$ref": "#/definitions/Constraint"
+                },
+                "objects": {
+                    "description": "Objects of ` + "`" + `class` + "`" + ` serialized as JSON",
+                    "type": "object"
+                },
+                "queries": {
+                    "description": "Queries for starting objects",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
         },
         "Store": {
             "description": "Store is a map of name:value attributes used to connect to a store.",

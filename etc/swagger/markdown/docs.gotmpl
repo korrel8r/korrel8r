@@ -7,12 +7,12 @@ https://github.com/go-swagger/go-swagger/blob/master/generator/templates/markdow
   {{- with .ExternalDocs }}
     {{- if .URL }}
       {{- if .Description }}
-	> {{ .URL }}[{{ trimSpace .Description }}]
+	{{ .URL }}[{{ trimSpace .Description }}]
       {{- else }}
-	> {{ .URL }}[Read more]
+	{{ .URL }}[Read more]
       {{- end }}
     {{- else }}
-> {{ trimSpace .Description }}
+{{ trimSpace .Description }}
     {{- end }}
   {{- end }}
 {{- end }}
@@ -25,7 +25,7 @@ https://github.com/go-swagger/go-swagger/blob/master/generator/templates/markdow
 | `{{ .GoType }}`
 | {{ if .CollectionFormat }}`{{ docCollectionFormat .CollectionFormat .Child }}`{{ end }}
 | {{ if .Required }}required{{else}}optional{{ end }}
-| {{ if .Default }}`{{ json .Default }}`{{ end }}
+| {{ if .Default }}`{{ json .Default }}`{{ end }} 
 | {{ trimSpace .Description }}
 
 {{- end }}
@@ -148,7 +148,7 @@ any
 
 {{- define "docModel" }}{{/* renders a definition */}}
   {{- with .Description }}
-> {{ .}}
+{{ .}}
   {{- end }}
   {{- if .ExternalDocs }}
 {{ template "externalDoc" . }}
@@ -297,20 +297,20 @@ Produces::
 
     {{- with .Type }}
 
-> **Type**: {{ . }}
+**Type**: {{ . }}
     {{- end }}
     {{- if .IsOAuth2}}
       {{- with .Flow }}
-	>
-	> **Flow**: {{ . }}
+
+	**Flow**: {{ . }}
       {{- end }}
       {{- with .AuthorizationURL }}
-	>
-	> **Authorization URL**: {{ . }}
+
+	**Authorization URL**: {{ . }}
       {{- end }}
       {{- with .TokenURL }}
-	>
-	> **Token URL**: {{ . }}
+
+	**Token URL**: {{ . }}
       {{- end }}
       {{ if .ScopesDesc }}
 
@@ -384,7 +384,7 @@ Produces::
 
   {{- with .ExternalDocs }}
 
-> {{ if .URL }}[Read more]({{ .URL }} "{{ .Description }}"){{ end }}
+{{ if .URL }}[Read more]({{ .URL }} "{{ .Description }}"){{ end }}
   {{- end }}
 
   {{- if or (gt (len .SchemeOverrides)  0) (gt (len .ExtraSchemeOverrides) 0) }}

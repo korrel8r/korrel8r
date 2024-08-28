@@ -106,7 +106,7 @@ GET /api/v1alpha1/domains/{domain}/classes
 | `string`
 | 
 | required
-| 
+|  
 | Domain name
 
 |===
@@ -167,7 +167,7 @@ GET /api/v1alpha1/objects
 | `string`
 | 
 | required
-| 
+|  
 | query string
 
 |===
@@ -228,7 +228,7 @@ POST /api/v1alpha1/graphs/goals
 | `bool`
 | 
 | optional
-| 
+|  
 | include rules in graph edges
 
 | request | `body` | link:#goals[Goals] | `models.Goals` | | ✓ | | search from start to goal classes
@@ -291,7 +291,7 @@ POST /api/v1alpha1/graphs/neighbours
 | `bool`
 | 
 | optional
-| 
+|  
 | include rules in graph edges
 
 | request | `body` | link:#neighbours[Neighbours] | `models.Neighbours` | | ✓ | | search from neighbours
@@ -395,18 +395,45 @@ any
 === Classes
 
 
-> Classes is a map from class names to a short description.
+Classes is a map from class names to a short description.
   
 
 
 
 link:#classes[Classes]
 
+[id=constraint]
+=== Constraint
+
+
+Constraint constrains the objects that will be included in search results.
+  
+
+
+
+
+
+**Properties**
+
+[%autowidth]
+|===
+| Name | Type | Go type | Required | Default | Description | Example
+
+	| end | date-time (formatted string)| `strfmt.DateTime` |  | | End of time interval, quoted RFC 3339 format. | 
+
+	| limit | integer| `int64` |  | | Limit number of objects returned per query, <=0 means no limit. | 
+
+	| start | date-time (formatted string)| `strfmt.DateTime` |  | | Start of time interval, quoted RFC 3339 format. | 
+
+	| timeout | string| `string` |  | | Timeout per request, h/m/s/ms/ns format | 
+
+|===
+
 [id=domain]
 === Domain
 
 
-> Domain configuration information.
+Domain configuration information.
   
 
 
@@ -429,7 +456,7 @@ link:#classes[Classes]
 === Edge
 
 
-> Directed edge in the result graph, from Start to Goal classes.
+Directed edge in the result graph, from Start to Goal classes.
   
 
 
@@ -454,15 +481,30 @@ link:#classes[Classes]
 === Goals
 
 
+Starting point for a goals search.
   
 
-link:#interface[interface{}]
+
+
+
+
+**Properties**
+
+[%autowidth]
+|===
+| Name | Type | Go type | Required | Default | Description | Example
+
+	| goals | []string| `[]string` |  | | Goal classes for correlation. | `["domain:class"]`
+
+	| start | link:#start[Start]| `Start` |  | |  | 
+
+|===
 
 [id=graph]
 === Graph
 
 
-> Graph resulting from a correlation search.
+Graph resulting from a correlation search.
   
 
 
@@ -485,7 +527,7 @@ link:#interface[interface{}]
 === Neighbours
 
 
-> Starting point for a neighbours search.
+Starting point for a neighbours search.
   
 
 
@@ -508,7 +550,10 @@ link:#interface[interface{}]
 === Node
 
 
+Node in the result graph, contains results for a single class.
   
+
+
 
 
 
@@ -530,7 +575,7 @@ link:#interface[interface{}]
 === QueryCount
 
 
-> Query run during a correlation with a count of results found.
+Query run during a correlation with a count of results found.
   
 
 
@@ -553,7 +598,10 @@ link:#interface[interface{}]
 === Rule
 
 
+Rule is a correlation rule with a list of queries and results counts found during navigation.
   
+
+
 
 
 
@@ -573,15 +621,34 @@ link:#interface[interface{}]
 === Start
 
 
+Start identifies a set of starting objects for correlation.
   
 
-link:#interface[interface{}]
+
+
+
+
+**Properties**
+
+[%autowidth]
+|===
+| Name | Type | Go type | Required | Default | Description | Example
+
+	| class | string| `string` |  | | Class for `objects` | 
+
+	| constraint | link:#constraint[Constraint]| `Constraint` |  | |  | 
+
+	| objects | link:#interface[interface{}]| `interface{}` |  | | Objects of `class` serialized as JSON | 
+
+	| queries | []string| `[]string` |  | | Queries for starting objects | 
+
+|===
 
 [id=store]
 === Store
 
 
-> Store is a map of name:value attributes used to connect to a store.
+Store is a map of name:value attributes used to connect to a store.
   
 
 

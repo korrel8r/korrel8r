@@ -57,12 +57,12 @@ type Neighbours struct {
 
 } // @name Neighbours
 
-// Options control the format of the graph
+// @description Options control the format of the graph
 type Options struct {
 	Rules bool `form:"rules"` // Rules if true include rules in the graph edges.
 } // @name GraphOptions
 
-// Objects requests objects corresponding to a query.
+// @description Objects requests objects corresponding to a query.
 type Objects struct {
 	Query      string      `form:"query"` // Query string to execute.
 	Constraint *Constraint `json:"constraint,omitempty"`
@@ -74,7 +74,7 @@ type QueryCount struct {
 	Count int    `json:"count"` // Count of results or -1 if the query was not executed.
 } // @name QueryCount
 
-// Rule is a correlation rule with a list of queries and results counts found during navigation.
+// @description Rule is a correlation rule with a list of queries and results counts found during navigation.
 // Rules form a directed multi-graph over classes in the result graph.
 type Rule struct {
 	// Name is an optional descriptive name.
@@ -83,7 +83,7 @@ type Rule struct {
 	Queries []QueryCount `json:"queries,omitempty"`
 } // @name Rule
 
-// Node in the result graph, contains results for a single class.
+// @description Node in the result graph, contains results for a single class.
 type Node struct {
 	// Class is the full class name in "DOMAIN:CLASS" form.
 	Class string `json:"class" example:"domain:class"`
