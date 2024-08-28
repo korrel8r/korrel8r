@@ -36,7 +36,7 @@ _cover:
 # Generated files
 VERSION_TXT=internal/pkg/build/version.txt
 SWAGGER_SPEC=pkg/rest/docs/swagger.json
-GEN_SRC=$(VERSION_TXT) $(SWAGGER_SPEC) pkg/config/zz_generated.deepcopy.go _cover
+GEN_SRC=$(VERSION_TXT) $(SWAGGER_SPEC) _cover
 
 all: lint test _site image-build ## Build and test everything locally. Recommended before pushing.
 
@@ -53,9 +53,6 @@ ifneq ($(VERSION),$(file <$(VERSION_TXT)))
 endif
 $(VERSION_TXT):
 	echo $(VERSION) > $@
-
-pkg/config/zz_generated.deepcopy.go:  $(filter-out pkg/config/zz_generated.deepcopy.go,$(wildcard pkg/config/*.go)) $(CONTROLLER_GEN)
-	$(CONTROLLER_GEN) object paths=./pkg/config/...
 
 $(SWAGGER_SPEC): $(wildcard pkg/rest/*.go) $(SWAG)
 	@rm -f $@; mkdir -p $(dir $@)
