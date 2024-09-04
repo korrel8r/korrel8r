@@ -131,7 +131,7 @@ func (a *API) GraphsGoals(c *gin.Context) {
 		return
 	}
 	g, _ := a.goals(c)
-	if c.IsAborted() {
+	if g == nil || c.IsAborted() {
 		return
 	}
 	gr := Graph{Nodes: nodes(g), Edges: edges(g, opts)}
@@ -217,7 +217,7 @@ func (a *API) goals(c *gin.Context) (g *graph.Graph, goals []korrel8r.Class) {
 	}
 	start, objects, queries, constraint := a.start(c, &r.Start)
 	goals = a.classes(c, r.Goals)
-	if c.Errors != nil {
+	if c.IsAborted() {
 		return nil, nil
 	}
 	g = a.Engine.Graph().ShortestPaths(start, goals...)
@@ -302,10 +302,10 @@ func (a *API) logger(c *gin.Context) {
 			"from", c.Request.RemoteAddr,
 			"status", c.Writer.Status(),
 			"latency", time.Since(start))
-		if len(c.Errors) > 0 {
+		if c.IsAborted() {
 			log = log.WithValues("errors", c.Errors.Errors())
 		}
-		if len(c.Errors) > 0 || c.Writer.Status() > 500 {
+		if c.IsAborted() || c.Writer.Status() > 500 {
 			log.Info("request failed")
 		} else {
 			log.V(1).Info("request OK")
