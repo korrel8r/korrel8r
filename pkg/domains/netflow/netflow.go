@@ -38,6 +38,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strings"
 
 	"github.com/korrel8r/korrel8r/internal/pkg/loki"
 	"github.com/korrel8r/korrel8r/pkg/config"
@@ -167,7 +168,7 @@ func NewObject(entry *loki.Entry) Object {
 // Query is a LogQL query string
 type Query string
 
-func NewQuery(logQL string) korrel8r.Query { return Query(logQL) }
+func NewQuery(logQL string) korrel8r.Query { return Query(strings.TrimSpace(logQL)) }
 
 func (q Query) Class() korrel8r.Class { return Class{} }
 func (q Query) Data() string          { return string(q) }
