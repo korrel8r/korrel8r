@@ -42,6 +42,7 @@ import (
 	"net/http"
 	"net/url"
 	"regexp"
+	"strings"
 
 	"github.com/korrel8r/korrel8r/internal/pkg/loki"
 	"github.com/korrel8r/korrel8r/pkg/config"
@@ -173,6 +174,7 @@ type Query struct {
 }
 
 func NewQuery(c Class, logQL string) korrel8r.Query {
+	logQL = strings.TrimSpace(logQL)
 	if c == "" {
 		c = logQueryClass(logQL)
 	}

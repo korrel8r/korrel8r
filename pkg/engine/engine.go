@@ -92,6 +92,7 @@ func (e *Engine) DomainClass(domain, class string) (korrel8r.Class, error) {
 
 // Query parses a query string to a query object.
 func (e *Engine) Query(query string) (korrel8r.Query, error) {
+	query = strings.TrimSpace(query)
 	d, _, ok := strings.Cut(query, korrel8r.NameSeparator)
 	if !ok {
 		return nil, fmt.Errorf("invalid query string: %v", query)

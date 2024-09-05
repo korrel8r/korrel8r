@@ -28,8 +28,9 @@ func ClassSplit(fullname string) (domain, class string) {
 
 func QueryString(q korrel8r.Query) string { return ClassString(q.Class()) + sep + q.Data() }
 
-func QuerySplit(fullname string) (domain, class, data string) {
-	s := strings.SplitN(fullname, sep, 3)
+func QuerySplit(query string) (domain, class, data string) {
+	query = strings.TrimSpace(query)
+	s := strings.SplitN(query, sep, 3)
 	if len(s) > 0 {
 		domain = s[0]
 	}
