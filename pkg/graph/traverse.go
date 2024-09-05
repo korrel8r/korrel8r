@@ -32,6 +32,7 @@ func (g *Graph) Traverse(start korrel8r.Class, goals []korrel8r.Class, f func(*L
 // Returns the subset of the graph that was traversed.
 func (g *Graph) Neighbours(start korrel8r.Class, depth int, f func(*Line) bool) (*Graph, error) {
 	sub := g.Data.EmptyGraph()
+	sub.AddNode(g.NodeFor(start))
 	atDepth := 0
 	current := unique.Set[int64]{} // Nodes at the current depth or above.
 
