@@ -110,10 +110,10 @@ func TestMain_server_secure(t *testing.T) {
 const testRequest = `{  "depth": 1, "start": { "queries": [ "mock:foo:x" ] }}`
 
 var testResponse = rest.Normalize(rest.Graph{
-	Nodes: rest.Array[rest.Node]{
-		rest.Node{Class: "mock:foo", Queries: rest.Array[rest.QueryCount]{rest.QueryCount{Query: "mock:foo:x", Count: 1}}, Count: 1},
-		rest.Node{Class: "mock:bar", Queries: rest.Array[rest.QueryCount]{rest.QueryCount{Query: "mock:bar:y", Count: 1}}, Count: 1}},
-	Edges: rest.Array[rest.Edge]{rest.Edge{Start: "mock:foo", Goal: "mock:bar", Rules: rest.Array[rest.Rule](nil)}},
+	Nodes: []rest.Node{
+		rest.Node{Class: "mock:foo", Queries: []rest.QueryCount{rest.QueryCount{Query: "mock:foo:x", Count: 1}}, Count: 1},
+		rest.Node{Class: "mock:bar", Queries: []rest.QueryCount{rest.QueryCount{Query: "mock:bar:y", Count: 1}}, Count: 1}},
+	Edges: []rest.Edge{rest.Edge{Start: "mock:foo", Goal: "mock:bar", Rules: []rest.Rule(nil)}},
 })
 
 func TestMain_server_graph(t *testing.T) {

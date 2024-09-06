@@ -132,6 +132,34 @@ func TestAPI_PostNeighbours_noRules(t *testing.T) {
 	)
 }
 
+func TestAPI_PostNeighbours_empty(t *testing.T) {
+	e := testEngine(t)
+	assertDo(t, newTestAPI(t, e), "POST", "/api/v1alpha1/graphs/neighbours",
+		Neighbours{
+			Start: Start{Queries: []string{"mock:a:nossuchthing"}},
+			Depth: 1,
+		},
+		200, Graph{},
+	)
+}
+
+func TestAPI_PostNeighbours_none(t *testing.T) {
+	e := testEngine(t)
+	assertDo(t, newTestAPI(t, e), "POST", "/api/v1alpha1/graphs/neighbours",
+		Neighbours{
+			Start: Start{Queries: []string{"mock:a:x"}},
+			Depth: 0,
+		},
+		200,
+		Graph{
+			Nodes: []Node{{
+				Class:   "mock:a",
+				Queries: []QueryCount{{Query: "mock:a:x", Count: 1}},
+				Count: 1,
+			}}},
+	)
+}
+
 func TestAPI_GetObjects(t *testing.T) {
 	want := []any{"a", "b", "c"}
 	d := mock.Domain("x")

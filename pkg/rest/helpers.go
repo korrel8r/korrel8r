@@ -79,12 +79,12 @@ func Normalize(v any) any {
 	case Graph:
 		Normalize(v.Nodes)
 		Normalize(v.Edges)
-	case Array[Node]:
+	case []Node:
 		slices.SortFunc(v, func(a, b Node) int { return strings.Compare(a.Class, b.Class) })
 		for _, n := range v {
 			Normalize(n)
 		}
-	case Array[Edge]:
+	case []Edge:
 		slices.SortFunc(v, func(a, b Edge) int {
 			if n := strings.Compare(a.Start, b.Start); n != 0 {
 				return n
