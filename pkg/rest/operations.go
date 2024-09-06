@@ -207,7 +207,11 @@ func (a *API) GetObjects(c *gin.Context) {
 		return
 	}
 	log.V(2).Info("response OK", "objects", len(result.List()))
-	c.JSON(http.StatusOK, Array[any](result.List()))
+	body := []any(result.List())
+	if body == nil {
+		body = []any{} // Return [] on empty, not null.
+	}
+	c.JSON(http.StatusOK, body)
 }
 
 func (a *API) goals(c *gin.Context) (g *graph.Graph, goals []korrel8r.Class) {
