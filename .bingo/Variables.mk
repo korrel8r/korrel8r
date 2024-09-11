@@ -17,11 +17,11 @@ GO     ?= $(shell which go)
 #	@echo "Running golangci-lint"
 #	@$(GOLANGCI_LINT) <flags/args..>
 #
-GOLANGCI_LINT := $(GOBIN)/golangci-lint-v1.60.3
+GOLANGCI_LINT := $(GOBIN)/golangci-lint-v1.61.0
 $(GOLANGCI_LINT): $(BINGO_DIR)/golangci-lint.mod
 	@# Install binary/ries using Go 1.14+ build command. This is using bwplotka/bingo-controlled, separate go module with pinned dependencies.
-	@echo "(re)installing $(GOBIN)/golangci-lint-v1.60.3"
-	@cd $(BINGO_DIR) && GOWORK=off $(GO) build -mod=mod -modfile=golangci-lint.mod -o=$(GOBIN)/golangci-lint-v1.60.3 "github.com/golangci/golangci-lint/cmd/golangci-lint"
+	@echo "(re)installing $(GOBIN)/golangci-lint-v1.61.0"
+	@cd $(BINGO_DIR) && GOWORK=off $(GO) build -mod=mod -modfile=golangci-lint.mod -o=$(GOBIN)/golangci-lint-v1.61.0 "github.com/golangci/golangci-lint/cmd/golangci-lint"
 
 KORREL8RCLI := $(GOBIN)/korrel8rcli-v0.0.2
 $(KORREL8RCLI): $(BINGO_DIR)/korrel8rcli.mod
@@ -35,11 +35,11 @@ $(KUSTOMIZE): $(BINGO_DIR)/kustomize.mod
 	@echo "(re)installing $(GOBIN)/kustomize-v5.4.3"
 	@cd $(BINGO_DIR) && GOWORK=off $(GO) build -mod=mod -modfile=kustomize.mod -o=$(GOBIN)/kustomize-v5.4.3 "sigs.k8s.io/kustomize/kustomize/v5"
 
-SHFMT := $(GOBIN)/shfmt-v3.8.0
+SHFMT := $(GOBIN)/shfmt-v3.9.0
 $(SHFMT): $(BINGO_DIR)/shfmt.mod
 	@# Install binary/ries using Go 1.14+ build command. This is using bwplotka/bingo-controlled, separate go module with pinned dependencies.
-	@echo "(re)installing $(GOBIN)/shfmt-v3.8.0"
-	@cd $(BINGO_DIR) && GOWORK=off $(GO) build -mod=mod -modfile=shfmt.mod -o=$(GOBIN)/shfmt-v3.8.0 "mvdan.cc/sh/v3/cmd/shfmt"
+	@echo "(re)installing $(GOBIN)/shfmt-v3.9.0"
+	@cd $(BINGO_DIR) && GOWORK=off $(GO) build -mod=mod -modfile=shfmt.mod -o=$(GOBIN)/shfmt-v3.9.0 "mvdan.cc/sh/v3/cmd/shfmt"
 
 SWAG := $(GOBIN)/swag-v1.16.3
 $(SWAG): $(BINGO_DIR)/swag.mod
