@@ -7,10 +7,8 @@ help: ## Display this help.
 
 ## VERSION: Semantic version for release, use -dev for development pre-release versions.
 VERSION?=0.7.3-dev
-## REGISTRY: Name of image registry
-REGISTRY?=quay.io
-## REGISTRY_ORG: Name of registry organization.
-REGISTRY_ORG?=$(error Set REGISTRY_ORG to push or pull images)
+## REGISTRY_BASE: Image registry base, for example quay.io/somebody
+REGISTRY_BASE?=$(error REGISTRY_BASE must be set to push images)
 ## IMGTOOL: May be podman or docker.
 IMGTOOL?=$(or $(shell podman info > /dev/null 2>&1 && which podman), $(shell docker info > /dev/null 2>&1 && which docker))
 ## NAMESPACE: Namespace for `make deploy`
@@ -19,7 +17,7 @@ NAMESPACE=korrel8r
 CONFIG?=etc/korrel8r/openshift-route.yaml
 
 # Name of image.
-IMG?=$(REGISTRY)/$(REGISTRY_ORG)/korrel8r
+IMG?=$(REGISTRY_BASE)/korrel8r
 IMAGE=$(IMG):$(VERSION)
 
 include .bingo/Variables.mk	# Versioned tools
@@ -167,16 +165,15 @@ doc/gen/cmd: $(shell find ./cmd/korrel8r) $(KORREL8RCLI) $(KRAMDOC) ## Generated
 	@touch $@
 
 pre-release:	## Prepare for a release. Push results before `make release`
-	@[ "$(origin REGISTRY_ORG)" = "command line" ] || { echo "REGISTRY_ORG must be set on the command line for a release."; exit 1; }
 	$(MAKE) all image kustomize-edit
-	@echo Ready to release $(VERSION), images at $(REGISTRY_ORG)
+	@echo Ready to release $(VERSION) to $(REGISTRY_BASE)
 
 release:			## Push images and release tags for a release.
 	$(MAKE) clean
 	$(MAKE) pre-release
 	hack/tag-release.sh $(VERSION)
 	$(IMGTOOL) push -q "$(IMAGE)" "$(IMG):latest"
-	@echo Released $(VERSION), images at $(REGISTRY_ORG)
+	@echo Released $(VERSION) to $(REGISTRY_BASE)
 
 BINGO=$(GOBIN)/bingo
 $(BINGO): # Bootstrap bingo
