@@ -12,7 +12,7 @@ You can list git changes with:
 
 Edit Makefile and set 'VERSION=X.Y.Z' for the new release. Prepare for release:
 
-  make clean; make pre-release REGISTRY_ORG=korrel8r
+  make clean; make pre-release REGISTRY_BASE=quay.io/korrel8r
 
 
 Use `git status` to verify that all changes are related to the version number change.
@@ -21,7 +21,7 @@ Commit and merge to `origin/main` with message 'Release X.Y.Z'
 
 Commit the release:
 
-  make release REGISTRY_ORG=korrel8r
+  make release REGISTRY_BASE=quay.io/korrel8r
 
 This does the following:
 
