@@ -12,7 +12,7 @@ stores:
   - domain: netflow
     lokiStack: 'https://{{(query "k8s:Route:{namespace: netobserv, name: loki}" | first).Spec.Host}}'
   - domain: trace
-    tempoStack: 'https://{{(query "k8s:Route:{namespace: openshift-tracing, name: tempo-platform-gateway}" | first).Spec.Host}}/api/traces/v1/platform/tempo/api/search'
+    tempoStack: 'https://{{(query "k8s:Route:{namespace: openshift-tempo-operator, name: tempo-platform-gateway}" | first).Spec.Host}}/api/traces/v1/platform/tempo/api/search'
 
 include:
   - rules/all.yaml
