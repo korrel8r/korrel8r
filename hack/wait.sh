@@ -12,7 +12,7 @@ subscription() {
 	shift 1
 	local csv=""
 	for NAME in "$@"; do
-		wait_for_resource "subscription $NAME to be known" \
+		wait_for_resource "subscription $NAME in $ns to be known" \
 			check_condition "AtLatestKnown" kubectl -n "$ns" get subscription/"$NAME" -o jsonpath='{.status.state}' || return 1
 		csv=$(kubectl get -n "$ns" subscription/"$NAME" -o jsonpath='{.status.currentCSV}')
 		wait_for_resource "csv $csv to be available" check_condition "Succeeded" kubectl get -n "$ns" csv/"$csv" -o jsonpath='{.status.phase}' || return 1

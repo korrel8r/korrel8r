@@ -1,6 +1,6 @@
 # Deploy operators and resources for observability components.
 
-all: operators resources
+all: operators resources uiplugins
 
 operators:
 	kubectl apply -k config/operators
@@ -43,6 +43,9 @@ resources: $(STORAGE_ENV)
 	$(MINIO_ROLLOUT)
 	$(LOGGING_ROLLOUT)
 	$(NETOBSERV_ROLLOUT)
+
+uiplugins:
+	kubectl apply -f config/uiplugins
 
 clean-operators:
 	kubectl delete --ignore-not-found -k config/operators
