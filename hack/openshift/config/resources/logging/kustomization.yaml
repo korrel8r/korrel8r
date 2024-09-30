@@ -1,5 +1,0 @@
-namespace: openshift-logging
-resources:
-  - lokistack.yaml
-  - clusterlogging.yaml
-  - clusterlogforwarder.yaml
