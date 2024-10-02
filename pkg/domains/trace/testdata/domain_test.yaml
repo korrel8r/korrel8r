@@ -1,0 +1,224 @@
+'trace:span:{status=error}':
+  - {
+      "traces": [
+        {
+          "traceID": "2f3e0cee77ae5dc9c17ade3689eb2e54",
+          "rootServiceName": "shop-backend",
+          "rootTraceName": "update-billing",
+          "startTimeUnixNano": "1684778327699392724",
+          "durationMs": 557,
+          "spanSets": [
+            [{
+              "spans": [
+                {
+                  "spanID": "563d623c76514f8e",
+                  "startTimeUnixNano": "1684778327735077898",
+                  "durationNanos": "446979497",
+                  "attributes": [
+                    {
+                      "key": "status",
+                      "value": {
+                        "stringValue": "error"
+                      }
+                    }
+                  ]
+                }
+              ],
+              "matched": 1
+            }]
+          ]
+        },
+        {
+          "traceID": "3f3e0cee77ae5dc9c17ade3689eb2e54",
+          "rootServiceName": "srv",
+          "rootTraceName": "trc",
+          "startTimeUnixNano": "1684778327699392724",
+          "durationMs": 9,
+          "spanSets": [
+            [{
+              "spans": [
+                { "spanID": "1", "startTimeUnixNano": "1684778327735077898", "durationNanos": 1 },
+                { "spanID": "2", "startTimeUnixNano": "1684778327735077898", "durationNanos": 1 },
+                { "spanID": "3", "startTimeUnixNano": "1684778327735077898", "durationNanos": 1 },
+                { "spanID": "4", "startTimeUnixNano": "1684778327735077898", "durationNanos": 1 },
+                { "spanID": "5", "startTimeUnixNano": "1684778327735077898", "durationNanos": 1 },
+                { "spanID": "6", "startTimeUnixNano": "1684778327735077898", "durationNanos": 1 },
+                { "spanID": "7", "startTimeUnixNano": "1684778327735077898", "durationNanos": 1 },
+                { "spanID": "8", "startTimeUnixNano": "1684778327735077898", "durationNanos": 1 },
+                { "spanID": "9", "startTimeUnixNano": "1684778327735077898", "durationNanos": 1 },
+              ],
+              "matched": 1
+            },
+            {
+              "spans": [
+                { "spanID": "1", "startTimeUnixNano": "1684778327735077898", "durationNanos": 1 },
+                { "spanID": "2", "startTimeUnixNano": "1684778327735077898", "durationNanos": 1 },
+                { "spanID": "3", "startTimeUnixNano": "1684778327735077898", "durationNanos": 1 },
+                { "spanID": "4", "startTimeUnixNano": "1684778327735077898", "durationNanos": 1 },
+                { "spanID": "5", "startTimeUnixNano": "1684778327735077898", "durationNanos": 1 },
+                { "spanID": "6", "startTimeUnixNano": "1684778327735077898", "durationNanos": 1 },
+                { "spanID": "7", "startTimeUnixNano": "1684778327735077898", "durationNanos": 1 },
+                { "spanID": "8", "startTimeUnixNano": "1684778327735077898", "durationNanos": 1 },
+                { "spanID": "9", "startTimeUnixNano": "1684778327735077898", "durationNanos": 1 },
+              ],
+              "matched": 1
+            }
+          ]
+        }
+      ],
+      "metrics": {
+        "totalBlocks": 13
+      }
+    }
+
+'trace:span:{resource.kubernetes.namespace.name=~".+"}':
+  - {
+      "traces": [
+        {
+          "traceID": "282158202b98fcd324bbffe07778910",
+          "rootServiceName": "shop-backend",
+          "rootTraceName": "article-to-cart",
+          "startTimeUnixNano": "1727922721530712102",
+          "durationMs": 590
+        },
+        {
+          "traceID": "9dbf65825697fbd0b924f86ab90e1cac",
+          "rootServiceName": "shop-backend",
+          "rootTraceName": "article-to-cart",
+          "startTimeUnixNano": "1727922720529712773",
+          "durationMs": 662
+        },
+        {
+          "traceID": "7a2ec7eba0550d158bde121cab361532",
+          "rootServiceName": "shop-backend",
+          "rootTraceName": "list-articles",
+          "startTimeUnixNano": "1727922717529026138",
+          "durationMs": 379
+        },
+        {
+          "traceID": "c438ea9d689c43a97ea4a89363ecfe1c",
+          "rootServiceName": "shop-backend",
+          "rootTraceName": "article-to-cart",
+          "startTimeUnixNano": "1727922713528043226",
+          "durationMs": 451
+        },
+        {
+          "traceID": "297d008e196412b17ff6e92861532fb7",
+          "rootServiceName": "shop-backend",
+          "rootTraceName": "delete-customer",
+          "startTimeUnixNano": "1727922709527557678",
+          "durationMs": 747
+        },
+        {
+          "traceID": "5cb6a626cae188fc7b147a6882512236",
+          "rootServiceName": "shop-backend",
+          "rootTraceName": "list-articles",
+          "startTimeUnixNano": "1727922704518828330",
+          "durationMs": 509
+        },
+        {
+          "traceID": "2604afd9321081ca3e31e93b7ca5811d",
+          "rootServiceName": "shop-backend",
+          "rootTraceName": "list-articles",
+          "startTimeUnixNano": "1727922700517768957",
+          "durationMs": 271
+        },
+        {
+          "traceID": "ecb2d3abcce1a2047c94b9efa6fbed50",
+          "rootServiceName": "shop-backend",
+          "rootTraceName": "delete-customer",
+          "startTimeUnixNano": "1727922699517058471",
+          "durationMs": 748
+        },
+        {
+          "traceID": "37002f53afeb73e45fa11b989fc7ec3b",
+          "rootServiceName": "shop-backend",
+          "rootTraceName": "article-to-cart",
+          "startTimeUnixNano": "1727922696515762260",
+          "durationMs": 685
+        },
+        {
+          "traceID": "b35eee3ca239690f4be0cfe168f7b1a5",
+          "rootServiceName": "shop-backend",
+          "rootTraceName": "search-customer",
+          "startTimeUnixNano": "1727922692514521884",
+          "durationMs": 791
+        },
+        {
+          "traceID": "aad3d6af05b46bf7467c58e2159f05ee",
+          "rootServiceName": "shop-backend",
+          "rootTraceName": "list-articles",
+          "startTimeUnixNano": "1727922689513996906",
+          "durationMs": 396
+        },
+        {
+          "traceID": "999050d12154131186612522343212ae",
+          "rootServiceName": "shop-backend",
+          "rootTraceName": "search-customer",
+          "startTimeUnixNano": "1727922688512871813",
+          "durationMs": 718
+        },
+        {
+          "traceID": "5751a439c97ac2eec9a2a42d33edbc03",
+          "rootServiceName": "shop-backend",
+          "rootTraceName": "search-customer",
+          "startTimeUnixNano": "1727922685512345223",
+          "durationMs": 575
+        },
+        {
+          "traceID": "95ac976dba090eae24aa9bea2964220",
+          "rootServiceName": "shop-backend",
+          "rootTraceName": "article-to-cart",
+          "startTimeUnixNano": "1727922565440640782",
+          "durationMs": 457
+        },
+        {
+          "traceID": "949927def5b5cea00b3c923c9cd32b9",
+          "rootServiceName": "shop-backend",
+          "rootTraceName": "article-to-cart",
+          "startTimeUnixNano": "1727922540432967039",
+          "durationMs": 610
+        },
+        {
+          "traceID": "406858af5b67021752fb611e61655f8",
+          "rootServiceName": "shop-backend",
+          "rootTraceName": "search-customer",
+          "startTimeUnixNano": "1727922456028866451",
+          "durationMs": 589
+        },
+        {
+          "traceID": "a950bcb8b999e8a20a510befe0895b0",
+          "rootServiceName": "shop-backend",
+          "rootTraceName": "article-to-cart",
+          "startTimeUnixNano": "1727922287618823018",
+          "durationMs": 1162
+        },
+        {
+          "traceID": "55f1f84c96181c038f920fde74975f5",
+          "rootServiceName": "shop-backend",
+          "rootTraceName": "delete-customer",
+          "startTimeUnixNano": "1727922154274504531",
+          "durationMs": 657
+        },
+        {
+          "traceID": "53df184a496bcb52eaac7c1c3f5d46f",
+          "rootServiceName": "shop-backend",
+          "rootTraceName": "list-articles",
+          "startTimeUnixNano": "1727922114129763441",
+          "durationMs": 772
+        },
+        {
+          "traceID": "3a012bc823f5adaf7d6b20890648ade",
+          "rootServiceName": "shop-backend",
+          "rootTraceName": "article-to-cart",
+          "startTimeUnixNano": "1727922039416210695",
+          "durationMs": 908
+        }
+      ],
+      "metrics": {
+        "inspectedTraces": 359,
+        "inspectedBytes": "90517",
+        "completedJobs": 1,
+        "totalJobs": 1
+      }
+    }
