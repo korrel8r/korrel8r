@@ -7,7 +7,7 @@ rules:
     classes: [Pod]
   result:
     query: |-
-      k8s:Pod:{namespace: "{{.Labels.k8s_namespace_name}}", name: "{{.Labels.k8s_pod_name}}"}
+      k8s:Pod:{namespace: "{{.Attributes.k8s_namespace_name}}", name: "{{.Attributes.k8s_pod_name}}"}
 
 - name: PodToTrace
   start:

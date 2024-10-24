@@ -231,6 +231,8 @@ loki: URL_OF_LOKI
 
 Domain `trace` is a domain for https://opentelemetry.io/docs/concepts/signals/traces/[OpenTelemetry traces], stored in https://grafana.com/docs/tempo/latest/[Tempo].
 
+FIXME Re-write review all public godoc, rewrite package doc, explain OTEL relationships, link to spec.
+
 == TODO rewrite
 
 == Class

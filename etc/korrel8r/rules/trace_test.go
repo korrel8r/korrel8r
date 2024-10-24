@@ -5,8 +5,8 @@ package rules_test
 import (
 	"testing"
 
-	"github.com/korrel8r/korrel8r/internal/pkg/tempo"
 	"github.com/korrel8r/korrel8r/pkg/domains/k8s"
+	"github.com/korrel8r/korrel8r/pkg/domains/trace"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -16,15 +16,14 @@ func Test_TraceToPod(t *testing.T) {
 	e := setup()
 	for _, x := range []struct {
 		rule  string
-		start *tempo.TraceObject
+		start *trace.Span
 		want  string
 	}{
 		{
 			rule: "TraceToPod",
-			start: &tempo.TraceObject{
-				TraceID: "232323",
-				SpanID:  "3d48369744164bd0",
-				Labels:  map[string]string{"k8s_namespace_name": "tracing-app-k6", "k8s_pod_name": "bar"},
+			start: &trace.Span{
+				Context:    trace.SpanContext{TraceID: "232323", SpanID: "3d48369744164bd0"},
+				Attributes: map[string]any{"k8s_namespace_name": "tracing-app-k6", "k8s_pod_name": "bar"},
 			},
 			want: `k8s:Pod.v1.:{"namespace":"tracing-app-k6","name":"bar"}`,
 		},

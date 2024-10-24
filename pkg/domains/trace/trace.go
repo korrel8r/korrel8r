@@ -1,14 +1,19 @@
 // Copyright: This file is part of korrel8r, released under https://github.com/korrel8r/korrel8r/blob/main/LICENSE
 
-// Package trace is a domain for network observability flow events stored in Tempo or TempoStack.
+// Package trace is a domain for [OpenTelemetry traces], stored in [Tempo].
+//
+// FIXME Re-write review all public godoc, rewrite package doc, explain OTEL relationships, link to spec.
+//
+// # TODO rewrite
 //
 // # Class
 //
-// There is a single class `trace:trace`
+// There is a single class `trace:span`. A _span_ is the basic unit of work in a trace.
+// A _trace_ is the set of all spans with the same `traceID`.
 //
 // # Object
 //
-// A trace object is a JSON `map[string]any` in [NetFlow] format.
+// A span object is an OpenTelemetry trace in the form of a `map[string]any
 //
 // # Query
 //
@@ -28,9 +33,9 @@
 //	domain: trace
 //	tempo: URL_OF_TEMPO
 //
-// [TraceQL]: https://grafana.com/docs/tempo/latest/traceql
-//
-// [Trace]: https://docs.openshift.com/container-platform/4.16/observability/distr_tracing/distr_tracing_tempo/distr-tracing-tempo-installing.html
+// [OpenTelemetry traces]: https://opentelemetry.io/docs/concepts/signals/traces/
+// [Tempo]: https://grafana.com/docs/tempo/latest/
+// [TraceQL]: https://grafana.com/docs/tempo/latest/traceql/
 package trace
 
 import (
@@ -39,8 +44,8 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 
-	"github.com/korrel8r/korrel8r/internal/pkg/tempo"
 	"github.com/korrel8r/korrel8r/pkg/config"
 	"github.com/korrel8r/korrel8r/pkg/domains/k8s"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
@@ -50,7 +55,6 @@ import (
 var (
 	// Verify implementing interfaces.
 	_ korrel8r.Domain = Domain
-	_ korrel8r.Store  = &store{}
 	_ korrel8r.Store  = &stackStore{}
 	_ korrel8r.Query  = Query("")
 	_ korrel8r.Class  = Class{}
@@ -94,30 +98,15 @@ func (domain) Store(s any) (korrel8r.Store, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	tempo, tempoStack := cs[StoreKeyTempo], cs[StoreKeyTempoStack]
-	switch {
-
-	case tempo != "" && tempoStack != "":
-		return nil, fmt.Errorf("can't set both tempo and tempoStack URLs")
-
-	case tempo != "":
-		u, err := url.Parse(tempo)
-		if err != nil {
-			return nil, err
-		}
-		return NewPlainTempoStore(u, hc)
-
-	case tempoStack != "":
-		u, err := url.Parse(tempoStack)
-		if err != nil {
-			return nil, err
-		}
-		return NewTempoStackStore(u, hc)
-
-	default:
-		return nil, fmt.Errorf("must set one of tempo or tempoStack URLs")
+	tempoStack := cs[StoreKeyTempoStack]
+	if tempoStack == "" {
+		return nil, fmt.Errorf("must set tempoStack URL")
 	}
+	u, err := url.Parse(tempoStack)
+	if err != nil {
+		return nil, err
+	}
+	return NewTempoStackStore(u, hc)
 }
 
 // There is only a single class, named "trace".
@@ -129,8 +118,62 @@ func (c Class) String() string                              { return impl.ClassS
 func (c Class) Description() string                         { return "A set of label:value pairs identifying a trace." }
 func (c Class) Unmarshal(b []byte) (korrel8r.Object, error) { return impl.UnmarshalAs[Object](b) }
 
-// Object is a map holding trace entries
-type Object *tempo.Trace
+// Object is a *Span.
+type Object = *Span
+
+// TraceID is a hex-encoded 16 byte identifier.
+type TraceID string
+
+// SpanID is a hex-encoded 16 byte identifier.
+type SpanID string
+
+// SpanContext identifies a span as part of a trace.
+type SpanContext struct {
+	TraceID TraceID `json:"traceID"`
+	SpanID  SpanID  `json:"spanID"`
+	// TODO TraceFlags not yet supported
+}
+
+// StatusCode FIXME spec xref
+type StatusCode string
+
+const (
+	StatusUnset StatusCode = "Unset"
+	StatusError StatusCode = "Error"
+	StatusOK    StatusCode = "Ok"
+)
+
+// Status status of the span, see [OTEL documentation].
+//
+// OTEL documentation: [https://opentelemetry.io/docs/concepts/signals/traces/#span-status]
+type Status struct {
+	Code        StatusCode `json:"statusCode,omitempty"`  // StatusCode is "Unset", "Ok", "Error".
+	Description string     `json:"description,omitempty"` // Description for status=Error.
+}
+
+// Span is an OpenTelemetry [Span], the smallest unit of work for tracing.
+// Implements the OpenTelemetry API [Spec].
+//
+// Span: [https://opentelemetry.io/docs/concepts/signals/traces]
+// Spec: [https://opentelemetry.io/docs/specs/otel/trace/api/#span]
+type Span struct {
+	Name       string         // Name of span.
+	Context    SpanContext    `json:"context"`
+	ParentID   *SpanID        `json:"spanID,omitempty"` // ParentID span ID of parent span, nil for root span.
+	StartTime  time.Time      `json:"startTime"`        // StartTime for span
+	EndTime    time.Time      `json:"endtime"`          // EndTime for span
+	Attributes map[string]any `json:"attributes"`       // Attribute map .
+	Status     Status         `json:"status"`
+
+	// TODO OTEL links, events not yet supported.
+}
+
+// Duration is shorthand for
+//
+//	s.EndTime.Sub(s.StartTime)
+func (s *Span) Duration() time.Duration {
+	return s.EndTime.Sub(s.StartTime)
+}
 
 // Query is a TraceQL query string
 type Query string
@@ -143,24 +186,14 @@ func (q Query) String() string        { return impl.QueryString(q) }
 
 // NewTempoStackStore returns a store that uses a TempoStack observatorium-style URLs.
 func NewTempoStackStore(base *url.URL, h *http.Client) (korrel8r.Store, error) {
-	return &stackStore{store: store{tempo.New(h, base)}}, nil
+	return &stackStore{store: store{newClient(h, base)}}, nil
 }
 
-// NewPlainTempoStore returns a store that uses plain Tempo URLs.
-func NewPlainTempoStore(base *url.URL, h *http.Client) (korrel8r.Store, error) {
-	return &store{tempo.New(h, base)}, nil
-}
+// TODO removed NewPlainTempoStore, not used initially. Restore if required.
 
-type store struct{ *tempo.Client }
+type store struct{ *client }
 
 func (store) Domain() korrel8r.Domain { return Domain }
-func (s *store) Get(ctx context.Context, query korrel8r.Query, c *korrel8r.Constraint, result korrel8r.Appender) error {
-	q, err := impl.TypeAssert[Query](query)
-	if err != nil {
-		return err
-	}
-	return s.Client.Get(ctx, q.Data(), func(e *tempo.TraceObject) { result.Append(e) })
-}
 
 type stackStore struct{ store }
 
@@ -171,5 +204,5 @@ func (s *stackStore) Get(ctx context.Context, query korrel8r.Query, c *korrel8r.
 		return err
 	}
 
-	return s.Client.GetStack(ctx, q.Data(), c, func(e *tempo.TraceObject) { result.Append(e) })
+	return s.client.GetStack(ctx, q.Data(), c, func(s *Span) { result.Append(s) })
 }

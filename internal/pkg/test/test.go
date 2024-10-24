@@ -5,10 +5,12 @@ package test
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net"
 	"os/exec"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -67,4 +69,15 @@ func ExecError(err error) error {
 		return fmt.Errorf("%v: %v", err, string(ex.Stderr))
 	}
 	return err
+}
+
+// JSONPretty returns the intended JSON string for v, or an error message string if marshal fails.
+func JSONPretty(v any) string {
+	w := &strings.Builder{}
+	encoder := json.NewEncoder(w)
+	encoder.SetIndent("", "  ")
+	if err := encoder.Encode(v); err != nil {
+		return err.Error()
+	}
+	return w.String()
 }
