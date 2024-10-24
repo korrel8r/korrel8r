@@ -9,7 +9,7 @@ import (
 	"github.com/korrel8r/korrel8r/pkg/domains/metric"
 )
 
-// FIXME store does not respect limits, remove SkipOpenshift
+// TODO store does not respect limits, remove SkipOpenshift
 var fixture = domain.Fixture{Query: metric.Query(`{namespace="kube-system"}`), SkipOpenshift: true}
 
 func TestMetricDomain(t *testing.T)      { fixture.Test(t) }

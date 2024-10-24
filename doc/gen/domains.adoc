@@ -229,19 +229,21 @@ loki: URL_OF_LOKI
 
 = Domain `trace`
 
-Domain `trace` is a domain for network observability flow events stored in Tempo or TempoStack.
+Domain `trace` is a domain for https://opentelemetry.io/docs/concepts/signals/traces/[OpenTelemetry traces], stored in https://grafana.com/docs/tempo/latest/[Tempo].
+
+== TODO rewrite
 
 == Class
 
-There is a single class `trace:trace`
+There is a single class `trace:span`. A _span_ is the basic unit of work in a trace. A _trace_ is the set of all spans with the same `traceID`.
 
 == Object
 
-A trace object is a JSON `map\[string]any` in \[NetFlow] format.
+A span object is an OpenTelemetry trace in the form of a `map\[string]any
 
 == Query
 
-A query is a https://grafana.com/docs/tempo/latest/traceql[TraceQL] query string, prefixed by `trace:trace:`, for example:
+A query is a https://grafana.com/docs/tempo/latest/traceql/[TraceQL] query string, prefixed by `trace:trace:`, for example:
 
 ----
 trace:trace:{resource.k8s.namespace.name="tracing-app-k6"}
