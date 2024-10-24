@@ -28,7 +28,7 @@ include::installing-korrel8r-ocp.adoc[leveloffset=+1]
 
 == Using Korrel8r via the Openshift Console
 
-The {rh-console} has links that are powered by korrel8r.
+The {ocp-console} has links that are powered by korrel8r.
 
 . Navigate to *Observe* -> *Logs*. Click the *Metrics* link to see correlated metrics of each log record.
 . Navigate to *Observe* -> *Alerting*, and click an alert. Alerts that have related logs have a *see related logs* link.
