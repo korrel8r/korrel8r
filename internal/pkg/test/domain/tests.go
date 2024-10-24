@@ -16,7 +16,7 @@ import (
 func (f *Fixture) Test(t *testing.T) {
 	t.Helper()
 	f.Init(t)
-	for _, f := range []func(*testing.T){f.TestGet, f.TestMarshalUnmashal, f.TestGetOpenshift} {
+	for _, f := range []func(*testing.T){f.TestGet, f.TestMarshalUnmashal, f.TestGetCluster} {
 		t.Run(funcName(f), f)
 	}
 }
@@ -50,11 +50,11 @@ func (f *Fixture) TestMarshalUnmashal(t *testing.T) {
 	require.Equal(t, o, o2)
 }
 
-// TestGetOpenshift requires an OpenShift cluster with all signal stores available.
+// TestGetCluster requires a cluster with all signal stores available.
 // Tests that query constraints work with real stores.
-func (f *Fixture) TestGetOpenshift(t *testing.T) {
+func (f *Fixture) TestGetCluster(t *testing.T) {
 	t.Helper()
-	e := f.OpenshiftEngine(t)
+	e := f.ClusterEngine(t)
 	limit := 3
 	constraint := &korrel8r.Constraint{Limit: &limit}
 	r := korrel8r.NewResult(f.Query.Class())
