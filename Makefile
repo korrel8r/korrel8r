@@ -72,19 +72,19 @@ lint: $(GEN_SRC) $(GOLANGCI_LINT) $(SHFMT) $(SHELLCHECK) ## Run the linter to fi
 
 .PHONY: test
 test: $(GEN_SRC)		## Run all tests, requires an openshift cluster.
-	go test -race ./...
+	go test -fullpath -race ./...
 
 test-no-cluster: $(GEN_SRC)	## Run all tests that don't require an openshift cluster.
-	go test -race -skip '.*/Openshift' ./...
+	go test -fullpath -race -skip '.*/Openshift' ./...
 
 cover:  $(GOCOVERDIR) ## Run tests with accumulated coverage stats in _cover. Use 'make -i' to see coverage when tests fail.
 	@echo == Individual package test coverage.
-	go test -cover ./... -test.gocoverdir=$(GOCOVERDIR)
+	go test -fullpath -cover ./... -test.gocoverdir=$(GOCOVERDIR)
 	@echo == Aggregate coverage across all tests.
 	go tool covdata percent -i $(GOCOVERDIR)
 
 bench: $(GEN_SRC)		## Run all benchmarks.
-	go test -bench=. -run=NONE ./... | { type benchstat >/dev/null && benchstat /dev/stdin; }
+	go test -fullpath -bench=. -run=NONE ./... | { type benchstat >/dev/null && benchstat /dev/stdin; }
 
 
 $(GOCOVERDIR):

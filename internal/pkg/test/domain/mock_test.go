@@ -12,8 +12,8 @@ import (
 )
 
 var fixture = domain.Fixture{
-	Query:         mock.NewQuery(mock.Domain("mock").Class("thing"), "query"),
-	SkipOpenshift: true,
+	Query:       mock.NewQuery(mock.Domain("mock").Class("thing"), "query"),
+	SkipCluster: true,
 }
 
 func TestMockDomain(t *testing.T)      { fixture.Test(t) }
