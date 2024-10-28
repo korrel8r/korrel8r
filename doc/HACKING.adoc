@@ -1,4 +1,4 @@
-= Hacking on Korrel8r
+= Hacker's guide to Korrel8r
 
 Tips for contributing to the Korrel8r project.
 
@@ -91,3 +91,5 @@ make _site
 ----
 
 Preview `_site` with your web browser.
+
+// TODO Needs update

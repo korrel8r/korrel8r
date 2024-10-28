@@ -240,7 +240,7 @@ Terms Of Service:: {{ . }}
 == Tags
   {{- range .Tags }}
 
-[id=tag-{{ dasherize .Name }}]
+[id=tag-id-{{dasherize .Name}}]
 === {{if .ExternalDocs }}{{ .ExternalDocs.URL }}[{{ .Name }}] {{ .ExternalDocs.Description }}{{ else }}{{  .Name }}{{ end }}
     {{- if .Description }}
 
@@ -360,7 +360,7 @@ Produces::
 
   {{- range .Operations }}
 
-| {{ upper .Method }} | {{ joinPath .BasePath .Path }} | link:#{{ dasherize .Name }}[{{ humanize .Name }}] | {{ .Summary }}
+| {{ upper .Method }} | {{ joinPath .BasePath .Path }} | link:#id-{{dasherize .Name}}[{{ humanize .Name }}] | {{ .Summary }}
   {{- end }}
 
 |===
@@ -371,7 +371,7 @@ Produces::
 {{- range .Operations }}
   {{- $opname := .Name }}
 
-[id={{ dasherize .Name }}]
+[id=id-{{dasherize .Name}}]
 === {{ or (trimSpace .Summary) (humanize .Name) }}
 
 ----
@@ -533,7 +533,7 @@ empty schema
     {{- range .ExtraSchemas }}
       {{- if ne .Name "" }}
 
-	[id={{ dasherize .Name }}]
+	[id=id-{{dasherize .Name}}]
 	**{{ .Name }}**
 
 	{{ template "docModel" . }}
@@ -546,7 +546,7 @@ empty schema
 
 {{- range .Models }}
 
-[id={{ dasherize .Name }}]
+[id=id-{{dasherize .Name}}]
 === {{ .Name }}
 
 {{ template "docModel" . }}
@@ -557,7 +557,7 @@ empty schema
     {{- range .ExtraSchemas }}
       {{- if ne .Name "" }}
 
-[id={{ dasherize .Name }}]
+[id=id-{{dasherize .Name}}]
 **{{ .Name }}**
 
 {{ template "docModel" . }}

@@ -1,7 +1,59 @@
 
-= Domain `alert`
+= k8s domain
 
-Domain `alert` provides Prometheus alerts, queries and access to Thanos and AlertManager stores.
+
+Domain k8s implements link:https://kubernetes.io/docs/concepts/overview/[Kubernetes] resources stored in a Kube API server.
+
+== Store
+
+The k8s domain automatically connects to the current cluster (as determined by kubectl), no additional configuration is needed.
+
+----
+ stores:
+	  domain: k8s
+----
+
+== Template Functions
+
+The following template functions are available to rules.
+
+----
+k8sClass
+    Takes string arguments (apiVersion, kind).
+    Returns the korrel8r.Class implied by the arguments, or an error.
+----
+
+
+== Query
+
+
+Query struct for a Kubernetes query.
+
+Example:
+
+----
+k8s:Pod.v1.:{"namespace":"openshift-cluster-version","name":"cluster-version-operator-8d86bcb65-btlgn"}
+----
+
+
+See Go documentation for https://pkg.go.dev/github.com/korrel8r/korrel8r/pkg/domains/k8s/#Query[Query]
+
+== Object
+
+
+Object is a struct type representing a Kubernetes resource.
+
+Object can be any of the standard k8s types from link:https://pkg.go.dev/k8s.io/client-go/api/[k8s.io/client-go/api], or a generated custom resource type.
+
+Rules templates should use capitalized Go field names rather than the lowercase JSON field names.
+
+
+See Go documentation for https://pkg.go.dev/github.com/korrel8r/korrel8r/pkg/domains/k8s/#Object[Object]
+
+= alert domain
+
+
+Domain alert provides Prometheus alerts, queries and access to Thanos and AlertManager stores.
 
 == Class
 
@@ -9,30 +61,7 @@ There is a single class `alert:alert`.
 
 == Object
 
-An alert object is represented by this Go type. Rules starting from an alert should use the capitalized Go field names rather than the lowercase JSON names.
-
-----
-type Object struct {
-	// Common fields.
-	Labels		map[string]string	`json:"labels"`
-	Annotations	map[string]string	`json:"annotations"`
-	Status		string			`json:"status"`	// inactive|pending|firing|suppressed
-	StartsAt	time.Time		`json:"startsAt"`
-
-	// Prometheus fields.
-	Value		string	`json:"value"`
-	Expression	string	`json:"expression"`
-	Fingerprint	string	`json:"fingerprint"`
-
-	// Alertmanager fields.
-	EndsAt		time.Time	`json:"endsAt"`
-	UpdatedAt	time.Time	`json:"updatedAt"`
-	Receivers	[]Receiver	`json:"receivers"`
-	InhibitedBy	[]string	`json:"inhibitedBy"`
-	SilencedBy	[]string	`json:"silencedBy"`
-	GeneratorURL	string		`json:"generatorURL"`
-}
-----
+An alert object is represented by this Go type. Rules starting from an alert should use the capitalized Go field names rather than the lowercase JSON names. link:https://pkg.go.dev/github.com/korrel8r/korrel8r/pkg/domains/alert/#Object[Object]
 
 == Query
 
@@ -54,62 +83,27 @@ alertmanager: ALERTMANAGER_URL
 
 Either or both of `metrics` or `alertmanager` may be present.
 
-= Domain `k8s`
-
-Domain `k8s` implements Kubernetes resources stored in a Kube API server.
-
-== Class
-
-A k8s class corresponds to a kind of Kubernetes resource, the class name is `KIND.VERSION.GROUP` VERSION and/or GROUP can be omitted if there is no ambiguity. Example class names: `k8s:Pod.v1`, `ks8:Pod`, `k8s:Deployment.v1.apps`, `k8s:Deployment.apps`, `k8s:Deployment`
-
-== Object
-
-Objects are represented by the standard Go types used by `k8s.io/client-go/api`, and by Kube-generated CRD struct types. Rules starting from the k8s domain should use the capitalized Go field names rather than the lowercase JSON field names.
 
 == Query
 
-Queries are the JSON-serialized form of this struct:
 
-----
-type Query struct {
-	// Namespace restricts the search to a namespace.
-	Namespace	string	`json:"namespace,omitempty"`
-	Name		string	`json:"name,omitempty"`
-	// Labels restricts the search to objects with matching label values (optional)
-	Labels	client.MatchingLabels	`json:"labels,omitempty"`
-	// Fields restricts the search to objects with matching field values (optional)
-	Fields	client.MatchingFields	`json:"fields,omitempty"`
-	// contains filtered or unexported fields
-}
-----
+Query is a map of label name:value pairs for matching alerts, serialized as JSON.
 
-For example:
 
-----
-k8s:Pod.v1.:{"namespace":"openshift-cluster-version","name":"cluster-version-operator-8d86bcb65-btlgn"}
-----
+See Go documentation for https://pkg.go.dev/github.com/korrel8r/korrel8r/pkg/domains/alert/#Query[Query]
 
-== Store
+== Object
 
-k8s stores connects to the current logged-in Kubernetes cluster, no other configuration is needed than:
 
-----
-domain: k8s
-----
+Object contains alert data, passed as *Object when used as a korrel8r.Object.
 
-Copyright: This file is part of korrel8r, released under https://github.com/korrel8r/korrel8r/blob/main/LICENSE[https://github.com/korrel8r/korrel8r/blob/main/LICENSE]
 
-== Template Functions
+See Go documentation for https://pkg.go.dev/github.com/korrel8r/korrel8r/pkg/domains/alert/#Object[Object]
 
-----
-k8sClass
-    Takes string arguments (apiVersion, kind).
-    Returns the korrel8r.Class implied by the arguments, or an error.
-----
+= log domain
 
-= Domain `log`
 
-Domain `log` is a domain for openshift-logging ViaQ logs stored in Loki or LokiStack.
+Domain log is a domain for openshift-logging ViaQ logs stored in Loki or LokiStack.
 
 == Class
 
@@ -127,7 +121,7 @@ A log object is a JSON map\[string]any in ViaQ format.
 
 == Query
 
-A query is a https://grafana.com/docs/loki/latest/query/[LogQL] query string, prefixed by the logging class, for example:
+A query is a link:https://grafana.com/docs/loki/latest/query/[LogQL] query string, prefixed by the logging class, for example:
 
 ----
 log:infrastructure:{ kubernetes_namespace_name="openshift-cluster-version", kubernetes_pod_name=~".*-operator-.*" }
@@ -149,7 +143,7 @@ domain: log
 loki: URL_OF_LOKI
 ----
 
-Copyright: This file is part of korrel8r, released under https://github.com/korrel8r/korrel8r/blob/main/LICENSE[https://github.com/korrel8r/korrel8r/blob/main/LICENSE]
+Copyright: This file is part of korrel8r, released under link:https://github.com/korrel8r/korrel8r/blob/main/LICENSE[https://github.com/korrel8r/korrel8r/blob/main/LICENSE]
 
 == Template Functions
 
@@ -162,9 +156,27 @@ logSafeLabel
     Convert the string argument into a  safe label containing only alphanumerics '_' and ':'.
 ----
 
-= Domain `metric`
 
-Domain `metric` represents Prometheus metric time-series as objects.
+== Query
+
+
+Query is a LogQL query string
+
+
+See Go documentation for https://pkg.go.dev/github.com/korrel8r/korrel8r/pkg/domains/log/#Query[Query]
+
+== Object
+
+
+Object is a map in Viaq format.
+
+
+See Go documentation for https://pkg.go.dev/github.com/korrel8r/korrel8r/pkg/domains/log/#Object[Object]
+
+= metric domain
+
+
+package metric represents Prometheus metric time-series as objects.
 
 == Class
 
@@ -172,11 +184,11 @@ There is only one class: `metric:metric`
 
 == Object
 
-A https://pkg.go.dev/github.com/prometheus/common@v0.45.0/model#Metric[Metric] is a time series identified by a label set. Korrel8r does not consider load the sample data for a time series, or use it in rules. If a korrel8r search time constraints, then metrics that have no values that meet the constraint are ignored.
+A link:https://pkg.go.dev/github.com/prometheus/common@v0.45.0/model#Metric[Metric] is a time series identified by a label set. Korrel8r does not consider load the sample data for a time series, or use it in rules. If a korrel8r search time constraints, then metrics that have no values that meet the constraint are ignored.
 
 == Query
 
-Query data is a PromQL https://prometheus.io/docs/prometheus/latest/querying/basics/#instant-vector-selectors[instant vector selector], for example:
+Query data is a PromQL link:https://prometheus.io/docs/prometheus/latest/querying/basics/#instant-vector-selectors[instant vector selector], for example:
 
 ----
 metric:metric:http_requests_total{environment=~"staging|testing",method!="GET"}
@@ -191,9 +203,27 @@ domain: metric
 metric: URL_OF_PROMETHEUS
 ----
 
-= Domain `netflow`
 
-Domain `netflow` is a domain for network observability flow events stored in Loki or LokiStack.
+== Query
+
+
+Query is a PromQL instance vector query.
+
+
+See Go documentation for https://pkg.go.dev/github.com/korrel8r/korrel8r/pkg/domains/metric/#Query[Query]
+
+== Object
+
+
+
+
+
+See Go documentation for https://pkg.go.dev/github.com/korrel8r/korrel8r/pkg/domains/metric/#Object[Object]
+
+= netflow domain
+
+
+Domain netflow is a domain for network observability flow events stored in Loki or LokiStack.
 
 == Class
 
@@ -201,11 +231,11 @@ There is a single class `netflow:network`
 
 == Object
 
-A log object is a JSON `map\[string]any` in https://docs.openshift.com/container-platform/latest/observability/network_observability/json-flows-format-reference.html[NetFlow] format.
+A log object is a JSON `map\[string]any` in link:https://docs.openshift.com/container-platform/latest/observability/network_observability/json-flows-format-reference.html[NetFlow] format.
 
 == Query
 
-A query is a https://grafana.com/docs/loki/latest/query/[LogQL] query string, prefixed by `netflow:network:`, for example:
+A query is a link:https://grafana.com/docs/loki/latest/query/[LogQL] query string, prefixed by `netflow:network:`, for example:
 
 ----
 netflow:network:{SrcK8S_Type="Pod", SrcK8S_Namespace="myNamespace"}
@@ -227,42 +257,55 @@ domain: netflow
 loki: URL_OF_LOKI
 ----
 
-= Domain `trace`
-
-Domain `trace` is a domain for https://opentelemetry.io/docs/concepts/signals/traces/[OpenTelemetry traces], stored in https://grafana.com/docs/tempo/latest/[Tempo].
-
-FIXME Re-write review all public godoc, rewrite package doc, explain OTEL relationships, link to spec.
-
-== TODO rewrite
-
-== Class
-
-There is a single class `trace:span`. A _span_ is the basic unit of work in a trace. A _trace_ is the set of all spans with the same `traceID`.
-
-== Object
-
-A span object is an OpenTelemetry trace in the form of a `map\[string]any
 
 == Query
 
-A query is a https://grafana.com/docs/tempo/latest/traceql/[TraceQL] query string, prefixed by `trace:trace:`, for example:
 
-----
-trace:trace:{resource.k8s.namespace.name="tracing-app-k6"}
-----
+Query is a LogQL query string
+
+
+See Go documentation for https://pkg.go.dev/github.com/korrel8r/korrel8r/pkg/domains/netflow/#Query[Query]
+
+== Object
+
+
+Object is a map holding netflow entries
+
+
+See Go documentation for https://pkg.go.dev/github.com/korrel8r/korrel8r/pkg/domains/netflow/#Object[Object]
+
+= trace domain
+
+
+Domain trace implements OpenTelemetry link:https://opentelemetry.io/docs/concepts/signals/traces[traces] stored in the Grafana link:https://grafana.com/docs/tempo/latest/[Tempo] data store.
 
 == Store
 
-To connect to a tempoStack store use this configuration:
+The trace domain accepts an optional "tempostack" field with a URL for tempostack. If absent, connect to the default location for the trace store on an Openshift cluster.
 
 ----
-domain: trace
-tempostack: URL_OF_TEMPOSTACK_PROXY
+stores:
+  domain: trace
+  tempostack: "https://url-of-tempostack"
 ----
 
-To connect to plain tempo store use:
 
-----
-domain: trace
-tempo: URL_OF_TEMPO
-----
+== Query
+
+
+Query selector is a link:https://grafana.com/docs/tempo/latest/traceql/[TraceQL] query string.
+
+Example: `trace:span:{resource.kubernetes.namespace.name=~".+"}`
+
+
+See Go documentation for https://pkg.go.dev/github.com/korrel8r/korrel8r/pkg/domains/trace/#Query[Query]
+
+== Object
+
+
+Object represents an OpenTelemetry link:https://opentelemetry.io/docs/concepts/signals/traces/#spans[span]
+
+A trace is simply a set of spans with the same trace-id. There is no explicit class or object representing a trace.
+
+
+See Go documentation for https://pkg.go.dev/github.com/korrel8r/korrel8r/pkg/domains/trace/#Object[Object]

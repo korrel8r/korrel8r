@@ -1,31 +1,16 @@
 // Copyright: This file is part of korrel8r, released under https://github.com/korrel8r/korrel8r/blob/main/LICENSE
 
-// package k8s implements Kubernetes resources stored in a Kube API server.
-//
-// # Class
-//
-// A k8s class corresponds to a kind of Kubernetes resource, the class name is `KIND.VERSION.GROUP`
-// VERSION and/or GROUP can be omitted if there is no ambiguity.
-// Example class names: `k8s:Pod.v1`, `ks8:Pod`, `k8s:Deployment.v1.apps`, `k8s:Deployment.apps`, `k8s:Deployment`
-//
-// # Object
-//
-// Objects are represented by the standard Go types used by `k8s.io/client-go/api`, and by Kube-generated CRD struct types.
-// Rules starting from the k8s domain should use the capitalized Go field names rather than the lowercase JSON field names.
-//
-// # Query
-//
-// Queries are the JSON-serialized form of this struct: [Query]
-//
-// For example:
-//
-//	k8s:Pod.v1.:{"namespace":"openshift-cluster-version","name":"cluster-version-operator-8d86bcb65-btlgn"}
+// Package k8s implements [Kubernetes] resources stored in a Kube API server.
 //
 // # Store
 //
-// k8s stores connects to the current logged-in Kubernetes cluster, no other configuration is needed than:
+// The k8s domain automatically connects to the current cluster (as determined by kubectl),
+// no additional configuration is needed.
 //
-//	domain: k8s
+//	 stores:
+//		  domain: k8s
+//
+// [Kubernetes]: https://kubernetes.io/docs/concepts/overview/
 package k8s
 
 import (
@@ -52,12 +37,26 @@ import (
 var Domain = domain{}
 
 // Class represents a kind of kubernetes resource.
+//
+// The format of a class name is: "k8s:KIND.VERSION.GROUP".
+// VERSION and GROUP are optional if there is no ambiguity.
+//
+// Examples: `k8s:Pod.v1`, `ks8:Pod`, `k8s:Deployment.v1.apps`, `k8s:Deployment.apps`, `k8s:Deployment`
 type Class schema.GroupVersionKind
 
-// Object is a Go struct type representing a serialized Kubernetes resource.
+// Object is a struct type representing a Kubernetes resource.
+//
+// Object can be any of the standard k8s types from [k8s.io/client-go/api],
+// or a generated custom resource type.
+//
+// Rules templates should use capitalized Go field names rather than the lowercase JSON field names.
 type Object client.Object
 
-// Query represents a Kubernetes resource query.
+// Query struct for a Kubernetes query.
+//
+// Example:
+//
+//	k8s:Pod.v1.:{"namespace":"openshift-cluster-version","name":"cluster-version-operator-8d86bcb65-btlgn"}
 type Query struct {
 	// Namespace restricts the search to a namespace.
 	Namespace string `json:"namespace,omitempty"`
@@ -70,7 +69,13 @@ type Query struct {
 	class Class // class is the underlying k8s.Class object. Implied by query name prefix.
 }
 
-// Store implements a korrel8r.Store using the kubernetes API server.
+// Stores presents the Kubernetes API server as a korrel8r.Store.
+//
+// The k8s domain automatically connects to the current cluster (as determined by kubectl),
+// no additional configuration is needed.
+//
+//	 stores:
+//		  domain: k8s
 type Store struct {
 	c    client.Client
 	base *url.URL

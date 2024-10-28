@@ -27,23 +27,23 @@ Produces::
 |===
 | Method  | URI     | Name   | Summary
 
-| GET | /api/v1alpha1/domains | link:#get-domains[get domains] | Get name, configuration and status for each domain.
+| GET | /api/v1alpha1/domains | link:#id-get-domains[get domains] | Get name, configuration and status for each domain.
 
-| GET | /api/v1alpha1/domains/{domain}/classes | link:#get-domains-domain-classes[get domains domain classes] | Get class names and descriptions for a domain.
+| GET | /api/v1alpha1/domains/{domain}/classes | link:#id-get-domains-domain-classes[get domains domain classes] | Get class names and descriptions for a domain.
 
-| GET | /api/v1alpha1/objects | link:#get-objects[get objects] | Execute a query, returns a list of JSON objects.
+| GET | /api/v1alpha1/objects | link:#id-get-objects[get objects] | Execute a query, returns a list of JSON objects.
 
-| POST | /api/v1alpha1/graphs/goals | link:#post-graphs-goals[post graphs goals] | Create a correlation graph from start objects to goal queries.
+| POST | /api/v1alpha1/graphs/goals | link:#id-post-graphs-goals[post graphs goals] | Create a correlation graph from start objects to goal queries.
 
-| POST | /api/v1alpha1/graphs/neighbours | link:#post-graphs-neighbours[post graphs neighbours] | Create a neighbourhood graph around a start object to a given depth.
+| POST | /api/v1alpha1/graphs/neighbours | link:#id-post-graphs-neighbours[post graphs neighbours] | Create a neighbourhood graph around a start object to a given depth.
 
-| POST | /api/v1alpha1/lists/goals | link:#post-lists-goals[post lists goals] | Create a list of goal nodes related to a starting point.
+| POST | /api/v1alpha1/lists/goals | link:#id-post-lists-goals[post lists goals] | Create a list of goal nodes related to a starting point.
 
 |===
 
 == Paths
 
-[id=get-domains]
+[id=id-get-domains]
 === Get name, configuration and status for each domain.
 
 ----
@@ -87,7 +87,7 @@ Status: OK
 
 any
 
-[id=get-domains-domain-classes]
+[id=id-get-domains-domain-classes]
 === Get class names and descriptions for a domain.
 
 ----
@@ -148,7 +148,7 @@ link:#classes[Classes]
 
 any
 
-[id=get-objects]
+[id=id-get-objects]
 === Execute a query, returns a list of JSON objects.
 
 ----
@@ -209,7 +209,7 @@ Status: OK
 
 any
 
-[id=post-graphs-goals]
+[id=id-post-graphs-goals]
 === Create a correlation graph from start objects to goal queries.
 
 ----
@@ -272,7 +272,7 @@ link:#graph)[Graph]
 
 any
 
-[id=post-graphs-neighbours]
+[id=id-post-graphs-neighbours]
 === Create a neighbourhood graph around a start object to a given depth.
 
 ----
@@ -335,7 +335,7 @@ link:#graph)[Graph]
 
 any
 
-[id=post-lists-goals]
+[id=id-post-lists-goals]
 === Create a list of goal nodes related to a starting point.
 
 ----
@@ -391,7 +391,7 @@ any
 
 == Models
 
-[id=classes]
+[id=id-classes]
 === Classes
 
 
@@ -402,7 +402,7 @@ Classes is a map from class names to a short description.
 
 link:#classes[Classes]
 
-[id=constraint]
+[id=id-constraint]
 === Constraint
 
 
@@ -429,7 +429,7 @@ Constraint constrains the objects that will be included in search results.
 
 |===
 
-[id=domain]
+[id=id-domain]
 === Domain
 
 
@@ -452,7 +452,7 @@ Domain configuration information.
 
 |===
 
-[id=edge]
+[id=id-edge]
 === Edge
 
 
@@ -477,7 +477,7 @@ Directed edge in the result graph, from Start to Goal classes.
 
 |===
 
-[id=goals]
+[id=id-goals]
 === Goals
 
 
@@ -500,7 +500,7 @@ Starting point for a goals search.
 
 |===
 
-[id=graph]
+[id=id-graph]
 === Graph
 
 
@@ -523,7 +523,7 @@ Graph resulting from a correlation search.
 
 |===
 
-[id=neighbours]
+[id=id-neighbours]
 === Neighbours
 
 
@@ -546,7 +546,7 @@ Starting point for a neighbours search.
 
 |===
 
-[id=node]
+[id=id-node]
 === Node
 
 
@@ -571,7 +571,7 @@ Node in the result graph, contains results for a single class.
 
 |===
 
-[id=query-count]
+[id=id-query-count]
 === QueryCount
 
 
@@ -594,7 +594,7 @@ Query run during a correlation with a count of results found.
 
 |===
 
-[id=rule]
+[id=id-rule]
 === Rule
 
 
@@ -617,7 +617,7 @@ Rule is a correlation rule with a list of queries and results counts found durin
 
 |===
 
-[id=start]
+[id=id-start]
 === Start
 
 
@@ -644,7 +644,7 @@ Start identifies a set of starting objects for correlation.
 
 |===
 
-[id=store]
+[id=id-store]
 === Store
 
 

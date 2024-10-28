@@ -1,19 +1,28 @@
 :copyright: This file is part of korrel8r, released under https://github.com/korrel8r/korrel8r/blob/main/LICENSE
-:icons: font
-// Metadata
-:keywords: correlation, observability, resource, signal, kubernetes
 :description: Correlation of observability signal data
-// URLs
-:github: https://github.com/korrel8r
-:project: {github}/korrel8r
+:keywords: correlation, observability, resource, signal, kubernetes
+// Rendering
+:icons: font
+:sectanchors:
+:sectlinks:
+// Links
+:project: https://github.com/korrel8r/korrel8r
 :pages: https://korrel8r.github.io/korrel8r
 :raw-etc-korrel8r: https://raw.githubusercontent.com/korrel8r/korrel8r/main/etc/korrel8r
 :etc-korrel8r: {project}/blob/main/etc/korrel8r
 :korrel8r-help: xref:gen/cmd/korrel8r.adoc
 :korrel8rcli-help: xref:gen/cmd/korrel8rcli.adoc
-:ocp-docs: https://docs.openshift.com/container-platform/latest
-// abbreviations
-:red-hat: Red{nbsp}Hat
-:rh-ocp: link:{ocp-docs}[{red-hat} OpenShift]
-:logging: logging subsystem for {red-hat} OpenShift
+:console-panel-guide: xref:troubleshooting-panel-console-plugin/doc/README.adoc
+:otel-signals: https://opentelemetry.io/docs/concepts/signals/
+:pkg-korrel8r: https://pkg.go.dev/github.com/korrel8/korrel8/pkg/korrel8
+// Abbreviations
+:icon: image:images/icon.svg[width=24]
 :operator: Korrel8r Community Operator
+:otel-icon: image:images/OpenTelemetry.svg[width=24]
+:otel: https://opentelemetry.io:[OpenTelemetry]
+:red-hat: Red{nbsp}Hat
+:rh-logging: logging subsystem for {red-hat} OpenShift
+:rh-ocp: https://redhat.com/openshift[{red-hat} OpenShift]
+:rh-coo: https://docs.openshift.com/container-platform/latest/observability/cluster_observability_operator/cluster-observability-operator-overview.html[Red Hat Cluster Observability Operator]
+:go-templates: https://pkg.go.dev/text/template[Go templates]
+:sprig: https://github.com/Masterminds/sprig[sprig]

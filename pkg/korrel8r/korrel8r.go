@@ -5,13 +5,13 @@
 // A 'domain' is a package that implements the interfaces [Domain], [Class], [Store], [Query], [Object]
 // There are some optional interfaces that can also be implemented if they are relevant to the domain.
 //
-// Rules for a domain should be added to https://github.com/korrel8r/korrel8r/blob/etc/korrel8/rules.
 // Rules can express relationships within or between domains.
 //
 // Once a domain and rules are available, korrel8r can:
-// - apply Rules linking the new domain with other domains.
-// - execute Queries in the new domain while traversing search graphs.
-// - display or return correlated results in the new domain.
+//
+//   - apply Rules linking the new domain with other domains.
+//   - execute Queries in the new domain while traversing search graphs.
+//   - display or return correlated results in the new domain.
 package korrel8r
 
 import (

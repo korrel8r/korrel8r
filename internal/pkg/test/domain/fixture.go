@@ -52,7 +52,7 @@ func (f *Fixture) Init(t testing.TB) {
 // ClusterEngine returns an engine with all known domains backed by an Openshift cluster.
 // Used for cluster testing with multiple domains.
 func (f *Fixture) ClusterEngine(t testing.TB) *engine.Engine {
-	// FIXME review test logic for cluster vs. no-cluster tests.
+	// TODO review test logic for cluster vs. no-cluster tests.
 	if f.SkipCluster {
 		t.Skipf("Skip: domain %v skipping openshift tests", f.Query.Class().Domain())
 	}

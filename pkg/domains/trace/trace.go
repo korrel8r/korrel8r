@@ -1,41 +1,18 @@
 // Copyright: This file is part of korrel8r, released under https://github.com/korrel8r/korrel8r/blob/main/LICENSE
 
-// Package trace is a domain for [OpenTelemetry traces], stored in [Tempo].
-//
-// FIXME Re-write review all public godoc, rewrite package doc, explain OTEL relationships, link to spec.
-//
-// # TODO rewrite
-//
-// # Class
-//
-// There is a single class `trace:span`. A _span_ is the basic unit of work in a trace.
-// A _trace_ is the set of all spans with the same `traceID`.
-//
-// # Object
-//
-// A span object is an OpenTelemetry trace in the form of a `map[string]any
-//
-// # Query
-//
-// A query is a [TraceQL] query string, prefixed by `trace:trace:`, for example:
-//
-//	trace:trace:{resource.k8s.namespace.name="tracing-app-k6"}
+// Package trace implements OpenTelemetry [traces] stored in the Grafana [Tempo] data store.
 //
 // # Store
 //
-// To connect to a tempoStack store use this configuration:
+// The trace domain accepts an optional "tempostack" field with a URL for tempostack.
+// If absent, connect to the default location for the trace store on an Openshift cluster.
 //
-//	domain: trace
-//	tempostack: URL_OF_TEMPOSTACK_PROXY
+//	stores:
+//	  domain: trace
+//	  tempostack: "https://url-of-tempostack"
 //
-// To connect to plain tempo store use:
-//
-//	domain: trace
-//	tempo: URL_OF_TEMPO
-//
-// [OpenTelemetry traces]: https://opentelemetry.io/docs/concepts/signals/traces/
 // [Tempo]: https://grafana.com/docs/tempo/latest/
-// [TraceQL]: https://grafana.com/docs/tempo/latest/traceql/
+// [traces]: https://opentelemetry.io/docs/concepts/signals/traces
 package trace
 
 import (
@@ -60,12 +37,6 @@ var (
 	_ korrel8r.Class  = Class{}
 )
 
-// Domain for trace records.
-//
-// There are several possible trace store configurations:
-// - Default TempoStack store on current Openshift cluster: `{}`
-// - Remote TempoStack: `{ "tempoStack": "https://url-of-tempostack"}`
-// - Plain Tempo store: `{ "tempo": "https://url-of-tempo"}`
 var Domain = domain{}
 
 type domain struct{}
@@ -106,10 +77,16 @@ func (domain) Store(s any) (korrel8r.Store, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	return NewTempoStackStore(u, hc)
 }
 
-// There is only a single class, named "trace".
+// Class singleton `trace:span` representing OpenTelemetry [spans]
+//
+// A trace is simply a set of spans with the same trace-id.
+// There is no explicit class or object representing a trace.
+//
+// [spans]: https://opentelemetry.io/docs/concepts/signals/traces/#spans
 type Class struct{}
 
 func (c Class) Domain() korrel8r.Domain                     { return Domain }
@@ -118,7 +95,12 @@ func (c Class) String() string                              { return impl.ClassS
 func (c Class) Description() string                         { return "A set of label:value pairs identifying a trace." }
 func (c Class) Unmarshal(b []byte) (korrel8r.Object, error) { return impl.UnmarshalAs[Object](b) }
 
-// Object is a *Span.
+// Object represents an OpenTelemetry [span]
+//
+// A trace is simply a set of spans with the same trace-id.
+// There is no explicit class or object representing a trace.
+//
+// [span]: https://opentelemetry.io/docs/concepts/signals/traces/#spans
 type Object = *Span
 
 // TraceID is a hex-encoded 16 byte identifier.
@@ -134,7 +116,7 @@ type SpanContext struct {
 	// TODO TraceFlags not yet supported
 }
 
-// StatusCode FIXME spec xref
+// StatusCode see [Status]
 type StatusCode string
 
 const (
@@ -143,7 +125,7 @@ const (
 	StatusOK    StatusCode = "Ok"
 )
 
-// Status status of the span, see [OTEL documentation].
+// Status of a span, see [OTEL documentation].
 //
 // OTEL documentation: [https://opentelemetry.io/docs/concepts/signals/traces/#span-status]
 type Status struct {
@@ -151,11 +133,11 @@ type Status struct {
 	Description string     `json:"description,omitempty"` // Description for status=Error.
 }
 
-// Span is an OpenTelemetry [Span], the smallest unit of work for tracing.
+// Span is an OpenTelemetry [span], the smallest unit of work for tracing.
+//
 // Implements the OpenTelemetry API [Spec].
 //
 // Span: [https://opentelemetry.io/docs/concepts/signals/traces]
-// Spec: [https://opentelemetry.io/docs/specs/otel/trace/api/#span]
 type Span struct {
 	Name       string         // Name of span.
 	Context    SpanContext    `json:"context"`
@@ -175,7 +157,11 @@ func (s *Span) Duration() time.Duration {
 	return s.EndTime.Sub(s.StartTime)
 }
 
-// Query is a TraceQL query string
+// Query selector is a [TraceQL] query string.
+//
+// Example: `trace:span:{resource.kubernetes.namespace.name=~".+"}`
+//
+// [TraceQL]: https://grafana.com/docs/tempo/latest/traceql/
 type Query string
 
 func NewQuery(traceQL string) korrel8r.Query { return Query(strings.TrimSpace(traceQL)) }
