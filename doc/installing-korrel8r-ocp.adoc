@@ -12,7 +12,7 @@ It has been tested with {rh-ocp}, it may or may not work with other k8s clusters
 
 .Procedure
 
-. In the {ocp-console} go to `Home > Console > Operators > OperatorHub`
+. In the {rh-ocp} console go to `Home > Console > Operators > OperatorHub`
 . Type "korrel8r" in the filter box and select the Korrel8r Community tile +
   image:images/operatorhub-tile.png[Korrel8r Community Tile]
 . Click Install, Install again.

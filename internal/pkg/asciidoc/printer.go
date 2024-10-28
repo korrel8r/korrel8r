@@ -1,64 +1,66 @@
 // Copyright: This file is part of korrel8r, released under https://github.com/korrel8r/korrel8r/blob/main/LICENSE
 
-package adoc
+package asciidoc
 
 import (
 	"bytes"
 	"fmt"
 	"go/doc/comment"
+	"regexp"
 	"strings"
 )
 
-// Printer prints go/doc comments in asciidoc format.
+// Printer prints godoc comments in asciidoc format.
 //
-// Based on [comment.MarkdownPrinter]
+// Based on [https://cs.opensource.google/go/go/+/refs/tags/go1.23.2:src/go/doc/comment/markdown.go]
 type Printer struct {
 	*comment.Printer
-	raw bytes.Buffer
+	raw bytes.Buffer // Temporary buffer
 }
 
-func NewPrinter(p *comment.Printer) *Printer { return &Printer{Printer: p} }
+func NewPrinter(p *comment.Printer) *Printer {
+	return &Printer{Printer: p}
+}
 
-// Asciidoc returns a Asciidoc formatting of a comment.Doc object.
-// See the [comment.Printer] documentation for ways to customize the Asciidoc output.
+// Asciidoc formats a comment.Doc as asciidoc.
+// The returned string contains leading and trailing empty lines for safety.
+// See the [comment.Printer] documentation for ways to customize the output.
 func (p *Printer) Asciidoc(d *comment.Doc) string {
-	var out bytes.Buffer
-	for i, x := range d.Content {
-		if i > 0 {
-			out.WriteByte('\n')
-		}
-		p.block(&out, x)
+	out := &bytes.Buffer{}
+	for _, x := range d.Content {
+		ensureNewline(out)
+		out.WriteByte('\n') // Separate blocks with blank lines.
+		p.block(out, x)
 	}
-	return out.String()
+	return "\n" + strings.TrimSpace(out.String()) + "\n"
 }
 
 // block prints the block x to out.
 func (p *Printer) block(out *bytes.Buffer, x comment.Block) {
 	switch x := x.(type) {
 	default:
-		fmt.Fprintf(out, "?%T", x)
+		fmt.Fprintf(out, "// ERROR - skipping unknown type %T\n", x)
 
 	case *comment.Paragraph:
-		p.text(out, x.Text)
-		out.WriteString("\n")
+		p.Text(out, x.Text)
+		ensureNewline(out)
 
 	case *comment.Heading:
-		out.WriteString(strings.Repeat("=", p.HeadingLevel+1))
+		out.WriteString(strings.Repeat("=", p.HeadingLevel+1)) // Heading prefix
 		out.WriteString(" ")
-		p.text(out, x.Text)
-		out.WriteString("\n")
+		p.Text(out, x.Text)
+		ensureNewline(out)
 
 	case *comment.Code:
 		out.WriteString("----\n")
 		out.WriteString(x.Text)
-		if !strings.HasSuffix(x.Text, "\n") {
-			out.WriteString("\n")
-		}
+		ensureNewline(out)
 		out.WriteString("----\n")
 
 	case *comment.List:
 		loose := x.BlankBetween()
 		for i, item := range x.Items {
+			ensureNewline(out)
 			if i > 0 && loose {
 				out.WriteString("\n")
 			}
@@ -69,47 +71,38 @@ func (p *Printer) block(out *bytes.Buffer, x comment.Block) {
 				out.WriteString("* ")
 			}
 			for i, blk := range item.Content {
-				const fourSpace = "    "
 				if i > 0 {
-					out.WriteString("\n" + fourSpace)
+					out.WriteString("\n    ")
 				}
-				p.text(out, blk.(*comment.Paragraph).Text)
-				out.WriteString("\n")
+				p.Text(out, blk.(*comment.Paragraph).Text)
+				ensureNewline(out)
 			}
 		}
 	}
 }
 
-// text prints the text sequence x to out.
-func (p *Printer) text(out *bytes.Buffer, x []comment.Text) {
+// needEscape matches beginning-of-line sequences that Asciidoc would treat as special.
+var (
+	needEscape    = regexp.MustCompile(`^([+*#-]|([0-9]*)\\.)(.*)$`)
+	replaceEscape = []byte(`\\$1$3`)
+)
+
+// Text prints the Text sequence x to out, escaping sequences that Asciidoc would treat as special.
+func (p *Printer) Text(out *bytes.Buffer, x []comment.Text) {
 	p.raw.Reset()
 	p.rawText(&p.raw, x)
 	line := bytes.TrimSpace(p.raw.Bytes())
 	if len(line) == 0 {
 		return
 	}
-	switch line[0] {
-	case '+', '-', '*', '#':
-		// Escape what would be the start of an unordered list or heading.
-		out.WriteByte('\\')
-	case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':
-		i := 1
-		for i < len(line) && '0' <= line[i] && line[i] <= '9' {
-			i++
-		}
-		if i < len(line) && (line[i] == '.' || line[i] == ')') {
-			// Escape what would be the start of an ordered list.
-			out.Write(line[:i])
-			out.WriteByte('\\')
-			line = line[i:]
-		}
-	}
+	// Escape what Asciidoc would treat as the start of an unordered list or heading.
+	line = needEscape.ReplaceAll(line, replaceEscape)
 	out.Write(line)
 }
 
 // rawText prints the text sequence x to out,
 // without worrying about escaping characters
-// that have special meaning at the start of a Asciidoc line.
+// that have special meaning at the start of an Asciidoc line.
 func (p *Printer) rawText(out *bytes.Buffer, x []comment.Text) {
 	for _, t := range x {
 		switch t := t.(type) {
@@ -120,20 +113,19 @@ func (p *Printer) rawText(out *bytes.Buffer, x []comment.Text) {
 			p.escape(out, string(t))
 			out.WriteString("_")
 		case *comment.Link:
-			out.WriteString(t.URL)
-			out.WriteString("[")
-			p.rawText(out, t.Text)
-			out.WriteString("]")
+			p.link(out, t.URL, t.Text)
 		case *comment.DocLink:
-			if f := p.DocLinkURL; f != nil {
-				out.WriteString(f(t))
-			} else {
-				out.WriteString("`")
-				p.rawText(out, t.Text)
-				out.WriteString("`")
-			}
+			p.link(out, p.docLinkURL(t), t.Text)
 		}
 	}
+}
+
+func (p *Printer) link(out *bytes.Buffer, url string, text []comment.Text) {
+	out.WriteString("link:")
+	out.WriteString(url)
+	out.WriteString("[")
+	p.rawText(out, text)
+	out.WriteString("]")
 }
 
 // escape prints s to out as plain text,
@@ -167,4 +159,18 @@ func (p *Printer) escape(out *bytes.Buffer, s string) {
 		}
 	}
 	out.WriteString(s[start:])
+}
+
+func (p *Printer) docLinkURL(link *comment.DocLink) string {
+	if p.DocLinkURL != nil {
+		return p.DocLinkURL(link)
+	}
+	return link.DefaultURL(p.DocLinkBaseURL)
+}
+
+func ensureNewline(out *bytes.Buffer) {
+	b := out.Bytes()
+	if len(b) > 0 && b[len(b)-1] != '\n' {
+		out.WriteByte('\n')
+	}
 }

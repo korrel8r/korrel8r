@@ -126,14 +126,24 @@ $(ASCIIDOCTOR):
 # From github.com:darshandsoni/asciidoctor-skins.git
 CSS?=adoc-readthedocs.css
 ADOC_FLAGS=-a allow-uri-read -a stylesdir=$(shell pwd)/doc/css -a stylesheet=$(CSS)  -a revnumber=$(VERSION) -a revdate=$(shell date -I)
+LINKCHECKER?=$(or $(shell type -p linkchecker),$(warning linkchecker not found: skipping link checks))
+LINKCHECK_FLAGS=--no-warnings --check-extern --ignore-url='//(localhost|[^:/]*\.example)([:/].*)?$$'
 
 # _site is published to github pages by .github/workflows/asciidoctor-ghpages.yml.
-_site: doc $(shell find doc/images etc/korrel8r) $(ASCIIDOCTOR) ## Generate the website HTML.
-	@mkdir -p $@
-	@cp -r doc/images etc/korrel8r $@
-	$(ASCIIDOCTOR) $(ADOC_FLAGS) -D_site doc/index.adoc
-	$(ASCIIDOCTOR) $(ADOC_FLAGS) -D_site/gen/cmd doc/gen/cmd/*.adoc
-	$(and $(shell type -p linkchecker),linkchecker --no-warnings --check-extern --ignore-url 'https?://localhost[:/].*' _site)
+_site: doc $(shell find doc etc/korrel8r -name gen -prune -o -print) $(ASCIIDOCTOR) ## Generate the website HTML.
+	git submodule init
+	git submodule update --force
+	@mkdir -p $@/doc/images
+	cp -r doc/images etc/korrel8r $@
+	$(ASCIIDOCTOR) $(ADOC_FLAGS) -D$@ doc/README.adoc -o index.html
+	$(ASCIIDOCTOR) $(ADOC_FLAGS) -D$@/gen/cmd doc/gen/cmd/*.adoc
+
+	mkdir -p $@/troubleshooting-panel-console-plugin/doc/
+	cp -r doc/troubleshooting-panel-console-plugin/doc/images $@/troubleshooting-panel-console-plugin/doc/
+	$(ASCIIDOCTOR) $(ADOC_FLAGS) -D$@/troubleshooting-panel-console-plugin/doc/ doc/troubleshooting-panel-console-plugin/doc/*.adoc
+	@echo "EXPECTED: asciidoctor: WARNING: README.adoc: line X: no callout found for <>"
+
+	$(and $(LINKCHECKER),$(LINKCHECKER) $(LINKCHECK_FLAGS) $@)
 	@touch $@
 
 _site/man: $(shell find ./cmd)	## Generated man pages.
@@ -144,13 +154,15 @@ _site/man: $(shell find ./cmd)	## Generated man pages.
 doc: doc/gen/domains.adoc doc/gen/rest_api.adoc doc/gen/cmd
 	@touch $@
 
-doc/gen/domains.adoc: $(shell find cmd/korrel8r-doc internal pkg -name '*.go') $(GEN_SRC)
+doc/gen/domains.adoc: $(shell find pkg/domains internal/cmd/domain-adoc internal/pkg/asciidoc) $(GEN_SRC)
 	@mkdir -p $(dir $@)
-	go run ./cmd/korrel8r-doc pkg/domains/* > $@
+	go run ./internal/cmd/domain-adoc github.com/korrel8r/korrel8r/pkg/domains/... > $@
+	@touch doc/README.adoc
 
 doc/gen/rest_api.adoc: $(SWAGGER_SPEC) $(shell find etc/swagger) $(SWAGGER)
 	@mkdir -p $(dir $@)
 	$(SWAGGER) -q generate markdown -T etc/swagger -f $(SWAGGER_SPEC) --output $@
+	@touch doc/README.adoc
 
 KRAMDOC:=$(BIN)/kramdoc
 $(KRAMDOC):

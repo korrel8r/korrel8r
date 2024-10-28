@@ -4,3 +4,9 @@
 [submodule "client"]
 	path = client
 	url = git@github.com:korrel8r/client.git
+[submodule "doc/troubleshooting-panel"]
+	path = doc/troubleshooting-panel
+	url = https://github.com/openshift/troubleshooting-panel-console-plugin.git
+[submodule "submodules/troubleshooting-panel-console-plugin"]
+	path = doc/troubleshooting-panel-console-plugin
+	url = https://github.com/openshift/troubleshooting-panel-console-plugin.git

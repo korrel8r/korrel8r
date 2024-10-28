@@ -3,9 +3,7 @@ include::attributes.adoc[]
 
 See {korrel8r-help}[korrel8r help] for more details.
 
-The `korrel8r` command implements the correlation engine.
-    It loads correlation rules and connects to data stores based on a xref:configuration.adoc[configuration file]
-
+`korrel8r` loads correlation rules and connects to data stores based on a xref:configuration.adoc[configuration file]
 
 .Install the korrel8r engine
 [source,terminal]
@@ -67,7 +65,7 @@ korrel8r --config {raw-etc-korrel8r}/openshift-route.yaml web --http=localhost:8
 ----
 
 This runs the engine as a REST service that can be queried by other services.
-For example, the {ocp-console} uses Korrel8r to implement "related data" links
+For example, the {rh-ocp} console uses Korrel8r to implement "related data" links
 and a troubleshooting panel.
 
 You can also use the xref:korrel8rcli-command.adoc[korrel8rcli] command to query

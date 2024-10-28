@@ -85,7 +85,6 @@ func (r *tempoResponse) collect(collect func(*Span)) {
 func (tt *tempoTrace) collect(spans tempoSpanSet, collect func(*Span)) {
 	for _, ts := range spans.Spans {
 		span := &Span{
-			// FIXME double check interpretation of tempo RootTraceName & RootServiceName
 			Name: tt.RootTraceName,
 			Context: SpanContext{
 				TraceID: tt.TraceID,

@@ -1,0 +1,16 @@
+
+= {{ .Package.Name }} domain
+
+{{ regexReplaceAll "^Package" .Package.Doc "Domain" | .Asciidoc }}
+
+== Query
+
+{{ (.Type "Query").Doc | .Asciidoc }}
+
+See Go documentation for {{ .DocLinkURL "Query" }}[Query]
+
+== Object
+
+{{ (.Type "Object").Doc | .Asciidoc }}
+
+See Go documentation for {{ .DocLinkURL "Object" }}[Object]
