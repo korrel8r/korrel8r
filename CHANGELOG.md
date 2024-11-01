@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 _Note unreleased changes here_
 
+## [0.7.3] - 2024-11-01
+
+### Fixed
+- General overhaul of project documentation.
+- Always include start node in neighbours search
+- Fix nil pointer errors in REST error handling.
+- Re-organized trace domain for better OTEL compliance.
+- Trim trailing/leading whitespace from query strings.
+
 ## [0.7.2] - 2024-08-23
 
 ### Fixed
