@@ -162,6 +162,21 @@ info:
   title: REST API
   version: v1alpha1
 paths:
+  /config:
+    put:
+      parameters:
+      - description: verbose setting for logging
+        in: query
+        name: verbose
+        type: integer
+      responses:
+        "200":
+          description: OK
+        default:
+          description: ""
+          schema:
+            type: object
+      summary: Set verbose level for logging on a running server.
   /domains:
     get:
       responses:

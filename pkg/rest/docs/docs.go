@@ -28,6 +28,30 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/config": {
+            "put": {
+                "summary": "Set verbose level for logging on a running server.",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "verbose setting for logging",
+                        "name": "verbose",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    },
+                    "default": {
+                        "description": "",
+                        "schema": {
+                            "type": "object"
+                        }
+                    }
+                }
+            }
+        },
         "/domains": {
             "get": {
                 "summary": "Get name, configuration and status for each domain.",

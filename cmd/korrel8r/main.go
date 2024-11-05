@@ -73,13 +73,14 @@ func main() {
 			fmt.Fprintf(os.Stderr, "\n%v\n", err)
 			os.Exit(1)
 		}
+		fmt.Fprintln(os.Stderr, "\nExit korrel8r")
 		os.Exit(0)
 	}()
 	must.Must(rootCmd.Execute())
 }
 
 func newEngine() (*engine.Engine, config.Configs) {
-	log.V(1).Info("loading configuration", "config", *configFlag)
+	log.Info("Starting korrel8r", "version", build.Version, "configuration", *configFlag)
 	c := must.Must1(config.Load(*configFlag))
 	e := must.Must1(engine.Build().
 		Domains(k8s.Domain, logdomain.Domain, netflow.Domain, trace.Domain, alert.Domain, metric.Domain, mock.Domain("mock")).

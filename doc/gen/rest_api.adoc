@@ -39,6 +39,8 @@ Produces::
 
 | POST | /api/v1alpha1/lists/goals | link:#id-post-lists-goals[post lists goals] | Create a list of goal nodes related to a starting point.
 
+| PUT | /api/v1alpha1/config | link:#id-put-config[put config] | Set verbose level for logging on a running server.
+
 |===
 
 == Paths
@@ -383,6 +385,63 @@ Status: OK
 
 
 [id=post-lists-goals-default-schema]
+====== Schema
+
+  
+
+any
+
+[id=id-put-config]
+=== Set verbose level for logging on a running server.
+
+----
+PUT /api/v1alpha1/config
+----
+
+==== Parameters
+
+[%autowidth]
+|===
+| Name | Source | Type | Go type | Separator | Required | Default | Description
+
+| verbose
+| `query`
+| integer
+| `int64`
+| 
+| optional
+|  
+| verbose setting for logging
+
+|===
+
+==== All responses
+
+[%autowidth]
+|===
+| Code | Status | Description | Has headers | Schema
+
+| link:#put-config-200[200] | OK | OK |  | link:#put-config-200-schema[schema]
+
+| link:#put-config-default[default] | |  |  | link:#put-config-default-schema[schema]
+
+|===
+
+==== Responses
+  
+
+[id=put-config-200]
+=====  200 - OK
+Status: OK
+
+[id=put-config-200-schema]
+====== Schema
+
+[id=put-config-default]
+===== Default Response
+
+
+[id=put-config-default-schema]
 ====== Schema
 
   

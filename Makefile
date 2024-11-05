@@ -6,7 +6,7 @@ help: ## Display this help.
 	@grep -E '^## [A-Z0-9_]+: ' Makefile | sed 's/^## \([A-Z0-9_]*\): \(.*\)/\1#\2/' | column -s'#' -t
 
 ## VERSION: Semantic version for release, use -dev for development pre-release versions.
-VERSION?=0.7.3
+VERSION?=0.7.4-dev
 ## REGISTRY_BASE: Image registry base, for example quay.io/somebody
 REGISTRY_BASE?=$(error REGISTRY_BASE must be set to push images)
 ## IMGTOOL: May be podman or docker.
@@ -91,13 +91,16 @@ $(GOCOVERDIR):
 	@mkdir -p $@
 
 run: ## Run `korrel8r web` for debugging.
-	go run ./cmd/korrel8r web -c $(CONFIG)
+	go run ./cmd/korrel8r web -c $(CONFIG) $(KORREL8R_FLAGS)
 
 image-build:  $(GEN_SRC) ## Build image locally, don't push.
 	$(IMGTOOL) build --tag=$(IMAGE) -f Containerfile .
 
 image: image-build ## Build and push image. IMG must be set to a writable image repository.
 	$(IMGTOOL) push -q $(IMAGE)
+
+image-latest: image ## Build and push image with 'latest' alias
+	$(IMGTOOL) push -q "$(IMAGE)" "$(IMG):latest"
 
 WAIT_DEPLOYMENT=hack/wait.sh rollout $(NAMESPACE) deployment.apps/korrel8r
 DEPLOY_ROUTE=kubectl apply -k config/route -n $(NAMESPACE) || echo "skipping route" # Non-openshift cluster
