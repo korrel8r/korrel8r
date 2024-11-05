@@ -63,12 +63,9 @@ For example, a <<_trace>> query ussing TraceQL: +
 
 _Rules_ express relationships between classes, possibly in different domains.
 
-A rule applies to an object of a _start_ class, and generates a query for a _goal_ class.
-The start and goal can be in different domains.
-Rules are implemented as {go-template} that use data from the _start object_
-and to create  a _query_ in the _goal domain_.
-
-Rules are bridge between domains different vocabularies, schema, naming conventions and query languages.
+Rules are <<templates>> that generate a _goal query_ using data from a _start object_.
+The start and goal can be different classes, possibly from different domains.
+If a rule cannot be applied to an object it may return a blank string, or raise an error.
 
 The set of rules forms a graph connecting all the classes of data that korrel8r knows about.
 Korrel8r works by traversing this graph: applying rules to some initial objects, executing the
@@ -340,11 +337,9 @@ Run korrel8r outside the cluster, connect to stores via routes:
 link:{raw-etc-korrel8r}/openshift-svc.yaml[openshift-svc.yaml]::
 Used to run korrel8r as an <<_in_cluster_service>>, connect to stores via service URLs.
 
-=== Sections
-
 The configuration is a YAML file with the following sections:
 
-==== include
+=== include
 
 .Other configuration fragments to include.
 [source,yaml]
@@ -353,7 +348,7 @@ include:
   - "path_or_url"
 ----
 
-==== stores
+=== stores
 
 .Connections to data stores.
 [source,yaml]
@@ -383,7 +378,7 @@ stores:
 <1> Get a list of routes in "openshift-logging" named "logging-loki".
 <2> Use the .Spec.Host field of the first route as the host for the store URL.
 
-==== rules
+=== rules
 
 .Rules to relate different classes of data.
 [source,yaml]
@@ -425,7 +420,7 @@ The _query-details_ part depends on the domain, see <<_domain_reference>>
 
 // TODO: Examples
 
-==== aliases
+=== aliases
 
 .Short-hand alias names for groups of classes.
 [source,yaml]
@@ -449,7 +444,7 @@ Korrel8r provides additional _template functions_ to simplify writing rule and c
 
 .Additional template functions
 - The {sprig} library of general purpose template functions is always available.
-- Some domains provide additional functions, see <<_about_domains>>.
+- Some domains provide additional functions, see <<_domain_reference>>.
 
 The following functions are always available:
 

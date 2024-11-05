@@ -64,6 +64,7 @@ func New(e *engine.Engine, c config.Configs, r *gin.Engine) (*API, error) {
 	v.POST("/graphs/goals", a.GraphsGoals)
 	v.POST("/graphs/neighbours", a.GraphsNeighbours)
 	v.POST("/lists/goals", a.ListsGoals)
+	v.PUT("/config", a.PutConfig)
 	return a, nil
 }
 

@@ -30,10 +30,20 @@ func init() { // Set env verbosity on init, Init() can over-ride.
 	}
 }
 
-// Init sets verbosity based on flag and environment. Sets the flag to actual setting.
+// Init sets verbosity based on flag or environment.
+// Defaults to 1 if neither is set.
+// Sets the flag to actual setting.
 func Init(verbosity *int) {
 	if *verbosity == 0 {
 		*verbosity, _ = strconv.Atoi(os.Getenv(verboseEnv))
 	}
-	stdr.SetVerbosity(*verbosity)
+	SetVerbose(*verbosity)
+}
+
+// SetVerbose sets the logging verbosity for the entire process.
+func SetVerbose(level int) {
+	if level < 0 {
+		level = 0
+	}
+	stdr.SetVerbosity(level)
 }

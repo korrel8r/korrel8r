@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"reflect"
 
 	"github.com/korrel8r/korrel8r/internal/pkg/must"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
@@ -19,18 +20,28 @@ func newPrinter(w io.Writer) printer {
 	switch *outputFlag {
 
 	case "json":
-		return printer{Print: func(v any) {
-			if b, err := json.Marshal(v); err != nil {
-				fmt.Fprintf(w, "%v\n", err)
-			} else {
-				fmt.Fprintf(w, "%v\n", string(b))
-			}
-		}}
+		encoder := json.NewEncoder(w)
+		return printer{Print: func(v any) { must.Must(encoder.Encode(v)) }}
 
 	case "json-pretty":
 		encoder := json.NewEncoder(w)
 		encoder.SetIndent("", "  ")
 		return printer{Print: func(v any) { must.Must(encoder.Encode(v)) }}
+
+	case "ndjson":
+		encoder := json.NewEncoder(w)
+		return printer{Print: func(v any) {
+			r := reflect.ValueOf(v)
+			switch r.Kind() {
+			case reflect.Array, reflect.Slice:
+				for i := 0; i < r.Len(); i++ {
+					must.Must(encoder.Encode(r.Index(i).Interface()))
+					fmt.Fprintln(w, "")
+				}
+			default:
+				must.Must(encoder.Encode(v))
+			}
+		}}
 
 	case "yaml":
 		return printer{Print: func(v any) { fmt.Fprintf(w, "---\n%s", must.Must1(yaml.Marshal(v))) }}
