@@ -199,8 +199,8 @@ func (e *Engine) query(query string) ([]korrel8r.Object, error) {
 // NewTemplate returns a template set up with options and funcs for this engine.
 // See package documentation for more.
 func (e *Engine) NewTemplate(name string) *template.Template {
-	// missingkey defines behaviour on lookup of a non-existent map key.
-	// Returning a zero is more intuitive for rules than the arbitrary default "<no value>".
+	// raise an error on lookup of a non-existent map key in a template.
+	// Note use the sprig function "get" to return an empty value for missing keys.
 	return template.New(name).Funcs(e.templateFuncs).Option("missingkey=error")
 }
 

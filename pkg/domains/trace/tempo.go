@@ -4,8 +4,13 @@ package trace
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"net/url"
+	"regexp"
+	"strconv"
+	"strings"
+	"time"
 
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r/impl"
@@ -52,7 +57,7 @@ func newClient(c *http.Client, base *url.URL) *client { return &client{hc: c, ba
 
 // GetStack uses the TempoStack tenant API to get tracees for a TraceQL query with a Constraint.
 func (c *client) GetStack(ctx context.Context, traceQL string, constraint *korrel8r.Constraint, collect func(*Span)) error {
-	return c.get(ctx, traceQL, collect)
+	return c.get(ctx, traceQL, constraint, collect)
 }
 
 const ( // Tempo query keywords and field names
@@ -60,9 +65,57 @@ const ( // Tempo query keywords and field names
 	statusAttr = "status"
 )
 
-func (c *client) get(ctx context.Context, traceQL string, collect func(*Span)) error {
+var (
+	hasSelect         = regexp.MustCompile(`\| *select *\(`)
+	defaultAttributes = strings.Join([]string{
+		"resource.http.method",
+		"resource.http.status_code",
+		"resource.http.target",
+		"resource.http.url",
+		"resource.k8s.deployment.name",
+		"resource.k8s.namespace.name",
+		"resource.k8s.node.name",
+		"resource.k8s.pod.ip",
+		"resource.k8s.pod.name",
+		"resource.k8s.pod.uid",
+		"resource.net.host.name",
+		"resource.net.host.port",
+		"resource.net.peer.name",
+		"resource.net.peer.port",
+		"resource.service.name",
+	}, ",")
+)
+
+// defaultSelect adds a default select statement to the query if there isn't one already.
+func defaultSelect(traceQL string) string {
+	if hasSelect.FindString(traceQL) == "" {
+		return fmt.Sprintf("%v|select(%v)", traceQL, defaultAttributes)
+	}
+	return traceQL
+}
+
+func formatTime(t time.Time) string { return strconv.FormatInt(t.UTC().Unix(), 10) }
+
+func (c *client) get(ctx context.Context, traceQL string, constraint *korrel8r.Constraint, collect func(*Span)) error {
+	// FIXME constraint
 	u := *c.base // Copy, don't modify base.
-	u.RawQuery = url.Values{query: []string{traceQL}}.Encode()
+	v := url.Values{query: []string{defaultSelect(traceQL)}}
+	if limit := constraint.GetLimit(); limit > 0 {
+		v.Add("limit", strconv.Itoa(limit)) // Limit is max number of traces, not spans.
+	}
+	start, end := constraint.GetStart(), constraint.GetEnd()
+	if !end.IsZero() {
+		v.Add("end", formatTime(end))
+	}
+	if !start.IsZero() {
+		v.Add("start", formatTime(start))
+		if end.IsZero() { // Can't have start without end.
+			v.Add("end", formatTime(time.Now()))
+		}
+	}
+
+	u.RawQuery = v.Encode()
+
 	var response tempoResponse
 	if err := impl.Get(ctx, &u, c.hc, &response); err != nil {
 		return err
@@ -95,7 +148,7 @@ func (tt *tempoTrace) collect(spans tempoSpanSet, collect func(*Span)) {
 			Status:    Status{Code: StatusUnset}, // Default
 		}
 		span.Attributes = ts.Attributes.Map()
-		span.Attributes[otel.AttrServiceName] = tt.RootServiceName
+		span.Attributes[otel.AttrServiceName] = tt.RootServiceName // FIXME
 		// Tempo HTTP API stores span status description as "status" attribute.
 		// Move it to the status field and deduce the status code.
 		span.Status.Description, _ = span.Attributes[statusAttr].(string)
