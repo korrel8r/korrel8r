@@ -1,3 +1,4 @@
+
 rules:
 - name: TraceToPod
   start:
@@ -7,7 +8,11 @@ rules:
     classes: [Pod]
   result:
     query: |-
-      k8s:Pod:{namespace: "{{.Attributes.k8s_namespace_name}}", name: "{{.Attributes.k8s_pod_name}}"}
+      {{- $namespace := get .Attributes "k8s.namespace.name"}}
+      {{- $name := get .Attributes "k8s.pod.name" }}
+      {{- if all $namespace $name -}}
+        k8s:Pod.v1.:{namespace: "{{$namespace}}", name: "{{$name}}"}
+      {{- end -}}
 
 - name: PodToTrace
   start:
@@ -17,4 +22,8 @@ rules:
     domain: trace
   result:
     query: |-
-      trace:trace:{resource.k8s.namespace.name="{{.Namespace}}" && resource.k8s.pod.name="{{.Name}}"}
+      trace:span:{
+        {{- with .Namespace}}resource.k8s.namespace.name="{{.}}"{{end}}
+        {{- if and .Namespace .Name}}&&{{end}}
+        {{- with .Name}}resource.k8s.pod.name="{{.}}"{{end -}}
+        }

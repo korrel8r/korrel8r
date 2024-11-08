@@ -30,8 +30,6 @@ type Follower struct {
 func (f *Follower) Traverse(l *graph.Line) bool {
 	rule := graph.RuleFor(l)
 	start, goal := l.From().(*graph.Node), l.To().(*graph.Node)
-	log.V(3).Info("Applying rule", "rule", rule.Name(), "start", start.Class.String(), "goal", goal.Class.String())
-
 	// Apply rule to each start object unless it was already applied to this start class.
 	key := appliedRule{Start: start.Class, Rule: rule}
 	count := 0
@@ -40,11 +38,12 @@ func (f *Follower) Traverse(l *graph.Line) bool {
 		for _, s := range start.Result.List() {
 			count++
 			q, err := rule.Apply(s)
-			if err != nil {
-				log.V(3).Info("Apply error", "error", err, "id", korrel8r.GetID(start.Class, s))
-				continue
+			if q == nil { // Rule does  not apply
+				log.V(4).Info("Rule apply error", "rule", rule.Name(), "error", err, "id", korrel8r.GetID(start.Class, s))
+			} else {
+				f.rules[key].Set(q, -1)
+				log.V(4).Info("Rule apply", "rule", rule.Name(), "query", q, "id", korrel8r.GetID(start.Class, s))
 			}
-			f.rules[key].Set(q, -1)
 		}
 	}
 

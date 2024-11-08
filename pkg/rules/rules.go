@@ -6,7 +6,7 @@
 package rules
 
 import (
-	"fmt"
+	"errors"
 	"strings"
 	"text/template"
 
@@ -34,15 +34,15 @@ func (r *templateRule) Start() []korrel8r.Class { return r.start }
 func (r *templateRule) Goal() []korrel8r.Class  { return r.goal }
 
 // Apply the rule by applying the template.
+// Return non-nil error if the rule does not apply.
 func (r *templateRule) Apply(start korrel8r.Object) (korrel8r.Query, error) {
 	b := &bytes.Buffer{}
-	err := r.query.Execute(b, start)
-	if err != nil {
-		return nil, fmt.Errorf("Error applying rule %v: %w", r, err)
+	if err := r.query.Execute(b, start); err != nil {
+		return nil, err
 	}
 	query := strings.TrimSpace(string(b.String()))
 	if query == "" { // Blank query means rule does not apply.
-		return nil, fmt.Errorf("No query from rule %v: %w", r, err)
+		return nil, errors.New("No query generated")
 	}
 	return r.Goal()[0].Domain().Query(query)
 }

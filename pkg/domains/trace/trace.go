@@ -90,10 +90,16 @@ func (domain) Store(s any) (korrel8r.Store, error) {
 type Class struct{}
 
 func (c Class) Domain() korrel8r.Domain                     { return Domain }
-func (c Class) Name() string                                { return Domain.Name() }
+func (c Class) Name() string                                { return "span" }
 func (c Class) String() string                              { return impl.ClassString(c) }
 func (c Class) Description() string                         { return "A set of label:value pairs identifying a trace." }
 func (c Class) Unmarshal(b []byte) (korrel8r.Object, error) { return impl.UnmarshalAs[Object](b) }
+func (c Class) ID(o korrel8r.Object) any {
+	if span, _ := o.(Object); span != nil {
+		return span.Context
+	}
+	return nil
+}
 
 // Object represents an OpenTelemetry [span]
 //
@@ -139,8 +145,8 @@ type Status struct {
 //
 // Span: [https://opentelemetry.io/docs/concepts/signals/traces]
 type Span struct {
-	Name       string         // Name of span.
-	Context    SpanContext    `json:"context"`
+	Name       string         `json:"name"`             // Name of span.
+	Context    SpanContext    `json:"context"`          // Context identifying the span.
 	ParentID   *SpanID        `json:"spanID,omitempty"` // ParentID span ID of parent span, nil for root span.
 	StartTime  time.Time      `json:"startTime"`        // StartTime for span
 	EndTime    time.Time      `json:"endtime"`          // EndTime for span
@@ -157,9 +163,17 @@ func (s *Span) Duration() time.Duration {
 	return s.EndTime.Sub(s.StartTime)
 }
 
-// Query selector is a [TraceQL] query string.
+// Query selector has two forms: a [TraceQL] query string, or a list of trace IDs.
 //
-// Example: `trace:span:{resource.kubernetes.namespace.name=~".+"}`
+// A [TraceQL] query selects spans from many traces that match the query criteria.
+// Example:
+//
+//	`trace:span:{resource.kubernetes.namespace.name="korrel8r"}`
+//
+// A trace-id query is a list of hexadecimal trace IDs. It returns all the
+// spans included by each trace. Example:
+//
+//	`trace:span:a7880cc221e84e0d07b15993358811b7,b7880cc221e84e0d07b15993358811b7
 //
 // [TraceQL]: https://grafana.com/docs/tempo/latest/traceql/
 type Query string
