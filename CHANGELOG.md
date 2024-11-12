@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 _Note unreleased changes here_
 
+## [0.7.4] - 2024-11-12
+
+### Added
+- Adjust log verbose level via API at runtime.
+- Added "ndjson" output type
+
+### Fixed
+- Trace domain fixes: OTEL rules, tempo select clauses and constraints, handle missing attributes. 
+
 ## [0.7.3] - 2024-11-01
 
 ### Fixed
