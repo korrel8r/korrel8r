@@ -97,7 +97,6 @@ func defaultSelect(traceQL string) string {
 func formatTime(t time.Time) string { return strconv.FormatInt(t.UTC().Unix(), 10) }
 
 func (c *client) get(ctx context.Context, traceQL string, constraint *korrel8r.Constraint, collect func(*Span)) error {
-	// FIXME constraint
 	u := *c.base // Copy, don't modify base.
 	v := url.Values{query: []string{defaultSelect(traceQL)}}
 	if limit := constraint.GetLimit(); limit > 0 {
@@ -148,7 +147,7 @@ func (tt *tempoTrace) collect(spans tempoSpanSet, collect func(*Span)) {
 			Status:    Status{Code: StatusUnset}, // Default
 		}
 		span.Attributes = ts.Attributes.Map()
-		span.Attributes[otel.AttrServiceName] = tt.RootServiceName // FIXME
+		span.Attributes[otel.AttrServiceName] = tt.RootServiceName
 		// Tempo HTTP API stores span status description as "status" attribute.
 		// Move it to the status field and deduce the status code.
 		span.Status.Description, _ = span.Attributes[statusAttr].(string)
