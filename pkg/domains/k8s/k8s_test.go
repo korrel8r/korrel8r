@@ -76,6 +76,22 @@ func TestDomain_Query(t *testing.T) {
 
 }
 
+func TestDomain_Query_error(t *testing.T) {
+	for _, x := range []struct {
+		s   string
+		err string
+	}{
+		// Detect common error: yaml map with missing space interpreted as key containing '"'
+		{`k8s:Namespace:{name:"foo"}`, "unknown field"},
+	} {
+		t.Run(x.s, func(t *testing.T) {
+			_, err := Domain.Query(x.s)
+			assert.ErrorContains(t, err, x.err)
+		})
+	}
+
+}
+
 func TestStore_Get(t *testing.T) {
 	c := fake.NewClientBuilder().
 		WithRESTMapper(testrestmapper.TestOnlyStaticRESTMapper(scheme.Scheme)).

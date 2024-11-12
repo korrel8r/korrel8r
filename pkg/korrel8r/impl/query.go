@@ -6,7 +6,7 @@ import (
 	"fmt"
 
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
-	yaml "sigs.k8s.io/yaml/goyaml.v2"
+	"sigs.k8s.io/yaml"
 )
 
 // ParseQuery parses a query string into class and data parts.
@@ -32,7 +32,7 @@ func UnmarshalQueryString[T any](domain korrel8r.Domain, query string) (c korrel
 	if err != nil {
 		return nil, data, err
 	}
-	err = yaml.Unmarshal([]byte(qs), &data)
+	err = yaml.UnmarshalStrict([]byte(qs), &data)
 	if err != nil {
 		return nil, data, fmt.Errorf("invalid query: %w: %v", err, qs)
 	}
