@@ -11,7 +11,7 @@ import (
 
 // Config settings that can be modified at runtime via the API.
 type Config struct {
-	Verbose *int `form:"verbose"` // Verbose setting for logging.
+	Verbose *int `json:"verbose,omitempty" form:"verbose"` // Verbose setting for logging.
 }
 
 // PutConfig handler
@@ -30,5 +30,5 @@ func (a *API) PutConfig(c *gin.Context) {
 		log.V(1).Info("Verbose log level set via API", "level", *config.Verbose)
 		logging.SetVerbose(*config.Verbose)
 	}
-	c.JSON(http.StatusOK, nil)
+	c.JSON(http.StatusOK, config)
 }
