@@ -10,7 +10,7 @@ git remote -v | grep -q "$REPO" || {
 	exit 1
 }
 
-docker build -t "$IMG" .
-docker push "$IMG"
+podman build -t "$IMG" .
+podman push "$IMG"
 
 helm upgrade -i troubleshooting-panel-console-plugin charts/openshift-console-plugin -n troubleshooting-panel-console-plugin --create-namespace --set plugin.image="$IMG"

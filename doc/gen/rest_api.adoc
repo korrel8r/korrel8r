@@ -39,7 +39,7 @@ Produces::
 
 | POST | /api/v1alpha1/lists/goals | link:#id-post-lists-goals[post lists goals] | Create a list of goal nodes related to a starting point.
 
-| PUT | /api/v1alpha1/config | link:#id-put-config[put config] | Set verbose level for logging on a running server.
+| PUT | /api/v1alpha1/config | link:#id-put-config[put config] | Change key configuration settings at runtime.
 
 |===
 
@@ -392,7 +392,7 @@ Status: OK
 any
 
 [id=id-put-config]
-=== Set verbose level for logging on a running server.
+=== Change key configuration settings at runtime.
 
 ----
 PUT /api/v1alpha1/config

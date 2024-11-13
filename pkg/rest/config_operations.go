@@ -17,7 +17,7 @@ type Config struct {
 // PutConfig handler
 //
 //	@router		/config [put]
-//	@summary	Set verbose level for logging on a running server.
+//	@summary	Change key configuration settings at runtime.
 //	@param		verbose	query int false	"verbose setting for logging"
 //	@success	200
 //	@failure	default	{object}	any

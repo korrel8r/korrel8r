@@ -1,75 +1,66 @@
 = Hacker's guide to Korrel8r
+:doctype: book
+:toc: left
+include::attributes.adoc[]
 
-Tips for contributing to the Korrel8r project.
+Tips for contributing to or hacking on the Korrel8r project.
 
-== Installing via Kustomize
+TIP: `make help` will list make targets with brief explanation.
 
-For development you can use `kustomize` or `kubectrl apply -k` directly.
-You need to be logged-in as `kubeadmin` to your cluster:
 
-[source,bash]
-----
-kubectl apply -k https://github.com/korrel8r/korrel8r/base
-----
+== Building
 
-On {rh-ocp}, you can create a `route` to the service with `make route`.
+.Build and install korrel8r using `go install`.
+    make install
 
-[source,bash]
-----
-make route
-URL=$(make route-url)
-----
+.Build and publish a korrel8r image using your public image repository.
+    make image REGISTRY_BASE=quay.io/myaccount
 
-On other types of cluster you can use port mapping or an `ingress`.
+TIP: Set  `REGISTRY_BASE` or `IMG` to the repository where you want to push images.
 
-Browse the following URLs:
 
-* `$URL`     # Interactive browser interface.
-* `$URL/api` # REST API documentation
+IMPORTANT: you need a _public_ image repository for your cluster to pull images.
+Some registry services create _private_ repositories by default, make sure your repository is _public_.
 
-== Running as an external executable
+== Running korrel8r
 
-You can install and run korrel8r on your local host, it can observe your cluster from the outside.
-You need to be logged-in as `kubeadmin` to your cluster:
+=== Cluster Set-up
 
-[source,bash]
-----
-go install github.com/korrel8r/korrel8r/cmd/korrel8r@latest
-korrel8r web -http :8080 &
-----
+For korrel8r to work, you need some observability data to look at.
 
-With korrel8r running, you can browse the following URLs:
-
-- http://localhost:8080 - Interactive browser interface.
-- http://localhost:8080/api - REST API documentation
-
-You can also run korrel8r as a command line tool, see `korrel8r --help` for commands and options.
-
-== Cluster Set-up
-
-There are scripts and examples to help set up logging, metrics and other observable signals:
-
-* link:hack/openshift/README.md[hack/openshift] for OpenShift clusters.
-* link:hack/kind/README.md[hack/kind] for Kind clusters.
+- https://github.com/korrel8r/config/[] has scripts to set up observability on an OpenShift cluster.
+-  link:hack/kind/README.md[hack/kind] has some scripts for testing on Kind clusters.
 
 Log into your cluster as `kubeadmin` or other admin user.
 
-If you are interested in helping to develop Korrel8r:
-- clone this repository
-- `make help` will list make targets with brief explanation.
-- `make run` will run korrel8r directly from source using the checked-in configuration
+=== Running outside the cluster
 
-== Building Images
+You can run korrel8r on your local host, it can observe your cluster from the outside.
+You need to be logged-in as `kubeadmin` to your cluster:
 
-By default, the Makefile uses `quay.io/korrel8r/korrel8r` as its image repository.
-Set `IMG` to use a different repository:
+.Run korrel8r service outside the cluster.
+[source,bash]
+----
+korrel8r web -c etc/korrel8r/openshift-route.yaml -http :8080
+----
 
-- `make image IMG=quay.io/myaccount/mykorrel8r` build and push an image to your image repository.
-- `make deploy IMG=quay.io/myaccount/mykorrel8r` deploy your image to your cluster.
+Browse the interactive API page:
+    xdg-open http://localhost:8080/api
 
-IMPORTANT: you need a _public_ image repository on a public service like `quay.io` or `docker.io`.
-Some services (including `quay.io`) make new repositories _private_ by default.
-You may need to log in and change settings so that your new repository is _public_.
+Use `korrel8r --help` for more commands and options.
+
+=== Deploy to Cluster
+
+.Build a new image and deploy it to a cluster.
+[source,bash]
+----
+make deploy
+----
+
+TIP: Set  `REGISTRY_BASE` or `IMG` to the repository where you want to push images.
+
+.Browse the interactive REST API:
+  xdg-open $(oc get route/korrel8r -n korrel8r -o 'template=https://{{.spec.host}}')
 
 == Contributing to documentation
 
@@ -91,5 +82,3 @@ make _site
 ----
 
 Preview `_site` with your web browser.
-
-// TODO Needs update

@@ -65,8 +65,7 @@ korrel8r --config {raw-etc-korrel8r}/openshift-route.yaml web --http=localhost:8
 ----
 
 This runs the engine as a REST service that can be queried by other services.
-For example, the {rh-ocp} console uses Korrel8r to implement "related data" links
-and a troubleshooting panel.
+For example, the {rh-ocp} console uses Korrel8r to implement a {troubleshooting-panel}[troubleshooting panel].
 
 You can also use the xref:korrel8rcli-command.adoc[korrel8rcli] command to query
 a korrel8r engine from the command line.

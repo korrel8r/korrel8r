@@ -30,7 +30,7 @@ const docTemplate = `{
     "paths": {
         "/config": {
             "put": {
-                "summary": "Set verbose level for logging on a running server.",
+                "summary": "Change key configuration settings at runtime.",
                 "parameters": [
                     {
                         "type": "integer",

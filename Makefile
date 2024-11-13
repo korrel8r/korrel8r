@@ -38,13 +38,14 @@ GEN_SRC=$(VERSION_TXT) $(SWAGGER_SPEC) _cover
 
 all: lint test _site image-build ## Build and test everything locally. Recommended before pushing.
 
-build: $(GEN_SRC)
-	go build ./cmd/korrel8r
-install: $(GEN_SRC)
+build: $(GEN_SRC) $(BIN) ## Build korrel8r executable.
+	go build ./cmd/korrel8r -o $(BIN)/korrel8r
+
+install: $(GEN_SRC)  ## Build and install korrel8r with go install.
 	go install ./cmd/korrel8r
 
 clean: ## Remove generated files, including checked-in files.
-	rm -rf bin korrel8r _site $(GEN_SRC) doc/gen tmp $(BIN) $(GOCOVERDIR)
+	rm -rf _site $(GEN_SRC) doc/gen tmp $(BIN) $(GOCOVERDIR)
 
 ifneq ($(VERSION),$(file <$(VERSION_TXT)))
 .PHONY: $(VERSION_TXT) # Force update if VERSION_TXT does not match $(VERSION)
@@ -77,15 +78,15 @@ test: $(GEN_SRC)		## Run all tests, requires an openshift cluster.
 test-no-cluster: $(GEN_SRC)	## Run all tests that don't require an openshift cluster.
 	go test -fullpath -race -skip '.*/Openshift' ./...
 
-cover:  $(GOCOVERDIR) ## Run tests with accumulated coverage stats in _cover. Use 'make -i' to see coverage when tests fail.
+cover:  $(GOCOVERDIR) ## Run tests with accumulated coverage stats in _cover.
 	@echo == Individual package test coverage.
 	go test -fullpath -cover ./... -test.gocoverdir=$(GOCOVERDIR)
+	@echo
 	@echo == Aggregate coverage across all tests.
 	go tool covdata percent -i $(GOCOVERDIR)
 
-bench: $(GEN_SRC)		## Run all benchmarks.
-	go test -fullpath -bench=. -run=NONE ./... | { type benchstat >/dev/null && benchstat /dev/stdin; }
-
+bench: $(GEN_SRC)	$(BENCHSTAT)	## Run all benchmarks.
+	go test -fullpath -bench=. -run=NONE ./... > _bench-$(shell date +%s).txt ; $(BENCHSTAT) _bench-*.txt
 
 $(GOCOVERDIR):
 	@mkdir -p $@
@@ -140,12 +141,6 @@ _site: doc $(shell find doc etc/korrel8r -name gen -prune -o -print) $(ASCIIDOCT
 	cp -r doc/images etc/korrel8r $@
 	$(ASCIIDOCTOR) $(ADOC_FLAGS) -D$@ doc/README.adoc -o index.html
 	$(ASCIIDOCTOR) $(ADOC_FLAGS) -D$@/gen/cmd doc/gen/cmd/*.adoc
-
-	mkdir -p $@/troubleshooting-panel-console-plugin/doc/
-	cp -r doc/troubleshooting-panel-console-plugin/doc/images $@/troubleshooting-panel-console-plugin/doc/
-	$(ASCIIDOCTOR) $(ADOC_FLAGS) -D$@/troubleshooting-panel-console-plugin/doc/ doc/troubleshooting-panel-console-plugin/doc/*.adoc
-	@echo "EXPECTED: asciidoctor: WARNING: README.adoc: line X: no callout found for <>"
-
 	$(and $(LINKCHECKER),$(LINKCHECKER) $(LINKCHECK_FLAGS) $@)
 	@touch $@
 

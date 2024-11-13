@@ -97,11 +97,11 @@ but it will not replace Korrel8r:
 
 
 [id="about-domains"]
-== Using Korrel8r
+== Running Korrel8r
 
-Korrel8r usually runs as a cluster service with a REST API.
+Korrel8r usually runs as a cluster service with a <<_rest_api,REST API>>.
 It is used as a back-end for tools that display correlation results.
-For example, the {rh-ocp} console uses Korrel8r to implement its troubleshooting panel.
+For example, the {rh-ocp} console uses Korrel8r to implement its {troubleshoopting-panel}[troubleshooting panel].
 
 It can also be run from the command line for development and testing.
 
@@ -142,9 +142,12 @@ oc apply -k github.com/korrel8r/korrel8r/config/route?version=main
 HOST=$(oc get route/korrel8r -n korrel8r -o template={{.Spec.Host}}
 ----
 
-You can use the <<_korrel8r_clients>> to test your service at `$HOST`.
+You can use the <<_clients>> to test your service at `$HOST`.
 
-=== Command Line
+=== Out-of-cluster service
+
+Korrel8r can run outside the cluster, using routes or ingress URLs to connect to observability stores inside the cluster.
+This can be useful for development and testing.
 
 .Install korrel8r  command
 [source,terminal,subs=attributes+]
@@ -156,45 +159,24 @@ Run  `korrel8r --help` to get {korrel8r-help}[command line help].
 [source,terminal,subs=attributes+]
 curl -o korrel8r.yaml  {raw-etc-korrel8r}/openshift-route.yaml
 
-==== Out-of-cluster service
-
-Korrel8r can run as a service outside the cluster, for debugging purposes.
-
-.Run as a service on localhost port 8080, with informational logging.
+.Run as a service outside the cluster on localhost port 8080, with informational logging.
 [source,terminal]
 ----
 korrel8r -v2 --config korrel8r.yaml web --http=localhost:8080
 ----
 
-You can use the <<_korrel8r_clients>> to test your service at `localhost:8080`.
+See <<_clients>> for ways to test your service at `http://localhost:8080`.
 
-==== Command mode
-
-Korrel8r can run some basic commands without starting the server.
-
-.List known domains
-[source,terminal,subs=attributes+]
-korrel8r --config korrel8r.yaml list
-
-.List korrel8r classes in the k8s domain.
-[source,terminal,subs=attributes+]
-----
-korrel8r --config korrel8r.yaml openshift-route.yaml list k8s
-----
-.Get pods in the default namespace.
-[source,terminal]
-korrel8r --config korrel8r.yaml get k8s:Pod:{"namespace":"default"}
-
-=== {rh-ocp} troubleshooting panel
-
-The {rh-ocp} console has a "troubleshooting panel" that is powered by Korrel8r.
-
-See the {console-panel-guide}[console troubleshooting panel guide] for more.
-
-// TODO replace this link with official RH doc.
-
-== Korrel8r Clients
+=== Clients
 :korrel8rcli-url: http://korrel8r.example
+
+Once the Korrel8r service is running, there are several ways you can interact with the <<_rest_api,REST API>>.
+
+- A purpose-built command line client <<_korrel8rcli, `korrel8rcli`>>.
+- The <<_interactive_rest_api, interactive swagger API web page>> built in to Korrel8r.
+- Use <<curl, `curl`>> or any generic web request tool.
+
+You can also use specialized clients like the {troubleshooting-panel}[Red Hat Openshift troubleshooting panel], or build your own.
 
 [IMPORTANT]
 ====
@@ -206,9 +188,9 @@ oc whoami -t
 ----
 ====
 
-=== korrel8rcli
+==== `korrel8rcli`
 
-`korrel8rcli` is a simple command-line REST client of the Korrel8r service.
+`korrel8rcli` is a simple command-line client of the Korrel8r service.
 It is intended for development and experimentation.
 In production korrel8r normally functions as a back-end for a console or other visualization or analysis tool.
 
@@ -225,7 +207,7 @@ You can also specify a token explicitly with the `--bearer-token` option.
 
 In the following examples, replace `{korrel8rcli-url}` with the URL for your korrel8r service.
 
-==== Domains
+===== Domains
 
 .Get the list of domains and store status.
 [source,terminal,subs=attributes+]
@@ -264,7 +246,7 @@ korrel8rcli -u {korrel8rcli-url} domains
     lokiStack: https://loki-gateway-http.netobserv.svc:8080
 ----
 
-==== Neighbours
+===== Neighbours
 
 .Get the neighbours graph of the korreler deployment
 [source,terminal,subs=attributes+]
@@ -272,14 +254,14 @@ korrel8rcli -u {korrel8rcli-url} domains
 korrel8rcli -o json neighbours {korrel8rcli-url} --query 'k8s:Deployment:{namespace: korrel8r}'
 ----
 
-.Output is a JSON-encoded graph, not intended for human consumption.
+.Output is a JSON-encoded graph.
 [source,json]
 ----
 {"edges":[{"goal":"k8s:Pod.v1.","start":"k8s:Deployment.v1.apps"},...
  "nodes":[{"class":"log:application","count":15,"queries":[...
 ----
 
-==== Web
+===== Web browser
 
 CAUTION: This tool is experimental, it may change or be dropped in future.
 
@@ -297,7 +279,7 @@ You should see a graph of the correlations, like this.
 .Example graph.
 image::images/korrel8rcli-example.png[Screenshot]
 
-=== Interactive REST API
+==== Interactive REST API
 
 Korrel8r provides an interactive REST API page using swagger.
 This page documents the REST API, and allows you to make interactive calls.
@@ -306,7 +288,7 @@ Browse to `http://korrel8r.example/swagger` to use the page.
 
 // TODO how do you provide a bearer token in the browser case?
 
-===  Using curl
+====  Using curl
 
 You can use a generic REST client like https://curl.se/[curl] to interact with korrel8r.
 You can use the <<_interactive_rest_api>> page to discover the right `curl commands`.
@@ -317,6 +299,31 @@ You must provide a bearer token, for example:
 [source,terminal]
 ----
 curl --oauth2-bearer $(oc whoami -t) http://localhost:8080/api/v1alpha1/domains
+----
+
+==== Red Hat Openshift troubleshooting panel
+
+The {rh-ocp} console has a {troubleshooting-panel}["troubleshooting panel"] that is powered by Korrel8r.
+This is a good example of how korrel8r is intended to be used,
+as a back-end to compute correlations for other tools that visualize the results.
+
+=== Troubleshooting
+
+[TIP]
+====
+You can increase the verbosity of korrel8r logging at run time using the
+xref:gen/rest_api.adoc#id-put-config[`config` API].
+====
+.Using korrel8rcli
+[source,terminal,subs=attributes+]
+----
+korrel8rcli config --set-verbose=9
+----
+
+.Using curl
+[source,terminal]
+----
+curl --oauth2-bearer $(oc whoami -t) -X PUT http://localhost:8080/api/v1alpha1/config?verbose=9
 ----
 
 == Configuration
@@ -436,21 +443,19 @@ aliases:
 <2> Domain for classes in this alias.
 <3> Classes belonging to this alias.
 
-=== Templates
+=== Writing Templates
 
-Some fields in the `stores` and `rules` section are {go-templates}.
-Go template syntax is also used by the Kubernetes `kubectl` tool when run with the `--output=template` option.
-Korrel8r provides additional _template functions_ to simplify writing rule and configuration templates.
+Korrel8r rules and store configuration use {go-templates}footnote:[This is the same syntax used by the Kubernetes `kubectl` tool with the `--output=template` option]. 
 
-.Additional template functions
+Korrel8r provides some additional _template functions_ to simplify writing rules and configurations:
+
 - The {sprig} library of general purpose template functions is always available.
-- Some domains provide additional functions, see <<_domain_reference>>.
-
-The following functions are always available:
-
-query::
-Executes its argument as a korrel8r query, returns `[]any`.
-May return an error.
+- Some domains (for example the <<_k8s_domain>>) provide domain-specific functions, see the <<_domain_reference>>.
+- The following function is available for store configurations:
+  query::
+    Takes a single argument, a korrel8r query string.
+    Executes the query and returns the result as a `[]any`.
+    May return an error.
 
 // TODO: automate the above, get this from pkg/engine doc comments.
 
@@ -459,7 +464,6 @@ May return an error.
 Reference details for the for the classes, objects, queries and stores of each available domain.
 
 include::gen/domains.adoc[leveloffset=+2]
-
 
 include::gen/rest_api.adoc[leveloffset=+1]
 

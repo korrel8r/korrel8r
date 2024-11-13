@@ -7,16 +7,22 @@ GO     ?= $(shell which go)
 
 # Below generated variables ensure that every time a tool under each variable is invoked, the correct version
 # will be used; reinstalling only if needed.
-# For example for golangci-lint variable:
+# For example for benchstat variable:
 #
 # In your main Makefile (for non array binaries):
 #
 #include .bingo/Variables.mk # Assuming -dir was set to .bingo .
 #
-#command: $(GOLANGCI_LINT)
-#	@echo "Running golangci-lint"
-#	@$(GOLANGCI_LINT) <flags/args..>
+#command: $(BENCHSTAT)
+#	@echo "Running benchstat"
+#	@$(BENCHSTAT) <flags/args..>
 #
+BENCHSTAT := $(GOBIN)/benchstat-v0.0.0-20241112183634-aa2227201f71
+$(BENCHSTAT): $(BINGO_DIR)/benchstat.mod
+	@# Install binary/ries using Go 1.14+ build command. This is using bwplotka/bingo-controlled, separate go module with pinned dependencies.
+	@echo "(re)installing $(GOBIN)/benchstat-v0.0.0-20241112183634-aa2227201f71"
+	@cd $(BINGO_DIR) && GOWORK=off $(GO) build -mod=mod -modfile=benchstat.mod -o=$(GOBIN)/benchstat-v0.0.0-20241112183634-aa2227201f71 "golang.org/x/perf/cmd/benchstat"
+
 GOLANGCI_LINT := $(GOBIN)/golangci-lint-v1.61.0
 $(GOLANGCI_LINT): $(BINGO_DIR)/golangci-lint.mod
 	@# Install binary/ries using Go 1.14+ build command. This is using bwplotka/bingo-controlled, separate go module with pinned dependencies.

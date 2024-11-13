@@ -1,4 +1,5 @@
 /_bin/
 /_site/
 /_cover/
+/_bench-*.txt
 /hack/kind/jsonnet/vendor/
