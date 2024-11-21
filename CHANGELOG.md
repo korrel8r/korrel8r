@@ -7,7 +7,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
-_Note unreleased changes here_
+_Note unreleased changes on main here pending the next release_
+
+### Fixed
+- Fixed errors parsing complex metric query strings - https://issues.redhat.com/browse/COO-558
 
 ## [0.7.4] - 2024-11-12
 

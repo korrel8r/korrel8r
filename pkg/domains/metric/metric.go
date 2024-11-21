@@ -12,12 +12,6 @@
 // data for a time series, or use it in rules. If a korrel8r search time constraints, then metrics
 // that have no values that meet the constraint are ignored.
 //
-// # Query
-//
-// Query data is a PromQL [instant vector selector], for example:
-//
-//	metric:metric:http_requests_total{environment=~"staging|testing",method!="GET"}
-//
 // # Store
 //
 // Prometheus is the store, store configuration:
@@ -26,6 +20,7 @@
 //	metric: URL_OF_PROMETHEUS
 //
 // [Metric]: https://pkg.go.dev/github.com/prometheus/common@v0.45.0/model#Metric
+//
 // [instant vector selector]: https://prometheus.io/docs/prometheus/latest/querying/basics/#instant-vector-selectors
 package metric
 
@@ -103,13 +98,6 @@ func Preview(o korrel8r.Object) string {
 	return impl.Preview(o, func(o Object) string { return o.String() })
 }
 
-// Query is a PromQL instance vector query.
-type Query string
-
-func (q Query) Class() korrel8r.Class { return Class{} }
-func (q Query) Data() string          { return string(q) }
-func (q Query) String() string        { return impl.QueryString(q) }
-
 type Store struct {
 	*http.Client
 	baseURL *url.URL
@@ -130,14 +118,21 @@ type response struct {
 	Data   []model.Metric
 }
 
-func (s *Store) Get(ctx context.Context, query korrel8r.Query, c *korrel8r.Constraint, result korrel8r.Appender) error {
-	if _, err := impl.TypeAssert[Query](query); err != nil {
+func (s *Store) Get(ctx context.Context, kquery korrel8r.Query, c *korrel8r.Constraint, result korrel8r.Appender) error {
+	query, err := impl.TypeAssert[Query](kquery)
+	if err != nil {
 		return err
 	}
 	// NOTE: Store does not use github.com/prometheus/client_golang because the current version v1.19.1
 	// does not allow setting the "limit" query parameter. Hand code the REST query.
 	q := url.Values{}
-	q.Add("match[]", query.Data())
+	selectors, err := query.Selectors()
+	if err != nil {
+		return err
+	}
+	for _, selector := range selectors {
+		q.Add("match[]", selector)
+	}
 	if c != nil {
 		if c.Start != nil && !c.Start.IsZero() {
 			q.Set("start", formatTime(*c.Start))

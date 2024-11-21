@@ -53,6 +53,7 @@ func (f *Fixture) Init(t testing.TB) {
 // Used for cluster testing with multiple domains.
 func (f *Fixture) ClusterEngine(t testing.TB) *engine.Engine {
 	// TODO review test logic for cluster vs. no-cluster tests.
+	t.Helper()
 	if f.SkipCluster {
 		t.Skipf("Skip: domain %v skipping openshift tests", f.Query.Class().Domain())
 	}
