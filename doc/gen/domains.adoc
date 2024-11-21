@@ -186,14 +186,6 @@ There is only one class: `metric:metric`
 
 A link:https://pkg.go.dev/github.com/prometheus/common@v0.45.0/model#Metric[Metric] is a time series identified by a label set. Korrel8r does not consider load the sample data for a time series, or use it in rules. If a korrel8r search time constraints, then metrics that have no values that meet the constraint are ignored.
 
-== Query
-
-Query data is a PromQL link:https://prometheus.io/docs/prometheus/latest/querying/basics/#instant-vector-selectors[instant vector selector], for example:
-
-----
-metric:metric:http_requests_total{environment=~"staging|testing",method!="GET"}
-----
-
 == Store
 
 Prometheus is the store, store configuration:
@@ -207,7 +199,9 @@ metric: URL_OF_PROMETHEUS
 == Query
 
 
-Query is a PromQL instance vector query.
+Query is a link:https://prometheus.io/docs/prometheus/latest/querying/basics/[PromQL] query string.
+
+Korrel8r uses metric labels for correlation, it does not use time-series data values. The link:https://prometheus.io/docs/prometheus/latest/querying/basics/[PromQL] query is analyzed to identify series it uses, labels of those series are used for correlation.
 
 
 See Go documentation for https://pkg.go.dev/github.com/korrel8r/korrel8r/pkg/domains/metric/#Query[Query]
