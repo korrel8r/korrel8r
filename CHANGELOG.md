@@ -9,8 +9,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 _Note unreleased changes on main here pending the next release_
 
+## [0.7.5] - 2024-11-22
+
 ### Fixed
-- Fixed errors parsing complex metric query strings - https://issues.redhat.com/browse/COO-558
+- fix(COO-557): Remove spurious '|json' in log queries.
+- fix(COO-563): Korrel8r does not interrupt over-long queries.
+- fix(COO-558): Fix parsing of complex promql queries.
 
 ## [0.7.4] - 2024-11-12
 

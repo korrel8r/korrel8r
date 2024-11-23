@@ -21,7 +21,9 @@ Make sure you are logged in to `quay.io/korrel8r` to push images.
 
 Use `git status` to verify that all changes are related to the version number change.
 
-Commit and push you changes to `origin/main` with commit message 'Release X.Y.Z'
+Commit and push your changes to `origin/vX.Y` with commit message 'Release X.Y.Z'
+
+Cherry pick the release commit back to `main` to keep the main CHANGELOG up to date.
 
 == Publish the release
 
