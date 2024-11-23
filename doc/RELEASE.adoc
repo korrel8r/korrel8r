@@ -2,7 +2,7 @@
 
 Steps to release a new version X.Y.Z, for maintainers.
 
-On branch `main`:
+On branch `vX.Y`:
 
 == Update CHANGELOG
 
@@ -33,3 +33,9 @@ This does the following:
 - `make clean` and re-build, verify nothing changes and the working tree is clean.
 - Creates and pushes the git tag 'vX.Y.Z'
 - Updates the 'latest' image tag to point to the new images.
+
+== Update main
+
+If necessary, port changes on the release branch back to `main`.
+
+Cherry pick the release commit back to `main` to keep the main CHANGELOG up to date.
