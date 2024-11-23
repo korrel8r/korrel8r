@@ -1,1 +1,4 @@
-{ "include": [ "config1.yaml",  "config.json", "config2.yaml" ] }
+{
+  "include": [ "config1.yaml",  "config.json", "config2.yaml" ],
+  "tuning": { "requestTimeout": "1s"}
+}

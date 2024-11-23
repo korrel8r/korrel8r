@@ -129,6 +129,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/Graph"
                         }
                     },
+                    "206": {
+                        "description": "interrupted, partial result",
+                        "schema": {
+                            "$ref": "#/definitions/Graph"
+                        }
+                    },
                     "default": {
                         "description": "",
                         "schema": {
@@ -161,6 +167,12 @@ const docTemplate = `{
                 "responses": {
                     "200": {
                         "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/Graph"
+                        }
+                    },
+                    "206": {
+                        "description": "interrupted, partial result",
                         "schema": {
                             "$ref": "#/definitions/Graph"
                         }

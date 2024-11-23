@@ -15,37 +15,47 @@ import (
 	"path/filepath"
 
 	"github.com/korrel8r/korrel8r/internal/pkg/logging"
+	"github.com/korrel8r/korrel8r/pkg/unique"
 	"sigs.k8s.io/yaml"
 )
 
 var log = logging.Log()
-
-// Configs is a map of config files by their source file/url.
-type Configs map[string]*Config
 
 // Load loads all configurations from a file or URL.
 //
 // If a configuration has an Include section, also loads all referenced configurations.
 // Relative paths in Include are relative to the location of file containing them.
 func Load(fileOrURL string) (Configs, error) {
-	configs := Configs{}
-	return configs, load(fileOrURL, configs)
+	l := loader{loaded: unique.NewSet[string]()}
+	if err := l.load(fileOrURL); err != nil {
+		return nil, err
+	}
+	if err := expand(l.configs); err != nil {
+		return nil, err
+	}
+	return l.configs, nil
+}
+
+type loader struct {
+	loaded  unique.Set[string]
+	configs Configs
 }
 
 // Expand aliases in all rules.
-func (configs Configs) Expand() error {
+func expand(configs Configs) error {
 	// Gather am first.
 	am := aliasMap{}
-	for source, c := range configs {
+	for i := range configs {
+		c := &configs[i]
 		for _, a := range c.Aliases {
 			if len(a.Domain) == 0 {
-				return fmt.Errorf("%v: alias %q: no domain", source, a.Name)
+				return fmt.Errorf("%v: alias %q: no domain", c.Source, a.Name)
 			}
 			if len(a.Classes) == 0 {
-				return fmt.Errorf("%v: alias %q: no classes", source, a.Name)
+				return fmt.Errorf("%v: alias %q: no classes", c.Source, a.Name)
 			}
 			if !am.Add(a) {
-				return fmt.Errorf("%v: alias %q: duplicate alias name", source, a.Name)
+				return fmt.Errorf("%v: alias %q: duplicate alias name", c.Source, a.Name)
 			}
 		}
 		c.Aliases = nil // Erase unused aliases
@@ -75,23 +85,27 @@ func (configs Configs) Expand() error {
 	return nil
 }
 
-func load(source string, configs Configs) (err error) {
-	if _, ok := configs[source]; ok {
+func (l *loader) load(source string) error {
+	if l.loaded.Has(source) {
 		return nil // Already loaded
 	}
+	l.loaded.Add(source)
 	log.V(2).Info("Loading configuration", "config", source)
 	b, err := readFileOrURL(source)
 	if err != nil {
 		return fmt.Errorf("%v: %w", source, err)
 	}
-	c := &Config{}
-	if err := yaml.UnmarshalStrict(b, c); err != nil {
+	c := Config{Source: source}
+	if err := yaml.UnmarshalStrict(b, &c); err != nil {
 		return fmt.Errorf("%v: %w", source, err)
 	}
-	configs[source] = c
+	if len(l.configs) > 0 && c.Tuning != nil {
+		return fmt.Errorf("Unexpected tuning section in included configuration: %v", source)
+	}
+	l.configs = append(l.configs, c)
 	for _, s := range c.Include {
 		ref := resolve(source, s)
-		if err := load(ref, configs); err != nil {
+		if err := l.load(ref); err != nil {
 			return err
 		}
 	}

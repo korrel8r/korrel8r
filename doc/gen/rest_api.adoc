@@ -245,6 +245,8 @@ POST /api/v1alpha1/graphs/goals
 
 | link:#post-graphs-goals-200[200] | OK | OK |  | link:#post-graphs-goals-200-schema[schema]
 
+| link:#post-graphs-goals-206[206] | Partial Content | interrupted, partial result |  | link:#post-graphs-goals-206-schema[schema]
+
 | link:#post-graphs-goals-default[default] | |  |  | link:#post-graphs-goals-default-schema[schema]
 
 |===
@@ -257,6 +259,17 @@ POST /api/v1alpha1/graphs/goals
 Status: OK
 
 [id=post-graphs-goals-200-schema]
+====== Schema
+
+  
+
+link:#graph)[Graph]
+
+[id=post-graphs-goals-206]
+=====  206 - interrupted, partial result
+Status: Partial Content
+
+[id=post-graphs-goals-206-schema]
 ====== Schema
 
   
@@ -308,6 +321,8 @@ POST /api/v1alpha1/graphs/neighbours
 
 | link:#post-graphs-neighbours-200[200] | OK | OK |  | link:#post-graphs-neighbours-200-schema[schema]
 
+| link:#post-graphs-neighbours-206[206] | Partial Content | interrupted, partial result |  | link:#post-graphs-neighbours-206-schema[schema]
+
 | link:#post-graphs-neighbours-default[default] | |  |  | link:#post-graphs-neighbours-default-schema[schema]
 
 |===
@@ -320,6 +335,17 @@ POST /api/v1alpha1/graphs/neighbours
 Status: OK
 
 [id=post-graphs-neighbours-200-schema]
+====== Schema
+
+  
+
+link:#graph)[Graph]
+
+[id=post-graphs-neighbours-206]
+=====  206 - interrupted, partial result
+Status: Partial Content
+
+[id=post-graphs-neighbours-206-schema]
 ====== Schema
 
   

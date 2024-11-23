@@ -39,6 +39,9 @@ func node(n *graph.Node) Node {
 }
 
 func nodes(g *graph.Graph) []Node {
+	if g == nil {
+		return nil
+	}
 	nodes := []Node{} // Want [] not null for empty in JSON.
 	g.EachNode(func(n *graph.Node) {
 		if !n.Empty() { // Skip empty nodes
@@ -64,6 +67,9 @@ func edge(e *graph.Edge, rules bool) Edge {
 }
 
 func edges(g *graph.Graph, opts *Options) (edges []Edge) {
+	if g == nil {
+		return nil
+	}
 	g.EachEdge(func(e *graph.Edge) {
 		if !e.Goal().Empty() { // Skip edges that lead to an empty node.
 			edges = append(edges, edge(e, opts.Rules))

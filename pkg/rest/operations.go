@@ -21,6 +21,7 @@
 package rest
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -54,6 +55,7 @@ type API struct {
 func New(e *engine.Engine, c config.Configs, r *gin.Engine) (*API, error) {
 	a := &API{Engine: e, Configs: c}
 	r.Use(a.logger)
+	r.Use(a.context)
 	r.GET("/", func(c *gin.Context) { c.Redirect(http.StatusTemporaryRedirect, "/swagger/index.html") })
 	r.GET("/api", func(c *gin.Context) { c.Redirect(http.StatusTemporaryRedirect, "/swagger/index.html") })
 	r.GET("/swagger/*any", a.handleSwagger)
@@ -125,6 +127,7 @@ func (a *API) DomainClasses(c *gin.Context) {
 //	@param		rules	query		bool	false	"include rules in graph edges"
 //	@param		request	body		Goals	true	"search from start to goal classes"
 //	@success	200		{object}	Graph
+//	@success	206		{object}	Graph "interrupted, partial result"
 //	@failure	default	{object}	any
 func (a *API) GraphsGoals(c *gin.Context) {
 	opts := &Options{}
@@ -132,11 +135,11 @@ func (a *API) GraphsGoals(c *gin.Context) {
 		return
 	}
 	g, _ := a.goals(c)
-	if g == nil || c.IsAborted() {
+	if c.IsAborted() {
 		return
 	}
 	gr := Graph{Nodes: nodes(g), Edges: edges(g, opts)}
-	c.JSON(http.StatusOK, gr)
+	okResponse(c, gr)
 }
 
 // ListsGoals handler.
@@ -149,7 +152,7 @@ func (a *API) GraphsGoals(c *gin.Context) {
 func (a *API) ListsGoals(c *gin.Context) {
 	nodes := []Node{} // return [] not null for empty
 	g, goals := a.goals(c)
-	if g == nil {
+	if c.IsAborted() {
 		return
 	}
 	set := unique.NewSet(goals...)
@@ -158,7 +161,7 @@ func (a *API) ListsGoals(c *gin.Context) {
 			nodes = append(nodes, node(n))
 		}
 	})
-	c.JSON(http.StatusOK, nodes)
+	okResponse(c, nodes)
 }
 
 // GraphsNeighbours handler
@@ -168,6 +171,7 @@ func (a *API) ListsGoals(c *gin.Context) {
 //	@param		rules	query		bool		false	"include rules in graph edges"
 //	@param		request	body		Neighbours	true	"search from neighbours"
 //	@success	200		{object}	Graph
+//	@success	206		{object}	Graph "interrupted, partial result"
 //	@failure	default	{object}	any
 func (a *API) GraphsNeighbours(c *gin.Context) {
 	r, opts := Neighbours{}, Options{}
@@ -179,12 +183,15 @@ func (a *API) GraphsNeighbours(c *gin.Context) {
 	if c.IsAborted() {
 		return
 	}
-	g, err := a.Engine.Neighbours(auth.Context(c.Request), start, objects, queries, constraint, depth)
-	if !check(c, http.StatusBadRequest, err) {
-		return
-	}
+	ctx := c.Request.Context()
+	g, err := a.Engine.Neighbours(ctx, start, objects, queries, constraint, depth)
 	gr := Graph{Nodes: nodes(g), Edges: edges(g, &opts)}
-	c.JSON(http.StatusOK, gr)
+	if !interrupted(c) {
+		check(c, http.StatusBadRequest, err)
+	}
+	if !c.IsAborted() {
+		okResponse(c, gr)
+	}
 }
 
 // GetObjects handler
@@ -204,7 +211,7 @@ func (a *API) GetObjects(c *gin.Context) {
 		return
 	}
 	result := korrel8r.NewResult(query.Class())
-	if !check(c, http.StatusInternalServerError, a.Engine.Get(auth.Context(c.Request), query, (*korrel8r.Constraint)(opts.Constraint), result)) {
+	if !check(c, http.StatusInternalServerError, a.Engine.Get(c.Request.Context(), query, (*korrel8r.Constraint)(opts.Constraint), result)) {
 		return
 	}
 	log.V(2).Info("response OK", "objects", len(result.List()))
@@ -227,9 +234,9 @@ func (a *API) goals(c *gin.Context) (g *graph.Graph, goals []korrel8r.Class) {
 	}
 	g = a.Engine.Graph().ShortestPaths(start, goals...)
 	var err error
-	g, err = a.Engine.GoalSearch(auth.Context(c.Request), g, start, objects, queries, constraint, goals)
-	if !check(c, http.StatusInternalServerError, err) {
-		return nil, nil
+	g, err = a.Engine.GoalSearch(c.Request.Context(), g, start, objects, queries, constraint, goals)
+	if !interrupted(c) {
+		check(c, http.StatusInternalServerError, err)
 	}
 	return g, goals
 }
@@ -300,21 +307,53 @@ func (a *API) classes(c *gin.Context, apiClasses []string) (classes []korrel8r.C
 // logger is a Gin handler to log requests.
 func (a *API) logger(c *gin.Context) {
 	start := time.Now()
-	defer func() {
-		log := log.WithValues(
-			"method", c.Request.Method,
-			"url", c.Request.URL,
-			"from", c.Request.RemoteAddr,
-			"status", c.Writer.Status(),
-			"latency", time.Since(start))
-		if c.IsAborted() {
-			log = log.WithValues("errors", c.Errors.Errors())
-		}
-		if c.IsAborted() || c.Writer.Status() > 500 {
-			log.Info("request failed")
-		} else {
-			log.V(1).Info("request OK")
-		}
-	}()
 	c.Next()
+	log := log.WithValues(
+		"method", c.Request.Method,
+		"url", c.Request.URL,
+		"from", c.Request.RemoteAddr,
+		"status", c.Writer.Status(),
+		"latency", time.Since(start))
+	if interrupted(c) {
+		log = log.WithValues("interrupted", c.Request.Context().Err())
+	}
+	if c.IsAborted() {
+		log = log.WithValues("errors", c.Errors.Errors())
+	}
+	if c.IsAborted() || c.Writer.Status() > 500 {
+		log.Info("request failed")
+	} else {
+		log.V(1).Info("request OK")
+	}
+}
+
+// context sets up authorization and deadline context for outgoing requests.
+func (a *API) context(c *gin.Context) {
+	ctx := auth.Context(c.Request) // add authentication
+
+	timeout := korrel8r.DefaultTimeout
+	if len(a.Configs) > 0 {
+		tuning := a.Configs[0].Tuning
+		if tuning != nil && tuning.RequestTimeout.Duration > 0 {
+			timeout = tuning.RequestTimeout.Duration
+		}
+	}
+	deadline := time.Now().Add(timeout)
+	ctx, cancel := context.WithDeadline(ctx, deadline)
+	c.Request = c.Request.WithContext(ctx)
+	defer cancel()
+
+	c.Next()
+}
+
+func interrupted(c *gin.Context) bool {
+	return c.Request.Context().Err() == context.DeadlineExceeded
+}
+
+func okResponse(c *gin.Context, body any) {
+	status := http.StatusOK
+	if interrupted(c) {
+		status = http.StatusPartialContent
+	}
+	c.JSON(status, body)
 }
