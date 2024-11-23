@@ -17,8 +17,10 @@ rules:
       domain: log
     result:
       query: |-
-        log:{{logTypeForNamespace .Namespace}}:{kubernetes_namespace_name="{{.Namespace}}"}|json
-            {{- range $k,$v:=.Spec.Selector.MatchLabels}}|kubernetes_labels_{{logSafeLabel $k}}="{{$v}}"{{end -}}
+        log:{{logTypeForNamespace .Namespace}}:{kubernetes_namespace_name="{{.Namespace}}"}
+        {{- with .Spec.Selector.MatchLabels}}|json
+          {{- range $k,$v:=.}}|kubernetes_labels_{{logSafeLabel $k}}="{{$v}}"{{end -}}
+        {{- end -}}
 
   - name: PodToLogs
     start:
