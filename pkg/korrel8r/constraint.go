@@ -37,8 +37,8 @@ var (
 	DefaultDuration = time.Hour
 	// DefaultLimit is the global default max items limit for query constraints.
 	DefaultLimit = 1000
-	// DefaultTimeout is default max timeout for queries.
-	DefaultTimeout = time.Second * 5
+	// DefaultTimeout is default max timeout for requests and queries.
+	DefaultTimeout = time.Second * 10
 )
 
 // Default fills in default values. Safe to call with c == nil.

@@ -108,11 +108,8 @@ func (b *Builder) Config(configs config.Configs) *Builder {
 	if b.err != nil {
 		return b
 	}
-	if b.err = configs.Expand(); b.err != nil {
-		return b
-	}
 	for source, c := range configs {
-		b.config(source, c)
+		b.config(c.Source, &c)
 		if b.err != nil {
 			b.err = fmt.Errorf("%v: %w", source, b.err)
 			return b
