@@ -16,7 +16,16 @@ type Config struct {
 
 	// Include lists additional configuration files or URLs to include.
 	Include []string `json:"include,omitempty"`
+
+	// Tuning section has limits and optimizations.
+	Tuning *Tuning `json:"tuning,omitempty"`
+
+	// Soure of configuration, file or URL.
+	Source string `json:"-"`
 }
+
+// Configs is a list of configs from different sources.
+type Configs []Config
 
 // Store is a map of name:value attributes used to connect to a store.
 // The names and values depend on the type of store.
@@ -83,4 +92,11 @@ type Class struct {
 	Domain string `json:"domain"`
 	// Classes are the names of classes in this group.
 	Classes []string `json:"classes"`
+}
+
+// Tuning section for limits and optimizations.
+type Tuning struct {
+	// RequestTimeout cancel requests if they last longer than this timeout.
+	// Cancelling a correlation operation may return an error or a partial result (HTTP 206).
+	RequestTimeout Duration `json:"requestTimeout,omitempty"`
 }

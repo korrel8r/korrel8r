@@ -3,46 +3,52 @@
 package config
 
 import (
-	"fmt"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-func TestLoad_More(t *testing.T) {
+func TestLoad(t *testing.T) {
 	c, err := Load("testdata/config.json")
 	require.NoError(t, err)
 	want := Configs{
-		"testdata/config.json": &Config{
+		{
+			Source:  "testdata/config.json",
 			Include: []string{"config1.yaml", "config.json", "config2.yaml"},
+			Tuning:  &Tuning{RequestTimeout: Duration{Duration: time.Second}},
 		},
-		"testdata/config1.yaml": &Config{
+		{
+			Source: "testdata/config1.yaml",
 			Rules: []Rule{
 				{Name: "rule1",
-					Start:  ClassSpec{Domain: "foo", Classes: []string{"a", "b", "g"}},
+					Start:  ClassSpec{Domain: "foo", Classes: []string{"a", "b", "d", "e"}},
 					Goal:   ClassSpec{Domain: "bar", Classes: []string{"z"}},
 					Result: ResultSpec{Query: "what?"},
 				},
 			},
-			Aliases: []Class(nil), Stores: []Store(nil), Include: []string(nil),
 		},
-		"testdata/config2.yaml": &Config{
+		{
+			Source: "testdata/config2.yaml",
 			Rules: []Rule{
 				{Name: "rule2",
-					Start:  ClassSpec{Domain: "foo", Classes: []string{"g"}},
+					Start:  ClassSpec{Domain: "foo", Classes: []string{"d", "e"}},
 					Goal:   ClassSpec{Domain: "bar", Classes: []string{"q"}},
 					Result: ResultSpec{Query: "blah"}}},
-			Aliases: []Class{{Name: "g", Domain: "foo", Classes: []string{"d", "e"}}},
-			Stores:  []Store(nil), Include: []string(nil),
 		},
 	}
 	assert.Equal(t, want, c)
 }
 
+func TestLoad_bad_tuning(t *testing.T) {
+	_, err := Load("testdata/bad-tuning.json")
+	require.EqualError(t, err, "Unexpected tuning section in included configuration: testdata/config.json")
+}
+
 func TestConfigs_Expand(t *testing.T) {
 	c := Configs{
-		"test": &Config{
+		{
 			Aliases: []Class{
 				{Name: "x", Domain: "foo", Classes: []string{"p", "q"}},
 				{Name: "y", Domain: "foo", Classes: []string{"x", "a"}},
@@ -58,9 +64,9 @@ func TestConfigs_Expand(t *testing.T) {
 			},
 		},
 	}
-	require.NoError(t, c.Expand())
+	require.NoError(t, expand(c))
 	want := Configs{
-		"test": &Config{
+		{
 			Rules: []Rule{
 				{
 					Name:   "r",
@@ -76,7 +82,7 @@ func TestConfigs_Expand(t *testing.T) {
 
 func TestConfigs_Expand_sameGroupDifferentDomain(t *testing.T) {
 	c := Configs{
-		"test": &Config{
+		{
 			Aliases: []Class{
 				{Name: "x", Domain: "foo", Classes: []string{"p", "q"}},
 				{Name: "x", Domain: "bar", Classes: []string{"bbq"}},
@@ -91,14 +97,14 @@ func TestConfigs_Expand_sameGroupDifferentDomain(t *testing.T) {
 			},
 		},
 	}
-	require.NoError(t, c.Expand())
-	want := Configs{"test": &Config{
-		Rules: []Rule{{
-			Name:   "r1",
-			Start:  ClassSpec{Domain: "foo", Classes: []string{"a", "p", "q"}},
-			Goal:   ClassSpec{Domain: "bar", Classes: []string{"bbq"}},
-			Result: ResultSpec{Query: "help"}}},
-	}}
+	require.NoError(t, expand(c))
+	want := Configs{
+		{
+			Rules: []Rule{{
+				Name:   "r1",
+				Start:  ClassSpec{Domain: "foo", Classes: []string{"a", "p", "q"}},
+				Goal:   ClassSpec{Domain: "bar", Classes: []string{"bbq"}},
+				Result: ResultSpec{Query: "help"}}},
+		}}
 	assert.Equal(t, want, c)
-	fmt.Printf("%#+v", *c["test"])
 }
