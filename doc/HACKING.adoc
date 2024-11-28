@@ -41,7 +41,7 @@ You need to be logged-in as `kubeadmin` to your cluster:
 .Run korrel8r service outside the cluster.
 [source,bash]
 ----
-korrel8r web -c etc/korrel8r/openshift-route.yaml -http :8080
+korrel8r web -c etc/korrel8r/openshift-route.yaml --http :8080
 ----
 
 Browse the interactive API page:
