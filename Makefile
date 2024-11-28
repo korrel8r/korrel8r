@@ -39,7 +39,7 @@ GEN_SRC=$(VERSION_TXT) $(SWAGGER_SPEC) _cover
 all: lint test _site image-build ## Build and test everything locally. Recommended before pushing.
 
 build: $(GEN_SRC) $(BIN) ## Build korrel8r executable.
-	go build ./cmd/korrel8r -o $(BIN)/korrel8r
+	go build -o $(BIN)/korrel8r ./cmd/korrel8r
 
 install: $(GEN_SRC)  ## Build and install korrel8r with go install.
 	go install ./cmd/korrel8r
