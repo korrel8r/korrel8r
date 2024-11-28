@@ -3,36 +3,31 @@
 package unique
 
 // List of unique comparable values, maintains order.
-type List[T any] struct {
-	seen map[any]struct{}
+type List[T comparable] struct {
 	List []T
+	set  Set[T]
 }
 
-func NewList[T any](values ...T) List[T] {
-	l := List[T]{seen: map[any]struct{}{}}
+func NewList[T comparable](values ...T) *List[T] {
+	l := &List[T]{set: Set[T]{}}
 	l.Append(values...)
 	return l
 }
 
 // Add a value if not already present, return true if the value was added.
 func (l *List[T]) Add(v T) bool {
-	_, seen := l.seen[v]
-	if !seen {
-		l.seen[v] = struct{}{}
+	has := l.set.Has(v)
+	if !has {
+		l.set.Add(v)
 		l.List = append(l.List, v)
 	}
-	return !seen
+	return !has
 }
 
-func (l *List[T]) Has(v T) bool {
-	_, ok := l.seen[v]
-	return ok
-}
+func (l *List[T]) Has(v T) bool { return l.set.Has(v) }
 
 func (l *List[T]) Append(values ...T) {
 	for _, v := range values {
-		if _, ok := l.seen[v]; !ok {
-			_ = l.Add(v)
-		}
+		_ = l.Add(v)
 	}
 }

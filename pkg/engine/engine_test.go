@@ -67,8 +67,8 @@ func TestFollower_Traverse(t *testing.T) {
 	require.NoError(t, err)
 	g := e.Graph()
 	g.NodeFor(a).Result.Append(0)
-	f := e.Follower(context.Background(), nil)
-	_, err = g.Traverse(a, []korrel8r.Class{z}, f.Traverse)
+	f := NewFollower(e, context.Background(), nil)
+	_, err = g.Traverse(a, []korrel8r.Class{z}, f)
 	assert.NoError(t, err)
 	// Check node results
 	assert.ElementsMatch(t, []korrel8r.Object{0}, g.NodeFor(a).Result.List())
@@ -179,7 +179,7 @@ func TestEngine_ConfigMockStore(t *testing.T) {
 	require.NoError(t, err)
 	q, err := e.Query("mock:foo:hello")
 	require.NoError(t, err)
-	r := korrel8r.NewResult(q.Class())
+	r := graph.NewResult(q.Class())
 	require.NoError(t, e.Get(context.Background(), q, nil, r))
 	assert.Equal(t, []korrel8r.Object{"hello", "there"}, r.List())
 }
@@ -202,7 +202,7 @@ func TestEngineStoreFor(t *testing.T) {
 	e, err := Build().Domains(d).ConfigFile("testdata/korrel8r.yaml").Stores(s).Engine()
 	require.NoError(t, err)
 
-	r := korrel8r.NewListResult()
+	r := graph.NewListResult()
 	require.NoError(t, e.StoreFor(d).Get(context.Background(), q, nil, r))
 	assert.ElementsMatch(t, []korrel8r.Object{"hello", "there", "dolly"}, r.List())
 }

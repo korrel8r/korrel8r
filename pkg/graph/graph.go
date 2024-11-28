@@ -13,7 +13,7 @@ import (
 	"gonum.org/v1/gonum/graph/path"
 )
 
-// Graph is a directed multigraph with korrel8r.Class noes and korrel8r.Rule lines.
+// Graph is a directed multigraph with [korrel8r.Class] noes and [korrel8r.Rule] lines.
 // Nodes and lines carry attributes for rendering by GraphViz.
 //
 // Concurrency: Graph is mutable, normal concurrency rules apply regarding read/write operations.
@@ -86,15 +86,24 @@ func (g *Graph) AllLines() (lines []*Line) {
 	return lines
 }
 
-func (g *Graph) LinesTo(v *Node) (lines []*Line) {
+func (g *Graph) EachLineTo(v *Node, visit func(*Line)) {
 	u := g.To(v.ID())
 	for u.Next() {
 		l := g.Lines(u.Node().ID(), v.ID())
 		for l.Next() {
-			lines = append(lines, l.Line().(*Line))
+			visit(l.Line().(*Line))
 		}
 	}
-	return lines
+}
+
+func (g *Graph) EachLineFrom(u *Node, visit func(*Line)) {
+	v := g.From(u.ID())
+	for v.Next() {
+		l := g.Lines(u.ID(), v.Node().ID())
+		for l.Next() {
+			visit(l.Line().(*Line))
+		}
+	}
 }
 
 func (g *Graph) LinesBetween(u, v *Node) (lines []*Line) {
@@ -141,7 +150,7 @@ func (g *Graph) NodesSubgraph(nodes []graph.Node) *Graph {
 }
 
 // Select creates a sub-graph of all lines where keep(line) is true.
-func (g *Graph) Select(keep func(l *Line) bool) *Graph {
+func (g *Graph) Select(keep func(*Line) bool) *Graph {
 	sub := g.Data.EmptyGraph()
 	g.EachLine(func(l *Line) {
 		if keep(l) {

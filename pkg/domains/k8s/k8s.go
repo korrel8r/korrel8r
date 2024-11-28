@@ -249,7 +249,7 @@ func (s *Store) Get(ctx context.Context, query korrel8r.Query, c *korrel8r.Const
 	if err != nil {
 		return err
 	}
-	appender := korrel8r.FuncAppender(func(o korrel8r.Object) {
+	appender := korrel8r.AppenderFunc(func(o korrel8r.Object) {
 		// Include only objects created before or during the constraint interval.
 		if c.CompareTime(o.(Object).GetCreationTimestamp().Time) <= 0 {
 			result.Append(o)

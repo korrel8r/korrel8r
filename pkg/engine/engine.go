@@ -23,7 +23,7 @@ import (
 var log = logging.Log()
 
 // Engine manages a set of rules and stores to perform correlation.
-// Once created (see [Build()]) an engine is immutable.
+// Once created (see [Build]) an engine is immutable.
 type Engine struct {
 	domains       map[string]korrel8r.Domain
 	stores        map[korrel8r.Domain]*stores
@@ -133,7 +133,7 @@ func (e *Engine) Get(ctx context.Context, query korrel8r.Query, constraint *korr
 	if log.V(3).Enabled() { // Don't add overhead unless trace logging is enabled.
 		start := time.Now() // Measure latency
 		count := 0          // Count results
-		r = korrel8r.FuncAppender(func(o korrel8r.Object) { result.Append(o); count++ })
+		r = korrel8r.AppenderFunc(func(o korrel8r.Object) { result.Append(o); count++ })
 		defer func() {
 			if err == nil {
 				log.V(3).Info("Get succeeded", "count", count, "latency", time.Since(start), "query", query, "constraint", constraint)
@@ -141,11 +141,6 @@ func (e *Engine) Get(ctx context.Context, query korrel8r.Query, constraint *korr
 		}()
 	}
 	return ss.Get(ctx, query, constraint, r)
-}
-
-// Follower creates a follower. Constraint can be nil.
-func (e *Engine) Follower(ctx context.Context, c *korrel8r.Constraint) *Follower {
-	return &Follower{Engine: e, Context: ctx, Constraint: c.Default(), rules: map[appliedRule]graph.Queries{}}
 }
 
 // Start populates the start node with objects and results of queries.
@@ -157,7 +152,7 @@ func (e *Engine) Start(ctx context.Context, start *graph.Node, objects []korrel8
 			return fmt.Errorf("class mismatch in query %v: expected class %v", query, start)
 		}
 		count := 0
-		counter := korrel8r.FuncAppender(func(o korrel8r.Object) { start.Result.Append(o); count++ })
+		counter := korrel8r.AppenderFunc(func(o korrel8r.Object) { start.Result.Append(o); count++ })
 		if err := e.Get(ctx, query, constraint, counter); err != nil {
 			return err
 		}
@@ -171,18 +166,18 @@ func (e *Engine) GoalSearch(ctx context.Context, g *graph.Graph, start korrel8r.
 	if err := e.Start(ctx, g.NodeFor(start), objects, queries, constraint); err != nil {
 		return nil, err
 	}
-	f := e.Follower(ctx, constraint)
-	return g.Traverse(start, goals, f.Traverse)
+	f := NewFollower(e, ctx, constraint)
+	return g.Traverse(start, goals, f)
 }
 
 // Neighbours generates a neighbourhood graph from starting objects and queries.
 func (e *Engine) Neighbours(ctx context.Context, start korrel8r.Class, objects []korrel8r.Object, queries []korrel8r.Query, constraint *korrel8r.Constraint, depth int) (*graph.Graph, error) {
-	f := e.Follower(ctx, constraint)
+	f := NewFollower(e, ctx, constraint)
 	g := e.Graph()
 	if err := e.Start(ctx, g.NodeFor(start), objects, queries, constraint); err != nil {
 		return nil, err
 	}
-	return g.Neighbours(start, depth, f.Traverse)
+	return g.Neighbours(start, depth, f)
 }
 
 // query implements the template function.
@@ -191,7 +186,7 @@ func (e *Engine) query(query string) ([]korrel8r.Object, error) {
 	if err != nil {
 		return nil, err
 	}
-	results := korrel8r.NewResult(q.Class())
+	results := graph.NewResult(q.Class())
 	err = e.Get(context.Background(), q, nil, results)
 	return results.List(), err
 }
