@@ -12,6 +12,7 @@ func NewSet[T comparable](v ...T) Set[T] {
 	return s
 }
 func (s Set[T]) Has(v T) bool { _, ok := s[v]; return ok }
+
 func (s Set[T]) Add(vs ...T) {
 	for _, v := range vs {
 		s[v] = empty{}

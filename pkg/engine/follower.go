@@ -25,9 +25,18 @@ type Follower struct {
 	rules map[appliedRule]graph.Queries
 }
 
-// Traverse a line gets all queries provided by Visit() on the From node,
+func NewFollower(e *Engine, ctx context.Context, c *korrel8r.Constraint) *Follower {
+	return &Follower{
+		Engine:     e,
+		Context:    ctx,
+		Constraint: c.Default(),
+		rules:      map[appliedRule]graph.Queries{},
+	}
+}
+
+// Line a line gets all queries provided by Visit() on the From node,
 // and stores results on the To node.
-func (f *Follower) Traverse(l *graph.Line) bool {
+func (f *Follower) Line(l *graph.Line) bool {
 	rule := graph.RuleFor(l)
 	start, goal := l.From().(*graph.Node), l.To().(*graph.Node)
 	// Apply rule to each start object unless it was already applied to this start class.
@@ -58,7 +67,7 @@ func (f *Follower) Traverse(l *graph.Line) bool {
 			return true
 		default: // Evaluate the query and store the results
 			var count int
-			result := korrel8r.FuncAppender(func(o korrel8r.Object) { goal.Result.Append(o); count++ })
+			result := korrel8r.AppenderFunc(func(o korrel8r.Object) { goal.Result.Append(o); count++ })
 			_ = f.Engine.Get(f.Context, q, f.Constraint, result)
 			l.Queries.Set(q, count)
 			goal.Queries.Set(q, count)
@@ -68,3 +77,6 @@ func (f *Follower) Traverse(l *graph.Line) bool {
 
 	return l.Queries.Total() > 0
 }
+
+func (f *Follower) Node(*graph.Node) {}
+func (f *Follower) Edge(*graph.Edge) {}

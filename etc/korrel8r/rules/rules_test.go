@@ -57,14 +57,14 @@ func testTraverse(t *testing.T, e *engine.Engine, start, goal korrel8r.Class, st
 	t.Helper()
 	g := e.Graph()
 	g.NodeFor(start).Result.Append(starters...)
-	f := e.Follower(context.Background(), nil)
-	g, err := g.Traverse(start, []korrel8r.Class{goal}, func(l *graph.Line) bool {
-		f.Traverse(l)
+	f := engine.NewFollower(e, context.Background(), nil)
+	g, err := g.Traverse(start, []korrel8r.Class{goal}, graph.LineVisitor(func(l *graph.Line) bool {
+		f.Line(l)
 		if len(l.Queries) > 0 { // Only consider the rule used if it generated some queries
 			tested(l.Rule.Name())
 		}
 		return true
-	})
+	}))
 	assert.NoError(t, err)
 	assert.Contains(t, g.NodeFor(goal).Queries, want.String())
 }

@@ -210,7 +210,7 @@ func (a *API) GetObjects(c *gin.Context) {
 	if !check(c, http.StatusBadRequest, err) {
 		return
 	}
-	result := korrel8r.NewResult(query.Class())
+	result := graph.NewResult(query.Class())
 	if !check(c, http.StatusInternalServerError, a.Engine.Get(c.Request.Context(), query, (*korrel8r.Constraint)(opts.Constraint), result)) {
 		return
 	}

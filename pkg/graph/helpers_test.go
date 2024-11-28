@@ -20,10 +20,14 @@ func c(i int) korrel8r.Class { return Domain.Class(strconv.Itoa(i)) }
 
 func nodesToInts(nodes []*Node) (ret []int) {
 	for _, n := range nodes {
-		i,_ := strconv.Atoi(n.Class.Name())
-		ret = append(ret, i)
+		ret = append(ret, nodeToInt(n))
 	}
 	return ret
+}
+
+func nodeToInt(n *Node) int {
+	i, _ := strconv.Atoi(n.Class.Name())
+	return i
 }
 
 func testGraph(rules []korrel8r.Rule) *Graph {
