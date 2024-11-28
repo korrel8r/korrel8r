@@ -197,7 +197,7 @@ In production korrel8r normally functions as a back-end for a console or other v
 .Install korrel8rcli
 [source,terminal,subs=attributes+]
 ----
-go install github.com/korrel8r/korrel8r/client/cmd/korrel8rcli@latest
+go install github.com/korrel8r/client/cmd/korrel8rcli@latest
 ----
 
 Run  `korrel8rcli --help` to get {korrel8rcli-help}[command line help].
@@ -268,7 +268,7 @@ CAUTION: This tool is experimental, it may change or be dropped in future.
 .Run a web server to vizualize results.
 [source,terminal,subs=attributes+]
 ----
-korrel8rcli web {korrel8rcli-url} --addr :9090
+korrel8rcli web -u {korrel8rcli-url} --addr :9090
 ----
 
 .View results in a browser.
