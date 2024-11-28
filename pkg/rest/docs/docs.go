@@ -45,9 +45,7 @@ const docTemplate = `{
                     },
                     "default": {
                         "description": "",
-                        "schema": {
-                            "type": "object"
-                        }
+                        "schema": {}
                     }
                 }
             }
@@ -67,9 +65,7 @@ const docTemplate = `{
                     },
                     "default": {
                         "description": "",
-                        "schema": {
-                            "type": "object"
-                        }
+                        "schema": {}
                     }
                 }
             }
@@ -95,9 +91,7 @@ const docTemplate = `{
                     },
                     "default": {
                         "description": "",
-                        "schema": {
-                            "type": "object"
-                        }
+                        "schema": {}
                     }
                 }
             }
@@ -137,9 +131,7 @@ const docTemplate = `{
                     },
                     "default": {
                         "description": "",
-                        "schema": {
-                            "type": "object"
-                        }
+                        "schema": {}
                     }
                 }
             }
@@ -179,9 +171,7 @@ const docTemplate = `{
                     },
                     "default": {
                         "description": "",
-                        "schema": {
-                            "type": "object"
-                        }
+                        "schema": {}
                     }
                 }
             }
@@ -212,9 +202,7 @@ const docTemplate = `{
                     },
                     "default": {
                         "description": "",
-                        "schema": {
-                            "type": "object"
-                        }
+                        "schema": {}
                     }
                 }
             }
@@ -236,16 +224,12 @@ const docTemplate = `{
                         "description": "OK",
                         "schema": {
                             "type": "array",
-                            "items": {
-                                "type": "object"
-                            }
+                            "items": {}
                         }
                     },
                     "default": {
                         "description": "",
-                        "schema": {
-                            "type": "object"
-                        }
+                        "schema": {}
                     }
                 }
             }
