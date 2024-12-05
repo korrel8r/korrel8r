@@ -18,8 +18,9 @@ import (
 	"github.com/korrel8r/korrel8r/pkg/domains/log"
 	"github.com/korrel8r/korrel8r/pkg/domains/metric"
 	"github.com/korrel8r/korrel8r/pkg/domains/netflow"
-	trace_domain "github.com/korrel8r/korrel8r/pkg/domains/trace"
+	"github.com/korrel8r/korrel8r/pkg/domains/trace"
 	"github.com/korrel8r/korrel8r/pkg/engine"
+	"github.com/korrel8r/korrel8r/pkg/engine/traverse"
 	"github.com/korrel8r/korrel8r/pkg/graph"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"github.com/korrel8r/korrel8r/pkg/unique"
@@ -44,7 +45,7 @@ func setup() *engine.Engine {
 		panic(err)
 	}
 	e, err := engine.Build().
-		Domains(k8s.Domain, log.Domain, netflow.Domain, trace_domain.Domain, alert.Domain, metric.Domain).
+		Domains(k8s.Domain, log.Domain, netflow.Domain, trace.Domain, alert.Domain, metric.Domain).
 		Config(configs).
 		Stores(s).Engine()
 	if err != nil {
@@ -55,18 +56,16 @@ func setup() *engine.Engine {
 
 func testTraverse(t *testing.T, e *engine.Engine, start, goal korrel8r.Class, starters []korrel8r.Object, want korrel8r.Query) {
 	t.Helper()
-	g := e.Graph()
-	g.NodeFor(start).Result.Append(starters...)
-	f := engine.NewFollower(e, context.Background(), nil)
-	g, err := g.Traverse(start, []korrel8r.Class{goal}, graph.LineVisitor(func(l *graph.Line) bool {
-		f.Line(l)
-		if len(l.Queries) > 0 { // Only consider the rule used if it generated some queries
-			tested(l.Rule.Name())
-		}
-		return true
-	}))
+	goals := []korrel8r.Class{goal}
+	g, err := traverse.NewSync(e, e.Graph(), start, starters, nil).Goals(context.Background(), goals)
 	assert.NoError(t, err)
 	assert.Contains(t, g.NodeFor(goal).Queries, want.String())
+	g.EachLine(func(l *graph.Line) {
+		// FIXME stricter test for results?
+		if len(l.Queries) > 0 { // Only consider the rule tested if it generated queries
+			tested(l.Rule.Name())
+		}
+	})
 }
 
 func TestMain(m *testing.M) {
