@@ -19,6 +19,7 @@ import (
 	"github.com/korrel8r/korrel8r/pkg/domains/netflow"
 	"github.com/korrel8r/korrel8r/pkg/domains/trace"
 	"github.com/korrel8r/korrel8r/pkg/engine"
+	"github.com/korrel8r/korrel8r/pkg/engine/traverse"
 	"github.com/spf13/cobra"
 )
 
@@ -33,9 +34,11 @@ var (
 
 	// Global Flags
 	outputFlag  = rootCmd.PersistentFlags().StringP("output", "o", "yaml", "Output format: [json, json-pretty, yaml]")
-	verboseFlag = rootCmd.PersistentFlags().IntP("verbose", "v", 0, "Verbosity for logging (0 = notice, 1 = info, 2 = debug, 3 = trace)")
+	verboseFlag = rootCmd.PersistentFlags().IntP("verbose", "v", 0, "Verbosity for logging (0: notice/error/warn, 1: info, 2: debug, 3+: trace)")
 	configFlag  = rootCmd.PersistentFlags().StringP("config", "c", getConfig(), "Configuration file")
 	panicFlag   = rootCmd.PersistentFlags().Bool("panic", false, "Panic on error")
+	// TODO: remove sync search once async search is full tested.
+	syncFlag = rootCmd.PersistentFlags().Bool("sync", false, "Deprectated: synchronous search, will be removed")
 )
 
 const (
@@ -45,6 +48,7 @@ const (
 
 func init() {
 	_ = rootCmd.PersistentFlags().MarkHidden("panic")
+	_ = rootCmd.PersistentFlags().MarkHidden("sync")
 	rootCmd.CompletionOptions.HiddenDefaultCmd = true
 
 	cobra.OnInitialize(func() {
@@ -80,7 +84,13 @@ func main() {
 }
 
 func newEngine() (*engine.Engine, config.Configs) {
-	log.Info("Starting korrel8r", "version", build.Version, "configuration", *configFlag)
+	mode := "async"
+	traverse.New = traverse.NewAsync // Default to async
+	if *syncFlag {
+		traverse.New = traverse.NewSync
+		mode = "sync"
+	}
+	log.Info("Starting korrel8r", "version", build.Version, "configuration", *configFlag, "mode", mode)
 	c := must.Must1(config.Load(*configFlag))
 	e := must.Must1(engine.Build().
 		Domains(k8s.Domain, logdomain.Domain, netflow.Domain, trace.Domain, alert.Domain, metric.Domain, mock.Domain("mock")).

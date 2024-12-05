@@ -34,6 +34,7 @@ func NewSync(e *engine.Engine, g *graph.Graph, start korrel8r.Class, objects []k
 }
 
 func (t *syncTraverser) Goals(ctx context.Context, goals []korrel8r.Class) (*graph.Graph, error) {
+	log.V(4).Info("Sync goal search", "start", t.start, "goals", goals)
 	t.ctx = ctx
 	if err := t.startNode(t.graph.NodeFor(t.start), t.objects, t.queries); err != nil {
 		return nil, err
@@ -42,6 +43,7 @@ func (t *syncTraverser) Goals(ctx context.Context, goals []korrel8r.Class) (*gra
 }
 
 func (t *syncTraverser) Neighbours(ctx context.Context, n int) (*graph.Graph, error) {
+	log.V(4).Info("Sync neighbours search", "start", t.start, "depth", n)
 	t.ctx = ctx
 	if err := t.startNode(t.graph.NodeFor(t.start), t.objects, t.queries); err != nil {
 		return nil, err
