@@ -6,7 +6,6 @@ import (
 	"fmt"
 
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
-	"gonum.org/v1/gonum/graph"
 	"gonum.org/v1/gonum/graph/multi"
 )
 
@@ -15,8 +14,8 @@ import (
 //
 // Concurrency: Data is immutable once created.
 type Data struct {
-	Nodes  []*Node          // Nodes slice index == Node.ID()
-	Lines  []*Line          // Lines slice index == Line.ID()
+	Nodes  []*Node          // Nodes, index == Node.ID()
+	Lines  []*Line          // Lines, index == Line.ID()
 	nodeID map[string]int64 // Map by full class name
 }
 
@@ -109,7 +108,7 @@ func (d *Data) Classes() []korrel8r.Class {
 	return classs
 }
 
-// Node is a graph Node, contains a Class.
+// Node is a graph Node, contains a Class and search results.
 type Node struct {
 	multi.Node
 	Attrs   // GraphViz Attributer
@@ -119,9 +118,6 @@ type Node struct {
 
 	Value any // Value is an extra value that can be stored on a node.
 }
-
-func NodeFor(n graph.Node) *Node           { return n.(*Node) }
-func ClassFor(n graph.Node) korrel8r.Class { return NodeFor(n).Class }
 
 func (n *Node) String() string { return n.Class.String() }
 func (n *Node) DOTID() string  { return n.Class.String() }
@@ -156,7 +152,7 @@ func (qs Queries) Total() (total int) {
 	return total
 }
 
-// Line is one line in a multi-graph edge, corresponds to a rule.
+// Line is a line in a directed multi-graph corresponding to a korrel8r rule.
 type Line struct {
 	multi.Line
 	Attrs   // GraphViz Attributer
@@ -166,11 +162,8 @@ type Line struct {
 
 func (l *Line) String() string { return fmt.Sprintf("%q(%v->%v)", l.Rule.Name(), l.From(), l.To()) }
 func (l *Line) DOTID() string  { return l.Rule.Name() }
-func (l *Line) Start() *Node   { return NodeFor(l.Line.From()) }
-func (l *Line) Goal() *Node    { return NodeFor(l.Line.To()) }
-
-func LineFor(l graph.Line) *Line         { return l.(*Line) }
-func RuleFor(l graph.Line) korrel8r.Rule { return LineFor(l).Rule }
+func (l *Line) Start() *Node   { return l.Line.From().(*Node) }
+func (l *Line) Goal() *Node    { return l.Line.To().(*Node) }
 
 type Edge multi.Edge
 

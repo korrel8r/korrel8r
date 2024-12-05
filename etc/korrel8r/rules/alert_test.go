@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestAlertTRules(t *testing.T) {
+func TestAlertToRules(t *testing.T) {
 	e := setup()
 	for _, x := range []struct {
 		rule  string

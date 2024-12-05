@@ -13,20 +13,15 @@ import (
 type ruleCollecter struct {
 	rules []string
 	nodes []int
-	edges [][2]int
-}
-
-func (c *ruleCollecter) Line(l *Line) bool {
-	c.rules = append(c.rules, RuleFor(l).Name())
-	return true
 }
 
 func (c *ruleCollecter) Node(n *Node) {
 	c.nodes = append(c.nodes, nodeToInt(n))
 }
 
-func (c *ruleCollecter) Edge(e *Edge) {
-	c.edges = append(c.edges, [2]int{nodeToInt(e.Start()), nodeToInt(e.Goal())})
+func (c *ruleCollecter) Line(l *Line) bool {
+	c.rules = append(c.rules, l.Rule.Name())
+	return true
 }
 
 func TestTraverse(t *testing.T) {
@@ -54,19 +49,18 @@ func TestTraverse(t *testing.T) {
 		{
 			name:  "cycle", // cycle of 2,3,4
 			graph: []rule{r(1, 2), r(2, 3), r(3, 4), r(4, 2), r(4, 5)},
-			rules: [][]string{{"1_2"}, {"2_3", "3_4", "4_2", "4_5"}},
+			rules: [][]string{{"1_2", "2_3", "3_4", "4_5"}},
 			nodes: []int{1, 2, 3, 4, 5},
 		},
 	} {
 		t.Run(x.name, func(t *testing.T) {
-			g := testGraph(x.graph)
 			var got ruleCollecter
-			_, err := g.Traverse(x.graph[0].Start()[0], x.graph[len(x.graph)-1].Goal(), &got)
-			assert.NoError(t, err)
+			testGraph(x.graph).GoalSearch(x.graph[0].Start()[0], x.graph[len(x.graph)-1].Goal(), &got)
 			assertComponentOrder(t, x.rules, got.rules)
 			assert.ElementsMatch(t, x.nodes, got.nodes)
 		})
 	}
+
 }
 
 func TestNeighbours(t *testing.T) {
@@ -78,40 +72,33 @@ func TestNeighbours(t *testing.T) {
 		depth int
 		rules [][]string
 		nodes []int
-		edges [][2]int
 	}{
 		{
 			depth: 0,
 			rules: nil,
 			nodes: []int{1},
-			edges: nil,
 		},
 		{
 			depth: 1,
 			rules: [][]string{{"1_11", "1_12", "1_13"}},
 			nodes: []int{1, 11, 12, 13},
-			edges: [][2]int{{1, 11}, {1, 12}, {1, 13}},
 		},
 		{
 			depth: 2,
 			rules: [][]string{{"1_11", "1_12", "1_13"}, {"11_22", "12_22"}},
 			nodes: []int{1, 11, 12, 13, 22},
-			edges: [][2]int{{1, 11}, {1, 12}, {1, 13}, {11, 22}, {12, 22}},
 		},
 		{
 			depth: 3,
-			rules: [][]string{{"1_11", "1_12", "1_13"}, {"11_22", "12_22"}, {"22_99"}},
+			rules: [][]string{{"1_11", "1_12", "1_13"}, {"11_22", "12_13", "12_22"}, {"22_99"}},
 			nodes: []int{1, 11, 12, 13, 22, 99},
-			edges: [][2]int{{1, 11}, {1, 12}, {1, 13}, {11, 22}, {12, 22}, {22, 99}}},
+		},
 	} {
 		t.Run(fmt.Sprintf("depth=%v", x.depth), func(t *testing.T) {
 			var got ruleCollecter
-			g2, err := g.Neighbours(c(1), x.depth, &got)
-			assert.NoError(t, err)
-			assertComponentOrder(t, x.rules, got.rules)
+			g.Neighbours(c(1), x.depth, &got)
 			assert.ElementsMatch(t, x.nodes, got.nodes)
-			assert.ElementsMatch(t, x.nodes, nodesToInts(g2.AllNodes()))
-			assert.ElementsMatch(t, x.edges, got.edges)
+			assertComponentOrder(t, x.rules, got.rules)
 		})
 	}
 }

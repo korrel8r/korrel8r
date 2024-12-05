@@ -18,15 +18,18 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func list[T any](x ...T) []T { return x }
+
 func TestEngine_Class(t *testing.T) {
 	domain := mock.Domain("mock")
-	rule := mock.NewRuleQuery(domain.Name(), domain.Class("foo"), domain.Class("bar"), nil)
+	foo, bar := domain.Class("foo"), domain.Class("bar")
+	rule := mock.NewRule("x", list(foo), list(bar), mock.NewQuery(bar, ""))
 	for _, x := range []struct {
 		name string
 		want korrel8r.Class
 		err  string
 	}{
-		{"mock:foo", domain.Class("foo"), ""},
+		{"mock:foo", foo, ""},
 		{"x.", nil, "invalid class name: x."},
 		{".x", nil, "invalid class name: .x"},
 		{"x", nil, "invalid class name: x"},
@@ -46,68 +49,6 @@ func TestEngine_Class(t *testing.T) {
 			assert.Equal(t, x.want, c)
 		})
 	}
-}
-
-func TestFollower_Traverse(t *testing.T) {
-	d := mock.Domain("mock")
-	s := mock.NewStore(d)
-	a, b, c, z := d.Class("a"), d.Class("b"), d.Class("c"), d.Class("z")
-	e, err := engine.Build().Rules(
-		// Return 2 results, must follow both
-		mock.NewRuleQuery("ab", a, b, s.NewQuery(b, 1, 2)),
-		// 2 rules, must follow both. Incorporate data from start object.
-		mock.NewRule("bc1", []korrel8r.Class{b}, []korrel8r.Class{c}, func(start korrel8r.Object) (korrel8r.Query, error) {
-			return s.NewQuery(c, start), nil
-		}),
-		mock.NewRule("bc2", []korrel8r.Class{b}, []korrel8r.Class{c}, func(start korrel8r.Object) (korrel8r.Query, error) {
-			return s.NewQuery(c, start.(int)+10), nil
-		}),
-		mock.NewRule("cz", []korrel8r.Class{c}, []korrel8r.Class{z}, func(start korrel8r.Object) (korrel8r.Query, error) {
-			return s.NewQuery(z, start), nil
-		}),
-	).Stores(s).Engine()
-	require.NoError(t, err)
-	g, err := traverse.NewSync(e, e.Graph(), a, []korrel8r.Object{0}, nil).Goals(context.Background(), []korrel8r.Class{z})
-	assert.NoError(t, err)
-	// Check node results
-	assert.ElementsMatch(t, []korrel8r.Object{0}, g.NodeFor(a).Result.List())
-	assert.ElementsMatch(t, []korrel8r.Object{1, 2}, g.NodeFor(b).Result.List())
-	assert.ElementsMatch(t, []korrel8r.Object{1, 2, 11, 12}, g.NodeFor(c).Result.List())
-	assert.ElementsMatch(t, []korrel8r.Object{1, 2, 11, 12}, g.NodeFor(z).Result.List())
-	// Check line results
-	g.EachLine(func(l *graph.Line) {
-		switch l.Rule.Name() {
-		case "ab":
-			q, err := l.Rule.Apply(0)
-			require.NoError(t, err)
-			assert.Equal(t, 2, l.Queries.Get(q), q.String())
-			assert.Len(t, l.Queries, 1)
-		case "bc1", "bc2":
-			q1, err := l.Rule.Apply(1)
-			require.NoError(t, err)
-			q2, err := l.Rule.Apply(2)
-			require.NoError(t, err)
-			assert.Len(t, l.Queries, 2)
-			assert.Equal(t, 1, l.Queries.Get(q1))
-			assert.Equal(t, 1, l.Queries.Get(q2))
-		case "cz":
-			q1, err := l.Rule.Apply(1)
-			require.NoError(t, err)
-			q2, err := l.Rule.Apply(2)
-			require.NoError(t, err)
-			q3, err := l.Rule.Apply(11)
-			require.NoError(t, err)
-			q4, err := l.Rule.Apply(12)
-			require.NoError(t, err)
-			assert.Len(t, l.Queries, 4)
-			assert.Equal(t, 1, l.Queries.Get(q1), q1.String())
-			assert.Equal(t, 1, l.Queries.Get(q2), q2.String())
-			assert.Equal(t, 1, l.Queries.Get(q3), q3.String())
-			assert.Equal(t, 1, l.Queries.Get(q4), q4.String())
-		default:
-			t.Fatalf("unexpected rule: %v", l.Rule)
-		}
-	})
 }
 
 func (o obj) String() string { return o.Name }
@@ -163,9 +104,9 @@ func TestEngine_PropagateConstraints(t *testing.T) {
 	} {
 		t.Run(fmt.Sprintf("%v", i), func(t *testing.T) {
 			goals := []korrel8r.Class{c}
-			g := e.Graph().AllPaths(a, goals...)
+			g := e.Graph().ShortestPaths(a, goals...)
 			ctx := korrel8r.WithConstraint(context.Background(), x.constraint)
-			g, err := traverse.NewSync(e, g, a, []korrel8r.Object{obj{"a", ontime}}, nil).Goals(ctx, goals)
+			g, err := traverse.NewSync(e, g).Goals(ctx, traverse.Start{Class: a, Objects: []korrel8r.Object{obj{"a", ontime}}}, goals)
 			assert.NoError(t, err)
 			got := g.NodeFor(c).Result.List()
 			assert.Equal(t, asStrings(x.want), asStrings(got), "want %v got %v", x.want, got)

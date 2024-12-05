@@ -57,11 +57,10 @@ func setup() *engine.Engine {
 func testTraverse(t *testing.T, e *engine.Engine, start, goal korrel8r.Class, starters []korrel8r.Object, want korrel8r.Query) {
 	t.Helper()
 	goals := []korrel8r.Class{goal}
-	g, err := traverse.NewSync(e, e.Graph(), start, starters, nil).Goals(context.Background(), goals)
+	g, err := traverse.NewSync(e, e.Graph()).Goals(context.Background(), traverse.Start{Class: start, Objects: starters}, goals)
 	assert.NoError(t, err)
 	assert.Contains(t, g.NodeFor(goal).Queries, want.String())
 	g.EachLine(func(l *graph.Line) {
-		// FIXME stricter test for results?
 		if len(l.Queries) > 0 { // Only consider the rule tested if it generated queries
 			tested(l.Rule.Name())
 		}

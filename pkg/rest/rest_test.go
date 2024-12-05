@@ -105,7 +105,7 @@ func TestAPI_GraphGoals_rules(t *testing.T) {
 		})
 }
 
-func TestAPI_PostNeighbours_noRules(t *testing.T) {
+func TestAPI_PostNeighbours(t *testing.T) {
 	e := testEngine(t)
 	assertDo(t, newTestAPI(t, e), "POST", "/api/v1alpha1/graphs/neighbours",
 		Neighbours{
@@ -147,15 +147,15 @@ func TestAPI_PostNeighbours_none(t *testing.T) {
 	e := testEngine(t)
 	assertDo(t, newTestAPI(t, e), "POST", "/api/v1alpha1/graphs/neighbours",
 		Neighbours{
-			Start: Start{Queries: []string{"mock:a:x"}},
+			Start: Start{Queries: []string{"mock:b:y"}},
 			Depth: 0,
 		},
 		200,
 		Graph{
 			Nodes: []Node{{
-				Class:   "mock:a",
-				Queries: []QueryCount{{Query: "mock:a:x", Count: 1}},
-				Count: 1,
+				Class:   "mock:b",
+				Queries: []QueryCount{{Query: "mock:b:y", Count: 1}},
+				Count:   1,
 			}}},
 	)
 }
@@ -245,8 +245,10 @@ func testEngine(t *testing.T) (e *engine.Engine) {
 	d := mock.Domain("mock")
 	a, b := d.Class("a"), d.Class("b")
 	s := mock.NewStoreWith(d, mock.QueryMap{"mock:a:x": "ax", "mock:b:y": "by"})
-	r := mock.NewRuleQuery("a-b", a, b, mock.NewQuery(b, "y"))
+	r := mock.NewRule("a-b", list(a), list(b), mock.NewQuery(b, "y"))
 	e, err := engine.Build().Domains(d).Stores(s).Rules(r).Engine()
 	require.NoError(t, err)
 	return e
 }
+
+func list[T any](x ...T) []T { return x }
