@@ -40,6 +40,7 @@ func NewSetResult(id korrel8r.IDer) *SetResult {
 	return &SetResult{dedup: unique.NewDeduplicator(id.ID)}
 }
 func (r SetResult) List() []korrel8r.Object { return r.list }
+
 func (r *SetResult) Append(objects ...korrel8r.Object) {
 	for _, o := range objects {
 		r.Add(o)
