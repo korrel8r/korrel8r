@@ -102,51 +102,20 @@ func TestGraph_EachNode(t *testing.T) {
 	assert.ElementsMatch(t, want, nodes)
 }
 
-func TestGraph_NodesBetween(t *testing.T) {
+func TestGraph_LinesBetween(t *testing.T) {
 	rm := ruleMap{}
 	r := func(i, j int) korrel8r.Rule { return rm.r(i, j) }
-
 	g := testGraph([]rule{r(1, 2), r(1, 3), r(1, 2), r(12, 13)})
-	assert.Len(t, g.LinesBetween(g.NodeFor(c(1)), g.NodeFor(c(2))), 2)
-	assert.Len(t, g.LinesBetween(g.NodeFor(c(1)), g.NodeFor(c(3))), 1)
-	assert.Len(t, g.LinesBetween(g.NodeFor(c(1)), g.NodeFor(c(13))), 0)
-}
-
-func TestGraph_AllPaths(t *testing.T) {
-	rm := ruleMap{}
-	r := func(i, j int) korrel8r.Rule { return rm.r(i, j) }
-	for _, x := range []struct {
-		name        string
-		graph, want []rule
-	}{
-		{
-			name:  "simple",
-			graph: []rule{r(1, 2), r(1, 3), r(3, 11), r(3, 12), r(12, 13)},
-			want:  []rule{r(1, 3), r(3, 12), r(12, 13)},
-		},
-		{
-			name:  "multiple",
-			graph: []rule{r(1, 2), r(1, 3), r(3, 11), r(2, 12), r(3, 12), r(12, 13)},
-			want:  []rule{r(1, 2), r(1, 3), r(2, 12), r(3, 12), r(12, 13)},
-		},
-		{
-			name:  "lengths",
-			graph: []rule{r(1, 2), r(1, 3), r(1, 13), r(2, 12), r(3, 12), r(12, 13)},
-			want:  []rule{r(1, 2), r(1, 3), r(1, 13), r(2, 12), r(3, 12), r(12, 13)},
-			// want:  [][]int{{1, 2, 12, 13}, {1, 3, 12, 13}, {1, 13}},
-		},
-		{
-			name:  "empty",
-			graph: []rule{r(1, 2), r(1, 3), r(3, 11), r(12, 13)},
-			want:  nil,
-		}} {
-		t.Run(x.name, func(t *testing.T) {
-			g := testGraph(x.graph)
-			paths := g.AllPaths(c(1), c(13))
-			mock.SortRules(x.want)
-			assert.Equal(t, x.want, graphRules(paths))
+	rules := func(start, goal korrel8r.Class) []string {
+		var rules []string
+		g.EachLineBetween(g.NodeFor(start), g.NodeFor(goal), func(l *Line) {
+			rules = append(rules, l.Rule.Name())
 		})
+		return rules
 	}
+	assert.ElementsMatch(t, rules(c(1), c(2)), []string{"1_2", "1_2"})
+	assert.ElementsMatch(t, rules(c(1), c(3)), []string{"1_3"})
+	assert.Empty(t, rules(c(1), c(13)))
 }
 
 func TestGraph_ShortestPaths(t *testing.T) {

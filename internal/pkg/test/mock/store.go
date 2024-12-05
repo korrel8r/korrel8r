@@ -63,16 +63,23 @@ func (s *Store) Domain() korrel8r.Domain { return s.domain }
 
 func (s *Store) Get(ctx context.Context, q korrel8r.Query, constraint *korrel8r.Constraint, r korrel8r.Appender) error {
 	var result []korrel8r.Object
-	data := s.Queries[q.String()]
-	switch data := data.(type) {
-	case nil:
-		return nil
-	case []korrel8r.Object:
-		result = data
-	case QueryFunc:
-		result = data(q)
-	default:
-		result = []korrel8r.Object{data}
+
+	if mq, ok := q.(Query); ok && mq.result != nil {
+		// Query contains it's own result
+		result = mq.result
+	} else {
+		// Find query in store result map.
+		data := s.Queries[q.String()]
+		switch data := data.(type) {
+		case nil:
+			return nil
+		case []korrel8r.Object:
+			result = data
+		case QueryFunc:
+			result = data(q)
+		default:
+			result = []korrel8r.Object{data}
+		}
 	}
 	for i, o := range result {
 		if limit := constraint.GetLimit(); limit > 0 && i >= limit {
