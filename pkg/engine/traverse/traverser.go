@@ -20,7 +20,7 @@ type Traverser interface {
 }
 
 // New creates a default traverser, starting from objects/queries of class.
-var New func(*engine.Engine, *graph.Graph, korrel8r.Class, []korrel8r.Object, []korrel8r.Query) Traverser = NewSync
+var New func(*engine.Engine, *graph.Graph, korrel8r.Class, []korrel8r.Object, []korrel8r.Query) Traverser = NewAsync
 
 type traverser struct {
 	engine  *engine.Engine

@@ -61,7 +61,6 @@ func testTraverse(t *testing.T, e *engine.Engine, start, goal korrel8r.Class, st
 	assert.NoError(t, err)
 	assert.Contains(t, g.NodeFor(goal).Queries, want.String())
 	g.EachLine(func(l *graph.Line) {
-		// FIXME stricter test for results?
 		if len(l.Queries) > 0 { // Only consider the rule tested if it generated queries
 			tested(l.Rule.Name())
 		}

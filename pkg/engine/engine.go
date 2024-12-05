@@ -143,8 +143,6 @@ func (e *Engine) Get(ctx context.Context, query korrel8r.Query, constraint *korr
 	return ss.Get(ctx, query, constraint, r)
 }
 
-// FIXME separate?
-
 // query implements the template function 'query'.
 func (e *Engine) query(query string) ([]korrel8r.Object, error) {
 	q, err := e.Query(query)

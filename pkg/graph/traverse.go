@@ -34,6 +34,13 @@ func (v LineVisitor) Edge(*Edge)        {}
 // NoOpVisitor does nothing
 var NoOpVisitor = LineVisitor(func(*Line) bool { return true })
 
+func addVisitNode(g *Graph, n *Node, v Visitor) {
+	if g.Node(n.ID()) == nil {
+		g.AddNode(n)
+	}
+	v.Node(n)
+}
+
 // Traverse rules on paths from start to goal.
 // Returns the subset of the graph that was traversed.
 func (g *Graph) Traverse(start korrel8r.Class, goals []korrel8r.Class, v Visitor) (*Graph, error) {
@@ -48,9 +55,10 @@ func (g *Graph) Traverse(start korrel8r.Class, goals []korrel8r.Class, v Visitor
 				return false
 			})
 		},
-		Visit: func(n graph.Node) { v.Node(NodeFor(n)) },
+		Visit: func(n graph.Node) { addVisitNode(sub, NodeFor(n), v) },
 	}
-	bf.Walk(g, g.NodeFor(start), nil)
+	startNode := g.NodeFor(start)
+	bf.Walk(g, startNode, nil)
 	return sub, nil
 }
 
@@ -58,7 +66,6 @@ func (g *Graph) Traverse(start korrel8r.Class, goals []korrel8r.Class, v Visitor
 // Returns the subset of the graph that was traversed.
 func (g *Graph) Neighbours(start korrel8r.Class, depth int, v Visitor) (*Graph, error) {
 	sub := g.Data.EmptyGraph()
-	sub.AddNode(g.NodeFor(start))
 	atDepth := 0
 	current := unique.Set[int64]{} // Nodes at the current depth or above.
 
@@ -75,11 +82,12 @@ func (g *Graph) Neighbours(start korrel8r.Class, depth int, v Visitor) (*Graph, 
 			})
 		},
 		Visit: func(n graph.Node) {
+			addVisitNode(sub, NodeFor(n), v)
 			current.Add(n.ID())
-			v.Node(NodeFor(n))
 		},
 	}
-	bf.Walk(g, g.NodeFor(start), func(n graph.Node, d int) bool {
+	startNode := g.NodeFor(start)
+	bf.Walk(g, startNode, func(n graph.Node, d int) bool {
 		if d > atDepth {
 			maps.Clear(current)
 			atDepth = d
