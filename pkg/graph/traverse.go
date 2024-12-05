@@ -27,9 +27,12 @@ type Visitor interface {
 // LineVisitor adapts a line traversal function to implement the Visitor interface.
 type LineVisitor func(*Line) bool
 
-func (tf LineVisitor) Line(l *Line) bool { return tf(l) }
-func (tf LineVisitor) Node(*Node)        {}
-func (tf LineVisitor) Edge(*Edge)        {}
+func (v LineVisitor) Line(l *Line) bool { return v(l) }
+func (v LineVisitor) Node(*Node)        {}
+func (v LineVisitor) Edge(*Edge)        {}
+
+// NoOpVisitor does nothing
+var NoOpVisitor = LineVisitor(func(*Line) bool { return true })
 
 // Traverse rules on paths from start to goal.
 // Returns the subset of the graph that was traversed.

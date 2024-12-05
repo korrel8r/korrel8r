@@ -1,6 +1,6 @@
 // Copyright: This file is part of korrel8r, released under https://github.com/korrel8r/korrel8r/blob/main/LICENSE
 
-package engine
+package engine_test
 
 import (
 	"context"
@@ -10,6 +10,8 @@ import (
 	"time"
 
 	"github.com/korrel8r/korrel8r/internal/pkg/test/mock"
+	"github.com/korrel8r/korrel8r/pkg/engine"
+	"github.com/korrel8r/korrel8r/pkg/engine/traverse"
 	"github.com/korrel8r/korrel8r/pkg/graph"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"github.com/stretchr/testify/assert"
@@ -32,7 +34,7 @@ func TestEngine_Class(t *testing.T) {
 		{"bad:foo", nil, `domain not found: "bad"`},
 	} {
 		t.Run(x.name, func(t *testing.T) {
-			e, err := Build().Rules(rule).Engine()
+			e, err := engine.Build().Rules(rule).Engine()
 			require.NoError(t, err)
 			assert.Equal(t, []korrel8r.Domain{domain}, e.Domains())
 			c, err := e.Class(x.name)
@@ -50,7 +52,7 @@ func TestFollower_Traverse(t *testing.T) {
 	d := mock.Domain("mock")
 	s := mock.NewStore(d)
 	a, b, c, z := d.Class("a"), d.Class("b"), d.Class("c"), d.Class("z")
-	e, err := Build().Rules(
+	e, err := engine.Build().Rules(
 		// Return 2 results, must follow both
 		mock.NewRuleQuery("ab", a, b, s.NewQuery(b, 1, 2)),
 		// 2 rules, must follow both. Incorporate data from start object.
@@ -65,10 +67,7 @@ func TestFollower_Traverse(t *testing.T) {
 		}),
 	).Stores(s).Engine()
 	require.NoError(t, err)
-	g := e.Graph()
-	g.NodeFor(a).Result.Append(0)
-	f := NewFollower(e, context.Background(), nil)
-	_, err = g.Traverse(a, []korrel8r.Class{z}, f)
+	g, err := traverse.NewSync(e, e.Graph(), a, []korrel8r.Object{0}, nil).Goals(context.Background(), []korrel8r.Class{z})
 	assert.NoError(t, err)
 	// Check node results
 	assert.ElementsMatch(t, []korrel8r.Object{0}, g.NodeFor(a).Result.List())
@@ -128,7 +127,7 @@ func TestEngine_PropagateConstraints(t *testing.T) {
 	}
 
 	// Rules to test constraints.
-	e, err := Build().Rules(
+	e, err := engine.Build().Rules(
 		// Generate objects with timepoints.
 		mock.NewRule("ab", []korrel8r.Class{a}, []korrel8r.Class{b}, func(korrel8r.Object) (korrel8r.Query, error) {
 			return s.NewQuery(b, obj{"x", early}, obj{"y", ontime}, obj{"z", late}), nil
@@ -165,7 +164,8 @@ func TestEngine_PropagateConstraints(t *testing.T) {
 		t.Run(fmt.Sprintf("%v", i), func(t *testing.T) {
 			goals := []korrel8r.Class{c}
 			g := e.Graph().AllPaths(a, goals...)
-			g, err := e.GoalSearch(context.Background(), g, a, []korrel8r.Object{obj{"a", ontime}}, nil, x.constraint, goals)
+			ctx := korrel8r.WithConstraint(context.Background(), x.constraint)
+			g, err := traverse.NewSync(e, g, a, []korrel8r.Object{obj{"a", ontime}}, nil).Goals(ctx, goals)
 			assert.NoError(t, err)
 			got := g.NodeFor(c).Result.List()
 			assert.Equal(t, asStrings(x.want), asStrings(got), "want %v got %v", x.want, got)
@@ -175,7 +175,7 @@ func TestEngine_PropagateConstraints(t *testing.T) {
 
 func TestEngine_ConfigMockStore(t *testing.T) {
 	d := mock.Domain("mock")
-	e, err := Build().Domains(d).ConfigFile("testdata/korrel8r.yaml").Engine()
+	e, err := engine.Build().Domains(d).ConfigFile("testdata/korrel8r.yaml").Engine()
 	require.NoError(t, err)
 	q, err := e.Query("mock:foo:hello")
 	require.NoError(t, err)
@@ -199,7 +199,7 @@ func TestEngineStoreFor(t *testing.T) {
 	s := mock.NewStore(d)
 	q := mock.NewQuery(d.Class("foo"), "hello")
 	s.Add(mock.QueryMap{q.String(): []korrel8r.Object{"dolly"}})
-	e, err := Build().Domains(d).ConfigFile("testdata/korrel8r.yaml").Stores(s).Engine()
+	e, err := engine.Build().Domains(d).ConfigFile("testdata/korrel8r.yaml").Stores(s).Engine()
 	require.NoError(t, err)
 
 	r := graph.NewListResult()

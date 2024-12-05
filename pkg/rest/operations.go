@@ -32,6 +32,7 @@ import (
 	"github.com/korrel8r/korrel8r/internal/pkg/logging"
 	"github.com/korrel8r/korrel8r/pkg/config"
 	"github.com/korrel8r/korrel8r/pkg/engine"
+	"github.com/korrel8r/korrel8r/pkg/engine/traverse"
 	"github.com/korrel8r/korrel8r/pkg/graph"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"github.com/korrel8r/korrel8r/pkg/rest/auth"
@@ -183,8 +184,8 @@ func (a *API) GraphsNeighbours(c *gin.Context) {
 	if c.IsAborted() {
 		return
 	}
-	ctx := c.Request.Context()
-	g, err := a.Engine.Neighbours(ctx, start, objects, queries, constraint, depth)
+	ctx := korrel8r.WithConstraint(c.Request.Context(), constraint.Default())
+	g, err := traverse.New(a.Engine, a.Engine.Graph(), start, objects, queries).Neighbours(ctx, depth)
 	gr := Graph{Nodes: nodes(g), Edges: edges(g, &opts)}
 	if !interrupted(c) {
 		check(c, http.StatusBadRequest, err)
@@ -234,7 +235,8 @@ func (a *API) goals(c *gin.Context) (g *graph.Graph, goals []korrel8r.Class) {
 	}
 	g = a.Engine.Graph().ShortestPaths(start, goals...)
 	var err error
-	g, err = a.Engine.GoalSearch(c.Request.Context(), g, start, objects, queries, constraint, goals)
+	ctx := korrel8r.WithConstraint(c.Request.Context(), constraint.Default())
+	g, err = traverse.New(a.Engine, g, start, objects, queries).Goals(ctx, goals)
 	if !interrupted(c) {
 		check(c, http.StatusInternalServerError, err)
 	}
