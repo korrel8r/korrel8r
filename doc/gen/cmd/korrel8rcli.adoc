@@ -7,6 +7,7 @@ REST client for a remote korrel8r server.
 ----
   -h, --help                                 help for korrel8rcli
   -o, --output enum(yaml,json-pretty,json)   Output format (default yaml)
+  -u, --url string                           URL of remote korrel8r service (you can also set the KORREL8R_URL environment variable)
 ----
 
 == SEE ALSO
@@ -16,4 +17,6 @@ REST client for a remote korrel8r server.
 * xref:korrel8rcli_domains.adoc[korrel8rcli domains]	 - Get a list of domains and store configuration
 * xref:korrel8rcli_goals.adoc[korrel8rcli goals]	 - Get graph of nearest goals
 * xref:korrel8rcli_neighbours.adoc[korrel8rcli neighbours]	 - Get graph of nearest neighbours
+* xref:korrel8rcli_objects.adoc[korrel8rcli objects]	 - Return the list of objects for a query.
+* xref:korrel8rcli_version.adoc[korrel8rcli version]	 - Print version.
 * xref:korrel8rcli_web.adoc[korrel8rcli web]	 - Connect to REMOTE-URL and run an HTTP server listening on LISTEN-ADDR (default :8080)

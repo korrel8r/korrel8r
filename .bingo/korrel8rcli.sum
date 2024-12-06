@@ -92,6 +92,8 @@ github.com/klauspost/cpuid/v2 v2.2.7/go.mod h1:Lcz8mBdAVJIBVzewtcLocK12l3Y+JytZY
 github.com/knz/go-libedit v1.10.1/go.mod h1:MZTVkCWyz0oBc7JOWP3wNAzd002ZbM/5hgShxwh4x8M=
 github.com/korrel8r/client v0.0.2 h1:AJXXnxv+C5jvJLvpuQ9jnkK6eeEGcjXxuWeZ2WxLNqU=
 github.com/korrel8r/client v0.0.2/go.mod h1:EgkNNiNZ+bteNOUYG5hASZv4T0NHv8H5wq9txHQhSbk=
+github.com/korrel8r/client v0.0.3 h1:xV1bta57cd5o/K0BHSvW0K4CPnG12GX49sncGHUs+ig=
+github.com/korrel8r/client v0.0.3/go.mod h1:7ZMR7HbO4q6oNyppjljJPSFi4YZ9+uNAsf48EU5DJdo=
 github.com/korrel8r/korrel8r v0.6.5 h1:1n+lI8cPN5YX1Vyn0wl+ujpIdl5wOOtgN2PLUSL/uzo=
 github.com/korrel8r/korrel8r v0.6.5/go.mod h1:ttC8wLIyHtU1yjDiIpHEjt/BWllSk09ZUk7KLGgyzLU=
 github.com/leodido/go-urn v1.4.0 h1:WT9HwE9SGECu3lg4d/dIA+jxlljEa1/ffXKmRjqdmIQ=

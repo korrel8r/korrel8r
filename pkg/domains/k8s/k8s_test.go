@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/korrel8r/korrel8r/pkg/graph"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -123,7 +124,7 @@ func TestStore_Get(t *testing.T) {
 		{NewQuery(Class(podGVK), "", "", client.MatchingLabels{"app": "foo"}, nil), []types.NamespacedName{fred, wilma}},
 	} {
 		t.Run(fmt.Sprintf("%#v", x.q), func(t *testing.T) {
-			var result korrel8r.ListResult
+			var result graph.ListResult
 			err = store.Get(context.Background(), x.q, nil, &result)
 			require.NoError(t, err)
 			var got []types.NamespacedName
@@ -163,7 +164,7 @@ func TestStore_Get_Constraint(t *testing.T) {
 		{nil, []string{"early", "ontime", "late"}},
 	} {
 		t.Run(fmt.Sprintf("%+v", x.constraint), func(t *testing.T) {
-			var result korrel8r.ListResult
+			var result graph.ListResult
 			err = store.Get(context.Background(), NewQuery(ClassOf(&corev1.Pod{}), "test", "", nil, nil), x.constraint, &result)
 			require.NoError(t, err)
 			var got []string

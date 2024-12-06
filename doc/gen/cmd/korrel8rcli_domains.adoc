@@ -3,7 +3,7 @@
 Get a list of domains and store configuration
 
 ----
-korrel8rcli domains URL [flags]
+korrel8rcli domains [flags]
 ----
 
 == Options
@@ -16,6 +16,7 @@ korrel8rcli domains URL [flags]
 
 ----
   -o, --output enum(yaml,json-pretty,json)   Output format (default yaml)
+  -u, --url string                           URL of remote korrel8r service (you can also set the KORREL8R_URL environment variable)
 ----
 
 == SEE ALSO

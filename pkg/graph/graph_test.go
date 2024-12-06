@@ -66,7 +66,7 @@ func TestGraph_Select(t *testing.T) {
 	for _, x := range []struct {
 		name        string
 		graph, want []korrel8r.Rule
-		pick        func(l *Line) bool
+		pick        func(*Line) bool
 	}{
 		{
 			name:  "one",
@@ -110,15 +110,6 @@ func TestGraph_NodesBetween(t *testing.T) {
 	assert.Len(t, g.LinesBetween(g.NodeFor(c(1)), g.NodeFor(c(2))), 2)
 	assert.Len(t, g.LinesBetween(g.NodeFor(c(1)), g.NodeFor(c(3))), 1)
 	assert.Len(t, g.LinesBetween(g.NodeFor(c(1)), g.NodeFor(c(13))), 0)
-}
-
-func TestGraph_LinesTo(t *testing.T) {
-	rm := ruleMap{}
-	r := func(i, j int) korrel8r.Rule { return rm.r(i, j) }
-	g := testGraph([]rule{r(1, 2), r(1, 3), r(2, 3), r(12, 13)})
-	assert.Len(t, g.LinesTo(g.NodeFor(c(1))), 0)
-	assert.Len(t, g.LinesTo(g.NodeFor(c(2))), 1)
-	assert.Len(t, g.LinesTo(g.NodeFor(c(3))), 2)
 }
 
 func TestGraph_AllPaths(t *testing.T) {

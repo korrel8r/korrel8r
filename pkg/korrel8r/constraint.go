@@ -3,6 +3,7 @@
 package korrel8r
 
 import (
+	"context"
 	"time"
 
 	"github.com/korrel8r/korrel8r/pkg/ptr"
@@ -102,4 +103,18 @@ func (c *Constraint) MarshalLog() any {
 		Start:   c.Start.Format(time.RFC3339Nano),
 		End:     c.End.Format(time.RFC3339Nano),
 	}
+}
+
+type constraintKey struct{}
+
+// WithConstraint attaches a constraint to a context.
+func WithConstraint(ctx context.Context, c *Constraint) context.Context {
+	return context.WithValue(ctx, constraintKey{}, c)
+}
+
+// ConstraintFrom returns the constraint attached to the context.
+// Returns nil if there is none.
+func ConstraintFrom(ctx context.Context) *Constraint {
+	c, _ := ctx.Value(constraintKey{}).(*Constraint)
+	return c
 }

@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/korrel8r/korrel8r/pkg/graph"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"github.com/korrel8r/korrel8r/pkg/ptr"
 	"github.com/stretchr/testify/assert"
@@ -24,7 +25,7 @@ func (f *Fixture) Test(t *testing.T) {
 // TestGet tests only the domain Get overhead using mock in-memory stores.
 func (f *Fixture) TestGet(t *testing.T) {
 	t.Helper()
-	r := korrel8r.NewResult(f.Query.Class())
+	r := graph.NewResult(f.Query.Class())
 	require.NoError(t, f.MockEngine.Get(context.Background(), f.Query, &korrel8r.Constraint{}, r))
 	if assert.Equal(t, BatchLen, len(r.List()), "wrong number of results: %v", f.Query) {
 		if _, ok := f.Query.Class().(korrel8r.IDer); ok { // Only test de-duplication for classes with ID.
@@ -39,7 +40,7 @@ func (f *Fixture) TestGet(t *testing.T) {
 func (f *Fixture) TestMarshalUnmashal(t *testing.T) {
 	t.Helper()
 	c := f.Query.Class()
-	r := korrel8r.NewResult(c)
+	r := graph.NewResult(c)
 	require.NoError(t, f.MockEngine.Get(context.Background(), f.Query, &korrel8r.Constraint{Limit: ptr.To(1)}, r))
 	require.GreaterOrEqual(t, len(r.List()), 1)
 	o := r.List()[0]
@@ -57,7 +58,7 @@ func (f *Fixture) TestGetCluster(t *testing.T) {
 	e := f.ClusterEngine(t)
 	limit := 3
 	constraint := &korrel8r.Constraint{Limit: &limit}
-	r := korrel8r.NewResult(f.Query.Class())
+	r := graph.NewResult(f.Query.Class())
 	if assert.NoError(t, e.Get(context.Background(), f.Query, constraint, r)) {
 		assert.Equal(t, limit, len(r.List()), "query: %v", f.Query)
 	}

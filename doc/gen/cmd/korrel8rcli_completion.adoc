@@ -17,6 +17,7 @@ See each sub-command's help for details on how to use the generated script.
 
 ----
   -o, --output enum(yaml,json-pretty,json)   Output format (default yaml)
+  -u, --url string                           URL of remote korrel8r service (you can also set the KORREL8R_URL environment variable)
 ----
 
 == SEE ALSO

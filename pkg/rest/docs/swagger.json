@@ -43,9 +43,7 @@
                     },
                     "default": {
                         "description": "",
-                        "schema": {
-                            "type": "object"
-                        }
+                        "schema": {}
                     }
                 }
             }
@@ -65,9 +63,7 @@
                     },
                     "default": {
                         "description": "",
-                        "schema": {
-                            "type": "object"
-                        }
+                        "schema": {}
                     }
                 }
             }
@@ -93,9 +89,7 @@
                     },
                     "default": {
                         "description": "",
-                        "schema": {
-                            "type": "object"
-                        }
+                        "schema": {}
                     }
                 }
             }
@@ -135,9 +129,7 @@
                     },
                     "default": {
                         "description": "",
-                        "schema": {
-                            "type": "object"
-                        }
+                        "schema": {}
                     }
                 }
             }
@@ -177,9 +169,7 @@
                     },
                     "default": {
                         "description": "",
-                        "schema": {
-                            "type": "object"
-                        }
+                        "schema": {}
                     }
                 }
             }
@@ -210,9 +200,7 @@
                     },
                     "default": {
                         "description": "",
-                        "schema": {
-                            "type": "object"
-                        }
+                        "schema": {}
                     }
                 }
             }
@@ -234,16 +222,12 @@
                         "description": "OK",
                         "schema": {
                             "type": "array",
-                            "items": {
-                                "type": "object"
-                            }
+                            "items": {}
                         }
                     },
                     "default": {
                         "description": "",
-                        "schema": {
-                            "type": "object"
-                        }
+                        "schema": {}
                     }
                 }
             }

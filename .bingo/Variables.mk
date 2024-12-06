@@ -17,41 +17,41 @@ GO     ?= $(shell which go)
 #	@echo "Running benchstat"
 #	@$(BENCHSTAT) <flags/args..>
 #
-BENCHSTAT := $(GOBIN)/benchstat-v0.0.0-20241112183634-aa2227201f71
+BENCHSTAT := $(GOBIN)/benchstat-v0.0.0-20241118162539-34caac850176
 $(BENCHSTAT): $(BINGO_DIR)/benchstat.mod
 	@# Install binary/ries using Go 1.14+ build command. This is using bwplotka/bingo-controlled, separate go module with pinned dependencies.
-	@echo "(re)installing $(GOBIN)/benchstat-v0.0.0-20241112183634-aa2227201f71"
-	@cd $(BINGO_DIR) && GOWORK=off $(GO) build -mod=mod -modfile=benchstat.mod -o=$(GOBIN)/benchstat-v0.0.0-20241112183634-aa2227201f71 "golang.org/x/perf/cmd/benchstat"
+	@echo "(re)installing $(GOBIN)/benchstat-v0.0.0-20241118162539-34caac850176"
+	@cd $(BINGO_DIR) && GOWORK=off $(GO) build -mod=mod -modfile=benchstat.mod -o=$(GOBIN)/benchstat-v0.0.0-20241118162539-34caac850176 "golang.org/x/perf/cmd/benchstat"
 
-GOLANGCI_LINT := $(GOBIN)/golangci-lint-v1.61.0
+GOLANGCI_LINT := $(GOBIN)/golangci-lint-v1.62.2
 $(GOLANGCI_LINT): $(BINGO_DIR)/golangci-lint.mod
 	@# Install binary/ries using Go 1.14+ build command. This is using bwplotka/bingo-controlled, separate go module with pinned dependencies.
-	@echo "(re)installing $(GOBIN)/golangci-lint-v1.61.0"
-	@cd $(BINGO_DIR) && GOWORK=off $(GO) build -mod=mod -modfile=golangci-lint.mod -o=$(GOBIN)/golangci-lint-v1.61.0 "github.com/golangci/golangci-lint/cmd/golangci-lint"
+	@echo "(re)installing $(GOBIN)/golangci-lint-v1.62.2"
+	@cd $(BINGO_DIR) && GOWORK=off $(GO) build -mod=mod -modfile=golangci-lint.mod -o=$(GOBIN)/golangci-lint-v1.62.2 "github.com/golangci/golangci-lint/cmd/golangci-lint"
 
-KORREL8RCLI := $(GOBIN)/korrel8rcli-v0.0.2
+KORREL8RCLI := $(GOBIN)/korrel8rcli-v0.0.3
 $(KORREL8RCLI): $(BINGO_DIR)/korrel8rcli.mod
 	@# Install binary/ries using Go 1.14+ build command. This is using bwplotka/bingo-controlled, separate go module with pinned dependencies.
-	@echo "(re)installing $(GOBIN)/korrel8rcli-v0.0.2"
-	@cd $(BINGO_DIR) && GOWORK=off $(GO) build -mod=mod -modfile=korrel8rcli.mod -o=$(GOBIN)/korrel8rcli-v0.0.2 "github.com/korrel8r/client/cmd/korrel8rcli"
+	@echo "(re)installing $(GOBIN)/korrel8rcli-v0.0.3"
+	@cd $(BINGO_DIR) && GOWORK=off $(GO) build -mod=mod -modfile=korrel8rcli.mod -o=$(GOBIN)/korrel8rcli-v0.0.3 "github.com/korrel8r/client/cmd/korrel8rcli"
 
-KUSTOMIZE := $(GOBIN)/kustomize-v5.4.3
+KUSTOMIZE := $(GOBIN)/kustomize-v5.5.0
 $(KUSTOMIZE): $(BINGO_DIR)/kustomize.mod
 	@# Install binary/ries using Go 1.14+ build command. This is using bwplotka/bingo-controlled, separate go module with pinned dependencies.
-	@echo "(re)installing $(GOBIN)/kustomize-v5.4.3"
-	@cd $(BINGO_DIR) && GOWORK=off $(GO) build -mod=mod -modfile=kustomize.mod -o=$(GOBIN)/kustomize-v5.4.3 "sigs.k8s.io/kustomize/kustomize/v5"
+	@echo "(re)installing $(GOBIN)/kustomize-v5.5.0"
+	@cd $(BINGO_DIR) && GOWORK=off $(GO) build -mod=mod -modfile=kustomize.mod -o=$(GOBIN)/kustomize-v5.5.0 "sigs.k8s.io/kustomize/kustomize/v5"
 
-SHFMT := $(GOBIN)/shfmt-v3.9.0
+SHFMT := $(GOBIN)/shfmt-v3.10.0
 $(SHFMT): $(BINGO_DIR)/shfmt.mod
 	@# Install binary/ries using Go 1.14+ build command. This is using bwplotka/bingo-controlled, separate go module with pinned dependencies.
-	@echo "(re)installing $(GOBIN)/shfmt-v3.9.0"
-	@cd $(BINGO_DIR) && GOWORK=off $(GO) build -mod=mod -modfile=shfmt.mod -o=$(GOBIN)/shfmt-v3.9.0 "mvdan.cc/sh/v3/cmd/shfmt"
+	@echo "(re)installing $(GOBIN)/shfmt-v3.10.0"
+	@cd $(BINGO_DIR) && GOWORK=off $(GO) build -mod=mod -modfile=shfmt.mod -o=$(GOBIN)/shfmt-v3.10.0 "mvdan.cc/sh/v3/cmd/shfmt"
 
-SWAG := $(GOBIN)/swag-v1.16.3
+SWAG := $(GOBIN)/swag-v1.16.4
 $(SWAG): $(BINGO_DIR)/swag.mod
 	@# Install binary/ries using Go 1.14+ build command. This is using bwplotka/bingo-controlled, separate go module with pinned dependencies.
-	@echo "(re)installing $(GOBIN)/swag-v1.16.3"
-	@cd $(BINGO_DIR) && GOWORK=off $(GO) build -mod=mod -modfile=swag.mod -o=$(GOBIN)/swag-v1.16.3 "github.com/swaggo/swag/cmd/swag"
+	@echo "(re)installing $(GOBIN)/swag-v1.16.4"
+	@cd $(BINGO_DIR) && GOWORK=off $(GO) build -mod=mod -modfile=swag.mod -o=$(GOBIN)/swag-v1.16.4 "github.com/swaggo/swag/cmd/swag"
 
 SWAGGER := $(GOBIN)/swagger-v0.31.0
 $(SWAGGER): $(BINGO_DIR)/swagger.mod

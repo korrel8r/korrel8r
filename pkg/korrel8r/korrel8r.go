@@ -16,6 +16,7 @@ package korrel8r
 
 import (
 	"context"
+	"fmt"
 )
 
 // Domain is the entry-point to a package implementing a korrel8r domain.
@@ -78,6 +79,21 @@ type Query interface {
 	String() string
 }
 
+// IDer is optionally implemented by Class implementations that have a meaningful unique identifier.
+//
+// Classes that implement IDer can be de-duplicated when collected in a Result.map
+type IDer interface {
+	ID(Object) any // ID must be a comparable type.
+}
+
+// GetID returns the object ID using if class is an IDer, "" otherwise.
+func GetID(class Class, object Object) string {
+	if ider, _ := class.(IDer); ider != nil {
+		return fmt.Sprintf("%v", ider.ID(object))
+	}
+	return ""
+}
+
 // Object represents an instance of a signal.
 //
 // Object can be any Go type that supports JSON marshal/unmarshal.
@@ -89,13 +105,6 @@ type Query interface {
 //
 // Must be implemented by a korrel8r domain.
 type Object = any
-
-// IDer is optionally implemented by Class implementations that have a meaningful unique identifier.
-//
-// Classes that implement IDer can be de-duplicated when collected in a Result.map
-type IDer interface {
-	ID(Object) any // ID must be a comparable type.
-}
 
 // Previewer is optionally implemented by Class implementations to show a short "preview" string from the object.
 //
@@ -109,6 +118,15 @@ type Previewer interface {
 //
 // Not required for a domain implementations: implemented by [Result]
 type Appender interface{ Append(...Object) }
+
+// AppenderFunc adapts a function as an Appender. AppenderFunc(f).Append(object...) calls f for each object.
+type AppenderFunc func(Object)
+
+func (f AppenderFunc) Append(objects ...Object) {
+	for _, o := range objects {
+		f(o)
+	}
+}
 
 // Rule describes a relationship for finding correlated objects.
 // Rule.Apply() generates correlated queries from start objects.

@@ -7,41 +7,74 @@ import (
 	"github.com/korrel8r/korrel8r/pkg/unique"
 	"golang.org/x/exp/maps"
 	"gonum.org/v1/gonum/graph"
+	"gonum.org/v1/gonum/graph/multi"
 	"gonum.org/v1/gonum/graph/traverse"
 )
 
+// Visitor used to traverse a graph.
+type Visitor interface {
+	// Node visits a node. Called after Edge/Line leading into the node, before Edge/Line leading out.
+	Node(*Node)
+
+	// Line a line. Return false if this line should not be traversed.
+	Line(*Line) bool
+
+	// Traverse an edge between two nodes.
+	// Called after calling [Line] for each line in the edge, if at least one Line returned true.
+	Edge(*Edge)
+}
+
+// LineVisitor adapts a line traversal function to implement the Visitor interface.
+type LineVisitor func(*Line) bool
+
+func (v LineVisitor) Line(l *Line) bool { return v(l) }
+func (v LineVisitor) Node(*Node)        {}
+func (v LineVisitor) Edge(*Edge)        {}
+
+// NoOpVisitor does nothing
+var NoOpVisitor = LineVisitor(func(*Line) bool { return true })
+
+func addVisitNode(g *Graph, n *Node, v Visitor) {
+	if g.Node(n.ID()) == nil {
+		g.AddNode(n)
+	}
+	v.Node(n)
+}
+
 // Traverse rules on paths from start to goal.
 // Returns the subset of the graph that was traversed.
-func (g *Graph) Traverse(start korrel8r.Class, goals []korrel8r.Class, f func(*Line) bool) (*Graph, error) {
+func (g *Graph) Traverse(start korrel8r.Class, goals []korrel8r.Class, v Visitor) (*Graph, error) {
 	sub := g.Data.EmptyGraph()
 	bf := traverse.BreadthFirst{
-		Traverse: func(edge graph.Edge) bool {
-			return g.traverseEdge(edge, func(l *Line) bool {
-				if f(l) {
+		Traverse: func(e graph.Edge) bool {
+			return g.traverseEdge(e, v.Edge, func(l *Line) bool {
+				if v.Line(l) {
 					sub.SetLine(l)
 					return true
 				}
 				return false
 			})
-		}}
-	bf.Walk(g, g.NodeFor(start), nil)
+		},
+		Visit: func(n graph.Node) { addVisitNode(sub, NodeFor(n), v) },
+	}
+	startNode := g.NodeFor(start)
+	bf.Walk(g, startNode, nil)
 	return sub, nil
 }
 
 // Neighbours traverses a breadth-first neighbourhood of start.
 // Returns the subset of the graph that was traversed.
-func (g *Graph) Neighbours(start korrel8r.Class, depth int, f func(*Line) bool) (*Graph, error) {
+func (g *Graph) Neighbours(start korrel8r.Class, depth int, v Visitor) (*Graph, error) {
 	sub := g.Data.EmptyGraph()
-	sub.AddNode(g.NodeFor(start))
 	atDepth := 0
 	current := unique.Set[int64]{} // Nodes at the current depth or above.
 
 	bf := traverse.BreadthFirst{
 		Traverse: func(edge graph.Edge) bool {
-			return g.traverseEdge(edge, func(l *Line) bool {
+			return g.traverseEdge(edge, v.Edge, func(l *Line) bool {
 				to := l.To().ID()
 				// Process if we are not at depth, and the to node is in the current set or undiscovered.
-				if atDepth < depth && (current.Has(to) || sub.Node(to) == nil) && f(l) {
+				if atDepth < depth && (current.Has(to) || sub.Node(to) == nil) && v.Line(l) {
 					sub.SetLine(l)
 					return true
 				}
@@ -49,10 +82,12 @@ func (g *Graph) Neighbours(start korrel8r.Class, depth int, f func(*Line) bool) 
 			})
 		},
 		Visit: func(n graph.Node) {
+			addVisitNode(sub, NodeFor(n), v)
 			current.Add(n.ID())
 		},
 	}
-	bf.Walk(g, g.NodeFor(start), func(n graph.Node, d int) bool {
+	startNode := g.NodeFor(start)
+	bf.Walk(g, startNode, func(n graph.Node, d int) bool {
 		if d > atDepth {
 			maps.Clear(current)
 			atDepth = d
@@ -64,10 +99,14 @@ func (g *Graph) Neighbours(start korrel8r.Class, depth int, f func(*Line) bool) 
 
 // traverseEdge calls f(l) for each line l in the edge.
 // Returns true if any call to f(l) returns true.
-func (g *Graph) traverseEdge(edge graph.Edge, f func(l *Line) bool) (ok bool) {
-	lines := g.Lines(edge.From().ID(), edge.To().ID())
+func (g *Graph) traverseEdge(ge graph.Edge, edgeFunc func(*Edge), lineFunc func(*Line) bool) (ok bool) {
+	lines := g.Lines(ge.From().ID(), ge.To().ID())
 	for lines.Next() {
-		ok = f(lines.Line().(*Line)) || ok
+		ok = lineFunc(lines.Line().(*Line)) || ok
+	}
+	if ok {
+		e := Edge(ge.(multi.Edge))
+		edgeFunc(&e)
 	}
 	return ok
 }

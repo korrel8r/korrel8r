@@ -1,15 +1,15 @@
-= korrel8rcli doc markdown
+= korrel8rcli objects
 
-Generate markdown documentation in directory DIR
+Return the list of objects for a query.
 
 ----
-korrel8rcli doc markdown DIR [flags]
+korrel8rcli objects [QUERY] [flags]
 ----
 
 == Options
 
 ----
-  -h, --help   help for markdown
+  -h, --help   help for objects
 ----
 
 == Options inherited from parent commands
@@ -21,4 +21,4 @@ korrel8rcli doc markdown DIR [flags]
 
 == SEE ALSO
 
-* xref:korrel8rcli_doc.adoc[korrel8rcli doc]	 - Generate documentation
+* xref:korrel8rcli.adoc[korrel8rcli]	 - REST client for a remote korrel8r server.
