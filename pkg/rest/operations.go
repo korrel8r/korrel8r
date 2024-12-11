@@ -50,11 +50,12 @@ var BasePath = docs.SwaggerInfo.BasePath
 type API struct {
 	Engine  *engine.Engine
 	Configs config.Configs
+	Router  *gin.Engine
 }
 
 // New API instance, registers  handlers with a gin Engine.
 func New(e *engine.Engine, c config.Configs, r *gin.Engine) (*API, error) {
-	a := &API{Engine: e, Configs: c}
+	a := &API{Engine: e, Configs: c, Router: r}
 	r.Use(a.logger)
 	r.Use(a.context)
 	r.GET("/", func(c *gin.Context) { c.Redirect(http.StatusTemporaryRedirect, "/swagger/index.html") })

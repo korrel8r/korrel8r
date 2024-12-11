@@ -112,3 +112,8 @@ func Normalize(v any) any {
 	}
 	return v
 }
+
+// NewGraph returns a new rest.Graph corresponding to the internal graph.Graph.
+func NewGraph(g *graph.Graph) *Graph {
+	return &Graph{Nodes: nodes(g), Edges: edges(g, &Options{})}
+}

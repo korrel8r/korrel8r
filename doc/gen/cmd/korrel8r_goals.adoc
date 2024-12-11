@@ -1,20 +1,19 @@
-= korrel8r web
+= korrel8r goals
 
-Start REST server. Listening address must be  provided via --http or --https.
+Execute QUERY, find all paths to GOAL classes.
 
 ----
-korrel8r web [flags]
+korrel8r goals DOMAIN:CLASS:QUERY [GOAL...] [flags]
 ----
 
 == Options
 
 ----
-      --cert string    TLS certificate file (PEM format) for https
-  -h, --help           help for web
-      --http string    host:port address for insecure http listener
-      --https string   host:port address for secure https listener
-      --key string     Private key (PEM format) for https
-      --spec string    Dump swagger spec to a file, '-' for stdout.
+  -h, --help               help for goals
+      --limit int          Limit total number of results.
+      --since duration     Only get results since this long ago.
+      --timeout duration   Timeout for store requests.
+      --until duration     Only get results until this long ago.
 ----
 
 == Options inherited from parent commands
