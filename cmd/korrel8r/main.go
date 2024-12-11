@@ -39,12 +39,15 @@ var (
 	panicFlag   = rootCmd.PersistentFlags().Bool("panic", false, "Panic on error")
 	// TODO: remove sync search once async search is full tested.
 	syncFlag = rootCmd.PersistentFlags().Bool("sync", false, "Deprectated: synchronous search, will be removed")
+	// see profile.go for profile flag
 )
 
 const (
 	configEnv     = "KORREL8R_CONFIG"
 	defaultConfig = "/etc/korrel8r/korrel8r.yaml"
 )
+
+var profileStop interface{ Stop() }
 
 func init() {
 	_ = rootCmd.PersistentFlags().MarkHidden("panic")
@@ -54,6 +57,15 @@ func init() {
 	cobra.OnInitialize(func() {
 		logging.Init(verboseFlag)
 		k8s.SetLogger(logging.Log())
+		if profileFlag != nil {
+			profileStop = StartProfile()
+		}
+	})
+
+	cobra.OnFinalize(func() {
+		if profileStop != nil {
+			profileStop.Stop()
+		}
 	})
 }
 
@@ -84,13 +96,10 @@ func main() {
 }
 
 func newEngine() (*engine.Engine, config.Configs) {
-	mode := "async"
 	traverse.New = traverse.NewAsync // Default to async
 	if *syncFlag {
 		traverse.New = traverse.NewSync
-		mode = "sync"
 	}
-	log.Info("Starting korrel8r", "version", build.Version, "configuration", *configFlag, "mode", mode)
 	c := must.Must1(config.Load(*configFlag))
 	e := must.Must1(engine.Build().
 		Domains(k8s.Domain, logdomain.Domain, netflow.Domain, trace.Domain, alert.Domain, metric.Domain, mock.Domain("mock")).
