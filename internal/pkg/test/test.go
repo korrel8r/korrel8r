@@ -71,6 +71,15 @@ func ExecError(err error) error {
 	return err
 }
 
+// JSONString returns the simple JSON string for v, or an error message string if marshal fails.
+func JSONString(v any) string {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return err.Error()
+	}
+	return string(b)
+}
+
 // JSONPretty returns the intended JSON string for v, or an error message string if marshal fails.
 func JSONPretty(v any) string {
 	w := &strings.Builder{}

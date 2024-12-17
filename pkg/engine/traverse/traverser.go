@@ -12,32 +12,22 @@ import (
 )
 
 // Traverser traverses a graph, filling in [Node.Result], [Node.Queries] and [Line.Queries].
+// A korrel8r.Constraint can be set on the context if needed.
 type Traverser interface {
-	// Goals traverses all paths all start objects to all goal classes.
-	Goals(ctx context.Context, goals []korrel8r.Class) (*graph.Graph, error)
-	// Neighbours traverses to all neighbours of the start objects, up to a distance of n lines.
-	Neighbours(ctx context.Context, n int) (*graph.Graph, error)
+	// Goals traverses all paths from start objects to all goal classes.
+	Goals(ctx context.Context, start Start, goals []korrel8r.Class) (*graph.Graph, error)
+	// Neighbours traverses to all neighbours of the start objects, traversing links up to the given depth.
+	Neighbours(ctx context.Context, start Start, depth int) (*graph.Graph, error)
 }
 
 // New creates a default traverser, starting from objects/queries of class.
-var New func(*engine.Engine, *graph.Graph, korrel8r.Class, []korrel8r.Object, []korrel8r.Query) Traverser = NewSync
+var New func(*engine.Engine, *graph.Graph) Traverser = NewAsync
 
-type traverser struct {
-	engine  *engine.Engine
-	graph   *graph.Graph
-	start   korrel8r.Class
-	objects []korrel8r.Object
-	queries []korrel8r.Query
-}
-
-func newTraverser(e *engine.Engine, g *graph.Graph, start korrel8r.Class, objects []korrel8r.Object, queries []korrel8r.Query) *traverser {
-	return &traverser{
-		engine:  e,
-		graph:   g,
-		start:   start,
-		objects: objects,
-		queries: queries,
-	}
+// Start point information for graph traversal.
+type Start struct {
+	Class   korrel8r.Class    // Start class.
+	Objects []korrel8r.Object // Start objects, must be of Start class.
+	Queries []korrel8r.Query  // Queries for start objects, must be of Start class.
 }
 
 var log = logging.Log()

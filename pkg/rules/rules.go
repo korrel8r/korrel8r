@@ -16,7 +16,7 @@ import (
 	"github.com/korrel8r/korrel8r/pkg/korrel8r/impl"
 )
 
-// NewTemplateRule returns a korrel8r.Rule that uses Go templates to transform objects to queries.
+// NewTemplateRule returns a korrel8r.Rule that uses a Go template to transform objects to queries.
 func NewTemplateRule(start, goal []korrel8r.Class, query *template.Template) korrel8r.Rule {
 	return &templateRule{start: start, goal: goal, query: query}
 }

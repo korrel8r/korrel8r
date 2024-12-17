@@ -179,13 +179,13 @@ func (a *API) GraphsNeighbours(c *gin.Context) {
 	if !(check(c, http.StatusBadRequest, c.BindJSON(&r)) && check(c, http.StatusBadRequest, c.BindUri(&opts))) {
 		return
 	}
-	start, objects, queries, constraint := a.start(c, &r.Start)
+	start, constraint := a.start(c, &r.Start)
 	depth := r.Depth
 	if c.IsAborted() {
 		return
 	}
 	ctx := korrel8r.WithConstraint(c.Request.Context(), constraint.Default())
-	g, err := traverse.New(a.Engine, a.Engine.Graph(), start, objects, queries).Neighbours(ctx, depth)
+	g, err := traverse.New(a.Engine, a.Engine.Graph()).Neighbours(ctx, start, depth)
 	gr := Graph{Nodes: nodes(g), Edges: edges(g, &opts)}
 	if !interrupted(c) {
 		check(c, http.StatusBadRequest, err)
@@ -228,15 +228,15 @@ func (a *API) goals(c *gin.Context) (g *graph.Graph, goals []korrel8r.Class) {
 	if !check(c, http.StatusBadRequest, c.BindJSON(&r)) {
 		return nil, nil
 	}
-	start, objects, queries, constraint := a.start(c, &r.Start)
+	start, constraint := a.start(c, &r.Start)
 	goals = a.classes(c, r.Goals)
 	if c.IsAborted() {
 		return nil, nil
 	}
-	g = a.Engine.Graph().ShortestPaths(start, goals...)
+	g = a.Engine.Graph().ShortestPaths(start.Class, goals...)
 	var err error
 	ctx := korrel8r.WithConstraint(c.Request.Context(), constraint.Default())
-	g, err = traverse.New(a.Engine, g, start, objects, queries).Goals(ctx, goals)
+	g, err = traverse.New(a.Engine, g).Goals(ctx, start, goals)
 	if !interrupted(c) {
 		check(c, http.StatusInternalServerError, err)
 	}
@@ -265,7 +265,7 @@ func (a *API) objects(c *gin.Context, class korrel8r.Class, raw []json.RawMessag
 }
 
 // start validates and extracts data from the Start part of a request.
-func (a *API) start(c *gin.Context, start *Start) (korrel8r.Class, []korrel8r.Object, []korrel8r.Query, *korrel8r.Constraint) {
+func (a *API) start(c *gin.Context, start *Start) (traverse.Start, *korrel8r.Constraint) {
 	queries := a.queries(c, start.Queries)
 	var class korrel8r.Class
 	if start.Class == "" && len(queries) > 0 {
@@ -274,10 +274,10 @@ func (a *API) start(c *gin.Context, start *Start) (korrel8r.Class, []korrel8r.Ob
 		class = a.class(c, start.Class)
 	}
 	if class == nil {
-		return nil, nil, nil, nil
+		return traverse.Start{}, nil
 	}
 	objects := a.objects(c, class, start.Objects)
-	return class, objects, queries, start.Constraint
+	return traverse.Start{Class: class, Objects: objects, Queries: queries}, start.Constraint
 }
 
 func check(c *gin.Context, code int, err error, format ...any) (ok bool) {
