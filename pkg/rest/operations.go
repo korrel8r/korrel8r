@@ -216,7 +216,7 @@ func (a *API) GetObjects(c *gin.Context) {
 	if !check(c, http.StatusInternalServerError, a.Engine.Get(c.Request.Context(), query, (*korrel8r.Constraint)(opts.Constraint), result)) {
 		return
 	}
-	log.V(2).Info("response OK", "objects", len(result.List()))
+	log.V(3).Info("REST: response OK", "objects", len(result.List()))
 	body := []any(result.List())
 	if body == nil {
 		body = []any{} // Return [] on empty, not null.
@@ -287,7 +287,7 @@ func check(c *gin.Context, code int, err error, format ...any) (ok bool) {
 			err = fmt.Errorf("%v: %w", fmt.Sprintf(format[0].(string), format[1:]...), err)
 		}
 		c.AbortWithStatusJSON(code, c.Error(err).JSON())
-		log.Error(err, "abort request", "url", c.Request.URL, "code", code, "error", err)
+		log.Error(err, "REST: abort request", "url", c.Request.URL, "code", code, "error", err)
 	}
 	return err == nil && !c.IsAborted()
 }
@@ -324,9 +324,9 @@ func (a *API) logger(c *gin.Context) {
 		log = log.WithValues("errors", c.Errors.Errors())
 	}
 	if c.IsAborted() || c.Writer.Status() > 500 {
-		log.Info("request failed")
+		log.V(2).Info("REST: request failed")
 	} else {
-		log.V(1).Info("request OK")
+		log.V(3).Info("REST: request OK")
 	}
 }
 

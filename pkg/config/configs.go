@@ -90,7 +90,7 @@ func (l *loader) load(source string) error {
 		return nil // Already loaded
 	}
 	l.loaded.Add(source)
-	log.V(2).Info("Loading configuration", "config", source)
+	log.V(2).Info("Configuration: Loading", "config", source)
 	b, err := readFileOrURL(source)
 	if err != nil {
 		return fmt.Errorf("%v: %w", source, err)

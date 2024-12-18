@@ -79,7 +79,7 @@ func (s *store) ensure() (korrel8r.Store, error) {
 		if err != nil {
 			s.Err = err
 			s.ErrCount++
-			log.V(2).Info("Store error", "error", err, "config", s.Original)
+			log.V(2).Info("Engine: Store error", "error", err, "config", s.Original)
 		}
 	}()
 	// Expand the store config each time - the results may change.

@@ -35,7 +35,7 @@ func NewSync(e *engine.Engine, g *graph.Graph) Traverser {
 
 func (t *seq) Goals(ctx context.Context, start Start, goals []korrel8r.Class) (*graph.Graph, error) {
 	t.ctx = ctx
-	log.V(4).Info("Sync goal search", "start", start.Class, "goals", goals)
+	log.V(2).Info("Sync: goal search", "start", start.Class, "goals", goals)
 	if err := t.startNode(t.Graph.NodeFor(start.Class), start.Objects, start.Queries); err != nil {
 		return nil, err
 	}
@@ -45,7 +45,7 @@ func (t *seq) Goals(ctx context.Context, start Start, goals []korrel8r.Class) (*
 
 func (t *seq) Neighbours(ctx context.Context, start Start, depth int) (*graph.Graph, error) {
 	t.ctx = ctx
-	log.V(4).Info("Sync neighbours search", "start", start, "depth", depth)
+	log.V(2).Info("Sync: neighbours search", "start", start, "depth", depth)
 	if err := t.startNode(t.Graph.NodeFor(start.Class), start.Objects, start.Queries); err != nil {
 		return nil, err
 	}
@@ -64,10 +64,10 @@ func (t *seq) Line(l *graph.Line) bool {
 		for _, s := range start.Result.List() {
 			q, err := l.Rule.Apply(s)
 			if q == nil { // Rule does  not apply
-				log.V(4).Info("Rule apply error", "rule", l.Rule.Name(), "error", err, "id", korrel8r.GetID(start.Class, s))
+				log.V(4).Info("Sync: Rule failed", "rule", l.Rule.Name(), "error", err, "id", korrel8r.GetID(start.Class, s))
 			} else {
 				t.rules[key].Set(q, -1)
-				log.V(4).Info("Rule apply", "rule", l.Rule.Name(), "query", q, "id", korrel8r.GetID(start.Class, s))
+				log.V(4).Info("Sync: Rule applied", "rule", l.Rule.Name(), "query", q, "id", korrel8r.GetID(start.Class, s))
 			}
 		}
 	}

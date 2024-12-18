@@ -27,7 +27,7 @@ func NewAsync(e *engine.Engine, g *graph.Graph) Traverser {
 // Goals runs a goal-directed search.
 // Results and Queries are filled in on graph.
 func (a async) Goals(ctx context.Context, start Start, goals []korrel8r.Class) (*graph.Graph, error) {
-	log.V(4).Info("Async goal search", "start", start, "goals", goals)
+	log.V(2).Info("Async: Goal search", "start", start, "goals", goals)
 	traverse := func(v graph.Visitor) { a.graph.GoalSearch(start.Class, goals, v) }
 	return a.run(ctx, start, traverse)
 }
@@ -35,7 +35,7 @@ func (a async) Goals(ctx context.Context, start Start, goals []korrel8r.Class) (
 // Goals runs a neighbourhood.
 // Results and Queries are filled in on graph.
 func (a async) Neighbours(ctx context.Context, start Start, depth int) (*graph.Graph, error) {
-	log.V(4).Info("Async neighbours search", "start", start, "depth", depth)
+	log.V(2).Info("Async: Neighbours search", "start", start, "depth", depth)
 	traverse := func(v graph.Visitor) { a.graph.Neighbours(start.Class, depth, v) }
 	return a.run(ctx, start, traverse)
 }
@@ -122,16 +122,12 @@ type lineQuery struct {
 func getNode(n *graph.Node) *node { return n.Value.(*node) }
 
 // Sending indicates there is another sender to this node.
-func (n *node) Sending() {
-	senders := n.senders.Add(1)
-	log.V(4).Info("Sender added", "class", n.Class, "n", senders)
-}
+func (n *node) Sending() { n.senders.Add(1) }
 
 // Close informs the node that one of its senders is finished.
 // When the last sender finishes, the channel is closed.
 func (n *node) Close() int64 {
 	senders := n.senders.Add(-1)
-	log.V(4).Info("Sender removed", "class", n.Class, "n", senders)
 	if senders == 0 {
 		close(n.queryChan) // Run() will exit when channel is cleared.
 	} else if senders < 0 {
@@ -204,9 +200,9 @@ func (n *node) applyRules(ctx context.Context, o korrel8r.Object) {
 			n.queriesOut.Add(qs)
 		}
 		if qe.err != nil || qe.q == nil {
-			log.V(4).Info("Cannot apply", "rule", l.Rule.Name(), "error", qe.err)
+			log.V(4).Info("Async: Cannot apply", "rule", l.Rule.Name(), "error", qe.err)
 		} else {
-			log.V(4).Info("Applied", "rule", l.Rule.Name(), "query", qe.q)
+			log.V(4).Info("Async: Applied", "rule", l.Rule.Name(), "query", qe.q)
 			getNode(l.Goal()).queryChan <- lineQuery{Query: qe.q, Line: l}
 		}
 	})

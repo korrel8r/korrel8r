@@ -63,12 +63,12 @@ var webCmd = &cobra.Command{
 		if *profileFlag == "http" {
 			rest.WebProfile(router)
 		}
-		log.Info("Starting korrel8r", "version", build.Version, "configuration", *configFlag)
+		log := log.WithValues("addr", s.Addr, "version", build.Version, "configuration", *configFlag)
 		if *httpFlag != "" {
-			log.Info("listening for http", "addr", s.Addr, "version", build.Version)
+			log.Info("Server: Listening for http")
 			must.Must(s.ListenAndServe())
 		} else {
-			log.Info("listening for https", "addr", s.Addr, "version", build.Version)
+			log.Info("Server: Listening for https")
 			must.Must(s.ListenAndServeTLS(*certFlag, *keyFlag))
 		}
 	},
