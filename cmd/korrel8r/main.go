@@ -88,7 +88,6 @@ func main() {
 			fmt.Fprintf(os.Stderr, "\n%v\n", err)
 			os.Exit(1)
 		}
-		fmt.Fprintln(os.Stderr, "\nExit korrel8r")
 		os.Exit(0)
 	}()
 	must.Must(rootCmd.Execute())

@@ -152,3 +152,9 @@ func (q Query) String() string        { return impl.QueryString(q) }
 
 // Timestamper interface for objects with a Timestamp() method.
 type Timestamper interface{ Timestamp() time.Time }
+
+// ListResult implements Appender by appending to a slice.
+type ListResult []korrel8r.Object
+
+func (r *ListResult) Append(objects ...korrel8r.Object) { *r = append(*r, objects...) }
+func (r ListResult) List() []korrel8r.Object            { return []korrel8r.Object(r) }

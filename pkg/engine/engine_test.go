@@ -136,16 +136,21 @@ func asStrings[T any](v []T) []string {
 
 func TestEngineStoreFor(t *testing.T) {
 	d := mock.Domain("mock")
-	// add a second mock store, verify both stores are checked by Get.
+	// add an extra mock store, verify both stores are checked by Get.
 	s := mock.NewStore(d)
 	q := mock.NewQuery(d.Class("foo"), "hello")
-	s.Add(mock.QueryMap{q.String(): []korrel8r.Object{"dolly"}})
+	s.AddQuery(q, "dolly")
 	e, err := engine.Build().Domains(d).ConfigFile("testdata/korrel8r.yaml").Stores(s).Engine()
 	require.NoError(t, err)
 
-	r := graph.NewListResult()
+	r := &mock.ListResult{}
 	require.NoError(t, e.StoreFor(d).Get(context.Background(), q, nil, r))
 	assert.ElementsMatch(t, []korrel8r.Object{"hello", "there", "dolly"}, r.List())
+
+	r = &mock.ListResult{}
+	q = mock.NewQuery(d.Class("bar"), "help")
+	require.NoError(t, e.StoreFor(d).Get(context.Background(), q, nil, r))
+	assert.ElementsMatch(t, []korrel8r.Object{"help", "me"}, r.List())
 }
 
 // Mock object has a name and a timestamp.
