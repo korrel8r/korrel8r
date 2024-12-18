@@ -23,7 +23,7 @@ korrel8r neighbours DOMAIN:CLASS:QUERY [DEPTH] [flags]
   -o, --output string        Output format: [json, json-pretty, yaml] (default "yaml")
       --profile string       Enable profiling, one of [block, cpu, goroutine, mem, alloc, heap, mutex, clock, http]
       --profilePath string   Output path for profile
-  -v, --verbose int          Verbosity for logging (0: notice/error/warn, 1: info, 2: debug, 3+: trace)
+  -v, --verbose int          Verbosity for logging (0: notice/error/warn, 1: info, 2: debug, 3: trace-per-request, 4: trace-per-rule, 5: trace-per-object)
 ----
 
 == SEE ALSO

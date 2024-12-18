@@ -121,8 +121,8 @@ func (e *Engine) Get(ctx context.Context, query korrel8r.Query, constraint *korr
 	}
 	defer func() {
 		if err != nil {
-			log.V(2).Info("Get failed", "error", err, "q", query, "constraint", constraint)
-			err = fmt.Errorf("Get failed: %v: %w", query, err)
+			log.V(2).Info("Engine: Get failed", "error", err, "q", query, "constraint", constraint)
+			err = fmt.Errorf("Engine: Get failed: %v: %w", query, err)
 		}
 	}()
 	ss := e.stores[query.Class().Domain()]
@@ -136,7 +136,7 @@ func (e *Engine) Get(ctx context.Context, query korrel8r.Query, constraint *korr
 		r = korrel8r.AppenderFunc(func(o korrel8r.Object) { result.Append(o); count++ })
 		defer func() {
 			if err == nil {
-				log.V(3).Info("Get OK", "n", count, "t", time.Since(start), "q", query)
+				log.V(3).Info("Engine: Get OK", "n", count, "t", time.Since(start), "q", query)
 			}
 		}()
 	}

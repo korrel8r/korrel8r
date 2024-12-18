@@ -27,7 +27,7 @@ func (a *API) PutConfig(c *gin.Context) {
 		return
 	}
 	if config.Verbose != nil {
-		log.V(1).Info("Verbose log level set via API", "level", *config.Verbose)
+		log.V(1).Info("REST: Set verbose", "level", *config.Verbose)
 		logging.SetVerbose(*config.Verbose)
 	}
 	c.JSON(http.StatusOK, config)
