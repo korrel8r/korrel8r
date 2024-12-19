@@ -1,19 +1,23 @@
 = korrel8r neighbours
 
-Execute QUERY, compute a neighbourhood of the results up to DEPTH.
+Get graph of nearest neighbours
 
 ----
-korrel8r neighbours DOMAIN:CLASS:QUERY [DEPTH] [flags]
+korrel8r neighbours [flags]
 ----
 
 == Options
 
 ----
-  -h, --help               help for neighbours
-      --limit int          Limit total number of results.
-      --since duration     Only get results since this long ago.
-      --timeout duration   Timeout for store requests.
-      --until duration     Only get results until this long ago.
+      --class string         Class for serialized start objects
+  -d, --depth int            Depth of neighbourhood search. (default 2)
+  -h, --help                 help for neighbours
+      --limit int            Limit total number of results.
+      --object stringArray   Serialized start object, can be multiple.
+  -q, --query stringArray    Query string for start objects, can be multiple.
+      --since duration       Only get results since this long ago.
+      --timeout duration     Timeout for store requests.
+      --until duration       Only get results until this long ago.
 ----
 
 == Options inherited from parent commands

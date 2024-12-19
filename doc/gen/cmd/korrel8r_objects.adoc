@@ -1,15 +1,15 @@
-= korrel8r get
+= korrel8r objects
 
 Execute QUERY and print the results
 
 ----
-korrel8r get DOMAIN:CLASS:QUERY [flags]
+korrel8r objects QUERY [flags]
 ----
 
 == Options
 
 ----
-  -h, --help               help for get
+  -h, --help               help for objects
       --limit int          Limit total number of results.
       --since duration     Only get results since this long ago.
       --timeout duration   Timeout for store requests.

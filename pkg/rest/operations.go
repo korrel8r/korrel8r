@@ -185,7 +185,8 @@ func (a *API) GraphsNeighbours(c *gin.Context) {
 	if c.IsAborted() {
 		return
 	}
-	ctx := korrel8r.WithConstraint(c.Request.Context(), constraint.Default())
+	ctx, cancel := korrel8r.WithConstraint(c.Request.Context(), constraint.Default())
+	defer cancel()
 	g, err := traverse.New(a.Engine, a.Engine.Graph()).Neighbours(ctx, start, depth)
 	gr := Graph{Nodes: nodes(g), Edges: edges(g, &opts)}
 	if !interrupted(c) {
@@ -236,7 +237,8 @@ func (a *API) goals(c *gin.Context) (g *graph.Graph, goals []korrel8r.Class) {
 	}
 	g = a.Engine.Graph().ShortestPaths(start.Class, goals...)
 	var err error
-	ctx := korrel8r.WithConstraint(c.Request.Context(), constraint.Default())
+	ctx, cancel := korrel8r.WithConstraint(c.Request.Context(), constraint.Default())
+	defer cancel()
 	g, err = traverse.New(a.Engine, g).Goals(ctx, start, goals)
 	if !interrupted(c) {
 		check(c, http.StatusInternalServerError, err)

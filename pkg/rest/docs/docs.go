@@ -250,7 +250,8 @@ const docTemplate = `{
                 "end": {
                     "description": "End of time interval, quoted RFC 3339 format.",
                     "type": "string",
-                    "format": "date-time"
+                    "format": "date-time",
+                    "x-nullable": true
                 },
                 "limit": {
                     "description": "Limit number of objects returned per query, \u003c=0 means no limit.",
@@ -259,7 +260,8 @@ const docTemplate = `{
                 "start": {
                     "description": "Start of time interval, quoted RFC 3339 format.",
                     "type": "string",
-                    "format": "date-time"
+                    "format": "date-time",
+                    "x-nullable": true
                 },
                 "timeout": {
                     "description": "Timeout per request, h/m/s/ms/ns format",

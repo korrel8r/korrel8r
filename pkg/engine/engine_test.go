@@ -105,7 +105,8 @@ func TestEngine_PropagateConstraints(t *testing.T) {
 		t.Run(fmt.Sprintf("%v", i), func(t *testing.T) {
 			goals := []korrel8r.Class{c}
 			g := e.Graph().ShortestPaths(a, goals...)
-			ctx := korrel8r.WithConstraint(context.Background(), x.constraint)
+			ctx, cancel := korrel8r.WithConstraint(context.Background(), x.constraint)
+			defer cancel()
 			g, err := traverse.NewSync(e, g).Goals(ctx, traverse.Start{Class: a, Objects: []korrel8r.Object{obj{"a", ontime}}}, goals)
 			assert.NoError(t, err)
 			got := g.NodeFor(c).Result.List()

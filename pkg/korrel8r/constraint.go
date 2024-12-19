@@ -11,10 +11,10 @@ import (
 
 // Constraint included in a store Get operation to restrict the resulting objects.
 type Constraint struct {
-	Limit   *int           `json:"limit,omitempty"`                                         // Limit number of objects returned per query, <=0 means no limit.
-	Timeout *time.Duration `json:"timeout,omitempty" swaggertype:"string"`                  // Timeout per request, h/m/s/ms/ns format
-	Start   *time.Time     `json:"start,omitempty" swaggertype:"string" format:"date-time"` // Start of time interval, quoted RFC 3339 format.
-	End     *time.Time     `json:"end,omitempty" swaggertype:"string" format:"date-time"`   // End of time interval, quoted RFC 3339 format.
+	Limit   *int           `json:"limit,omitempty"`                                                                 // Limit number of objects returned per query, <=0 means no limit.
+	Timeout *time.Duration `json:"timeout,omitempty" swaggertype:"string"`                                          // Timeout per request, h/m/s/ms/ns format
+	Start   *time.Time     `json:"start,omitempty" swaggertype:"string" format:"date-time" extensions:"x-nullable"` // Start of time interval, quoted RFC 3339 format.
+	End     *time.Time     `json:"end,omitempty" swaggertype:"string" format:"date-time" extensions:"x-nullable"`   // End of time interval, quoted RFC 3339 format.
 }
 
 // CompareTime returns -1 if t is before the constraint interval, +1 if it is after,
@@ -108,8 +108,12 @@ func (c *Constraint) MarshalLog() any {
 type constraintKey struct{}
 
 // WithConstraint attaches a constraint to a context.
-func WithConstraint(ctx context.Context, c *Constraint) context.Context {
-	return context.WithValue(ctx, constraintKey{}, c)
+func WithConstraint(ctx context.Context, c *Constraint) (context.Context, context.CancelFunc) {
+	ctx = context.WithValue(ctx, constraintKey{}, c) // Attach the constraint
+	if c.GetTimeout() > 0 {                          // Add the timeout if defined.
+		return context.WithTimeout(ctx, c.GetTimeout())
+	}
+	return ctx, func() {}
 }
 
 // ConstraintFrom returns the constraint attached to the context.
