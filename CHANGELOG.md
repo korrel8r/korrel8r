@@ -9,6 +9,17 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 _Note unreleased changes on main here pending the next release_
 
+## [0.7.6] - 2024-12-19
+
+### Fixed
+- Clean up command line, logging levels.
+- Apply constraint timeout to total operation length.
+
+### Added
+- feat(#182): Faster concurrent graph traversal
+- Profiling options
+- Commands: goals, neighbours
+
 ## [0.7.5] - 2024-11-22
 
 ### Fixed
