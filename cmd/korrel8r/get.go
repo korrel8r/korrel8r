@@ -52,8 +52,9 @@ var (
 		Run: func(cmd *cobra.Command, args []string) {
 			e, _ := newEngine()
 			q := must.Must1(e.Query(args[0]))
-			result := newPrinter(os.Stdout)
-			must.Must(e.Get(context.Background(), q, constraint(), result))
+			p := newPrinter(os.Stdout)
+			defer p.Close()
+			must.Must(e.Get(context.Background(), q, constraint(), p))
 		},
 	}
 )

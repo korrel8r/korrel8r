@@ -6,54 +6,65 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"reflect"
 
 	"github.com/korrel8r/korrel8r/internal/pkg/must"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"sigs.k8s.io/yaml"
 )
 
-// printer prints in the format requested by --output
-type printer struct{ Print func(any) }
-
-func newPrinter(w io.Writer) printer {
-	switch *outputFlag {
-
-	case "json":
-		encoder := json.NewEncoder(w)
-		return printer{Print: func(v any) { must.Must(encoder.Encode(v)) }}
-
-	case "json-pretty":
-		encoder := json.NewEncoder(w)
-		encoder.SetIndent("", "  ")
-		return printer{Print: func(v any) { must.Must(encoder.Encode(v)) }}
-
-	case "ndjson":
-		encoder := json.NewEncoder(w)
-		return printer{Print: func(v any) {
-			r := reflect.ValueOf(v)
-			switch r.Kind() {
-			case reflect.Array, reflect.Slice:
-				for i := 0; i < r.Len(); i++ {
-					must.Must(encoder.Encode(r.Index(i).Interface()))
-					fmt.Fprintln(w, "")
-				}
-			default:
-				must.Must(encoder.Encode(v))
-			}
-		}}
-
-	case "yaml":
-		return printer{Print: func(v any) { fmt.Fprintf(w, "---\n%s", must.Must1(yaml.Marshal(v))) }}
-
-	default:
-		must.Must(fmt.Errorf("invalid output type: %v", *outputFlag))
-		return printer{}
-	}
+type printer interface {
+	korrel8r.Appender
+	Print(any) // Print a single item.
+	Close()
 }
 
-func (p printer) Append(objects ...korrel8r.Object) {
-	for _, o := range objects {
+type jsonPrinter struct {
+	appender
+	*json.Encoder
+}
+
+func (p *jsonPrinter) Print(v any) { _ = p.Encode(v) }
+func (p *jsonPrinter) Close()      { p.Print(p.appender) }
+
+type ndJSONPrinter struct{ jsonPrinter }
+
+func (p *ndJSONPrinter) Append(objs ...korrel8r.Object) {
+	for _, o := range objs {
 		p.Print(o)
 	}
 }
+func (p *ndJSONPrinter) Close() {}
+
+type yamlPrinter struct {
+	io.Writer
+	appender
+}
+
+func (p *yamlPrinter) Print(v any) { b, _ := yaml.Marshal(v); _, _ = p.Write(b) }
+func (p *yamlPrinter) Close()      { p.Print(p.appender) }
+
+func newPrinter(w io.Writer) printer {
+	switch *outputFlag {
+	case "json":
+		return &jsonPrinter{Encoder: json.NewEncoder(w)}
+
+	case "json-pretty":
+		p := &jsonPrinter{Encoder: json.NewEncoder(w)}
+		p.SetIndent("", "  ")
+		return p
+
+	case "ndjson":
+		return &ndJSONPrinter{jsonPrinter{Encoder: json.NewEncoder(w)}}
+
+	case "yaml":
+		return &yamlPrinter{Writer: w}
+
+	default:
+		must.Must(fmt.Errorf("invalid output type: %v", *outputFlag))
+		return nil
+	}
+}
+
+type appender []korrel8r.Object
+
+func (a *appender) Append(objects ...korrel8r.Object) { *a = append(*a, objects...) }

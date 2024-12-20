@@ -41,7 +41,7 @@ func TestMain_list_domain(t *testing.T) {
 }
 
 func TestMain_get(t *testing.T) {
-	out, err := cliCommand(t, "get", "-o", "json", `mock:foo:hello`).Output()
+	out, err := cliCommand(t, "get", "-o", "ndjson", `mock:foo:hello`).Output()
 	require.NoError(t, test.ExecError(err))
 	assert.Equal(t, "\"hello\"\n", string(out))
 }
