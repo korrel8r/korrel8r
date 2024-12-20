@@ -128,6 +128,8 @@ func (f AppenderFunc) Append(objects ...Object) {
 	}
 }
 
+var _ Appender = AppenderFunc(nil) // AppenderFunc implements appender
+
 // Rule describes a relationship for finding correlated objects.
 // Rule.Apply() generates correlated queries from start objects.
 //
