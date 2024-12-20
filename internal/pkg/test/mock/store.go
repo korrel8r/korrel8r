@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -190,11 +191,11 @@ func (m QueryMap) Get(q korrel8r.Query) ([]korrel8r.Object, error) {
 	return nil, nil
 }
 
-// QueryDir is a directory of JSON query files.
+// QueryDir is a directory of query files containing results in ndjson format.
 type QueryDir string
 
 func (s QueryDir) Get(q korrel8r.Query) ([]korrel8r.Object, error) {
-	b, err := os.ReadFile(filepath.Join(string(s), q.String()))
+	f, err := os.Open(filepath.Join(string(s), q.String()))
 	switch {
 	case os.IsNotExist(err):
 		return nil, nil
@@ -202,7 +203,17 @@ func (s QueryDir) Get(q korrel8r.Query) ([]korrel8r.Object, error) {
 		return nil, err
 	default:
 		var result []korrel8r.Object
-		err = json.Unmarshal(b, &result)
-		return result, err
+		d := json.NewDecoder(f)
+		for {
+			var o korrel8r.Object
+			switch err := d.Decode(&o); err {
+			case nil:
+				result = append(result, o)
+			case io.EOF:
+				return result, nil
+			default:
+				return nil, err
+			}
+		}
 	}
 }
