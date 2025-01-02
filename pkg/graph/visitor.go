@@ -88,21 +88,26 @@ func (g *Graph) GoalSearch(start korrel8r.Class, goals []korrel8r.Class, v Visit
 }
 
 // Neighbours traverses a breadth-first neighbourhood of start up to depth.
-// It never follows lines to nodes of a lower rank, so the traversal is acyclic.
+// It never follows lines to already nodes of lower depth, so the traversal is acyclic.
 func (g *Graph) Neighbours(start korrel8r.Class, depth int, v Visitor) {
-	depths := map[int64]int{} // Depths of nodes seen so far
-	until := func(n *Node, d int) bool {
-		depths[n.ID()] = d
-		if d <= depth {
-			v.Node(n)
+	ranked := map[int64]int{} // Depths of nodes already ranked.
+	line := func(l *Line) bool {
+		from := ranked[l.From().ID()]
+		if from >= depth {
+			return false // Don't exceed depth.
 		}
+		if to, seen := ranked[l.To().ID()]; !seen {
+			ranked[l.To().ID()] = from + 1
+		} else if to <= from {
+			return false // Lower rank
+		}
+		return v.Line(l)
+	}
+	until := func(n *Node, d int) bool {
+		ranked[n.ID()] = d
 		return d > depth
 	}
-	line := func(l *Line) bool { // Only follow lines to nodes of greater depth.
-		dTo, seen := depths[l.To().ID()]
-		return (!seen || dTo > depths[l.From().ID()]) && v.Line(l)
-	}
-	g.BreadthFirst(start, FuncVisitor{LineF: line}, until)
+	g.BreadthFirst(start, FuncVisitor{LineF: line, NodeF: v.Node}, until)
 }
 
 func visitFunc(v Visitor) func(graph.Node) { return func(n graph.Node) { v.Node(n.(*Node)) } }
