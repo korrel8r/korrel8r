@@ -90,15 +90,15 @@ func TestNeighbours(t *testing.T) {
 		},
 		{
 			depth: 3,
-			rules: [][]string{{"1_11", "1_12", "1_13"}, {"11_22", "12_13", "12_22"}, {"22_99"}},
+			rules: [][]string{{"1_11", "1_12", "1_13"}, {"11_22", "12_22"}, {"22_99"}},
 			nodes: []int{1, 11, 12, 13, 22, 99},
 		},
 	} {
 		t.Run(fmt.Sprintf("depth=%v", x.depth), func(t *testing.T) {
 			var got ruleCollecter
 			g.Neighbours(c(1), x.depth, &got)
-			assert.ElementsMatch(t, x.nodes, got.nodes)
 			assertComponentOrder(t, x.rules, got.rules)
+			assert.ElementsMatch(t, x.nodes, got.nodes)
 		})
 	}
 }
