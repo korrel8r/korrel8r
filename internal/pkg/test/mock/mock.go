@@ -97,24 +97,27 @@ type Rule struct {
 	apply       ApplyFunc
 }
 
-// NewRule constructs a rule, result must be one of:
-//
-//	Korrel8r.Query
-//	func(korrel8r.Object) (korrel8r.Query, error)
-//	mock.Store, result-values...
-func NewRule(name string, start, goal []korrel8r.Class, result ...any) *Rule {
-	r := &Rule{name: name, start: start, goal: goal}
-	var ok bool
-	if r.apply, ok = result[0].(func(korrel8r.Object) (korrel8r.Query, error)); ok {
-		return r // reslut is the apply function
+// NewRule creates a rule: apply can be an [ApplyFunc] or a [korrel8r.Query].
+func NewRule(name string, start, goal []korrel8r.Class, apply any) *Rule {
+	switch apply := apply.(type) {
+	case func(korrel8r.Object) (korrel8r.Query, error):
+		return NewRuleFunc(name, start, goal, apply)
+	case korrel8r.Query:
+		return NewRuleQuery(name, start, goal, apply)
+	default:
+		panic(fmt.Errorf("Expected korrel8r.Query or mock.ApplyFunc, got: (%T)%v", apply, apply))
 	}
-	q, ok := result[0].(korrel8r.Query) // Try for a fixed query
-	if !ok {                            // Try for a store/class fixed result query
-		s, c := result[0].(*Store), result[1].(korrel8r.Class)
-		q = s.NewQuery(c, result[2:]...)
-	}
-	r.apply = func(korrel8r.Object) (korrel8r.Query, error) { return q, nil }
-	return r
+}
+
+// NewRuleQuery create rule, [Apply] calls apply.
+func NewRuleFunc(name string, start, goal []korrel8r.Class, apply ApplyFunc) *Rule {
+	return &Rule{name: name, start: start, goal: goal, apply: apply}
+}
+
+// NewRuleQuery create rule, [Apply] returns a fixed query.
+func NewRuleQuery(name string, start, goal []korrel8r.Class, q korrel8r.Query) *Rule {
+	apply := func(korrel8r.Object) (korrel8r.Query, error) { return q, nil }
+	return NewRuleFunc(name, start, goal, apply)
 }
 
 func (r *Rule) Start() []korrel8r.Class { return r.start }
@@ -140,10 +143,15 @@ type Query struct {
 	class  korrel8r.Class
 	data   string
 	result []korrel8r.Object
+	err    error
 }
 
 func NewQuery(c korrel8r.Class, selector string, result ...korrel8r.Object) korrel8r.Query {
 	return Query{class: c, data: selector, result: result}
+}
+
+func NewQueryError(c korrel8r.Class, selector string, err error) korrel8r.Query {
+	return Query{class: c, data: selector, err: err}
 }
 
 func (q Query) Class() korrel8r.Class { return q.class }
@@ -153,8 +161,8 @@ func (q Query) String() string        { return impl.QueryString(q) }
 // Timestamper interface for objects with a Timestamp() method.
 type Timestamper interface{ Timestamp() time.Time }
 
-// ListResult implements Appender by appending to a slice.
-type ListResult []korrel8r.Object
+// Result implements Appender by appending to a slice.
+type Result []korrel8r.Object
 
-func (r *ListResult) Append(objects ...korrel8r.Object) { *r = append(*r, objects...) }
-func (r ListResult) List() []korrel8r.Object            { return []korrel8r.Object(r) }
+func (r *Result) Append(objects ...korrel8r.Object) { *r = append(*r, objects...) }
+func (r Result) List() []korrel8r.Object            { return []korrel8r.Object(r) }

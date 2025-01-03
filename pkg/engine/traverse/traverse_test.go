@@ -1,15 +1,15 @@
 // Copyright: This file is part of korrel8r, released under https://github.com/korrel8r/korrel8r/blob/main/LICENSE
 
-package traverse_test
+package traverse
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/korrel8r/korrel8r/internal/pkg/test"
 	"github.com/korrel8r/korrel8r/internal/pkg/test/mock"
 	"github.com/korrel8r/korrel8r/pkg/engine"
-	"github.com/korrel8r/korrel8r/pkg/engine/traverse"
 	"github.com/korrel8r/korrel8r/pkg/graph"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"github.com/stretchr/testify/assert"
@@ -18,18 +18,19 @@ import (
 
 // TODO: Clean up and make test more concise and readable.
 
-func TestFollower_Traverse(t *testing.T) {
+func r(name string, start, goal korrel8r.Class, apply any) korrel8r.Rule {
+	return mock.NewRule(name, list(start), list(goal), apply)
+}
+
+func TestTraverserGoals(t *testing.T) {
 	d := mock.Domain("mock")
 	s := mock.NewStore(d)
 	c := d.Class
 	ca, cb, cc, cz := c("a"), c("b"), c("c"), c("z")
-	r := func(name string, start, goal korrel8r.Class, result ...any) korrel8r.Rule {
-		return mock.NewRule(name, list(start), list(goal), result...)
-	}
 
 	e, err := engine.Build().Rules(
 		// Return 2 results, must follow both
-		r("ab", ca, cb, s, cb, 1, 2),
+		r("ab", ca, cb, mock.NewQuery(cb, "1", 1, 2)),
 		// 2 rules, must follow both. Incorporate data from start object.
 		r("bc1", cb, cc, func(start korrel8r.Object) (korrel8r.Query, error) {
 			return mock.NewQuery(cc, test.JSONString(start), start), nil
@@ -46,14 +47,13 @@ func TestFollower_Traverse(t *testing.T) {
 
 	for _, x := range []struct {
 		name string
-		t    traverse.Traverser
+		t    Traverser
 	}{
-		{name: "sync", t: traverse.NewSync(e, e.Graph())},
-		{name: "async", t: traverse.NewAsync(e, e.Graph())},
+		{name: "sync", t: NewSync(e, e.Graph())},
+		{name: "async", t: NewAsync(e, e.Graph())},
 	} {
-		// FIXME neighbour tests also
 		t.Run(x.name, func(t *testing.T) {
-			start := traverse.Start{Class: ca, Objects: []korrel8r.Object{0}}
+			start := Start{Class: ca, Objects: []korrel8r.Object{0}}
 			g, err := x.t.Goals(context.Background(), start, list(cz))
 			assert.NoError(t, err)
 			// Check node results
@@ -99,6 +99,41 @@ func TestFollower_Traverse(t *testing.T) {
 	}
 }
 
-// FIXME more tests
+func TestPartialError(t *testing.T) {
+	d := mock.Domain("mock")
+	s := mock.NewStore(d)
+	c := d.Class
+	ca, cb, cc := c("a"), c("b"), c("c")
+	e, err := engine.Build().Rules(
+		r("ab", ca, cb, mock.NewQuery(cb, "1,2", 1, 2)),
+		r("bc", cb, cc, mock.NewQueryError(cc, "err", errors.New("no good"))),
+	).Stores(s).Engine()
+	require.NoError(t, err)
+	start := Start{Class: ca, Objects: []korrel8r.Object{0}}
+	g, err := New(e, e.Graph()).Neighbours(context.Background(), start, 3)
+	var pe *PartialError
+	assert.ErrorContains(t, err, "no good")
+	assert.ErrorAs(t, err, &pe)
+	assert.ElementsMatch(t, g.NodesFor(ca, cb, cc), graph.NodesOf(g.Nodes()))
+	assert.Equal(t, []any{0}, g.NodeFor(ca).Result.List())
+	assert.Equal(t, []any{1, 2}, g.NodeFor(cb).Result.List())
+	assert.Empty(t, g.NodeFor(cc).Result.List())
+}
+
+func TestErrors(t *testing.T) {
+	assert.NoError(t, NewErrors().Err())
+
+	errs := NewErrors()
+	errs.Add(errors.New("bad"))
+	assert.EqualError(t, errs.Err(), "bad")
+	errs.Add(errors.New("worse"))
+	assert.EqualError(t, errs.Err(), "bad\nworse")
+	errs.Add(errors.New("bad")) // Don't repeat
+	assert.EqualError(t, errs.Err(), "bad\nworse")
+	assert.False(t, IsPartial(errs.Err()))
+	errs.Add(nil) // Partial success
+	assert.True(t, IsPartial(errs.Err()))
+	assert.ErrorContains(t, errs.Err(), "bad\nworse")
+}
 
 func list[T any](x ...T) []T { return x }

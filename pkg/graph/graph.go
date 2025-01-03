@@ -165,3 +165,10 @@ func (g *Graph) MergeNode(n *Node) {
 		g.AddNode(n)
 	}
 }
+
+// Pull useful functions into this package.
+var (
+	NodesOf = graph.NodesOf
+	LinesOf = graph.LinesOf
+	EdgesOf = graph.EdgesOf
+)
