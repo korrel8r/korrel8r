@@ -119,12 +119,6 @@ func (e *Engine) Get(ctx context.Context, query korrel8r.Query, constraint *korr
 		ctx, cancel = context.WithTimeout(ctx, timeout)
 		defer cancel()
 	}
-	defer func() {
-		if err != nil {
-			log.V(2).Info("Engine: Get failed", "error", err, "q", query, "constraint", constraint)
-			err = fmt.Errorf("Engine: Get failed: %v: %w", query, err)
-		}
-	}()
 	ss := e.stores[query.Class().Domain()]
 	if ss == nil {
 		return korrel8r.StoreNotFoundError{Domain: query.Class().Domain()}
@@ -136,7 +130,7 @@ func (e *Engine) Get(ctx context.Context, query korrel8r.Query, constraint *korr
 		r = korrel8r.AppenderFunc(func(o korrel8r.Object) { result.Append(o); count++ })
 		defer func() {
 			if err == nil {
-				log.V(3).Info("Engine: Get OK", "n", count, "t", time.Since(start), "q", query)
+				log.V(3).Info("Engine: Get OK", "n", count, "t", time.Since(start), "query", query)
 			}
 		}()
 	}
@@ -163,8 +157,8 @@ func (e *Engine) NewTemplate(name string) *template.Template {
 }
 
 // execTemplate is a convenience to call NewTemplate, execute the template and stringify the result.
-func (e *Engine) execTemplate(tmplString string, data any) (string, error) {
-	tmpl, err := e.NewTemplate(tmplString).Parse(tmplString)
+func (e *Engine) execTemplate(name, tmplString string, data any) (string, error) {
+	tmpl, err := e.NewTemplate(name).Parse(tmplString)
 	if err != nil {
 		return "", err
 	}

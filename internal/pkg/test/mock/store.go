@@ -35,8 +35,8 @@ func NewStore(d korrel8r.Domain) *Store { return NewStoreWith(d, QueryMap{}) }
 // NewStoreWith creates a store with an initial QueryMap
 func NewStoreWith(d korrel8r.Domain, qm QueryMap) *Store {
 	containsResult := func(q korrel8r.Query) ([]korrel8r.Object, error) {
-		if mq, ok := q.(Query); ok && mq.result != nil {
-			return mq.result, nil
+		if mq, ok := q.(Query); ok {
+			return mq.result, mq.err
 		}
 		return nil, nil
 	}
@@ -169,6 +169,7 @@ type QueryFunc func(korrel8r.Query) ([]korrel8r.Object, error)
 // - QueryFunc: returns the same func.
 // - []korrel8r.Object or nil: the result for this query.
 // - korrel8r.Object: a single object, result is []korrel8r.Object{value}
+// - error: result is an error.
 func queryFunc(v any) QueryFunc {
 	switch v := v.(type) {
 	case QueryFunc:
@@ -177,6 +178,8 @@ func queryFunc(v any) QueryFunc {
 		return func(korrel8r.Query) ([]korrel8r.Object, error) { return nil, nil }
 	case []korrel8r.Object:
 		return func(korrel8r.Query) ([]korrel8r.Object, error) { return v, nil }
+	case error:
+		return func(korrel8r.Query) ([]korrel8r.Object, error) { return nil, v }
 	default:
 		return func(korrel8r.Query) ([]korrel8r.Object, error) { return []korrel8r.Object{v}, nil }
 	}

@@ -214,7 +214,7 @@ func (a *API) GetObjects(c *gin.Context) {
 		return
 	}
 	result := graph.NewResult(query.Class())
-	if !check(c, http.StatusInternalServerError, a.Engine.Get(c.Request.Context(), query, (*korrel8r.Constraint)(opts.Constraint), result)) {
+	if !check(c, http.StatusNotFound, a.Engine.Get(c.Request.Context(), query, (*korrel8r.Constraint)(opts.Constraint), result)) {
 		return
 	}
 	log.V(3).Info("REST: response OK", "objects", len(result.List()))
@@ -240,8 +240,8 @@ func (a *API) goals(c *gin.Context) (g *graph.Graph, goals []korrel8r.Class) {
 	ctx, cancel := korrel8r.WithConstraint(c.Request.Context(), constraint.Default())
 	defer cancel()
 	g, err = traverse.New(a.Engine, g).Goals(ctx, start, goals)
-	if !interrupted(c) {
-		check(c, http.StatusInternalServerError, err)
+	if !interrupted(c) && !traverse.IsPartial(err) {
+		check(c, http.StatusNotFound, err)
 	}
 	return g, goals
 }
@@ -288,8 +288,11 @@ func check(c *gin.Context, code int, err error, format ...any) (ok bool) {
 		if len(format) > 0 {
 			err = fmt.Errorf("%v: %w", fmt.Sprintf(format[0].(string), format[1:]...), err)
 		}
-		c.AbortWithStatusJSON(code, c.Error(err).JSON())
-		log.Error(err, "REST: abort request", "url", c.Request.URL, "code", code, "error", err)
+		ginErr := c.Error(err)
+		if !traverse.IsPartial(err) { // Don't abort on a partial error.
+			c.AbortWithStatusJSON(code, ginErr.JSON())
+			log.Error(err, "REST: abort request", "url", c.Request.URL, "code", code, "error", err)
+		}
 	}
 	return err == nil && !c.IsAborted()
 }
@@ -352,7 +355,8 @@ func (a *API) context(c *gin.Context) {
 }
 
 func interrupted(c *gin.Context) bool {
-	return c.Request.Context().Err() == context.DeadlineExceeded
+	return c.Request.Context().Err() == context.DeadlineExceeded ||
+		c.Errors.Last() != nil && traverse.IsPartial(c.Errors.Last())
 }
 
 func okResponse(c *gin.Context, body any) {

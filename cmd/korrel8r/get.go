@@ -64,6 +64,14 @@ func init() {
 	constraintFlags(objectsCmd)
 }
 
+func check(err error) {
+	if traverse.IsPartial(err) {
+		fmt.Fprintln(os.Stderr, err)
+	} else {
+		must.Must(err)
+	}
+}
+
 var (
 	neighboursCmd = &cobra.Command{
 		Use:   "neighbours",
@@ -73,7 +81,8 @@ var (
 			e, _ := newEngine()
 			ctx, cancel := korrel8r.WithConstraint(context.Background(), constraint())
 			defer cancel()
-			g := must.Must1(traverse.New(e, e.Graph()).Neighbours(ctx, start(e), depth))
+			g, err := traverse.New(e, e.Graph()).Neighbours(ctx, start(e), depth)
+			check(err)
 			newPrinter(os.Stdout).Print(rest.NewGraph(g))
 		},
 	}
@@ -100,7 +109,8 @@ var (
 			}
 			ctx, cancel := korrel8r.WithConstraint(context.Background(), constraint())
 			defer cancel()
-			g := must.Must1(traverse.New(e, e.Graph()).Goals(ctx, start(e), goals))
+			g, err := traverse.New(e, e.Graph()).Goals(ctx, start(e), goals)
+			check(err)
 			newPrinter(os.Stdout).Print(rest.NewGraph(g))
 		},
 	}

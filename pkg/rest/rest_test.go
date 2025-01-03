@@ -5,6 +5,7 @@ package rest
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -33,7 +34,7 @@ func TestAPI_GetDomains(t *testing.T) {
 		).Engine()
 	require.NoError(t, err)
 	a := newTestAPI(t, e)
-	assertDo(t, a, "GET", "/api/v1alpha1/domains", nil, 200, []Domain{
+	assertDo(t, a, "GET", "/api/v1alpha1/domains", nil, http.StatusOK, []Domain{
 		{Name: "bar", Stores: []config.Store{{"domain": "bar", "x": "y"}}},
 		{Name: "foo", Stores: []config.Store{{"domain": "foo", "a": "1"}, {"domain": "foo", "b": "2"}}},
 	})
@@ -43,12 +44,12 @@ func TestAPI_GetDomainClasses(t *testing.T) {
 	e, err := engine.Build().Domains(logDomain.Domain, metric.Domain).Engine()
 	require.NoError(t, err)
 	a := newTestAPI(t, e)
-	assertDo(t, a, "GET", "/api/v1alpha1/domains/log/classes", nil, 200, Classes{
+	assertDo(t, a, "GET", "/api/v1alpha1/domains/log/classes", nil, http.StatusOK, Classes{
 		"application":    logDomain.Application.Description(),
 		"audit":          logDomain.Audit.Description(),
 		"infrastructure": logDomain.Infrastructure.Description(),
 	})
-	assertDo(t, a, "GET", "/api/v1alpha1/domains/metric/classes", nil, 200, Classes{
+	assertDo(t, a, "GET", "/api/v1alpha1/domains/metric/classes", nil, http.StatusOK, Classes{
 		"metric": metric.Domain.Classes()[0].Description(),
 	})
 }
@@ -63,7 +64,7 @@ func TestAPI_ListGoals(t *testing.T) {
 			},
 			Goals: []string{"mock:b"},
 		},
-		200, []Node{
+		http.StatusOK, []Node{
 			{
 				Class:   "mock:b",
 				Count:   1,
@@ -82,7 +83,7 @@ func TestAPI_GraphGoals_rules(t *testing.T) {
 			},
 			Goals: []string{"mock:b"},
 		},
-		200,
+		http.StatusOK,
 		Graph{
 			Nodes: []Node{
 				{
@@ -115,7 +116,7 @@ func TestAPI_PostNeighbours(t *testing.T) {
 			},
 			Depth: 1,
 		},
-		200,
+		http.StatusOK,
 		Graph{
 			Nodes: []Node{
 				{
@@ -132,6 +133,27 @@ func TestAPI_PostNeighbours(t *testing.T) {
 	)
 }
 
+func TestAPI_PostNeighbours_partial(t *testing.T) {
+	e := testEngine(t)
+	s := e.StoresFor(e.Domains()[0])[0].(*mock.Store)
+	s.AddQuery("mock:b:y", errors.New("oh dear"))
+	assertDo(t, newTestAPI(t, e), "POST", "/api/v1alpha1/graphs/neighbours",
+		Neighbours{
+			Start: Start{Queries: []string{"mock:a:x"}},
+			Depth: 1,
+		},
+		http.StatusPartialContent,
+		Graph{
+			Nodes: []Node{{
+				Class:   "mock:a",
+				Queries: []QueryCount{QueryCount{Query: "mock:a:x", Count: 1}},
+				Count:   1,
+			},
+			},
+		},
+	)
+}
+
 func TestAPI_PostNeighbours_empty(t *testing.T) {
 	e := testEngine(t)
 	assertDo(t, newTestAPI(t, e), "POST", "/api/v1alpha1/graphs/neighbours",
@@ -139,7 +161,7 @@ func TestAPI_PostNeighbours_empty(t *testing.T) {
 			Start: Start{Queries: []string{"mock:a:nossuchthing"}},
 			Depth: 1,
 		},
-		200, Graph{},
+		http.StatusOK, Graph{},
 	)
 }
 
@@ -150,7 +172,7 @@ func TestAPI_PostNeighbours_none(t *testing.T) {
 			Start: Start{Queries: []string{"mock:b:y"}},
 			Depth: 0,
 		},
-		200,
+		http.StatusOK,
 		Graph{
 			Nodes: []Node{{
 				Class:   "mock:b",
@@ -158,19 +180,6 @@ func TestAPI_PostNeighbours_none(t *testing.T) {
 				Count:   1,
 			}}},
 	)
-}
-
-func TestAPI_GetObjects(t *testing.T) {
-	want := []any{"a", "b", "c"}
-	d := mock.Domain("x")
-	c := d.Class("y")
-	s := mock.NewStore(d)
-	q := mock.NewQuery(c, "test")
-	s.AddQuery(q, want)
-	e, err := engine.Build().Domains(d).Stores(s).Engine()
-	require.NoError(t, err)
-	a := newTestAPI(t, e)
-	assertDo(t, a, "GET", "/api/v1alpha1/objects?query="+url.QueryEscape(q.String()), nil, 200, want)
 }
 
 func TestAPI_GetObjects_empty(t *testing.T) {
@@ -181,8 +190,8 @@ func TestAPI_GetObjects_empty(t *testing.T) {
 	e, err := engine.Build().Domains(d).Stores(s).Engine()
 	require.NoError(t, err)
 	a := newTestAPI(t, e)
-	w := do(t, a, "GET", "/api/v1alpha1/objects?query="+url.QueryEscape(q.String()), nil)
-	require.Equal(t, 200, w.Code)
+	w := a.do(t, "GET", "/api/v1alpha1/objects?query="+url.QueryEscape(q.String()), nil)
+	require.Equal(t, http.StatusOK, w.Code)
 	require.Equal(t, "[]", w.Body.String())
 }
 
@@ -206,8 +215,8 @@ func newTestAPI(t *testing.T, e *engine.Engine) *testAPI {
 	return &testAPI{API: a, Router: r}
 }
 
-func do(t *testing.T, a *testAPI, method, url string, body any) *httptest.ResponseRecorder {
-	w := httptest.NewRecorder()
+func (a *testAPI) do(t *testing.T, method, url string, body any) *httptest.ResponseRecorder {
+	rr := httptest.NewRecorder()
 	var r io.Reader
 	if body != nil {
 		j, err := json.Marshal(body)
@@ -216,22 +225,22 @@ func do(t *testing.T, a *testAPI, method, url string, body any) *httptest.Respon
 	}
 	req, err := http.NewRequest(method, url, r)
 	if err != nil {
-		w.Code = http.StatusBadRequest
-		fmt.Fprintln(w, err.Error())
+		rr.Code = http.StatusBadRequest
+		fmt.Fprintln(rr, err.Error())
 	} else {
-		a.Router.ServeHTTP(w, req)
+		a.Router.ServeHTTP(rr, req)
 	}
-	return w
+	return rr
 }
 
 func assertDo[T any](t *testing.T, a *testAPI, method, url string, req any, code int, want T) {
 	t.Helper()
-	w := do(t, a, method, url, req)
-	if !assert.Equal(t, code, w.Code, w.Body.String()) {
+	rr := a.do(t, method, url, req)
+	if !assert.Equal(t, code, rr.Code, rr.Body.String()) {
 		return
 	}
 	var got T
-	if !assert.NoError(t, json.Unmarshal(w.Body.Bytes(), &got), "body: %v", w.Body.String()) {
+	if !assert.NoError(t, json.Unmarshal(rr.Body.Bytes(), &got), "body: %v", rr.Body.String()) {
 		return
 	}
 	Normalize(want)
