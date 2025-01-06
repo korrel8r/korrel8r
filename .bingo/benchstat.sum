@@ -4,3 +4,5 @@ golang.org/x/perf v0.0.0-20241112183634-aa2227201f71 h1:B3psZGso/isDPVsyik87yFkv
 golang.org/x/perf v0.0.0-20241112183634-aa2227201f71/go.mod h1:twGvIOdXkc0CPVwbPVQUi4ofdUhWfs3dh7G8BUr9dDw=
 golang.org/x/perf v0.0.0-20241118162539-34caac850176 h1:NFfUBfqvlvLSDan5rqxqE77VcniymZufPPzO0klwbRA=
 golang.org/x/perf v0.0.0-20241118162539-34caac850176/go.mod h1:twGvIOdXkc0CPVwbPVQUi4ofdUhWfs3dh7G8BUr9dDw=
+golang.org/x/perf v0.0.0-20250106172127-400946f43c82 h1:cntvEEbGexov/BId760utCq7Mtu7iJG4lRr/0z+V7Z4=
+golang.org/x/perf v0.0.0-20250106172127-400946f43c82/go.mod h1:q/JkMABA9XXpcvcwKP7xYHRk8KsZBPSXrV8tG4DEMGI=
