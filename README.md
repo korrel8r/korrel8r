@@ -21,8 +21,11 @@ These Go packages include:
 
 - [Domain packages](https://pkg.go.dev/github.com/korrel8r/korrel8r/pkg/domains) for k8s resources, alerts, logs, metris and more
 
+## Contributing
 
-If you are interesting in contributing or experimenting see the [Hackers guide](./doc/HACKING.adoc)
+- [Raising issues](https://github.com/korrel8r/korrel8r/issues)
+- [Project plans](https://github.com/orgs/korrel8r/projects/3/views/2)
+- [Hackers guide](./doc/HACKING.adoc)
 
 ⚠️ **NOTE**: _Early development, no compatibility guarantees_ ⚠️
 
