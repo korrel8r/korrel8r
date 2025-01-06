@@ -74,7 +74,7 @@ func TestFileStore(t *testing.T) {
 	d := mock.Domain("foo")
 	c := d.Class("x")
 	s := mock.NewStore(d)
-	s.AddLookup(mock.QueryDir("testdata/filestore").Get)
+	s.AddLookup(mock.QueryDir("testdata/_filestore").Get)
 	q := mock.NewQuery(c, "query1")
 	r := &mock.Result{}
 	require.NoError(t, s.Get(context.Background(), q, nil, r))
