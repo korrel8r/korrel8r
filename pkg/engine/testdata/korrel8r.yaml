@@ -3,7 +3,7 @@ stores:
   - domain: mock
     mockData: testdata/mock_store.yaml
   - domain: mock
-    mockData: testdata/store
+    mockData: testdata/_store
 
 rules:
   - name: foobar
