@@ -5,6 +5,7 @@ package rules_test
 import (
 	"testing"
 
+	"github.com/korrel8r/korrel8r/pkg/domains/alert"
 	"github.com/korrel8r/korrel8r/pkg/domains/k8s"
 	"github.com/korrel8r/korrel8r/pkg/domains/log"
 	"github.com/korrel8r/korrel8r/pkg/domains/metric"
@@ -88,5 +89,12 @@ func TestK8sAllToMetric(t *testing.T) {
 	e := setup()
 	pod := k8s.New[corev1.Pod]("aNamespace", "foo")
 	want := metric.Query("{namespace=\"aNamespace\",pod=\"foo\"}")
+	testTraverse(t, e, k8s.ClassOf(pod), want.Class(), []korrel8r.Object{pod}, want)
+}
+
+func TestK8sPOdToAlert(t *testing.T) {
+	e := setup()
+	pod := k8s.New[corev1.Pod]("aNamespace", "foo")
+	want := alert.Query{"namespace": "aNamespace", "pod": "foo"}
 	testTraverse(t, e, k8s.ClassOf(pod), want.Class(), []korrel8r.Object{pod}, want)
 }

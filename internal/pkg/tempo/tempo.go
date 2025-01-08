@@ -11,7 +11,6 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/korrel8r/korrel8r/internal/pkg/logging"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 )
 
@@ -91,7 +90,7 @@ func (c *Client) queryURL(traceQL string) *url.URL {
 
 func (c *Client) get(ctx context.Context, u *url.URL, collect CollectFunc) error {
 	u = c.base.ResolveReference(u)
-	logging.Log().V(4).Info("tempo get", "url", u)
+
 	req, err := http.NewRequestWithContext(ctx, "GET", u.String(), nil)
 	if err != nil {
 		return err

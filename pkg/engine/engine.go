@@ -23,7 +23,7 @@ import (
 var log = logging.Log()
 
 // Engine manages a set of rules and stores to perform correlation.
-// Once created (see [Build()]) an engine is immutable.
+// Once created (see [Build]) an engine is immutable.
 type Engine struct {
 	domains       map[string]korrel8r.Domain
 	stores        map[korrel8r.Domain]*stores
@@ -119,12 +119,6 @@ func (e *Engine) Get(ctx context.Context, query korrel8r.Query, constraint *korr
 		ctx, cancel = context.WithTimeout(ctx, timeout)
 		defer cancel()
 	}
-	defer func() {
-		if err != nil {
-			log.V(2).Info("Get failed", "error", err, "query", query, "constraint", constraint)
-			err = fmt.Errorf("Get failed: %v : %w", query, err)
-		}
-	}()
 	ss := e.stores[query.Class().Domain()]
 	if ss == nil {
 		return korrel8r.StoreNotFoundError{Domain: query.Class().Domain()}
@@ -133,65 +127,23 @@ func (e *Engine) Get(ctx context.Context, query korrel8r.Query, constraint *korr
 	if log.V(3).Enabled() { // Don't add overhead unless trace logging is enabled.
 		start := time.Now() // Measure latency
 		count := 0          // Count results
-		r = korrel8r.FuncAppender(func(o korrel8r.Object) { result.Append(o); count++ })
+		r = korrel8r.AppenderFunc(func(o korrel8r.Object) { result.Append(o); count++ })
 		defer func() {
 			if err == nil {
-				log.V(3).Info("Get succeeded", "count", count, "latency", time.Since(start), "query", query, "constraint", constraint)
+				log.V(3).Info("Engine: Get OK", "n", count, "t", time.Since(start), "query", query)
 			}
 		}()
 	}
 	return ss.Get(ctx, query, constraint, r)
 }
 
-// Follower creates a follower. Constraint can be nil.
-func (e *Engine) Follower(ctx context.Context, c *korrel8r.Constraint) *Follower {
-	return &Follower{Engine: e, Context: ctx, Constraint: c.Default(), rules: map[appliedRule]graph.Queries{}}
-}
-
-// Start populates the start node with objects and results of queries.
-// Queries and objects must be of the same class as the node.
-func (e *Engine) Start(ctx context.Context, start *graph.Node, objects []korrel8r.Object, queries []korrel8r.Query, constraint *korrel8r.Constraint) error {
-	start.Result.Append(objects...)
-	for _, query := range queries {
-		if query.Class() != start.Class {
-			return fmt.Errorf("class mismatch in query %v: expected class %v", query, start)
-		}
-		count := 0
-		counter := korrel8r.FuncAppender(func(o korrel8r.Object) { start.Result.Append(o); count++ })
-		if err := e.Get(ctx, query, constraint, counter); err != nil {
-			return err
-		}
-		start.Queries.Set(query, count)
-	}
-	return nil
-}
-
-// GoalSearch does a goal directed search from starting objects and queries, and returns the result graph.
-func (e *Engine) GoalSearch(ctx context.Context, g *graph.Graph, start korrel8r.Class, objects []korrel8r.Object, queries []korrel8r.Query, constraint *korrel8r.Constraint, goals []korrel8r.Class) (*graph.Graph, error) {
-	if err := e.Start(ctx, g.NodeFor(start), objects, queries, constraint); err != nil {
-		return nil, err
-	}
-	f := e.Follower(ctx, constraint)
-	return g.Traverse(start, goals, f.Traverse)
-}
-
-// Neighbours generates a neighbourhood graph from starting objects and queries.
-func (e *Engine) Neighbours(ctx context.Context, start korrel8r.Class, objects []korrel8r.Object, queries []korrel8r.Query, constraint *korrel8r.Constraint, depth int) (*graph.Graph, error) {
-	f := e.Follower(ctx, constraint)
-	g := e.Graph()
-	if err := e.Start(ctx, g.NodeFor(start), objects, queries, constraint); err != nil {
-		return nil, err
-	}
-	return g.Neighbours(start, depth, f.Traverse)
-}
-
-// query implements the template function.
+// query implements the template function 'query'.
 func (e *Engine) query(query string) ([]korrel8r.Object, error) {
 	q, err := e.Query(query)
 	if err != nil {
 		return nil, err
 	}
-	results := korrel8r.NewResult(q.Class())
+	results := graph.NewResult(q.Class())
 	err = e.Get(context.Background(), q, nil, results)
 	return results.List(), err
 }
@@ -205,8 +157,8 @@ func (e *Engine) NewTemplate(name string) *template.Template {
 }
 
 // execTemplate is a convenience to call NewTemplate, execute the template and stringify the result.
-func (e *Engine) execTemplate(tmplString string, data any) (string, error) {
-	tmpl, err := e.NewTemplate(tmplString).Parse(tmplString)
+func (e *Engine) execTemplate(name, tmplString string, data any) (string, error) {
+	tmpl, err := e.NewTemplate(name).Parse(tmplString)
 	if err != nil {
 		return "", err
 	}

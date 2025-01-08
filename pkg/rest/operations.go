@@ -32,6 +32,7 @@ import (
 	"github.com/korrel8r/korrel8r/internal/pkg/logging"
 	"github.com/korrel8r/korrel8r/pkg/config"
 	"github.com/korrel8r/korrel8r/pkg/engine"
+	"github.com/korrel8r/korrel8r/pkg/engine/traverse"
 	"github.com/korrel8r/korrel8r/pkg/graph"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"github.com/korrel8r/korrel8r/pkg/rest/auth"
@@ -49,11 +50,12 @@ var BasePath = docs.SwaggerInfo.BasePath
 type API struct {
 	Engine  *engine.Engine
 	Configs config.Configs
+	Router  *gin.Engine
 }
 
 // New API instance, registers  handlers with a gin Engine.
 func New(e *engine.Engine, c config.Configs, r *gin.Engine) (*API, error) {
-	a := &API{Engine: e, Configs: c}
+	a := &API{Engine: e, Configs: c, Router: r}
 	r.Use(a.logger)
 	r.Use(a.context)
 	r.GET("/", func(c *gin.Context) { c.Redirect(http.StatusTemporaryRedirect, "/swagger/index.html") })
@@ -178,13 +180,14 @@ func (a *API) GraphsNeighbours(c *gin.Context) {
 	if !(check(c, http.StatusBadRequest, c.BindJSON(&r)) && check(c, http.StatusBadRequest, c.BindUri(&opts))) {
 		return
 	}
-	start, objects, queries, constraint := a.start(c, &r.Start)
+	start, constraint := a.start(c, &r.Start)
 	depth := r.Depth
 	if c.IsAborted() {
 		return
 	}
-	ctx := c.Request.Context()
-	g, err := a.Engine.Neighbours(ctx, start, objects, queries, constraint, depth)
+	ctx, cancel := korrel8r.WithConstraint(c.Request.Context(), constraint.Default())
+	defer cancel()
+	g, err := traverse.New(a.Engine, a.Engine.Graph()).Neighbours(ctx, start, depth)
 	gr := Graph{Nodes: nodes(g), Edges: edges(g, &opts)}
 	if !interrupted(c) {
 		check(c, http.StatusBadRequest, err)
@@ -210,11 +213,11 @@ func (a *API) GetObjects(c *gin.Context) {
 	if !check(c, http.StatusBadRequest, err) {
 		return
 	}
-	result := korrel8r.NewResult(query.Class())
-	if !check(c, http.StatusInternalServerError, a.Engine.Get(c.Request.Context(), query, (*korrel8r.Constraint)(opts.Constraint), result)) {
+	result := graph.NewResult(query.Class())
+	if !check(c, http.StatusNotFound, a.Engine.Get(c.Request.Context(), query, (*korrel8r.Constraint)(opts.Constraint), result)) {
 		return
 	}
-	log.V(2).Info("response OK", "objects", len(result.List()))
+	log.V(3).Info("REST: response OK", "objects", len(result.List()))
 	body := []any(result.List())
 	if body == nil {
 		body = []any{} // Return [] on empty, not null.
@@ -227,16 +230,18 @@ func (a *API) goals(c *gin.Context) (g *graph.Graph, goals []korrel8r.Class) {
 	if !check(c, http.StatusBadRequest, c.BindJSON(&r)) {
 		return nil, nil
 	}
-	start, objects, queries, constraint := a.start(c, &r.Start)
+	start, constraint := a.start(c, &r.Start)
 	goals = a.classes(c, r.Goals)
 	if c.IsAborted() {
 		return nil, nil
 	}
-	g = a.Engine.Graph().ShortestPaths(start, goals...)
+	g = a.Engine.Graph().ShortestPaths(start.Class, goals...)
 	var err error
-	g, err = a.Engine.GoalSearch(c.Request.Context(), g, start, objects, queries, constraint, goals)
-	if !interrupted(c) {
-		check(c, http.StatusInternalServerError, err)
+	ctx, cancel := korrel8r.WithConstraint(c.Request.Context(), constraint.Default())
+	defer cancel()
+	g, err = traverse.New(a.Engine, g).Goals(ctx, start, goals)
+	if !interrupted(c) && !traverse.IsPartial(err) {
+		check(c, http.StatusNotFound, err)
 	}
 	return g, goals
 }
@@ -263,7 +268,7 @@ func (a *API) objects(c *gin.Context, class korrel8r.Class, raw []json.RawMessag
 }
 
 // start validates and extracts data from the Start part of a request.
-func (a *API) start(c *gin.Context, start *Start) (korrel8r.Class, []korrel8r.Object, []korrel8r.Query, *korrel8r.Constraint) {
+func (a *API) start(c *gin.Context, start *Start) (traverse.Start, *korrel8r.Constraint) {
 	queries := a.queries(c, start.Queries)
 	var class korrel8r.Class
 	if start.Class == "" && len(queries) > 0 {
@@ -272,10 +277,10 @@ func (a *API) start(c *gin.Context, start *Start) (korrel8r.Class, []korrel8r.Ob
 		class = a.class(c, start.Class)
 	}
 	if class == nil {
-		return nil, nil, nil, nil
+		return traverse.Start{}, nil
 	}
 	objects := a.objects(c, class, start.Objects)
-	return class, objects, queries, start.Constraint
+	return traverse.Start{Class: class, Objects: objects, Queries: queries}, start.Constraint
 }
 
 func check(c *gin.Context, code int, err error, format ...any) (ok bool) {
@@ -283,8 +288,11 @@ func check(c *gin.Context, code int, err error, format ...any) (ok bool) {
 		if len(format) > 0 {
 			err = fmt.Errorf("%v: %w", fmt.Sprintf(format[0].(string), format[1:]...), err)
 		}
-		c.AbortWithStatusJSON(code, c.Error(err).JSON())
-		log.Error(err, "abort request", "url", c.Request.URL, "code", code, "error", err)
+		ginErr := c.Error(err)
+		if !traverse.IsPartial(err) { // Don't abort on a partial error.
+			c.AbortWithStatusJSON(code, ginErr.JSON())
+			log.Error(err, "REST: abort request", "url", c.Request.URL, "code", code, "error", err)
+		}
 	}
 	return err == nil && !c.IsAborted()
 }
@@ -321,9 +329,9 @@ func (a *API) logger(c *gin.Context) {
 		log = log.WithValues("errors", c.Errors.Errors())
 	}
 	if c.IsAborted() || c.Writer.Status() > 500 {
-		log.Info("request failed")
+		log.V(2).Info("REST: request failed")
 	} else {
-		log.V(1).Info("request OK")
+		log.V(3).Info("REST: request OK")
 	}
 }
 
@@ -347,7 +355,8 @@ func (a *API) context(c *gin.Context) {
 }
 
 func interrupted(c *gin.Context) bool {
-	return c.Request.Context().Err() == context.DeadlineExceeded
+	return c.Request.Context().Err() == context.DeadlineExceeded ||
+		c.Errors.Last() != nil && traverse.IsPartial(c.Errors.Last())
 }
 
 func okResponse(c *gin.Context, body any) {

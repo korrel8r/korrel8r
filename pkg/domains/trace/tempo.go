@@ -155,7 +155,8 @@ func (tt *tempoTrace) collect(spans tempoSpanSet, collect func(*Span)) {
 		if span.Status.Description != "" {  // Non-empty description implies error.
 			span.Status.Code = StatusError
 		}
-		// FIXME: revisit, is this correct? How does tempo represent "Ok"? See otel libs for code constants.
+		// TODO: revisit, is this correct? How does tempo represent "Ok"?
+		// See otel libs for code constants.
 		collect(span)
 	}
 }

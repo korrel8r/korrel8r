@@ -3,13 +3,13 @@
 Get graph of nearest neighbours
 
 ----
-korrel8rcli neighbours URL [FLAGS] [flags]
+korrel8rcli neighbours [FLAGS] [flags]
 ----
 
 == Options
 
 ----
-      --class string         Class for serialized objects
+      --class string         Class for serialized start objects
       --depth int            Depth of neighbourhood search. (default 2)
   -h, --help                 help for neighbours
       --object stringArray   Serialized start object, can be multiple.
@@ -21,6 +21,7 @@ korrel8rcli neighbours URL [FLAGS] [flags]
 
 ----
   -o, --output enum(yaml,json-pretty,json)   Output format (default yaml)
+  -u, --url string                           URL of remote korrel8r service (you can also set the KORREL8R_URL environment variable)
 ----
 
 == SEE ALSO

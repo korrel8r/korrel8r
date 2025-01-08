@@ -79,7 +79,7 @@ func (s *store) ensure() (korrel8r.Store, error) {
 		if err != nil {
 			s.Err = err
 			s.ErrCount++
-			log.V(2).Info("Store error", "error", err, "config", s.Original)
+			log.V(2).Info("Engine: Store error", "error", err, "config", s.Original)
 		}
 	}()
 	// Expand the store config each time - the results may change.
@@ -114,7 +114,9 @@ func newStores(e *Engine, d korrel8r.Domain) *stores {
 	return &stores{
 		domain: d,
 		stores: []*store{},
-		expand: func(s string) (string, error) { return e.execTemplate(s, nil) },
+		expand: func(s string) (string, error) {
+			return e.execTemplate(fmt.Sprintf("%v store", d.Name()), s, nil)
+		},
 	}
 }
 
@@ -136,6 +138,7 @@ func (ss *stores) Get(ctx context.Context, q korrel8r.Query, constraint *korrel8
 		errs error
 		ok   bool
 	)
+	// FIXME review this logic. Use partial success?
 	for _, s := range ss.stores {
 		// Iterate over stores and accumulate all results.
 		err := s.Get(ctx, q, constraint, result)

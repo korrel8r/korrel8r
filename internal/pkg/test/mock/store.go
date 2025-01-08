@@ -6,40 +6,48 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"maps"
+	"io"
 	"net/url"
 	"os"
+	"path/filepath"
 
 	"github.com/korrel8r/korrel8r/pkg/config"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r/impl"
-	"sigs.k8s.io/yaml"
+	yaml "sigs.k8s.io/yaml"
 )
 
-// Store is a mock store with a map of queries to  result functions.
+// Store is a mock store where queries are resolved by:
+// - a function to compute the result.
+// - a YAML/JSON file mapping query strings to results.
+// - a directory of files with names that are queries, containing JSON results.
 type Store struct {
 	// ConstraintFunc (optional) returns true if object is accepted.
 	ConstraintFunc func(*korrel8r.Constraint, korrel8r.Object) bool
 
 	domain  korrel8r.Domain
-	Queries QueryMap
+	queries QueryMap
+	lookup  []QueryFunc
 }
 
-// QueryMap keys are query strings, values are one of these types:
-//
-// - QueryFunc: store calls the function to get results.
-// - []korrel8r.Object: store returns the array of results.
-// - korrel8r.Object: store returns []korrel8r.Object{value}
-type QueryMap map[string]any
+func NewStore(d korrel8r.Domain) *Store { return NewStoreWith(d, QueryMap{}) }
 
-type QueryFunc func(korrel8r.Query) []korrel8r.Object
-
-func NewStore(d korrel8r.Domain) *Store { return &Store{domain: d, Queries: QueryMap{}} }
-
-func NewStoreWith(d korrel8r.Domain, m QueryMap) *Store {
-	return &Store{domain: d, Queries: m}
+// NewStoreWith creates a store with an initial QueryMap
+func NewStoreWith(d korrel8r.Domain, qm QueryMap) *Store {
+	containsResult := func(q korrel8r.Query) ([]korrel8r.Object, error) {
+		if mq, ok := q.(Query); ok {
+			return mq.result, mq.err
+		}
+		return nil, nil
+	}
+	return &Store{
+		domain:  d,
+		queries: qm,
+		lookup:  []QueryFunc{containsResult, qm.Get},
+	}
 }
 
+// NewStoreConfig loads a store from the file indicated by cfg in StoreKeyMock
 func NewStoreConfig(d korrel8r.Domain, cfg any) (*Store, error) {
 	s := NewStore(d)
 	if cfg == nil {
@@ -51,6 +59,14 @@ func NewStoreConfig(d korrel8r.Domain, cfg any) (*Store, error) {
 	}
 	file := cs[config.StoreKeyMock]
 	if file == "" {
+		return s, nil // Not a mock store configuration
+	}
+	stat, err := os.Stat(file)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load %v=%q: %w", config.StoreKeyMock, file, err)
+	}
+	if stat.IsDir() {
+		s.AddDir(file)
 		return s, nil
 	}
 	if err := s.LoadFile(file); err != nil {
@@ -62,24 +78,18 @@ func NewStoreConfig(d korrel8r.Domain, cfg any) (*Store, error) {
 func (s *Store) Domain() korrel8r.Domain { return s.domain }
 
 func (s *Store) Get(ctx context.Context, q korrel8r.Query, constraint *korrel8r.Constraint, r korrel8r.Appender) error {
-	var result []korrel8r.Object
-	data := s.Queries[q.String()]
-	switch data := data.(type) {
-	case nil:
-		return nil
-	case []korrel8r.Object:
-		result = data
-	case QueryFunc:
-		result = data(q)
-	default:
-		result = []korrel8r.Object{data}
-	}
-	for i, o := range result {
-		if limit := constraint.GetLimit(); limit > 0 && i >= limit {
-			break
+	for _, f := range s.lookup {
+		result, err := f(q)
+		if err != nil {
+			return err
 		}
-		if s.ConstraintFunc == nil || constraint == nil || s.ConstraintFunc(constraint, o) {
-			r.Append(o)
+		for i, o := range result {
+			if limit := constraint.GetLimit(); limit > 0 && i >= limit {
+				break
+			}
+			if s.ConstraintFunc == nil || constraint == nil || s.ConstraintFunc(constraint, o) {
+				r.Append(o)
+			}
 		}
 	}
 	return nil
@@ -87,8 +97,26 @@ func (s *Store) Get(ctx context.Context, q korrel8r.Query, constraint *korrel8r.
 
 func (s *Store) Resolve(korrel8r.Query) *url.URL { panic("not implemented") }
 
-// Add queries and results
-func (s *Store) Add(queries QueryMap) { maps.Copy(s.Queries, queries) }
+func (s *Store) AddLookup(lookup QueryFunc) { s.lookup = append(s.lookup, lookup) }
+
+func (s *Store) AddDir(dir string) { s.AddLookup(QueryDir(dir).Get) }
+
+// Add query with result.
+// Query can be a korrel8r.Query or a string.
+// Result can be:
+// - QueryFunc: returns the same func.
+// - []korrel8r.Object or nil: the result for this query.
+// - korrel8r.Object: a single object, result is []korrel8r.Object{value}
+func (s *Store) AddQuery(q any, result any) {
+	switch q := q.(type) {
+	case korrel8r.Query:
+		s.queries[q.String()] = queryFunc(result)
+	case string:
+		s.queries[q] = queryFunc(result)
+	default:
+		panic(fmt.Errorf("mock.Store.AddQuery: bad query: (%T)%v", q, q))
+	}
+}
 
 // NewQuery returns a query that will get the result. The query data is the JSON string of the result.
 func (s *Store) NewQuery(c korrel8r.Class, result ...korrel8r.Object) korrel8r.Query {
@@ -97,7 +125,7 @@ func (s *Store) NewQuery(c korrel8r.Class, result ...korrel8r.Object) korrel8r.Q
 		panic(err)
 	}
 	q := NewQuery(c, string(b))
-	s.Add(QueryMap{q.String(): result})
+	s.AddQuery(q, result)
 	return q
 }
 
@@ -129,7 +157,66 @@ func (s *Store) LoadData(data []byte) error {
 			}
 			result = append(result, o)
 		}
-		s.Add(QueryMap{q.String(): result})
+		s.AddQuery(q, result)
 	}
 	return nil
+}
+
+// QueryFunc evaluates a query and returns a result.
+type QueryFunc func(korrel8r.Query) ([]korrel8r.Object, error)
+
+// queryFunc returns a query function based on v, which can be:
+// - QueryFunc: returns the same func.
+// - []korrel8r.Object or nil: the result for this query.
+// - korrel8r.Object: a single object, result is []korrel8r.Object{value}
+// - error: result is an error.
+func queryFunc(v any) QueryFunc {
+	switch v := v.(type) {
+	case QueryFunc:
+		return v
+	case nil:
+		return func(korrel8r.Query) ([]korrel8r.Object, error) { return nil, nil }
+	case []korrel8r.Object:
+		return func(korrel8r.Query) ([]korrel8r.Object, error) { return v, nil }
+	case error:
+		return func(korrel8r.Query) ([]korrel8r.Object, error) { return nil, v }
+	default:
+		return func(korrel8r.Query) ([]korrel8r.Object, error) { return []korrel8r.Object{v}, nil }
+	}
+}
+
+type QueryMap map[string]QueryFunc
+
+func (m QueryMap) Get(q korrel8r.Query) ([]korrel8r.Object, error) {
+	if f, ok := m[q.String()]; ok {
+		return f(q)
+	}
+	return nil, nil
+}
+
+// QueryDir is a directory of query files containing results in ndjson format.
+type QueryDir string
+
+func (s QueryDir) Get(q korrel8r.Query) ([]korrel8r.Object, error) {
+	f, err := os.Open(filepath.Join(string(s), q.String()))
+	switch {
+	case os.IsNotExist(err):
+		return nil, nil
+	case err != nil:
+		return nil, err
+	default:
+		var result []korrel8r.Object
+		d := json.NewDecoder(f)
+		for {
+			var o korrel8r.Object
+			switch err := d.Decode(&o); err {
+			case nil:
+				result = append(result, o)
+			case io.EOF:
+				return result, nil
+			default:
+				return nil, err
+			}
+		}
+	}
 }

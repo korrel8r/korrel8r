@@ -18,21 +18,12 @@ type rule = korrel8r.Rule
 
 func c(i int) korrel8r.Class { return Domain.Class(strconv.Itoa(i)) }
 
-func nodesToInts(nodes []*Node) (ret []int) {
-	for _, n := range nodes {
-		i,_ := strconv.Atoi(n.Class.Name())
-		ret = append(ret, i)
-	}
-	return ret
+func nodeToInt(n *Node) int {
+	i, _ := strconv.Atoi(n.Class.Name())
+	return i
 }
 
-func testGraph(rules []korrel8r.Rule) *Graph {
-	d := NewData()
-	for _, r := range rules {
-		d.addRule(r)
-	}
-	return d.FullGraph()
-}
+func testGraph(rules []korrel8r.Rule) *Graph { return NewData(rules...).FullGraph() }
 
 func graphRules(g *Graph) (rules []korrel8r.Rule) {
 	g.EachLine(func(l *Line) { rules = append(rules, l.Rule) })

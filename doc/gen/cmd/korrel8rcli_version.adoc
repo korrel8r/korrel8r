@@ -1,0 +1,24 @@
+= korrel8rcli version
+
+Print version.
+
+----
+korrel8rcli version [flags]
+----
+
+== Options
+
+----
+  -h, --help   help for version
+----
+
+== Options inherited from parent commands
+
+----
+  -o, --output enum(yaml,json-pretty,json)   Output format (default yaml)
+  -u, --url string                           URL of remote korrel8r service (you can also set the KORREL8R_URL environment variable)
+----
+
+== SEE ALSO
+
+* xref:korrel8rcli.adoc[korrel8rcli]	 - REST client for a remote korrel8r server.

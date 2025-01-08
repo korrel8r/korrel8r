@@ -15,6 +15,7 @@ definitions:
         description: End of time interval, quoted RFC 3339 format.
         format: date-time
         type: string
+        x-nullable: true
       limit:
         description: Limit number of objects returned per query, <=0 means no limit.
         type: integer
@@ -22,6 +23,7 @@ definitions:
         description: Start of time interval, quoted RFC 3339 format.
         format: date-time
         type: string
+        x-nullable: true
       timeout:
         description: Timeout per request, h/m/s/ms/ns format
         type: string
@@ -174,8 +176,7 @@ paths:
           description: OK
         default:
           description: ""
-          schema:
-            type: object
+          schema: {}
       summary: Change key configuration settings at runtime.
   /domains:
     get:
@@ -188,8 +189,7 @@ paths:
             type: array
         default:
           description: ""
-          schema:
-            type: object
+          schema: {}
       summary: Get name, configuration and status for each domain.
   /domains/{domain}/classes:
     get:
@@ -206,8 +206,7 @@ paths:
             $ref: '#/definitions/Classes'
         default:
           description: ""
-          schema:
-            type: object
+          schema: {}
       summary: Get class names and descriptions for a domain.
   /graphs/goals:
     post:
@@ -233,8 +232,7 @@ paths:
             $ref: '#/definitions/Graph'
         default:
           description: ""
-          schema:
-            type: object
+          schema: {}
       summary: Create a correlation graph from start objects to goal queries.
   /graphs/neighbours:
     post:
@@ -260,8 +258,7 @@ paths:
             $ref: '#/definitions/Graph'
         default:
           description: ""
-          schema:
-            type: object
+          schema: {}
       summary: Create a neighbourhood graph around a start object to a given depth.
   /lists/goals:
     post:
@@ -281,8 +278,7 @@ paths:
             type: array
         default:
           description: ""
-          schema:
-            type: object
+          schema: {}
       summary: Create a list of goal nodes related to a starting point.
   /objects:
     get:
@@ -296,13 +292,11 @@ paths:
         "200":
           description: OK
           schema:
-            items:
-              type: object
+            items: {}
             type: array
         default:
           description: ""
-          schema:
-            type: object
+          schema: {}
       summary: Execute a query, returns a list of JSON objects.
 produces:
 - application/json

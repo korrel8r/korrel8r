@@ -4,4 +4,4 @@ go 1.22
 
 toolchain go1.22.6
 
-require mvdan.cc/sh/v3 v3.9.0 // cmd/shfmt
+require mvdan.cc/sh/v3 v3.10.0 // cmd/shfmt

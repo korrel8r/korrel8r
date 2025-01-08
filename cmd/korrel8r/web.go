@@ -6,9 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"strconv"
 
-	"github.com/gin-contrib/pprof"
 	"github.com/gin-gonic/gin"
 	"github.com/korrel8r/korrel8r/internal/pkg/build"
 	"github.com/korrel8r/korrel8r/internal/pkg/must"
@@ -62,14 +60,15 @@ var webCmd = &cobra.Command{
 		must.Must(err)
 		defer r.Close()
 		s.Handler = router
-		if *profileFlag {
-			pprof.Register(router)
+		if *profileFlag == "http" {
+			rest.WebProfile(router)
 		}
+		log := log.WithValues("addr", s.Addr, "version", build.Version, "configuration", *configFlag)
 		if *httpFlag != "" {
-			log.Info("listening for http", "addr", s.Addr, "version", build.Version)
+			log.Info("Server: Listening for http")
 			must.Must(s.ListenAndServe())
 		} else {
-			log.Info("listening for https", "addr", s.Addr, "version", build.Version)
+			log.Info("Server: Listening for https")
 			must.Must(s.ListenAndServeTLS(*certFlag, *keyFlag))
 		}
 	},
@@ -79,11 +78,7 @@ var (
 	httpFlag, httpsFlag *string
 	certFlag, keyFlag   *string
 	specFlag            *string
-	profileFlag         *bool
-)
-
-const (
-	profileEnv = "KORREL8R_PROFILE"
+	WebProfile          func()
 )
 
 func init() {
@@ -93,6 +88,4 @@ func init() {
 	certFlag = webCmd.Flags().String("cert", "", "TLS certificate file (PEM format) for https")
 	keyFlag = webCmd.Flags().String("key", "", "Private key (PEM format) for https")
 	specFlag = webCmd.Flags().String("spec", "", "Dump swagger spec to a file, '-' for stdout.")
-	profileDefault, _ := strconv.ParseBool(os.Getenv(profileEnv))
-	profileFlag = webCmd.Flags().Bool("profile", profileDefault, "Enable HTTP profiling, see https://pkg.go.dev/net/http/pprof")
 }

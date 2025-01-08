@@ -6,7 +6,7 @@ help: ## Display this help.
 	@grep -E '^## [A-Z0-9_]+: ' Makefile | sed 's/^## \([A-Z0-9_]*\): \(.*\)/\1#\2/' | column -s'#' -t
 
 ## VERSION: Semantic version for release, use -dev for development pre-release versions.
-VERSION?=0.7.5
+VERSION?=0.7.6
 ## REGISTRY_BASE: Image registry base, for example quay.io/somebody
 REGISTRY_BASE?=$(error REGISTRY_BASE must be set to push images)
 ## IMGTOOL: May be podman or docker.
@@ -72,11 +72,11 @@ lint: $(GEN_SRC) $(GOLANGCI_LINT) $(SHFMT) $(SHELLCHECK) ## Run the linter to fi
 	$(SHELLCHECK) -x -S style hack/*.sh
 
 .PHONY: test
-test: $(GEN_SRC)		## Run all tests, requires an openshift cluster.
-	go test -fullpath -race ./...
+test: $(GEN_SRC)		## Run all tests, no cache. Requires an openshift cluster.
+	go test -count=1 -fullpath -race ./...
 
 test-no-cluster: $(GEN_SRC)	## Run all tests that don't require an openshift cluster.
-	go test -fullpath -race -skip '.*/Openshift' ./...
+	go test -count=1 -fullpath -race -skip '.*/Openshift' ./...
 
 cover:  $(GOCOVERDIR) ## Run tests with accumulated coverage stats in _cover.
 	@echo == Individual package test coverage.

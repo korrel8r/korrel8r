@@ -19,6 +19,7 @@ import (
 	"github.com/korrel8r/korrel8r/pkg/domains/netflow"
 	"github.com/korrel8r/korrel8r/pkg/domains/trace"
 	"github.com/korrel8r/korrel8r/pkg/engine"
+	"github.com/korrel8r/korrel8r/pkg/engine/traverse"
 	"github.com/spf13/cobra"
 )
 
@@ -33,9 +34,12 @@ var (
 
 	// Global Flags
 	outputFlag  = rootCmd.PersistentFlags().StringP("output", "o", "yaml", "Output format: [json, json-pretty, yaml]")
-	verboseFlag = rootCmd.PersistentFlags().IntP("verbose", "v", 0, "Verbosity for logging (0 = notice, 1 = info, 2 = debug, 3 = trace)")
+	verboseFlag = rootCmd.PersistentFlags().IntP("verbose", "v", 0, "Verbosity for logging (0: notice/error/warn, 1: info, 2: debug, 3: trace-per-request, 4: trace-per-rule, 5: trace-per-object)")
 	configFlag  = rootCmd.PersistentFlags().StringP("config", "c", getConfig(), "Configuration file")
 	panicFlag   = rootCmd.PersistentFlags().Bool("panic", false, "Panic on error")
+	// TODO: remove sync search once async search is full tested.
+	syncFlag = rootCmd.PersistentFlags().Bool("sync", false, "Deprectated: synchronous search, will be removed")
+	// see profile.go for profile flag
 )
 
 const (
@@ -43,13 +47,25 @@ const (
 	defaultConfig = "/etc/korrel8r/korrel8r.yaml"
 )
 
+var profileStop interface{ Stop() }
+
 func init() {
 	_ = rootCmd.PersistentFlags().MarkHidden("panic")
+	_ = rootCmd.PersistentFlags().MarkHidden("sync")
 	rootCmd.CompletionOptions.HiddenDefaultCmd = true
 
 	cobra.OnInitialize(func() {
 		logging.Init(verboseFlag)
 		k8s.SetLogger(logging.Log())
+		if profileFlag != nil {
+			profileStop = StartProfile()
+		}
+	})
+
+	cobra.OnFinalize(func() {
+		if profileStop != nil {
+			profileStop.Stop()
+		}
 	})
 }
 
@@ -69,18 +85,19 @@ func main() {
 			if !ok || *panicFlag {
 				panic(r)
 			}
-			log.Error(err, "Fatal")
 			fmt.Fprintf(os.Stderr, "\n%v\n", err)
 			os.Exit(1)
 		}
-		fmt.Fprintln(os.Stderr, "\nExit korrel8r")
 		os.Exit(0)
 	}()
 	must.Must(rootCmd.Execute())
 }
 
 func newEngine() (*engine.Engine, config.Configs) {
-	log.Info("Starting korrel8r", "version", build.Version, "configuration", *configFlag)
+	traverse.New = traverse.NewAsync // Default to async
+	if *syncFlag {
+		traverse.New = traverse.NewSync
+	}
 	c := must.Must1(config.Load(*configFlag))
 	e := must.Must1(engine.Build().
 		Domains(k8s.Domain, logdomain.Domain, netflow.Domain, trace.Domain, alert.Domain, metric.Domain, mock.Domain("mock")).
