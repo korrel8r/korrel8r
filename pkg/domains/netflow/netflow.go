@@ -127,7 +127,6 @@ type Class struct{}
 func (c Class) Domain() korrel8r.Domain { return Domain }
 func (c Class) Name() string            { return "network" }
 func (c Class) String() string          { return impl.ClassString(c) }
-func (c Class) Description() string     { return "A set of label:value pairs identifying a netflow." }
 
 func (c Class) Unmarshal(data []byte) (korrel8r.Object, error) { return impl.UnmarshalAs[Object](data) }
 

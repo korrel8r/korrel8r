@@ -89,10 +89,10 @@ func (domain) Store(s any) (korrel8r.Store, error) {
 // [spans]: https://opentelemetry.io/docs/concepts/signals/traces/#spans
 type Class struct{}
 
-func (c Class) Domain() korrel8r.Domain                     { return Domain }
-func (c Class) Name() string                                { return "span" }
-func (c Class) String() string                              { return impl.ClassString(c) }
-func (c Class) Description() string                         { return "A set of label:value pairs identifying a trace." }
+func (c Class) Domain() korrel8r.Domain { return Domain }
+func (c Class) Name() string            { return "span" }
+func (c Class) String() string          { return impl.ClassString(c) }
+
 func (c Class) Unmarshal(b []byte) (korrel8r.Object, error) { return impl.UnmarshalAs[Object](b) }
 func (c Class) ID(o korrel8r.Object) any {
 	if span, _ := o.(Object); span != nil {

@@ -17,8 +17,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/korrel8r/korrel8r/internal/pkg/test/mock"
 	"github.com/korrel8r/korrel8r/pkg/config"
-	logDomain "github.com/korrel8r/korrel8r/pkg/domains/log"
-	"github.com/korrel8r/korrel8r/pkg/domains/metric"
 	"github.com/korrel8r/korrel8r/pkg/engine"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -37,20 +35,6 @@ func TestAPI_GetDomains(t *testing.T) {
 	assertDo(t, a, "GET", "/api/v1alpha1/domains", nil, http.StatusOK, []Domain{
 		{Name: "bar", Stores: []config.Store{{"domain": "bar", "x": "y"}}},
 		{Name: "foo", Stores: []config.Store{{"domain": "foo", "a": "1"}, {"domain": "foo", "b": "2"}}},
-	})
-}
-
-func TestAPI_GetDomainClasses(t *testing.T) {
-	e, err := engine.Build().Domains(logDomain.Domain, metric.Domain).Engine()
-	require.NoError(t, err)
-	a := newTestAPI(t, e)
-	assertDo(t, a, "GET", "/api/v1alpha1/domains/log/classes", nil, http.StatusOK, Classes{
-		"application":    logDomain.Application.Description(),
-		"audit":          logDomain.Audit.Description(),
-		"infrastructure": logDomain.Infrastructure.Description(),
-	})
-	assertDo(t, a, "GET", "/api/v1alpha1/domains/metric/classes", nil, http.StatusOK, Classes{
-		"metric": metric.Domain.Classes()[0].Description(),
 	})
 }
 

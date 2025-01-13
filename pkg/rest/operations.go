@@ -63,7 +63,6 @@ func New(e *engine.Engine, c config.Configs, r *gin.Engine) (*API, error) {
 	r.GET("/swagger/*any", a.handleSwagger)
 	v := r.Group(docs.SwaggerInfo.BasePath)
 	v.GET("/domains", a.Domains)
-	v.GET("/domains/:domain/classes", a.DomainClasses)
 	v.GET("/objects", a.GetObjects)
 	v.POST("/graphs/goals", a.GraphsGoals)
 	v.POST("/graphs/neighbours", a.GraphsNeighbours)
@@ -101,25 +100,6 @@ func (a *API) Domains(c *gin.Context) {
 		})
 	}
 	c.JSON(http.StatusOK, domains)
-}
-
-// DomainClasses handler
-//
-//	@router		/domains/{domain}/classes [get]
-//	@summary	Get class names and descriptions for a domain.
-//	@param		domain	path		string	true	"Domain name"
-//	@success	200		{object}	Classes
-//	@failure	default	{object}	any
-func (a *API) DomainClasses(c *gin.Context) {
-	d, err := a.Engine.DomainErr(c.Params.ByName("domain"))
-	if !check(c, http.StatusNotFound, err) {
-		return
-	}
-	classes := Classes{}
-	for _, c := range d.Classes() {
-		classes[c.Name()] = c.Description()
-	}
-	c.JSON(http.StatusOK, classes)
 }
 
 // GraphsGoals handler.

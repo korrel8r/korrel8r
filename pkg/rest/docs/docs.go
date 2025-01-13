@@ -70,32 +70,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/domains/{domain}/classes": {
-            "get": {
-                "summary": "Get class names and descriptions for a domain.",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Domain name",
-                        "name": "domain",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/Classes"
-                        }
-                    },
-                    "default": {
-                        "description": "",
-                        "schema": {}
-                    }
-                }
-            }
-        },
         "/graphs/goals": {
             "post": {
                 "summary": "Create a correlation graph from start objects to goal queries.",
@@ -236,13 +210,6 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "Classes": {
-            "description": "Classes is a map from class names to a short description.",
-            "type": "object",
-            "additionalProperties": {
-                "type": "string"
-            }
-        },
         "Constraint": {
             "description": "Constraint constrains the objects that will be included in search results.",
             "type": "object",

@@ -2,11 +2,6 @@ basePath: /api/v1alpha1
 consumes:
 - application/json
 definitions:
-  Classes:
-    additionalProperties:
-      type: string
-    description: Classes is a map from class names to a short description.
-    type: object
   Constraint:
     description: Constraint constrains the objects that will be included in search
       results.
@@ -191,23 +186,6 @@ paths:
           description: ""
           schema: {}
       summary: Get name, configuration and status for each domain.
-  /domains/{domain}/classes:
-    get:
-      parameters:
-      - description: Domain name
-        in: path
-        name: domain
-        required: true
-        type: string
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/Classes'
-        default:
-          description: ""
-          schema: {}
-      summary: Get class names and descriptions for a domain.
   /graphs/goals:
     post:
       parameters:

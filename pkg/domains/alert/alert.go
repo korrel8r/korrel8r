@@ -102,12 +102,9 @@ func (domain) Store(s any) (korrel8r.Store, error) {
 // Class is represents any Prometheus alert. There is only a single class, named "alert".
 type Class struct{}
 
-func (c Class) Domain() korrel8r.Domain { return Domain }
-func (c Class) Name() string            { return "alert" }
-func (c Class) String() string          { return impl.ClassString(c) }
-func (c Class) Description() string {
-	return "An indication that some collection of metrics is outside of expected values."
-}
+func (c Class) Domain() korrel8r.Domain                     { return Domain }
+func (c Class) Name() string                                { return "alert" }
+func (c Class) String() string                              { return impl.ClassString(c) }
 func (c Class) Unmarshal(b []byte) (korrel8r.Object, error) { return impl.UnmarshalAs[*Object](b) }
 func (c Class) ID(o korrel8r.Object) any {
 	if o, ok := o.(*Object); ok {

@@ -22,13 +22,13 @@ func TestMain_list(t *testing.T) {
 	out, err := cliCommand(t, "list").Output()
 	require.NoError(t, test.ExecError(err))
 	want := `
-alert     Alerts that metric values are out of bounds.
-k8s       Resource objects in a Kubernetes API server
-log       Records from container and node logs.
-metric    Time-series of measured values
-mock      Mock domain.
-netflow   Network flows from source nodes to destination nodes.
-trace     Traces from Pods and Nodes.
+alert
+k8s
+log
+metric
+mock
+netflow
+trace
 `
 	assert.Equal(t, strings.TrimSpace(want), strings.TrimSpace(string(out)))
 }
@@ -36,7 +36,7 @@ trace     Traces from Pods and Nodes.
 func TestMain_list_domain(t *testing.T) {
 	out, err := cliCommand(t, "list", "metric").Output()
 	require.NoError(t, test.ExecError(err))
-	want := "metric   A set of label:value pairs identifying a time-series."
+	want := "metric"
 	assert.Equal(t, want, strings.TrimSpace(string(out)))
 }
 
@@ -44,20 +44,6 @@ func TestMain_get(t *testing.T) {
 	out, err := cliCommand(t, "get", "-o", "ndjson", `mock:foo:hello`).Output()
 	require.NoError(t, test.ExecError(err))
 	assert.Equal(t, "\"hello\"\n", string(out))
-}
-
-func TestMain_describe_domain(t *testing.T) {
-	out, err := cliCommand(t, "describe", "log").Output()
-	require.NoError(t, test.ExecError(err))
-	want := "Records from container and node logs."
-	assert.Equal(t, want, strings.TrimSpace(string(out)))
-}
-
-func TestMain_describe_class(t *testing.T) {
-	out, err := cliCommand(t, "describe", "log:audit").Output()
-	require.NoError(t, test.ExecError(err))
-	want := "Audit logs from the node operating system (/var/log/audit) and the cluster API servers"
-	assert.Equal(t, want, strings.TrimSpace(string(out)))
 }
 
 func TestMain_rules(t *testing.T) {

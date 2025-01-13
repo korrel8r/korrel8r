@@ -13,7 +13,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
-	appv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta/testrestmapper"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -175,20 +174,4 @@ func TestStore_Get_Constraint(t *testing.T) {
 		})
 	}
 	// Need to validate labels and all get variations on fake client or env test...
-}
-
-func TestDescription(t *testing.T) {
-	for _, x := range []struct {
-		class       Class
-		name        string
-		description string
-	}{
-		{ClassOf(&corev1.Pod{}), "Pod.v1.", "Pod is a collection of containers that can run on a host. This resource is created by clients and scheduled onto hosts."},
-		{ClassOf(&appv1.Deployment{}), "Deployment.v1.apps", "Deployment enables declarative updates for Pods and ReplicaSets."},
-	} {
-		t.Run(x.class.Name(), func(t *testing.T) {
-			assert.Equal(t, x.name, x.class.Name())
-			assert.Equal(t, x.description, x.class.Description())
-		})
-	}
 }

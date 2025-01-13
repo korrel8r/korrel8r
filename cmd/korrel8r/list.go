@@ -22,12 +22,12 @@ var listCmd = &cobra.Command{
 		switch len(args) {
 		case 0:
 			for _, d := range e.Domains() {
-				fmt.Fprintln(w, d.Name(), "\t", d.Description())
+				fmt.Fprintln(w, d.Name())
 			}
 		case 1:
 			d := must.Must1(e.DomainErr(args[0]))
 			for _, c := range d.Classes() {
-				fmt.Fprintln(w, c.Name(), "\t", c.Description())
+				fmt.Fprintln(w, c.Name())
 			}
 		}
 	},
