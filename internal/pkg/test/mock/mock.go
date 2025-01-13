@@ -85,7 +85,6 @@ type Class struct {
 func (c Class) Domain() korrel8r.Domain                     { return c.domain }
 func (c Class) String() string                              { return impl.ClassString(c) }
 func (c Class) Name() string                                { return c.name }
-func (c Class) Description() string                         { return fmt.Sprintf("mock class %v", c.String()) }
 func (c Class) ID(o korrel8r.Object) any                    { return o }
 func (c Class) Unmarshal(b []byte) (korrel8r.Object, error) { return impl.UnmarshalAs[Object](b) }
 

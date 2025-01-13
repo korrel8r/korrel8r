@@ -29,8 +29,6 @@ Produces::
 
 | GET | /api/v1alpha1/domains | link:#id-get-domains[get domains] | Get name, configuration and status for each domain.
 
-| GET | /api/v1alpha1/domains/{domain}/classes | link:#id-get-domains-domain-classes[get domains domain classes] | Get class names and descriptions for a domain.
-
 | GET | /api/v1alpha1/objects | link:#id-get-objects[get objects] | Execute a query, returns a list of JSON objects.
 
 | POST | /api/v1alpha1/graphs/goals | link:#id-post-graphs-goals[post graphs goals] | Create a correlation graph from start objects to goal queries.
@@ -83,67 +81,6 @@ Status: OK
 
 
 [id=get-domains-default-schema]
-====== Schema
-
-  
-
-any
-
-[id=id-get-domains-domain-classes]
-=== Get class names and descriptions for a domain.
-
-----
-GET /api/v1alpha1/domains/{domain}/classes
-----
-
-==== Parameters
-
-[%autowidth]
-|===
-| Name | Source | Type | Go type | Separator | Required | Default | Description
-
-| domain
-| `path`
-| string
-| `string`
-| 
-| required
-|  
-| Domain name
-
-|===
-
-==== All responses
-
-[%autowidth]
-|===
-| Code | Status | Description | Has headers | Schema
-
-| link:#get-domains-domain-classes-200[200] | OK | OK |  | link:#get-domains-domain-classes-200-schema[schema]
-
-| link:#get-domains-domain-classes-default[default] | |  |  | link:#get-domains-domain-classes-default-schema[schema]
-
-|===
-
-==== Responses
-  
-
-[id=get-domains-domain-classes-200]
-=====  200 - OK
-Status: OK
-
-[id=get-domains-domain-classes-200-schema]
-====== Schema
-
-  
-
-link:#classes[Classes]
-
-[id=get-domains-domain-classes-default]
-===== Default Response
-
-
-[id=get-domains-domain-classes-default-schema]
 ====== Schema
 
   
@@ -475,17 +412,6 @@ Status: OK
 any
 
 == Models
-
-[id=id-classes]
-=== Classes
-
-
-Classes is a map from class names to a short description.
-  
-
-
-
-link:#classes[Classes]
 
 [id=id-constraint]
 === Constraint

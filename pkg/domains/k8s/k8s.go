@@ -193,21 +193,8 @@ func (c Class) Unmarshal(b []byte) (korrel8r.Object, error) {
 	}
 	return nil, fmt.Errorf("unknown k8s type: %v", c)
 }
-func (c Class) Name() string   { return fmt.Sprintf("%v.%v.%v", c.Kind, c.Version, c.Group) }
-func (c Class) String() string { return impl.ClassString(c) }
-
-func (c Class) Description() string {
-	if o, _ := Scheme.New(schema.GroupVersionKind(c)); o != nil {
-		// Try to extract SwaggerDoc field from object.
-		type documented interface{ SwaggerDoc() map[string]string }
-		if d, _ := o.(documented); d != nil {
-			// Result is a map of property decriptions, where "" is mapped to the overall type description.
-			return d.SwaggerDoc()[""]
-		}
-	}
-	return ""
-}
-
+func (c Class) Name() string                 { return fmt.Sprintf("%v.%v.%v", c.Kind, c.Version, c.Group) }
+func (c Class) String() string               { return impl.ClassString(c) }
 func (c Class) GVK() schema.GroupVersionKind { return schema.GroupVersionKind(c) }
 
 func NewQuery(c Class, namespace, name string, labels, fields map[string]string) *Query {

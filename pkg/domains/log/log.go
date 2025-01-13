@@ -142,19 +142,6 @@ func Preview(x korrel8r.Object) (line string) {
 	return ""
 }
 
-func (c Class) Description() string {
-	switch c {
-	case Application:
-		return "Container logs from pods in all namespaces that do not begin with kube- or openshift-."
-	case Infrastructure:
-		return "Node logs (journald or syslog) and container logs from pods in namespaces that begin with kube- or openshift-."
-	case Audit:
-		return "Audit logs from the node operating system (/var/log/audit) and the cluster API servers"
-	default:
-		return ""
-	}
-}
-
 // Object is a map in Viaq format.
 type Object map[string]any
 
