@@ -1,0 +1,11 @@
+'incident:incident:{}':
+  - {"id":"1ac576a8-5b47-4363-b9b1-2163dbd7335f","alertsLabels":[{"alertname":"alert-1"}]}
+  - {"id":"dcefbddf-7cb6-4744-b85f-745d3479a4cd","alertsLabels":[{"alertname":"alert-2"}]}
+  - {"id":"e5e91faf-e159-4616-bca6-82e9546d4296","alertsLabels":[{"alertname":"alert-3"}]}
+  - {"id":"53cff7c2-d42b-4a1a-ae58-960948d45cf5","alertsLabels":[{"alertname":"alert-4"}]}
+  - {"id":"08119961-4648-42c1-bba0-28b21aa4c88f","alertsLabels":[{"alertname":"alert-5"}]}
+  - {"id":"2deb32d3-c2dc-4177-9de2-a87f18597d60","alertsLabels":[{"alertname":"alert-6"}]}
+  - {"id":"1c8a108b-caf6-4090-aced-d00606eeceb3","alertsLabels":[{"alertname":"alert-7"}]}
+  - {"id":"e78d004e-3405-45bb-813a-45a4834d0cab","alertsLabels":[{"alertname":"alert-8"}]}
+  - {"id":"914f1e3a-d39e-49e0-8ec6-1bcd642c44ed","alertsLabels":[{"alertname":"alert-9"}]}
+  - {"id":"63910992-ab91-4d0e-bc80-2aefbf4bbea1","alertsLabels":[{"alertname":"alert-10"}]}

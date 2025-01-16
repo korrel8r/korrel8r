@@ -18,6 +18,10 @@
 //
 //	alert:alert:{"alertname":"KubeStatefulSetReplicasMismatch","container":"kube-rbac-proxy-main","namespace":"openshift-logging"}
 //
+// To query mutiple alerts at the same time, it's possible to provide an array of maps:
+//
+//	alert:alert:[{"alertname":"alert1"},{"alertname":"alert2"}]
+//
 // # Store
 //
 // A client of Prometheus and/or AlertManager. Store configuration:
@@ -31,7 +35,6 @@ package alert
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -49,6 +52,7 @@ import (
 	"github.com/prometheus/client_golang/api"
 	v1 "github.com/prometheus/client_golang/api/prometheus/v1"
 	"github.com/prometheus/common/model"
+	"sigs.k8s.io/yaml"
 )
 
 var (
@@ -69,8 +73,25 @@ func (domain) Description() string         { return "Alerts that metric values a
 func (domain) Class(string) korrel8r.Class { return Class{} }
 func (domain) Classes() []korrel8r.Class   { return []korrel8r.Class{Class{}} }
 func (d domain) Query(s string) (korrel8r.Query, error) {
-	_, query, err := impl.UnmarshalQueryString[Query](d, s)
-	return query, err
+	var query []map[string]string
+	_, qs, err := impl.ParseQuery(d, s)
+	if err != nil {
+		return nil, err
+	}
+
+	var simpleQuery map[string]string
+	err = yaml.UnmarshalStrict([]byte(qs), &simpleQuery)
+	if err == nil {
+		query = []map[string]string{simpleQuery}
+	} else {
+		// Try more complex variant of the query, accepting list of maps.
+		err = yaml.UnmarshalStrict([]byte(qs), &query)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return Query{Qs: qs, Parsed: query}, nil
 }
 
 const (
@@ -148,10 +169,13 @@ type Receiver struct {
 }
 
 // Query is a map of label name:value pairs for matching alerts, serialized as JSON.
-type Query map[string]string
+type Query struct {
+	Qs     string
+	Parsed []map[string]string
+}
 
 func (q Query) Class() korrel8r.Class { return Class{} }
-func (q Query) Data() string          { b, _ := json.Marshal(q); return string(b) }
+func (q Query) Data() string          { return q.Qs }
 func (q Query) String() string        { return impl.QueryString(q) }
 
 // Store is a client of Prometheus and AlertManager.
@@ -214,8 +238,8 @@ func convertLabelSetToMap(m model.LabelSet) map[string]string {
 	return res
 }
 
-// matches returns true if the Prometheus alert matches the korrel8r query.
-func (q Query) matches(a *v1.Alert) bool {
+// matchesSubquery returns true if the prometheus alert matches part of korrel8r query.
+func matchesSubquery(q map[string]string, a *v1.Alert) bool {
 	for k, v := range q {
 		v2 := string(a.Labels[model.LabelName(k)])
 		if v != v2 {
@@ -238,7 +262,31 @@ func (s Store) Get(ctx context.Context, query korrel8r.Query, c *korrel8r.Constr
 		return fmt.Errorf("failed to query rules from Prometheus API: %w", err)
 	}
 
-	var alerts = []*Object{}
+	subqueries := q.Parsed
+	if len(subqueries) == 0 {
+		// An edge case where there are no sub-queries loaded: make an implicit
+		// empty one to match all alerts.
+		subqueries = []map[string]string{nil}
+	}
+
+	for _, sq := range subqueries {
+		alerts, err := s.getSubquery(ctx, rulesResult, sq)
+		if err != nil {
+			return err
+		}
+
+		for _, a := range alerts {
+			// Only include alerts that overlap with the constraint interval.
+			if c.CompareTime(a.StartsAt) <= 0 && c.CompareTime(a.EndsAt) >= 0 {
+				result.Append(a)
+			}
+		}
+	}
+
+	return nil
+}
+
+func (s Store) getSubquery(ctx context.Context, rulesResult v1.RulesResult, q map[string]string) (alerts []*Object, err error) {
 	for _, rg := range rulesResult.Groups {
 		for _, r := range rg.Rules {
 			ar, ok := r.(v1.AlertingRule)
@@ -247,7 +295,7 @@ func (s Store) Get(ctx context.Context, query korrel8r.Query, c *korrel8r.Constr
 			}
 
 			for _, a := range ar.Alerts {
-				if !q.matches(a) {
+				if !matchesSubquery(q, a) {
 					continue
 				}
 
@@ -271,7 +319,7 @@ func (s Store) Get(ctx context.Context, query korrel8r.Query, c *korrel8r.Constr
 	}
 	resp, err := s.alertmanagerAPI.Alert.GetAlerts(alert.NewGetAlertsParamsWithContext(ctx).WithFilter(filters))
 	if err != nil {
-		return fmt.Errorf("failed to query alerts from Alertmanager API: %w", err)
+		return nil, fmt.Errorf("failed to query alerts from Alertmanager API: %w", err)
 	}
 
 	for _, a := range resp.Payload {
@@ -321,12 +369,6 @@ func (s Store) Get(ctx context.Context, query korrel8r.Query, c *korrel8r.Constr
 		}
 	}
 
-	for _, a := range alerts {
-		// Only include alerts that overlap with the constraint interval.
-		if c.CompareTime(a.StartsAt) <= 0 && c.CompareTime(a.EndsAt) >= 0 {
-			result.Append(a)
-		}
-	}
+	return alerts, nil
 
-	return nil
 }

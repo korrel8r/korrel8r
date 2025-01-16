@@ -18,5 +18,7 @@ stores:
   - domain: trace
     tempoStack: https://tempo-platform-gateway.openshift-tempo-operator.svc.cluster.local:8080/api/traces/v1/platform/tempo/api/search
     certificateAuthority: ./run/secrets/kubernetes.io/serviceaccount/service-ca.crt
+  - domain: incident
+    metrics: https://thanos-querier.openshift-monitoring.svc:9091
 include:
   - rules/all.yaml

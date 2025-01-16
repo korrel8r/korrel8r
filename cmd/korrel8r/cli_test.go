@@ -23,6 +23,7 @@ func TestMain_list(t *testing.T) {
 	require.NoError(t, test.ExecError(err))
 	want := `
 alert
+incident
 k8s
 log
 metric

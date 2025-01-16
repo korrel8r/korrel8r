@@ -82,6 +82,7 @@ func TestMain_server_insecure(t *testing.T) {
 	u := startServer(t, http.DefaultClient, "http", "-c", "testdata/korrel8r.yaml").String() + "/domains"
 	assertDo(t, http.DefaultClient, `[
 {"name":"alert"},
+{"name":"incident"},
 {"name":"k8s"},
 {"name":"log"},
 {"name":"metric"},
@@ -97,6 +98,7 @@ func TestMain_server_secure(t *testing.T) {
 	u := startServer(t, h, "https", "--cert", filepath.Join(tmpDir, "tls.crt"), "--key", filepath.Join(tmpDir, "tls.key"), "-c", "testdata/korrel8r.yaml").String() + "/domains"
 	assertDo(t, h, `[
 {"name":"alert"},
+{"name":"incident"},
 {"name":"k8s"},
 {"name":"log"},
 {"name":"metric"},
