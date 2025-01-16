@@ -14,6 +14,7 @@ import (
 
 	"github.com/korrel8r/korrel8r/pkg/config"
 	"github.com/korrel8r/korrel8r/pkg/domains/alert"
+	"github.com/korrel8r/korrel8r/pkg/domains/incident"
 	"github.com/korrel8r/korrel8r/pkg/domains/k8s"
 	"github.com/korrel8r/korrel8r/pkg/domains/log"
 	"github.com/korrel8r/korrel8r/pkg/domains/metric"
@@ -45,7 +46,7 @@ func setup() *engine.Engine {
 		panic(err)
 	}
 	e, err := engine.Build().
-		Domains(k8s.Domain, log.Domain, netflow.Domain, trace.Domain, alert.Domain, metric.Domain).
+		Domains(k8s.Domain, log.Domain, netflow.Domain, trace.Domain, alert.Domain, metric.Domain, incident.Domain).
 		Config(configs).
 		Stores(s).Engine()
 	if err != nil {

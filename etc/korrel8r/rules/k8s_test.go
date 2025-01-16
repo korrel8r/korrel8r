@@ -10,6 +10,7 @@ import (
 	"github.com/korrel8r/korrel8r/pkg/domains/log"
 	"github.com/korrel8r/korrel8r/pkg/domains/metric"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
+	"github.com/stretchr/testify/assert"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -95,6 +96,8 @@ func TestK8sAllToMetric(t *testing.T) {
 func TestK8sPOdToAlert(t *testing.T) {
 	e := setup()
 	pod := k8s.New[corev1.Pod]("aNamespace", "foo")
-	want := alert.Query{"namespace": "aNamespace", "pod": "foo"}
+	want, err := alert.Domain.Query(`alert:alert:{"namespace": "aNamespace","pod": "foo"}`)
+	assert.NoError(t, err)
+
 	testTraverse(t, e, k8s.ClassOf(pod), want.Class(), []korrel8r.Object{pod}, want)
 }

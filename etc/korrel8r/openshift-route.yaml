@@ -13,6 +13,9 @@ stores:
     lokiStack: 'https://{{(query "k8s:Route:{namespace: netobserv, name: loki}" | first).Spec.Host}}'
   - domain: trace
     tempoStack: 'https://{{(query "k8s:Route:{namespace: openshift-tracing, name: tempo-platform-gateway}" | first).Spec.Host}}/api/traces/v1/platform/tempo/api/search'
+  - domain: incident
+    metrics: 'https://{{(query "k8s:Route:{namespace: openshift-monitoring, name: thanos-querier}" | first).Spec.Host}}'
+
 
 include:
   - rules/all.yaml

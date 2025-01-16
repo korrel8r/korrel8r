@@ -13,6 +13,7 @@ import (
 	"github.com/korrel8r/korrel8r/internal/pkg/test/mock"
 	"github.com/korrel8r/korrel8r/pkg/config"
 	"github.com/korrel8r/korrel8r/pkg/domains/alert"
+	"github.com/korrel8r/korrel8r/pkg/domains/incident"
 	"github.com/korrel8r/korrel8r/pkg/domains/k8s"
 	logdomain "github.com/korrel8r/korrel8r/pkg/domains/log"
 	"github.com/korrel8r/korrel8r/pkg/domains/metric"
@@ -100,7 +101,7 @@ func newEngine() (*engine.Engine, config.Configs) {
 	}
 	c := must.Must1(config.Load(*configFlag))
 	e := must.Must1(engine.Build().
-		Domains(k8s.Domain, logdomain.Domain, netflow.Domain, trace.Domain, alert.Domain, metric.Domain, mock.Domain("mock")).
+		Domains(k8s.Domain, logdomain.Domain, netflow.Domain, trace.Domain, alert.Domain, metric.Domain, incident.Domain, mock.Domain("mock")).
 		Config(c).
 		Engine())
 	return e, c
