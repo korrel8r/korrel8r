@@ -29,11 +29,11 @@ This ^ is an implicit heading.
 
 == Query
 
-Queries are JSON-serialized instances of type link:https://pkg.go.dev/github.com/korrel8r/korrel8r/internal/pkg/asciidoc/#Query[Query] and blah foobar
+Queries are JSON-serialized instances of type link:https://pkg.go.dev/github.com/korrel8r/korrel8r/internal/pkg/asciidoc#Query[Query] and blah foobar
 
 == Object
 
-link:https://pkg.go.dev/github.com/korrel8r/korrel8r/internal/pkg/asciidoc/#Object[Object] is a link:https://pkg.go.dev/regexp/#Regexp[regexp.Regexp]
+link:https://pkg.go.dev/github.com/korrel8r/korrel8r/internal/pkg/asciidoc#Object[Object] is a link:https://pkg.go.dev/regexp#Regexp[regexp.Regexp]
 
 Here is
 

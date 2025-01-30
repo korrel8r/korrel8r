@@ -17,7 +17,7 @@ how to use the built-in rules, and how to write new rules.
 
 These Go packages include:
 - [Core abstractions and interfaces](https://pkg.go.dev/github.com/korrel8r/korrel8r/pkg/korrel8r)
-  need to implement new [domains](https://korrel8r.github.io/korrel8r#id-about-domains) 
+  used to implement new _domains_. See the [user guide](https://korrel8r.github.io/korrel8r)
 
 - [Domain packages](https://pkg.go.dev/github.com/korrel8r/korrel8r/pkg/domains) for k8s resources, alerts, logs, metris and more
 

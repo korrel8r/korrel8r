@@ -1,51 +1,5 @@
 
-= k8s domain
-
-
-Domain k8s implements link:https://kubernetes.io/docs/concepts/overview/[Kubernetes] resources stored in a Kube API server.
-
-== Store
-
-The k8s domain automatically connects to the current cluster (as determined by kubectl), no additional configuration is needed.
-
-----
- stores:
-	  domain: k8s
-----
-
-== Template Functions
-
-The following template functions are available to rules.
-
-----
-k8sClass
-    Takes string arguments (apiVersion, kind).
-    Returns the korrel8r.Class implied by the arguments, or an error.
-----
-
-
-== Query
-
-
-Query struct for a Kubernetes query.
-
-Example:
-
-----
-k8s:Pod.v1:{"namespace":"openshift-cluster-version","name":"cluster-version-operator-8d86bcb65-btlgn"}
-----
-
-
-See Go documentation for https://pkg.go.dev/github.com/korrel8r/korrel8r/pkg/domains/k8s/#Query[Query]
-
-== Object
-
-
-Object represents a kubernetes resource as a map, map keys are serialized field names. Rule templates should use the JSON (lowerCase) field names, NOT the UpperCase Go struct field names.
-
-
-See Go documentation for https://pkg.go.dev/github.com/korrel8r/korrel8r/pkg/domains/k8s/#Object[Object]
-
+[#_alert_domain]
 = alert domain
 
 
@@ -57,7 +11,7 @@ There is a single class `alert:alert`.
 
 == Object
 
-An alert object is represented by this Go type. Rules starting from an alert should use the capitalized Go field names rather than the lowercase JSON names. link:https://pkg.go.dev/github.com/korrel8r/korrel8r/pkg/domains/alert/#Object[Object]
+An alert object is represented by this Go type. Rules starting from an alert should use the capitalized Go field names rather than the lowercase JSON names. link:https://pkg.go.dev/github.com/korrel8r/korrel8r/pkg/domains/alert#Object[Object]
 
 == Query
 
@@ -92,7 +46,7 @@ Either or both of `metrics` or `alertmanager` may be present.
 Query is a map of label name:value pairs for matching alerts, serialized as JSON.
 
 
-See Go documentation for https://pkg.go.dev/github.com/korrel8r/korrel8r/pkg/domains/alert/#Query[Query]
+See Go documentation for https://pkg.go.dev/github.com/korrel8r/korrel8r/pkg/domains/alert#Query[Query]
 
 == Object
 
@@ -100,8 +54,9 @@ See Go documentation for https://pkg.go.dev/github.com/korrel8r/korrel8r/pkg/dom
 Object contains alert data, passed as *Object when used as a korrel8r.Object.
 
 
-See Go documentation for https://pkg.go.dev/github.com/korrel8r/korrel8r/pkg/domains/alert/#Object[Object]
+See Go documentation for https://pkg.go.dev/github.com/korrel8r/korrel8r/pkg/domains/alert#Object[Object]
 
+[#_incident_domain]
 = incident domain
 
 
@@ -147,7 +102,7 @@ metrics: PROMETHEUS_URL
 
 
 
-See Go documentation for https://pkg.go.dev/github.com/korrel8r/korrel8r/pkg/domains/incident/#Query[Query]
+See Go documentation for https://pkg.go.dev/github.com/korrel8r/korrel8r/pkg/domains/incident#Query[Query]
 
 == Object
 
@@ -155,8 +110,57 @@ See Go documentation for https://pkg.go.dev/github.com/korrel8r/korrel8r/pkg/dom
 Object contains incident data, passed as *Object when used as a korrel8r.Object.
 
 
-See Go documentation for https://pkg.go.dev/github.com/korrel8r/korrel8r/pkg/domains/incident/#Object[Object]
+See Go documentation for https://pkg.go.dev/github.com/korrel8r/korrel8r/pkg/domains/incident#Object[Object]
 
+[#_k8s_domain]
+= k8s domain
+
+
+Domain k8s implements link:https://kubernetes.io/docs/concepts/overview/[Kubernetes] resources stored in a Kube API server.
+
+== Store
+
+The k8s domain automatically connects to the current cluster (as determined by kubectl), no additional configuration is needed.
+
+----
+ stores:
+	  domain: k8s
+----
+
+== Template Functions
+
+The following template functions are available to rules.
+
+----
+k8sClass
+    Takes string arguments (apiVersion, kind).
+    Returns the korrel8r.Class implied by the arguments, or an error.
+----
+
+
+== Query
+
+
+Query struct for a Kubernetes query.
+
+Example:
+
+----
+k8s:Pod.v1:{"namespace":"openshift-cluster-version","name":"cluster-version-operator-8d86bcb65-btlgn"}
+----
+
+
+See Go documentation for https://pkg.go.dev/github.com/korrel8r/korrel8r/pkg/domains/k8s#Query[Query]
+
+== Object
+
+
+Object represents a kubernetes resource as a map, map keys are serialized field names. Rule templates should use the JSON (lowerCase) field names, NOT the UpperCase Go struct field names.
+
+
+See Go documentation for https://pkg.go.dev/github.com/korrel8r/korrel8r/pkg/domains/k8s#Object[Object]
+
+[#_log_domain]
 = log domain
 
 
@@ -220,7 +224,7 @@ logSafeLabel
 Query is a LogQL query string
 
 
-See Go documentation for https://pkg.go.dev/github.com/korrel8r/korrel8r/pkg/domains/log/#Query[Query]
+See Go documentation for https://pkg.go.dev/github.com/korrel8r/korrel8r/pkg/domains/log#Query[Query]
 
 == Object
 
@@ -228,8 +232,9 @@ See Go documentation for https://pkg.go.dev/github.com/korrel8r/korrel8r/pkg/dom
 Object is a map in Viaq format.
 
 
-See Go documentation for https://pkg.go.dev/github.com/korrel8r/korrel8r/pkg/domains/log/#Object[Object]
+See Go documentation for https://pkg.go.dev/github.com/korrel8r/korrel8r/pkg/domains/log#Object[Object]
 
+[#_metric_domain]
 = metric domain
 
 
@@ -261,7 +266,7 @@ Query is a link:https://prometheus.io/docs/prometheus/latest/querying/basics/[Pr
 Korrel8r uses metric labels for correlation, it does not use time-series data values. The link:https://prometheus.io/docs/prometheus/latest/querying/basics/[PromQL] query is analyzed to identify series it uses, labels of those series are used for correlation.
 
 
-See Go documentation for https://pkg.go.dev/github.com/korrel8r/korrel8r/pkg/domains/metric/#Query[Query]
+See Go documentation for https://pkg.go.dev/github.com/korrel8r/korrel8r/pkg/domains/metric#Query[Query]
 
 == Object
 
@@ -269,8 +274,9 @@ See Go documentation for https://pkg.go.dev/github.com/korrel8r/korrel8r/pkg/dom
 
 
 
-See Go documentation for https://pkg.go.dev/github.com/korrel8r/korrel8r/pkg/domains/metric/#Object[Object]
+See Go documentation for https://pkg.go.dev/github.com/korrel8r/korrel8r/pkg/domains/metric#Object[Object]
 
+[#_netflow_domain]
 = netflow domain
 
 
@@ -315,7 +321,7 @@ loki: URL_OF_LOKI
 Query is a LogQL query string
 
 
-See Go documentation for https://pkg.go.dev/github.com/korrel8r/korrel8r/pkg/domains/netflow/#Query[Query]
+See Go documentation for https://pkg.go.dev/github.com/korrel8r/korrel8r/pkg/domains/netflow#Query[Query]
 
 == Object
 
@@ -323,8 +329,9 @@ See Go documentation for https://pkg.go.dev/github.com/korrel8r/korrel8r/pkg/dom
 Object is a map holding netflow entries
 
 
-See Go documentation for https://pkg.go.dev/github.com/korrel8r/korrel8r/pkg/domains/netflow/#Object[Object]
+See Go documentation for https://pkg.go.dev/github.com/korrel8r/korrel8r/pkg/domains/netflow#Object[Object]
 
+[#_trace_domain]
 = trace domain
 
 
@@ -359,7 +366,7 @@ A trace-id query is a list of hexadecimal trace IDs. It returns all the spans in
 ----
 
 
-See Go documentation for https://pkg.go.dev/github.com/korrel8r/korrel8r/pkg/domains/trace/#Query[Query]
+See Go documentation for https://pkg.go.dev/github.com/korrel8r/korrel8r/pkg/domains/trace#Query[Query]
 
 == Object
 
@@ -369,4 +376,4 @@ Object represents an OpenTelemetry link:https://opentelemetry.io/docs/concepts/s
 A trace is simply a set of spans with the same trace-id. There is no explicit class or object representing a trace.
 
 
-See Go documentation for https://pkg.go.dev/github.com/korrel8r/korrel8r/pkg/domains/trace/#Object[Object]
+See Go documentation for https://pkg.go.dev/github.com/korrel8r/korrel8r/pkg/domains/trace#Object[Object]

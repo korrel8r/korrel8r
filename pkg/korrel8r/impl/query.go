@@ -20,7 +20,7 @@ func ParseQuery(domain korrel8r.Domain, query string) (class korrel8r.Class, dat
 	}
 	class = domain.Class(c)
 	if class == nil {
-		return nil, "", korrel8r.ClassNotFoundError{Domain: domain, Class: c}
+		return nil, "", korrel8r.ClassNotFoundError(c)
 	}
 	return class, q, nil
 }

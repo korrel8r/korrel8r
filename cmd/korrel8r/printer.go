@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"reflect"
 
 	"github.com/korrel8r/korrel8r/internal/pkg/must"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
@@ -23,7 +24,21 @@ type jsonPrinter struct {
 	*json.Encoder
 }
 
-func (p *jsonPrinter) Print(v any) { _ = p.Encode(v) }
+// noNull replaces null slice or map values with [] or {}
+func noNull(v any) any {
+	if reflect.ValueOf(v).IsZero() {
+		typ := reflect.TypeOf(v)
+		switch typ.Kind() {
+		case reflect.Slice:
+			return reflect.MakeSlice(typ, 0, 0)
+		case reflect.Map:
+			return reflect.MakeMap(typ)
+		}
+	}
+	return v
+}
+
+func (p *jsonPrinter) Print(v any) { _ = p.Encode(noNull(v)) }
 func (p *jsonPrinter) Close()      { p.Print(p.appender) }
 
 type ndJSONPrinter struct{ jsonPrinter }
@@ -40,7 +55,7 @@ type yamlPrinter struct {
 	appender
 }
 
-func (p *yamlPrinter) Print(v any) { b, _ := yaml.Marshal(v); _, _ = p.Write(b) }
+func (p *yamlPrinter) Print(v any) { b, _ := yaml.Marshal(noNull(v)); _, _ = p.Write(b) }
 func (p *yamlPrinter) Close()      { p.Print(p.appender) }
 
 func newPrinter(w io.Writer) printer {

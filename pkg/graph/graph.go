@@ -1,6 +1,9 @@
 // Copyright: This file is part of korrel8r, released under https://github.com/korrel8r/korrel8r/blob/main/LICENSE
 
 // Package graph provides a directed multi-graph with class nodes and rule lines.
+//
+// Functions in this package manipulate rule graphs, e.g. finding paths or minimizing the graphs.
+// They do not interrogate stores to find live correlations, for that see the [engine.Engine]
 package graph
 
 import (

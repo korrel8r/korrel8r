@@ -13,13 +13,8 @@ import (
 
 	"github.com/korrel8r/korrel8r/internal/pkg/test"
 	"github.com/korrel8r/korrel8r/pkg/config"
-	"github.com/korrel8r/korrel8r/pkg/domains/alert"
-	"github.com/korrel8r/korrel8r/pkg/domains/incident"
+	"github.com/korrel8r/korrel8r/pkg/domains"
 	"github.com/korrel8r/korrel8r/pkg/domains/k8s"
-	"github.com/korrel8r/korrel8r/pkg/domains/log"
-	"github.com/korrel8r/korrel8r/pkg/domains/metric"
-	"github.com/korrel8r/korrel8r/pkg/domains/netflow"
-	"github.com/korrel8r/korrel8r/pkg/domains/trace"
 	"github.com/korrel8r/korrel8r/pkg/engine"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"github.com/korrel8r/korrel8r/pkg/unique"
@@ -45,7 +40,7 @@ func setup() *engine.Engine {
 		panic(err)
 	}
 	e, err := engine.Build().
-		Domains(k8s.Domain, log.Domain, netflow.Domain, trace.Domain, alert.Domain, metric.Domain, incident.Domain).
+		Domains(domains.All...).
 		Stores(s). // NOTE: k8s store must come before configs, some templates use k8s functions.
 		Config(configs).
 		Engine()

@@ -8,6 +8,7 @@ import (
 	"github.com/korrel8r/korrel8r/pkg/domains/k8s"
 	"github.com/korrel8r/korrel8r/pkg/domains/log"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestK8sRules(t *testing.T) {
@@ -86,10 +87,11 @@ func TestDomain_Classes(t *testing.T) {
 		"k8s:RoleBinding.v1.rbac.authorization.k8s.io",
 		"k8s:ClusterRole.v1.rbac.authorization.k8s.io",
 		"k8s:ClusterRoleBinding.v1.rbac.authorization.k8s.io", "k8s:Node.v1"}
-	got := e.Domain("k8s").Classes()
-	var gotStr []string
-	for _, c := range got {
-		gotStr = append(gotStr, c.String())
+	d, err := e.Domain("k8s")
+	require.NoError(t, err)
+	var names []string
+	for _, c := range d.Classes() {
+		names = append(names, c.String())
 	}
-	assert.ElementsMatch(t, want, gotStr)
+	assert.ElementsMatch(t, want, names)
 }

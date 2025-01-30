@@ -7,30 +7,21 @@ import (
 	"fmt"
 )
 
-type DomainNotFoundError struct{ Domain string }
+type DomainNotFoundError string
 
-func (e DomainNotFoundError) Error() string { return fmt.Sprintf("domain not found: %q", e.Domain) }
-
-type ClassNotFoundError struct {
-	Class  string
-	Domain Domain
+func (err DomainNotFoundError) Error() string {
+	return fmt.Sprintf("domain not found: %v", string(err))
 }
 
-func (e ClassNotFoundError) Error() string {
-	return fmt.Sprintf("class not found in domain %v: %q", e.Domain, e.Class)
+func IsDomainNotFoundError(err error) bool { return IsErrorType[DomainNotFoundError](err) }
+
+type ClassNotFoundError string
+
+func (err ClassNotFoundError) Error() string {
+	return fmt.Sprintf("class not found: %v", string(err))
 }
 
 func IsClassNotFoundError(err error) bool { return IsErrorType[ClassNotFoundError](err) }
-
-type StoreNotFoundError struct {
-	Domain Domain
-}
-
-func (e StoreNotFoundError) Error() string {
-	return fmt.Sprintf("no stores found for domain %v", e.Domain)
-}
-
-func IsStoreNotFoundError(err error) bool { return IsErrorType[StoreNotFoundError](err) }
 
 func IsErrorType[T error](err error) bool {
 	var target T

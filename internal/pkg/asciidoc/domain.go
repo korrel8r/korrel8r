@@ -36,7 +36,7 @@ func Load(pkgSpec string) ([]*Domain, error) {
 		if err != nil {
 			return nil, err
 		}
-		domains[i] = &Domain{pkg: pkgs[i], Package: docPkg, DocLinkBaseURL: "https://pkg.go.dev/"}
+		domains[i] = &Domain{pkg: pkgs[i], Package: docPkg, DocLinkBaseURL: "https://pkg.go.dev"}
 	}
 	return domains, nil
 }
