@@ -32,22 +32,20 @@ type Engine struct {
 	rules         []korrel8r.Rule
 }
 
-// Domain returns the named domain or nil if not found.
-func (e *Engine) Domain(name string) korrel8r.Domain { return e.domains[name] }
-
 func (e *Engine) Domains() []korrel8r.Domain {
 	domains := maps.Values(e.domains)
 	slices.SortFunc(domains, func(a, b korrel8r.Domain) int { return strings.Compare(a.Name(), b.Name()) })
 	return domains
 }
-func (e *Engine) DomainErr(name string) (korrel8r.Domain, error) {
-	if d := e.Domain(name); d != nil {
+
+func (e *Engine) Domain(name string) (korrel8r.Domain, error) {
+	if d := e.domains[name]; d != nil {
 		return d, nil
 	}
-	return nil, korrel8r.DomainNotFoundError{Domain: name}
+	return nil, korrel8r.DomainNotFoundError(name)
 }
 
-// StoreFor returns the aggregated store for a domain, may be nil.
+// StoreFor returns the aggregated store for a domain, nil if the domain does not exist.
 func (e *Engine) StoreFor(d korrel8r.Domain) korrel8r.Store {
 	return e.stores[d]
 }
@@ -79,13 +77,13 @@ func (e *Engine) Class(fullname string) (korrel8r.Class, error) {
 }
 
 func (e *Engine) DomainClass(domain, class string) (korrel8r.Class, error) {
-	d, err := e.DomainErr(domain)
+	d, err := e.Domain(domain)
 	if err != nil {
 		return nil, err
 	}
 	c := d.Class(class)
 	if c == nil {
-		return nil, korrel8r.ClassNotFoundError{Class: class, Domain: d}
+		return nil, korrel8r.ClassNotFoundError(class)
 	}
 	return c, nil
 }
@@ -97,7 +95,7 @@ func (e *Engine) Query(query string) (korrel8r.Query, error) {
 	if !ok {
 		return nil, fmt.Errorf("invalid query string: %v", query)
 	}
-	domain, err := e.DomainErr(d)
+	domain, err := e.Domain(d)
 	if err != nil {
 		return nil, err
 	}
@@ -121,7 +119,7 @@ func (e *Engine) Get(ctx context.Context, query korrel8r.Query, constraint *korr
 	}
 	ss := e.stores[query.Class().Domain()]
 	if ss == nil {
-		return korrel8r.StoreNotFoundError{Domain: query.Class().Domain()}
+		return fmt.Errorf("no stores found for domain %v", query.Class().Domain())
 	}
 	r := result
 	if log.V(3).Enabled() { // Don't add overhead unless trace logging is enabled.

@@ -47,7 +47,7 @@ func newStore(e *Engine, sc config.Store, s korrel8r.Store) (*store, error) {
 		d = s.Domain()
 	} else {
 		var err error
-		d, err = e.DomainErr(sc[config.StoreKeyDomain])
+		d, err = e.Domain(sc[config.StoreKeyDomain])
 		if err != nil {
 			return nil, err
 		}
@@ -212,7 +212,7 @@ func (ss *stores) ClassCheck(c korrel8r.Class) error {
 		}
 	}
 	if errs == nil {
-		errs = korrel8r.ClassNotFoundError{Domain: c.Domain(), Class: c.String()}
+		errs = korrel8r.ClassNotFoundError(c.String())
 	}
 	return errs
 }

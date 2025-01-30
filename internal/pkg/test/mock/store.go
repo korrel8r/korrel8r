@@ -242,5 +242,5 @@ func (s *Store) ClassCheck(c korrel8r.Class) error {
 	if len(s.classes) == 0 || s.classes.Has(c) {
 		return nil
 	}
-	return korrel8r.ClassNotFoundError{Class: c.String(), Domain: s.Domain()}
+	return korrel8r.ClassNotFoundError(c.String())
 }

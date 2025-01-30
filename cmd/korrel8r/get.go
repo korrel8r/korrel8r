@@ -65,7 +65,7 @@ func init() {
 }
 
 func check(err error) {
-	if traverse.IsPartial(err) {
+	if traverse.IsPartialError(err) {
 		fmt.Fprintln(os.Stderr, err)
 	} else {
 		must.Must(err)

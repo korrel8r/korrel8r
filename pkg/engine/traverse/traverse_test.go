@@ -212,9 +212,9 @@ func TestErrors(t *testing.T) {
 	assert.EqualError(t, errs.Err(), "bad\nworse")
 	errs.Add(errors.New("bad")) // Don't repeat
 	assert.EqualError(t, errs.Err(), "bad\nworse")
-	assert.False(t, IsPartial(errs.Err()))
+	assert.False(t, IsPartialError(errs.Err()))
 	errs.Add(nil) // Partial success
-	assert.True(t, IsPartial(errs.Err()))
+	assert.True(t, IsPartialError(errs.Err()))
 	assert.ErrorContains(t, errs.Err(), "bad\nworse")
 }
 

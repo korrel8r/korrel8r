@@ -218,9 +218,6 @@ func (n *node) applyRules(ctx context.Context, o korrel8r.Object) {
 		err error
 	}{}
 	n.g.EachLineFrom(n.Node, func(l *graph.Line) {
-		if ctx.Err() != nil {
-			return // Abort if context is cancelled
-		}
 		qe, ok := applied[l.Rule] // Already applied?
 		if !ok {                  // No, apply now
 			qe.q, qe.err = l.Rule.Apply(o)

@@ -10,7 +10,7 @@ VERSION?=0.7.6
 ## REGISTRY_BASE: Image registry base, for example quay.io/somebody
 REGISTRY_BASE?=$(error REGISTRY_BASE must be set to push images)
 ## IMGTOOL: May be podman or docker.
-IMGTOOL?=$(or $(shell podman info > /dev/null 2>&1 && which podman), $(shell docker info > /dev/null 2>&1 && which docker))
+IMGTOOL?=$(or $(shell type -p podman || type -p docker),$(error No podman or docker))
 ## NAMESPACE: Namespace for `make deploy`
 NAMESPACE=korrel8r
 ## CONFIG: Configuration file for `make run`
@@ -73,10 +73,10 @@ lint: $(GEN_SRC) $(GOLANGCI_LINT) $(SHFMT) $(SHELLCHECK) ## Run the linter to fi
 
 .PHONY: test
 test: $(GEN_SRC)		## Run all tests, no cache. Requires an openshift cluster.
-	go test -count=1 -fullpath -race ./...
+	go test -fullpath -race ./...
 
 test-no-cluster: $(GEN_SRC)	## Run all tests that don't require an openshift cluster.
-	go test -count=1 -fullpath -race -skip '.*/Openshift' ./...
+	go test -fullpath -race -skip '.*/Openshift' ./...
 
 cover:  $(GOCOVERDIR) ## Run tests with accumulated coverage stats in _cover.
 	@echo == Individual package test coverage.
@@ -129,7 +129,7 @@ $(ASCIIDOCTOR):
 
 # From github.com:darshandsoni/asciidoctor-skins.git
 CSS?=adoc-readthedocs.css
-ADOC_FLAGS=-a allow-uri-read -a stylesdir=$(shell pwd)/doc/css -a stylesheet=$(CSS)  -a revnumber=$(VERSION) -a revdate=$(shell date -I)
+ADOC_FLAGS=-v -a allow-uri-read -a stylesdir=$(shell pwd)/doc/css -a stylesheet=$(CSS)  -a revnumber=$(VERSION) -a revdate=$(shell date -I)
 LINKCHECKER?=$(or $(shell type -p linkchecker),$(warning linkchecker not found: skipping link checks))
 LINKCHECK_FLAGS=--no-warnings --check-extern --ignore-url='//(localhost|[^:/]*\.example)([:/].*)?$$'
 
@@ -152,9 +152,11 @@ _site/man: $(shell find ./cmd)	## Generated man pages.
 doc: doc/gen/domains.adoc doc/gen/rest_api.adoc doc/gen/cmd
 	@touch $@
 
+DOMAINS=$(shell echo pkg/domains/*/ | xargs basename -a)
+DOMAIN_PKGS=$(foreach D,$(DOMAINS),github.com/korrel8r/korrel8r/pkg/domains/$(D))
 doc/gen/domains.adoc: $(shell find pkg/domains internal/cmd/domain-adoc internal/pkg/asciidoc) $(GEN_SRC)
 	@mkdir -p $(dir $@)
-	go run ./internal/cmd/domain-adoc github.com/korrel8r/korrel8r/pkg/domains/... > $@
+	go run ./internal/cmd/domain-adoc $(DOMAIN_PKGS) > $@
 	@touch doc/README.adoc
 
 doc/gen/rest_api.adoc: $(SWAGGER_SPEC) $(shell find etc/swagger) $(SWAGGER)

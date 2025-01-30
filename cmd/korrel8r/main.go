@@ -12,13 +12,8 @@ import (
 	"github.com/korrel8r/korrel8r/internal/pkg/must"
 	"github.com/korrel8r/korrel8r/internal/pkg/test/mock"
 	"github.com/korrel8r/korrel8r/pkg/config"
-	"github.com/korrel8r/korrel8r/pkg/domains/alert"
-	"github.com/korrel8r/korrel8r/pkg/domains/incident"
+	"github.com/korrel8r/korrel8r/pkg/domains"
 	"github.com/korrel8r/korrel8r/pkg/domains/k8s"
-	logdomain "github.com/korrel8r/korrel8r/pkg/domains/log"
-	"github.com/korrel8r/korrel8r/pkg/domains/metric"
-	"github.com/korrel8r/korrel8r/pkg/domains/netflow"
-	"github.com/korrel8r/korrel8r/pkg/domains/trace"
 	"github.com/korrel8r/korrel8r/pkg/engine"
 	"github.com/korrel8r/korrel8r/pkg/engine/traverse"
 	"github.com/spf13/cobra"
@@ -38,8 +33,6 @@ var (
 	verboseFlag = rootCmd.PersistentFlags().IntP("verbose", "v", 0, "Verbosity for logging (0: notice/error/warn, 1: info, 2: debug, 3: trace-per-request, 4: trace-per-rule, 5: trace-per-object)")
 	configFlag  = rootCmd.PersistentFlags().StringP("config", "c", getConfig(), "Configuration file")
 	panicFlag   = rootCmd.PersistentFlags().Bool("panic", false, "Panic on error")
-	// TODO: remove sync search once async search is full tested.
-	syncFlag = rootCmd.PersistentFlags().Bool("sync", false, "Deprectated: synchronous search, will be removed")
 	// see profile.go for profile flag
 )
 
@@ -96,12 +89,9 @@ func main() {
 
 func newEngine() (*engine.Engine, config.Configs) {
 	traverse.New = traverse.NewAsync // Default to async
-	if *syncFlag {
-		traverse.New = traverse.NewSync
-	}
 	c := must.Must1(config.Load(*configFlag))
 	e := must.Must1(engine.Build().
-		Domains(k8s.Domain, logdomain.Domain, netflow.Domain, trace.Domain, alert.Domain, metric.Domain, incident.Domain, mock.Domain("mock")).
+		Domains(append(domains.All, mock.Domain("mock"))...).
 		Config(c).
 		Engine())
 	return e, c

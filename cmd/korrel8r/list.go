@@ -25,7 +25,7 @@ var listCmd = &cobra.Command{
 				fmt.Fprintln(w, d.Name())
 			}
 		case 1:
-			d := must.Must1(e.DomainErr(args[0]))
+			d := must.Must1(e.Domain(args[0]))
 			for _, c := range d.Classes() {
 				fmt.Fprintln(w, c.Name())
 			}

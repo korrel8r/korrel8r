@@ -217,7 +217,7 @@ func (b *Builder) classes(spec *config.ClassSpec) (korrel8r.Domain, []korrel8r.C
 	for _, class := range spec.Classes {
 		c := d.Class(class)
 		if c == nil {
-			b.err = korrel8r.ClassNotFoundError{Class: class, Domain: d}
+			b.err = korrel8r.ClassNotFoundError(class)
 			return d, nil
 		}
 		list.Append(c)
@@ -226,7 +226,7 @@ func (b *Builder) classes(spec *config.ClassSpec) (korrel8r.Domain, []korrel8r.C
 }
 
 func (b *Builder) getDomain(name string) (d korrel8r.Domain) {
-	d, b.err = b.e.DomainErr(name)
+	d, b.err = b.e.Domain(name)
 	return
 }
 

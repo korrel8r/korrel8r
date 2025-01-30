@@ -220,7 +220,7 @@ func (a *API) goals(c *gin.Context) (g *graph.Graph, goals []korrel8r.Class) {
 	ctx, cancel := korrel8r.WithConstraint(c.Request.Context(), constraint.Default())
 	defer cancel()
 	g, err = traverse.New(a.Engine, g).Goals(ctx, start, goals)
-	if !interrupted(c) && !traverse.IsPartial(err) {
+	if !interrupted(c) && !traverse.IsPartialError(err) {
 		check(c, http.StatusNotFound, err)
 	}
 	return g, goals
@@ -269,9 +269,9 @@ func check(c *gin.Context, code int, err error, format ...any) (ok bool) {
 			err = fmt.Errorf("%v: %w", fmt.Sprintf(format[0].(string), format[1:]...), err)
 		}
 		ginErr := c.Error(err)
-		if !traverse.IsPartial(err) { // Don't abort on a partial error.
+		if !traverse.IsPartialError(err) { // Don't abort on a partial error.
 			c.AbortWithStatusJSON(code, ginErr.JSON())
-			log.Error(err, "REST: abort request", "url", c.Request.URL, "code", code, "error", err)
+			log.Error(err, "REST: request failed", "url", c.Request.URL, "code", code, "error", err)
 		}
 	}
 	return err == nil && !c.IsAborted()
@@ -336,7 +336,7 @@ func (a *API) context(c *gin.Context) {
 
 func interrupted(c *gin.Context) bool {
 	return c.Request.Context().Err() == context.DeadlineExceeded ||
-		c.Errors.Last() != nil && traverse.IsPartial(c.Errors.Last())
+		c.Errors.Last() != nil && traverse.IsPartialError(c.Errors.Last())
 }
 
 func okResponse(c *gin.Context, body any) {

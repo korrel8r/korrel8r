@@ -237,7 +237,7 @@ func (s *Store) ClassCheck(c Class) error {
 	_, err := s.c.RESTMapper().RESTMapping(c.GVK().GroupKind(), c.Version)
 	var noKind *meta.NoKindMatchError
 	if errors.As(err, &noKind) {
-		return korrel8r.ClassNotFoundError{Class: c.String(), Domain: s.Domain()}
+		return korrel8r.ClassNotFoundError(c.String())
 	}
 	return err
 }

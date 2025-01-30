@@ -57,4 +57,4 @@ func (e *PartialError) Error() string {
 
 var _ error = &PartialError{}
 
-func IsPartial(err error) bool { return korrel8r.IsErrorType[*PartialError](err) }
+func IsPartialError(err error) bool { return korrel8r.IsErrorType[*PartialError](err) }

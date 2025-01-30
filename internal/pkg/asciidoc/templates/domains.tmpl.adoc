@@ -1,4 +1,5 @@
 
+[#_{{.Package.Name}}_domain]
 = {{ .Package.Name }} domain
 
 {{ regexReplaceAll "^Package" .Package.Doc "Domain" | .Asciidoc }}
