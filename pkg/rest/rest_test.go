@@ -130,7 +130,7 @@ func TestAPI_PostNeighbours_partial(t *testing.T) {
 		Graph{
 			Nodes: []Node{{
 				Class:   "mock:a",
-				Queries: []QueryCount{QueryCount{Query: "mock:a:x", Count: 1}},
+				Queries: []QueryCount{{Query: "mock:a:x", Count: 1}},
 				Count:   1,
 			},
 			},

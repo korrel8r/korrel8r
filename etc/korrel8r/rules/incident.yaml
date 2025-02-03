@@ -7,7 +7,7 @@ rules:
     result:
       query: |-
         incident:incident:{"alertLabels":
-          {{- with .Labels }}{{ mustToJson . -}}{{- end }}}
+          {{- with .Labels }}{{ mustToJson . -}}{{- end -}} }
   - name: IncidentToAlert
     start:
       domain: incident
@@ -15,4 +15,4 @@ rules:
       domain: alert
     result:
       query: |-
-        alert:alert:{{- with .AlertsLabels }}{{ mustToJson . -}}{{- end }}}
+        alert:alert:{{- with .AlertsLabels }}{{ mustToJson . -}}{{- end }}

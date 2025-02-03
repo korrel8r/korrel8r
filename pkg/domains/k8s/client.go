@@ -29,7 +29,7 @@ func NewClient(cfg *rest.Config) (c client.Client, err error) {
 			return nil, err
 		}
 	}
-	return client.New(cfg, client.Options{Scheme: Scheme})
+	return client.New(cfg, client.Options{})
 }
 
 // NewHTTPClient returns a new client with TLS settingsn from Store config.

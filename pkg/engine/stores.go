@@ -19,8 +19,10 @@ import (
 )
 
 var (
-	_ korrel8r.Store = &store{}
-	_ korrel8r.Store = &stores{}
+	_ korrel8r.Store        = &store{}
+	_ korrel8r.ClassChecker = &store{}
+	_ korrel8r.Store        = &stores{}
+	_ korrel8r.ClassChecker = &stores{}
 )
 
 // store is a wrapper to (re-)create a store on demand from its configuration.
@@ -33,8 +35,24 @@ type store struct {
 	Err      error          // Last non-nil error from Store.Get() or Domain.Store()
 	ErrCount int            // Count of errors from Store.Get() and Domain.Store()
 
+	Engine *Engine
 	domain korrel8r.Domain
-	expand func(string) (string, error) // Expand template configuration
+}
+
+// newStore wraps a [config.Store] or a [korrel8r.Store] as a *[store]
+// Exactly one of sc and s must be non-nil.
+func newStore(e *Engine, sc config.Store, s korrel8r.Store) (*store, error) {
+	var d korrel8r.Domain
+	if s != nil {
+		d = s.Domain()
+	} else {
+		var err error
+		d, err = e.DomainErr(sc[config.StoreKeyDomain])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return &store{Engine: e, Original: sc, Expanded: nil, Store: s, domain: d}, nil
 }
 
 func (s *store) Domain() korrel8r.Domain { return s.domain }
@@ -84,11 +102,12 @@ func (s *store) ensure() (korrel8r.Store, error) {
 	}()
 	// Expand the store config each time - the results may change.
 	s.Expanded = config.Store{}
-	for k, v := range s.Original {
-		if v, err = s.expand(v); err != nil {
+	for k, original := range s.Original {
+		expanded, err := s.Engine.execTemplate(fmt.Sprintf("%v store", s.domain.Name()), original, nil)
+		if err != nil {
 			return nil, err
 		}
-		s.Expanded[k] = v
+		s.Expanded[k] = expanded
 	}
 	// Create the store
 	if _, ok := s.Expanded[config.StoreKeyMock]; ok {
@@ -103,27 +122,28 @@ func (s *store) ensure() (korrel8r.Store, error) {
 	return s.Store, err
 }
 
+func (s *store) ClassCheck(c korrel8r.Class) error {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+	return korrel8r.ClassCheck(s.Store, c)
+}
+
 // stores contains multiple configured stores and iterates over them in Get.
 type stores struct {
 	domain korrel8r.Domain
 	stores []*store
-	expand func(string) (string, error)
 }
 
-func newStores(e *Engine, d korrel8r.Domain) *stores {
+func newStores(d korrel8r.Domain) *stores {
 	return &stores{
 		domain: d,
 		stores: []*store{},
-		expand: func(s string) (string, error) {
-			return e.execTemplate(fmt.Sprintf("%v store", d.Name()), s, nil)
-		},
 	}
 }
 
 func (ss *stores) Domain() korrel8r.Domain { return ss.domain }
 
 func (ss *stores) Add(newStore *store) error {
-	newStore.expand = ss.expand
 	// Check for duplicate configuration
 	if newStore.Original != nil && slices.ContainsFunc(ss.stores,
 		func(s *store) bool { return reflect.DeepEqual(s.Original, newStore.Original) }) {
@@ -138,7 +158,7 @@ func (ss *stores) Get(ctx context.Context, q korrel8r.Query, constraint *korrel8
 		errs error
 		ok   bool
 	)
-	// FIXME review this logic. Use partial success?
+	// TODO review this logic. Return [korrel8r.PartialError] rather than nil?
 	for _, s := range ss.stores {
 		// Iterate over stores and accumulate all results.
 		err := s.Get(ctx, q, constraint, result)
@@ -175,4 +195,24 @@ func (ss *stores) Ensure() (ks []korrel8r.Store) {
 		}
 	}
 	return ks
+}
+
+// ClassCheck succeeds if any store does.
+func (ss *stores) ClassCheck(c korrel8r.Class) error {
+	var errs error
+	for _, s := range ss.stores {
+		err := korrel8r.ClassCheck(s, c)
+		switch {
+		case err == nil:
+			return nil // If any store recognizes the class then we accept it.
+		case korrel8r.IsClassNotFoundError(err):
+			// Don't collect multiple ClassNotFoundError
+		default:
+			errs = errors.Join(errs, err)
+		}
+	}
+	if errs == nil {
+		errs = korrel8r.ClassNotFoundError{Domain: c.Domain(), Class: c.String()}
+	}
+	return errs
 }

@@ -3,18 +3,18 @@
 stores:
   - domain: k8s
   - domain: alert
-    metrics: 'https://{{(query "k8s:Route:{namespace: openshift-monitoring, name: thanos-querier}" | first).Spec.Host}}'
-    alertmanager: 'https://{{(query "k8s:Route:{namespace: openshift-monitoring, name: alertmanager-main}" | first).Spec.Host}}'
+    metrics: 'https://{{(query "k8s:Route.v1.route.openshift.io:{namespace: openshift-monitoring, name: thanos-querier}" | first).spec.host}}'
+    alertmanager: 'https://{{(query "k8s:Route.v1.route.openshift.io:{namespace: openshift-monitoring, name: alertmanager-main}" | first).spec.host}}'
   - domain: log
-    lokiStack: 'https://{{(query "k8s:Route:{namespace: openshift-logging, name: logging-loki}" | first).Spec.Host}}'
+    lokiStack: 'https://{{(query "k8s:Route.v1.route.openshift.io:{namespace: openshift-logging, name: logging-loki}" | first).spec.host}}'
   - domain: metric
-    metric: 'https://{{(query "k8s:Route:{namespace: openshift-monitoring, name: thanos-querier}" | first).Spec.Host}}'
+    metric: 'https://{{(query "k8s:Route.v1.route.openshift.io:{namespace: openshift-monitoring, name: thanos-querier}" | first).spec.host}}'
   - domain: netflow
-    lokiStack: 'https://{{(query "k8s:Route:{namespace: netobserv, name: loki}" | first).Spec.Host}}'
+    lokiStack: 'https://{{(query "k8s:Route.v1.route.openshift.io:{namespace: netobserv, name: loki}" | first).spec.host}}'
   - domain: trace
-    tempoStack: 'https://{{(query "k8s:Route:{namespace: openshift-tracing, name: tempo-platform-gateway}" | first).Spec.Host}}/api/traces/v1/platform/tempo/api/search'
+    tempoStack: 'https://{{(query "k8s:Route.v1.route.openshift.io:{namespace: openshift-tracing, name: tempo-platform-gateway}" | first).spec.host}}/api/traces/v1/platform/tempo/api/search'
   - domain: incident
-    metrics: 'https://{{(query "k8s:Route:{namespace: openshift-monitoring, name: thanos-querier}" | first).Spec.Host}}'
+    metrics: 'https://{{(query "k8s:Route.v1.route.openshift.io:{namespace: openshift-monitoring, name: thanos-querier}" | first).spec.host}}'
 
 
 include:

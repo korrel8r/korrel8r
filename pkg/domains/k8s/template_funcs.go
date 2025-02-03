@@ -10,31 +10,17 @@
 package k8s
 
 import (
-	"k8s.io/apimachinery/pkg/api/meta"
+	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
 // TemplateFuncs for this domain. See package description.
 func (domain) TemplateFuncs() map[string]any {
 	return map[string]any{
-		"k8sClass": k8sClass,
+		"k8sClass": func(apiVersion, kind string) korrel8r.Class {
+			return Class(schema.FromAPIVersionAndKind(apiVersion, kind))
+		},
 	}
 }
 
-// kindToResource convert a kind and apiVersion to a resource string.
-func kindToResource(restMapper meta.RESTMapper, kind string, apiVersion string) (resource string, err error) {
-	gv, err := schema.ParseGroupVersion(apiVersion)
-	if err != nil {
-		return "", err
-	}
-	gk := schema.GroupKind{Group: gv.Group, Kind: kind}
-	rm, err := restMapper.RESTMapping(gk, gv.Version)
-	if err != nil {
-		return "", err
-	}
-	return rm.Resource.Resource, nil
-}
-
-func k8sClass(apiVersion, kind string) Class {
-	return Class(schema.FromAPIVersionAndKind(apiVersion, kind))
-}
+// k8sClass returns a k8s.Class from an apiVersion and kind string.

@@ -17,8 +17,8 @@ rules:
       domain: log
     result:
       query: |-
-        log:{{logTypeForNamespace .Namespace}}:{kubernetes_namespace_name="{{.Namespace}}"}
-        {{- with .Spec.Selector.MatchLabels}}|json
+        log:{{logTypeForNamespace .metadata.namespace}}:{kubernetes_namespace_name="{{.metadata.namespace}}"}
+        {{- with .spec.selector.matchLabels}}|json
           {{- range $k,$v:=.}}|kubernetes_labels_{{logSafeLabel $k}}="{{$v}}"{{end -}}
         {{- end -}}
 
@@ -30,4 +30,4 @@ rules:
       domain: log
     result:
       query: |-
-        log:{{ logTypeForNamespace .Namespace }}:{kubernetes_namespace_name="{{.Namespace}}",kubernetes_pod_name="{{.Name}}"}
+        log:{{ logTypeForNamespace .metadata.namespace }}:{kubernetes_namespace_name="{{.metadata.namespace}}",kubernetes_pod_name="{{.metadata.name}}"}

@@ -32,7 +32,7 @@ Query struct for a Kubernetes query.
 Example:
 
 ----
-k8s:Pod.v1.:{"namespace":"openshift-cluster-version","name":"cluster-version-operator-8d86bcb65-btlgn"}
+k8s:Pod.v1:{"namespace":"openshift-cluster-version","name":"cluster-version-operator-8d86bcb65-btlgn"}
 ----
 
 
@@ -41,11 +41,7 @@ See Go documentation for https://pkg.go.dev/github.com/korrel8r/korrel8r/pkg/dom
 == Object
 
 
-Object is a struct type representing a Kubernetes resource.
-
-Object can be one of the of the standard k8s types from link:https://pkg.go.dev/k8s.io/api/core/[k8s.io/api/core], or a generated custom resource type.
-
-Rules templates should use capitalized Go field names rather than the lowercase JSON field names.
+Object represents a kubernetes resource as a map, map keys are serialized field names. Rule templates should use the JSON (lowerCase) field names, NOT the UpperCase Go struct field names.
 
 
 See Go documentation for https://pkg.go.dev/github.com/korrel8r/korrel8r/pkg/domains/k8s/#Object[Object]
@@ -69,6 +65,12 @@ A JSON map of string names to string values, matched against alert labels, for e
 
 ----
 alert:alert:{"alertname":"KubeStatefulSetReplicasMismatch","container":"kube-rbac-proxy-main","namespace":"openshift-logging"}
+----
+
+To query mutiple alerts at the same time, it's possible to provide an array of maps:
+
+----
+alert:alert:[{"alertname":"alert1"},{"alertname":"alert2"}]
 ----
 
 == Store
@@ -99,6 +101,61 @@ Object contains alert data, passed as *Object when used as a korrel8r.Object.
 
 
 See Go documentation for https://pkg.go.dev/github.com/korrel8r/korrel8r/pkg/domains/alert/#Object[Object]
+
+= incident domain
+
+
+Domain incident provides mapping to link:https://github.com/openshift/cluster-health-analyzer[https://github.com/openshift/cluster-health-analyzer] incidents.
+
+== Class
+
+There is a single class `incident:incident`.
+
+== Object
+
+An incident object contains id and mapping to the sources (alert is the only supported source type at the moment).
+
+== Query
+
+One can query the incident by its id.
+
+----
+incident:incident:{"id":"id-of-the-incident"}
+----
+
+It's also possible to provide labels from an alert to get a corresponding incident.
+
+----
+incident:incident:{"alertLabels":{
+ "alertname":"AlertmanagerReceiversNotConfigured",
+ "namespace":"openshift-monitoring"}}
+----
+
+== Store
+
+A client of Prometheus. Store configuration:
+
+----
+domain: incident
+metrics: PROMETHEUS_URL
+----
+
+
+== Query
+
+
+
+
+
+See Go documentation for https://pkg.go.dev/github.com/korrel8r/korrel8r/pkg/domains/incident/#Query[Query]
+
+== Object
+
+
+Object contains incident data, passed as *Object when used as a korrel8r.Object.
+
+
+See Go documentation for https://pkg.go.dev/github.com/korrel8r/korrel8r/pkg/domains/incident/#Object[Object]
 
 = log domain
 

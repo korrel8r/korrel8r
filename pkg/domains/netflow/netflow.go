@@ -121,6 +121,20 @@ func (domain) Store(s any) (korrel8r.Store, error) {
 	}
 }
 
+func (domain) TemplateFuncs() map[string]any {
+	return map[string]any{
+		// Convert a netflow type field to a k8s class.
+		// Need to add the "apps" group to the Deployment type.
+		"netflowTypeToK8s": func(t string) (string, error) {
+			if t == "Deployment" {
+				return "k8s:Deployment.v1.apps", nil
+			} else {
+				return fmt.Sprintf("k8s:%v.v1", t), nil
+			}
+		},
+	}
+}
+
 // There is only a single class, named "netflow	".
 type Class struct{}
 

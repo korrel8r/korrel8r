@@ -5,99 +5,91 @@ package rules_test
 import (
 	"testing"
 
-	"github.com/korrel8r/korrel8r/pkg/domains/alert"
 	"github.com/korrel8r/korrel8r/pkg/domains/k8s"
 	"github.com/korrel8r/korrel8r/pkg/domains/log"
-	"github.com/korrel8r/korrel8r/pkg/domains/metric"
-	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"github.com/stretchr/testify/assert"
-	appsv1 "k8s.io/api/apps/v1"
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func TestLogToPod(t *testing.T) {
-	e := setup()
-	for _, o := range []log.Object{
-		log.NewObject(`{"kubernetes":{"namespace_name":"foo","pod_name":"bar"}, "message":"hello"}`),
-		log.NewObject(`{"kubernetes":{"namespace_name":"default","pod_name":"baz"}, "message":"bye"}`),
+func TestK8sRules(t *testing.T) {
+	for _, x := range []ruleTest{
+		{
+			rule:  "LogToPod",
+			start: log.NewObject(`{"kubernetes":{"namespace_name":"foo","pod_name":"bar"},"message":"hello"}`),
+			query: `k8s:Pod.v1:{"namespace":"foo","name":"bar"}`,
+		},
+		{
+			rule:  "LogToPod",
+			start: log.NewObject(`{"kubernetes":{"namespace_name":"default","pod_name":"baz"},"message":"bye"}`),
+			query: `k8s:Pod.v1:{"namespace":"default","name":"baz"}`,
+		},
+		{
+			rule: "SelectorToPods",
+			start: k8s.Object{
+				"kind": "Deployment", "apiVersion": "v1",
+				"metadata": k8s.Object{"name": "x", "namespace": "ns"},
+				"spec": k8s.Object{
+					"selector": k8s.Object{"matchLabels": k8s.Object{"test": "testme"}},
+					"template": k8s.Object{"metadata": k8s.Object{"name": "x", "namespace": "ns"}}},
+			},
+			query: `k8s:Pod.v1:{"namespace":"ns","labels":{"test":"testme"}}`,
+		},
+		{
+			rule:  "EventToAll",
+			start: k8sEvent(newK8s("Pod", "aNamespace", "foo"), "a"),
+			query: `k8s:Pod.v1:{"namespace":"aNamespace","name":"foo"}`,
+		},
+		{
+			rule:  "AllToEvent",
+			start: newK8s("Pod", "aNamespace", "foo"),
+			query: `k8s:Event.v1:{"fields":{"involvedObject.apiVersion":"v1","involvedObject.kind":"Pod","involvedObject.name":"foo","involvedObject.namespace":"aNamespace"}}`,
+		},
+		{
+			rule:  "AllToMetric",
+			start: newK8s("Pod", "aNamespace", "foo"),
+			query: `metric:metric:{namespace="aNamespace",pod="foo"}`,
+		},
+		{
+			rule:  "PodToAlert",
+			start: newK8s("Pod", "aNamespace", "foo"),
+			query: `alert:alert:{"namespace":"aNamespace","pod":"foo"}`,
+		},
 	} {
-		t.Run(log.Preview(o), func(t *testing.T) {
-			k := o["kubernetes"].(map[string]any)
-			namespace := k["namespace_name"].(string)
-			name := k["pod_name"].(string)
-			start := log.Application
-			if log.Preview(o) == "default" {
-				start = log.Infrastructure
-			}
-			want := k8s.NewQuery(k8s.ClassOf(&corev1.Pod{}), namespace, name, nil, nil)
-			testTraverse(t, e, start, k8s.ClassOf(&corev1.Pod{}), []korrel8r.Object{o}, want)
-		})
+		x.Run(t)
 	}
 }
 
-func TestSelectorToPods(t *testing.T) {
+func TestDomain_Classes(t *testing.T) {
 	e := setup()
-
-	// Deployment
-	labels := map[string]string{"test": "testme"}
-
-	podx := k8s.New[corev1.Pod]("ns", "x")
-	podx.ObjectMeta.Labels = labels
-	podx.Spec = corev1.PodSpec{
-		Containers: []corev1.Container{{
-			Name:    "testme",
-			Image:   "quay.io/quay/busybox",
-			Command: []string{"sh", "-c", "while true; do echo $(date) hello world; sleep 1; done"},
-		}}}
-
-	pody := podx.DeepCopy()
-	pody.ObjectMeta.Name = "y"
-
-	d := k8s.New[appsv1.Deployment]("ns", "x")
-	d.Spec = appsv1.DeploymentSpec{
-		Selector: &metav1.LabelSelector{MatchLabels: labels},
-		Template: corev1.PodTemplateSpec{
-			ObjectMeta: podx.ObjectMeta,
-			Spec:       podx.Spec,
-		}}
-	class := k8s.ClassOf(podx)
-	testTraverse(t, e, k8s.ClassOf(d), class, []korrel8r.Object{d},
-		k8s.NewQuery(class, "ns", "", client.MatchingLabels{"test": "testme"}, nil))
-}
-
-func TestK8sEvent(t *testing.T) {
-	e := setup()
-	pod := k8s.New[corev1.Pod]("aNamespace", "foo")
-	event := k8s.EventFor(pod, "a")
-
-	t.Run("PodToEvent", func(t *testing.T) {
-		want := k8s.NewQuery(
-			k8s.ClassOf(&corev1.Event{}), "", "", nil,
-			client.MatchingFields{
-				"involvedObject.apiVersion": "v1", "involvedObject.kind": "Pod",
-				"involvedObject.name": "foo", "involvedObject.namespace": "aNamespace"})
-		testTraverse(t, e, k8s.ClassOf(pod), k8s.ClassOf(event), []korrel8r.Object{pod}, want)
-	})
-	t.Run("EventToPod", func(t *testing.T) {
-		want := k8s.NewQuery(k8s.ClassOf(pod), "aNamespace", "foo", nil, nil)
-		testTraverse(t, e, k8s.ClassOf(event), k8s.ClassOf(pod), []korrel8r.Object{event}, want)
-	})
-}
-
-func TestK8sAllToMetric(t *testing.T) {
-	e := setup()
-	pod := k8s.New[corev1.Pod]("aNamespace", "foo")
-	want := metric.Query("{namespace=\"aNamespace\",pod=\"foo\"}")
-	testTraverse(t, e, k8s.ClassOf(pod), want.Class(), []korrel8r.Object{pod}, want)
-}
-
-func TestK8sPOdToAlert(t *testing.T) {
-	e := setup()
-	pod := k8s.New[corev1.Pod]("aNamespace", "foo")
-	want, err := alert.Domain.Query(`alert:alert:{"namespace": "aNamespace","pod": "foo"}`)
-	assert.NoError(t, err)
-
-	testTraverse(t, e, k8s.ClassOf(pod), want.Class(), []korrel8r.Object{pod}, want)
+	// List of k8s classes used in the standard configuration, must be updated
+	// if the configuration changes.
+	want := []string{"k8s:Deployment.v1.apps",
+		"k8s:Pod.v1",
+		"k8s:PodDisruptionBudget.v1.policy",
+		"k8s:DaemonSet.v1.apps",
+		"k8s:StatefulSet.v1.apps",
+		"k8s:PersistentVolumeClaim.v1",
+		"k8s:ReplicationController.v1",
+		"k8s:Service.v1",
+		"k8s:ReplicaSet.v1.apps",
+		"k8s:Job.v1.batch",
+		"k8s:Event.v1",
+		"k8s:Secret.v1",
+		"k8s:ConfigMap.v1",
+		"k8s:CronJob.v1.batch",
+		"k8s:HorizontalPodAutoscaler.v1.autoscaling",
+		"k8s:NetworkPolicy.v1.networking.k8s.io",
+		"k8s:PersistentVolume.v1",
+		"k8s:StorageClass.v1.storage.k8s.io",
+		"k8s:VolumeAttachment.v1.storage.k8s.io",
+		"k8s:ServiceAccount.v1",
+		"k8s:Role.v1.rbac.authorization.k8s.io",
+		"k8s:RoleBinding.v1.rbac.authorization.k8s.io",
+		"k8s:ClusterRole.v1.rbac.authorization.k8s.io",
+		"k8s:ClusterRoleBinding.v1.rbac.authorization.k8s.io", "k8s:Node.v1"}
+	got := e.Domain("k8s").Classes()
+	var gotStr []string
+	for _, c := range got {
+		gotStr = append(gotStr, c.String())
+	}
+	assert.ElementsMatch(t, want, gotStr)
 }

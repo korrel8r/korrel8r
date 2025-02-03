@@ -60,16 +60,6 @@ func TestStore_NewResult(t *testing.T) {
 	assert.Equal(t, []korrel8r.Object{"a", "b"}, r.List())
 }
 
-func ClassesFunc(d korrel8r.Domain) func(names ...string) []korrel8r.Class {
-	return func(names ...string) []korrel8r.Class {
-		classes := make([]korrel8r.Class, len(names))
-		for i, name := range names {
-			classes[i] = d.Class(name)
-		}
-		return classes
-	}
-}
-
 func TestFileStore(t *testing.T) {
 	d := mock.Domain("foo")
 	c := d.Class("x")

@@ -10,10 +10,12 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"sync"
 
 	"github.com/korrel8r/korrel8r/pkg/config"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r/impl"
+	"github.com/korrel8r/korrel8r/pkg/unique"
 	yaml "sigs.k8s.io/yaml"
 )
 
@@ -26,22 +28,24 @@ type Store struct {
 	ConstraintFunc func(*korrel8r.Constraint, korrel8r.Object) bool
 
 	domain  korrel8r.Domain
-	queries QueryMap
 	lookup  []QueryFunc
+	classes unique.Set[korrel8r.Class]
+
+	queries *QueryMap
 }
 
-func NewStore(d korrel8r.Domain) *Store { return NewStoreWith(d, QueryMap{}) }
-
-// NewStoreWith creates a store with an initial QueryMap
-func NewStoreWith(d korrel8r.Domain, qm QueryMap) *Store {
+func NewStore(d korrel8r.Domain, c ...korrel8r.Class) *Store {
+	// Always include a query function for a mock.[Query] that contains its own result.
 	containsResult := func(q korrel8r.Query) ([]korrel8r.Object, error) {
 		if mq, ok := q.(Query); ok {
 			return mq.result, mq.err
 		}
 		return nil, nil
 	}
+	qm := NewQueryMap()
 	return &Store{
 		domain:  d,
+		classes: unique.NewSet(c...),
 		queries: qm,
 		lookup:  []QueryFunc{containsResult, qm.Get},
 	}
@@ -110,9 +114,9 @@ func (s *Store) AddDir(dir string) { s.AddLookup(QueryDir(dir).Get) }
 func (s *Store) AddQuery(q any, result any) {
 	switch q := q.(type) {
 	case korrel8r.Query:
-		s.queries[q.String()] = queryFunc(result)
+		s.queries.Put(q.String(), queryFunc(result))
 	case string:
-		s.queries[q] = queryFunc(result)
+		s.queries.Put(q, queryFunc(result))
 	default:
 		panic(fmt.Errorf("mock.Store.AddQuery: bad query: (%T)%v", q, q))
 	}
@@ -185,13 +189,26 @@ func queryFunc(v any) QueryFunc {
 	}
 }
 
-type QueryMap map[string]QueryFunc
+type QueryMap struct {
+	lock sync.Mutex
+	m    map[string]QueryFunc
+}
 
-func (m QueryMap) Get(q korrel8r.Query) ([]korrel8r.Object, error) {
-	if f, ok := m[q.String()]; ok {
+func NewQueryMap() *QueryMap { return &QueryMap{m: map[string]QueryFunc{}} }
+
+func (m *QueryMap) Get(q korrel8r.Query) ([]korrel8r.Object, error) {
+	m.lock.Lock()
+	defer m.lock.Unlock()
+	if f, ok := m.m[q.String()]; ok {
 		return f(q)
 	}
 	return nil, nil
+}
+
+func (m *QueryMap) Put(q string, f QueryFunc) {
+	m.lock.Lock()
+	defer m.lock.Unlock()
+	m.m[q] = f
 }
 
 // QueryDir is a directory of query files containing results in ndjson format.
@@ -219,4 +236,11 @@ func (s QueryDir) Get(q korrel8r.Query) ([]korrel8r.Object, error) {
 			}
 		}
 	}
+}
+
+func (s *Store) ClassCheck(c korrel8r.Class) error {
+	if len(s.classes) == 0 || s.classes.Has(c) {
+		return nil
+	}
+	return korrel8r.ClassNotFoundError{Class: c.String(), Domain: s.Domain()}
 }

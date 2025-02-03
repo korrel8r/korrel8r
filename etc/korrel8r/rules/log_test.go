@@ -3,17 +3,12 @@
 package rules_test
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/korrel8r/korrel8r/pkg/domains/k8s"
-	"github.com/korrel8r/korrel8r/pkg/domains/log"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"github.com/korrel8r/korrel8r/pkg/unique"
 	"github.com/stretchr/testify/assert"
-	appsv1 "k8s.io/api/apps/v1"
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func TestSelectorToLogsRules(t *testing.T) {
@@ -38,26 +33,28 @@ func TestSelectorToLogsRules(t *testing.T) {
 	assert.ElementsMatch(t, want, classes.List, "%#v", classes.List)
 }
 
-func TestSelectorToLogs(t *testing.T) {
-	e := setup()
-	d := k8s.New[appsv1.Deployment]("ns", "x")
-	d.Spec = appsv1.DeploymentSpec{
-		Selector: &metav1.LabelSelector{MatchLabels: map[string]string{"a.b/c": "x"}},
-	}
-	want := log.NewQuery(log.Application, `{kubernetes_namespace_name="ns"}|json|kubernetes_labels_a_b_c="x"`)
-	testTraverse(t, e, k8s.ClassOf(d), log.Domain.Class("application"), []korrel8r.Object{d}, want)
-}
-
-func TestPodToLogs(t *testing.T) {
-	e := setup()
-	for _, pod := range []*corev1.Pod{
-		k8s.New[corev1.Pod]("project", "application"),
-		k8s.New[corev1.Pod]("kube-something", "infrastructure"),
+func TestLogRules(t *testing.T) {
+	for _, x := range []ruleTest{
+		{
+			rule: "SelectorToLogs",
+			start: k8s.Object{
+				"metadata": k8s.Object{"namespace": "ns", "name": "x"},
+				"spec": k8s.Object{
+					"selector": k8s.Object{"matchLabels": k8s.Object{"a.b/c": "x"}},
+				}},
+			query: `log:application:{kubernetes_namespace_name="ns"}|json|kubernetes_labels_a_b_c="x"`,
+		},
+		{
+			rule:  "PodToLogs",
+			start: newK8s("Pod", "project", "application"),
+			query: `log:application:{kubernetes_namespace_name="project",kubernetes_pod_name="application"}`,
+		},
+		{
+			rule:  "PodToLogs",
+			start: newK8s("Pod", "kube-something", "infrastructure"),
+			query: `log:infrastructure:{kubernetes_namespace_name="kube-something",kubernetes_pod_name="infrastructure"}`,
+		},
 	} {
-		t.Run(pod.Name, func(t *testing.T) {
-			want := log.NewQuery(log.Class(pod.Name), fmt.Sprintf(`{kubernetes_namespace_name="%v",kubernetes_pod_name="%v"}`, pod.Namespace, pod.Name))
-
-			testTraverse(t, e, k8s.ClassOf(pod), log.Domain.Class(pod.Name), []korrel8r.Object{pod}, want)
-		})
+		x.Run(t)
 	}
 }

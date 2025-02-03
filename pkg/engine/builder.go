@@ -8,6 +8,7 @@
 package engine
 
 import (
+	"errors"
 	"fmt"
 	"text/template"
 
@@ -21,10 +22,11 @@ import (
 )
 
 // Builder initializes the state of an engine.
-// Engine() returns the immutable engine instance.
+// [Engine] returns the immutable engine instance.
 type Builder struct {
-	e   *Engine
-	err error
+	e       *Engine
+	err     error
+	finally []func()
 }
 
 func Build() *Builder {
@@ -33,8 +35,10 @@ func Build() *Builder {
 		stores:      map[korrel8r.Domain]*stores{},
 		rulesByName: map[string]korrel8r.Rule{},
 	}
+	// Add template functions that are always available.
 	e.templateFuncs = template.FuncMap{"query": e.query}
 	maps.Copy(e.templateFuncs, sprig.TxtFuncMap())
+
 	return &Builder{e: e}
 }
 
@@ -44,7 +48,7 @@ func (b *Builder) Domains(domains ...korrel8r.Domain) *Builder {
 		case d: // Already present
 		case nil:
 			b.e.domains[d.Name()] = d
-			b.e.stores[d] = newStores(b.e, d)
+			b.e.stores[d] = newStores(d)
 			if tf, ok := d.(interface{ TemplateFuncs() map[string]any }); ok {
 				maps.Copy(b.e.templateFuncs, tf.TemplateFuncs())
 			}
@@ -66,9 +70,8 @@ func (b *Builder) Stores(stores ...korrel8r.Store) *Builder {
 		if b.err != nil {
 			return b
 		}
-		b.err = b.e.stores[d].Add(&store{domain: d, Store: s})
+		b.store(nil, s)
 	}
-
 	return b
 }
 
@@ -77,14 +80,32 @@ func (b *Builder) StoreConfigs(storeConfigs ...config.Store) *Builder {
 		if b.err != nil {
 			return b
 		}
-		d := b.getDomain(sc[config.StoreKeyDomain])
 		if b.err != nil {
 			return b
 		}
-		b.err = b.e.stores[d].Add(&store{domain: d, Original: maps.Clone(sc)})
+		b.store(maps.Clone(sc), nil)
 	}
 	return b
 }
+
+func (b *Builder) store(sc config.Store, s korrel8r.Store) *store {
+	var wrapper *store
+	wrapper, b.err = newStore(b.e, sc, s)
+	if b.err != nil {
+		return nil
+	}
+	s, b.err = wrapper.Ensure()
+	if b.err != nil {
+		return nil
+	}
+	if tf, ok := s.(interface{ TemplateFuncs() map[string]any }); ok {
+		maps.Copy(b.e.templateFuncs, tf.TemplateFuncs())
+	}
+	b.err = b.e.stores[s.Domain()].Add(wrapper)
+	return wrapper
+}
+
+// store adds a wrapper store created by [Store] or [StoreConfigs]
 
 func (b *Builder) Rules(rules ...korrel8r.Rule) *Builder {
 	for _, r := range rules {
@@ -109,7 +130,7 @@ func (b *Builder) Config(configs config.Configs) *Builder {
 		return b
 	}
 	for source, c := range configs {
-		b.config(c.Source, &c)
+		b.config(&c)
 		if b.err != nil {
 			b.err = fmt.Errorf("%v: %w", source, b.err)
 			return b
@@ -127,19 +148,21 @@ func (b *Builder) ConfigFile(file string) *Builder {
 	return b.Config(cfg)
 }
 
-// Engine returns the final engine, which can no longer be modified.
-// The Builder must not be used after calling Engine()
+// Engine returns the final engine, which can not be modified.
+// The [Builder] is reset to the initial state returned by [Build].
 func (b *Builder) Engine() (*Engine, error) {
-	e := b.e
-	b.e = nil
-	// Create all stores to report problems early.
-	for _, ss := range e.stores {
-		ss.Ensure()
+	for _, f := range b.finally { // Complete deferred configuration
+		f()
+		if b.err != nil {
+			break
+		}
 	}
-	return e, b.err
+	e, err := b.e, b.err
+	*b = *Build() // Reset the builder.
+	return e, err
 }
 
-func (b *Builder) config(source string, c *config.Config) {
+func (b *Builder) config(c *config.Config) {
 	if b.err != nil {
 		return
 	}
@@ -148,11 +171,11 @@ func (b *Builder) config(source string, c *config.Config) {
 		if b.err != nil {
 			return
 		}
-		start := b.classes(&r.Start)
+		startDomain, start := b.classes(&r.Start)
 		if b.err != nil {
 			return
 		}
-		goal := b.classes(&r.Goal)
+		goalDomain, goal := b.classes(&r.Goal)
 		if b.err != nil {
 			return
 		}
@@ -161,35 +184,50 @@ func (b *Builder) config(source string, c *config.Config) {
 		if b.err != nil {
 			return
 		}
-		b.Rules(rules.NewTemplateRule(start, goal, tmpl))
+		// Defer creation of rules so wildcards are evaluated after dynamic domains have
+		// accumulated all their classes and wildcards can be evaluated.
+		b.finally = append(b.finally, func() {
+			start := b.wildcard(startDomain, start)
+			goal := b.wildcard(goalDomain, goal)
+			if b.err != nil {
+				b.err = fmt.Errorf("bad rule %v: %w", tmpl.Name(), b.err)
+			} else {
+				b.Rules(rules.NewTemplateRule(start, goal, tmpl))
+			}
+		})
 	}
 }
 
-func (b *Builder) classes(spec *config.ClassSpec) []korrel8r.Class {
+func (b *Builder) wildcard(d korrel8r.Domain, classes []korrel8r.Class) []korrel8r.Class {
+	if len(classes) == 0 {
+		classes = d.Classes()
+	}
+	if len(classes) == 0 {
+		b.joinErr(fmt.Errorf("no classes in domain: %v", d))
+	}
+	return classes
+}
+
+func (b *Builder) classes(spec *config.ClassSpec) (korrel8r.Domain, []korrel8r.Class) {
 	d := b.getDomain(spec.Domain)
 	if b.err != nil {
-		return nil
+		return d, nil
 	}
 	list := unique.NewList[korrel8r.Class]()
-	if len(spec.Classes) == 0 {
-		list.Append(d.Classes()...) // Missing class list means all classes in domain.
-	} else {
-		for _, class := range spec.Classes {
-			c := d.Class(class)
-			if c == nil {
-				b.err = korrel8r.ClassNotFoundError{Class: class, Domain: d}
-				return nil
-			}
-			list.Append(c)
+	for _, class := range spec.Classes {
+		c := d.Class(class)
+		if c == nil {
+			b.err = korrel8r.ClassNotFoundError{Class: class, Domain: d}
+			return d, nil
 		}
+		list.Append(c)
 	}
-	if len(list.List) == 0 {
-		b.err = fmt.Errorf("invalid class specification: %#+v", *spec)
-	}
-	return list.List
+	return d, list.List
 }
 
 func (b *Builder) getDomain(name string) (d korrel8r.Domain) {
 	d, b.err = b.e.DomainErr(name)
 	return
 }
+
+func (b *Builder) joinErr(err error) { b.err = errors.Join(b.err, err) }

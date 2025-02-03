@@ -7,7 +7,7 @@ rules:
       classes: [Deployment.apps]
     result:
       query: |-
-        k8s:Deployment.apps:{namespace: "{{.Labels.namespace}}", name: "{{.Labels.deployment}}"}
+        k8s:Deployment.v1.apps:{namespace: "{{.Labels.namespace}}", name: "{{.Labels.deployment}}"}
 
   - name: AlertToPod
     start:

@@ -16,47 +16,47 @@ package k8s
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/url"
-	"reflect"
+	"regexp"
 	"strings"
 
-	"github.com/korrel8r/korrel8r/internal/pkg/must"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r/impl"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 )
 
 // Domain for Kubernetes resources stored in a Kube API server.
-var Domain = domain{}
+var Domain = domain{classes: impl.NewClassList()}
 
 // Class represents a kind of kubernetes resource.
+// The format of a class name is: "k8s:KIND[.VERSION][.GROUP]".
 //
-// The format of a class name is: "k8s:KIND.VERSION.GROUP".
-// VERSION and GROUP are optional if there is no ambiguity.
+// Missing VERSION implies "v1", if present VERSION must follow the [Kubernetes version patterns].
+// Missing GROUP implies the core group.
 //
-// Examples: `k8s:Pod.v1`, `ks8:Pod`, `k8s:Deployment.v1.apps`, `k8s:Deployment.apps`, `k8s:Deployment`
+// Examples: `k8s:Pod`, `ks8:Pod/v1`, `k8s:Deployment.apps`, `k8s:Deployment.apps/v1`, `k8s:Route.route.openshift.io/v1`
+//
+// [Kubernetes version patterns]: https://kubernetes.io/docs/tasks/extend-kubernetes/custom-resources/custom-resource-definition-versioning/#version-priority
 type Class schema.GroupVersionKind
 
-// Object is a struct type representing a Kubernetes resource.
-//
-// Object can be one of the of the standard k8s types from [k8s.io/api/core],
-// or a generated custom resource type.
-//
-// Rules templates should use capitalized Go field names rather than the lowercase JSON field names.
-type Object client.Object
+// Object represents a kubernetes resource as a map, map keys are serialized field names.
+// Rule templates should use the JSON (lowerCase) field names, NOT the UpperCase Go struct field names.
+type Object map[string]any
 
 // Query struct for a Kubernetes query.
 //
 // Example:
 //
-//	k8s:Pod.v1.:{"namespace":"openshift-cluster-version","name":"cluster-version-operator-8d86bcb65-btlgn"}
+//	k8s:Pod.v1:{"namespace":"openshift-cluster-version","name":"cluster-version-operator-8d86bcb65-btlgn"}
 type Query struct {
 	// Namespace restricts the search to a namespace.
 	Namespace string `json:"namespace,omitempty"`
@@ -69,10 +69,9 @@ type Query struct {
 	class Class // class is the underlying k8s.Class object. Implied by query name prefix.
 }
 
-// Stores presents the Kubernetes API server as a korrel8r.Store.
+// Store presents the Kubernetes API server as a korrel8r.Store.
 //
-// The k8s domain automatically connects to the current cluster (as determined by kubectl),
-// no additional configuration is needed.
+// Uses the default kube config to connect to the cluster, no additional configuration is needed.
 //
 //	 stores:
 //		  domain: k8s
@@ -90,11 +89,18 @@ var (
 )
 
 // domain implementation
-type domain struct{}
+type domain struct {
+	// The set of classes (k8s resource kinds) is not know in advanced,
+	// different clusters can have different sets of custom resources.
+	// This list collects classes that are referenced by rules configuration.
+	classes *impl.ClassList
+}
 
 func (d domain) Name() string        { return "k8s" }
 func (d domain) String() string      { return d.Name() }
 func (d domain) Description() string { return "Resource objects in a Kubernetes API server" }
+
+// Store connects to the kube config default cluster. The config parameter is ignored.
 func (d domain) Store(_ any) (s korrel8r.Store, err error) {
 	cfg, err := GetConfig()
 	if err != nil {
@@ -107,46 +113,23 @@ func (d domain) Store(_ any) (s korrel8r.Store, err error) {
 	return NewStore(c, cfg)
 }
 
+// classRE regexp matching for KIND[.VERSION][.GROUP]
+var classRE = regexp.MustCompile(`^([^./]+)(?:\.(v[0-9]+(?:(?:alpha|beta)[0-9]*)?))?(?:\.([^/]*))?$`)
+
 func (d domain) Class(name string) korrel8r.Class {
-	var gvk schema.GroupVersionKind
-	s := ""
-	ok := false
-	if gvk.Kind, s, ok = strings.Cut(name, "."); !ok { // Just Kind
-		return classForKind(gvk.Kind)
-	}
-	if gvk.Version, gvk.Group = s, ""; Scheme.Recognizes(gvk) { // Kind.Version
-		return Class(gvk)
-	}
-	if gvk.Version, gvk.Group, ok = strings.Cut(s, "."); ok && Scheme.Recognizes(gvk) { // s == Kind.Version.Group
-		return Class(gvk)
-	}
-	gvk.Version, gvk.Group = "", s // s == Kind.Group
-	return classForGK(gvk.GroupKind())
-}
-
-func classForGK(gk schema.GroupKind) korrel8r.Class {
-	if versions := Scheme.VersionsForGroupKind(gk); len(versions) > 0 {
-		return Class(gk.WithVersion(versions[0].Version))
-	}
-	return nil
-}
-
-func classForKind(kind string) korrel8r.Class {
-	for _, gv := range Scheme.PrioritizedVersionsAllGroups() {
-		gvk := gv.WithKind(kind)
-		if Scheme.Recognizes(gvk) {
-			return Class(gvk)
+	if m := classRE.FindStringSubmatch(name); m != nil {
+		gvk := schema.GroupVersionKind{Kind: m[1], Version: m[2], Group: m[3]}
+		if gvk.Version == "" {
+			gvk.Version = "v1"
 		}
+		c := Class(gvk)
+		d.classes.Append(c)
+		return c
 	}
 	return nil
 }
 
-func (d domain) Classes() (classes []korrel8r.Class) {
-	for gvk := range Scheme.AllKnownTypes() {
-		classes = append(classes, Class(gvk))
-	}
-	return classes
-}
+func (d domain) Classes() []korrel8r.Class { return d.classes.List() }
 
 func (d domain) Query(s string) (korrel8r.Query, error) {
 	class, query, err := impl.UnmarshalQueryString[Query](d, s)
@@ -157,21 +140,9 @@ func (d domain) Query(s string) (korrel8r.Query, error) {
 	return &query, nil
 }
 
-// ClassOf returns the Class of o, which must be a pointer to a typed API resource struct.
-func ClassOf(o client.Object) Class { return Class(GroupVersionKind(o)) }
-
-// GroupVersionKind returns the GVK of o, which must be a pointer to a typed API resource struct.
-// Returns empty if o is not a known resource type.
-func GroupVersionKind(o client.Object) schema.GroupVersionKind {
-	if gvks, _, err := Scheme.ObjectKinds(o); err == nil {
-		return gvks[0]
-	}
-	return schema.GroupVersionKind{}
-}
-
 func (c Class) ID(o korrel8r.Object) any {
-	if o, _ := o.(client.Object); o != nil {
-		return client.ObjectKeyFromObject(o)
+	if o, _ := o.(Object); o != nil {
+		return client.ObjectKeyFromObject(Wrap(o))
 	}
 	return nil
 }
@@ -185,17 +156,30 @@ func (c Class) Preview(o korrel8r.Object) string {
 	}
 }
 
-func (c Class) Domain() korrel8r.Domain { return Domain }
-func (c Class) Unmarshal(b []byte) (korrel8r.Object, error) {
-	if o, err := Scheme.New(schema.GroupVersionKind(c)); err == nil {
-		err := json.Unmarshal(b, &o)
-		return o, err
-	}
-	return nil, fmt.Errorf("unknown k8s type: %v", c)
-}
-func (c Class) Name() string                 { return fmt.Sprintf("%v.%v.%v", c.Kind, c.Version, c.Group) }
+func (c Class) Domain() korrel8r.Domain      { return Domain }
 func (c Class) String() string               { return impl.ClassString(c) }
 func (c Class) GVK() schema.GroupVersionKind { return schema.GroupVersionKind(c) }
+
+func (c Class) Name() string {
+	w := &strings.Builder{}
+	fmt.Fprintf(w, "%v.%v", c.Kind, c.Version)
+	if c.Group != "" {
+		fmt.Fprintf(w, ".%v", c.Group)
+	}
+	return w.String()
+}
+
+func (c Class) Unmarshal(b []byte) (korrel8r.Object, error) {
+	o := c.New()
+	err := json.Unmarshal(b, &o)
+	return o, err
+}
+
+func (c Class) New() Object {
+	u := &unstructured.Unstructured{}
+	u.GetObjectKind().SetGroupVersionKind(c.GVK())
+	return Unwrap(u)
+}
 
 func NewQuery(c Class, namespace, name string, labels, fields map[string]string) *Query {
 	return &Query{
@@ -207,13 +191,13 @@ func NewQuery(c Class, namespace, name string, labels, fields map[string]string)
 	}
 }
 
-func (q Query) Class() korrel8r.Class        { return q.class }
-func (q Query) Data() string                 { b, _ := json.Marshal(q); return string(b) }
-func (q Query) String() string               { return impl.QueryString(q) }
-func (q Query) GVK() schema.GroupVersionKind { return q.class.GVK() }
+func (q Query) Class() korrel8r.Class { return q.class }
+
+func (q Query) Data() string   { b, _ := json.Marshal(q); return string(b) }
+func (q Query) String() string { return impl.QueryString(q) }
 
 // NewStore creates a new k8s store.
-func NewStore(c client.Client, cfg *rest.Config) (korrel8r.Store, error) {
+func NewStore(c client.Client, cfg *rest.Config) (*Store, error) {
 	host := cfg.Host
 	if host == "" {
 		host = "localhost"
@@ -227,7 +211,7 @@ func (s Store) Client() client.Client   { return s.c }
 
 func (s *Store) Get(ctx context.Context, query korrel8r.Query, c *korrel8r.Constraint, result korrel8r.Appender) (err error) {
 	defer func() {
-		if errors.IsNotFound(err) {
+		if apierrors.IsNotFound(err) {
 			err = nil // Finding nothing is not an error.
 		}
 	}()
@@ -238,7 +222,7 @@ func (s *Store) Get(ctx context.Context, query korrel8r.Query, c *korrel8r.Const
 	}
 	appender := korrel8r.AppenderFunc(func(o korrel8r.Object) {
 		// Include only objects created before or during the constraint interval.
-		if c.CompareTime(o.(Object).GetCreationTimestamp().Time) <= 0 {
+		if c.CompareTime(Wrap(o.(Object)).GetCreationTimestamp().Time) <= 0 {
 			result.Append(o)
 		}
 	})
@@ -249,40 +233,34 @@ func (s *Store) Get(ctx context.Context, query korrel8r.Query, c *korrel8r.Const
 	}
 }
 
-func setMeta(o Object) Object {
-	gvk := must.Must1(apiutil.GVKForObject(o, Scheme))
-	o.GetObjectKind().SetGroupVersionKind(gvk)
-	return o
+func (s *Store) ClassCheck(c Class) error {
+	_, err := s.c.RESTMapper().RESTMapping(c.GVK().GroupKind(), c.Version)
+	var noKind *meta.NoKindMatchError
+	if errors.As(err, &noKind) {
+		return korrel8r.ClassNotFoundError{Class: c.String(), Domain: s.Domain()}
+	}
+	return err
 }
 
 func (s *Store) getObject(ctx context.Context, q *Query, result korrel8r.Appender) error {
-	o, err := Scheme.New(q.class.GVK())
-	if err != nil {
+	if err := s.ClassCheck(q.class); err != nil {
 		return err
 	}
-	co, _ := o.(client.Object)
-	if co == nil {
-		return fmt.Errorf("invalid client.Object: %T", o)
-	}
-	err = s.c.Get(ctx, NamespacedName(q.Namespace, q.Name), co)
-	if err != nil {
+	u := Wrap(q.class.New())
+	if err := s.c.Get(ctx, types.NamespacedName{Namespace: q.Namespace, Name: q.Name}, u); err != nil {
 		return err
 	}
-	result.Append(setMeta(co))
+	result.Append(Unwrap(u))
 	return nil
 }
 
-func (s *Store) getList(ctx context.Context, q *Query, result korrel8r.Appender, c *korrel8r.Constraint) error {
-	gvk := q.class.GVK()
-	gvk.Kind = gvk.Kind + "List"
-	o, err := Scheme.New(gvk)
-	if err != nil {
+func (s *Store) getList(ctx context.Context, q *Query, result korrel8r.Appender, c *korrel8r.Constraint) (err error) {
+	if err := s.ClassCheck(q.class); err != nil {
 		return err
 	}
-	list, _ := o.(client.ObjectList)
-	if list == nil {
-		return fmt.Errorf("invalid list object %T", o)
-	}
+	gvk := q.class.GVK()
+	list := &unstructured.UnstructuredList{}
+	list.SetGroupVersionKind(gvk.GroupVersion().WithKind(gvk.Kind + "List"))
 	var opts []client.ListOption
 	if q.Namespace != "" {
 		opts = append(opts, client.InNamespace(q.Namespace))
@@ -304,13 +282,16 @@ func (s *Store) getList(ctx context.Context, q *Query, result korrel8r.Appender,
 			err = fmt.Errorf("invalid list object: %T", list)
 		}
 	}()
-	items := reflect.ValueOf(list).Elem().FieldByName("Items")
-	for i := 0; i < items.Len(); i++ {
-		result.Append(setMeta(items.Index(i).Addr().Interface().(client.Object)))
+	for i := range list.Items {
+		result.Append(Unwrap(&list.Items[i]))
 	}
 	return nil
 }
 
-func NamespacedName(namespace, name string) types.NamespacedName {
-	return types.NamespacedName{Namespace: namespace, Name: name}
+func Wrap(o Object) *unstructured.Unstructured {
+	return &unstructured.Unstructured{Object: o}
+}
+
+func Unwrap(u *unstructured.Unstructured) Object {
+	return Object(u.Object)
 }

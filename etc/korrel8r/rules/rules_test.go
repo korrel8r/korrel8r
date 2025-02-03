@@ -6,12 +6,12 @@ package rules_test
 // Test use of rules in graph traversal.
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"strings"
 	"testing"
 
+	"github.com/korrel8r/korrel8r/internal/pkg/test"
 	"github.com/korrel8r/korrel8r/pkg/config"
 	"github.com/korrel8r/korrel8r/pkg/domains/alert"
 	"github.com/korrel8r/korrel8r/pkg/domains/incident"
@@ -21,13 +21,12 @@ import (
 	"github.com/korrel8r/korrel8r/pkg/domains/netflow"
 	"github.com/korrel8r/korrel8r/pkg/domains/trace"
 	"github.com/korrel8r/korrel8r/pkg/engine"
-	"github.com/korrel8r/korrel8r/pkg/engine/traverse"
-	"github.com/korrel8r/korrel8r/pkg/graph"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"github.com/korrel8r/korrel8r/pkg/unique"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/exp/maps"
 	"k8s.io/apimachinery/pkg/api/meta/testrestmapper"
+	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
@@ -40,32 +39,20 @@ func setup() *engine.Engine {
 	for _, c := range configs {
 		c.Stores = nil // Use fake stores, not configured defaults.
 	}
-	c := fake.NewClientBuilder().WithRESTMapper(testrestmapper.TestOnlyStaticRESTMapper(k8s.Scheme)).Build()
+	c := fake.NewClientBuilder().WithRESTMapper(testrestmapper.TestOnlyStaticRESTMapper(scheme.Scheme)).Build()
 	s, err := k8s.NewStore(c, &rest.Config{})
 	if err != nil {
 		panic(err)
 	}
 	e, err := engine.Build().
 		Domains(k8s.Domain, log.Domain, netflow.Domain, trace.Domain, alert.Domain, metric.Domain, incident.Domain).
+		Stores(s). // NOTE: k8s store must come before configs, some templates use k8s functions.
 		Config(configs).
-		Stores(s).Engine()
+		Engine()
 	if err != nil {
 		panic(err)
 	}
 	return e
-}
-
-func testTraverse(t *testing.T, e *engine.Engine, start, goal korrel8r.Class, starters []korrel8r.Object, want korrel8r.Query) {
-	t.Helper()
-	goals := []korrel8r.Class{goal}
-	g, err := traverse.NewSync(e, e.Graph()).Goals(context.Background(), traverse.Start{Class: start, Objects: starters}, goals)
-	assert.NoError(t, err)
-	assert.Contains(t, g.NodeFor(goal).Queries, want.String())
-	g.EachLine(func(l *graph.Line) {
-		if len(l.Queries) > 0 { // Only consider the rule tested if it generated queries
-			tested(l.Rule.Name())
-		}
-	})
 }
 
 func TestMain(m *testing.M) {
@@ -83,9 +70,46 @@ func TestMain(m *testing.M) {
 // tested marks a rule as having been tested.
 func tested(ruleName string) { rules.Remove(ruleName) }
 
-func apply(e *engine.Engine, ruleName string, start korrel8r.Object) (korrel8r.Query, error) {
-	tested(ruleName)
-	return e.Rule(ruleName).Apply(start)
+var rules = unique.Set[string]{}
+
+type ruleTest struct {
+	rule  string
+	start korrel8r.Object
+	query string
 }
 
-var rules = unique.Set[string]{}
+func (x ruleTest) Run(t *testing.T) {
+	t.Helper()
+	t.Run(fmt.Sprintf("%v(%v)", x.rule, test.JSONString(x.start)), func(t *testing.T) {
+		t.Helper()
+		e := setup()
+		r := e.Rule(x.rule)
+		if assert.NotNil(t, r, "missing rule: "+x.rule) {
+			got, err := r.Apply(x.start)
+			if assert.NoError(t, err, x.rule) {
+				assert.Equal(t, x.query, got.String())
+			}
+		}
+		tested(x.rule)
+	})
+}
+
+func newK8s(class, namespace, name string) k8s.Object {
+	u := k8s.Wrap(k8s.Domain.Class(class).(k8s.Class).New())
+	u.SetNamespace(namespace)
+	u.SetName(name)
+	return k8s.Unwrap(u)
+}
+
+func k8sEvent(o k8s.Object, name string) k8s.Object {
+	u := k8s.Wrap(o)
+	gvk := u.GetObjectKind().GroupVersionKind()
+	e := newK8s("Event", name, u.GetNamespace())
+	e["involvedObject"] = k8s.Object{
+		"kind":       gvk.Kind,
+		"namespace":  u.GetNamespace(),
+		"name":       u.GetName(),
+		"apiVersion": gvk.GroupVersion().String(),
+	}
+	return e
+}
