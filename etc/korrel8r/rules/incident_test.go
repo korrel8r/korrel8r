@@ -7,30 +7,26 @@ import (
 
 	"github.com/korrel8r/korrel8r/pkg/domains/alert"
 	"github.com/korrel8r/korrel8r/pkg/domains/incident"
-	"github.com/stretchr/testify/assert"
 )
 
-func TestAlertToIncident(t *testing.T) {
-	e := setup()
-	t.Run("AlertToIncident", func(t *testing.T) {
-		tested("AlertToIncident")
-		got, err := e.Rule("AlertToIncident").Apply(
-			&alert.Object{Labels: map[string]string{"namespace": "foo", "deployment": "bar"}})
-		assert.NoError(t, err)
-		assert.Equal(t, `incident:incident:{"alertLabels":{"deployment":"bar","namespace":"foo"}}`, got.String())
-	})
-}
-
-func TestIncidentToAlert(t *testing.T) {
-	e := setup()
-	t.Run("IncidentToAlert", func(t *testing.T) {
-		tested("IncidentToAlert")
-		got, err := e.Rule("IncidentToAlert").Apply(
-			&incident.Object{Id: "incident-id", AlertsLabels: []map[string]string{
-				{"namespace": "foo", "deployment": "bar"},
-				{"namespace": "foobaz", "deployment": "barbaz"},
-			}})
-		assert.NoError(t, err)
-		assert.Equal(t, `alert:alert:[{"deployment":"bar","namespace":"foo"},{"deployment":"barbaz","namespace":"foobaz"}]}`, got.String())
-	})
+func TestIncident(t *testing.T) {
+	for _, x := range []ruleTest{
+		{
+			rule:  "AlertToIncident",
+			start: &alert.Object{Labels: map[string]string{"namespace": "foo", "deployment": "bar"}},
+			query: `incident:incident:{"alertLabels":{"deployment":"bar","namespace":"foo"}}`,
+		},
+		{
+			rule: "IncidentToAlert",
+			start: &incident.Object{
+				Id: "incident-id",
+				AlertsLabels: []map[string]string{
+					{"namespace": "foo", "deployment": "bar"},
+					{"namespace": "foobaz", "deployment": "barbaz"},
+				}},
+			query: `alert:alert:[{"deployment":"bar","namespace":"foo"},{"deployment":"barbaz","namespace":"foobaz"}]`,
+		},
+	} {
+		x.Run(t)
+	}
 }

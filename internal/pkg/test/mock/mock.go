@@ -54,29 +54,6 @@ func Domains(names ...string) []korrel8r.Domain {
 	return domains
 }
 
-type DomainWithClasses struct {
-	Domain
-	MClasses []korrel8r.Class
-}
-
-func NewDomainWithClasses(name string, classes ...string) *DomainWithClasses {
-	d := &DomainWithClasses{Domain: Domain(name)}
-	for _, c := range classes {
-		d.MClasses = append(d.MClasses, Class{name: c, domain: d})
-	}
-	return d
-}
-
-func (d DomainWithClasses) Class(name string) korrel8r.Class {
-	i := slices.IndexFunc(d.MClasses, func(c korrel8r.Class) bool { return c.Name() == name })
-	if i < 0 {
-		return nil
-	}
-	return d.MClasses[i]
-}
-
-func (d DomainWithClasses) Classes() []korrel8r.Class { return d.MClasses }
-
 type Class struct {
 	name   string
 	domain korrel8r.Domain

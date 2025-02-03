@@ -4,6 +4,7 @@ package traverse
 
 import (
 	"context"
+	"errors"
 	"sync"
 	"sync/atomic"
 
@@ -29,7 +30,7 @@ func NewAsync(e *engine.Engine, g *graph.Graph) Traverser {
 // Results and Queries are filled in on graph.
 func (a *async) Goals(ctx context.Context, start Start, goals []korrel8r.Class) (*graph.Graph, error) {
 	log.V(2).Info("Async: Goal search", "start", start, "goals", goals)
-	traverse := func(v graph.Visitor) { a.graph.GoalSearch(start.Class, goals, v) }
+	traverse := func(v graph.Visitor) { a.graph.GoalSearch(start.Class, goals, a.pruneVisitor(v)) }
 	return a.run(ctx, start, traverse)
 }
 
@@ -37,8 +38,30 @@ func (a *async) Goals(ctx context.Context, start Start, goals []korrel8r.Class) 
 // Results and Queries are filled in on graph.
 func (a *async) Neighbours(ctx context.Context, start Start, depth int) (*graph.Graph, error) {
 	log.V(2).Info("Async: Neighbours search", "start", start, "depth", depth)
-	traverse := func(v graph.Visitor) { a.graph.Neighbours(start.Class, depth, v) }
+	traverse := func(v graph.Visitor) { a.graph.Neighbours(start.Class, depth, a.pruneVisitor(v)) }
 	return a.run(ctx, start, traverse)
+}
+
+func (a *async) pruneVisitor(v graph.Visitor) graph.Visitor {
+	return graph.FuncVisitor{
+		NodeF: v.Node,
+		LineF: func(l *graph.Line) bool {
+			r := l.Rule
+			if err := errors.Join(a.checkClasses(r.Start()), a.checkClasses(r.Goal())); err != nil {
+				log.V(4).Info("Async: Pruning rule", "rule", r, "error", err)
+				return false
+			}
+			return v.Line(l)
+		},
+	}
+}
+
+func (a *async) checkClasses(classes []korrel8r.Class) error {
+	var err error
+	for _, c := range classes {
+		err = errors.Join(err, korrel8r.ClassCheck(a.engine.StoreFor(c.Domain()), c))
+	}
+	return err
 }
 
 func (a *async) run(ctx context.Context, start Start, traverse func(v graph.Visitor)) (g *graph.Graph, err error) {
@@ -195,6 +218,9 @@ func (n *node) applyRules(ctx context.Context, o korrel8r.Object) {
 		err error
 	}{}
 	n.g.EachLineFrom(n.Node, func(l *graph.Line) {
+		if ctx.Err() != nil {
+			return // Abort if context is cancelled
+		}
 		qe, ok := applied[l.Rule] // Already applied?
 		if !ok {                  // No, apply now
 			qe.q, qe.err = l.Rule.Apply(o)

@@ -4,5 +4,4 @@ include:
   - log.yaml
   - netflow.yaml
   - trace.yaml
-  - openshift.yaml
   - incident.yaml

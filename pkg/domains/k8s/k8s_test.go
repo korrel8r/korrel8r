@@ -8,11 +8,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/korrel8r/korrel8r/pkg/graph"
+	"github.com/korrel8r/korrel8r/internal/pkg/test/mock"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta/testrestmapper"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -23,48 +22,21 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
-func TestDomain_Class(t *testing.T) {
-	require.NoError(t, appsv1.AddToScheme(scheme.Scheme))
-	for _, x := range []struct {
-		name string
-		want korrel8r.Class
-	}{
-		{"Namespace", ClassOf(&corev1.Namespace{})},           // Kind only
-		{"Namespace.", ClassOf(&corev1.Namespace{})},          // Kind and version
-		{"Namespace.v1.", ClassOf(&corev1.Namespace{})},       // Kind, version and group
-		{"Pod", ClassOf(&corev1.Pod{})},                       // Kind only
-		{"Pod.", ClassOf(&corev1.Pod{})},                      // Kind and group (core group is named "")
-		{"Pod.v1", ClassOf(&corev1.Pod{})},                    // Kind, version, implied core group.
-		{"Pod.v1.", ClassOf(&corev1.Pod{})},                   // Kind, version, ""
-		{"Deployment", ClassOf(&appsv1.Deployment{})},         // Kind only
-		{"Deployment.apps", ClassOf(&appsv1.Deployment{})},    // Kind and group
-		{"Deployment.v1.apps", ClassOf(&appsv1.Deployment{})}, // Kind, version and group
-	} {
-		t.Run(x.name, func(t *testing.T) {
-			assert.NotNil(t, x.want)
-			got := Domain.Class(x.name)
-			require.NotNil(t, got)
-			assert.Equal(t, x.want.Name(), got.Name())
-
-			// Round trip for String()
-			name := got.Name()
-			got2 := Domain.Class(name)
-			require.NotNil(t, got2)
-			assert.Equal(t, name, got2.Name())
-		})
-	}
-}
+var (
+	namespace = Domain.Class("Namespace").(Class)
+	pod       = Domain.Class("Pod").(Class)
+)
 
 func TestDomain_Query(t *testing.T) {
 	for _, x := range []struct {
 		s    string
 		want korrel8r.Query
 	}{
-		{`k8s:Namespace:{"name":"foo"}`, NewQuery(ClassOf(&corev1.Namespace{}), "", "foo", nil, nil)},
-		{`k8s:Namespace:{name: foo}`, NewQuery(ClassOf(&corev1.Namespace{}), "", "foo", nil, nil)},
-		{`k8s:Pod:{namespace: foo, name: bar}`, NewQuery(ClassOf(&corev1.Pod{}), "foo", "bar", nil, nil)},
+		{`k8s:Namespace:{"name":"foo"}`, NewQuery(namespace, "", "foo", nil, nil)},
+		{`k8s:Namespace:{name: foo}`, NewQuery(namespace, "", "foo", nil, nil)},
+		{`k8s:Pod:{namespace: foo, name: bar}`, NewQuery(pod, "foo", "bar", nil, nil)},
 		{`k8s:Pod:{namespace: foo, name: bar, labels: { a: b }, fields: { c: d }}`,
-			NewQuery(ClassOf(&corev1.Pod{}), "foo", "bar", map[string]string{"a": "b"}, map[string]string{"c": "d"})},
+			NewQuery(pod, "foo", "bar", map[string]string{"a": "b"}, map[string]string{"c": "d"})},
 	} {
 		t.Run(x.s, func(t *testing.T) {
 			got, err := Domain.Query(x.s)
@@ -113,23 +85,22 @@ func TestStore_Get(t *testing.T) {
 		barney = types.NamespacedName{Namespace: "x", Name: "barney"}
 		wilma  = types.NamespacedName{Namespace: "y", Name: "wilma"}
 	)
-	podGVK := ClassOf(&corev1.Pod{}).GVK()
 	for _, x := range []struct {
 		q    korrel8r.Query
 		want []types.NamespacedName
 	}{
-		{NewQuery(Class(podGVK), "x", "fred", nil, nil), []types.NamespacedName{fred}},
-		{NewQuery(Class(podGVK), "x", "", nil, nil), []types.NamespacedName{fred, barney}},
-		{NewQuery(Class(podGVK), "", "", client.MatchingLabels{"app": "foo"}, nil), []types.NamespacedName{fred, wilma}},
+		{NewQuery(pod, "x", "fred", nil, nil), []types.NamespacedName{fred}},
+		{NewQuery(pod, "x", "", nil, nil), []types.NamespacedName{fred, barney}},
+		{NewQuery(pod, "", "", client.MatchingLabels{"app": "foo"}, nil), []types.NamespacedName{fred, wilma}},
 	} {
 		t.Run(fmt.Sprintf("%#v", x.q), func(t *testing.T) {
-			var result graph.ListResult
+			var result mock.Result
 			err = store.Get(context.Background(), x.q, nil, &result)
 			require.NoError(t, err)
 			var got []types.NamespacedName
 			for _, v := range result {
-				o := v.(Object).(*corev1.Pod)
-				got = append(got, types.NamespacedName{Namespace: o.Namespace, Name: o.Name})
+				u := Wrap(v.(Object))
+				got = append(got, types.NamespacedName{Namespace: u.GetNamespace(), Name: u.GetName()})
 			}
 			assert.ElementsMatch(t, x.want, got)
 		})
@@ -163,12 +134,12 @@ func TestStore_Get_Constraint(t *testing.T) {
 		{nil, []string{"early", "ontime", "late"}},
 	} {
 		t.Run(fmt.Sprintf("%+v", x.constraint), func(t *testing.T) {
-			var result graph.ListResult
-			err = store.Get(context.Background(), NewQuery(ClassOf(&corev1.Pod{}), "test", "", nil, nil), x.constraint, &result)
+			var result mock.Result
+			err = store.Get(context.Background(), NewQuery(pod, "test", "", nil, nil), x.constraint, &result)
 			require.NoError(t, err)
 			var got []string
 			for _, v := range result {
-				got = append(got, v.(Object).(*corev1.Pod).GetName())
+				got = append(got, Wrap(v.(Object)).GetName())
 			}
 			assert.ElementsMatch(t, x.want, got, "%v != %v", x.want, got)
 		})

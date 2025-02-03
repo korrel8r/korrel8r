@@ -24,12 +24,22 @@ import (
 //
 // Must be implemented by a korrel8r domain.
 type Domain interface {
-	Class(string) Class              // Class finds a class by name, returns nil if not found.
-	Classes() []Class                // Classes returns a list of known classes in the Domain.
-	Name() string                    // Name of the domain. Domain names must not contain the character ':'.
-	Description() string             // Description for human-readable documentation.
-	Query(string) (Query, error)     // Query converts a query string to a Query object.
-	Store(config any) (Store, error) // Store creates a new store for this domain from a store configuration value.
+	Name() string                // Name of the domain. Domain names must not contain the character ':'.
+	Description() string         // Description for human-readable documentation.
+	Class(string) Class          // Class finds a class by name, returns nil if not found.
+	Query(string) (Query, error) // Query parses a query string to a [Query] object.
+
+	// Store creates a new store for this domain from a store configuration value.
+	// Each domain defines its own store configuration.
+	Store(config any) (Store, error)
+
+	// Classes returns a list of classes in the Domain.
+	//
+	// Some domains have a variable set classes - the classes available may vary by store.
+	// For example different k8s clusters can have different types of custom resource installed.
+	// For such domains, [Classes] returns the list of classes that have been referenced so far -
+	// for example by rules in a configuration file.
+	Classes() []Class
 }
 
 // Class identifies a subset of objects with the same schema.
@@ -61,6 +71,21 @@ type Store interface {
 	// If Constraint is non-nil, only objects satisfying the constraint are returned.
 	// Note: a "not found" condition should give an empty result, it should not be reported as an error.
 	Get(context.Context, Query, *Constraint, Appender) error
+}
+
+// ClassChecker may optionally be implemented by a [Store].
+//
+// Implemented when different store instances in the same domain can contain different sets of classes.
+// Returns nil if the [Class] is recognized by the store, [ClassNotFoundError] if not.
+// May return other errors if there are problems communicating with the store.
+type ClassChecker interface{ ClassCheck(Class) error }
+
+// ClassCheck calls [ClassChecker.ClassCheck] if s implements [ClassChecker], nil otherwise.
+func ClassCheck(s Store, c Class) error {
+	if r, ok := s.(ClassChecker); ok {
+		return r.ClassCheck(c)
+	}
+	return nil
 }
 
 // Query is a request that selects some subset of Objects from a Store.

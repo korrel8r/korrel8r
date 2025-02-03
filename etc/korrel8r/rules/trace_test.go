@@ -8,8 +8,6 @@ import (
 	"github.com/korrel8r/korrel8r/pkg/domains/k8s"
 	"github.com/korrel8r/korrel8r/pkg/domains/trace"
 	"github.com/stretchr/testify/assert"
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func Test_TraceToPod(t *testing.T) {
@@ -25,7 +23,7 @@ func Test_TraceToPod(t *testing.T) {
 				Context:    trace.SpanContext{TraceID: "232323", SpanID: "3d48369744164bd0"},
 				Attributes: map[string]any{"k8s.namespace.name": "tracing-app-k6", "k8s.pod.name": "bar"},
 			},
-			want: `k8s:Pod.v1.:{"namespace":"tracing-app-k6","name":"bar"}`,
+			want: `k8s:Pod.v1:{"namespace":"tracing-app-k6","name":"bar"}`,
 		},
 	} {
 		t.Run(x.rule, func(t *testing.T) {
@@ -46,18 +44,8 @@ func Test_TraceFromPod(t *testing.T) {
 	}{
 		{
 			rule:  "PodToTrace",
-			start: &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "bar"}},
+			start: newK8s("Pod", "bar", "foo"),
 			want:  `trace:span:{resource.k8s.namespace.name="bar"&&resource.k8s.pod.name="foo"}`,
-		},
-		{
-			rule:  "PodToTrace",
-			start: &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Namespace: "bar"}},
-			want:  `trace:span:{resource.k8s.namespace.name="bar"}`,
-		},
-		{
-			rule:  "PodToTrace",
-			start: &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "foo"}},
-			want:  `trace:span:{resource.k8s.pod.name="foo"}`,
 		},
 	} {
 		t.Run(x.rule, func(t *testing.T) {

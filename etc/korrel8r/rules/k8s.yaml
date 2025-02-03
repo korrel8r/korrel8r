@@ -18,7 +18,6 @@ aliases:
     domain: k8s
     classes:
       - Service
-      - Ingress.networking.k8s.io
       - NetworkPolicy.networking.k8s.io
 
   - name: storage
@@ -79,7 +78,7 @@ rules:
        domain: alert
      result:
        query: |-
-         alert:alert:{"namespace": "{{.Namespace}}","pod": "{{.Name}}"}
+         alert:alert:{"namespace":"{{.metadata.namespace}}","pod":"{{.metadata.name}}"}
 
    - name: SelectorToPods
      start:
@@ -90,8 +89,8 @@ rules:
        classes: [Pod]
      result:
        query: |-
-         k8s:Pod:{"namespace": "{{.Namespace}}"
-         {{- with .Spec.Selector.MatchLabels}}, "labels": {{mustToJson . -}}{{end -}} }
+         k8s:Pod:{"namespace": "{{.metadata.namespace}}"
+         {{- with .spec.selector.matchLabels}}, "labels": {{mustToJson . -}}{{end -}} }
 
    - name: EventToAll
      start:
@@ -102,8 +101,8 @@ rules:
        classes: [all]
      result:
        query: |-
-         {{- with .InvolvedObject -}}
-         {{k8sClass .APIVersion .Kind}}:{namespace: {{.Namespace}}, name: {{.Name}}}
+         {{- with .involvedObject -}}
+         {{k8sClass .apiVersion .kind}}:{namespace: {{.namespace}}, name: {{.name}}}
          {{- end -}}
 
    - name: AllToEvent
@@ -116,10 +115,10 @@ rules:
      result:
        query: |-
          k8s:Event:{"fields":{
-                      "involvedObject.namespace":"{{.Namespace}}",
-                      "involvedObject.name": "{{.Name}}",
-                      "involvedObject.kind": "{{.Kind}}",
-                      "involvedObject.apiVersion": "{{.APIVersion}}"} }
+                      "involvedObject.namespace":"{{.metadata.namespace}}",
+                      "involvedObject.name": "{{.metadata.name}}",
+                      "involvedObject.kind": "{{.kind}}",
+                      "involvedObject.apiVersion": "{{.apiVersion}}"} }
 
    - name: AllToMetric
      start:
@@ -128,4 +127,4 @@ rules:
        domain: metric
      result:
        query: |-
-         metric:metric:{namespace="{{.Namespace}}",{{lower .Kind}}="{{.Name}}"}
+         metric:metric:{namespace="{{.metadata.namespace}}",{{lower .kind}}="{{.metadata.name}}"}

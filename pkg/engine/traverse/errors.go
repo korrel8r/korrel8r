@@ -6,6 +6,7 @@ import (
 	"errors"
 	"sync"
 
+	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"github.com/korrel8r/korrel8r/pkg/unique"
 )
 
@@ -54,10 +55,6 @@ func (e *PartialError) Error() string {
 	return errors.Join(errors.New("Results may be incomplete, there were errors"), e.Err).Error()
 }
 
-// IsPartial returns true if err contains a *[PartialError] indicating partial content available.
-func IsPartial(err error) bool {
-	var pe *PartialError
-	return errors.As(err, &pe)
-}
-
 var _ error = &PartialError{}
+
+func IsPartial(err error) bool { return korrel8r.IsErrorType[*PartialError](err) }
