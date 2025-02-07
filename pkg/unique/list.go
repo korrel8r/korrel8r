@@ -5,26 +5,26 @@ package unique
 // List of unique comparable values, maintains order.
 type List[T comparable] struct {
 	List []T
-	set  Set[T]
+	Set  Set[T]
 }
 
 func NewList[T comparable](values ...T) *List[T] {
-	l := &List[T]{set: Set[T]{}}
+	l := &List[T]{Set: Set[T]{}}
 	l.Append(values...)
 	return l
 }
 
 // Add a value if not already present, return true if the value was added.
 func (l *List[T]) Add(v T) bool {
-	has := l.set.Has(v)
+	has := l.Set.Has(v)
 	if !has {
-		l.set.Add(v)
+		l.Set.Add(v)
 		l.List = append(l.List, v)
 	}
 	return !has
 }
 
-func (l *List[T]) Has(v T) bool { return l.set.Has(v) }
+func (l *List[T]) Has(v T) bool { return l.Set.Has(v) }
 
 func (l *List[T]) Append(values ...T) {
 	for _, v := range values {

@@ -8,7 +8,6 @@
 package engine
 
 import (
-	"errors"
 	"fmt"
 	"text/template"
 
@@ -88,9 +87,9 @@ func (b *Builder) StoreConfigs(storeConfigs ...config.Store) *Builder {
 	return b
 }
 
-func (b *Builder) store(sc config.Store, s korrel8r.Store) *store {
-	var wrapper *store
-	wrapper, b.err = newStore(b.e, sc, s)
+func (b *Builder) store(sc config.Store, s korrel8r.Store) *storeHolder {
+	var wrapper *storeHolder
+	wrapper, b.err = wrap(b.e, sc, s)
 	if b.err != nil {
 		return nil
 	}
@@ -108,20 +107,25 @@ func (b *Builder) store(sc config.Store, s korrel8r.Store) *store {
 // store adds a wrapper store created by [Store] or [StoreConfigs]
 
 func (b *Builder) Rules(rules ...korrel8r.Rule) *Builder {
+	// Delay adding rules after domains and stores are configured.
+	b.finally = append(b.finally, func() { b.rules(rules...) })
+	return b
+}
+
+func (b *Builder) rules(rules ...korrel8r.Rule) {
 	for _, r := range rules {
 		if b.err != nil {
-			return b
+			return
 		}
 		r2 := b.e.rulesByName[r.Name()]
 		if r2 != nil {
 			b.err = fmt.Errorf("Duplicate rule name: %v", r.Name())
-			return b
+			return
 		}
 		b.Domains(r.Start()[0].Domain(), r.Goal()[0].Domain())
 		b.e.rulesByName[r.Name()] = r
 		b.e.rules = append(b.e.rules, r)
 	}
-	return b
 }
 
 // Config an engine.Builder.
@@ -171,63 +175,56 @@ func (b *Builder) config(c *config.Config) {
 		if b.err != nil {
 			return
 		}
-		startDomain, start := b.classes(&r.Start)
-		if b.err != nil {
-			return
-		}
-		goalDomain, goal := b.classes(&r.Goal)
-		if b.err != nil {
-			return
-		}
-		var tmpl *template.Template
-		tmpl, b.err = b.e.NewTemplate(r.Name).Parse(r.Result.Query)
-		if b.err != nil {
-			return
-		}
-		// Defer creation of rules so wildcards are evaluated after dynamic domains have
-		// accumulated all their classes and wildcards can be evaluated.
-		b.finally = append(b.finally, func() {
-			start := b.wildcard(startDomain, start)
-			goal := b.wildcard(goalDomain, goal)
-			if b.err != nil {
-				b.err = fmt.Errorf("bad rule %v: %w", tmpl.Name(), b.err)
-			} else {
-				b.Rules(rules.NewTemplateRule(start, goal, tmpl))
-			}
-		})
+		// Defer adding rules until domains and stores are configured.
+		b.finally = append(b.finally, func() { b.configRule(r) })
 	}
 }
 
-func (b *Builder) wildcard(d korrel8r.Domain, classes []korrel8r.Class) []korrel8r.Class {
-	if len(classes) == 0 {
-		classes = d.Classes()
-	}
-	if len(classes) == 0 {
-		b.joinErr(fmt.Errorf("no classes in domain: %v", d))
-	}
-	return classes
-}
-
-func (b *Builder) classes(spec *config.ClassSpec) (korrel8r.Domain, []korrel8r.Class) {
-	d := b.getDomain(spec.Domain)
+func (b *Builder) configRule(r config.Rule) {
 	if b.err != nil {
-		return d, nil
+		return
 	}
-	list := unique.NewList[korrel8r.Class]()
-	for _, class := range spec.Classes {
-		c := d.Class(class)
-		if c == nil {
-			b.err = korrel8r.ClassNotFoundError(class)
-			return d, nil
+	defer func() {
+		if b.err != nil {
+			b.err = fmt.Errorf("invalid rule %v: %w", r.Name, b.err)
 		}
-		list.Append(c)
+	}()
+	start := b.classes(r, &r.Start)
+	goal := b.classes(r, &r.Goal)
+	if len(start) == 0 || len(goal) == 0 {
+		return
 	}
-	return d, list.List
+	var tmpl *template.Template
+	tmpl, b.err = b.e.NewTemplate(r.Name).Parse(r.Result.Query)
+	if b.err != nil {
+		return
+	}
+	b.rules(rules.NewTemplateRule(start, goal, tmpl))
 }
 
-func (b *Builder) getDomain(name string) (d korrel8r.Domain) {
-	d, b.err = b.e.Domain(name)
-	return
+func (b *Builder) classes(r config.Rule, spec *config.ClassSpec) []korrel8r.Class {
+	var d korrel8r.Domain
+	d, b.err = b.e.Domain(spec.Domain)
+	if b.err != nil {
+		return nil
+	}
+	if len(spec.Classes) > 0 {
+		list := unique.NewList[korrel8r.Class]()
+		for _, class := range spec.Classes {
+			c := d.Class(class)
+			if c == nil {
+				b.err = korrel8r.ClassNotFoundError(class)
+				return nil
+			}
+			list.Append(c)
+		}
+		return list.List
+	} else { // Wildcard
+		classes, err := b.e.ClassesFor(d)
+		if err != nil {
+			// Log a message but continue
+			log.Error(err, "Skip rule", "rule", r)
+		}
+		return classes
+	}
 }
-
-func (b *Builder) joinErr(err error) { b.err = errors.Join(b.err, err) }

@@ -12,11 +12,11 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-var Domain = mock.Domain("graphmock")
+var d = mock.NewDomain("graphmock")
 
 type rule = korrel8r.Rule
 
-func c(i int) korrel8r.Class { return Domain.Class(strconv.Itoa(i)) }
+func c(i int) korrel8r.Class { return d.Class(strconv.Itoa(i)) }
 
 func nodeToInt(n *Node) int {
 	i, _ := strconv.Atoi(n.Class.Name())

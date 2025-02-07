@@ -21,7 +21,7 @@ import (
 func list[T any](x ...T) []T { return x }
 
 func TestEngine_Class(t *testing.T) {
-	domain := mock.Domain("mock")
+	domain := mock.NewDomain("mock")
 	foo, bar := domain.Class("foo"), domain.Class("bar")
 	rule := mock.NewRule("x", list(foo), list(bar), mock.NewQuery(bar, ""))
 	for _, x := range []struct {
@@ -54,14 +54,14 @@ func TestEngine_Class(t *testing.T) {
 func (o obj) String() string { return o.Name }
 
 func TestEngine_PropagateConstraints(t *testing.T) {
-	d := mock.Domain("mock")
+	d := mock.NewDomain("mock")
 	a, b, c := d.Class("a"), d.Class("b"), d.Class("c")
 	// Time range [start,end] and some time points.
 	start := time.Now()
 	end := start.Add(time.Minute)
 	afterEnd := end.Add(time.Minute)
 	early, ontime, late := start.Add(-1), start.Add(1), end.Add(1)
-	s := mock.NewStore(d)
+	s := mock.NewStore(d, a, b, c)
 
 	s.ConstraintFunc = func(c *korrel8r.Constraint, o korrel8r.Object) bool {
 		return c.CompareTime(o.(obj).Time) == 0
@@ -116,7 +116,7 @@ func TestEngine_PropagateConstraints(t *testing.T) {
 }
 
 func TestEngine_ConfigMockStore(t *testing.T) {
-	d := mock.Domain("mock")
+	d := mock.NewDomain("mock")
 	e, err := engine.Build().Domains(d).ConfigFile("testdata/korrel8r.yaml").Engine()
 	require.NoError(t, err)
 	q, err := e.Query("mock:foo:hello")
@@ -136,7 +136,7 @@ func asStrings[T any](v []T) []string {
 }
 
 func TestEngineStoreFor(t *testing.T) {
-	d := mock.Domain("mock")
+	d := mock.NewDomain("mock")
 	// add an extra mock store, verify both stores are checked by Get.
 	s := mock.NewStore(d)
 	q := mock.NewQuery(d.Class("foo"), "hello")

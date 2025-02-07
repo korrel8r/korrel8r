@@ -63,9 +63,9 @@ var (
 	log = logging.Log()
 )
 
-var Domain = domain{}
+var Domain = &domain{impl.NewDomain(name, description, Class{})}
 
-type domain struct{}
+type domain struct{ *impl.Domain }
 
 const (
 	name        = "incident"
@@ -74,12 +74,7 @@ const (
 	srcLabelPrefix = "src_"
 )
 
-func (domain) Name() string                { return name }
-func (d domain) String() string            { return d.Name() }
-func (domain) Description() string         { return description }
-func (domain) Class(string) korrel8r.Class { return Class{} }
-func (domain) Classes() []korrel8r.Class   { return []korrel8r.Class{Class{}} }
-func (d domain) Query(s string) (korrel8r.Query, error) {
+func (d *domain) Query(s string) (korrel8r.Query, error) {
 	_, query, err := impl.UnmarshalQueryString[Query](d, s)
 	return query, err
 }
@@ -88,7 +83,7 @@ const (
 	StoreKeyMetrics = "metrics"
 )
 
-func (domain) Store(s any) (korrel8r.Store, error) {
+func (*domain) Store(s any) (korrel8r.Store, error) {
 	cs, err := impl.TypeAssert[config.Store](s)
 	if err != nil {
 		return nil, err
@@ -152,6 +147,7 @@ func (q Query) String() string        { return impl.QueryString(q) }
 // Store is a client of Prometheus.
 type Store struct {
 	prometheusAPI v1.API
+	*impl.Store
 }
 
 // NewStore creates a new store client for a Prometheus URL.
@@ -163,6 +159,7 @@ func NewStore(prometheusURL *url.URL, hc *http.Client) (korrel8r.Store, error) {
 
 	return &Store{
 		prometheusAPI: prometheusAPI,
+		Store:         impl.NewStore(Domain),
 	}, nil
 }
 
@@ -177,8 +174,6 @@ func newPrometheusClient(u *url.URL, hc *http.Client) (v1.API, error) {
 
 	return v1.NewAPI(client), nil
 }
-
-func (Store) Domain() korrel8r.Domain { return Domain }
 
 func (s Store) Get(ctx context.Context, query korrel8r.Query, c *korrel8r.Constraint, result korrel8r.Appender) error {
 	q, err := impl.TypeAssert[Query](query)

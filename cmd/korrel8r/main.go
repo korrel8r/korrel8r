@@ -91,7 +91,7 @@ func newEngine() (*engine.Engine, config.Configs) {
 	traverse.New = traverse.NewAsync // Default to async
 	c := must.Must1(config.Load(*configFlag))
 	e := must.Must1(engine.Build().
-		Domains(append(domains.All, mock.Domain("mock"))...).
+		Domains(append(domains.All, mock.NewDomain("mock"))...).
 		Config(c).
 		Engine())
 	return e, c

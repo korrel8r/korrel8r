@@ -12,7 +12,7 @@ import (
 )
 
 var fixture = domain.Fixture{
-	Query:       mock.NewQuery(mock.Domain("mock").Class("thing"), "query"),
+	Query:       mock.NewQuery(mock.NewDomain("mock").Class("thing"), "query"),
 	SkipCluster: true,
 }
 

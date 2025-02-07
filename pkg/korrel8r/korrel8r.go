@@ -24,22 +24,20 @@ import (
 //
 // Must be implemented by a korrel8r domain.
 type Domain interface {
-	Name() string                // Name of the domain. Domain names must not contain the character ':'.
-	Description() string         // Description for human-readable documentation.
-	Class(string) Class          // Class finds a class by name, returns nil if not found.
-	Query(string) (Query, error) // Query parses a query string to a [Query] object.
-
+	// Name of the domain. Domain names must not contain the character ':'.
+	Name() string
+	// Description for human-readable documentation.
+	Description() string
+	// Class finds a class by name, returns nil if there is no such class.
+	Class(string) Class
+	// Classes returns all known classes.
+	// Returns nil if the list can only be determined by connecting to a [Store], see [Store.GetClasses]
+	Classes() []Class
+	// Query parses a query string to a [Query] object.
+	Query(string) (Query, error)
 	// Store creates a new store for this domain from a store configuration value.
 	// Each domain defines its own store configuration.
 	Store(config any) (Store, error)
-
-	// Classes returns a list of classes in the Domain.
-	//
-	// Some domains have a variable set classes - the classes available may vary by store.
-	// For example different k8s clusters can have different types of custom resource installed.
-	// For such domains, [Classes] returns the list of classes that have been referenced so far -
-	// for example by rules in a configuration file.
-	Classes() []Class
 }
 
 // Class identifies a subset of objects with the same schema.
@@ -54,53 +52,14 @@ type Domain interface {
 //
 // Must be implemented by a korrel8r domain.
 type Class interface {
-	Domain() Domain                   // Domain of this class.
-	Name() string                     // Name of the class within the domain. Class names must not contain the character ':'.
-	String() string                   // Fully qualified domain:class name
-	Unmarshal([]byte) (Object, error) // Unmarshal a JSON-encoded object of this class.
-}
-
-// Store is a source of signal data that can be queried.
-//
-// Must be implemented by a korrel8r domain.
-type Store interface {
-	// Domain of the Store
+	// Domain of this class.
 	Domain() Domain
-
-	// Get objects selected by the Query and append to the Appender.
-	// If Constraint is non-nil, only objects satisfying the constraint are returned.
-	// Note: a "not found" condition should give an empty result, it should not be reported as an error.
-	Get(context.Context, Query, *Constraint, Appender) error
-}
-
-// ClassChecker may optionally be implemented by a [Store].
-//
-// Implemented when different store instances in the same domain can contain different sets of classes.
-// Returns nil if the [Class] is recognized by the store, [ClassNotFoundError] if not.
-// May return other errors if there are problems communicating with the store.
-type ClassChecker interface{ ClassCheck(Class) error }
-
-// ClassCheck calls [ClassChecker.ClassCheck] if s implements [ClassChecker], nil otherwise.
-func ClassCheck(s Store, c Class) error {
-	if r, ok := s.(ClassChecker); ok {
-		return r.ClassCheck(c)
-	}
-	return nil
-}
-
-// Query is a request that selects some subset of Objects from a Store.
-//
-// A query can only be used with a Store for the same domain as its class.
-//
-// Must be implemented by a korrel8r domain.
-type Query interface {
-	// Class returned by this query.
-	Class() Class
-	// Data is the query data without the "DOMAIN:CLASS" prefix. Format depends on the domain.
-	// Note the data part may contain any characters, including spaces.
-	Data() string
-	// String fully qualified DOMAIN:CLASS:DATA query string.
+	// Name of the class within the domain. Class names must not contain the character ':'.
+	Name() string
+	// Fully qualified domain:class name
 	String() string
+	// Unmarshal a JSON-encoded object of this class.
+	Unmarshal([]byte) (Object, error)
 }
 
 // IDer is optionally implemented by Class implementations that have a meaningful unique identifier.
@@ -116,6 +75,35 @@ func GetID(class Class, object Object) string {
 		return fmt.Sprintf("%v", ider.ID(object))
 	}
 	return ""
+}
+
+// Store is a source of signal data that can be queried.
+//
+// Must be implemented by a korrel8r domain.
+type Store interface {
+	// Domain of the Store
+	Domain() Domain
+	// Get objects selected by the Query and append to the Appender.
+	// If Constraint is non-nil, only objects satisfying the constraint are returned.
+	// Note: a "not found" condition should give an empty result, it should not be reported as an error.
+	Get(context.Context, Query, *Constraint, Appender) error
+	// StoreClasses gets the list of classes supported by the [Store]. See [Domain.Classes]
+	StoreClasses() ([]Class, error)
+}
+
+// Query is a request that selects some subset of Objects from a Store.
+//
+// A query can only be used with a Store for the same domain as its class.
+//
+// Must be implemented by a korrel8r domain.
+type Query interface {
+	// Class returned by this query.
+	Class() Class
+	// Data is the query data without the "DOMAIN:CLASS" prefix. Format depends on the domain.
+	// Note the data part may contain any characters, including spaces.
+	Data() string
+	// String fully qualified DOMAIN:CLASS:DATA query string.
+	String() string
 }
 
 // Object represents an instance of a signal.

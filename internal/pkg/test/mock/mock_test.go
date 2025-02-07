@@ -14,7 +14,7 @@ import (
 )
 
 func TestStore_LoadFile(t *testing.T) {
-	d := mock.Domain("foo")
+	d := mock.NewDomain("foo")
 	c := d.Class("x")
 	s := mock.NewStore(d)
 	require.NoError(t, s.LoadFile("testdata/test_store.yaml"))
@@ -30,7 +30,7 @@ func TestStore_LoadFile(t *testing.T) {
 }
 
 func TestStore_NewQuery(t *testing.T) {
-	d := mock.Domain("foo")
+	d := mock.NewDomain("foo")
 	c := d.Class("x")
 	s := mock.NewStore(d)
 
@@ -50,7 +50,7 @@ func TestStore_NewQuery(t *testing.T) {
 }
 
 func TestStore_NewResult(t *testing.T) {
-	d := mock.Domain("foo")
+	d := mock.NewDomain("foo")
 	c := d.Class("x")
 	s := mock.NewStore(d)
 	q := mock.NewQuery(c, "query")
@@ -61,7 +61,7 @@ func TestStore_NewResult(t *testing.T) {
 }
 
 func TestFileStore(t *testing.T) {
-	d := mock.Domain("foo")
+	d := mock.NewDomain("foo")
 	c := d.Class("x")
 	s := mock.NewStore(d)
 	s.AddLookup(mock.QueryDir("testdata/_filestore").Get)
@@ -76,7 +76,7 @@ func TestFileStore(t *testing.T) {
 }
 
 func TestNewQueryError(t *testing.T) {
-	d := mock.Domain("foo")
+	d := mock.NewDomain("foo")
 	s := mock.NewStore(d)
 	q := mock.NewQueryError(d.Class("x"), "badQuery", errors.New("did not work"))
 	err := s.Get(context.Background(), q, nil, &mock.Result{})

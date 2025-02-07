@@ -41,8 +41,14 @@ import (
 	"github.com/prometheus/common/model"
 )
 
+const (
+	name        = "metric"
+	description = "Time-series of measured values"
+)
+
 var (
-	Domain = domain{}
+	Domain = &domain{Domain: impl.NewDomain(name, description, Class{})}
+
 	// Validate implementation of interfaces.
 	_ korrel8r.Domain = Domain
 	_ korrel8r.Class  = Class{}
@@ -51,19 +57,14 @@ var (
 	_ korrel8r.Object = Object{}
 )
 
-type domain struct{}
+type domain struct{ *impl.Domain }
 
-func (domain) Name() string                     { return "metric" }
-func (d domain) String() string                 { return d.Name() }
-func (domain) Description() string              { return "Time-series of measured values" }
-func (domain) Class(name string) korrel8r.Class { return Class{} }
-func (domain) Classes() []korrel8r.Class        { return []korrel8r.Class{Class{}} }
 func (d domain) Query(s string) (korrel8r.Query, error) {
 	_, qs, err := impl.ParseQuery(d, s)
 	return Query(qs), err
 }
 
-const StoreKeyMetricURL = "metric"
+const StoreKeyMetricURL = name
 
 func (domain) Store(s any) (korrel8r.Store, error) {
 	cs, err := impl.TypeAssert[config.Store](s)
@@ -80,7 +81,7 @@ func (domain) Store(s any) (korrel8r.Store, error) {
 type Class struct{} // Singleton class
 
 func (c Class) Domain() korrel8r.Domain { return Domain }
-func (c Class) Name() string            { return Domain.Name() }
+func (c Class) Name() string            { return name }
 func (c Class) String() string          { return impl.ClassString(c) }
 
 func (c Class) Unmarshal(b []byte) (korrel8r.Object, error) { return impl.UnmarshalAs[Object](b) }
@@ -101,6 +102,7 @@ func Preview(o korrel8r.Object) string {
 type Store struct {
 	*http.Client
 	baseURL *url.URL
+	*impl.Store
 }
 
 func NewStore(baseURL string, hc *http.Client) (korrel8r.Store, error) {
@@ -108,7 +110,7 @@ func NewStore(baseURL string, hc *http.Client) (korrel8r.Store, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Store{Client: hc, baseURL: u.JoinPath("/api/v1")}, nil
+	return &Store{Client: hc, baseURL: u.JoinPath("/api/v1"), Store: impl.NewStore(Domain)}, nil
 }
 
 func (s *Store) Domain() korrel8r.Domain { return Domain }

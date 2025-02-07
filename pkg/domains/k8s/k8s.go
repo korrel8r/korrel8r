@@ -26,16 +26,17 @@ import (
 	"github.com/korrel8r/korrel8r/pkg/korrel8r/impl"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/api/meta"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // Domain for Kubernetes resources stored in a Kube API server.
-var Domain = domain{classes: impl.NewClassList()}
+var Domain = domain{}
 
 // Class represents a kind of kubernetes resource.
 // The format of a class name is: "k8s:KIND[.VERSION][.GROUP]".
@@ -76,8 +77,10 @@ type Query struct {
 //	 stores:
 //		  domain: k8s
 type Store struct {
-	c    client.Client
-	base *url.URL
+	cfg      *rest.Config
+	c        client.Client
+	base     *url.URL
+	discover discovery.DiscoveryInterface
 }
 
 // Validate interfaces
@@ -89,16 +92,12 @@ var (
 )
 
 // domain implementation
-type domain struct {
-	// The set of classes (k8s resource kinds) is not know in advanced,
-	// different clusters can have different sets of custom resources.
-	// This list collects classes that are referenced by rules configuration.
-	classes *impl.ClassList
-}
+type domain struct{}
 
-func (d domain) Name() string        { return "k8s" }
-func (d domain) String() string      { return d.Name() }
-func (d domain) Description() string { return "Resource objects in a Kubernetes API server" }
+func (d domain) Name() string              { return "k8s" }
+func (d domain) String() string            { return d.Name() }
+func (d domain) Description() string       { return "Resource objects in a Kubernetes API server" }
+func (d domain) Classes() []korrel8r.Class { return nil }
 
 // Store connects to the kube config default cluster. The config parameter is ignored.
 func (d domain) Store(_ any) (s korrel8r.Store, err error) {
@@ -113,23 +112,30 @@ func (d domain) Store(_ any) (s korrel8r.Store, err error) {
 	return NewStore(c, cfg)
 }
 
-// classRE regexp matching for KIND[.VERSION][.GROUP]
-var classRE = regexp.MustCompile(`^([^./]+)(?:\.(v[0-9]+(?:(?:alpha|beta)[0-9]*)?))?(?:\.([^/]*))?$`)
+var (
+	// classRE regexp matching for KIND[.VERSION][.GROUP]
+	classRE    = regexp.MustCompile(`^([^./]+)(?:\.(v[0-9]+(?:(?:alpha|beta)[0-9]*)?))?(?:\.([^/]*))?$`)
+	emptyClass = Class(schema.GroupVersionKind{})
+)
 
-func (d domain) Class(name string) korrel8r.Class {
+func ClassNamed(name string) Class {
 	if m := classRE.FindStringSubmatch(name); m != nil {
 		gvk := schema.GroupVersionKind{Kind: m[1], Version: m[2], Group: m[3]}
 		if gvk.Version == "" {
 			gvk.Version = "v1"
 		}
-		c := Class(gvk)
-		d.classes.Append(c)
-		return c
+		return Class(gvk)
 	}
-	return nil
+	return emptyClass
 }
 
-func (d domain) Classes() []korrel8r.Class { return d.classes.List() }
+func (d domain) Class(name string) korrel8r.Class {
+	c := ClassNamed(name)
+	if c == emptyClass {
+		return nil
+	}
+	return c
+}
 
 func (d domain) Query(s string) (korrel8r.Query, error) {
 	class, query, err := impl.UnmarshalQueryString[Query](d, s)
@@ -198,18 +204,37 @@ func (q Query) String() string { return impl.QueryString(q) }
 
 // NewStore creates a new k8s store.
 func NewStore(c client.Client, cfg *rest.Config) (*Store, error) {
+	dc, err := discovery.NewDiscoveryClientForConfig(cfg)
+	if err != nil {
+		return nil, err
+	}
+	return NewStoreWithDiscovery(c, cfg, dc)
+}
+
+// NewStoreWithDiscovery creates a store with the specified discovery interface.
+// Intended for tests with a fake client and discovery.
+func NewStoreWithDiscovery(c client.Client, cfg *rest.Config, di discovery.DiscoveryInterface) (*Store, error) {
 	host := cfg.Host
 	if host == "" {
 		host = "localhost"
 	}
 	base, _, err := rest.DefaultServerURL(host, cfg.APIPath, schema.GroupVersion{}, true)
-	return &Store{c: c, base: base}, err
+	return &Store{cfg: cfg, c: c, base: base, discover: di}, err
 }
 
 func (s Store) Domain() korrel8r.Domain { return Domain }
 func (s Store) Client() client.Client   { return s.c }
 
 func (s *Store) Get(ctx context.Context, query korrel8r.Query, c *korrel8r.Constraint, result korrel8r.Appender) (err error) {
+	// Skip the call if the class is not known
+	class, err := impl.TypeAssert[Class](query.Class())
+	if err != nil {
+		return err
+	}
+	gvk := class.GVK()
+	if _, err := s.c.RESTMapper().RESTMapping(gvk.GroupKind(), gvk.Version); err != nil {
+		return nil
+	}
 	defer func() {
 		if apierrors.IsNotFound(err) {
 			err = nil // Finding nothing is not an error.
@@ -233,19 +258,23 @@ func (s *Store) Get(ctx context.Context, query korrel8r.Query, c *korrel8r.Const
 	}
 }
 
-func (s *Store) ClassCheck(c Class) error {
-	_, err := s.c.RESTMapper().RESTMapping(c.GVK().GroupKind(), c.Version)
-	var noKind *meta.NoKindMatchError
-	if errors.As(err, &noKind) {
-		return korrel8r.ClassNotFoundError(c.String())
+func (s *Store) StoreClasses() (classes []korrel8r.Class, err error) {
+	// discovery client can return a partial resource list with an error, do the same.
+	clusterScoped, err1 := s.discover.ServerPreferredResources()
+	namespaceScoped, err2 := s.discover.ServerPreferredNamespacedResources()
+	err = errors.Join(err1, err2)
+	for _, lists := range [][]*metav1.APIResourceList{clusterScoped, namespaceScoped} {
+		for _, l := range lists {
+			for _, r := range l.APIResources {
+				gvk := schema.GroupVersionKind{Group: r.Group, Version: r.Version, Kind: r.Kind}
+				classes = append(classes, Class(gvk))
+			}
+		}
 	}
-	return err
+	return classes, err
 }
 
 func (s *Store) getObject(ctx context.Context, q *Query, result korrel8r.Appender) error {
-	if err := s.ClassCheck(q.class); err != nil {
-		return err
-	}
 	u := Wrap(q.class.New())
 	if err := s.c.Get(ctx, types.NamespacedName{Namespace: q.Namespace, Name: q.Name}, u); err != nil {
 		return err
@@ -255,9 +284,6 @@ func (s *Store) getObject(ctx context.Context, q *Query, result korrel8r.Appende
 }
 
 func (s *Store) getList(ctx context.Context, q *Query, result korrel8r.Appender, c *korrel8r.Constraint) (err error) {
-	if err := s.ClassCheck(q.class); err != nil {
-		return err
-	}
 	gvk := q.class.GVK()
 	list := &unstructured.UnstructuredList{}
 	list.SetGroupVersionKind(gvk.GroupVersion().WithKind(gvk.Kind + "List"))

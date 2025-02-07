@@ -16,17 +16,16 @@ import (
 	"github.com/korrel8r/korrel8r/internal/pkg/test/mock"
 	"github.com/korrel8r/korrel8r/pkg/config"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
+	"github.com/korrel8r/korrel8r/pkg/unique"
 )
 
 var (
-	_ korrel8r.Store        = &store{}
-	_ korrel8r.ClassChecker = &store{}
-	_ korrel8r.Store        = &stores{}
-	_ korrel8r.ClassChecker = &stores{}
+	_ korrel8r.Store = &storeHolder{}
+	_ korrel8r.Store = &stores{}
 )
 
-// store is a wrapper to (re-)create a store on demand from its configuration.
-type store struct {
+// storeHolder is a wrapper to (re-)create a store on demand from its configuration.
+type storeHolder struct {
 	lock sync.Mutex
 
 	Original config.Store   // Original template configuration to create the store.
@@ -39,9 +38,9 @@ type store struct {
 	domain korrel8r.Domain
 }
 
-// newStore wraps a [config.Store] or a [korrel8r.Store] as a *[store]
+// wrap wraps a [config.Store] or a [korrel8r.Store] as a *[storeHolder]
 // Exactly one of sc and s must be non-nil.
-func newStore(e *Engine, sc config.Store, s korrel8r.Store) (*store, error) {
+func wrap(e *Engine, sc config.Store, s korrel8r.Store) (*storeHolder, error) {
 	var d korrel8r.Domain
 	if s != nil {
 		d = s.Domain()
@@ -52,13 +51,13 @@ func newStore(e *Engine, sc config.Store, s korrel8r.Store) (*store, error) {
 			return nil, err
 		}
 	}
-	return &store{Engine: e, Original: sc, Expanded: nil, Store: s, domain: d}, nil
+	return &storeHolder{Engine: e, Original: sc, Expanded: nil, Store: s, domain: d}, nil
 }
 
-func (s *store) Domain() korrel8r.Domain { return s.domain }
+func (s *storeHolder) Domain() korrel8r.Domain { return s.domain }
 
 // Get (re-)creates the store as required. Concurrent safe.
-func (s *store) Get(ctx context.Context, q korrel8r.Query, constraint *korrel8r.Constraint, result korrel8r.Appender) (err error) {
+func (s *storeHolder) Get(ctx context.Context, q korrel8r.Query, constraint *korrel8r.Constraint, result korrel8r.Appender) (err error) {
 	s.lock.Lock() // Lock for duration of Get() - serialize Get per store.
 	defer s.lock.Unlock()
 	if _, err := s.ensure(); err != nil {
@@ -79,8 +78,16 @@ func (s *store) Get(ctx context.Context, q korrel8r.Query, constraint *korrel8r.
 	return err
 }
 
+func (s *storeHolder) StoreClasses() ([]korrel8r.Class, error) {
+	if wrapped, err := s.Ensure(); err != nil {
+		return nil, err
+	} else {
+		return wrapped.StoreClasses()
+	}
+}
+
 // Ensure the store is connected.
-func (s *store) Ensure() (korrel8r.Store, error) {
+func (s *storeHolder) Ensure() (korrel8r.Store, error) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 	ks, err := s.ensure()
@@ -88,7 +95,7 @@ func (s *store) Ensure() (korrel8r.Store, error) {
 }
 
 // ensure is unsafe, must be called with lock held, via Ensure()
-func (s *store) ensure() (korrel8r.Store, error) {
+func (s *storeHolder) ensure() (korrel8r.Store, error) {
 	var err error
 	if s.Store != nil {
 		return s.Store, nil // Already exists.
@@ -122,31 +129,25 @@ func (s *store) ensure() (korrel8r.Store, error) {
 	return s.Store, err
 }
 
-func (s *store) ClassCheck(c korrel8r.Class) error {
-	s.lock.Lock()
-	defer s.lock.Unlock()
-	return korrel8r.ClassCheck(s.Store, c)
-}
-
-// stores contains multiple configured stores and iterates over them in Get.
+// stores contains multiple store wrappers stores and iterates over them in Get.
 type stores struct {
 	domain korrel8r.Domain
-	stores []*store
+	stores []*storeHolder
 }
 
 func newStores(d korrel8r.Domain) *stores {
 	return &stores{
 		domain: d,
-		stores: []*store{},
+		stores: []*storeHolder{},
 	}
 }
 
 func (ss *stores) Domain() korrel8r.Domain { return ss.domain }
 
-func (ss *stores) Add(newStore *store) error {
+func (ss *stores) Add(newStore *storeHolder) error {
 	// Check for duplicate configuration
 	if newStore.Original != nil && slices.ContainsFunc(ss.stores,
-		func(s *store) bool { return reflect.DeepEqual(s.Original, newStore.Original) }) {
+		func(s *storeHolder) bool { return reflect.DeepEqual(s.Original, newStore.Original) }) {
 		return fmt.Errorf("duplicate store configuration: %v", newStore.Original)
 	}
 	ss.stores = append(ss.stores, newStore)
@@ -169,6 +170,19 @@ func (ss *stores) Get(ctx context.Context, q korrel8r.Query, constraint *korrel8
 		return nil
 	}
 	return errs
+}
+
+// Classes returns the total set of classes for all the stores.
+// It may return a non-nil error and a non-nil partial list of classes.
+func (ss *stores) StoreClasses() ([]korrel8r.Class, error) {
+	list := unique.NewList[korrel8r.Class]()
+	var errs error
+	for _, s := range ss.stores {
+		classes, err := s.StoreClasses()
+		errs = errors.Join(errs, err)
+		list.Append(classes...)
+	}
+	return list.List, errs
 }
 
 // Configs returns the expanded configurations for each store.
@@ -195,24 +209,4 @@ func (ss *stores) Ensure() (ks []korrel8r.Store) {
 		}
 	}
 	return ks
-}
-
-// ClassCheck succeeds if any store does.
-func (ss *stores) ClassCheck(c korrel8r.Class) error {
-	var errs error
-	for _, s := range ss.stores {
-		err := korrel8r.ClassCheck(s, c)
-		switch {
-		case err == nil:
-			return nil // If any store recognizes the class then we accept it.
-		case korrel8r.IsClassNotFoundError(err):
-			// Don't collect multiple ClassNotFoundError
-		default:
-			errs = errors.Join(errs, err)
-		}
-	}
-	if errs == nil {
-		errs = korrel8r.ClassNotFoundError(c.String())
-	}
-	return errs
 }

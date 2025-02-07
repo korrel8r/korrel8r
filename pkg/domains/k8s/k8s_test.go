@@ -13,14 +13,23 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/api/meta/testrestmapper"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	fakediscovery "k8s.io/client-go/discovery/fake"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
+
+func fakeClientRM(rm meta.RESTMapper) client.Client {
+	return fake.NewClientBuilder().WithRESTMapper(rm).Build()
+}
+func fakeClient() client.Client {
+	return fakeClientRM(testrestmapper.TestOnlyStaticRESTMapper(scheme.Scheme))
+}
 
 var (
 	namespace = Domain.Class("Namespace").(Class)
@@ -145,4 +154,35 @@ func TestStore_Get_Constraint(t *testing.T) {
 		})
 	}
 	// Need to validate labels and all get variations on fake client or env test...
+}
+
+// FakedDiscovery adds
+type FakeDiscovery struct {
+	FakePreferred                []*metav1.APIResourceList
+	FakeNamespacePreferred       []*metav1.APIResourceList
+	*fakediscovery.FakeDiscovery // Stubs to implement interface
+}
+
+func (f *FakeDiscovery) ServerPreferredResources() ([]*metav1.APIResourceList, error) {
+	return f.FakePreferred, nil
+}
+
+func (f *FakeDiscovery) ServerPreferredNamespacedResources() ([]*metav1.APIResourceList, error) {
+	return f.FakeNamespacePreferred, nil
+}
+
+func TestStore_Classes(t *testing.T) {
+	d := FakeDiscovery{
+		FakePreferred: []*metav1.APIResourceList{
+			{GroupVersion: "v1", APIResources: []metav1.APIResource{{Version: "v1", Kind: "Namespace"}}},
+		},
+		FakeNamespacePreferred: []*metav1.APIResourceList{
+			{GroupVersion: "v1", APIResources: []metav1.APIResource{{Version: "v1", Kind: "Pod"}}},
+			{GroupVersion: "v1.apps", APIResources: []metav1.APIResource{{Group: "apps", Version: "v1", Kind: "Deployment"}}},
+		}}
+	store, err := NewStoreWithDiscovery(fakeClient(), &rest.Config{}, &d)
+	assert.NoError(t, err)
+	classes, err := store.StoreClasses()
+	assert.NoError(t, err)
+	assert.ElementsMatch(t, []korrel8r.Class{Domain.Class("Pod.v1"), Domain.Class("Namespace.v1"), Domain.Class("Deployment.v1.apps")}, classes)
 }
