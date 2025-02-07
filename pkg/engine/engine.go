@@ -47,7 +47,11 @@ func (e *Engine) Domain(name string) (korrel8r.Domain, error) {
 
 // StoreFor returns the aggregated store for a domain, nil if the domain does not exist.
 func (e *Engine) StoreFor(d korrel8r.Domain) korrel8r.Store {
-	return e.stores[d]
+	s := e.stores[d]
+	if s == nil {
+		return nil
+	}
+	return s
 }
 
 // StoresFor returns the list of individual stores for a domain.
@@ -64,6 +68,18 @@ func (e *Engine) StoreConfigsFor(d korrel8r.Domain) []config.Store {
 		return ss.Configs()
 	}
 	return nil
+}
+
+// ClassesFor collects classes from  the domain or its stores.
+func (e *Engine) ClassesFor(d korrel8r.Domain) ([]korrel8r.Class, error) {
+	classes := d.Classes()
+	if len(classes) > 0 {
+		return classes, nil
+	}
+	if s := e.StoreFor(d); s != nil {
+		return s.StoreClasses()
+	}
+	return nil, fmt.Errorf("no classes for domain: %v", d)
 }
 
 // Class parses a full class name and returns the

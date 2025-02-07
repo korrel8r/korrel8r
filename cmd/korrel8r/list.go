@@ -26,7 +26,8 @@ var listCmd = &cobra.Command{
 			}
 		case 1:
 			d := must.Must1(e.Domain(args[0]))
-			for _, c := range d.Classes() {
+			classes := must.Must1(e.ClassesFor(d))
+			for _, c := range classes {
 				fmt.Fprintln(w, c.Name())
 			}
 		}

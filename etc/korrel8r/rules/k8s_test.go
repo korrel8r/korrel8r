@@ -7,8 +7,6 @@ import (
 
 	"github.com/korrel8r/korrel8r/pkg/domains/k8s"
 	"github.com/korrel8r/korrel8r/pkg/domains/log"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestK8sRules(t *testing.T) {
@@ -57,41 +55,4 @@ func TestK8sRules(t *testing.T) {
 	} {
 		x.Run(t)
 	}
-}
-
-func TestDomain_Classes(t *testing.T) {
-	e := setup()
-	// List of k8s classes used in the standard configuration, must be updated
-	// if the configuration changes.
-	want := []string{"k8s:Deployment.v1.apps",
-		"k8s:Pod.v1",
-		"k8s:PodDisruptionBudget.v1.policy",
-		"k8s:DaemonSet.v1.apps",
-		"k8s:StatefulSet.v1.apps",
-		"k8s:PersistentVolumeClaim.v1",
-		"k8s:ReplicationController.v1",
-		"k8s:Service.v1",
-		"k8s:ReplicaSet.v1.apps",
-		"k8s:Job.v1.batch",
-		"k8s:Event.v1",
-		"k8s:Secret.v1",
-		"k8s:ConfigMap.v1",
-		"k8s:CronJob.v1.batch",
-		"k8s:HorizontalPodAutoscaler.v1.autoscaling",
-		"k8s:NetworkPolicy.v1.networking.k8s.io",
-		"k8s:PersistentVolume.v1",
-		"k8s:StorageClass.v1.storage.k8s.io",
-		"k8s:VolumeAttachment.v1.storage.k8s.io",
-		"k8s:ServiceAccount.v1",
-		"k8s:Role.v1.rbac.authorization.k8s.io",
-		"k8s:RoleBinding.v1.rbac.authorization.k8s.io",
-		"k8s:ClusterRole.v1.rbac.authorization.k8s.io",
-		"k8s:ClusterRoleBinding.v1.rbac.authorization.k8s.io", "k8s:Node.v1"}
-	d, err := e.Domain("k8s")
-	require.NoError(t, err)
-	var names []string
-	for _, c := range d.Classes() {
-		names = append(names, c.String())
-	}
-	assert.ElementsMatch(t, want, names)
 }

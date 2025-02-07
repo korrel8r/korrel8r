@@ -63,15 +63,10 @@ var (
 	_ korrel8r.Object = &Object{}
 )
 
-var Domain = domain{}
+var Domain = domain{Domain: impl.NewDomain("alert", "Alerts that metric values are out of bounds.", Class{})}
 
-type domain struct{}
+type domain struct{ *impl.Domain }
 
-func (domain) Name() string                { return "alert" }
-func (d domain) String() string            { return d.Name() }
-func (domain) Description() string         { return "Alerts that metric values are out of bounds." }
-func (domain) Class(string) korrel8r.Class { return Class{} }
-func (domain) Classes() []korrel8r.Class   { return []korrel8r.Class{Class{}} }
 func (d domain) Query(s string) (korrel8r.Query, error) {
 	var query []map[string]string
 	_, qs, err := impl.ParseQuery(d, s)
@@ -182,6 +177,7 @@ func (q Query) String() string        { return impl.QueryString(q) }
 type Store struct {
 	alertmanagerAPI *client.AlertmanagerAPI
 	prometheusAPI   v1.API
+	*impl.Store
 }
 
 // NewStore creates a new store client for a Prometheus URL.
@@ -199,6 +195,7 @@ func NewStore(alertmanagerURL *url.URL, prometheusURL *url.URL, hc *http.Client)
 	return &Store{
 		alertmanagerAPI: alertmanagerAPI,
 		prometheusAPI:   prometheusAPI,
+		Store:           impl.NewStore(Domain),
 	}, nil
 }
 

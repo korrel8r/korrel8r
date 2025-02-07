@@ -26,12 +26,11 @@ import (
 type Store struct {
 	// ConstraintFunc (optional) returns true if object is accepted.
 	ConstraintFunc func(*korrel8r.Constraint, korrel8r.Object) bool
+	classes        unique.Set[korrel8r.Class]
+	lookup         []QueryFunc
+	queries        *QueryMap
 
-	domain  korrel8r.Domain
-	lookup  []QueryFunc
-	classes unique.Set[korrel8r.Class]
-
-	queries *QueryMap
+	*impl.Store
 }
 
 func NewStore(d korrel8r.Domain, c ...korrel8r.Class) *Store {
@@ -44,7 +43,7 @@ func NewStore(d korrel8r.Domain, c ...korrel8r.Class) *Store {
 	}
 	qm := NewQueryMap()
 	return &Store{
-		domain:  d,
+		Store:   impl.NewStore(d),
 		classes: unique.NewSet(c...),
 		queries: qm,
 		lookup:  []QueryFunc{containsResult, qm.Get},
@@ -78,8 +77,6 @@ func NewStoreConfig(d korrel8r.Domain, cfg any) (*Store, error) {
 	}
 	return s, nil
 }
-
-func (s *Store) Domain() korrel8r.Domain { return s.domain }
 
 func (s *Store) Get(ctx context.Context, q korrel8r.Query, constraint *korrel8r.Constraint, r korrel8r.Appender) error {
 	for _, f := range s.lookup {
@@ -150,6 +147,7 @@ func (s *Store) LoadData(data []byte) error {
 	}
 	for qs, raw := range loaded {
 		q, err := s.Domain().Query(qs)
+		s.classes.Add(q.Class())
 		if err != nil {
 			return err
 		}
@@ -236,11 +234,4 @@ func (s QueryDir) Get(q korrel8r.Query) ([]korrel8r.Object, error) {
 			}
 		}
 	}
-}
-
-func (s *Store) ClassCheck(c korrel8r.Class) error {
-	if len(s.classes) == 0 || s.classes.Has(c) {
-		return nil
-	}
-	return korrel8r.ClassNotFoundError(c.String())
 }

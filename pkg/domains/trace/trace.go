@@ -37,15 +37,10 @@ var (
 	_ korrel8r.Class  = Class{}
 )
 
-var Domain = domain{}
+var Domain = domain{Domain: impl.NewDomain("trace", "Traces from Pods and Nodes.", Class{})}
 
-type domain struct{}
+type domain struct{ *impl.Domain }
 
-func (domain) Name() string                     { return "trace" }
-func (d domain) String() string                 { return d.Name() }
-func (domain) Description() string              { return "Traces from Pods and Nodes." }
-func (domain) Class(name string) korrel8r.Class { return Class{} }
-func (domain) Classes() []korrel8r.Class        { return []korrel8r.Class{Class{}} }
 func (d domain) Query(s string) (korrel8r.Query, error) {
 	_, s, err := impl.ParseQuery(d, s)
 	if err != nil {
@@ -186,12 +181,15 @@ func (q Query) String() string        { return impl.QueryString(q) }
 
 // NewTempoStackStore returns a store that uses a TempoStack observatorium-style URLs.
 func NewTempoStackStore(base *url.URL, h *http.Client) (korrel8r.Store, error) {
-	return &stackStore{store: store{newClient(h, base)}}, nil
+	return &stackStore{store: store{client: newClient(h, base)}}, nil
 }
 
 // TODO removed NewPlainTempoStore, not used initially. Restore if required.
 
-type store struct{ *client }
+type store struct {
+	*client
+	*impl.Store
+}
 
 func (store) Domain() korrel8r.Domain { return Domain }
 

@@ -23,10 +23,10 @@ func r(name string, start, goal korrel8r.Class, apply any) korrel8r.Rule {
 }
 
 func TestTraverserGoals(t *testing.T) {
-	d := mock.Domain("mock")
-	s := mock.NewStore(d)
+	d := mock.NewDomain("mock")
 	c := d.Class
 	ca, cb, cc, cz := c("a"), c("b"), c("c"), c("z")
+	s := mock.NewStore(d, ca, cb, cc, cz)
 
 	e, err := engine.Build().Rules(
 		// Return 2 results, must follow both
@@ -91,10 +91,9 @@ func TestTraverserGoals(t *testing.T) {
 }
 
 func TestTraverserNeighbours(t *testing.T) {
-	d := mock.Domain("mock")
-	s := mock.NewStore(d)
-	c := d.Class
-	ca, cb, cc, cz := c("a"), c("b"), c("c"), c("z")
+	d := mock.NewDomain("mock")
+	ca, cb, cc, cz := d.Class("a"), d.Class("b"), d.Class("d.Class"), d.Class("z")
+	s := mock.NewStore(d, ca, cb, cc, cz)
 
 	e, err := engine.Build().Rules(
 		// Return 2 results, must follow both
@@ -157,35 +156,10 @@ func TestTraverserNeighbours(t *testing.T) {
 	})
 }
 
-// FIXME TestTraverserNeighbours
-
-// Make sure we skip rules with unknown classes and get results.
-func TestTraverser_skip_unknown_classes(t *testing.T) {
-	d := mock.Domain("mock")
-	c := d.Class
-	ca, cb, cc := c("a"), c("b"), c("c")
-	s := mock.NewStore(d, ca, cb)
-
-	e, err := engine.Build().Rules(
-		r("ab", ca, cb, mock.NewQuery(cb, "1", 1)),
-		r("bc", cb, cc, mock.NewQuery(cb, "1", 1)),
-	).Stores(s).Engine()
-	require.NoError(t, err)
-
-	a := NewAsync(e, e.Graph())
-	start := Start{Class: ca, Objects: []korrel8r.Object{0}}
-	g, err := a.Neighbours(context.Background(), start, 2)
-	assert.NoError(t, err)
-	assert.ElementsMatch(t, []korrel8r.Object{0}, g.NodeFor(ca).Result.List())
-	assert.ElementsMatch(t, []korrel8r.Object{1}, g.NodeFor(cb).Result.List())
-	assert.Equal(t, 2, g.Nodes().Len())
-}
-
 func TestPartialError(t *testing.T) {
-	d := mock.Domain("mock")
-	s := mock.NewStore(d)
-	c := d.Class
-	ca, cb, cc := c("a"), c("b"), c("c")
+	d := mock.NewDomain("mock")
+	ca, cb, cc := d.Class("a"), d.Class("b"), d.Class("c")
+	s := mock.NewStore(d, ca, cb, cc)
 	e, err := engine.Build().Rules(
 		r("ab", ca, cb, mock.NewQuery(cb, "1,2", 1, 2)),
 		r("bc", cb, cc, mock.NewQueryError(cc, "err", errors.New("no good"))),

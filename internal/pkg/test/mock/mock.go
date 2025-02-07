@@ -15,8 +15,8 @@ import (
 
 var (
 	// Validate implementation of interfaces.
-	_ korrel8r.Domain = Domain("")
-	_ korrel8r.Class  = Domain("").Class("")
+	_ korrel8r.Domain = &Domain{}
+	_ korrel8r.Class  = Class{}
 	_ korrel8r.Query  = Query{}
 	_ korrel8r.Rule   = &Rule{}
 	_ korrel8r.Store  = &Store{}
@@ -24,34 +24,19 @@ var (
 
 type Object any // mock.Object is any JSON-marshalable object.
 
-type Domain string
+type Domain struct{ name string }
 
-func (d Domain) Name() string                          { return string(d) }
-func (d Domain) String() string                        { return d.Name() }
-func (d Domain) Description() string                   { return "Mock domain." }
-func (d Domain) Class(name string) korrel8r.Class      { return Class{name: name, domain: d} }
-func (d Domain) Classes() (classes []korrel8r.Class)   { return nil }
-func (d Domain) Store(cfg any) (korrel8r.Store, error) { return NewStoreConfig(d, cfg) }
+func NewDomain(name string) *Domain                     { return &Domain{name: name} }
+func (d *Domain) Name() string                          { return d.name }
+func (d *Domain) String() string                        { return d.Name() }
+func (d *Domain) Description() string                   { return "Mock domain." }
+func (d *Domain) Store(cfg any) (korrel8r.Store, error) { return NewStoreConfig(d, cfg) }
+func (d *Domain) Class(name string) korrel8r.Class      { return Class{name: name, domain: d} }
+func (d *Domain) Classes() []korrel8r.Class             { return nil }
 
-func Classes(d korrel8r.Domain, names ...string) []korrel8r.Class {
-	c := make([]korrel8r.Class, len(names))
-	for i, n := range names {
-		c[i] = d.Class(n)
-	}
-	return c
-}
-
-func (d Domain) Query(s string) (korrel8r.Query, error) {
+func (d *Domain) Query(s string) (korrel8r.Query, error) {
 	class, data, err := impl.ParseQuery(d, s)
 	return NewQuery(class, data), err
-}
-
-func Domains(names ...string) []korrel8r.Domain {
-	var domains []korrel8r.Domain
-	for _, name := range names {
-		domains = append(domains, Domain(name))
-	}
-	return domains
 }
 
 type Class struct {

@@ -24,7 +24,7 @@ import (
 
 func TestAPI_GetDomains(t *testing.T) {
 	e, err := engine.Build().
-		Domains(mock.Domains("foo", "bar")...).
+		Domains(mock.NewDomain("foo"), mock.NewDomain("bar")).
 		StoreConfigs(
 			config.Store{"domain": "foo", "a": "1"},
 			config.Store{"domain": "foo", "b": "2"},
@@ -167,9 +167,8 @@ func TestAPI_PostNeighbours_none(t *testing.T) {
 }
 
 func TestAPI_GetObjects_empty(t *testing.T) {
-	d := mock.Domain("x")
-	c := d.Class("y")
-	q := mock.NewQuery(c, "test")
+	d := mock.NewDomain("x")
+	q := mock.NewQuery(d.Class("y"), "test")
 	s := mock.NewStore(d)
 	e, err := engine.Build().Domains(d).Stores(s).Engine()
 	require.NoError(t, err)
@@ -235,7 +234,7 @@ func assertDo[T any](t *testing.T, a *testAPI, method, url string, req any, code
 
 func testEngine(t *testing.T) (e *engine.Engine) {
 	t.Helper()
-	d := mock.Domain("mock")
+	d := mock.NewDomain("mock")
 	a, b := d.Class("a"), d.Class("b")
 	s := mock.NewStore(d)
 	s.AddQuery("mock:a:x", "ax")

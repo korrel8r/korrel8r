@@ -64,15 +64,10 @@ var (
 // - Default LokiStack store on current Openshift cluster: `{}`
 // - Remote LokiStack: `{ "lokiStack": "https://url-of-lokistack"}`
 // - Plain Loki store: `{ "loki": "https://url-of-loki"}`
-var Domain = domain{}
+var Domain = domain{Domain: impl.NewDomain("netflow", "Network flows from source nodes to destination nodes.", Class{})}
 
-type domain struct{}
+type domain struct{ *impl.Domain }
 
-func (domain) Name() string                     { return "netflow" }
-func (d domain) String() string                 { return d.Name() }
-func (domain) Description() string              { return "Network flows from source nodes to destination nodes." }
-func (domain) Class(name string) korrel8r.Class { return Class{} }
-func (domain) Classes() []korrel8r.Class        { return []korrel8r.Class{Class{}} }
 func (d domain) Query(s string) (korrel8r.Query, error) {
 	_, s, err := impl.ParseQuery(d, s)
 	if err != nil {
@@ -189,15 +184,18 @@ func (q Query) String() string        { return impl.QueryString(q) }
 
 // NewLokiStackStore returns a store that uses a LokiStack observatorium-style URLs.
 func NewLokiStackStore(base *url.URL, h *http.Client) (korrel8r.Store, error) {
-	return &stackStore{store: store{loki.New(h, base)}}, nil
+	return &stackStore{store: store{Client: loki.New(h, base), Store: impl.NewStore(Domain)}}, nil
 }
 
 // NewPlainLokiStore returns a store that uses plain Loki URLs.
 func NewPlainLokiStore(base *url.URL, h *http.Client) (korrel8r.Store, error) {
-	return &store{loki.New(h, base)}, nil
+	return &store{Client: loki.New(h, base), Store: impl.NewStore(Domain)}, nil
 }
 
-type store struct{ *loki.Client }
+type store struct {
+	*loki.Client
+	*impl.Store
+}
 
 func (store) Domain() korrel8r.Domain { return Domain }
 func (s *store) Get(ctx context.Context, query korrel8r.Query, c *korrel8r.Constraint, result korrel8r.Appender) error {
