@@ -44,6 +44,10 @@ var rulesCmd = &cobra.Command{
 			for _, r := range e.Rules() {
 				if test(r) {
 					fmt.Fprintln(w, r)
+					if *ruleLong {
+						fmt.Fprintln(w, "  start: ", r.Start())
+						fmt.Fprintln(w, "  goal: ", r.Goal())
+					}
 				}
 			}
 		}
@@ -53,7 +57,7 @@ var rulesCmd = &cobra.Command{
 
 var (
 	ruleStart, ruleGoal, ruleName *string
-	ruleGraph                     *bool
+	ruleLong, ruleGraph           *bool
 )
 
 func init() {
@@ -61,5 +65,6 @@ func init() {
 	ruleGoal = rulesCmd.Flags().StringP("goal", "g", "", "show rules with this goal class")
 	ruleName = rulesCmd.Flags().StringP("name", "n", "", "show rules with name matching this regexp")
 	ruleGraph = rulesCmd.Flags().Bool("graph", false, "write rule graph in graphviz format")
+	ruleLong = rulesCmd.Flags().Bool("long", false, "show rule start and goal classes")
 	rootCmd.AddCommand(rulesCmd)
 }

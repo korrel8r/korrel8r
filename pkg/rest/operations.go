@@ -120,7 +120,7 @@ func (a *API) GraphsGoals(c *gin.Context) {
 	if c.IsAborted() {
 		return
 	}
-	gr := Graph{Nodes: nodes(g), Edges: edges(g, opts)}
+	gr := Graph{Nodes: nodes(g), Edges: edges(g, *opts)}
 	okResponse(c, gr)
 }
 
@@ -168,7 +168,7 @@ func (a *API) GraphsNeighbours(c *gin.Context) {
 	ctx, cancel := korrel8r.WithConstraint(c.Request.Context(), constraint.Default())
 	defer cancel()
 	g, err := traverse.New(a.Engine, a.Engine.Graph()).Neighbours(ctx, start, depth)
-	gr := Graph{Nodes: nodes(g), Edges: edges(g, &opts)}
+	gr := Graph{Nodes: nodes(g), Edges: edges(g, opts)}
 	if !interrupted(c) {
 		check(c, http.StatusBadRequest, err)
 	}
