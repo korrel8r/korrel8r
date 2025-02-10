@@ -12,6 +12,7 @@ korrel8r rules [flags]
   -g, --goal string    show rules with this goal class
       --graph          write rule graph in graphviz format
   -h, --help           help for rules
+      --long           show rule start and goal classes
   -n, --name string    show rules with name matching this regexp
   -s, --start string   show rules with this start class
 ----

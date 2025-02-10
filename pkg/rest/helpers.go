@@ -66,7 +66,7 @@ func edge(e *graph.Edge, rules bool) Edge {
 	return edge
 }
 
-func edges(g *graph.Graph, opts *Options) (edges []Edge) {
+func edges(g *graph.Graph, opts Options) (edges []Edge) {
 	if g == nil {
 		return nil
 	}
@@ -114,6 +114,6 @@ func Normalize(v any) any {
 }
 
 // NewGraph returns a new rest.Graph corresponding to the internal graph.Graph.
-func NewGraph(g *graph.Graph) *Graph {
-	return &Graph{Nodes: nodes(g), Edges: edges(g, &Options{})}
+func NewGraph(g *graph.Graph, opts Options) *Graph {
+	return &Graph{Nodes: nodes(g), Edges: edges(g, opts)}
 }

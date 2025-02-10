@@ -15,6 +15,7 @@ korrel8r neighbours [flags]
       --limit int            Limit total number of results.
       --object stringArray   Serialized start object, can be multiple.
   -q, --query stringArray    Query string for start objects, can be multiple.
+      --rules                Include rule names in returned graph
       --since duration       Only get results since this long ago.
       --timeout duration     Timeout for store requests.
       --until duration       Only get results until this long ago.

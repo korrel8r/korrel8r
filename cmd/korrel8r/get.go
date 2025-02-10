@@ -25,6 +25,7 @@ var (
 	class   string
 	queries []string
 	objects []string
+	options rest.Options
 
 	limit                 int
 	since, until, timeout time.Duration
@@ -34,6 +35,7 @@ func startFlags(cmd *cobra.Command) {
 	cmd.Flags().StringArrayVarP(&queries, "query", "q", nil, "Query string for start objects, can be multiple.")
 	cmd.Flags().StringVar(&class, "class", "", "Class for serialized start objects")
 	cmd.Flags().StringArrayVar(&objects, "object", nil, "Serialized start object, can be multiple.")
+	cmd.Flags().BoolVar(&options.Rules, "rules", false, "Include rule names in returned graph")
 }
 
 func constraintFlags(cmd *cobra.Command) {
@@ -83,7 +85,7 @@ var (
 			defer cancel()
 			g, err := traverse.New(e, e.Graph()).Neighbours(ctx, start(e), depth)
 			check(err)
-			newPrinter(os.Stdout).Print(rest.NewGraph(g))
+			newPrinter(os.Stdout).Print(rest.NewGraph(g, options))
 		},
 	}
 	depth int
@@ -111,7 +113,7 @@ var (
 			defer cancel()
 			g, err := traverse.New(e, e.Graph()).Goals(ctx, start(e), goals)
 			check(err)
-			newPrinter(os.Stdout).Print(rest.NewGraph(g))
+			newPrinter(os.Stdout).Print(rest.NewGraph(g, options))
 		},
 	}
 )
