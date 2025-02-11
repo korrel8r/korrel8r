@@ -51,7 +51,7 @@ type Class schema.GroupVersionKind
 
 // Object represents a kubernetes resource as a map, map keys are serialized field names.
 // Rule templates should use the JSON (lowerCase) field names, NOT the UpperCase Go struct field names.
-type Object map[string]any
+type Object = map[string]any
 
 // Query struct for a Kubernetes query.
 //
@@ -198,9 +198,8 @@ func NewQuery(c Class, namespace, name string, labels, fields map[string]string)
 }
 
 func (q Query) Class() korrel8r.Class { return q.class }
-
-func (q Query) Data() string   { b, _ := json.Marshal(q); return string(b) }
-func (q Query) String() string { return impl.QueryString(q) }
+func (q Query) Data() string          { b, _ := json.Marshal(q); return string(b) }
+func (q Query) String() string        { return impl.QueryString(q) }
 
 // NewStore creates a new k8s store.
 func NewStore(c client.Client, cfg *rest.Config) (*Store, error) {
@@ -233,14 +232,8 @@ func (s *Store) Get(ctx context.Context, query korrel8r.Query, c *korrel8r.Const
 	}
 	gvk := class.GVK()
 	if _, err := s.c.RESTMapper().RESTMapping(gvk.GroupKind(), gvk.Version); err != nil {
-		return nil
+		return err
 	}
-	defer func() {
-		if apierrors.IsNotFound(err) {
-			err = nil // Finding nothing is not an error.
-		}
-	}()
-
 	q, err := impl.TypeAssert[*Query](query)
 	if err != nil {
 		return err
@@ -252,10 +245,14 @@ func (s *Store) Get(ctx context.Context, query korrel8r.Query, c *korrel8r.Const
 		}
 	})
 	if q.Name != "" { // Request for single object.
-		return s.getObject(ctx, q, appender)
+		err = s.getObject(ctx, q, appender)
 	} else {
-		return s.getList(ctx, q, appender, c)
+		err = s.getList(ctx, q, appender, c)
 	}
+	if apierrors.IsNotFound(err) {
+		err = nil // Finding nothing is not an error.
+	}
+	return err
 }
 
 func (s *Store) StoreClasses() (classes []korrel8r.Class, err error) {
@@ -266,7 +263,16 @@ func (s *Store) StoreClasses() (classes []korrel8r.Class, err error) {
 	for _, lists := range [][]*metav1.APIResourceList{clusterScoped, namespaceScoped} {
 		for _, l := range lists {
 			for _, r := range l.APIResources {
-				gvk := schema.GroupVersionKind{Group: r.Group, Version: r.Version, Kind: r.Kind}
+				gv, _ := schema.ParseGroupVersion(l.GroupVersion)
+				g := r.Group
+				if g == "" {
+					g = gv.Group
+				}
+				v := r.Version
+				if v == "" {
+					v = gv.Version
+				}
+				gvk := schema.GroupVersionKind{Group: g, Version: v, Kind: r.Kind}
 				classes = append(classes, Class(gvk))
 			}
 		}

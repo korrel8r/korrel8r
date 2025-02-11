@@ -181,7 +181,7 @@ type Store struct {
 }
 
 // NewStore creates a new store client for a Prometheus URL.
-func NewStore(alertmanagerURL *url.URL, prometheusURL *url.URL, hc *http.Client) (korrel8r.Store, error) {
+func NewStore(alertmanagerURL *url.URL, prometheusURL *url.URL, hc *http.Client) (*Store, error) {
 	alertmanagerAPI, err := newAlertmanagerClient(alertmanagerURL, hc)
 	if err != nil {
 		return nil, err
@@ -224,7 +224,7 @@ func newPrometheusClient(u *url.URL, hc *http.Client) (v1.API, error) {
 	return v1.NewAPI(client), nil
 }
 
-func (Store) Domain() korrel8r.Domain { return Domain }
+func (*Store) Domain() korrel8r.Domain { return Domain }
 
 func convertLabelSetToMap(m model.LabelSet) map[string]string {
 	res := make(map[string]string, len(m))
@@ -247,7 +247,7 @@ func matchesSubquery(q map[string]string, a *v1.Alert) bool {
 	return true
 }
 
-func (s Store) Get(ctx context.Context, query korrel8r.Query, c *korrel8r.Constraint, result korrel8r.Appender) error {
+func (s *Store) Get(ctx context.Context, query korrel8r.Query, c *korrel8r.Constraint, result korrel8r.Appender) error {
 	q, err := impl.TypeAssert[Query](query)
 	if err != nil {
 		return err
@@ -283,7 +283,7 @@ func (s Store) Get(ctx context.Context, query korrel8r.Query, c *korrel8r.Constr
 	return nil
 }
 
-func (s Store) getSubquery(ctx context.Context, rulesResult v1.RulesResult, q map[string]string) (alerts []*Object, err error) {
+func (s *Store) getSubquery(ctx context.Context, rulesResult v1.RulesResult, q map[string]string) (alerts []*Object, err error) {
 	for _, rg := range rulesResult.Groups {
 		for _, r := range rg.Rules {
 			ar, ok := r.(v1.AlertingRule)

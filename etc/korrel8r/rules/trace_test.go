@@ -44,7 +44,7 @@ func Test_TraceFromPod(t *testing.T) {
 	}{
 		{
 			rule:  "PodToTrace",
-			start: newK8s("Pod", "bar", "foo"),
+			start: newK8s("Pod", "bar", "foo", nil),
 			want:  `trace:span:{resource.k8s.namespace.name="bar"&&resource.k8s.pod.name="foo"}`,
 		},
 	} {

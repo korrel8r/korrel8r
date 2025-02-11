@@ -34,23 +34,35 @@ func TestK8sRules(t *testing.T) {
 		},
 		{
 			rule:  "EventToAll",
-			start: k8sEvent(newK8s("Pod", "aNamespace", "foo"), "a"),
+			start: k8sEvent(newK8s("Pod", "aNamespace", "foo", nil), "a"),
 			query: `k8s:Pod.v1:{"namespace":"aNamespace","name":"foo"}`,
 		},
 		{
 			rule:  "AllToEvent",
-			start: newK8s("Pod", "aNamespace", "foo"),
+			start: newK8s("Pod", "aNamespace", "foo", nil),
 			query: `k8s:Event.v1:{"fields":{"involvedObject.apiVersion":"v1","involvedObject.kind":"Pod","involvedObject.name":"foo","involvedObject.namespace":"aNamespace"}}`,
 		},
 		{
 			rule:  "AllToMetric",
-			start: newK8s("Pod", "aNamespace", "foo"),
+			start: newK8s("Pod", "aNamespace", "foo", nil),
 			query: `metric:metric:{namespace="aNamespace",pod="foo"}`,
 		},
 		{
 			rule:  "PodToAlert",
-			start: newK8s("Pod", "aNamespace", "foo"),
+			start: newK8s("Pod", "aNamespace", "foo", nil),
 			query: `alert:alert:{"namespace":"aNamespace","pod":"foo"}`,
+		},
+		{
+			rule: "DependentToOwner",
+			start: newK8s("Pod", "aNamespace", "foo", k8s.Object{
+				"metadata": k8s.Object{
+					"ownerReferences": []k8s.Object{{
+						"name":       "owner",
+						"kind":       "Deployment",
+						"apiVersion": "apps/v1",
+					}}},
+			}),
+			query: `k8s:Deployment.v1.apps:{"namespace":"aNamespace","name":"owner"}`,
 		},
 	} {
 		x.Run(t)

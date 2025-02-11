@@ -46,12 +46,12 @@ func TestLogRules(t *testing.T) {
 		},
 		{
 			rule:  "PodToLogs",
-			start: newK8s("Pod", "project", "application"),
+			start: newK8s("Pod", "project", "application", nil),
 			query: `log:application:{kubernetes_namespace_name="project",kubernetes_pod_name="application"}`,
 		},
 		{
 			rule:  "PodToLogs",
-			start: newK8s("Pod", "kube-something", "infrastructure"),
+			start: newK8s("Pod", "kube-something", "infrastructure", nil),
 			query: `log:infrastructure:{kubernetes_namespace_name="kube-something",kubernetes_pod_name="infrastructure"}`,
 		},
 	} {

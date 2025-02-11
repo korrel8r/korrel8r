@@ -39,22 +39,22 @@ func Test_NetflowFromK8S(t *testing.T) {
 	for _, x := range []ruleTest{
 		{
 			rule:  "K8sSrcToNetflow",
-			start: newK8s("Pod", "bar", "foo"),
+			start: newK8s("Pod", "bar", "foo", nil),
 			query: `netflow:network:{SrcK8S_Type="Pod", SrcK8S_Namespace="bar"} | json | SrcK8S_Name="foo"`,
 		},
 		{
 			rule:  "K8sSrcOwnerToNetflow",
-			start: newK8s("Deployment.app", "bar", "foo"),
+			start: newK8s("Deployment.app", "bar", "foo", nil),
 			query: `netflow:network:{SrcK8S_Namespace="bar", SrcK8S_OwnerName="foo"}`,
 		},
 		{
 			rule:  "K8sDstToNetflow",
-			start: newK8s("Pod", "bar", "foo"),
+			start: newK8s("Pod", "bar", "foo", nil),
 			query: `netflow:network:{DstK8S_Type="Pod", DstK8S_Namespace="bar"} | json | DstK8S_Name="foo"`,
 		},
 		{
 			rule:  "K8sDstOwnerToNetflow",
-			start: newK8s("Deployment.app", "bar", "foo"),
+			start: newK8s("Deployment.app", "bar", "foo", nil),
 			query: `netflow:network:{DstK8S_Namespace="bar", DstK8S_OwnerName="foo"}`,
 		},
 	} {

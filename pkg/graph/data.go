@@ -33,14 +33,16 @@ func NewData(rules ...korrel8r.Rule) *Data {
 func (d *Data) addRule(r korrel8r.Rule) {
 	for _, start := range r.Start() {
 		for _, goal := range r.Goal() {
-			id := int64(len(d.Lines))
-			l := &Line{
-				Line:    multi.Line{F: d.addClass(start), T: d.addClass(goal), UID: id},
-				Rule:    r,
-				Attrs:   Attrs{},
-				Queries: Queries{},
+			if start != goal { // No circular rules.
+				id := int64(len(d.Lines))
+				l := &Line{
+					Line:    multi.Line{F: d.addClass(start), T: d.addClass(goal), UID: id},
+					Rule:    r,
+					Attrs:   Attrs{},
+					Queries: Queries{},
+				}
+				d.Lines = append(d.Lines, l)
 			}
-			d.Lines = append(d.Lines, l)
 		}
 	}
 }
