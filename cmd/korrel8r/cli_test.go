@@ -22,14 +22,14 @@ func TestMain_list(t *testing.T) {
 	out, err := cliCommand(t, "list").Output()
 	require.NoError(t, test.ExecError(err))
 	want := `
-alert
-incident
-k8s
-log
-metric
-mock
-netflow
-trace
+alert     Alerts that metric values are out of bounds.
+incident  Incidents group alerts into higher-level groups.
+k8s       Resource objects in a Kubernetes API server
+log       Records from container and node logs.
+metric    Time-series of measured values
+mock      Mock domain.
+netflow   Network flows from source nodes to destination nodes.
+trace     Traces from Pods and Nodes.
 `
 	assert.Equal(t, strings.TrimSpace(want), strings.TrimSpace(string(out)))
 }

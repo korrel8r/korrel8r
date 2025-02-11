@@ -34,6 +34,12 @@ func Get[T any](ctx context.Context, u *url.URL, hc *http.Client, body T) (err e
 	}
 	resp, err := hc.Do(req)
 	if err != nil {
+		if inner, ok := err.(*url.Error); ok {
+			if u, err := url.Parse(inner.URL); err == nil {
+				// Simplify the URL to just the host+path
+				inner.URL = (&url.URL{Scheme: u.Scheme, Host: u.Host, Path: u.Path}).String()
+			}
+		}
 		return err
 	}
 	defer resp.Body.Close()

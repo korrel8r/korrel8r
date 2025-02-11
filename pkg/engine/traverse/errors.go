@@ -6,30 +6,32 @@ import (
 	"errors"
 	"sync"
 
+	"github.com/go-logr/logr"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"github.com/korrel8r/korrel8r/pkg/unique"
 )
 
-// Errors is a goroutine-safe collection of errors.
+// Errors is a goroutine-safe collection of unique errors.
 type Errors struct {
 	m    sync.Mutex
-	err  error
+	errs unique.Errors
 	ok   int
-	seen unique.Set[string]
+	log  logr.Logger
 }
 
-func NewErrors() *Errors {
-	return &Errors{seen: unique.Set[string]{}}
+func NewErrors(log logr.Logger) *Errors {
+	return &Errors{log: log}
 }
 
-func (e *Errors) Add(err error) bool {
+// Log the first instance of err, don't log duplicates
+func (e *Errors) Log(err error, msg string, kv ...any) bool {
 	e.m.Lock()
 	defer e.m.Unlock()
 	if err == nil {
-		e.ok++
-	} else if !e.seen.Has(err.Error()) {
-		e.err = errors.Join(e.err, err)
-		e.seen.Add(err.Error())
+		e.ok++ // Count the number of sucesses..
+	}
+	if e.errs.Add(err) {
+		e.log.Error(err, msg, kv...)
 		return true
 	}
 	return false
@@ -39,12 +41,12 @@ func (e *Errors) Add(err error) bool {
 // Must not be called concurrently.
 func (e *Errors) Err() error {
 	switch {
-	case e.err == nil:
+	case e.errs.Err() == nil:
 		return nil
 	case e.ok > 0:
-		return &PartialError{e.err}
+		return &PartialError{e.errs.Err()}
 	default:
-		return e.err
+		return e.errs.Err()
 	}
 }
 
@@ -52,7 +54,7 @@ func (e *Errors) Err() error {
 type PartialError struct{ Err error }
 
 func (e *PartialError) Error() string {
-	return errors.Join(errors.New("Results may be incomplete, there were errors"), e.Err).Error()
+	return errors.Join(errors.New("Results may be incomplete, there were errors:"), e.Err).Error()
 }
 
 var _ error = &PartialError{}

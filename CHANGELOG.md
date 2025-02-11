@@ -9,6 +9,24 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 _Note unreleased changes on main here pending the next release_
 
+## [0.7.7] - 2025-02-12
+
+### Changed
+- BREAKING CHANGE: k8s field names are now "lowerCase" serialized JSON style, not "UpperCase" Go style.
+  Affects k8s rule templates, which are now compatible with `kubectl -o template`.
+
+### Fixed 
+- Wildcard rules (empty start and goal) were not being processed.
+
+### Added
+- k8s can handle any resource type defined in the connected API server, not just a compiled-in set.
+  Uses the runtime API server and unstructured map objects and the runtime API server.
+- incidents domain: Incidents group alerts into higher-level groups. 
+- Added DependentToOwner rule to follow k8s ownerReferences
+- Improved diagnostic logging: de-duplicate errors, better log messages.
+- Added --rules flag to korrel8r goals, neighbours
+- File-based mock stores for internal testing.
+
 ## [0.7.6] - 2024-12-19
 
 ### Fixed

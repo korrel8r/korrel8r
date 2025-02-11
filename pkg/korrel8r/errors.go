@@ -27,3 +27,12 @@ func IsErrorType[T error](err error) bool {
 	var target T
 	return errors.As(err, &target)
 }
+
+// RuleDidNotApplyError is returned when a rule returns an empty result.
+type RuleDidNotApplyError struct{ Rule }
+
+func (err RuleDidNotApplyError) Error() string {
+	return fmt.Sprintf("Rule %v did not apply", err.Rule)
+}
+
+func IsRuleDoesNotApplyError(err error) bool { return IsErrorType[RuleDidNotApplyError](err) }

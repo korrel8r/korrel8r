@@ -32,7 +32,7 @@ func NewClient(cfg *rest.Config) (c client.Client, err error) {
 	return client.New(cfg, client.Options{})
 }
 
-// NewHTTPClient returns a new client with TLS settingsn from Store config.
+// NewHTTPClient returns a new client with TLS settings from Store config.
 func NewHTTPClient(s kconfig.Store) (*http.Client, error) {
 	cfg, err := GetConfig()
 	if err != nil {

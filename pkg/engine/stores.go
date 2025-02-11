@@ -4,7 +4,6 @@ package engine
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"maps"
@@ -156,33 +155,33 @@ func (ss *stores) Add(newStore *storeHolder) error {
 
 func (ss *stores) Get(ctx context.Context, q korrel8r.Query, constraint *korrel8r.Constraint, result korrel8r.Appender) error {
 	var (
-		errs error
+		errs unique.Errors
 		ok   bool
 	)
 	// TODO review this logic. Return [korrel8r.PartialError] rather than nil?
 	for _, s := range ss.stores {
 		// Iterate over stores and accumulate all results.
 		err := s.Get(ctx, q, constraint, result)
-		ok = (err == nil) || ok       // Remember if any call succeeds.
-		errs = errors.Join(errs, err) // Collect errors in case of failure.
+		errs.Add(err)
+		ok = (err == nil) || ok // Remember if any call succeeds.
 	}
 	if ok { // If any call succeeded, this is a success
 		return nil
 	}
-	return errs
+	return errs.Err()
 }
 
 // Classes returns the total set of classes for all the stores.
 // It may return a non-nil error and a non-nil partial list of classes.
 func (ss *stores) StoreClasses() ([]korrel8r.Class, error) {
 	list := unique.NewList[korrel8r.Class]()
-	var errs error
+	errs := &unique.Errors{}
 	for _, s := range ss.stores {
 		classes, err := s.StoreClasses()
-		errs = errors.Join(errs, err)
+		errs.Add(err)
 		list.Append(classes...)
 	}
-	return list.List, errs
+	return list.List, errs.Err()
 }
 
 // Configs returns the expanded configurations for each store.

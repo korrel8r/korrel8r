@@ -59,7 +59,7 @@ func (f *Fixture) TestGetCluster(t *testing.T) {
 	limit := 3
 	constraint := &korrel8r.Constraint{Limit: &limit}
 	r := graph.NewResult(f.Query.Class())
-	if assert.NoError(t, e.Get(context.Background(), f.Query, constraint, r)) {
-		assert.Equal(t, limit, len(r.List()), "query: %v", f.Query)
+	if assert.NoError(t, e.Get(context.Background(), f.Query, constraint, r), f.Query) {
+		assert.Equal(t, limit, len(r.List()), f.Query)
 	}
 }

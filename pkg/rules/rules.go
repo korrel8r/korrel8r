@@ -43,7 +43,7 @@ func (r *templateRule) Apply(start korrel8r.Object) (korrel8r.Query, error) {
 	}
 	query := strings.TrimSpace(string(b.String()))
 	if query == "" { // Blank query means rule does not apply.
-		return nil, nil
+		return nil, &korrel8r.RuleDidNotApplyError{Rule: r}
 	}
 	return r.Goal()[0].Domain().Query(query)
 }

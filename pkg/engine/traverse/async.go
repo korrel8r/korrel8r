@@ -22,7 +22,7 @@ type async struct {
 
 // NewSync returns an asynchronous Traverser that can do multiple store queries concurrently.
 func NewAsync(e *engine.Engine, g *graph.Graph) Traverser {
-	return &async{engine: e, graph: g, errs: NewErrors()}
+	return &async{engine: e, graph: g, errs: NewErrors(log.V(2))}
 }
 
 // Goals runs a goal-directed search.
@@ -167,11 +167,7 @@ func (n *node) Run(ctx context.Context) {
 		}
 		before := len(n.Result.List())
 		err := n.engine.Get(ctx, q, korrel8r.ConstraintFrom(ctx), n.Result)
-		if n.errs.Add(err) { // Report each new error once at V(1)
-			log.V(1).Info("Async: Get failed", "error", err, "query", q)
-		} else if err != nil { // Report all errors at V(3)
-			log.V(3).Info("Async: Get failed", "error", err, "query", q)
-		}
+		n.errs.Log(err, "Async: Get failed", "error", err, "query", q)
 		result := n.Result.List()[before:]
 		for _, o := range result {
 			n.applyRules(ctx, o)
@@ -201,23 +197,21 @@ func (n *node) applyRules(ctx context.Context, o korrel8r.Object) {
 		qe, ok := applied[l.Rule] // Already applied?
 		if !ok {                  // No, apply now
 			qe.q, qe.err = l.Rule.Apply(o)
+			if qe.q == nil { // Rule failed or does not apply
+				n.errs.Log(qe.err, "Async: Rule did not apply", "rule", l.Rule.Name())
+				return
+			}
+			log.V(4).Info("Async: Applied", "rule", l.Rule.Name(), "query", qe.q)
 		}
-		if qe.q != nil && qe.q.Class() != l.Goal().Class { // Wrong line, save for later
+		if qe.q.Class() != l.Goal().Class { // Wrong line, save for later
 			applied[l.Rule] = qe
 			return
 		}
-		if qe.q != nil { // De-duplicate query
-			qs := qe.q.String()
-			if n.queriesOut.Has(qs) {
-				return // This query has been sent before.
-			}
-			n.queriesOut.Add(qs)
+		qs := qe.q.String()
+		if n.queriesOut.Has(qs) { // De-duplicate query
+			return // This query has been sent before.
 		}
-		if qe.err != nil || qe.q == nil {
-			log.V(4).Info("Async: Cannot apply", "rule", l.Rule.Name(), "error", qe.err)
-		} else {
-			log.V(4).Info("Async: Applied", "rule", l.Rule.Name(), "query", qe.q)
-			getNode(l.Goal()).queryChan <- lineQuery{Query: qe.q, Line: l}
-		}
+		n.queriesOut.Add(qs)
+		getNode(l.Goal()).queryChan <- lineQuery{Query: qe.q, Line: l}
 	})
 }

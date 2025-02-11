@@ -17,12 +17,12 @@ var listCmd = &cobra.Command{
 	Args:  cobra.RangeArgs(0, 1),
 	Run: func(cmd *cobra.Command, args []string) {
 		e, _ := newEngine()
-		w := tabwriter.NewWriter(os.Stdout, 0, 0, 1, ' ', 0)
+		w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
 		defer w.Flush()
 		switch len(args) {
 		case 0:
 			for _, d := range e.Domains() {
-				fmt.Fprintln(w, d.Name())
+				fmt.Fprintf(w, "%v\t%v\n", d.Name(), d.Description())
 			}
 		case 1:
 			d := must.Must1(e.Domain(args[0]))
