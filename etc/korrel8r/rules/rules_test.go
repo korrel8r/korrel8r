@@ -91,8 +91,13 @@ func (x ruleTest) Run(t *testing.T) {
 	})
 }
 
-func newK8s(class, namespace, name string) k8s.Object {
-	u := k8s.Wrap(k8s.Domain.Class(class).(k8s.Class).New())
+func newK8s(class, namespace, name string, object k8s.Object) k8s.Object {
+	if object == nil {
+		object = k8s.Object{}
+	}
+	u := k8s.Wrap(object)
+	c := k8s.Domain.Class(class).(k8s.Class)
+	u.GetObjectKind().SetGroupVersionKind(c.GVK())
 	u.SetNamespace(namespace)
 	u.SetName(name)
 	return k8s.Unwrap(u)
@@ -101,13 +106,13 @@ func newK8s(class, namespace, name string) k8s.Object {
 func k8sEvent(o k8s.Object, name string) k8s.Object {
 	u := k8s.Wrap(o)
 	gvk := u.GetObjectKind().GroupVersionKind()
-	e := newK8s("Event", name, u.GetNamespace())
-	e["involvedObject"] = k8s.Object{
-		"kind":       gvk.Kind,
-		"namespace":  u.GetNamespace(),
-		"name":       u.GetName(),
-		"apiVersion": gvk.GroupVersion().String(),
-	}
+	e := newK8s("Event", name, u.GetNamespace(), k8s.Object{
+		"involvedObject": k8s.Object{
+			"kind":       gvk.Kind,
+			"namespace":  u.GetNamespace(),
+			"name":       u.GetName(),
+			"apiVersion": gvk.GroupVersion().String(),
+		}})
 	return e
 }
 

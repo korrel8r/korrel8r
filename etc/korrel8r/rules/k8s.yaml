@@ -37,10 +37,6 @@ aliases:
       - ClusterRole.rbac.authorization.k8s.io
       - ClusterRoleBinding.rbac.authorization.k8s.io
 
-  - name: all
-    domain: k8s
-    classes: [workloads, networking, storage, users]
-
   - name: selectors
     domain: k8s
     classes:
@@ -98,7 +94,6 @@ rules:
        classes: [Event]
      goal:
        domain: k8s
-       classes: [all]
      result:
        query: |-
          {{- with .involvedObject -}}
@@ -108,7 +103,6 @@ rules:
    - name: AllToEvent
      start:
        domain: k8s
-       classes: [all]
      goal:
        domain: k8s
        classes: [Event.]
@@ -128,3 +122,16 @@ rules:
      result:
        query: |-
          metric:metric:{namespace="{{.metadata.namespace}}",{{lower .kind}}="{{.metadata.name}}"}
+
+   - name: DependentToOwner
+     start:
+       domain: k8s
+     goal:
+       domain: k8s
+     result:
+       query: |-
+         {{- with index .metadata "ownerReferences"}}
+           {{- with first . -}}
+             {{k8sClass .apiVersion .kind}}:{"namespace":"{{$.metadata.namespace}}","name":"{{.name}}"}
+           {{- end}}
+         {{end -}}
