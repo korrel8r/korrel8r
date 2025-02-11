@@ -34,6 +34,9 @@ func Get[T any](ctx context.Context, u *url.URL, hc *http.Client, body T) (err e
 	}
 	resp, err := hc.Do(req)
 	if err != nil {
+		if inner, ok := err.(*url.Error); ok {
+			err = inner.Err
+		}
 		return err
 	}
 	defer resp.Body.Close()

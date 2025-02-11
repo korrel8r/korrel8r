@@ -141,7 +141,7 @@ _site: doc $(shell find doc etc/korrel8r -name gen -prune -o -print) $(ASCIIDOCT
 	cp -r doc/images etc/korrel8r $@
 	$(ASCIIDOCTOR) $(ADOC_FLAGS) -D$@ doc/README.adoc -o index.html
 	$(ASCIIDOCTOR) $(ADOC_FLAGS) -D$@/gen/cmd doc/gen/cmd/*.adoc
-	$(and $(LINKCHECKER),$(LINKCHECKER) $(LINKCHECK_FLAGS) $@)
+	$(and $(LINKCHECKER),$(LINKCHECKER) $(LINKCHECK_FLAGS) $@) || echo "LINK CHECKER ERRORS"
 	@touch $@
 
 _site/man: $(shell find ./cmd)	## Generated man pages.

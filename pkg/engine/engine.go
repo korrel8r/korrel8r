@@ -10,7 +10,6 @@ import (
 	"slices"
 	"strings"
 	"text/template"
-	"time"
 
 	"github.com/korrel8r/korrel8r/internal/pkg/logging"
 	"github.com/korrel8r/korrel8r/pkg/config"
@@ -137,18 +136,7 @@ func (e *Engine) Get(ctx context.Context, query korrel8r.Query, constraint *korr
 	if ss == nil {
 		return fmt.Errorf("no stores found for domain %v", query.Class().Domain())
 	}
-	r := result
-	if log.V(3).Enabled() { // Don't add overhead unless trace logging is enabled.
-		start := time.Now() // Measure latency
-		count := 0          // Count results
-		r = korrel8r.AppenderFunc(func(o korrel8r.Object) { result.Append(o); count++ })
-		defer func() {
-			if err == nil {
-				log.V(3).Info("Engine: Get OK", "n", count, "t", time.Since(start), "query", query)
-			}
-		}()
-	}
-	return ss.Get(ctx, query, constraint, r)
+	return ss.Get(ctx, query, constraint, result)
 }
 
 // query implements the template function 'query'.

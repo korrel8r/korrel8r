@@ -177,17 +177,17 @@ func TestPartialError(t *testing.T) {
 }
 
 func TestErrors(t *testing.T) {
-	assert.NoError(t, NewErrors().Err())
+	assert.NoError(t, NewErrors(log).Err())
 
-	errs := NewErrors()
-	errs.Add(errors.New("bad"))
-	assert.EqualError(t, errs.Err(), "bad")
-	errs.Add(errors.New("worse"))
-	assert.EqualError(t, errs.Err(), "bad\nworse")
-	errs.Add(errors.New("bad")) // Don't repeat
-	assert.EqualError(t, errs.Err(), "bad\nworse")
+	errs := NewErrors(log)
+	errs.Log(errors.New("bad"), "")
+	assert.EqualError(t, errs.Err(), "bad", "")
+	errs.Log(errors.New("worse"), "")
+	assert.EqualError(t, errs.Err(), "bad\nworse", "")
+	errs.Log(errors.New("bad"), "") // Don't repeat
+	assert.EqualError(t, errs.Err(), "bad\nworse", "")
 	assert.False(t, IsPartialError(errs.Err()))
-	errs.Add(nil) // Partial success
+	errs.Log(nil, "") // Partial success
 	assert.True(t, IsPartialError(errs.Err()))
 	assert.ErrorContains(t, errs.Err(), "bad\nworse")
 }
