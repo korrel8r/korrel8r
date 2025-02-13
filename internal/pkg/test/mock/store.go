@@ -210,10 +210,14 @@ func (m *QueryMap) Put(q string, f QueryFunc) {
 }
 
 // QueryDir is a directory of query files containing results in ndjson format.
+//
+// The file names are URL query-escaped strings, to prevent problems with
+// unusual characters in file names.
 type QueryDir string
 
 func (s QueryDir) Get(q korrel8r.Query) ([]korrel8r.Object, error) {
-	f, err := os.Open(filepath.Join(string(s), q.String()))
+	filename := url.QueryEscape(q.String())
+	f, err := os.Open(filepath.Join(string(s), filename))
 	switch {
 	case os.IsNotExist(err):
 		return nil, nil

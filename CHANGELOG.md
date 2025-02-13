@@ -9,13 +9,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 _Note unreleased changes on main here pending the next release_
 
-## [0.7.7] - 2025-02-12
+## [0.8.0] - 2025-02-12
 
 ### Changed
 - BREAKING CHANGE: k8s field names are now "lowerCase" serialized JSON style, not "UpperCase" Go style.
   Affects k8s rule templates, which are now compatible with `kubectl -o template`.
 
-### Fixed 
+### Fixed
 - Wildcard rules (empty start and goal) were not being processed.
 
 ### Added
