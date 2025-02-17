@@ -49,7 +49,7 @@ func TestStore_NewQuery(t *testing.T) {
 	assert.Equal(t, []korrel8r.Object{1, 2, 3}, r.List())
 }
 
-func TestStore_NewResult(t *testing.T) {
+func TestStore_Get(t *testing.T) {
 	d := mock.NewDomain("foo")
 	c := d.Class("x")
 	s := mock.NewStore(d)

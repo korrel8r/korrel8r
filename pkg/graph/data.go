@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
+	"github.com/korrel8r/korrel8r/pkg/result"
 	"gonum.org/v1/gonum/graph/multi"
 )
 
@@ -57,7 +58,7 @@ func (d *Data) addClass(c korrel8r.Class) *Node {
 		Node:    multi.Node(id),
 		Class:   c,
 		Attrs:   Attrs{},
-		Result:  NewResult(c),
+		Result:  result.New(c),
 		Queries: Queries{},
 	}
 	d.Nodes = append(d.Nodes, n)
@@ -115,8 +116,8 @@ type Node struct {
 	multi.Node
 	Attrs   // GraphViz Attributer
 	Class   korrel8r.Class
-	Result  Result  // Accumulate incoming query results.
-	Queries Queries // All queries leading to this node.
+	Result  result.Result // Accumulate incoming query results.
+	Queries Queries       // All queries leading to this node.
 
 	Value any // Value is an extra value that can be stored on a node.
 }

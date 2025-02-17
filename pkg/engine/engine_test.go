@@ -12,8 +12,8 @@ import (
 	"github.com/korrel8r/korrel8r/internal/pkg/test/mock"
 	"github.com/korrel8r/korrel8r/pkg/engine"
 	"github.com/korrel8r/korrel8r/pkg/engine/traverse"
-	"github.com/korrel8r/korrel8r/pkg/graph"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
+	"github.com/korrel8r/korrel8r/pkg/result"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -121,7 +121,7 @@ func TestEngine_ConfigMockStore(t *testing.T) {
 	require.NoError(t, err)
 	q, err := e.Query("mock:foo:hello")
 	require.NoError(t, err)
-	r := graph.NewResult(q.Class())
+	r := result.New(q.Class())
 	require.NoError(t, e.Get(context.Background(), q, nil, r))
 	assert.Equal(t, []korrel8r.Object{"hello", "there"}, r.List())
 }
