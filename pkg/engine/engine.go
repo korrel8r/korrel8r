@@ -16,6 +16,7 @@ import (
 	"github.com/korrel8r/korrel8r/pkg/graph"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r/impl"
+	"github.com/korrel8r/korrel8r/pkg/result"
 	"golang.org/x/exp/maps"
 )
 
@@ -145,7 +146,7 @@ func (e *Engine) query(query string) ([]korrel8r.Object, error) {
 	if err != nil {
 		return nil, err
 	}
-	results := graph.NewResult(q.Class())
+	results := result.New(q.Class())
 	err = e.Get(context.Background(), q, nil, results)
 	return results.List(), err
 }

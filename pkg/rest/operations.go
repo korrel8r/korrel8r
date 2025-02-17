@@ -37,6 +37,7 @@ import (
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"github.com/korrel8r/korrel8r/pkg/rest/auth"
 	"github.com/korrel8r/korrel8r/pkg/rest/docs"
+	"github.com/korrel8r/korrel8r/pkg/result"
 	"github.com/korrel8r/korrel8r/pkg/unique"
 	swaggofiles "github.com/swaggo/files"
 	ginswagger "github.com/swaggo/gin-swagger"
@@ -193,7 +194,7 @@ func (a *API) GetObjects(c *gin.Context) {
 	if !check(c, http.StatusBadRequest, err) {
 		return
 	}
-	result := graph.NewResult(query.Class())
+	result := result.New(query.Class())
 	if !check(c, http.StatusNotFound, a.Engine.Get(c.Request.Context(), query, (*korrel8r.Constraint)(opts.Constraint), result)) {
 		return
 	}

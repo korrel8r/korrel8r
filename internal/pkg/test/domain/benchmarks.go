@@ -7,9 +7,9 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/korrel8r/korrel8r/pkg/graph"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"github.com/korrel8r/korrel8r/pkg/ptr"
+	"github.com/korrel8r/korrel8r/pkg/result"
 	"github.com/stretchr/testify/require"
 )
 
@@ -30,7 +30,7 @@ func (f *Fixture) BenchmarkGet(b *testing.B) {
 	b.Helper()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		r := graph.NewResult(f.Query.Class())
+		r := result.New(f.Query.Class())
 		require.NoError(b, f.MockEngine.Get(context.Background(), f.Query, nil, r))
 		require.Equal(b, BatchLen, len(r.List()))
 	}
@@ -48,7 +48,7 @@ func (f *Fixture) BenchmarkParseQuery(b *testing.B) {
 
 func (f *Fixture) BenchmarkMarshalUnmashal(b *testing.B) {
 	b.Helper()
-	r := graph.NewResult(f.Query.Class())
+	r := result.New(f.Query.Class())
 	require.NoError(b, f.MockEngine.Get(context.Background(), f.Query, &korrel8r.Constraint{Limit: ptr.To(1)}, r))
 	o := r.List()[0]
 	c := f.Query.Class()
