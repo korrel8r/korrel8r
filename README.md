@@ -12,7 +12,7 @@ It is a _rule based correlation engine_, with an extensible rule set, that can n
 - queried using diverse query languages
 - stored in multiple stores with diverse query APIs
 
-The [Korrel8r Documentation Site](https://korrel8r.github.io/korrel8r) explains the ideas behind korrel8r,
+The [Korrel8r Documentation](https://korrel8r.github.io/korrel8r) explains the ideas behind korrel8r,
 how to use the built-in rules, and how to write new rules.
 
 These Go packages include:
