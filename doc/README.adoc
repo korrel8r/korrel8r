@@ -12,12 +12,6 @@ Observable <<resource,resources>> produce many kinds of <<signal>> -  logs, metr
 Each type of signal can have its own distinct data model, naming conventions, query language, and storage.
 This makes it difficult to navigate relationships between cluster resources and the signals they generate.
 
-[NOTE]
-====
-The {otel} project defines a standard vocabulary for describing several types of  <<signal>>.
-Korrel8r works with {otel} but does not require it. See <<_about_opentelemetry>> for more.
-====
-
 Korrel8r is a _rule based correlation engine_, with an extensible rule set, that can navigate +
 ↳ many types of <<signal>> and <<resource>> data +
 ↳ using diverse schema, data models and naming conventions +
@@ -28,6 +22,17 @@ Each type of <<signal>> or <<resource>> is represented by a *_<<_about_domains,d
 Korrel8r can be extended to handle new signals and resources by adding new domains.
 
 Relationships within and between domains are expressed as *_<<_about_rules,rules>>_*.
+
+Korrel8r generates logical relationship graphs that are intended to be processed or displayed by other tools.
+The {rh-ocp} {troubleshooting-panel}[troubleshooting panel] is a good example of a UI tool built on Korrel8r.
+There is a https://htmlpreview.github.io/?https://github.com/korrel8r/demos/blob/main/troubleshooting-panel-demo-coo-1.0.0/index.html[brief video demo].
+In the video, Korrel8r is generating the graphs that are shown in the panel on the right hand side.
+
+[NOTE]
+====
+The {otel} project defines a standard vocabulary for describing several types of  <<signal>>.
+Korrel8r works with {otel} but does not require it. See <<_about_opentelemetry>> for more.
+====
 
 === About domains
 
