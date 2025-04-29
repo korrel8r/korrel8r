@@ -165,8 +165,8 @@ type Line struct {
 
 func (l *Line) String() string { return fmt.Sprintf("%q(%v->%v)", l.Rule.Name(), l.From(), l.To()) }
 func (l *Line) DOTID() string  { return l.Rule.Name() }
-func (l *Line) Start() *Node   { return l.Line.From().(*Node) }
-func (l *Line) Goal() *Node    { return l.Line.To().(*Node) }
+func (l *Line) Start() *Node   { return l.From().(*Node) }
+func (l *Line) Goal() *Node    { return l.To().(*Node) }
 
 type Edge multi.Edge
 

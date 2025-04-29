@@ -100,7 +100,7 @@ func (l *loader) load(source string) error {
 		return fmt.Errorf("%v: %w", source, err)
 	}
 	if len(l.configs) > 0 && c.Tuning != nil {
-		return fmt.Errorf("Unexpected tuning section in included configuration: %v", source)
+		return fmt.Errorf("unexpected tuning section in included configuration: %v", source)
 	}
 	l.configs = append(l.configs, c)
 	for _, s := range c.Include {
@@ -152,7 +152,7 @@ func readFileOrURL(source string) ([]byte, error) {
 		if err != nil {
 			return nil, err
 		}
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 		b, err := io.ReadAll(resp.Body)
 		if err != nil {
 			return nil, err

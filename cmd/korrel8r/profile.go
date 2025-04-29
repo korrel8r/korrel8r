@@ -42,7 +42,7 @@ func StartProfile() interface{ Stop() } {
 		return profile.Start(profile.ProfilePath(*profilePathFlag), opt)
 	}
 	if *profileFlag != "" {
-		panic(fmt.Errorf("Invalid value for --profile flag: %v", *profileFlag))
+		panic(fmt.Errorf("invalid value for --profile flag: %v", *profileFlag))
 	}
 	return noopStop{}
 }

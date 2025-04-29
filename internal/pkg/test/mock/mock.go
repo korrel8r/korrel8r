@@ -66,7 +66,7 @@ func NewRule(name string, start, goal []korrel8r.Class, apply any) *Rule {
 	case korrel8r.Query:
 		return NewRuleQuery(name, start, goal, apply)
 	default:
-		panic(fmt.Errorf("Expected korrel8r.Query or mock.ApplyFunc, got: (%T)%v", apply, apply))
+		panic(fmt.Errorf("expected korrel8r.Query or mock.ApplyFunc, got: (%T)%v", apply, apply))
 	}
 }
 

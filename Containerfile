@@ -1,5 +1,6 @@
 # Build the korrel8r binary
-FROM docker.io/golang:1.23 as builder
+# Note: the Go version here should match the one in ./go.mod
+FROM docker.io/golang:1.24 as builder
 WORKDIR /src
 # Download and cache go modules before building.
 COPY go.mod go.mod

@@ -43,7 +43,7 @@ func TestLoad(t *testing.T) {
 
 func TestLoad_bad_tuning(t *testing.T) {
 	_, err := Load("testdata/bad-tuning.json")
-	require.EqualError(t, err, "Unexpected tuning section in included configuration: testdata/config.json")
+	require.EqualError(t, err, "unexpected tuning section in included configuration: testdata/config.json")
 }
 
 func TestConfigs_Expand(t *testing.T) {

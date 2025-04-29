@@ -202,5 +202,5 @@ func (s *stackStore) Get(ctx context.Context, query korrel8r.Query, c *korrel8r.
 		return err
 	}
 
-	return s.client.GetStack(ctx, q.Data(), c, func(s *Span) { result.Append(s) })
+	return s.GetStack(ctx, q.Data(), c, func(s *Span) { result.Append(s) })
 }

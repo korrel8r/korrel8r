@@ -215,5 +215,5 @@ func (s *stackStore) Get(ctx context.Context, query korrel8r.Query, c *korrel8r.
 		return err
 	}
 
-	return s.Client.GetStack(ctx, q.Data(), "network", c, func(e *loki.Entry) { result.Append(NewObject(e)) })
+	return s.GetStack(ctx, q.Data(), "network", c, func(e *loki.Entry) { result.Append(NewObject(e)) })
 }

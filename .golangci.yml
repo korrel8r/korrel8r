@@ -1,0 +1,11 @@
+version: "2"
+linters:
+  settings:
+    errcheck:
+      exclude-functions:
+        - fmt.Println
+        - fmt.Printf
+        - fmt.Fprintln
+        - fmt.Fprintf
+        - fmt.Sprintln
+        - fmt.Sprintf

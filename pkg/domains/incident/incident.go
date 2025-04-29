@@ -190,7 +190,7 @@ func (s Store) Get(ctx context.Context, query korrel8r.Query, c *korrel8r.Constr
 
 	resp, _, err := s.prometheusAPI.Query(ctx, promq, t)
 	if err != nil {
-		return fmt.Errorf("Failed to query incidents from Prometheus API: %w", err)
+		return fmt.Errorf("failed to query incidents from Prometheus API: %w", err)
 	}
 
 	data := resp.(model.Vector)
@@ -225,7 +225,7 @@ func preparePromQL(q Query, c *korrel8r.Constraint) (string, time.Time, error) {
 		if c.Start != nil {
 			duration := int(t.Sub(*c.Start).Seconds())
 			if duration < 0 {
-				return "", time.Time{}, fmt.Errorf("Start constraint is happening before the end time.")
+				return "", time.Time{}, fmt.Errorf("start constraint is happening before the end time")
 			}
 			promq = fmt.Sprintf("max_over_time(%s[%ds])", promq, duration)
 		}

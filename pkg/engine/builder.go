@@ -52,7 +52,7 @@ func (b *Builder) Domains(domains ...korrel8r.Domain) *Builder {
 				maps.Copy(b.e.templateFuncs, tf.TemplateFuncs())
 			}
 		default:
-			b.err = fmt.Errorf("Duplicate domain name: %v", d.Name())
+			b.err = fmt.Errorf("duplicate domain name: %v", d.Name())
 			return b
 		}
 	}
@@ -119,7 +119,7 @@ func (b *Builder) rules(rules ...korrel8r.Rule) {
 		}
 		r2 := b.e.rulesByName[r.Name()]
 		if r2 != nil {
-			b.err = fmt.Errorf("Duplicate rule name: %v", r.Name())
+			b.err = fmt.Errorf("duplicate rule name: %v", r.Name())
 			return
 		}
 		b.Domains(r.Start()[0].Domain(), r.Goal()[0].Domain())

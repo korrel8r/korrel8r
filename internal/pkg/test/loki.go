@@ -80,7 +80,7 @@ func (s *LokiServer) Push(labels map[string]string, lines ...string) error {
 	if err != nil {
 		return err
 	}
-	resp.Body.Close()
+	_ = resp.Body.Close()
 	return nil
 }
 
@@ -95,7 +95,7 @@ func RequireLokiServer(t *testing.T) *LokiServer {
 		u.Path = "/ready"
 		resp, err = http.Get(u.String())
 		if err == nil {
-			resp.Body.Close()
+			_ = resp.Body.Close()
 		}
 		return err == nil && resp.StatusCode/100 == 2
 	}, time.Minute, time.Second, "timed out waiting for Loki: %v: %v", s.URL(), err)
