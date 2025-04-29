@@ -35,7 +35,7 @@ func Test_Context_RoundTrip(t *testing.T) {
 			out.Header.Set("Authorization", x.out)
 			if assert.NoError(t, err) {
 				_, _ = rt.RoundTrip(out)
-				assert.Equal(t, x.want, drt.Request.Header.Get("Authorization"))
+				assert.Equal(t, x.want, drt.Header.Get("Authorization"))
 			}
 		})
 	}

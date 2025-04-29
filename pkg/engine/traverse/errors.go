@@ -54,7 +54,7 @@ func (e *Errors) Err() error {
 type PartialError struct{ Err error }
 
 func (e *PartialError) Error() string {
-	return errors.Join(errors.New("Results may be incomplete, there were errors:"), e.Err).Error()
+	return errors.Join(errors.New("results may be incomplete, there were errors"), e.Err).Error()
 }
 
 var _ error = &PartialError{}

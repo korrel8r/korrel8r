@@ -40,7 +40,7 @@ func NewHTTPClient(s kconfig.Store) (*http.Client, error) {
 	}
 	ca := s[kconfig.StoreKeyCA]
 	if ca != "" {
-		cfg.TLSClientConfig.CAFile = ca
+		cfg.CAFile = ca
 	}
 	return rest.HTTPClientFor(cfg)
 }

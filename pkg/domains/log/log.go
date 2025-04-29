@@ -205,7 +205,7 @@ func (s *stackStore) Get(ctx context.Context, query korrel8r.Query, constraint *
 	if err != nil {
 		return err
 	}
-	return s.Client.GetStack(ctx, q.Data(), q.Class().Name(), constraint, func(e *loki.Entry) { result.Append(NewObject(e.Line)) })
+	return s.GetStack(ctx, q.Data(), q.Class().Name(), constraint, func(e *loki.Entry) { result.Append(NewObject(e.Line)) })
 }
 
 var logTypeRe = regexp.MustCompile(`{[^}]*log_type(=~*)"([^"]+)"}`)

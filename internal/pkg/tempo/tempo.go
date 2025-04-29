@@ -99,7 +99,7 @@ func (c *Client) get(ctx context.Context, u *url.URL, collect CollectFunc) error
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	qr := TraceResponse{}
 
 	// Check for response status

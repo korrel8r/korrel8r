@@ -158,7 +158,7 @@ func (a *API) ListsGoals(c *gin.Context) {
 //	@failure	default	{object}	any
 func (a *API) GraphsNeighbours(c *gin.Context) {
 	r, opts := Neighbours{}, Options{}
-	if !(check(c, http.StatusBadRequest, c.BindJSON(&r)) && check(c, http.StatusBadRequest, c.BindUri(&opts))) {
+	if !check(c, http.StatusBadRequest, c.BindJSON(&r)) || !check(c, http.StatusBadRequest, c.BindUri(&opts)) {
 		return
 	}
 	start, constraint := a.start(c, &r.Start)

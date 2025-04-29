@@ -349,7 +349,7 @@ func (s *Store) getSubquery(ctx context.Context, rulesResult v1.RulesResult, q m
 
 		o.StartsAt = time.Time(*a.StartsAt)
 		o.EndsAt = time.Time(*a.EndsAt)
-		o.GeneratorURL = a.Alert.GeneratorURL.String()
+		o.GeneratorURL = a.GeneratorURL.String()
 		for _, r := range a.Receivers {
 			o.Receivers = append(o.Receivers, Receiver{Name: *r.Name})
 		}

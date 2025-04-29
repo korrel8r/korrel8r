@@ -42,7 +42,7 @@ func Get[T any](ctx context.Context, u *url.URL, hc *http.Client, body T) (err e
 		}
 		return err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode/100 != 2 {
 		if b, err := io.ReadAll(resp.Body); err == nil && len(b) > 0 {
 			return fmt.Errorf("%v: %v", resp.Status, string(b))

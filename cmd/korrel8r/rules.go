@@ -22,7 +22,7 @@ var rulesCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		e, _ := newEngine()
 		w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-		defer w.Flush()
+		defer func() { _ = w.Flush() }()
 		var start, goal korrel8r.Class
 		if *ruleStart != "" {
 			start = must.Must1(e.Class(*ruleStart))
@@ -39,7 +39,7 @@ var rulesCmd = &cobra.Command{
 		if *ruleGraph {
 			g := e.Graph().Select(func(l *graph.Line) bool { return test(l.Rule) })
 			b := must.Must1(dot.MarshalMulti(g, "", "", "  "))
-			os.Stdout.Write(b)
+			_, _ = os.Stdout.Write(b)
 		} else { // Print rules as text
 			for _, r := range e.Rules() {
 				if test(r) {
@@ -51,7 +51,7 @@ var rulesCmd = &cobra.Command{
 				}
 			}
 		}
-		w.Flush()
+		_ = w.Flush()
 	},
 }
 

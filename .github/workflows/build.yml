@@ -15,12 +15,14 @@ jobs:
 
       - uses: actions/setup-go@v5
         with:
-          go-version: '1.22.5'
+          # Note:  version here should match the one in ../../go.mod
+          go-version: '1.24.2'
 
       - name: lint
-        uses: golangci/golangci-lint-action@v6
+        uses: golangci/golangci-lint-action@v7
         with:
-          version: 'v1.63.4'
+          # Note: version here should match the one in ../../.bingo/golangci-lint.mod
+          version: 'v2.1.5'
           args: "--timeout=3m"
 
       - name: test

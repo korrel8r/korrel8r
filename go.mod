@@ -1,8 +1,7 @@
 module github.com/korrel8r/korrel8r
 
-go 1.23.0
-
-toolchain go1.23.4
+// Note: The Go version here should match the one in Containerfile and .github/workflows/build.yaml
+go 1.24.0
 
 require (
 	github.com/Masterminds/sprig/v3 v3.3.0

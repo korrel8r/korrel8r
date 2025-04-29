@@ -26,7 +26,7 @@ import (
 
 var (
 	clusterOnce sync.Once
-	clusterErr  = errors.New("cluster status unknown")
+	errCluster  = errors.New("cluster status unknown")
 )
 
 // SkipIfNoCluster call t.Skip() if not logged in to a cluster.
@@ -34,22 +34,22 @@ func SkipIfNoCluster(t testing.TB) {
 	clusterOnce.Do(func() {
 		log.SetLogger(logging.Log())
 		var cfg *rest.Config
-		cfg, clusterErr = config.GetConfig()
-		if clusterErr != nil {
+		cfg, errCluster = config.GetConfig()
+		if errCluster != nil {
 			return
 		}
 		var c client.Client
-		c, clusterErr = client.New(cfg, client.Options{})
-		if clusterErr != nil {
+		c, errCluster = client.New(cfg, client.Options{})
+		if errCluster != nil {
 			return
 		}
 		ns := &corev1.Namespace{}
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
-		clusterErr = c.Get(ctx, types.NamespacedName{Name: "default"}, ns)
+		errCluster = c.Get(ctx, types.NamespacedName{Name: "default"}, ns)
 	})
-	if clusterErr != nil {
-		t.Skipf("Skipping: no cluster: %v", clusterErr)
+	if errCluster != nil {
+		t.Skipf("Skipping: no cluster: %v", errCluster)
 	}
 }
 
@@ -59,7 +59,7 @@ func ListenPort() (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	defer l.Close()
+	defer func() { _ = l.Close() }()
 	return l.Addr().(*net.TCPAddr).Port, nil
 }
 

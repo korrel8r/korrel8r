@@ -150,7 +150,7 @@ func start(e *engine.Engine) traverse.Start {
 	case len(queries) > 0:
 		c = must.Must1(e.Query(queries[0])).Class()
 	default:
-		must.Must(fmt.Errorf("Must provide a class or at least one query."))
+		must.Must(fmt.Errorf("must provide a class or at least one query"))
 	}
 	start := traverse.Start{Class: c}
 	for _, q := range queries {

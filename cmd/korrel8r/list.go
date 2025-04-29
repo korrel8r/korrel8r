@@ -18,7 +18,7 @@ var listCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		e, _ := newEngine()
 		w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-		defer w.Flush()
+		defer func() { _ = w.Flush() }()
 		switch len(args) {
 		case 0:
 			for _, d := range e.Domains() {
