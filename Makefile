@@ -108,7 +108,7 @@ DEPLOY_ROUTE=kubectl apply -k config/route -n $(NAMESPACE) || echo "skipping rou
 
 kustomize-edit: $(KUSTOMIZE)
 	cd config;								\
-	$(KUSTOMIZE) edit set image "quay.io/korrel8r/korrel8r=$(IMAGE)";	\
+	$(KUSTOMIZE) edit set image "$(REGISTRY_BASE)/korrel8r=$(IMAGE)";	\
 	$(KUSTOMIZE) edit set namespace "$(NAMESPACE)"
 
 deploy: image kustomize-edit	## Deploy to current cluster using kustomize.
