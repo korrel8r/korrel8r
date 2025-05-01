@@ -108,3 +108,8 @@ type Graph struct {
 	Nodes []Node `json:"nodes,omitempty"`
 	Edges []Edge `json:"edges,omitempty"`
 } // @name Graph
+
+// @description Error result containing an error message.
+type Error struct {
+	Error string `json:"error"`
+} // @name Error

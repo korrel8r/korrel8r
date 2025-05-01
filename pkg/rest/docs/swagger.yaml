@@ -52,6 +52,12 @@ definitions:
         description: Start is the class name of the start node.
         type: string
     type: object
+  Error:
+    description: Error result containing an error message.
+    properties:
+      error:
+        type: string
+    type: object
   Goals:
     description: Starting point for a goals search.
     properties:
@@ -182,9 +188,14 @@ paths:
             items:
               $ref: '#/definitions/Domain'
             type: array
-        default:
-          description: ""
-          schema: {}
+        "400":
+          description: invalid parameters
+          schema:
+            $ref: '#/definitions/Error'
+        "404":
+          description: result not found
+          schema:
+            $ref: '#/definitions/Error'
       summary: Get name, configuration and status for each domain.
   /graphs/goals:
     post:
@@ -208,9 +219,14 @@ paths:
           description: interrupted, partial result
           schema:
             $ref: '#/definitions/Graph'
-        default:
-          description: ""
-          schema: {}
+        "400":
+          description: invalid parameters
+          schema:
+            $ref: '#/definitions/Error'
+        "404":
+          description: result not found
+          schema:
+            $ref: '#/definitions/Error'
       summary: Create a correlation graph from start objects to goal queries.
   /graphs/neighbours:
     post:
@@ -234,9 +250,14 @@ paths:
           description: interrupted, partial result
           schema:
             $ref: '#/definitions/Graph'
-        default:
-          description: ""
-          schema: {}
+        "400":
+          description: invalid parameters
+          schema:
+            $ref: '#/definitions/Error'
+        "404":
+          description: result not found
+          schema:
+            $ref: '#/definitions/Error'
       summary: Create a neighbourhood graph around a start object to a given depth.
   /lists/goals:
     post:
@@ -254,9 +275,14 @@ paths:
             items:
               $ref: '#/definitions/Node'
             type: array
-        default:
-          description: ""
-          schema: {}
+        "400":
+          description: invalid parameters
+          schema:
+            $ref: '#/definitions/Error'
+        "404":
+          description: result not found
+          schema:
+            $ref: '#/definitions/Error'
       summary: Create a list of goal nodes related to a starting point.
   /objects:
     get:
@@ -272,9 +298,14 @@ paths:
           schema:
             items: {}
             type: array
-        default:
-          description: ""
-          schema: {}
+        "400":
+          description: invalid parameters
+          schema:
+            $ref: '#/definitions/Error'
+        "404":
+          description: result not found
+          schema:
+            $ref: '#/definitions/Error'
       summary: Execute a query, returns a list of JSON objects.
 produces:
 - application/json

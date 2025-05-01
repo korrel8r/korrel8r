@@ -38,11 +38,14 @@ GEN_SRC=$(VERSION_TXT) $(SWAGGER_SPEC) _cover
 
 all: lint test _site image-build ## Build and test everything locally. Recommended before pushing.
 
-build: $(GEN_SRC) $(BIN) ## Build korrel8r executable.
+build: $(GEN_SRC) $(BIN)				## Build korrel8r executable.
 	go build -o $(BIN)/korrel8r ./cmd/korrel8r
 
-install: $(GEN_SRC)  ## Build and install korrel8r with go install.
+install: $(GEN_SRC)							## Build and install korrel8r with go install.
 	go install ./cmd/korrel8r
+
+run: $(GEN_SRC)									## Run `korrel8r web` for debugging.
+	go run ./cmd/korrel8r web -c $(CONFIG) $(KORREL8R_FLAGS)
 
 clean: ## Remove generated files, including checked-in files.
 	rm -rf _site $(GEN_SRC) doc/gen tmp $(BIN) $(GOCOVERDIR)
@@ -90,9 +93,6 @@ bench: $(GEN_SRC)	$(BENCHSTAT)	## Run all benchmarks.
 
 $(GOCOVERDIR):
 	@mkdir -p $@
-
-run: ## Run `korrel8r web` for debugging.
-	go run ./cmd/korrel8r web -c $(CONFIG) $(KORREL8R_FLAGS)
 
 image-build:  $(GEN_SRC) ## Build image locally, don't push.
 	$(IMGTOOL) build --tag=$(IMAGE) -f Containerfile .
@@ -157,12 +157,10 @@ DOMAIN_PKGS=$(foreach D,$(DOMAINS),github.com/korrel8r/korrel8r/pkg/domains/$(D)
 doc/gen/domains.adoc: $(shell find pkg/domains internal/cmd/domain-adoc internal/pkg/asciidoc) $(GEN_SRC)
 	@mkdir -p $(dir $@)
 	go run ./internal/cmd/domain-adoc $(DOMAIN_PKGS) > $@
-	@touch doc/README.adoc
 
-doc/gen/rest_api.adoc: $(SWAGGER_SPEC) $(shell find etc/swagger) $(SWAGGER)
+doc/gen/rest_api.adoc: $(SWAGGER_SPEC) $(shell find etc/swagger -type f) $(SWAGGER)
 	@mkdir -p $(dir $@)
 	$(SWAGGER) -q generate markdown -T etc/swagger -f $(SWAGGER_SPEC) --output $@
-	@touch doc/README.adoc
 
 KRAMDOC:=$(BIN)/kramdoc
 $(KRAMDOC):
