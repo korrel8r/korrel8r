@@ -3,9 +3,10 @@
 // Package rest implements a REST API for korrel8r.
 //
 // Dynamic HTML doc is available from korrel8r at the "/api" endpoint.
-//
-// Note: Comments starting with "@" are used to generate a swagger spec.
-//
+package rest
+
+// Comments starting with "@" are used by the swag tool to generate a swagger spec.
+
 //	@title			REST API
 //	@description	REST API for the Korrel8r correlation engine.
 //	@version		v1alpha1
@@ -18,7 +19,7 @@
 //	@schemes		https http
 //	@accept			json
 //	@produce		json
-package rest
+//
 
 import (
 	"context"
@@ -90,8 +91,9 @@ var swaggerInfoLock sync.Mutex
 //
 //	@router		/domains [get]
 //	@summary	Get name, configuration and status for each domain.
-//	@success	200		{array}		Domain
-//	@failure	default	{object}	any
+//	@success	200	{array}		Domain
+//	@failure	400	{object}	Error	"invalid parameters"
+//	@failure	404	{object}	Error	"result not found"
 func (a *API) Domains(c *gin.Context) {
 	var domains []Domain
 	for _, d := range a.Engine.Domains() {
@@ -110,8 +112,9 @@ func (a *API) Domains(c *gin.Context) {
 //	@param		rules	query		bool	false	"include rules in graph edges"
 //	@param		request	body		Goals	true	"search from start to goal classes"
 //	@success	200		{object}	Graph
-//	@success	206		{object}	Graph "interrupted, partial result"
-//	@failure	default	{object}	any
+//	@success	206		{object}	Graph	"interrupted, partial result"
+//	@failure	400		{object}	Error	"invalid parameters"
+//	@failure	404		{object}	Error	"result not found"
 func (a *API) GraphsGoals(c *gin.Context) {
 	opts := &Options{}
 	if !check(c, http.StatusBadRequest, c.BindQuery(opts)) {
@@ -131,7 +134,8 @@ func (a *API) GraphsGoals(c *gin.Context) {
 //	@summary	Create a list of goal nodes related to a starting point.
 //	@param		request	body		Goals	true	"search from start to goal classes"
 //	@success	200		{array}		Node
-//	@failure	default	{object}	any
+//	@failure	400		{object}	Error	"invalid parameters"
+//	@failure	404		{object}	Error	"result not found"
 func (a *API) ListsGoals(c *gin.Context) {
 	nodes := []Node{} // return [] not null for empty
 	g, goals := a.goals(c)
@@ -154,8 +158,9 @@ func (a *API) ListsGoals(c *gin.Context) {
 //	@param		rules	query		bool		false	"include rules in graph edges"
 //	@param		request	body		Neighbours	true	"search from neighbours"
 //	@success	200		{object}	Graph
-//	@success	206		{object}	Graph "interrupted, partial result"
-//	@failure	default	{object}	any
+//	@success	206		{object}	Graph	"interrupted, partial result"
+//	@failure	400		{object}	Error	"invalid parameters"
+//	@failure	404		{object}	Error	"result not found"
 func (a *API) GraphsNeighbours(c *gin.Context) {
 	r, opts := Neighbours{}, Options{}
 	if !check(c, http.StatusBadRequest, c.BindJSON(&r)) || !check(c, http.StatusBadRequest, c.BindUri(&opts)) {
@@ -184,7 +189,8 @@ func (a *API) GraphsNeighbours(c *gin.Context) {
 //	@summary	Execute a query, returns a list of JSON objects.
 //	@param		query	query		string	true	"query string"
 //	@success	200		{array}		any
-//	@failure	default	{object}	any
+//	@failure	400		{object}	Error	"invalid parameters"
+//	@failure	404		{object}	Error	"result not found"
 func (a *API) GetObjects(c *gin.Context) {
 	opts := &Objects{}
 	if !check(c, http.StatusBadRequest, c.BindQuery(opts)) {

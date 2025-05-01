@@ -58,7 +58,9 @@ GET /api/v1alpha1/domains
 
 | link:#get-domains-200[200] | OK | OK |  | link:#get-domains-200-schema[schema]
 
-| link:#get-domains-default[default] | |  |  | link:#get-domains-default-schema[schema]
+| link:#get-domains-400[400] | Bad Request | invalid parameters |  | link:#get-domains-400-schema[schema]
+
+| link:#get-domains-404[404] | Not Found | result not found |  | link:#get-domains-404-schema[schema]
 
 |===
 
@@ -76,16 +78,27 @@ Status: OK
 
 []link:#domain[Domain]
 
-[id=get-domains-default]
-===== Default Response
+[id=get-domains-400]
+=====  400 - invalid parameters
+Status: Bad Request
 
-
-[id=get-domains-default-schema]
+[id=get-domains-400-schema]
 ====== Schema
 
   
 
-any
+link:#error)[Error]
+
+[id=get-domains-404]
+=====  404 - result not found
+Status: Not Found
+
+[id=get-domains-404-schema]
+====== Schema
+
+  
+
+link:#error)[Error]
 
 [id=id-get-objects]
 === Execute a query, returns a list of JSON objects.
@@ -119,7 +132,9 @@ GET /api/v1alpha1/objects
 
 | link:#get-objects-200[200] | OK | OK |  | link:#get-objects-200-schema[schema]
 
-| link:#get-objects-default[default] | |  |  | link:#get-objects-default-schema[schema]
+| link:#get-objects-400[400] | Bad Request | invalid parameters |  | link:#get-objects-400-schema[schema]
+
+| link:#get-objects-404[404] | Not Found | result not found |  | link:#get-objects-404-schema[schema]
 
 |===
 
@@ -137,16 +152,27 @@ Status: OK
 
 []link:#interface[interface{}]
 
-[id=get-objects-default]
-===== Default Response
+[id=get-objects-400]
+=====  400 - invalid parameters
+Status: Bad Request
 
-
-[id=get-objects-default-schema]
+[id=get-objects-400-schema]
 ====== Schema
 
   
 
-any
+link:#error)[Error]
+
+[id=get-objects-404]
+=====  404 - result not found
+Status: Not Found
+
+[id=get-objects-404-schema]
+====== Schema
+
+  
+
+link:#error)[Error]
 
 [id=id-post-graphs-goals]
 === Create a correlation graph from start objects to goal queries.
@@ -184,7 +210,9 @@ POST /api/v1alpha1/graphs/goals
 
 | link:#post-graphs-goals-206[206] | Partial Content | interrupted, partial result |  | link:#post-graphs-goals-206-schema[schema]
 
-| link:#post-graphs-goals-default[default] | |  |  | link:#post-graphs-goals-default-schema[schema]
+| link:#post-graphs-goals-400[400] | Bad Request | invalid parameters |  | link:#post-graphs-goals-400-schema[schema]
+
+| link:#post-graphs-goals-404[404] | Not Found | result not found |  | link:#post-graphs-goals-404-schema[schema]
 
 |===
 
@@ -213,16 +241,27 @@ Status: Partial Content
 
 link:#graph)[Graph]
 
-[id=post-graphs-goals-default]
-===== Default Response
+[id=post-graphs-goals-400]
+=====  400 - invalid parameters
+Status: Bad Request
 
-
-[id=post-graphs-goals-default-schema]
+[id=post-graphs-goals-400-schema]
 ====== Schema
 
   
 
-any
+link:#error)[Error]
+
+[id=post-graphs-goals-404]
+=====  404 - result not found
+Status: Not Found
+
+[id=post-graphs-goals-404-schema]
+====== Schema
+
+  
+
+link:#error)[Error]
 
 [id=id-post-graphs-neighbours]
 === Create a neighbourhood graph around a start object to a given depth.
@@ -260,7 +299,9 @@ POST /api/v1alpha1/graphs/neighbours
 
 | link:#post-graphs-neighbours-206[206] | Partial Content | interrupted, partial result |  | link:#post-graphs-neighbours-206-schema[schema]
 
-| link:#post-graphs-neighbours-default[default] | |  |  | link:#post-graphs-neighbours-default-schema[schema]
+| link:#post-graphs-neighbours-400[400] | Bad Request | invalid parameters |  | link:#post-graphs-neighbours-400-schema[schema]
+
+| link:#post-graphs-neighbours-404[404] | Not Found | result not found |  | link:#post-graphs-neighbours-404-schema[schema]
 
 |===
 
@@ -289,16 +330,27 @@ Status: Partial Content
 
 link:#graph)[Graph]
 
-[id=post-graphs-neighbours-default]
-===== Default Response
+[id=post-graphs-neighbours-400]
+=====  400 - invalid parameters
+Status: Bad Request
 
-
-[id=post-graphs-neighbours-default-schema]
+[id=post-graphs-neighbours-400-schema]
 ====== Schema
 
   
 
-any
+link:#error)[Error]
+
+[id=post-graphs-neighbours-404]
+=====  404 - result not found
+Status: Not Found
+
+[id=post-graphs-neighbours-404-schema]
+====== Schema
+
+  
+
+link:#error)[Error]
 
 [id=id-post-lists-goals]
 === Create a list of goal nodes related to a starting point.
@@ -325,7 +377,9 @@ POST /api/v1alpha1/lists/goals
 
 | link:#post-lists-goals-200[200] | OK | OK |  | link:#post-lists-goals-200-schema[schema]
 
-| link:#post-lists-goals-default[default] | |  |  | link:#post-lists-goals-default-schema[schema]
+| link:#post-lists-goals-400[400] | Bad Request | invalid parameters |  | link:#post-lists-goals-400-schema[schema]
+
+| link:#post-lists-goals-404[404] | Not Found | result not found |  | link:#post-lists-goals-404-schema[schema]
 
 |===
 
@@ -343,16 +397,27 @@ Status: OK
 
 []link:#node[Node]
 
-[id=post-lists-goals-default]
-===== Default Response
+[id=post-lists-goals-400]
+=====  400 - invalid parameters
+Status: Bad Request
 
-
-[id=post-lists-goals-default-schema]
+[id=post-lists-goals-400-schema]
 ====== Schema
 
   
 
-any
+link:#error)[Error]
+
+[id=post-lists-goals-404]
+=====  404 - result not found
+Status: Not Found
+
+[id=post-lists-goals-404-schema]
+====== Schema
+
+  
+
+link:#error)[Error]
 
 [id=id-put-config]
 === Change key configuration settings at runtime.
@@ -485,6 +550,27 @@ Directed edge in the result graph, from Start to Goal classes.
 	| rules | []link:#rule[Rule]| `[]*Rule` |  | | Rules is the set of rules followed along this edge. | 
 
 	| start | string| `string` |  | | Start is the class name of the start node. | 
+
+|===
+
+[id=id-error]
+=== Error
+
+
+Error result containing an error message.
+  
+
+
+
+
+
+**Properties**
+
+[%autowidth]
+|===
+| Name | Type | Go type | Required | Default | Description | Example
+
+	| error | string| `string` |  | |  | 
 
 |===
 

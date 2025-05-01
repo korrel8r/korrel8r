@@ -63,9 +63,17 @@ const docTemplate = `{
                             }
                         }
                     },
-                    "default": {
-                        "description": "",
-                        "schema": {}
+                    "400": {
+                        "description": "invalid parameters",
+                        "schema": {
+                            "$ref": "#/definitions/Error"
+                        }
+                    },
+                    "404": {
+                        "description": "result not found",
+                        "schema": {
+                            "$ref": "#/definitions/Error"
+                        }
                     }
                 }
             }
@@ -103,9 +111,17 @@ const docTemplate = `{
                             "$ref": "#/definitions/Graph"
                         }
                     },
-                    "default": {
-                        "description": "",
-                        "schema": {}
+                    "400": {
+                        "description": "invalid parameters",
+                        "schema": {
+                            "$ref": "#/definitions/Error"
+                        }
+                    },
+                    "404": {
+                        "description": "result not found",
+                        "schema": {
+                            "$ref": "#/definitions/Error"
+                        }
                     }
                 }
             }
@@ -143,9 +159,17 @@ const docTemplate = `{
                             "$ref": "#/definitions/Graph"
                         }
                     },
-                    "default": {
-                        "description": "",
-                        "schema": {}
+                    "400": {
+                        "description": "invalid parameters",
+                        "schema": {
+                            "$ref": "#/definitions/Error"
+                        }
+                    },
+                    "404": {
+                        "description": "result not found",
+                        "schema": {
+                            "$ref": "#/definitions/Error"
+                        }
                     }
                 }
             }
@@ -174,9 +198,17 @@ const docTemplate = `{
                             }
                         }
                     },
-                    "default": {
-                        "description": "",
-                        "schema": {}
+                    "400": {
+                        "description": "invalid parameters",
+                        "schema": {
+                            "$ref": "#/definitions/Error"
+                        }
+                    },
+                    "404": {
+                        "description": "result not found",
+                        "schema": {
+                            "$ref": "#/definitions/Error"
+                        }
                     }
                 }
             }
@@ -201,9 +233,17 @@ const docTemplate = `{
                             "items": {}
                         }
                     },
-                    "default": {
-                        "description": "",
-                        "schema": {}
+                    "400": {
+                        "description": "invalid parameters",
+                        "schema": {
+                            "$ref": "#/definitions/Error"
+                        }
+                    },
+                    "404": {
+                        "description": "result not found",
+                        "schema": {
+                            "$ref": "#/definitions/Error"
+                        }
                     }
                 }
             }
@@ -272,6 +312,15 @@ const docTemplate = `{
                 },
                 "start": {
                     "description": "Start is the class name of the start node.",
+                    "type": "string"
+                }
+            }
+        },
+        "Error": {
+            "description": "Error result containing an error message.",
+            "type": "object",
+            "properties": {
+                "error": {
                     "type": "string"
                 }
             }
