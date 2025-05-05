@@ -70,7 +70,7 @@ func (d *MilliDuration) UnmarshalJSON(data []byte) error {
 // String matches json.Marshal.
 func (d MilliDuration) String() string { return marshalSting(d) }
 
-// MilliDuration wraps time.Duration to (un)marshal as nanoseconds.
+// NanoDuration wraps time.Duration to (un)marshal as nanoseconds.
 type NanoDuration struct{ time.Duration }
 
 // String matches json.Marshal.
