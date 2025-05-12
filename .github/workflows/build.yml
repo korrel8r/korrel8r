@@ -16,7 +16,7 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           # Note:  version here should match the one in ../../go.mod
-          go-version: '1.24.2'
+          go-version: '1.23'
 
       - name: lint
         uses: golangci/golangci-lint-action@v7
