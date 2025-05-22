@@ -88,6 +88,7 @@ func TestMain_server_insecure(t *testing.T) {
 {"name":"metric"},
 {"name":"mock","stores":[{"domain":"mock", "mockData":"testdata/mock_store.yaml"}]},
 {"name":"netflow"},
+{"name":"otellog"},
 {"name":"trace"}
 ]`, "GET", u, "")
 }
@@ -104,6 +105,7 @@ func TestMain_server_secure(t *testing.T) {
 {"name":"metric"},
 {"name":"mock","stores":[{"domain":"mock", "mockData":"testdata/mock_store.yaml"}]},
 {"name":"netflow"},
+{"name":"otellog"},
 {"name":"trace"}
 ]`,
 		"GET", u, "")
