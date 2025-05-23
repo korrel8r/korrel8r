@@ -21,4 +21,5 @@ REST service to correlate observability data
 * xref:korrel8r_objects.adoc[korrel8r objects]	 - Execute QUERY and print the results
 * xref:korrel8r_rules.adoc[korrel8r rules]	 - List rules by start, goal or name
 * xref:korrel8r_template.adoc[korrel8r template]	 - Apply a Go template to the korrel8r engine.
+* xref:korrel8r_version.adoc[korrel8r version]	 - Print the version of this command.
 * xref:korrel8r_web.adoc[korrel8r web]	 - Start REST server. Listening address must be  provided via --http or --https.

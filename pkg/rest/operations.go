@@ -22,9 +22,11 @@ package rest
 //
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"sync"
 	"time"
@@ -204,7 +206,7 @@ func (a *API) GetObjects(c *gin.Context) {
 	if !check(c, http.StatusNotFound, a.Engine.Get(c.Request.Context(), query, (*korrel8r.Constraint)(opts.Constraint), result)) {
 		return
 	}
-	log.V(3).Info("REST: response OK", "objects", len(result.List()))
+	log.V(3).Info("Response OK", "objects", len(result.List()))
 	body := []any(result.List())
 	if body == nil {
 		body = []any{} // Return [] on empty, not null.
@@ -278,7 +280,7 @@ func check(c *gin.Context, code int, err error, format ...any) (ok bool) {
 		ginErr := c.Error(err)
 		if !traverse.IsPartialError(err) { // Don't abort on a partial error.
 			c.AbortWithStatusJSON(code, ginErr.JSON())
-			log.Error(err, "REST: request failed", "url", c.Request.URL, "code", code, "error", err)
+			log.Error(err, "Request failed", "url", c.Request.URL, "code", code, "error", err)
 		}
 	}
 	return err == nil && !c.IsAborted()
@@ -301,14 +303,25 @@ func (a *API) classes(c *gin.Context, apiClasses []string) (classes []korrel8r.C
 
 // logger is a Gin handler to log requests.
 func (a *API) logger(c *gin.Context) {
-	start := time.Now()
-	c.Next()
 	log := log.WithValues(
 		"method", c.Request.Method,
 		"url", c.Request.URL,
 		"from", c.Request.RemoteAddr,
+	)
+	if log.V(3).Enabled() {
+		var buf bytes.Buffer // Copy request body
+		body, _ := io.ReadAll(io.TeeReader(c.Request.Body, &buf))
+		c.Request.Body = io.NopCloser(&buf)
+		log.V(3).Info("Request received", "body", string(body))
+	}
+
+	start := time.Now()
+	c.Next()
+	latency := time.Since(start)
+
+	log = log.WithValues(
 		"status", c.Writer.Status(),
-		"latency", time.Since(start))
+		"latency", latency)
 	if interrupted(c) {
 		log = log.WithValues("interrupted", c.Request.Context().Err())
 	}
@@ -316,9 +329,9 @@ func (a *API) logger(c *gin.Context) {
 		log = log.WithValues("errors", c.Errors.Errors())
 	}
 	if c.IsAborted() || c.Writer.Status() > 500 {
-		log.V(2).Info("REST: request failed")
+		log.V(2).Info("Request failed")
 	} else {
-		log.V(3).Info("REST: request OK")
+		log.V(3).Info("Request OK")
 	}
 }
 

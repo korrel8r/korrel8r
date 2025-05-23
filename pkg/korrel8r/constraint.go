@@ -4,6 +4,7 @@ package korrel8r
 
 import (
 	"context"
+	"encoding/json"
 	"time"
 
 	"github.com/korrel8r/korrel8r/pkg/ptr"
@@ -15,6 +16,14 @@ type Constraint struct {
 	Timeout *time.Duration `json:"timeout,omitempty" swaggertype:"string"`                                          // Timeout per request, h/m/s/ms/ns format
 	Start   *time.Time     `json:"start,omitempty" swaggertype:"string" format:"date-time" extensions:"x-nullable"` // Start of time interval, quoted RFC 3339 format.
 	End     *time.Time     `json:"end,omitempty" swaggertype:"string" format:"date-time" extensions:"x-nullable"`   // End of time interval, quoted RFC 3339 format.
+}
+
+func (c *Constraint) String() string {
+	s, err := json.Marshal(c)
+	if err != nil {
+		return err.Error()
+	}
+	return string(s)
 }
 
 // CompareTime returns -1 if t is before the constraint interval, +1 if it is after,
@@ -89,20 +98,6 @@ func (c *Constraint) GetEnd() time.Time {
 		return *c.End
 	}
 	return time.Time{}
-}
-
-// MarshalLog for logging uses RFC3339Nano format for time.Time.
-func (c *Constraint) MarshalLog() any {
-	return struct {
-		Limit      *int
-		Timeout    *time.Duration
-		Start, End string
-	}{
-		Limit:   c.Limit,
-		Timeout: c.Timeout,
-		Start:   c.Start.Format(time.RFC3339Nano),
-		End:     c.End.Format(time.RFC3339Nano),
-	}
 }
 
 type constraintKey struct{}

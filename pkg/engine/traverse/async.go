@@ -29,7 +29,7 @@ func NewAsync(e *engine.Engine, g *graph.Graph) Traverser {
 // Goals runs a goal-directed search.
 // Results and Queries are filled in on graph.
 func (a *async) Goals(ctx context.Context, start Start, goals []korrel8r.Class) (*graph.Graph, error) {
-	log.V(2).Info("Async: Goal search", "start", start, "goals", goals)
+	log.V(2).Info("Goal directed search", "start", start, "goals", goals, "constraint", korrel8r.ConstraintFrom(ctx))
 	traverse := func(v graph.Visitor) { a.graph.GoalSearch(start.Class, goals, v) }
 	return a.run(ctx, start, traverse)
 }
@@ -37,7 +37,7 @@ func (a *async) Goals(ctx context.Context, start Start, goals []korrel8r.Class) 
 // Goals runs a neighbourhood.
 // Results and Queries are filled in on graph.
 func (a *async) Neighbours(ctx context.Context, start Start, depth int) (*graph.Graph, error) {
-	log.V(2).Info("Async: Neighbours search", "start", start, "depth", depth)
+	log.V(2).Info("Neighbourhood search", "start", start, "depth", depth, "constraint", korrel8r.ConstraintFrom(ctx))
 	traverse := func(v graph.Visitor) { a.graph.Neighbours(start.Class, depth, v) }
 	return a.run(ctx, start, traverse)
 }
@@ -175,7 +175,7 @@ func (n *node) Run(ctx context.Context) {
 		}
 		before := len(n.Result.List())
 		err := n.engine.Get(ctx, q, korrel8r.ConstraintFrom(ctx), n.Result)
-		n.errs.Log(err, "Async: Get failed", "error", err, "query", q)
+		n.errs.Log(err, "Get failed", "error", err, "query", q)
 		result := n.Result.List()[before:]
 		for _, o := range result {
 			n.applyRules(ctx, o)
@@ -206,10 +206,10 @@ func (n *node) applyRules(ctx context.Context, o korrel8r.Object) {
 		if !ok {                  // No, apply now
 			qe.q, qe.err = l.Rule.Apply(o)
 			if qe.q == nil { // Rule failed or does not apply
-				n.errs.Log(qe.err, "Async: Rule did not apply", "rule", l.Rule.Name())
+				n.errs.Log(qe.err, "Rule did not apply", "rule", l.Rule.Name())
 				return
 			}
-			log.V(4).Info("Async: Applied", "rule", l.Rule.Name(), "query", qe.q)
+			log.V(4).Info("Applied", "rule", l.Rule.Name(), "query", qe.q)
 		}
 		if qe.q.Class() != l.Goal().Class { // Wrong line, save for later
 			applied[l.Rule] = qe
