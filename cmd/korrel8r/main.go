@@ -65,8 +65,8 @@ func init() {
 
 // getConfig looks for the default configuration file.
 func getConfig() string {
-	if config, ok := os.LookupEnv(configEnv); ok {
-		return config // Use env. var. if set.
+	if config := os.Getenv(configEnv); config != "" {
+		return config
 	}
 	return defaultConfig
 }

@@ -4,6 +4,7 @@ package traverse
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"sync/atomic"
 
@@ -55,7 +56,14 @@ func (a *async) run(ctx context.Context, start Start, traverse func(v graph.Visi
 	})
 
 	// MUST add start objects before starting goroutines.
-	startNode := getNode(g.NodeFor(start.Class))
+	n, err := g.NodeForErr(start.Class)
+	if err != nil {
+		return nil, err
+	}
+	startNode := getNode(n)
+	if startNode == nil {
+		return g, fmt.Errorf(`invalid start class: %v`, start.Class)
+	}
 	startNode.Result.Append(start.Objects...)
 
 	var busy sync.WaitGroup
