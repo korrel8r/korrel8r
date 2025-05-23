@@ -6,7 +6,7 @@ help: ## Display this help.
 	@grep -E '^## [A-Z0-9_]+: ' Makefile | sed 's/^## \([A-Z0-9_]*\): \(.*\)/\1#\2/' | column -s'#' -t
 
 ## VERSION: Semantic version for release, use -dev for development pre-release versions.
-VERSION?=0.8.0
+VERSION?=0.8.1
 ## REGISTRY_BASE: Image registry base, for example quay.io/somebody
 REGISTRY_BASE?=$(error REGISTRY_BASE must be set to push images)
 ## IMGTOOL: May be podman or docker.
@@ -169,7 +169,7 @@ $(KRAMDOC):
 
 doc/gen/cmd: $(shell find ./cmd/korrel8r) $(KORREL8RCLI) $(KRAMDOC) ## Generated command documentation
 	@mkdir -p $@
-	go run ./cmd/korrel8r doc markdown $@
+	unset KORREL8R_CONFIG; go run ./cmd/korrel8r doc markdown $@
 	$(KORREL8RCLI) doc markdown $@
 	hack/md-to-adoc.sh $(KRAMDOC) $@/*.md
 	@touch $@
