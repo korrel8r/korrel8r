@@ -7,6 +7,8 @@
 package graph
 
 import (
+	"fmt"
+
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"github.com/korrel8r/korrel8r/pkg/unique"
 
@@ -52,6 +54,14 @@ func New(data *Data) *Graph {
 }
 
 func (g *Graph) NodeFor(c korrel8r.Class) *Node { return g.Data.NodeFor(c) }
+
+func (g *Graph) NodeForErr(c korrel8r.Class) (node *Node, err error) {
+	if n := g.NodeFor(c); n != nil {
+		return n, nil
+	}
+	return nil, fmt.Errorf("class not found in rule graph: %v", c)
+}
+
 func (g *Graph) NodesFor(classes ...korrel8r.Class) (nodes []*Node) {
 	for _, c := range classes {
 		nodes = append(nodes, g.NodeFor(c))

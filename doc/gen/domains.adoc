@@ -331,6 +331,67 @@ Object is a map holding netflow entries
 
 See Go documentation for https://pkg.go.dev/github.com/korrel8r/korrel8r/pkg/domains/netflow#Object[Object]
 
+[#_otellog_domain]
+= otellog domain
+
+
+Domain otellog is a domain for openshift-logging OTLP logs stored in Loki or LokiStack.
+
+== Class
+
+There are 3 classes corresponding to the 3 openshift logging log types:
+
+----
+otellog:application
+otellog:infrastructure
+otellog:audit
+----
+
+== Object
+
+A otellog object is a JSON map\[string]any in ViaQ format.
+
+== Query
+
+A query is a link:https://grafana.com/docs/loki/latest/query/[LogQL] query string, prefixed by the logging class, for example:
+
+----
+otellog:infrastructure:{ kubernetes_namespace_name="openshift-cluster-version", kubernetes_pod_name=~".*-operator-.*" }
+----
+
+== Store
+
+To connect to a lokiStack store use this configuration:
+
+----
+domain: otellog
+lokistack: URL_OF_LOKISTACK_PROXY
+----
+
+To connect to plain loki store use:
+
+----
+domain: otellog
+loki: URL_OF_LOKI
+----
+
+
+== Query
+
+
+Query is a LogQL query string
+
+
+See Go documentation for https://pkg.go.dev/github.com/korrel8r/korrel8r/pkg/domains/otellog#Query[Query]
+
+== Object
+
+
+Object represents an OpenTelemetry link:https://opentelemetry.io/docs/concepts/signals/logs/#log-record[log]
+
+
+See Go documentation for https://pkg.go.dev/github.com/korrel8r/korrel8r/pkg/domains/otellog#Object[Object]
+
 [#_trace_domain]
 = trace domain
 

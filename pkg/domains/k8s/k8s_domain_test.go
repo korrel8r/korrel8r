@@ -11,5 +11,5 @@ import (
 
 var fixture = domain.Fixture{Query: k8s.NewQuery(k8s.Domain.Class("Pod").(k8s.Class), "", "", nil, nil)}
 
-func TestLK8sDomain(t *testing.T)     { fixture.Test(t) }
+func TestK8sDomain(t *testing.T)      { fixture.Test(t) }
 func BenchmarkK8sDomain(b *testing.B) { fixture.Benchmark(b) }

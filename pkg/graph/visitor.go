@@ -63,8 +63,11 @@ func (g *Graph) BreadthFirst(start korrel8r.Class, v Visitor, until func(*Node, 
 	if until != nil {
 		untilFunc = func(n graph.Node, d int) bool { return until(n.(*Node), d) }
 	}
-	n, _ := bf.Walk(g, g.NodeFor(start), untilFunc).(*Node)
-	return n
+	if startNode := g.NodeFor(start); startNode != nil {
+		n, _ := bf.Walk(g, startNode, untilFunc).(*Node)
+		return n
+	}
+	return nil
 }
 
 // DepthFirst traversal visiting each node in g that is reachable from start in depth first order.
@@ -78,8 +81,11 @@ func (g *Graph) DepthFirst(start korrel8r.Class, v Visitor, until func(*Node) bo
 	if until != nil {
 		untilFunc = func(n graph.Node) bool { return until(n.(*Node)) }
 	}
-	n, _ := df.Walk(g, g.NodeFor(start), untilFunc).(*Node)
-	return n
+	if startNode := g.NodeFor(start); startNode != nil {
+		n, _ := df.Walk(g, startNode, untilFunc).(*Node)
+		return n
+	}
+	return nil
 }
 
 // GoalSearch traverses the shortest paths from start to all goals, in breadth first order.
