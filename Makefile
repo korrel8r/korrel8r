@@ -169,7 +169,7 @@ $(KRAMDOC):
 
 doc/gen/cmd: $(shell find ./cmd/korrel8r) $(KORREL8RCLI) $(KRAMDOC) ## Generated command documentation
 	@mkdir -p $@
-	go run ./cmd/korrel8r doc markdown $@
+	unset KORREL8R_CONFIG; go run ./cmd/korrel8r doc markdown $@
 	$(KORREL8RCLI) doc markdown $@
 	hack/md-to-adoc.sh $(KRAMDOC) $@/*.md
 	@touch $@

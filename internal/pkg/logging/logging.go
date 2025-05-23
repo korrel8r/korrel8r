@@ -37,6 +37,7 @@ func Init(verbosity *int) {
 	if *verbosity == 0 {
 		*verbosity, _ = strconv.Atoi(os.Getenv(verboseEnv))
 	}
+	klogInit(*verbosity)
 	SetVerbose(*verbosity)
 }
 
@@ -46,4 +47,5 @@ func SetVerbose(level int) {
 		level = 0
 	}
 	stdr.SetVerbosity(level)
+	klogVerbose(level)
 }

@@ -44,7 +44,7 @@ var Domain = domain{}
 // Missing VERSION implies "v1", if present VERSION must follow the [Kubernetes version patterns].
 // Missing GROUP implies the core group.
 //
-// Examples: `k8s:Pod`, `ks8:Pod/v1`, `k8s:Deployment.apps`, `k8s:Deployment.apps/v1`, `k8s:Route.route.openshift.io/v1`
+// Examples: `k8s:Pod`, `ks8:Pod.v1`, `k8s:Deployment.apps`, `k8s:Deployment.v1.apps`, `k8s:Route.v1.route.openshift.io`
 //
 // [Kubernetes version patterns]: https://kubernetes.io/docs/tasks/extend-kubernetes/custom-resources/custom-resource-definition-versioning/#version-priority
 type Class schema.GroupVersionKind
