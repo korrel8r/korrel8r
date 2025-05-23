@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 _Note unreleased changes on main here pending the next release_
 
+## [0.8.1] - 2025-05-23
+
+### Added
+- Support for logs stored in the OTEL format.
+- Log output from k8s/client-go package included in logs.
+
 ## [0.8.0] - 2025-02-12
 
 ### Changed
