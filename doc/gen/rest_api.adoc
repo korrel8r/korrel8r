@@ -1,753 +1,954 @@
+= Korrel8r REST API
+
+== Introduction
+Generate graphs showing correlations between resources and observability signals in a cluster.
 
 
-= REST API
-
-REST API for the Korrel8r correlation engine.
+// markup not found, no include::{specDir}intro.adoc[opts=optional]
 
 
-Version:: v1alpha1
 
-License:: https://github.com/korrel8r/korrel8r/blob/main/LICENSE[Apache 2.0]
-Contact:: Project Korrel8r  https://github.com/korrel8r/korrel8r
+== Endpoints
 
-== Content negotiation
-URI Schemes::
-* http
-* https
-Consumes::
+
+[.Default]
+=== Default
+
+
+[.graphGoals]
+==== graphGoals
+
+`POST /graphs/goals`
+
+Create a correlation graph from start objects to goal queries.
+
+===== Description
+
+
+
+
+// markup not found, no include::{specDir}graphs/goals/POST/spec.adoc[opts=optional]
+
+
+
+===== Parameters
+
+
+====== Body Parameter
+
+[cols="2,3,1,1,1"]
+|===
+|Name| Description| Required| Default| Pattern
+
+| request
+| search from start to goal classes <<Goals>>
+| X
+| 
+| 
+
+|===
+
+
+
+====== Query Parameters
+
+[cols="2,3,1,1,1"]
+|===
+|Name| Description| Required| Default| Pattern
+
+| rules
+| include rules in graph edges 
+| -
+| false
+| 
+
+|===
+
+
+===== Return Type
+
+<<Graph>>
+
+
+===== Content Type
+
 * application/json
-Produces::
+
+===== Responses
+
+.HTTP Response Codes
+[cols="2,3,1"]
+|===
+| Code | Message | Datatype
+
+
+| 200
+| OK
+|  <<Graph>>
+
+
+| 206
+| interrupted, partial result
+|  <<Graph>>
+
+
+| 400
+| invalid parameters
+|  <<Error>>
+
+
+| 404
+| result not found
+|  <<Error>>
+
+|===
+
+===== Samples
+
+
+// markup not found, no include::{snippetDir}graphs/goals/POST/http-request.adoc[opts=optional]
+
+
+// markup not found, no include::{snippetDir}graphs/goals/POST/http-response.adoc[opts=optional]
+
+
+
+// file not found, no * wiremock data link :graphs/goals/POST/POST.json[]
+
+
+ifdef::internal-generation[]
+===== Implementation
+
+// markup not found, no include::{specDir}graphs/goals/POST/implementation.adoc[opts=optional]
+
+
+endif::internal-generation[]
+
+
+[.graphNeighbours]
+==== graphNeighbours
+
+`POST /graphs/neighbours`
+
+Create a neighbourhood graph around a start object to a given depth.
+
+===== Description
+
+
+
+
+// markup not found, no include::{specDir}graphs/neighbours/POST/spec.adoc[opts=optional]
+
+
+
+===== Parameters
+
+
+====== Body Parameter
+
+[cols="2,3,1,1,1"]
+|===
+|Name| Description| Required| Default| Pattern
+
+| request
+| search from neighbours <<Neighbours>>
+| X
+| 
+| 
+
+|===
+
+
+
+====== Query Parameters
+
+[cols="2,3,1,1,1"]
+|===
+|Name| Description| Required| Default| Pattern
+
+| rules
+| include rules in graph edges 
+| -
+| false
+| 
+
+|===
+
+
+===== Return Type
+
+<<Graph>>
+
+
+===== Content Type
+
 * application/json
 
-== Endpoints by group
+===== Responses
 
-===  operations
-
-[%autowidth]
+.HTTP Response Codes
+[cols="2,3,1"]
 |===
-| Method  | URI     | Name   | Summary
+| Code | Message | Datatype
 
-| GET | /api/v1alpha1/domains | link:#id-get-domains[get domains] | Get name, configuration and status for each domain.
 
-| GET | /api/v1alpha1/objects | link:#id-get-objects[get objects] | Execute a query, returns a list of JSON objects.
+| 200
+| OK
+|  <<Graph>>
 
-| POST | /api/v1alpha1/graphs/goals | link:#id-post-graphs-goals[post graphs goals] | Create a correlation graph from start objects to goal queries.
 
-| POST | /api/v1alpha1/graphs/neighbours | link:#id-post-graphs-neighbours[post graphs neighbours] | Create a neighbourhood graph around a start object to a given depth.
+| 206
+| interrupted, partial result
+|  <<Graph>>
 
-| POST | /api/v1alpha1/lists/goals | link:#id-post-lists-goals[post lists goals] | Create a list of goal nodes related to a starting point.
 
-| PUT | /api/v1alpha1/config | link:#id-put-config[put config] | Change key configuration settings at runtime.
+| 400
+| invalid parameters
+|  <<Error>>
 
-|===
 
-== Paths
-
-[id=id-get-domains]
-=== Get name, configuration and status for each domain.
-
-----
-GET /api/v1alpha1/domains
-----
-
-==== All responses
-
-[%autowidth]
-|===
-| Code | Status | Description | Has headers | Schema
-
-| link:#get-domains-200[200] | OK | OK |  | link:#get-domains-200-schema[schema]
-
-| link:#get-domains-400[400] | Bad Request | invalid parameters |  | link:#get-domains-400-schema[schema]
-
-| link:#get-domains-404[404] | Not Found | result not found |  | link:#get-domains-404-schema[schema]
+| 404
+| result not found
+|  <<Error>>
 
 |===
 
-==== Responses
-  
+===== Samples
 
-[id=get-domains-200]
-=====  200 - OK
-Status: OK
 
-[id=get-domains-200-schema]
-====== Schema
+// markup not found, no include::{snippetDir}graphs/neighbours/POST/http-request.adoc[opts=optional]
 
-  
 
-[]link:#domain[Domain]
+// markup not found, no include::{snippetDir}graphs/neighbours/POST/http-response.adoc[opts=optional]
 
-[id=get-domains-400]
-=====  400 - invalid parameters
-Status: Bad Request
 
-[id=get-domains-400-schema]
-====== Schema
 
-  
+// file not found, no * wiremock data link :graphs/neighbours/POST/POST.json[]
 
-link:#error)[Error]
 
-[id=get-domains-404]
-=====  404 - result not found
-Status: Not Found
+ifdef::internal-generation[]
+===== Implementation
 
-[id=get-domains-404-schema]
-====== Schema
+// markup not found, no include::{specDir}graphs/neighbours/POST/implementation.adoc[opts=optional]
 
-  
 
-link:#error)[Error]
+endif::internal-generation[]
 
-[id=id-get-objects]
-=== Execute a query, returns a list of JSON objects.
 
-----
-GET /api/v1alpha1/objects
-----
+[.listDomains]
+==== listDomains
 
-==== Parameters
+`GET /domains`
 
-[%autowidth]
+Get the list of correlation domains.
+
+===== Description
+
+
+
+
+// markup not found, no include::{specDir}domains/GET/spec.adoc[opts=optional]
+
+
+
+===== Parameters
+
+
+
+
+
+
+
+===== Return Type
+
+array[<<Domain>>]
+
+
+===== Content Type
+
+* application/json
+
+===== Responses
+
+.HTTP Response Codes
+[cols="2,3,1"]
 |===
-| Name | Source | Type | Go type | Separator | Required | Default | Description
+| Code | Message | Datatype
+
+
+| 200
+| OK
+| List[<<Domain>>] 
+
+
+| 400
+| invalid parameters
+|  <<Error>>
+
+
+| 404
+| result not found
+|  <<Error>>
+
+|===
+
+===== Samples
+
+
+// markup not found, no include::{snippetDir}domains/GET/http-request.adoc[opts=optional]
+
+
+// markup not found, no include::{snippetDir}domains/GET/http-response.adoc[opts=optional]
+
+
+
+// file not found, no * wiremock data link :domains/GET/GET.json[]
+
+
+ifdef::internal-generation[]
+===== Implementation
+
+// markup not found, no include::{specDir}domains/GET/implementation.adoc[opts=optional]
+
+
+endif::internal-generation[]
+
+
+[.listGoals]
+==== listGoals
+
+`POST /lists/goals`
+
+Create a list of goal nodes related to a starting point.
+
+===== Description
+
+
+
+
+// markup not found, no include::{specDir}lists/goals/POST/spec.adoc[opts=optional]
+
+
+
+===== Parameters
+
+
+====== Body Parameter
+
+[cols="2,3,1,1,1"]
+|===
+|Name| Description| Required| Default| Pattern
+
+| request
+| search from start to goal classes <<Goals>>
+| X
+| 
+| 
+
+|===
+
+
+
+
+
+===== Return Type
+
+array[<<Node>>]
+
+
+===== Content Type
+
+* application/json
+
+===== Responses
+
+.HTTP Response Codes
+[cols="2,3,1"]
+|===
+| Code | Message | Datatype
+
+
+| 200
+| OK
+| List[<<Node>>] 
+
+
+| 400
+| invalid parameters
+|  <<Error>>
+
+
+| 404
+| result not found
+|  <<Error>>
+
+|===
+
+===== Samples
+
+
+// markup not found, no include::{snippetDir}lists/goals/POST/http-request.adoc[opts=optional]
+
+
+// markup not found, no include::{snippetDir}lists/goals/POST/http-response.adoc[opts=optional]
+
+
+
+// file not found, no * wiremock data link :lists/goals/POST/POST.json[]
+
+
+ifdef::internal-generation[]
+===== Implementation
+
+// markup not found, no include::{specDir}lists/goals/POST/implementation.adoc[opts=optional]
+
+
+endif::internal-generation[]
+
+
+[.query]
+==== query
+
+`GET /objects`
+
+Execute a query, returns a list of JSON objects.
+
+===== Description
+
+
+
+
+// markup not found, no include::{specDir}objects/GET/spec.adoc[opts=optional]
+
+
+
+===== Parameters
+
+
+
+
+
+====== Query Parameters
+
+[cols="2,3,1,1,1"]
+|===
+|Name| Description| Required| Default| Pattern
 
 | query
-| `query`
-| string
-| `string`
+| query string 
+| X
+| null
 | 
-| required
-|  
-| query string
 
 |===
 
-==== All responses
 
-[%autowidth]
+===== Return Type
+
+
+<<List>>
+
+
+===== Content Type
+
+* application/json
+
+===== Responses
+
+.HTTP Response Codes
+[cols="2,3,1"]
 |===
-| Code | Status | Description | Has headers | Schema
+| Code | Message | Datatype
 
-| link:#get-objects-200[200] | OK | OK |  | link:#get-objects-200-schema[schema]
 
-| link:#get-objects-400[400] | Bad Request | invalid parameters |  | link:#get-objects-400-schema[schema]
+| 200
+| OK
+| List[<<AnyType>>] 
 
-| link:#get-objects-404[404] | Not Found | result not found |  | link:#get-objects-404-schema[schema]
 
-|===
+| 400
+| invalid parameters
+|  <<Error>>
 
-==== Responses
-  
 
-[id=get-objects-200]
-=====  200 - OK
-Status: OK
-
-[id=get-objects-200-schema]
-====== Schema
-
-  
-
-[]link:#interface[interface{}]
-
-[id=get-objects-400]
-=====  400 - invalid parameters
-Status: Bad Request
-
-[id=get-objects-400-schema]
-====== Schema
-
-  
-
-link:#error)[Error]
-
-[id=get-objects-404]
-=====  404 - result not found
-Status: Not Found
-
-[id=get-objects-404-schema]
-====== Schema
-
-  
-
-link:#error)[Error]
-
-[id=id-post-graphs-goals]
-=== Create a correlation graph from start objects to goal queries.
-
-----
-POST /api/v1alpha1/graphs/goals
-----
-
-==== Parameters
-
-[%autowidth]
-|===
-| Name | Source | Type | Go type | Separator | Required | Default | Description
-
-| rules
-| `query`
-| boolean
-| `bool`
-| 
-| optional
-|  
-| include rules in graph edges
-
-| request | `body` | link:#goals[Goals] | `models.Goals` | | ✓ | | search from start to goal classes
+| 404
+| result not found
+|  <<Error>>
 
 |===
 
-==== All responses
+===== Samples
 
-[%autowidth]
+
+// markup not found, no include::{snippetDir}objects/GET/http-request.adoc[opts=optional]
+
+
+// markup not found, no include::{snippetDir}objects/GET/http-response.adoc[opts=optional]
+
+
+
+// file not found, no * wiremock data link :objects/GET/GET.json[]
+
+
+ifdef::internal-generation[]
+===== Implementation
+
+// markup not found, no include::{specDir}objects/GET/implementation.adoc[opts=optional]
+
+
+endif::internal-generation[]
+
+
+[.setConfig]
+==== setConfig
+
+`PUT /config`
+
+Change configuration settings at runtime.
+
+===== Description
+
+
+
+
+// markup not found, no include::{specDir}config/PUT/spec.adoc[opts=optional]
+
+
+
+===== Parameters
+
+
+
+
+
+====== Query Parameters
+
+[cols="2,3,1,1,1"]
 |===
-| Code | Status | Description | Has headers | Schema
-
-| link:#post-graphs-goals-200[200] | OK | OK |  | link:#post-graphs-goals-200-schema[schema]
-
-| link:#post-graphs-goals-206[206] | Partial Content | interrupted, partial result |  | link:#post-graphs-goals-206-schema[schema]
-
-| link:#post-graphs-goals-400[400] | Bad Request | invalid parameters |  | link:#post-graphs-goals-400-schema[schema]
-
-| link:#post-graphs-goals-404[404] | Not Found | result not found |  | link:#post-graphs-goals-404-schema[schema]
-
-|===
-
-==== Responses
-  
-
-[id=post-graphs-goals-200]
-=====  200 - OK
-Status: OK
-
-[id=post-graphs-goals-200-schema]
-====== Schema
-
-  
-
-link:#graph)[Graph]
-
-[id=post-graphs-goals-206]
-=====  206 - interrupted, partial result
-Status: Partial Content
-
-[id=post-graphs-goals-206-schema]
-====== Schema
-
-  
-
-link:#graph)[Graph]
-
-[id=post-graphs-goals-400]
-=====  400 - invalid parameters
-Status: Bad Request
-
-[id=post-graphs-goals-400-schema]
-====== Schema
-
-  
-
-link:#error)[Error]
-
-[id=post-graphs-goals-404]
-=====  404 - result not found
-Status: Not Found
-
-[id=post-graphs-goals-404-schema]
-====== Schema
-
-  
-
-link:#error)[Error]
-
-[id=id-post-graphs-neighbours]
-=== Create a neighbourhood graph around a start object to a given depth.
-
-----
-POST /api/v1alpha1/graphs/neighbours
-----
-
-==== Parameters
-
-[%autowidth]
-|===
-| Name | Source | Type | Go type | Separator | Required | Default | Description
-
-| rules
-| `query`
-| boolean
-| `bool`
-| 
-| optional
-|  
-| include rules in graph edges
-
-| request | `body` | link:#neighbours[Neighbours] | `models.Neighbours` | | ✓ | | search from neighbours
-
-|===
-
-==== All responses
-
-[%autowidth]
-|===
-| Code | Status | Description | Has headers | Schema
-
-| link:#post-graphs-neighbours-200[200] | OK | OK |  | link:#post-graphs-neighbours-200-schema[schema]
-
-| link:#post-graphs-neighbours-206[206] | Partial Content | interrupted, partial result |  | link:#post-graphs-neighbours-206-schema[schema]
-
-| link:#post-graphs-neighbours-400[400] | Bad Request | invalid parameters |  | link:#post-graphs-neighbours-400-schema[schema]
-
-| link:#post-graphs-neighbours-404[404] | Not Found | result not found |  | link:#post-graphs-neighbours-404-schema[schema]
-
-|===
-
-==== Responses
-  
-
-[id=post-graphs-neighbours-200]
-=====  200 - OK
-Status: OK
-
-[id=post-graphs-neighbours-200-schema]
-====== Schema
-
-  
-
-link:#graph)[Graph]
-
-[id=post-graphs-neighbours-206]
-=====  206 - interrupted, partial result
-Status: Partial Content
-
-[id=post-graphs-neighbours-206-schema]
-====== Schema
-
-  
-
-link:#graph)[Graph]
-
-[id=post-graphs-neighbours-400]
-=====  400 - invalid parameters
-Status: Bad Request
-
-[id=post-graphs-neighbours-400-schema]
-====== Schema
-
-  
-
-link:#error)[Error]
-
-[id=post-graphs-neighbours-404]
-=====  404 - result not found
-Status: Not Found
-
-[id=post-graphs-neighbours-404-schema]
-====== Schema
-
-  
-
-link:#error)[Error]
-
-[id=id-post-lists-goals]
-=== Create a list of goal nodes related to a starting point.
-
-----
-POST /api/v1alpha1/lists/goals
-----
-
-==== Parameters
-
-[%autowidth]
-|===
-| Name | Source | Type | Go type | Separator | Required | Default | Description
-
-| request | `body` | link:#goals[Goals] | `models.Goals` | | ✓ | | search from start to goal classes
-
-|===
-
-==== All responses
-
-[%autowidth]
-|===
-| Code | Status | Description | Has headers | Schema
-
-| link:#post-lists-goals-200[200] | OK | OK |  | link:#post-lists-goals-200-schema[schema]
-
-| link:#post-lists-goals-400[400] | Bad Request | invalid parameters |  | link:#post-lists-goals-400-schema[schema]
-
-| link:#post-lists-goals-404[404] | Not Found | result not found |  | link:#post-lists-goals-404-schema[schema]
-
-|===
-
-==== Responses
-  
-
-[id=post-lists-goals-200]
-=====  200 - OK
-Status: OK
-
-[id=post-lists-goals-200-schema]
-====== Schema
-
-  
-
-[]link:#node[Node]
-
-[id=post-lists-goals-400]
-=====  400 - invalid parameters
-Status: Bad Request
-
-[id=post-lists-goals-400-schema]
-====== Schema
-
-  
-
-link:#error)[Error]
-
-[id=post-lists-goals-404]
-=====  404 - result not found
-Status: Not Found
-
-[id=post-lists-goals-404-schema]
-====== Schema
-
-  
-
-link:#error)[Error]
-
-[id=id-put-config]
-=== Change key configuration settings at runtime.
-
-----
-PUT /api/v1alpha1/config
-----
-
-==== Parameters
-
-[%autowidth]
-|===
-| Name | Source | Type | Go type | Separator | Required | Default | Description
+|Name| Description| Required| Default| Pattern
 
 | verbose
-| `query`
-| integer
-| `int64`
+| Verbose setting for logging. 
+| -
+| null
 | 
-| optional
-|  
-| verbose setting for logging
 
 |===
 
-==== All responses
 
-[%autowidth]
+===== Return Type
+
+
+
+-
+
+
+===== Responses
+
+.HTTP Response Codes
+[cols="2,3,1"]
 |===
-| Code | Status | Description | Has headers | Schema
+| Code | Message | Datatype
 
-| link:#put-config-200[200] | OK | OK |  | link:#put-config-200-schema[schema]
 
-| link:#put-config-default[default] | |  |  | link:#put-config-default-schema[schema]
+| 200
+| OK
+|  <<>>
 
 |===
 
-==== Responses
-  
-
-[id=put-config-200]
-=====  200 - OK
-Status: OK
-
-[id=put-config-200-schema]
-====== Schema
-
-[id=put-config-default]
-===== Default Response
+===== Samples
 
 
-[id=put-config-default-schema]
-====== Schema
+// markup not found, no include::{snippetDir}config/PUT/http-request.adoc[opts=optional]
 
-  
 
-any
+// markup not found, no include::{snippetDir}config/PUT/http-response.adoc[opts=optional]
 
+
+
+// file not found, no * wiremock data link :config/PUT/PUT.json[]
+
+
+ifdef::internal-generation[]
+===== Implementation
+
+// markup not found, no include::{specDir}config/PUT/implementation.adoc[opts=optional]
+
+
+endif::internal-generation[]
+
+
+[#models]
 == Models
 
-[id=id-constraint]
-=== Constraint
+
+[#Constraint]
+=== _Constraint_ 
+
+Constrains the objects that will be included in search results.
 
 
-Constraint constrains the objects that will be included in search results.
-  
-
-
-
-
-
-**Properties**
-
-[%autowidth]
+[.fields-Constraint]
+[cols="2,1,1,2,4,1"]
 |===
-| Name | Type | Go type | Required | Default | Description | Example
+| Field Name| Required| Nullable | Type| Description | Format
 
-	| end | date-time (formatted string)| `strfmt.DateTime` |  | | End of time interval, quoted RFC 3339 format. | 
+| start
+| 
+| 
+|   Date  
+| Start of time interval.
+| date-time    
 
-	| limit | integer| `int64` |  | | Limit number of objects returned per query, <=0 means no limit. | 
+| end
+| 
+| 
+|   Date  
+| End of time interval.
+| date-time    
 
-	| start | date-time (formatted string)| `strfmt.DateTime` |  | | Start of time interval, quoted RFC 3339 format. | 
+| limit
+| 
+| 
+|   Integer  
+| Limit number of objects returned per query.
+|     
 
-	| timeout | string| `string` |  | | Timeout per request, h/m/s/ms/ns format | 
+| timeout
+| 
+| 
+|   String  
+| Timeout per request, h/m/s/ms/ns format
+|     
 
 |===
 
-[id=id-domain]
-=== Domain
 
+
+[#Domain]
+=== _Domain_ 
 
 Domain configuration information.
-  
 
 
-
-
-
-**Properties**
-
-[%autowidth]
+[.fields-Domain]
+[cols="2,1,1,2,4,1"]
 |===
-| Name | Type | Go type | Required | Default | Description | Example
+| Field Name| Required| Nullable | Type| Description | Format
 
-	| name | string| `string` |  | | Name of the domain. | 
+| name
+| X
+| 
+|   String  
+| Name of the domain.
+|     
 
-	| stores | []link:#store[Store]| `[]Store` |  | | Stores configured for the domain. | 
+| stores
+| 
+| 
+|   List   of <<Store>>
+| Stores configured for the domain.
+|     
 
 |===
 
-[id=id-edge]
-=== Edge
 
+
+[#Edge]
+=== _Edge_ 
 
 Directed edge in the result graph, from Start to Goal classes.
-  
 
 
-
-
-
-**Properties**
-
-[%autowidth]
+[.fields-Edge]
+[cols="2,1,1,2,4,1"]
 |===
-| Name | Type | Go type | Required | Default | Description | Example
+| Field Name| Required| Nullable | Type| Description | Format
 
-	| goal | string| `string` |  | | Goal is the class name of the goal node. | `domain:class`
+| start
+| X
+| 
+|   String  
+| Class name of the start node.
+|     
 
-	| rules | []link:#rule[Rule]| `[]*Rule` |  | | Rules is the set of rules followed along this edge. | 
+| goal
+| X
+| 
+|   String  
+| Class name of the goal node.
+|     
 
-	| start | string| `string` |  | | Start is the class name of the start node. | 
+| rules
+| 
+| 
+|   List   of <<Rule>>
+| Set of rules followed along this edge.
+|     
 
 |===
 
-[id=id-error]
-=== Error
 
+
+[#Error]
+=== _Error_ 
 
 Error result containing an error message.
-  
 
 
-
-
-
-**Properties**
-
-[%autowidth]
+[.fields-Error]
+[cols="2,1,1,2,4,1"]
 |===
-| Name | Type | Go type | Required | Default | Description | Example
+| Field Name| Required| Nullable | Type| Description | Format
 
-	| error | string| `string` |  | |  | 
+| error
+| X
+| 
+|   String  
+| Error message.
+|     
 
 |===
 
-[id=id-goals]
-=== Goals
 
+
+[#Goals]
+=== _Goals_ 
 
 Starting point for a goals search.
-  
 
 
-
-
-
-**Properties**
-
-[%autowidth]
+[.fields-Goals]
+[cols="2,1,1,2,4,1"]
 |===
-| Name | Type | Go type | Required | Default | Description | Example
+| Field Name| Required| Nullable | Type| Description | Format
 
-	| goals | []string| `[]string` |  | | Goal classes for correlation. | `["domain:class"]`
+| goals
+| X
+| 
+|   List   of <<string>>
+| Goal classes for correlation.
+|     
 
-	| start | link:#start[Start]| `Start` |  | |  | 
+| start
+| X
+| 
+| <<Start>>    
+| 
+|     
 
 |===
 
-[id=id-graph]
-=== Graph
 
+
+[#Graph]
+=== _Graph_ 
 
 Graph resulting from a correlation search.
-  
 
 
-
-
-
-**Properties**
-
-[%autowidth]
+[.fields-Graph]
+[cols="2,1,1,2,4,1"]
 |===
-| Name | Type | Go type | Required | Default | Description | Example
+| Field Name| Required| Nullable | Type| Description | Format
 
-	| edges | []link:#edge[Edge]| `[]*Edge` |  | |  | 
+| edges
+| 
+| 
+|   List   of <<Edge>>
+| List of graph edges.
+|     
 
-	| nodes | []link:#node[Node]| `[]*Node` |  | |  | 
+| nodes
+| 
+| 
+|   List   of <<Node>>
+| List of graph nodes.
+|     
 
 |===
 
-[id=id-neighbours]
-=== Neighbours
 
+
+[#Neighbours]
+=== _Neighbours_ 
 
 Starting point for a neighbours search.
-  
 
 
-
-
-
-**Properties**
-
-[%autowidth]
+[.fields-Neighbours]
+[cols="2,1,1,2,4,1"]
 |===
-| Name | Type | Go type | Required | Default | Description | Example
+| Field Name| Required| Nullable | Type| Description | Format
 
-	| depth | integer| `int64` |  | | Max depth of neighbours graph. | 
+| depth
+| X
+| 
+|   Integer  
+| Max depth of neighbours graph.
+|     
 
-	| start | link:#start[Start]| `Start` |  | |  | 
+| start
+| X
+| 
+| <<Start>>    
+| 
+|     
 
 |===
 
-[id=id-node]
-=== Node
 
+
+[#Node]
+=== _Node_ 
 
 Node in the result graph, contains results for a single class.
-  
 
 
-
-
-
-**Properties**
-
-[%autowidth]
+[.fields-Node]
+[cols="2,1,1,2,4,1"]
 |===
-| Name | Type | Go type | Required | Default | Description | Example
+| Field Name| Required| Nullable | Type| Description | Format
 
-	| class | string| `string` |  | | Class is the full class name in "DOMAIN:CLASS" form. | `domain:class`
+| class
+| X
+| 
+|   String  
+| Full class name
+| domain:class    
 
-	| count | integer| `int64` |  | | Count of results found for this class, after de-duplication. | 
+| count
+| 
+| 
+|   Integer  
+| Number of results for this class, after de-duplication.
+|     
 
-	| queries | []link:#query-count[QueryCount]| `[]*QueryCount` |  | | Queries yielding results for this class. | 
-
-|===
-
-[id=id-query-count]
-=== QueryCount
-
-
-Query run during a correlation with a count of results found.
-  
-
-
-
-
-
-**Properties**
-
-[%autowidth]
-|===
-| Name | Type | Go type | Required | Default | Description | Example
-
-	| count | integer| `int64` |  | | Count of results or -1 if the query was not executed. | 
-
-	| query | string| `string` |  | | Query for correlation data. | 
+| queries
+| 
+| 
+|   List   of <<QueryCount>>
+| Queries yielding results for this class.
+|     
 
 |===
 
-[id=id-rule]
-=== Rule
 
+
+[#QueryCount]
+=== _QueryCount_ 
+
+Query with number of results.
+
+
+[.fields-QueryCount]
+[cols="2,1,1,2,4,1"]
+|===
+| Field Name| Required| Nullable | Type| Description | Format
+
+| count
+| 
+| 
+|   Integer  
+| Number of results, omitted if the query was not executed.
+|     
+
+| query
+| X
+| 
+|   String  
+| Query for correlation data.
+|     
+
+|===
+
+
+
+[#Rule]
+=== _Rule_ 
 
 Rule is a correlation rule with a list of queries and results counts found during navigation.
-  
 
 
-
-
-
-**Properties**
-
-[%autowidth]
+[.fields-Rule]
+[cols="2,1,1,2,4,1"]
 |===
-| Name | Type | Go type | Required | Default | Description | Example
+| Field Name| Required| Nullable | Type| Description | Format
 
-	| name | string| `string` |  | | Name is an optional descriptive name. | 
+| name
+| X
+| 
+|   String  
+| Name is an optional descriptive name.
+|     
 
-	| queries | []link:#query-count[QueryCount]| `[]*QueryCount` |  | | Queries generated while following this rule. | 
+| queries
+| 
+| 
+|   List   of <<QueryCount>>
+| Queries generated while following this rule.
+|     
 
 |===
 
-[id=id-start]
-=== Start
 
+
+[#Start]
+=== _Start_ 
 
 Start identifies a set of starting objects for correlation.
-  
 
 
-
-
-
-**Properties**
-
-[%autowidth]
+[.fields-Start]
+[cols="2,1,1,2,4,1"]
 |===
-| Name | Type | Go type | Required | Default | Description | Example
+| Field Name| Required| Nullable | Type| Description | Format
 
-	| class | string| `string` |  | | Class for `objects` | 
+| class
+| 
+| 
+|   String  
+| Class of starting objects and queries.
+|     
 
-	| constraint | link:#constraint[Constraint]| `Constraint` |  | |  | 
+| constraint
+| 
+| 
+| <<Constraint>>    
+| 
+|     
 
-	| objects | link:#interface[interface{}]| `interface{}` |  | | Objects of `class` serialized as JSON | 
+| objects
+| 
+| 
+|   List   of <<map>>
+| Objects serialized as JSON.
+|     
 
-	| queries | []string| `[]string` |  | | Queries for starting objects | 
+| queries
+| 
+| 
+|   List   of <<string>>
+| Queries for starting objects
+|     
 
 |===
 
-[id=id-store]
-=== Store
 
+
+[#Store]
+=== _Store_ 
 
 Store is a map of name:value attributes used to connect to a store.
-  
+
+
+[.fields-Store]
+[cols="2,1,1,2,4,1"]
+|===
+| Field Name| Required| Nullable | Type| Description | Format
+
+|===
 
 
 
-link:#store[Store]

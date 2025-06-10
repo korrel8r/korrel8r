@@ -19,6 +19,7 @@ import (
 	"sync/atomic"
 
 	"github.com/korrel8r/korrel8r/internal/pkg/test"
+	"github.com/korrel8r/korrel8r/pkg/ptr"
 	"github.com/korrel8r/korrel8r/pkg/rest"
 
 	"github.com/stretchr/testify/assert"
@@ -43,7 +44,8 @@ func startServer(t *testing.T, h *http.Client, scheme string, args ...string) *u
 	t.Cleanup(func() {
 		_ = cmd.Process.Kill()
 	})
-	return &url.URL{Scheme: scheme, Host: addr, Path: rest.BasePath}
+	basePath, _ := rest.Spec().Servers.BasePath()
+	return &url.URL{Scheme: scheme, Host: addr, Path: basePath}
 }
 
 func request(t *testing.T, h *http.Client, method, url, body string) (string, error) {
@@ -60,11 +62,10 @@ func request(t *testing.T, h *http.Client, method, url, body string) (string, er
 	if err != nil {
 		return "", err
 	}
+	b, err := io.ReadAll(res.Body)
 	if res.StatusCode/100 != 2 {
-		b, _ := io.ReadAll(res.Body)
 		return "", fmt.Errorf("%v: %v", res.Status, string(b))
 	}
-	b, err := io.ReadAll(res.Body)
 	if err != nil {
 		return "", err
 	}
@@ -115,8 +116,8 @@ const testRequest = `{  "depth": 1, "start": { "queries": [ "mock:foo:x" ] }}`
 
 var testResponse = rest.Normalize(rest.Graph{
 	Nodes: []rest.Node{
-		{Class: "mock:foo", Queries: []rest.QueryCount{{Query: "mock:foo:x", Count: 1}}, Count: 1},
-		{Class: "mock:bar", Queries: []rest.QueryCount{{Query: "mock:bar:y", Count: 1}}, Count: 1}},
+		{Class: "mock:foo", Queries: []rest.QueryCount{{Query: "mock:foo:x", Count: ptr.To(1)}}, Count: ptr.To(1)},
+		{Class: "mock:bar", Queries: []rest.QueryCount{{Query: "mock:bar:y", Count: ptr.To(1)}}, Count: ptr.To(1)}},
 	Edges: []rest.Edge{{Start: "mock:foo", Goal: "mock:bar", Rules: []rest.Rule(nil)}},
 })
 
@@ -133,7 +134,7 @@ func TestMain_concurrent_requests(t *testing.T) {
 	u := startServer(t, http.DefaultClient, "http", "-c", "testdata/korrel8r.yaml").String()
 	workers := sync.WaitGroup{}
 	failed := atomic.Uint32{}
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		workers.Add(1)
 		go func() {
 			defer workers.Done()

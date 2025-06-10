@@ -12,7 +12,7 @@ import (
 
 // Printer prints godoc comments in asciidoc format.
 //
-// Based on [https://cs.opensource.google/go/go/+/refs/tags/go1.23.2:src/go/doc/comment/markdown.go]
+// Based on go library: src/go/doc/comment/markdown.go
 type Printer struct {
 	*comment.Printer
 	raw bytes.Buffer // Temporary buffer

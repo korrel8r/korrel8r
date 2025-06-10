@@ -33,22 +33,23 @@ _cover:
 
 # Generated files
 VERSION_TXT=internal/pkg/build/version.txt
-SWAGGER_SPEC=pkg/rest/docs/swagger.json
-GEN_SRC=$(VERSION_TXT) $(SWAGGER_SPEC) _cover
+OPENAPI_SPEC=doc/korrel8r-openapi.yaml
+
+generate: $(VERSION_TXT) pkg/rest/oapi-codegen.go _cover
 
 all: lint test _site image-build ## Build and test everything locally. Recommended before pushing.
 
-build: $(GEN_SRC) $(BIN)				## Build korrel8r executable.
+build: generate $(BIN)				## Build korrel8r executable.
 	go build -o $(BIN)/korrel8r ./cmd/korrel8r
 
-install: $(GEN_SRC)							## Build and install korrel8r with go install.
+install: generate							## Build and install korrel8r with go install.
 	go install ./cmd/korrel8r
 
-run: $(GEN_SRC)									## Run `korrel8r web` for debugging.
+run: generate									## Run `korrel8r web` for debugging.
 	go run ./cmd/korrel8r web -c $(CONFIG) $(KORREL8R_FLAGS)
 
 clean: ## Remove generated files, including checked-in files.
-	rm -rf _site $(GEN_SRC) doc/gen tmp $(BIN) $(GOCOVERDIR)
+	rm -rf _site generate doc/gen tmp $(BIN) $(GOCOVERDIR)
 
 ifneq ($(VERSION),$(file <$(VERSION_TXT)))
 .PHONY: $(VERSION_TXT) # Force update if VERSION_TXT does not match $(VERSION)
@@ -56,18 +57,15 @@ endif
 $(VERSION_TXT):
 	echo $(VERSION) > $@
 
-$(SWAGGER_SPEC): $(wildcard pkg/rest/*.go) $(SWAG)
-	@rm -f $@; mkdir -p $(dir $@)
-	$(SWAG) init -q -g pkg/rest/operations.go -o $(dir $@)
-	$(SWAG) fmt pkg/rest
-	@touch $@
+pkg/rest/oapi-codegen.go: $(OPENAPI_SPEC) $(OAPI_CODEGEN)
+	$(OAPI_CODEGEN) -generate types,gin,spec -package rest -o $@ $<
 
 SHELLCHECK:= $(BIN)/shellcheck
 $(SHELLCHECK):
 	@mkdir -p $(dir $@)
 	./hack/install-shellcheck.sh $(BIN) 0.10.0
 
-lint: $(GEN_SRC) $(GOLANGCI_LINT) $(SHFMT) $(SHELLCHECK) ## Run the linter to find and fix code style problems.
+lint: generate $(GOLANGCI_LINT) $(SHFMT) $(SHELLCHECK) ## Run the linter to find and fix code style problems.
 	hack/copyright.sh
 	go mod tidy
 	$(GOLANGCI_LINT) run --fix
@@ -75,10 +73,10 @@ lint: $(GEN_SRC) $(GOLANGCI_LINT) $(SHFMT) $(SHELLCHECK) ## Run the linter to fi
 	$(SHELLCHECK) -x -S style hack/*.sh
 
 .PHONY: test
-test: $(GEN_SRC)		## Run all tests, no cache. Requires an openshift cluster.
+test: generate		## Run all tests, no cache. Requires an openshift cluster.
 	go test -fullpath -race ./...
 
-test-no-cluster: $(GEN_SRC)	## Run all tests that don't require an openshift cluster.
+test-no-cluster: generate	## Run all tests that don't require an openshift cluster.
 	go test -fullpath -race -skip '.*/Openshift' ./...
 
 cover:  $(GOCOVERDIR) ## Run tests with accumulated coverage stats in _cover.
@@ -88,13 +86,13 @@ cover:  $(GOCOVERDIR) ## Run tests with accumulated coverage stats in _cover.
 	@echo == Aggregate coverage across all tests.
 	go tool covdata percent -i $(GOCOVERDIR)
 
-bench: $(GEN_SRC)	$(BENCHSTAT)	## Run all benchmarks.
+bench: generate	$(BENCHSTAT)	## Run all benchmarks.
 	go test -fullpath -bench=. -run=NONE ./... > _bench-$(shell date +%s).txt ; $(BENCHSTAT) _bench-*.txt
 
 $(GOCOVERDIR):
 	@mkdir -p $@
 
-image-build:  $(GEN_SRC) ## Build image locally, don't push.
+image-build:  generate ## Build image locally, don't push.
 	$(IMGTOOL) build --tag=$(IMAGE) -f Containerfile .
 
 image: image-build ## Build and push image. IMG must be set to a writable image repository.
@@ -154,13 +152,17 @@ doc: doc/gen/domains.adoc doc/gen/rest_api.adoc doc/gen/cmd
 
 DOMAINS=$(shell echo pkg/domains/*/ | xargs basename -a)
 DOMAIN_PKGS=$(foreach D,$(DOMAINS),github.com/korrel8r/korrel8r/pkg/domains/$(D))
-doc/gen/domains.adoc: $(shell find pkg/domains internal/cmd/domain-adoc internal/pkg/asciidoc) $(GEN_SRC)
+doc/gen/domains.adoc: $(shell find pkg/domains internal/cmd/domain-adoc internal/pkg/asciidoc) generate
 	@mkdir -p $(dir $@)
 	go run ./internal/cmd/domain-adoc $(DOMAIN_PKGS) > $@
 
-doc/gen/rest_api.adoc: $(SWAGGER_SPEC) $(shell find etc/swagger -type f) $(SWAGGER)
+OPENAPI_CFG=doc/openapi-asciidoc.yaml
+doc/gen/rest_api.adoc: $(OPENAPI_SPEC) $(OPENAPI_GEN) $(OPENAPI_CFG)
 	@mkdir -p $(dir $@)
-	$(SWAGGER) -q generate markdown -T etc/swagger -f $(SWAGGER_SPEC) --output $@
+	$(IMGTOOL) run --rm -v $(shell pwd):/app docker.io/openapitools/openapi-generator-cli \
+		generate -g asciidoc -c app/$(OPENAPI_CFG) -i app/$< -o app/$@.dir
+	@mv -f $@.dir/index.adoc $@
+	@rm -rf $@.dir
 
 KRAMDOC:=$(BIN)/kramdoc
 $(KRAMDOC):
@@ -191,3 +193,4 @@ $(BINGO): # Bootstrap bingo
 
 tools: $(BINGO) $(ASCIIDOCTOR) $(KRAMDOC) $(SHELLCHECK) ## Download all tools needed for development
 	$(BINGO) get
+

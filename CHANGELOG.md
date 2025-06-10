@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 _Note unreleased changes on main here pending the next release_
 
+### Changed
+- Replaced Swagger 2 specification with OpenAPI 3, updated REST API code.
+
+### Removed
+- Dropped Built-in swagger UI.
+  Was only useful for trivial experiments, can use korrrelrcli as client instead.
+
 ## [0.8.1] - 2025-05-23
 
 ### Added
@@ -131,7 +138,7 @@ _Note unreleased changes on main here pending the next release_
 ### Added
 
 -  [New rules: ConsolePlugin, PodDisruptionBudget](https://github.com/korrel8r/korrel8r/commit/98f449b8a764e213dfb0c5c8ae37763bb6b88907)
-- `korrel8r web --spec` dumps the swagger specification for korrel8r to stdout or a file.
+- `korrel8r web --spec` dumps the OpenAPI specification for korrel8r to stdout or a file.
 
 ### Fixed
 
