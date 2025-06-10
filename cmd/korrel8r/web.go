@@ -11,7 +11,6 @@ import (
 	"github.com/korrel8r/korrel8r/internal/pkg/build"
 	"github.com/korrel8r/korrel8r/internal/pkg/must"
 	"github.com/korrel8r/korrel8r/pkg/rest"
-	"github.com/korrel8r/korrel8r/pkg/rest/docs"
 	"github.com/spf13/cobra"
 )
 
@@ -20,12 +19,14 @@ var webCmd = &cobra.Command{
 	Short: "Start REST server. Listening address must be  provided via --http or --https.",
 	Args:  cobra.NoArgs,
 	Run: func(_ *cobra.Command, args []string) {
+		spec := rest.Spec()
+
 		if *specFlag != "" {
-			spec := docs.SwaggerInfo.ReadDoc()
+			out := must.Must1(spec.MarshalJSON())
 			if *specFlag == "-" {
-				fmt.Println(spec)
+				fmt.Println(string(out))
 			} else {
-				must.Must(os.WriteFile(*specFlag, []byte(spec), 0666))
+				must.Must(os.WriteFile(*specFlag, []byte(out), 0666))
 			}
 			return
 		}
@@ -39,14 +40,11 @@ var webCmd = &cobra.Command{
 			panic(fmt.Errorf("only one of --http or --https may be present"))
 		case *httpFlag != "":
 			s.Addr = *httpFlag
-			docs.SwaggerInfo.Schemes = []string{"http"}
 			if *certFlag != "" || *keyFlag != "" {
 				panic(fmt.Errorf("--cert and --key not allowed with --http"))
 			}
-
 		case *httpsFlag != "":
 			s.Addr = *httpsFlag
-			docs.SwaggerInfo.Schemes = []string{"https"}
 			if *certFlag == "" || *keyFlag == "" {
 				panic(fmt.Errorf("--cert and --key are required for https"))
 			}
@@ -56,9 +54,8 @@ var webCmd = &cobra.Command{
 		gin.SetMode(gin.ReleaseMode)
 		router := gin.New()
 		router.Use(gin.Recovery())
-		r, err := rest.New(engine, configs, router)
+		_, err := rest.New(engine, configs, router)
 		must.Must(err)
-		defer r.Close()
 		s.Handler = router
 		if *profileFlag == "http" {
 			rest.WebProfile(router)
@@ -87,5 +84,5 @@ func init() {
 	httpsFlag = webCmd.Flags().String("https", "", "host:port address for secure https listener")
 	certFlag = webCmd.Flags().String("cert", "", "TLS certificate file (PEM format) for https")
 	keyFlag = webCmd.Flags().String("key", "", "Private key (PEM format) for https")
-	specFlag = webCmd.Flags().String("spec", "", "Dump swagger spec to a file, '-' for stdout.")
+	specFlag = webCmd.Flags().String("spec", "", "Dump OpenAPI specification to a file, '-' for stdout.")
 }

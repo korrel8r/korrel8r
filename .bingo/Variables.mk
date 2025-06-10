@@ -41,21 +41,15 @@ $(KUSTOMIZE): $(BINGO_DIR)/kustomize.mod
 	@echo "(re)installing $(GOBIN)/kustomize-v5.5.0"
 	@cd $(BINGO_DIR) && GOWORK=off $(GO) build -mod=mod -modfile=kustomize.mod -o=$(GOBIN)/kustomize-v5.5.0 "sigs.k8s.io/kustomize/kustomize/v5"
 
+OAPI_CODEGEN := $(GOBIN)/oapi-codegen-v2.4.1
+$(OAPI_CODEGEN): $(BINGO_DIR)/oapi-codegen.mod
+	@# Install binary/ries using Go 1.14+ build command. This is using bwplotka/bingo-controlled, separate go module with pinned dependencies.
+	@echo "(re)installing $(GOBIN)/oapi-codegen-v2.4.1"
+	@cd $(BINGO_DIR) && GOWORK=off $(GO) build -mod=mod -modfile=oapi-codegen.mod -o=$(GOBIN)/oapi-codegen-v2.4.1 "github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen"
+
 SHFMT := $(GOBIN)/shfmt-v3.10.0
 $(SHFMT): $(BINGO_DIR)/shfmt.mod
 	@# Install binary/ries using Go 1.14+ build command. This is using bwplotka/bingo-controlled, separate go module with pinned dependencies.
 	@echo "(re)installing $(GOBIN)/shfmt-v3.10.0"
 	@cd $(BINGO_DIR) && GOWORK=off $(GO) build -mod=mod -modfile=shfmt.mod -o=$(GOBIN)/shfmt-v3.10.0 "mvdan.cc/sh/v3/cmd/shfmt"
-
-SWAG := $(GOBIN)/swag-v1.16.4
-$(SWAG): $(BINGO_DIR)/swag.mod
-	@# Install binary/ries using Go 1.14+ build command. This is using bwplotka/bingo-controlled, separate go module with pinned dependencies.
-	@echo "(re)installing $(GOBIN)/swag-v1.16.4"
-	@cd $(BINGO_DIR) && GOWORK=off $(GO) build -mod=mod -modfile=swag.mod -o=$(GOBIN)/swag-v1.16.4 "github.com/swaggo/swag/cmd/swag"
-
-SWAGGER := $(GOBIN)/swagger-v0.31.0
-$(SWAGGER): $(BINGO_DIR)/swagger.mod
-	@# Install binary/ries using Go 1.14+ build command. This is using bwplotka/bingo-controlled, separate go module with pinned dependencies.
-	@echo "(re)installing $(GOBIN)/swagger-v0.31.0"
-	@cd $(BINGO_DIR) && GOWORK=off $(GO) build -mod=mod -modfile=swagger.mod -o=$(GOBIN)/swagger-v0.31.0 "github.com/go-swagger/go-swagger/cmd/swagger"
 

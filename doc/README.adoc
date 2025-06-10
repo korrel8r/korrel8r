@@ -2,6 +2,7 @@
 Korrel8r Project <https://github.com/korrel8r/korrel8r>
 :doctype: book
 :toc: left
+:toclevels: 4
 include::attributes.adoc[]
 
 Navigating between cluster resources and observable signals.
@@ -24,7 +25,6 @@ Korrel8r can be extended to handle new signals and resources by adding new domai
 Relationships within and between domains are expressed as *_<<_about_rules,rules>>_*.
 
 Korrel8r generates logical relationship graphs that are intended to be processed or displayed by other tools.
-The {rh-ocp} {troubleshooting-panel}[troubleshooting panel] is a good example of a UI tool built on Korrel8r.
 There is a https://htmlpreview.github.io/?https://github.com/korrel8r/demos/blob/main/troubleshooting-panel-demo-coo-1.0.0/index.html[brief video demo].
 In the video, Korrel8r is generating the graphs that are shown in the panel on the right hand side.
 
@@ -174,11 +174,8 @@ See <<_clients>> for ways to test your service at `http://localhost:8080`.
 
 Once the Korrel8r service is running, there are several ways you can interact with the <<_rest_api,REST API>>.
 
-- A purpose-built command line client <<_korrel8rcli, `korrel8rcli`>>.
-- The <<_interactive_rest_api, interactive swagger API web page>> built in to Korrel8r.
+- Command line client <<_korrel8rcli, `korrel8rcli`>>.
 - Use a generic REST request tool like {{curl}}
-
-You can also use specialized clients like the {troubleshooting-panel}[Red Hat Openshift troubleshooting panel], or build your own.
 
 [IMPORTANT]
 ====
@@ -281,20 +278,9 @@ You should see a graph of the correlations, like this.
 .Example graph.
 image::images/korrel8rcli-example.png[Screenshot]
 
-==== Interactive REST API
-
-Korrel8r provides an interactive REST API page using swagger.
-This page documents the REST API, and allows you to make interactive calls.
-
-Browse to `http://korrel8r.example/swagger` to use the page.
-
-// TODO how do you provide a bearer token in the browser case?
-
 ====  Using curl
 
 You can use a generic REST client like {{curl}} to interact with korrel8r.
-You can use the <<_interactive_rest_api>> page to discover the right `curl commands`.
-When you execute a call interactively on this page, it will show you the corresponding curl command.
 
 You must provide a bearer token, for example:
 
@@ -305,16 +291,12 @@ curl --oauth2-bearer $(oc whoami -t) http://localhost:8080/api/v1alpha1/domains
 
 ==== Red Hat Openshift troubleshooting panel
 
-The {rh-ocp} console has a {troubleshooting-panel}["troubleshooting panel"] that is powered by Korrel8r.
-This is a good example of how korrel8r is intended to be used,
-as a back-end to compute correlations for other tools that visualize the results.
-
 === Troubleshooting
 
 [TIP]
 ====
 You can increase the verbosity of korrel8r logging at run time using the
-xref:gen/rest_api.adoc#id-put-config[`config` API].
+xref:gen/rest_api.adoc#_setconfig[`config` API].
 ====
 .Using korrel8rcli
 [source,terminal,subs=attributes+]
@@ -476,6 +458,7 @@ Reference details for the for the classes, objects, queries and stores of each a
 
 include::gen/domains.adoc[leveloffset=+2]
 
+[[_rest_api]]
 include::gen/rest_api.adoc[leveloffset=+1]
 
 [glossary]
