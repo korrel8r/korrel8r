@@ -1,0 +1,386 @@
+openapi: 3.0.1
+info:
+  title: Korrel8r REST API
+  description: Generate graphs showing correlations between resources and observability signals in a cluster.
+  contact:
+    name: Project Korrel8r
+    url: https://github.com/korrel8r/korrel8r
+  license:
+    name: Apache 2.0
+    url: https://github.com/korrel8r/korrel8r/blob/main/LICENSE
+  version: v1alpha1
+servers:
+  - url: /api/v1alpha1
+paths:
+  /config:
+    put:
+      summary: Change configuration settings at runtime.
+      operationId: setConfig
+      parameters:
+        - name: verbose
+          in: query
+          description: Verbose setting for logging.
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: OK
+
+  /domains:
+    get:
+      summary: Get the list of correlation domains.
+      operationId: listDomains
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                x-go-type-skip-optional-pointer: true
+                items:
+                  $ref: '#/components/schemas/Domain'
+        "400":
+          description: invalid parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        "404":
+          description: result not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /graphs/goals:
+    post:
+      summary: Create a correlation graph from start objects to goal queries.
+      operationId: graphGoals
+      parameters:
+        - name: rules
+          in: query
+          description: include rules in graph edges
+          schema:
+            type: boolean
+            default: false
+      requestBody:
+        description: search from start to goal classes
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Goals'
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Graph'
+        "206":
+          description: interrupted, partial result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Graph'
+        "400":
+          description: invalid parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        "404":
+          description: result not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      x-codegen-request-body-name: request
+  /graphs/neighbours:
+    post:
+      summary: Create a neighbourhood graph around a start object to a given depth.
+      operationId: graphNeighbours
+      parameters:
+        - name: rules
+          in: query
+          description: include rules in graph edges
+          schema:
+            type: boolean
+            default: false
+      requestBody:
+        description: search from neighbours
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Neighbours'
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Graph'
+        "206":
+          description: interrupted, partial result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Graph'
+        "400":
+          description: invalid parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        "404":
+          description: result not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      x-codegen-request-body-name: request
+  /lists/goals:
+    post:
+      summary: Create a list of goal nodes related to a starting point.
+      operationId: listGoals
+      requestBody:
+        description: search from start to goal classes
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Goals'
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                x-go-type-skip-optional-pointer: true
+                items:
+                  $ref: '#/components/schemas/Node'
+        "400":
+          description: invalid parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        "404":
+          description: result not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      x-codegen-request-body-name: request
+  /objects:
+    get:
+      summary: Execute a query, returns a list of JSON objects.
+      operationId: query
+      parameters:
+        - name: query
+          in: query
+          description: query string
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                x-go-type-skip-optional-pointer: true
+                items:
+                  type: object
+                  additionalProperties: true
+        "400":
+          description: invalid parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        "404":
+          description: result not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+components:
+  schemas:
+    Constraint:
+      type: object
+      description: Constrains the objects that will be included in search results.
+      properties:
+        start:
+          type: string
+          description: Start of time interval.
+          format: date-time
+        end:
+          type: string
+          description: End of time interval.
+          format: date-time
+          example: "2017-07-21T17:32:28.1341231Z"
+        limit:
+          type: integer
+          description: Limit number of objects returned per query.
+        timeout:
+          type: string
+          x-go-type: time.Duration
+          description: Timeout per request, h/m/s/ms/ns format
+    Domain:
+      type: object
+      description: Domain configuration information.
+      required: [name]
+      properties:
+        name:
+          type: string
+          description: Name of the domain.
+        stores:
+          type: array
+          x-go-type-skip-optional-pointer: true
+          description: Stores configured for the domain.
+          items:
+            $ref: '#/components/schemas/Store'
+    Edge:
+      type: object
+      required: [start, goal]
+      properties:
+        start:
+          type: string
+          description: Class name of the start node.
+        goal:
+          type: string
+          description: Class name of the goal node.
+          example: domain:class
+        rules:
+          type: array
+          x-go-type-skip-optional-pointer: true
+          description: Set of rules followed along this edge.
+          items:
+            $ref: '#/components/schemas/Rule'
+          x-omitempty: true
+      description: Directed edge in the result graph, from Start to Goal classes.
+    Error:
+      description: Error result containing an error message.
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+          description: Error message.
+    Goals:
+      type: object
+      required: [goals, start]
+      properties:
+        goals:
+          type: array
+          x-go-type-skip-optional-pointer: true
+          description: Goal classes for correlation.
+          example:
+            - domain:class
+          items:
+            type: string
+        start:
+          $ref: '#/components/schemas/Start'
+      description: Starting point for a goals search.
+    Graph:
+      type: object
+      properties:
+        edges:
+          description: List of graph edges.
+          type: array
+          x-go-type-skip-optional-pointer: true
+          items:
+            $ref: '#/components/schemas/Edge'
+        nodes:
+          description: List of graph nodes.
+          type: array
+          x-go-type-skip-optional-pointer: true
+          items:
+            $ref: '#/components/schemas/Node'
+      description: Graph resulting from a correlation search.
+    Neighbours:
+      type: object
+      required: [depth, start]
+      properties:
+        depth:
+          type: integer
+          description: Max depth of neighbours graph.
+        start:
+          $ref: '#/components/schemas/Start'
+      description: Starting point for a neighbours search.
+    Node:
+      type: object
+      required: [class]
+      properties:
+        class:
+          type: string
+          description: Full class name
+          format: "domain:class"
+        count:
+          type: integer
+          description: Number of results for this class, after de-duplication.
+        queries:
+          type: array
+          x-go-type-skip-optional-pointer: true
+          description: Queries yielding results for this class.
+          items:
+            $ref: '#/components/schemas/QueryCount'
+      description: Node in the result graph, contains results for a single class.
+    QueryCount:
+      type: object
+      required: [query]
+      properties:
+        count:
+          type: integer
+          description: Number of results, omitted if the query was not executed.
+        query:
+          type: string
+          description: Query for correlation data.
+      description: Query with number of results.
+    Rule:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          description: Name is an optional descriptive name.
+        queries:
+          type: array
+          x-go-type-skip-optional-pointer: true
+          description: Queries generated while following this rule.
+          items:
+            $ref: '#/components/schemas/QueryCount'
+      description: Rule is a correlation rule with a list of queries and results counts found during navigation.
+    Start:
+      type: object
+      properties:
+        class:
+          type: string
+          x-go-type-skip-optional-pointer: true
+          description: Class of starting objects and queries.
+        constraint:
+          $ref: '#/components/schemas/Constraint'
+        objects:
+          description: Objects serialized as JSON.
+          type: array
+          x-go-type-skip-optional-pointer: true
+          items:
+            type: object
+            additionalProperties: true
+            x-go-type: json.RawMessage
+        queries:
+          type: array
+          x-go-type-skip-optional-pointer: true
+          description: Queries for starting objects
+          items:
+            type: string
+      description: Start identifies a set of starting objects for correlation.
+    Store:
+      type: object
+      additionalProperties:
+        type: string
+      description: Store is a map of name:value attributes used to connect to a store.

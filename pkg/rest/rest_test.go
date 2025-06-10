@@ -18,6 +18,7 @@ import (
 	"github.com/korrel8r/korrel8r/internal/pkg/test/mock"
 	"github.com/korrel8r/korrel8r/pkg/config"
 	"github.com/korrel8r/korrel8r/pkg/engine"
+	"github.com/korrel8r/korrel8r/pkg/ptr"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -33,8 +34,8 @@ func TestAPI_GetDomains(t *testing.T) {
 	require.NoError(t, err)
 	a := newTestAPI(t, e)
 	assertDo(t, a, "GET", "/api/v1alpha1/domains", nil, http.StatusOK, []Domain{
-		{Name: "bar", Stores: []config.Store{{"domain": "bar", "x": "y"}}},
-		{Name: "foo", Stores: []config.Store{{"domain": "foo", "a": "1"}, {"domain": "foo", "b": "2"}}},
+		{Name: "bar", Stores: []Store{{"domain": "bar", "x": "y"}}},
+		{Name: "foo", Stores: []Store{{"domain": "foo", "a": "1"}, {"domain": "foo", "b": "2"}}},
 	})
 }
 
@@ -51,8 +52,8 @@ func TestAPI_ListGoals(t *testing.T) {
 		http.StatusOK, []Node{
 			{
 				Class:   "mock:b",
-				Count:   1,
-				Queries: []QueryCount{{Query: "mock:b:y", Count: 1}},
+				Count:   ptr.To(1),
+				Queries: []QueryCount{{Query: "mock:b:y", Count: ptr.To(1)}},
 			},
 		})
 }
@@ -72,19 +73,19 @@ func TestAPI_GraphGoals_rules(t *testing.T) {
 			Nodes: []Node{
 				{
 					Class: "mock:a",
-					Count: 1,
+					Count: ptr.To(1),
 				},
 				{
 					Class:   "mock:b",
-					Count:   1,
-					Queries: []QueryCount{{Query: "mock:b:y", Count: 1}},
+					Count:   ptr.To(1),
+					Queries: []QueryCount{{Query: "mock:b:y", Count: ptr.To(1)}},
 				}},
 			Edges: []Edge{{
 				Start: "mock:a",
 				Goal:  "mock:b",
 				Rules: []Rule{{
 					Name:    "a-b",
-					Queries: []QueryCount{{Query: "mock:b:y", Count: 1}},
+					Queries: []QueryCount{{Query: "mock:b:y", Count: ptr.To(1)}},
 				}},
 			}},
 		})
@@ -105,12 +106,12 @@ func TestAPI_PostNeighbours(t *testing.T) {
 			Nodes: []Node{
 				{
 					Class: "mock:a",
-					Count: 1,
+					Count: ptr.To(1),
 				},
 				{
 					Class:   "mock:b",
-					Count:   1,
-					Queries: []QueryCount{{Query: "mock:b:y", Count: 1}},
+					Count:   ptr.To(1),
+					Queries: []QueryCount{{Query: "mock:b:y", Count: ptr.To(1)}},
 				}},
 			Edges: []Edge{{Start: "mock:a", Goal: "mock:b"}},
 		},
@@ -130,8 +131,8 @@ func TestAPI_PostNeighbours_partial(t *testing.T) {
 		Graph{
 			Nodes: []Node{{
 				Class:   "mock:a",
-				Queries: []QueryCount{{Query: "mock:a:x", Count: 1}},
-				Count:   1,
+				Queries: []QueryCount{{Query: "mock:a:x", Count: ptr.To(1)}},
+				Count:   ptr.To(1),
 			},
 			},
 		},
@@ -160,8 +161,8 @@ func TestAPI_PostNeighbours_none(t *testing.T) {
 		Graph{
 			Nodes: []Node{{
 				Class:   "mock:b",
-				Queries: []QueryCount{{Query: "mock:b:y", Count: 1}},
-				Count:   1,
+				Queries: []QueryCount{{Query: "mock:b:y", Count: ptr.To(1)}},
+				Count:   ptr.To(1),
 			}}},
 	)
 }

@@ -1,34 +1,13 @@
 // Copyright: This file is part of korrel8r, released under https://github.com/korrel8r/korrel8r/blob/main/LICENSE
 
 // Package rest implements a REST API for korrel8r.
-//
-// Dynamic HTML doc is available from korrel8r at the "/api" endpoint.
 package rest
 
-// Comments starting with "@" are used by the swag tool to generate a swagger spec.
-
-//	@title			REST API
-//	@description	REST API for the Korrel8r correlation engine.
-//	@version		v1alpha1
-//	@license.name	Apache 2.0
-//	@license.url	https://github.com/korrel8r/korrel8r/blob/main/LICENSE
-//	@contact.name	Project Korrel8r
-//	@contact.url	https://github.com/korrel8r/korrel8r
-//	@host			localhost:8080
-//	@basePath		/api/v1alpha1
-//	@schemes		https http
-//	@accept			json
-//	@produce		json
-//
-
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
-	"sync"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -38,18 +17,13 @@ import (
 	"github.com/korrel8r/korrel8r/pkg/engine/traverse"
 	"github.com/korrel8r/korrel8r/pkg/graph"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
+	"github.com/korrel8r/korrel8r/pkg/ptr"
 	"github.com/korrel8r/korrel8r/pkg/rest/auth"
-	"github.com/korrel8r/korrel8r/pkg/rest/docs"
 	"github.com/korrel8r/korrel8r/pkg/result"
 	"github.com/korrel8r/korrel8r/pkg/unique"
-	swaggofiles "github.com/swaggo/files"
-	ginswagger "github.com/swaggo/gin-swagger"
 )
 
 var log = logging.Log()
-
-// BasePath is the versioned base path for the current version of the REST API.
-var BasePath = docs.SwaggerInfo.BasePath
 
 type API struct {
 	Engine  *engine.Engine
@@ -57,88 +31,43 @@ type API struct {
 	Router  *gin.Engine
 }
 
-// New API instance, registers  handlers with a gin Engine.
+var _ ServerInterface = &API{}
+
+// New API instance, registers handlers with a gin Engine.
 func New(e *engine.Engine, c config.Configs, r *gin.Engine) (*API, error) {
 	a := &API{Engine: e, Configs: c, Router: r}
 	r.Use(a.logger)
 	r.Use(a.context)
-	r.GET("/", func(c *gin.Context) { c.Redirect(http.StatusTemporaryRedirect, "/swagger/index.html") })
-	r.GET("/api", func(c *gin.Context) { c.Redirect(http.StatusTemporaryRedirect, "/swagger/index.html") })
-	r.GET("/swagger/*any", a.handleSwagger)
-	v := r.Group(docs.SwaggerInfo.BasePath)
-	v.GET("/domains", a.Domains)
-	v.GET("/objects", a.GetObjects)
-	v.POST("/graphs/goals", a.GraphsGoals)
-	v.POST("/graphs/neighbours", a.GraphsNeighbours)
-	v.POST("/lists/goals", a.ListsGoals)
-	v.PUT("/config", a.PutConfig)
+	basePath, _ := Spec().Servers.BasePath()
+	RegisterHandlersWithOptions(r, a, GinServerOptions{BaseURL: basePath})
 	return a, nil
 }
 
-// Close cleans any persistent resources.
-func (a *API) Close() {}
-
-func (a *API) handleSwagger(c *gin.Context) {
-	// Set the SwaggerInfo Host to be consistent with the incoming request URL so the test UI will work.
-	// Note this may not work properly if there are concurrent requests with different URLs.
-	swaggerInfoLock.Lock()
-	docs.SwaggerInfo.Host = c.Request.URL.Host
-	defer swaggerInfoLock.Unlock()
-	ginswagger.WrapHandler(swaggofiles.Handler)(c)
-}
-
-var swaggerInfoLock sync.Mutex
-
-// Domains handler
-//
-//	@router		/domains [get]
-//	@summary	Get name, configuration and status for each domain.
-//	@success	200	{array}		Domain
-//	@failure	400	{object}	Error	"invalid parameters"
-//	@failure	404	{object}	Error	"result not found"
-func (a *API) Domains(c *gin.Context) {
+func (a *API) ListDomains(c *gin.Context) {
 	var domains []Domain
 	for _, d := range a.Engine.Domains() {
+		var stores []Store
+		for _, sc := range a.Engine.StoreConfigsFor(d) {
+			stores = append(stores, (Store)(sc))
+		}
 		domains = append(domains, Domain{
 			Name:   d.Name(),
-			Stores: a.Engine.StoreConfigsFor(d),
+			Stores: stores,
 		})
 	}
 	c.JSON(http.StatusOK, domains)
 }
 
-// GraphsGoals handler.
-//
-//	@router		/graphs/goals [post]
-//	@summary	Create a correlation graph from start objects to goal queries.
-//	@param		rules	query		bool	false	"include rules in graph edges"
-//	@param		request	body		Goals	true	"search from start to goal classes"
-//	@success	200		{object}	Graph
-//	@success	206		{object}	Graph	"interrupted, partial result"
-//	@failure	400		{object}	Error	"invalid parameters"
-//	@failure	404		{object}	Error	"result not found"
-func (a *API) GraphsGoals(c *gin.Context) {
-	opts := &Options{}
-	if !check(c, http.StatusBadRequest, c.BindQuery(opts)) {
-		return
-	}
+func (a *API) GraphGoals(c *gin.Context, params GraphGoalsParams) {
 	g, _ := a.goals(c)
 	if c.IsAborted() {
 		return
 	}
-	gr := Graph{Nodes: nodes(g), Edges: edges(g, *opts)}
+	gr := Graph{Nodes: nodes(g), Edges: edges(g, ptr.Deref(params.Rules))}
 	okResponse(c, gr)
 }
 
-// ListsGoals handler.
-//
-//	@router		/lists/goals [post]
-//	@summary	Create a list of goal nodes related to a starting point.
-//	@param		request	body		Goals	true	"search from start to goal classes"
-//	@success	200		{array}		Node
-//	@failure	400		{object}	Error	"invalid parameters"
-//	@failure	404		{object}	Error	"result not found"
-func (a *API) ListsGoals(c *gin.Context) {
+func (a *API) ListGoals(c *gin.Context) {
 	nodes := []Node{} // return [] not null for empty
 	g, goals := a.goals(c)
 	if c.IsAborted() {
@@ -153,19 +82,9 @@ func (a *API) ListsGoals(c *gin.Context) {
 	okResponse(c, nodes)
 }
 
-// GraphsNeighbours handler
-//
-//	@router		/graphs/neighbours [post]
-//	@summary	Create a neighbourhood graph around a start object to a given depth.
-//	@param		rules	query		bool		false	"include rules in graph edges"
-//	@param		request	body		Neighbours	true	"search from neighbours"
-//	@success	200		{object}	Graph
-//	@success	206		{object}	Graph	"interrupted, partial result"
-//	@failure	400		{object}	Error	"invalid parameters"
-//	@failure	404		{object}	Error	"result not found"
-func (a *API) GraphsNeighbours(c *gin.Context) {
-	r, opts := Neighbours{}, Options{}
-	if !check(c, http.StatusBadRequest, c.BindJSON(&r)) || !check(c, http.StatusBadRequest, c.BindUri(&opts)) {
+func (a *API) GraphNeighbours(c *gin.Context, params GraphNeighboursParams) {
+	r := Neighbours{}
+	if !check(c, http.StatusBadRequest, c.BindJSON(&r)) {
 		return
 	}
 	start, constraint := a.start(c, &r.Start)
@@ -176,34 +95,21 @@ func (a *API) GraphsNeighbours(c *gin.Context) {
 	ctx, cancel := korrel8r.WithConstraint(c.Request.Context(), constraint.Default())
 	defer cancel()
 	g, err := traverse.New(a.Engine, a.Engine.Graph()).Neighbours(ctx, start, depth)
-	gr := Graph{Nodes: nodes(g), Edges: edges(g, opts)}
+	gr := Graph{Nodes: nodes(g), Edges: edges(g, ptr.Deref(params.Rules))}
 	if !interrupted(c) {
 		check(c, http.StatusBadRequest, err)
 	}
-	if !c.IsAborted() {
-		okResponse(c, gr)
-	}
+	okResponse(c, gr)
 }
 
-// GetObjects handler
-//
-//	@router		/objects [get]
-//	@summary	Execute a query, returns a list of JSON objects.
-//	@param		query	query		string	true	"query string"
-//	@success	200		{array}		any
-//	@failure	400		{object}	Error	"invalid parameters"
-//	@failure	404		{object}	Error	"result not found"
-func (a *API) GetObjects(c *gin.Context) {
-	opts := &Objects{}
-	if !check(c, http.StatusBadRequest, c.BindQuery(opts)) {
-		return
-	}
-	query, err := a.Engine.Query(opts.Query)
+func (a *API) Query(c *gin.Context, params QueryParams) {
+	query, err := a.Engine.Query(params.Query)
 	if !check(c, http.StatusBadRequest, err) {
 		return
 	}
+	constraint := (*korrel8r.Constraint)(nil) // TODO can't pass constraints
 	result := result.New(query.Class())
-	if !check(c, http.StatusNotFound, a.Engine.Get(c.Request.Context(), query, (*korrel8r.Constraint)(opts.Constraint), result)) {
+	if !check(c, http.StatusNotFound, a.Engine.Get(c.Request.Context(), query, constraint, result)) {
 		return
 	}
 	log.V(3).Info("Response OK", "objects", len(result.List()))
@@ -212,6 +118,14 @@ func (a *API) GetObjects(c *gin.Context) {
 		body = []any{} // Return [] on empty, not null.
 	}
 	c.JSON(http.StatusOK, body)
+}
+
+func (a *API) SetConfig(c *gin.Context, params SetConfigParams) {
+	if params.Verbose != nil {
+		log.V(1).Info("Config set verbose", "level", *params.Verbose)
+		logging.SetVerbose(*params.Verbose)
+	}
+	c.JSON(http.StatusOK, params)
 }
 
 func (a *API) goals(c *gin.Context) (g *graph.Graph, goals []korrel8r.Class) {
@@ -235,7 +149,8 @@ func (a *API) goals(c *gin.Context) (g *graph.Graph, goals []korrel8r.Class) {
 	return g, goals
 }
 
-func (a *API) queries(c *gin.Context, queryStrings []string) (queries []korrel8r.Query) {
+func (a *API) queries(c *gin.Context, queryStrings []string) []korrel8r.Query {
+	var queries []korrel8r.Query
 	for _, q := range queryStrings {
 		query, err := a.Engine.Query(q)
 		if check(c, http.StatusBadRequest, err, "query parameter") {
@@ -269,7 +184,19 @@ func (a *API) start(c *gin.Context, start *Start) (traverse.Start, *korrel8r.Con
 		return traverse.Start{}, nil
 	}
 	objects := a.objects(c, class, start.Objects)
-	return traverse.Start{Class: class, Objects: objects, Queries: queries}, start.Constraint
+	return traverse.Start{Class: class, Objects: objects, Queries: queries}, constraint(start.Constraint)
+}
+
+func constraint(c *Constraint) *korrel8r.Constraint {
+	if c == nil {
+		return nil
+	}
+	return &korrel8r.Constraint{
+		Start:   c.Start,
+		End:     c.End,
+		Limit:   c.Limit,
+		Timeout: c.Timeout,
+	}
 }
 
 func check(c *gin.Context, code int, err error, format ...any) (ok bool) {
@@ -303,36 +230,40 @@ func (a *API) classes(c *gin.Context, apiClasses []string) (classes []korrel8r.C
 
 // logger is a Gin handler to log requests.
 func (a *API) logger(c *gin.Context) {
-	log := log.WithValues(
-		"method", c.Request.Method,
-		"url", c.Request.URL,
-		"from", c.Request.RemoteAddr,
-	)
-	if log.V(3).Enabled() {
-		var buf bytes.Buffer // Copy request body
-		body, _ := io.ReadAll(io.TeeReader(c.Request.Body, &buf))
-		c.Request.Body = io.NopCloser(&buf)
-		log.V(3).Info("Request received", "body", string(body))
+	log := log // Local log variable
+
+	if log.V(2).Enabled() {
+		log = log.WithValues(
+			"method", c.Request.Method,
+			"url", c.Request.URL,
+			"from", c.Request.RemoteAddr,
+		)
+		log.V(3).Info("Request received", "body", copyBody(c.Request))
+		// Wrap the ResponseWriter to capture the response
+		rw := newResponseWriter(c.Writer)
+		c.Writer = rw
+		start := time.Now()
+
+		defer func() {
+			latency := time.Since(start)
+			log = log.WithValues("status", c.Writer.Status(), "latency", latency)
+			if c.IsAborted() {
+				log = log.WithValues("errors", c.Errors.Errors())
+			}
+			if interrupted(c) {
+				log = log.WithValues("interrupted", c.Request.Context().Err())
+			}
+			log = log.WithValues("response", rw.String())
+			if c.IsAborted() || c.Writer.Status() > 500 {
+				log.V(2).Info("Request failed")
+			} else {
+				log.V(3).Info("Request OK")
+			}
+		}()
+
 	}
 
-	start := time.Now()
 	c.Next()
-	latency := time.Since(start)
-
-	log = log.WithValues(
-		"status", c.Writer.Status(),
-		"latency", latency)
-	if interrupted(c) {
-		log = log.WithValues("interrupted", c.Request.Context().Err())
-	}
-	if c.IsAborted() {
-		log = log.WithValues("errors", c.Errors.Errors())
-	}
-	if c.IsAborted() || c.Writer.Status() > 500 {
-		log.V(2).Info("Request failed")
-	} else {
-		log.V(3).Info("Request OK")
-	}
 }
 
 // context sets up authorization and deadline context for outgoing requests.
@@ -360,6 +291,9 @@ func interrupted(c *gin.Context) bool {
 }
 
 func okResponse(c *gin.Context, body any) {
+	if c.IsAborted() {
+		return
+	}
 	status := http.StatusOK
 	if interrupted(c) {
 		status = http.StatusPartialContent

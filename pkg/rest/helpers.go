@@ -3,20 +3,30 @@
 package rest
 
 import (
+	"bytes"
 	"cmp"
+	"io"
+	"net/http"
 	"slices"
 	"strings"
 
+	"github.com/getkin/kin-openapi/openapi3"
+	"github.com/gin-gonic/gin"
 	"github.com/korrel8r/korrel8r/pkg/graph"
+	"github.com/korrel8r/korrel8r/pkg/ptr"
 )
 
 func queryCounts(gq graph.Queries) []QueryCount {
 	qcs := make([]QueryCount, 0, len(gq))
 	for _, qc := range gq {
-		qcs = append(qcs, QueryCount{Query: qc.Query.String(), Count: qc.Count})
+		count := &qc.Count
+		if (*count == -1) {
+			count = nil								// -1 means not evaluated, omit from result.
+		}
+		qcs = append(qcs, QueryCount{Query: qc.Query.String(), Count: count})
 	}
 	slices.SortFunc(qcs, func(a, b QueryCount) int {
-		if n := cmp.Compare(a.Count, b.Count); n != 0 {
+		if n := cmp.Compare(ptr.Deref(a.Count), ptr.Deref(b.Count)); n != 0 {
 			return -n
 		}
 		return cmp.Compare(a.Query, b.Query)
@@ -34,7 +44,7 @@ func node(n *graph.Node) Node {
 	return Node{
 		Class:   n.Class.String(),
 		Queries: queryCounts(n.Queries),
-		Count:   len(n.Result.List()),
+		Count:   ptr.To(len(n.Result.List())),
 	}
 }
 
@@ -66,13 +76,14 @@ func edge(e *graph.Edge, rules bool) Edge {
 	return edge
 }
 
-func edges(g *graph.Graph, opts Options) (edges []Edge) {
+func edges(g *graph.Graph, withRules bool) []Edge {
+	var edges []Edge
 	if g == nil {
 		return nil
 	}
 	g.EachEdge(func(e *graph.Edge) {
 		if !e.Goal().Empty() { // Skip edges that lead to an empty node.
-			edges = append(edges, edge(e, opts.Rules))
+			edges = append(edges, edge(e, withRules))
 		}
 	})
 	return edges
@@ -114,6 +125,44 @@ func Normalize(v any) any {
 }
 
 // NewGraph returns a new rest.Graph corresponding to the internal graph.Graph.
-func NewGraph(g *graph.Graph, opts Options) *Graph {
-	return &Graph{Nodes: nodes(g), Edges: edges(g, opts)}
+func NewGraph(g *graph.Graph, withRules bool) *Graph {
+	return &Graph{Nodes: nodes(g), Edges: edges(g, withRules)}
+}
+
+func Spec() *openapi3.T {
+	spec, err := GetSwagger()
+	if err != nil {
+		panic(err)
+	}
+	return spec
+}
+
+func copyBody(r *http.Request) string {
+	if r.Body == nil {
+		return ""
+	}
+	var buf = &bytes.Buffer{}
+	_, _ = io.Copy(buf, r.Body) // Copy body data
+	r.Body = io.NopCloser(buf)  // Put back the Body data.
+	return buf.String()
+}
+
+// Response writer that collects the response body for logging.
+type responseWriter struct {
+	gin.ResponseWriter
+	*bytes.Buffer
+}
+
+func newResponseWriter(rw gin.ResponseWriter) * responseWriter{
+	return &responseWriter{ ResponseWriter: rw, Buffer: &bytes.Buffer{}}
+}
+
+func (w responseWriter) Write(b []byte) (int, error) {
+	w.Buffer.Write(b)
+	return w.ResponseWriter.Write(b)
+}
+
+func (w responseWriter) WriteString(s string) (int, error) {
+	w.Buffer.WriteString(s)
+	return w.ResponseWriter.WriteString(s)
 }

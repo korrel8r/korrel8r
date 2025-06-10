@@ -13,7 +13,6 @@
 :korrel8r-help: xref:gen/cmd/korrel8r.adoc
 :korrel8rcli-help: xref:gen/cmd/korrel8rcli.adoc
 // External links
-:troubleshooting-panel: https://docs.openshift.com/container-platform/latest/observability/cluster_observability_operator/ui_plugins/troubleshooting-ui-plugin.html
 :otel-signals: https://opentelemetry.io/docs/concepts/signals/
 :pkg-korrel8r: https://pkg.go.dev/github.com/korrel8/korrel8/pkg/korrel8
 :curl: https://curl.se/[curl]
