@@ -1,6 +1,7 @@
 module github.com/korrel8r/korrel8r
 
-// Note: The Go version here should match the one in Containerfile and .github/workflows/build.yaml
+// Note: The Go version here should match the one in the following files:
+// Containerfile and .github/workflows/build.yaml  and .github/workflows/publish.yaml
 go 1.24.0
 
 require (
