@@ -10,7 +10,7 @@ import (
 
 // Context returns an authorization-forwarding context for an incoming request.
 func Context(req *http.Request) context.Context {
-	auth := req.Header.Get(authorization)
+	auth := req.Header.Get(Header)
 	return context.WithValue(req.Context(), authKey{}, auth)
 }
 
@@ -24,11 +24,11 @@ type roundTripper struct{ next http.RoundTripper }
 func (rt *roundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
 	ctx := req.Context()
 	if auth, ok := ctx.Value(authKey{}).(string); ok {
-		req.Header.Set(authorization, auth)
+		req.Header.Set(Header, auth)
 	}
 	return rt.next.RoundTrip(req)
 }
 
 type authKey struct{}
 
-const authorization = "Authorization"
+const Header = "Authorization"
