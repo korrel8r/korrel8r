@@ -228,44 +228,6 @@ func (a *API) classes(c *gin.Context, apiClasses []string) (classes []korrel8r.C
 	return classes
 }
 
-// logger is a Gin handler to log requests.
-func (a *API) logger(c *gin.Context) {
-	log := log // Local log variable
-
-	if log.V(2).Enabled() {
-		log = log.WithValues(
-			"method", c.Request.Method,
-			"url", c.Request.URL,
-			"from", c.Request.RemoteAddr,
-		)
-		log.V(3).Info("Request received", "body", copyBody(c.Request))
-		// Wrap the ResponseWriter to capture the response
-		rw := newResponseWriter(c.Writer)
-		c.Writer = rw
-		start := time.Now()
-
-		defer func() {
-			latency := time.Since(start)
-			log = log.WithValues("status", c.Writer.Status(), "latency", latency)
-			if c.IsAborted() {
-				log = log.WithValues("errors", c.Errors.Errors())
-			}
-			if interrupted(c) {
-				log = log.WithValues("interrupted", c.Request.Context().Err())
-			}
-			log = log.WithValues("response", rw.String())
-			if c.IsAborted() || c.Writer.Status() > 500 {
-				log.V(2).Info("Request failed")
-			} else {
-				log.V(3).Info("Request OK")
-			}
-		}()
-
-	}
-
-	c.Next()
-}
-
 // context sets up authorization and deadline context for outgoing requests.
 func (a *API) context(c *gin.Context) {
 	ctx := auth.Context(c.Request) // add authentication
