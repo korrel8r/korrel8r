@@ -15,13 +15,18 @@ paths:
   /config:
     put:
       summary: Change configuration settings at runtime.
+      description: >
+        Modify selected configuration settings (e.g. log verbosity) on a running service.
       operationId: setConfig
+      tags: [configure]
       parameters:
         - name: verbose
           in: query
           description: Verbose setting for logging.
           schema:
             type: integer
+            minimum: 0
+            maximum: 10
       responses:
         "200":
           description: OK
@@ -29,7 +34,10 @@ paths:
   /domains:
     get:
       summary: Get the list of correlation domains.
+      description: >
+        Returns a list of Korrel8r domains and the stores configured for each domain.
       operationId: listDomains
+      tags: [query]
       responses:
         "200":
           description: OK
@@ -55,7 +63,11 @@ paths:
   /graphs/goals:
     post:
       summary: Create a correlation graph from start objects to goal queries.
+      description: >
+        Specify a set of start objects, as queries or serialized objects, and a goal class.
+        Returns a graph containing all paths leading from a start object to a goal object.
       operationId: graphGoals
+      tags: [correlate]
       parameters:
         - name: rules
           in: query
@@ -99,7 +111,12 @@ paths:
   /graphs/neighbours:
     post:
       summary: Create a neighbourhood graph around a start object to a given depth.
+      description: >
+        Specify a set of start objects, as queries or serialized objects,
+        and a depth for the neighborhood search.
+        Returns a graph of all paths with depth or less edges leading from start objects.
       operationId: graphNeighbours
+      tags: [correlate]
       parameters:
         - name: rules
           in: query
@@ -143,7 +160,11 @@ paths:
   /lists/goals:
     post:
       summary: Create a list of goal nodes related to a starting point.
+      description: >
+        Specify a set of start objects, as queries or serialized objects, and a goal class.
+        Returns a list of all objects of the goal class that can be reached from a start object.
       operationId: listGoals
+      tags: [correlate]
       requestBody:
         description: search from start to goal classes
         content:
@@ -177,7 +198,11 @@ paths:
   /objects:
     get:
       summary: Execute a query, returns a list of JSON objects.
+      description: >
+        Execute a single Korrel8r 'query' and return the list of serialized objects found.
+        Does not perform any correlation actions.
       operationId: query
+      tags: [query]
       parameters:
         - name: query
           in: query
