@@ -11,8 +11,92 @@ Generate graphs showing correlations between resources and observability signals
 == Endpoints
 
 
-[.Default]
-=== Default
+[.Configure]
+=== Configure
+
+
+[.setConfig]
+==== setConfig
+
+`PUT /config`
+
+Change configuration settings at runtime.
+
+===== Description
+
+Modify selected configuration settings (e.g. log verbosity) on a running service. 
+
+
+// markup not found, no include::{specDir}config/PUT/spec.adoc[opts=optional]
+
+
+
+===== Parameters
+
+
+
+
+
+====== Query Parameters
+
+[cols="2,3,1,1,1"]
+|===
+|Name| Description| Required| Default| Pattern
+
+| verbose
+| Verbose setting for logging. 
+| -
+| null
+| 
+
+|===
+
+
+===== Return Type
+
+
+
+-
+
+
+===== Responses
+
+.HTTP Response Codes
+[cols="2,3,1"]
+|===
+| Code | Message | Datatype
+
+
+| 200
+| OK
+|  <<>>
+
+|===
+
+===== Samples
+
+
+// markup not found, no include::{snippetDir}config/PUT/http-request.adoc[opts=optional]
+
+
+// markup not found, no include::{snippetDir}config/PUT/http-response.adoc[opts=optional]
+
+
+
+// file not found, no * wiremock data link :config/PUT/PUT.json[]
+
+
+ifdef::internal-generation[]
+===== Implementation
+
+// markup not found, no include::{specDir}config/PUT/implementation.adoc[opts=optional]
+
+
+endif::internal-generation[]
+
+
+[.Correlate]
+=== Correlate
 
 
 [.graphGoals]
@@ -24,7 +108,7 @@ Create a correlation graph from start objects to goal queries.
 
 ===== Description
 
-
+Specify a set of start objects, as queries or serialized objects, and a goal class. Returns a graph containing all paths leading from a start object to a goal object. 
 
 
 // markup not found, no include::{specDir}graphs/goals/POST/spec.adoc[opts=optional]
@@ -134,7 +218,7 @@ Create a neighbourhood graph around a start object to a given depth.
 
 ===== Description
 
-
+Specify a set of start objects, as queries or serialized objects, and a depth for the neighborhood search. Returns a graph of all paths with depth or less edges leading from start objects. 
 
 
 // markup not found, no include::{specDir}graphs/neighbours/POST/spec.adoc[opts=optional]
@@ -235,85 +319,6 @@ ifdef::internal-generation[]
 endif::internal-generation[]
 
 
-[.listDomains]
-==== listDomains
-
-`GET /domains`
-
-Get the list of correlation domains.
-
-===== Description
-
-
-
-
-// markup not found, no include::{specDir}domains/GET/spec.adoc[opts=optional]
-
-
-
-===== Parameters
-
-
-
-
-
-
-
-===== Return Type
-
-array[<<Domain>>]
-
-
-===== Content Type
-
-* application/json
-
-===== Responses
-
-.HTTP Response Codes
-[cols="2,3,1"]
-|===
-| Code | Message | Datatype
-
-
-| 200
-| OK
-| List[<<Domain>>] 
-
-
-| 400
-| invalid parameters
-|  <<Error>>
-
-
-| 404
-| result not found
-|  <<Error>>
-
-|===
-
-===== Samples
-
-
-// markup not found, no include::{snippetDir}domains/GET/http-request.adoc[opts=optional]
-
-
-// markup not found, no include::{snippetDir}domains/GET/http-response.adoc[opts=optional]
-
-
-
-// file not found, no * wiremock data link :domains/GET/GET.json[]
-
-
-ifdef::internal-generation[]
-===== Implementation
-
-// markup not found, no include::{specDir}domains/GET/implementation.adoc[opts=optional]
-
-
-endif::internal-generation[]
-
-
 [.listGoals]
 ==== listGoals
 
@@ -323,7 +328,7 @@ Create a list of goal nodes related to a starting point.
 
 ===== Description
 
-
+Specify a set of start objects, as queries or serialized objects, and a goal class. Returns a list of all objects of the goal class that can be reached from a start object. 
 
 
 // markup not found, no include::{specDir}lists/goals/POST/spec.adoc[opts=optional]
@@ -406,6 +411,89 @@ ifdef::internal-generation[]
 endif::internal-generation[]
 
 
+[.Query]
+=== Query
+
+
+[.listDomains]
+==== listDomains
+
+`GET /domains`
+
+Get the list of correlation domains.
+
+===== Description
+
+Returns a list of Korrel8r domains and the stores configured for each domain. 
+
+
+// markup not found, no include::{specDir}domains/GET/spec.adoc[opts=optional]
+
+
+
+===== Parameters
+
+
+
+
+
+
+
+===== Return Type
+
+array[<<Domain>>]
+
+
+===== Content Type
+
+* application/json
+
+===== Responses
+
+.HTTP Response Codes
+[cols="2,3,1"]
+|===
+| Code | Message | Datatype
+
+
+| 200
+| OK
+| List[<<Domain>>] 
+
+
+| 400
+| invalid parameters
+|  <<Error>>
+
+
+| 404
+| result not found
+|  <<Error>>
+
+|===
+
+===== Samples
+
+
+// markup not found, no include::{snippetDir}domains/GET/http-request.adoc[opts=optional]
+
+
+// markup not found, no include::{snippetDir}domains/GET/http-response.adoc[opts=optional]
+
+
+
+// file not found, no * wiremock data link :domains/GET/GET.json[]
+
+
+ifdef::internal-generation[]
+===== Implementation
+
+// markup not found, no include::{specDir}domains/GET/implementation.adoc[opts=optional]
+
+
+endif::internal-generation[]
+
+
 [.query]
 ==== query
 
@@ -415,7 +503,7 @@ Execute a query, returns a list of JSON objects.
 
 ===== Description
 
-
+Execute a single Korrel8r 'query' and return the list of serialized objects found. Does not perform any correlation actions. 
 
 
 // markup not found, no include::{specDir}objects/GET/spec.adoc[opts=optional]
@@ -494,86 +582,6 @@ ifdef::internal-generation[]
 ===== Implementation
 
 // markup not found, no include::{specDir}objects/GET/implementation.adoc[opts=optional]
-
-
-endif::internal-generation[]
-
-
-[.setConfig]
-==== setConfig
-
-`PUT /config`
-
-Change configuration settings at runtime.
-
-===== Description
-
-
-
-
-// markup not found, no include::{specDir}config/PUT/spec.adoc[opts=optional]
-
-
-
-===== Parameters
-
-
-
-
-
-====== Query Parameters
-
-[cols="2,3,1,1,1"]
-|===
-|Name| Description| Required| Default| Pattern
-
-| verbose
-| Verbose setting for logging. 
-| -
-| null
-| 
-
-|===
-
-
-===== Return Type
-
-
-
--
-
-
-===== Responses
-
-.HTTP Response Codes
-[cols="2,3,1"]
-|===
-| Code | Message | Datatype
-
-
-| 200
-| OK
-|  <<>>
-
-|===
-
-===== Samples
-
-
-// markup not found, no include::{snippetDir}config/PUT/http-request.adoc[opts=optional]
-
-
-// markup not found, no include::{snippetDir}config/PUT/http-response.adoc[opts=optional]
-
-
-
-// file not found, no * wiremock data link :config/PUT/PUT.json[]
-
-
-ifdef::internal-generation[]
-===== Implementation
-
-// markup not found, no include::{specDir}config/PUT/implementation.adoc[opts=optional]
 
 
 endif::internal-generation[]

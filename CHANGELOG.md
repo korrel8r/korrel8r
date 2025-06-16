@@ -12,6 +12,7 @@ _Note unreleased changes on main here pending the next release_
 ### Changed
 - Replaced Swagger 2 specification with OpenAPI 3, updated REST API code.
 - Added authorization present/absent in debugging logs (no auth material included)
+- Added doc/lab/model-context-protocol.adoc with MCP experiments.
 
 ### Removed
 - Dropped Built-in swagger UI.

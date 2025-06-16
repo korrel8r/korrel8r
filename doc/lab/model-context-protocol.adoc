@@ -1,0 +1,130 @@
+= Deploying a Korrel8r MCP server
+:url-openapi-mcp: https://github.com/janwilmake/openapi-mcp-server
+:toc: left
+
+Experimenting with Korrel8r as an MCP tool, for use by Large Language Models (LLMs.)
+
+CAUTION: This is an experiment in progress. Everything is subject to change without notice.
+
+
+== Installing openapi-mcp
+
+link:{url-openapi-mcp}:[openapi-mcp] is a tool that takes an OpenAPI specification for a REST service,
+and runs as an MCP server which delegates to the REST service.
+
+The REST endpoints are presented as MCP tools,
+documentation and examples from the OpenAPI spec are provided via the MCP `info` requeset to LLMs using the tool.
+
+[source,terminal]
+----
+go install github.com/jedisct1/openapi-mcp/cmd/openapi-mcp@latest
+----
+
+The MCP server can run in two modes:
+- as a "stdio" server, intended to be run directly by a local AI tool, such as Claude Desktop.
+- as a stand-alone HTTP proxy, receiving MCP requests and forwarding REST calls to korrel8r.
+
+== Installing Claude Desktop on Fedora 42
+
+Claude-desktop is not officially packaged for Linux, it is not too hard to get it working:
+
+There is an unofficial fedora package. Clone the repo and follow README to build & install.
+
+[source,terminal]
+----
+    git clone https://github.com/bsneed/claude-desktop-fedora.git
+----
+
+This didn't immediately work for me - I got errors about GTK 3/4 version clashes.
+I resolved this by installing an *older* version of electron (the portable runtime that Claude uses.)
+
+[source,terminal]
+----
+    sudo npm remove -g electron
+    sudo npm install -g electron@v35.5.1
+----
+
+== Connecting Claude to Korrel8r
+
+This example is for experimental purposes only.
+A realistic deployment would run a HTTP MCP server, in the cluster, alongside korrel8r.
+
+This example uses the korrel8r repo for for convenient access to configuration files
+and the OpenAPI spec. It lets Claude Desktop run the MCP tool directly as a `stdio` server.
+
+=== Run Korrel8r
+
+[source,terminal]
+----
+git clone https://github.com/korrel8r/korrel8r
+cd korrel8r
+oc login <my-cluster>  <1>
+go run ./cmd/korrel8r web -c etc/korrel8r/openshift-route.yaml & <2>
+----
+
+<1> You need to be logged in to the cluster to get an access token.
+<2> Run korrel8r on port 8080 (default) using the current log-in token (default),
+    with the `openshift-route.yaml` configuration which connects to the current cluster.
+
+=== Shell script to run the MCP server
+
+.Copy this script to file `korrel8r-mcp` and put it somewhere in your PATH
+[source, bash]
+----
+#!/bin/bash
+export BASE_URL=http://localhost:8080/api/v1alpha1
+export BASE-URL=$(oc whoami -t)
+exec openapi-mcp doc/korrel8r-openapi.yaml
+----
+
+This shell script runs openapi-mcp as a `stdio` server that can be run directly by the claude-desktop.
+It uses the OpenAPI description in file `doc/korrel-openapi.yaml` to translate the korrel8r API to MCP.
+It uses the current cluster login token given by `--bearer-token=$(oc whoami -t)`
+
+=== Configure Claude-desktop
+
+On Linux the configuration file is `~/.config/Claude/claude_desktop_config.json`
+Edit it to look like this:
+----
+{
+  "mcpServers": {
+    "korrel8r": {
+      "command": "korrel8r-mcp"
+    }
+  }
+}
+----
+
+Claude can now use korrel8r as a tool.
+It will use the MCP `info` request to query the MCP server for instructions on using the tool.
+Those instructions are generated from the OpenAPI `description` elements in the korrel8r OpenAPI spec.
+
+IMPORTANT: If you change the Claude configuration or restart the MCP server,
+you must restart Claude desktop completely via `File:Exit`, not just `File:Close`.
+
+
+== Claude results
+
+This gets a reaction:
+
+[quote]
+Show me a korrel8r graph.
+
+.Results
+- Claude does query the MCP info and try to use each of the API endpoints.
+- Sucessfully lists domains, and describes them sensibly.
+- Did not make any successful queries. The korrel8r query syntax is not widely discussed on the internet.
+- Hit usage restrictions of free Claude very quickly, it is not a practical tool for further experiments.
+
+.Next steps
+- Improve documentation and examples of the query format available via MCP `info` - i.e. the REST API `description` and `example` elements.
+- Add more HTTP links to the korrel8r website in the API doc, so models can follow those links and use the doc there.
+- Use Red Hat lightspeed to drive this experiment to avoid use limitations of public models.
+
+
+== Other tools
+
+The following command install and runs an interactive browser-based tool that can connect to any MCP server.
+It will show metadata and allow you to experiment with calling tools.
+
+   npx @modelcontextprotocol/inspector
