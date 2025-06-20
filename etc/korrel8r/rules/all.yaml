@@ -2,6 +2,7 @@ include:
   - alert.yaml
   - k8s.yaml
   - log.yaml
+  - otellog.yaml
   - netflow.yaml
   - trace.yaml
   - incident.yaml
