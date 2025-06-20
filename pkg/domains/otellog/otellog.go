@@ -57,8 +57,6 @@ var (
 	_ korrel8r.Store  = &stackStore{}
 	_ korrel8r.Query  = Query{}
 	_ korrel8r.Class  = Class("")
-
-// _ korrel8r.Previewer = Class("")
 )
 
 // Domain for otellog records produced by openshift-logging.
@@ -128,17 +126,6 @@ func (c Class) Domain() korrel8r.Domain { return Domain }
 func (c Class) Name() string            { return string(c) }
 func (c Class) String() string          { return impl.ClassString(c) }
 
-//func (c Class) Preview(o korrel8r.Object) (line string)     { return Preview(o) }
-
-// Preview extracts the message from a OTEL log record.
-/* func Preview(x korrel8r.Object) (line string) {
-	if m := x.(Object)["Body"]; m != nil {
-		s, _ := m.(string)
-		return s
-	}
-	return ""
-} */
-
 func (c Class) Unmarshal(b []byte) (korrel8r.Object, error) {
 	return impl.UnmarshalAs[Object](b)
 }
@@ -160,7 +147,7 @@ type Object = *OtelLog
 // Implements the OpenTelemetry API [Spec].
 //
 // Otellog: [https://opentelemetry.io/docs/concepts/signals/logs/#log-record]
-type OtelLog struct { // FIXME OTELLog
+type OtelLog struct {
 	Body       string         `json:"body"`                 // ← Log line
 	Severity   string         `json:"severityText"`         // ← Can become a label
 	Timestamp  time.Time      `json:"timestamp"`            // ← Loki timestamp

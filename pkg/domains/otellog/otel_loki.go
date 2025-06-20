@@ -179,10 +179,10 @@ func collectSorted(streams []lokiStream, collect CollectFunc) {
 
 		for _, raw := range streams[i].Values {
 			entry, _ := raw.ToStructuredLogEntry()
-			//fmt.Printf("Timestamp: %s, Log: %s, Metadata: %+v\n", entry.Timestamp, entry.Line, entry.StructuredMetadata)
 			otellog := &OtelLog{
-				Body:      entry.Line,
-				Timestamp: entry.ParsedTime,
+				Body:       entry.Line,
+				Timestamp:  entry.ParsedTime,
+				Attributes: make(map[string]any), // Initialize the map to prevent nil map assignment panic
 			}
 			for k, v := range streams[i].Stream {
 				otellog.Attributes[k] = v
@@ -190,8 +190,9 @@ func collectSorted(streams []lokiStream, collect CollectFunc) {
 			for k, v := range entry.StructuredMetadata {
 				otellog.Attributes[k] = v
 			}
+			collect(otellog) // Actually call the collect function with the created otellog
 		}
-		//collect(&Entry{Line: v.Line, Time: v.Time, Labels: streams[i].Stream})
+
 		streams[i].Values = streams[i].Values[1:] // Advance the stream
 	}
 }

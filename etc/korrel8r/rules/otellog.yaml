@@ -1,0 +1,35 @@
+rules:
+  - name: OtelLogToPod
+    start:
+      domain: otellog
+    goal:
+      domain: k8s
+      classes: [Pod]
+    result:
+      query: |-
+        {{- $namespace := get .Attributes "k8s_namespace_name"}}
+        {{- $name := get .Attributes "k8s_pod_name" }}
+        {{- if all $namespace $name -}}
+          k8s:Pod.v1:{namespace: "{{$namespace}}", name: "{{$name}}"}
+        {{- end -}}
+
+  - name: SelectorToOtelLogs
+    start:
+      domain: k8s
+      classes: [selectors]
+    goal:
+      domain: otellog
+    result:
+      query: |-
+        otellog:{{logTypeForNamespace .metadata.namespace}}:{kubernetes_namespace_name="{{.metadata.namespace}}"}
+            {{- range $k,$v:=.spec.selector.matchLabels}}|kubernetes_labels_{{logSafeLabel $k}}="{{$v}}"{{end -}}
+
+  - name: PodToOtelLogs
+    start:
+      domain: k8s
+      classes: [Pod]
+    goal:
+      domain: otellog
+    result:
+      query: |-
+        otellog:{{ logTypeForNamespace .metadata.namespace }}:{kubernetes_namespace_name="{{.metadata.namespace}}",kubernetes_pod_name="{{.metadata.name}}"}
