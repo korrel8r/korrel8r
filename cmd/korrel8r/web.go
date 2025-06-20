@@ -3,6 +3,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
@@ -22,12 +23,14 @@ var webCmd = &cobra.Command{
 		spec := rest.Spec()
 
 		if *specFlag != "" {
-			out := must.Must1(spec.MarshalJSON())
-			if *specFlag == "-" {
-				fmt.Println(string(out))
-			} else {
-				must.Must(os.WriteFile(*specFlag, []byte(out), 0666))
+			var out = os.Stdout
+			if *specFlag != "-" {
+				out = must.Must1(os.Create(*specFlag))
+				defer out.Close()
 			}
+			j := json.NewEncoder(out)
+			j.SetIndent("", "  ")
+			must.Must(j.Encode(spec))
 			return
 		}
 
