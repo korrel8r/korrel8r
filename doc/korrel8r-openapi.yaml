@@ -9,6 +9,9 @@ info:
     name: Apache 2.0
     url: https://github.com/korrel8r/korrel8r/blob/main/LICENSE
   version: v1alpha1
+externalDocs:
+  url: https://korrel8r.github.io/korrel8r/
+  description: Korrel8r User Guide
 servers:
   - url: /api/v1alpha1
 paths:
@@ -206,10 +209,10 @@ paths:
       parameters:
         - name: query
           in: query
-          description: query string
+          description: Query string.
           required: true
           schema:
-            type: string
+              $ref: '#/components/schemas/Query'
       responses:
         "200":
           description: OK
@@ -235,6 +238,13 @@ paths:
                 $ref: '#/components/schemas/Error'
 components:
   schemas:
+    Query:
+      type: string
+      description: >
+        A query string consists of three parts separated by ':', 'DOMAIN:CLASS:SELECTOR'.
+        DOMAIN is the name of a domain.
+        CLASS is the name of a class in the domain.
+        SELECTOR is a domain-specific query string to retrieve selected objects.
     Constraint:
       type: object
       description: Constrains the objects that will be included in search results.
@@ -279,14 +289,13 @@ components:
         goal:
           type: string
           description: Class name of the goal node.
-          example: domain:class
         rules:
           type: array
           x-go-type-skip-optional-pointer: true
+          x-omitempty: true
           description: Set of rules followed along this edge.
           items:
             $ref: '#/components/schemas/Rule'
-          x-omitempty: true
       description: Directed edge in the result graph, from Start to Goal classes.
     Error:
       description: Error result containing an error message.
@@ -363,7 +372,7 @@ components:
           type: integer
           description: Number of results, omitted if the query was not executed.
         query:
-          type: string
+          $ref: '#/components/schemas/Query'
           description: Query for correlation data.
       description: Query with number of results.
     Rule:

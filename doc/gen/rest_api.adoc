@@ -523,7 +523,7 @@ Execute a single Korrel8r 'query' and return the list of serialized objects foun
 |Name| Description| Required| Default| Pattern
 
 | query
-| query string 
+| Query string. 
 | X
 | null
 | 
@@ -866,7 +866,7 @@ Query with number of results.
 | X
 | 
 |   String  
-| Query for correlation data.
+| A query string consists of three parts separated by &#39;:&#39;, &#39;DOMAIN:CLASS:SELECTOR&#39;. DOMAIN is the name of a domain. CLASS is the name of a class in the domain. SELECTOR is a domain-specific query string to retrieve selected objects. 
 |     
 
 |===
