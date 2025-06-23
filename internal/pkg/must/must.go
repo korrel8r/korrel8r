@@ -5,7 +5,6 @@ package must
 
 import (
 	"fmt"
-	"runtime"
 )
 
 // ErrorIf returns nil if err == nil, otherwise returns fmt.Errof(format, args)
@@ -32,15 +31,3 @@ func Must1[T any](v T, err error) T { Must(err); return v }
 
 // Must2 calls Must(err), then returns (v1, v2).
 func Must2[T1, T2 any](v1 T1, v2 T2, err error) (T1, T2) { Must(err); return v1, v2 }
-
-// NormalError if r is a non-runtime error, return the error, else return nil.
-func NormalError(r any) error {
-	switch err := r.(type) {
-	case runtime.Error: // Don't catch runtime errors.
-		return nil
-	case error:
-		return err
-	default:
-		return nil
-	}
-}
