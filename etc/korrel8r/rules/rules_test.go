@@ -83,7 +83,7 @@ func (x ruleTest) Run(t *testing.T) {
 		r := e.Rule(x.rule)
 		if assert.NotNil(t, r, "missing rule: "+x.rule) {
 			got, err := r.Apply(x.start)
-			if assert.NoError(t, err, x.rule) {
+			if assert.NoError(t, err, x.rule) && assert.NotNil(t, got) {
 				assert.Equal(t, x.query, got.String())
 			}
 		}
