@@ -26,7 +26,7 @@ var webCmd = &cobra.Command{
 			var out = os.Stdout
 			if *specFlag != "-" {
 				out = must.Must1(os.Create(*specFlag))
-				defer out.Close()
+				defer func() { _ = out.Close() }()
 			}
 			j := json.NewEncoder(out)
 			j.SetIndent("", "  ")
