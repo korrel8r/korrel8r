@@ -26,16 +26,13 @@ BIN ?= _bin
 export PATH := $(abspath $(BIN)):$(PATH)
 export GOCOVERDIR := $(abspath _cover)
 
-$(BIN):
-	mkdir -p $(BIN)
-_cover:
-	mkdir -p _cover
-
 # Generated files
 VERSION_TXT=internal/pkg/build/version.txt
 OPENAPI_SPEC=doc/korrel8r-openapi.yaml
+OAPI_CODEGEN_GO=pkg/rest/oapi-codegen.go
 
-generate: $(VERSION_TXT) pkg/rest/oapi-codegen.go _cover
+generate: $(VERSION_TXT) $(OAPI_CODEGEN_GO)
+	mkdir -p $(GOCOVERDIR)
 	hack/copyright.sh
 
 all: lint test _site image-build ## Build and test everything locally. Recommended before pushing.
@@ -61,12 +58,15 @@ endif
 $(VERSION_TXT):
 	echo $(VERSION) > $@
 
-pkg/rest/oapi-codegen.go: $(OPENAPI_SPEC) $(OAPI_CODEGEN)
+$(BIN):
+	mkdir -p $(BIN)
+
+$(OAPI_CODEGEN_GO): $(OPENAPI_SPEC) $(OAPI_CODEGEN)
 	$(OAPI_CODEGEN) -generate types,gin,spec -package rest -o $@ $<
 
+
 SHELLCHECK:= $(BIN)/shellcheck
-$(SHELLCHECK):
-	@mkdir -p $(dir $@)
+$(SHELLCHECK): $(BIN)
 	./hack/install-shellcheck.sh $(BIN) 0.10.0
 
 lint: generate $(GOLANGCI_LINT) $(SHFMT) $(SHELLCHECK) ## Run the linter to find and fix code style problems.
@@ -125,8 +125,7 @@ undeploy:			# Delete resources created by `make deploy`
 ## Documentation
 
 ASCIIDOCTOR:=$(BIN)/asciidoctor
-$(ASCIIDOCTOR):
-	@mkdir -p $(dir $@)
+$(ASCIIDOCTOR): $(BIN)
 	gem install asciidoctor --user-install --bindir $(BIN)
 
 # From github.com:darshandsoni/asciidoctor-skins.git
