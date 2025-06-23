@@ -95,6 +95,7 @@ func (a *async) run(ctx context.Context, start Start, traverse func(v graph.Visi
 	}
 
 	// will return when all goroutines have called busy.Done.
+	log.V(2).Info("Result graph", "nodes", g.Nodes().Len(), "edges", g.Edges().Len())
 	return g, nil
 }
 
