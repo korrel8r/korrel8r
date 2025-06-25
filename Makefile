@@ -10,7 +10,7 @@ VERSION?=0.8.2-dev
 ## REGISTRY_BASE: Image registry base, for example quay.io/somebody
 REGISTRY_BASE?=$(error REGISTRY_BASE must be set to push images)
 ## IMGTOOL: May be podman or docker.
-IMGTOOL?=$(or $(shell type -p podman || type -p docker),$(error No podman or docker))
+IMGTOOL?=$(or $(shell which podman 2>/dev/null),$(shell which docker 2>/dev/null),$(error Cannot find podman or docker in PATH))
 ## NAMESPACE: Namespace for `make deploy`
 NAMESPACE=korrel8r
 ## CONFIG: Configuration file for `make run`
