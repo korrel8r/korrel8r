@@ -62,6 +62,16 @@ TIP: Set  `REGISTRY_BASE` or `IMG` to the repository where you want to push imag
 .Browse the interactive REST API:
   xdg-open $(oc get route/korrel8r -n korrel8r -o 'template=https://{{.spec.host}}')
 
+== Deploying with devspace
+
+Devspace is a tool that can replace an existing pod with a development pod that
+is synced to your local source code, so changes are automatically reflected in the cluster.
+
+[,terminal]
+----
+make devspace
+----
+
 == Contributing to documentation
 
 . Fork and clone the repository

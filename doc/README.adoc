@@ -220,7 +220,7 @@ korrel8rcli -u {korrel8rcli-url} domains
 - name: alert
   stores:
   - alertmanager: https://alertmanager-main.openshift-monitoring.svc:9094
-    certificateAuthority: ./run/secrets/kubernetes.io/serviceaccount/service-ca.crt
+    certificateAuthority: /var/run/secrets/kubernetes.io/serviceaccount/service-ca.crt
     domain: alert
     metrics: https://thanos-querier.openshift-monitoring.svc:9091
 - name: k8s
@@ -228,19 +228,19 @@ korrel8rcli -u {korrel8rcli-url} domains
   - domain: k8s
 - name: log
   stores:
-  - certificateAuthority: ./run/secrets/kubernetes.io/serviceaccount/service-ca.crt
+  - certificateAuthority: /var/run/secrets/kubernetes.io/serviceaccount/service-ca.crt
     domain: log
     lokiStack: https://logging-loki-gateway-http.openshift-logging.svc:8080
 - name: metric
   stores:
-  - certificateAuthority: ./run/secrets/kubernetes.io/serviceaccount/service-ca.crt
+  - certificateAuthority: /var/run/secrets/kubernetes.io/serviceaccount/service-ca.crt
     domain: metric
     metric: https://thanos-querier.openshift-monitoring.svc:9091
 - name: mock
   stores: null
 - name: netflow
   stores:
-  - certificateAuthority: ./run/secrets/kubernetes.io/serviceaccount/service-ca.crt
+  - certificateAuthority: /var/run/secrets/kubernetes.io/serviceaccount/service-ca.crt
     domain: netflow
     lokiStack: https://loki-gateway-http.netobserv.svc:8080
 ----
