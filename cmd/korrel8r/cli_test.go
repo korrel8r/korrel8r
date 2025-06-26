@@ -73,3 +73,41 @@ func TestMain_rules(t *testing.T) {
 		})
 	}
 }
+
+func TestMain_stores(t *testing.T) {
+	out, err := cliCommand(t, "stores").Output()
+	require.NoError(t, test.ExecError(err))
+	want := `{
+  "alert": null,
+  "incident": null,
+  "k8s": null,
+  "log": null,
+  "metric": null,
+  "mock": [
+    {
+      "domain": "mock",
+      "mockData": "testdata/mock_store.yaml"
+    }
+  ],
+  "netflow": null,
+  "otellog": null,
+  "trace": null
+}`
+	assert.Equal(t, strings.TrimSpace(want), strings.TrimSpace(string(out)))
+}
+
+func TestMain_stores_selected(t *testing.T) {
+	out, err := cliCommand(t, "stores", "k8s", "mock").Output()
+	require.NoError(t, test.ExecError(err))
+	want := `{
+  "k8s": null,
+  "mock": [
+    {
+      "domain": "mock",
+      "mockData": "testdata/mock_store.yaml"
+    }
+  ]
+}
+`
+	assert.Equal(t, strings.TrimSpace(want), strings.TrimSpace(string(out)))
+}
