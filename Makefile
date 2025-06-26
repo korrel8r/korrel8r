@@ -36,6 +36,7 @@ VERSION_TXT=internal/pkg/build/version.txt
 OPENAPI_SPEC=doc/korrel8r-openapi.yaml
 
 generate: $(VERSION_TXT) pkg/rest/oapi-codegen.go _cover
+	hack/copyright.sh
 
 all: lint test _site image-build ## Build and test everything locally. Recommended before pushing.
 
@@ -47,6 +48,9 @@ install: generate							## Build and install korrel8r with go install.
 
 run: generate									## Run `korrel8r web` for debugging.
 	go run ./cmd/korrel8r web -c $(CONFIG) $(KORREL8R_FLAGS)
+
+runw: generate $(GOW)					## Run `korrel8r web` with auto-rebuild if source changes.
+	$(GOW) -v run ./cmd/korrel8r web -c $(CONFIG) $(KORREL8R_FLAGS)
 
 clean: ## Remove generated files, including checked-in files.
 	rm -rf _site generate doc/gen tmp $(BIN) $(GOCOVERDIR)
@@ -194,3 +198,11 @@ $(BINGO): # Bootstrap bingo
 tools: $(BINGO) $(ASCIIDOCTOR) $(KRAMDOC) $(SHELLCHECK) ## Download all tools needed for development
 	$(BINGO) get
 
+
+IMAGE_DEVSPACE?="$(IMG)-devspace:latest"
+devspace-image: # Build the devspace image
+	$(IMGTOOL) build --tag=$(IMAGE_DEVSPACE) -f devspace.Containerfile
+	$(IMGTOOL) push $(IMAGE_DEVSPACE)
+
+devspace: devspace-image ## Create builder image and run devspace dev.
+	IMAGE_DEVSPACE=$(IMAGE_DEVSPACE) devspace dev

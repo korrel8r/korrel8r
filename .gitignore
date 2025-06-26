@@ -3,5 +3,6 @@
 /_cover/
 /_bench-*.txt
 /hack/kind/jsonnet/vendor/
+/.devspace/
 __debug_bin*
 debug.test*
