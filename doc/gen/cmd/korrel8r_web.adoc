@@ -14,7 +14,10 @@ korrel8r web [flags]
       --http string    host:port address for insecure http listener
       --https string   host:port address for secure https listener
       --key string     Private key (PEM format) for https
+      --mcp            Enable MCP streaming protocol on /mcp (default true)
+      --rest           Enable HTTP REST server on /api/v1alpha1 (default true)
       --spec string    Dump OpenAPI specification to a file, '-' for stdout.
+      --sse            Enable MCP Server-Sent Events protocol server on /sse (default true)
 ----
 
 == Options inherited from parent commands

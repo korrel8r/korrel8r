@@ -46,6 +46,9 @@ install: generate							## Build and install korrel8r with go install.
 run: generate									## Run `korrel8r web` for debugging.
 	go run ./cmd/korrel8r web -c $(CONFIG) $(KORREL8R_FLAGS)
 
+run-mcp: generate									## Run `korrel8r mcp` for debugging.
+	go run ./cmd/korrel8r mcp -c $(CONFIG) $(KORREL8R_FLAGS)
+
 runw: generate $(GOW)					## Run `korrel8r web` with auto-rebuild if source changes.
 	$(GOW) -v run ./cmd/korrel8r web -c $(CONFIG) $(KORREL8R_FLAGS)
 

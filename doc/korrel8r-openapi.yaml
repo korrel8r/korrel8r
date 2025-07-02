@@ -116,7 +116,7 @@ paths:
       summary: Create a neighbourhood graph around a start object to a given depth.
       description: >
         Specify a set of start objects, as queries or serialized objects,
-        and a depth for the neighborhood search.
+        and a depth for the neighbourhood search.
         Returns a graph of all paths with depth or less edges leading from start objects.
       operationId: graphNeighbours
       tags: [correlate]
