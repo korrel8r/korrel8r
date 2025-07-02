@@ -22,9 +22,9 @@ import (
 
 // Common flags for neighbours and goals
 var (
-	class   string
-	queries []string
-	objects []string
+	class     string
+	queries   []string
+	objects   []string
 	withRules bool
 
 	limit                 int

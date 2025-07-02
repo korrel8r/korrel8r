@@ -12,6 +12,7 @@ import (
 
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/gin-gonic/gin"
+	"github.com/korrel8r/korrel8r/internal/pkg/must"
 	"github.com/korrel8r/korrel8r/pkg/graph"
 	"github.com/korrel8r/korrel8r/pkg/ptr"
 )
@@ -20,8 +21,8 @@ func queryCounts(gq graph.Queries) []QueryCount {
 	qcs := make([]QueryCount, 0, len(gq))
 	for _, qc := range gq {
 		count := &qc.Count
-		if (*count == -1) {
-			count = nil								// -1 means not evaluated, omit from result.
+		if *count == -1 {
+			count = nil // -1 means not evaluated, omit from result.
 		}
 		qcs = append(qcs, QueryCount{Query: qc.Query.String(), Count: count})
 	}
@@ -129,13 +130,9 @@ func NewGraph(g *graph.Graph, withRules bool) *Graph {
 	return &Graph{Nodes: nodes(g), Edges: edges(g, withRules)}
 }
 
-func Spec() *openapi3.T {
-	spec, err := GetSwagger()
-	if err != nil {
-		panic(err)
-	}
-	return spec
-}
+var spec = must.Must1(GetSwagger())
+
+func Spec() *openapi3.T { return spec }
 
 func copyBody(r *http.Request) string {
 	if r.Body == nil {
@@ -153,8 +150,8 @@ type responseWriter struct {
 	*bytes.Buffer
 }
 
-func newResponseWriter(rw gin.ResponseWriter) * responseWriter{
-	return &responseWriter{ ResponseWriter: rw, Buffer: &bytes.Buffer{}}
+func newResponseWriter(rw gin.ResponseWriter) *responseWriter {
+	return &responseWriter{ResponseWriter: rw, Buffer: &bytes.Buffer{}}
 }
 
 func (w responseWriter) Write(b []byte) (int, error) {
