@@ -23,7 +23,7 @@ import (
 var log = logging.Log()
 
 // Engine manages a set of rules and stores to perform correlation.
-// Once created (see [Build]) an engine is immutable.
+// Once created (see [Build]) an engine is immutable and concurrent safe.
 type Engine struct {
 	domains       map[string]korrel8r.Domain
 	stores        map[korrel8r.Domain]*stores
@@ -92,6 +92,18 @@ func (e *Engine) Class(fullname string) (korrel8r.Class, error) {
 	}
 }
 
+func (e *Engine) Classes(fullnames []string) ([]korrel8r.Class, error) {
+	var classes []korrel8r.Class
+	for _, name := range fullnames {
+		c, err := e.Class(name)
+		if err != nil {
+			return nil, err
+		}
+		classes = append(classes, c)
+	}
+	return classes, nil
+}
+
 func (e *Engine) DomainClass(domain, class string) (korrel8r.Class, error) {
 	d, err := e.Domain(domain)
 	if err != nil {
@@ -116,6 +128,19 @@ func (e *Engine) Query(query string) (korrel8r.Query, error) {
 		return nil, err
 	}
 	return domain.Query(query)
+}
+
+// Queries parses a slice of query strings and returns a slice of query objects.
+func (e *Engine) Queries(queryStrings []string) ([]korrel8r.Query, error) {
+	var queries []korrel8r.Query
+	for _, q := range queryStrings {
+		query, err := e.Query(q)
+		if err != nil {
+			return nil, err
+		}
+		queries = append(queries, query)
+	}
+	return queries, nil
 }
 
 func (e *Engine) Rules() []korrel8r.Rule { return slices.Clone(e.rules) }

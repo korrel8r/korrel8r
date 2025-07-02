@@ -1,6 +1,6 @@
 // Copyright: This file is part of korrel8r, released under https://github.com/korrel8r/korrel8r/blob/main/LICENSE
 
-// package auth forwards authorization information from an incoming REST request to an outgoing store request.
+// package auth forwards authorization information from an incoming HTTP request to an outgoing store request.
 package auth
 
 import (

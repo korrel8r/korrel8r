@@ -24,15 +24,24 @@ var (
 
 type Object any // mock.Object is any JSON-marshalable object.
 
-type Domain struct{ name string }
+type Domain struct {
+	name    string
+	classes []korrel8r.Class
+}
 
-func NewDomain(name string) *Domain                     { return &Domain{name: name} }
+func NewDomain(name string, classes ...string) *Domain {
+	d := &Domain{name: name}
+	for _, c := range classes {
+		d.classes = append(d.classes, d.Class(c))
+	}
+	return d
+}
 func (d *Domain) Name() string                          { return d.name }
 func (d *Domain) String() string                        { return d.Name() }
 func (d *Domain) Description() string                   { return "Mock domain." }
 func (d *Domain) Store(cfg any) (korrel8r.Store, error) { return NewStoreConfig(d, cfg) }
 func (d *Domain) Class(name string) korrel8r.Class      { return Class{name: name, domain: d} }
-func (d *Domain) Classes() []korrel8r.Class             { return nil }
+func (d *Domain) Classes() []korrel8r.Class             { return d.classes }
 
 func (d *Domain) Query(s string) (korrel8r.Query, error) {
 	class, data, err := impl.ParseQuery(d, s)

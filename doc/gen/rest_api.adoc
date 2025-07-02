@@ -218,7 +218,7 @@ Create a neighbourhood graph around a start object to a given depth.
 
 ===== Description
 
-Specify a set of start objects, as queries or serialized objects, and a depth for the neighborhood search. Returns a graph of all paths with depth or less edges leading from start objects. 
+Specify a set of start objects, as queries or serialized objects, and a depth for the neighbourhood search. Returns a graph of all paths with depth or less edges leading from start objects. 
 
 
 // markup not found, no include::{specDir}graphs/neighbours/POST/spec.adoc[opts=optional]

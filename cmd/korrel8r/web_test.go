@@ -44,8 +44,7 @@ func startServer(t *testing.T, h *http.Client, scheme string, args ...string) *u
 	t.Cleanup(func() {
 		_ = cmd.Process.Kill()
 	})
-	basePath, _ := rest.Spec().Servers.BasePath()
-	return &url.URL{Scheme: scheme, Host: addr, Path: basePath}
+	return &url.URL{Scheme: scheme, Host: addr, Path: rest.BasePath}
 }
 
 func request(t *testing.T, h *http.Client, method, url, body string) (string, error) {
