@@ -21,7 +21,7 @@ type async struct {
 	errs   *Errors
 }
 
-// NewSync returns an asynchronous Traverser that can do multiple store queries concurrently.
+// NewAsync returns an asynchronous Traverser that can do multiple store queries concurrently.
 func NewAsync(e *engine.Engine, g *graph.Graph) Traverser {
 	return &async{engine: e, graph: g, errs: NewErrors(log.V(2))}
 }
