@@ -15,7 +15,6 @@ import (
 	"github.com/korrel8r/korrel8r/pkg/domains"
 	"github.com/korrel8r/korrel8r/pkg/domains/k8s"
 	"github.com/korrel8r/korrel8r/pkg/engine"
-	"github.com/korrel8r/korrel8r/pkg/engine/traverse"
 	"github.com/spf13/cobra"
 )
 
@@ -88,7 +87,6 @@ func main() {
 }
 
 func newEngine() (*engine.Engine, config.Configs) {
-	traverse.New = traverse.NewAsync // Default to async
 	c := must.Must1(config.Load(*configFlag))
 	e := must.Must1(engine.Build().
 		Domains(append(domains.All, mock.NewDomain("mock"))...).
