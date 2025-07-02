@@ -17,6 +17,7 @@ REST service to correlate observability data
 
 * xref:korrel8r_goals.adoc[korrel8r goals]	 - Execute QUERY, find all paths to GOAL classes.
 * xref:korrel8r_list.adoc[korrel8r list]	 - List domains or classes in DOMAIN.
+* xref:korrel8r_mcp.adoc[korrel8r mcp]	 - MCP stdio server
 * xref:korrel8r_neighbours.adoc[korrel8r neighbours]	 - Get graph of nearest neighbours
 * xref:korrel8r_objects.adoc[korrel8r objects]	 - Execute QUERY and print the results
 * xref:korrel8r_rules.adoc[korrel8r rules]	 - List rules by start, goal or name

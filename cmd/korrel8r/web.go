@@ -11,6 +11,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/korrel8r/korrel8r/internal/pkg/build"
 	"github.com/korrel8r/korrel8r/internal/pkg/must"
+	"github.com/korrel8r/korrel8r/pkg/mcp"
 	"github.com/korrel8r/korrel8r/pkg/rest"
 	"github.com/spf13/cobra"
 )
@@ -20,8 +21,6 @@ var webCmd = &cobra.Command{
 	Short: "Start REST server. Listening address must be  provided via --http or --https.",
 	Args:  cobra.NoArgs,
 	Run: func(_ *cobra.Command, args []string) {
-		spec := rest.Spec()
-
 		if *specFlag != "" {
 			var out = os.Stdout
 			if *specFlag != "-" {
@@ -30,7 +29,7 @@ var webCmd = &cobra.Command{
 			}
 			j := json.NewEncoder(out)
 			j.SetIndent("", "  ")
-			must.Must(j.Encode(spec))
+			must.Must(j.Encode(rest.Spec))
 			return
 		}
 
@@ -57,8 +56,19 @@ var webCmd = &cobra.Command{
 		gin.SetMode(gin.ReleaseMode)
 		router := gin.New()
 		router.Use(gin.Recovery())
-		_, err := rest.New(engine, configs, router)
-		must.Must(err)
+
+		if *restFlag {
+			rest := must.Must1(rest.New(engine, configs, router))
+			log.V(0).Info("REST API HTTP server", "path", rest.BasePath)
+		}
+		if *mcpFlag {
+			router.POST(mcp.StreamablePath, gin.WrapH(mcp.NewServer(engine).HTTPHandler()))
+			log.V(0).Info("Model Context Protocol Streamable HTTP server", "path", mcp.StreamablePath)
+		}
+		if *sseFlag {
+			router.POST(mcp.SSEPath, gin.WrapH(mcp.NewServer(engine).HTTPHandler()))
+			log.V(0).Info("Model Context Protocol Streamable HTTP server", "path", mcp.SSEPath)
+		}
 		s.Handler = router
 		if *profileFlag == "http" {
 			rest.WebProfile(router)
@@ -78,6 +88,9 @@ var (
 	httpFlag, httpsFlag *string
 	certFlag, keyFlag   *string
 	specFlag            *string
+	mcpFlag             *bool
+	sseFlag             *bool
+	restFlag            *bool
 	WebProfile          func()
 )
 
@@ -88,4 +101,7 @@ func init() {
 	certFlag = webCmd.Flags().String("cert", "", "TLS certificate file (PEM format) for https")
 	keyFlag = webCmd.Flags().String("key", "", "Private key (PEM format) for https")
 	specFlag = webCmd.Flags().String("spec", "", "Dump OpenAPI specification to a file, '-' for stdout.")
+	restFlag = webCmd.Flags().Bool("rest", true, "Enable HTTP REST server on "+rest.BasePath)
+	mcpFlag = webCmd.Flags().Bool("mcp", true, "Enable MCP streaming protocol on "+mcp.StreamablePath)
+	sseFlag = webCmd.Flags().Bool("sse", true, "Enable MCP Server-Sent Events protocol server on "+mcp.SSEPath)
 }

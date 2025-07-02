@@ -39,7 +39,7 @@ func TestAPI_GetDomains(t *testing.T) {
 	})
 }
 
-func TestAPI_ListGoals(t *testing.T) {
+func TestAPIListGoals(t *testing.T) {
 	e := testEngine(t)
 	assertDo(t, newTestAPI(t, e), "POST", "/api/v1alpha1/lists/goals",
 		Goals{
@@ -58,7 +58,7 @@ func TestAPI_ListGoals(t *testing.T) {
 		})
 }
 
-func TestAPI_GraphGoals_rules(t *testing.T) {
+func TestAPIGraphGoals_rules(t *testing.T) {
 	e := testEngine(t)
 	assertDo(t, newTestAPI(t, e), "POST", "/api/v1alpha1/graphs/goals?rules=true",
 		Goals{
@@ -91,7 +91,7 @@ func TestAPI_GraphGoals_rules(t *testing.T) {
 		})
 }
 
-func TestAPI_PostNeighbours(t *testing.T) {
+func TestAPIPostNeighbours(t *testing.T) {
 	e := testEngine(t)
 	assertDo(t, newTestAPI(t, e), "POST", "/api/v1alpha1/graphs/neighbours",
 		Neighbours{
@@ -118,7 +118,7 @@ func TestAPI_PostNeighbours(t *testing.T) {
 	)
 }
 
-func TestAPI_PostNeighbours_partial(t *testing.T) {
+func TestAPIPostNeighboursPartial(t *testing.T) {
 	e := testEngine(t)
 	s := e.StoresFor(e.Domains()[0])[0].(*mock.Store)
 	s.AddQuery("mock:b:y", errors.New("oh dear"))
@@ -139,7 +139,7 @@ func TestAPI_PostNeighbours_partial(t *testing.T) {
 	)
 }
 
-func TestAPI_PostNeighbours_empty(t *testing.T) {
+func TestAPIPostNeighboursEmpty(t *testing.T) {
 	e := testEngine(t)
 	assertDo(t, newTestAPI(t, e), "POST", "/api/v1alpha1/graphs/neighbours",
 		Neighbours{
@@ -150,7 +150,7 @@ func TestAPI_PostNeighbours_empty(t *testing.T) {
 	)
 }
 
-func TestAPI_PostNeighbours_none(t *testing.T) {
+func TestAPIPostNeighboursNone(t *testing.T) {
 	e := testEngine(t)
 	assertDo(t, newTestAPI(t, e), "POST", "/api/v1alpha1/graphs/neighbours",
 		Neighbours{
@@ -179,7 +179,7 @@ func TestAPIPostNeighboursInvalidClass(t *testing.T) {
 	require.Equal(t, `{"error":"invalid class name: not-a-class"}`, w.Body.String())
 }
 
-func TestAPI_GetObjects_empty(t *testing.T) {
+func TestAPIGetObjects_empty(t *testing.T) {
 	d := mock.NewDomain("x")
 	q := mock.NewQuery(d.Class("y"), "test")
 	s := mock.NewStore(d)
@@ -191,7 +191,7 @@ func TestAPI_GetObjects_empty(t *testing.T) {
 	require.Equal(t, "[]", w.Body.String())
 }
 
-func TestAPI_GetObjects_invalid_query(t *testing.T) {
+func TestAPIGetObjects_invalid_query(t *testing.T) {
 	e, err := engine.Build().Engine()
 	require.NoError(t, err)
 	a := newTestAPI(t, e)

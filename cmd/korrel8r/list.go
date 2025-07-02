@@ -3,11 +3,10 @@
 package main
 
 import (
-	"fmt"
 	"os"
-	"text/tabwriter"
 
 	"github.com/korrel8r/korrel8r/internal/pkg/must"
+	"github.com/korrel8r/korrel8r/internal/pkg/text"
 	"github.com/spf13/cobra"
 )
 
@@ -17,19 +16,12 @@ var listCmd = &cobra.Command{
 	Args:  cobra.RangeArgs(0, 1),
 	Run: func(cmd *cobra.Command, args []string) {
 		e, _ := newEngine()
-		w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-		defer func() { _ = w.Flush() }()
+		w := text.NewPrinter(e)
 		switch len(args) {
 		case 0:
-			for _, d := range e.Domains() {
-				fmt.Fprintf(w, "%v\t%v\n", d.Name(), d.Description())
-			}
+			w.ListDomains(os.Stdout)
 		case 1:
-			d := must.Must1(e.Domain(args[0]))
-			classes := must.Must1(e.ClassesFor(d))
-			for _, c := range classes {
-				fmt.Fprintln(w, c.Name())
-			}
+			w.ListClasses(os.Stdout, must.Must1(e.Domain(args[0])))
 		}
 	},
 }

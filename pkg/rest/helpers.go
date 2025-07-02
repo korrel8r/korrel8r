@@ -5,23 +5,32 @@ package rest
 import (
 	"bytes"
 	"cmp"
+	"fmt"
 	"io"
 	"net/http"
 	"slices"
 	"strings"
 
-	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/gin-gonic/gin"
+	"github.com/korrel8r/korrel8r/internal/pkg/must"
+	"github.com/korrel8r/korrel8r/pkg/engine"
+	"github.com/korrel8r/korrel8r/pkg/engine/traverse"
 	"github.com/korrel8r/korrel8r/pkg/graph"
+	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"github.com/korrel8r/korrel8r/pkg/ptr"
+)
+
+var (
+	Spec     = must.Must1(GetSwagger())
+	BasePath = must.Must1(Spec.Servers.BasePath())
 )
 
 func queryCounts(gq graph.Queries) []QueryCount {
 	qcs := make([]QueryCount, 0, len(gq))
 	for _, qc := range gq {
 		count := &qc.Count
-		if (*count == -1) {
-			count = nil								// -1 means not evaluated, omit from result.
+		if *count == -1 {
+			count = nil // -1 means not evaluated, omit from result.
 		}
 		qcs = append(qcs, QueryCount{Query: qc.Query.String(), Count: count})
 	}
@@ -93,9 +102,11 @@ func edges(g *graph.Graph, withRules bool) []Edge {
 // Useful for tests that need to compare actual and expected results.
 func Normalize(v any) any {
 	switch v := v.(type) {
-	case Graph:
+	case *Graph:
 		Normalize(v.Nodes)
 		Normalize(v.Edges)
+	case Graph:
+		Normalize(&v)
 	case []Node:
 		slices.SortFunc(v, func(a, b Node) int { return strings.Compare(a.Class, b.Class) })
 		for _, n := range v {
@@ -129,14 +140,6 @@ func NewGraph(g *graph.Graph, withRules bool) *Graph {
 	return &Graph{Nodes: nodes(g), Edges: edges(g, withRules)}
 }
 
-func Spec() *openapi3.T {
-	spec, err := GetSwagger()
-	if err != nil {
-		panic(err)
-	}
-	return spec
-}
-
 func copyBody(r *http.Request) string {
 	if r.Body == nil {
 		return ""
@@ -153,8 +156,8 @@ type responseWriter struct {
 	*bytes.Buffer
 }
 
-func newResponseWriter(rw gin.ResponseWriter) * responseWriter{
-	return &responseWriter{ ResponseWriter: rw, Buffer: &bytes.Buffer{}}
+func newResponseWriter(rw gin.ResponseWriter) *responseWriter {
+	return &responseWriter{ResponseWriter: rw, Buffer: &bytes.Buffer{}}
 }
 
 func (w responseWriter) Write(b []byte) (int, error) {
@@ -165,4 +168,41 @@ func (w responseWriter) Write(b []byte) (int, error) {
 func (w responseWriter) WriteString(s string) (int, error) {
 	w.Buffer.WriteString(s)
 	return w.ResponseWriter.WriteString(s)
+}
+
+// TraverseStart constructs a traverse.Start from a rest.Start parameter.
+func TraverseStart(e *engine.Engine, start Start) (traverse.Start, error) {
+	var (
+		class   korrel8r.Class
+		queries []korrel8r.Query
+	)
+	if start.Class != "" {
+		var err error
+		class, err = e.Class(start.Class)
+		if err != nil {
+			return traverse.Start{}, err
+		}
+	}
+	for _, q := range start.Queries {
+		query, err := e.Query(q)
+		if err != nil {
+			return traverse.Start{}, err
+		}
+		if class == nil {
+			class = query.Class() // Default from query
+		}
+		if query.Class() != class {
+			return traverse.Start{}, fmt.Errorf("query class mismatch: expected class %v in query %v", class, q)
+		}
+		queries = append(queries, query)
+	}
+	var objects []korrel8r.Object
+	for _, raw := range start.Objects {
+		o, err := class.Unmarshal([]byte(raw))
+		if err != nil {
+			return traverse.Start{}, err
+		}
+		objects = append(objects, o)
+	}
+	return traverse.Start{Class: class, Objects: objects, Queries: queries}, nil
 }

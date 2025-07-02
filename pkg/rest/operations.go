@@ -5,7 +5,6 @@ package rest
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"time"
@@ -26,9 +25,10 @@ import (
 var log = logging.Log()
 
 type API struct {
-	Engine  *engine.Engine
-	Configs config.Configs
-	Router  *gin.Engine
+	Engine   *engine.Engine
+	Configs  config.Configs
+	Router   *gin.Engine
+	BasePath string
 }
 
 var _ ServerInterface = &API{}
@@ -36,10 +36,10 @@ var _ ServerInterface = &API{}
 // New API instance, registers handlers with a gin Engine.
 func New(e *engine.Engine, c config.Configs, r *gin.Engine) (*API, error) {
 	a := &API{Engine: e, Configs: c, Router: r}
+	a.BasePath = BasePath
 	r.Use(a.logger)
 	r.Use(a.context)
-	basePath, _ := Spec().Servers.BasePath()
-	RegisterHandlersWithOptions(r, a, GinServerOptions{BaseURL: basePath})
+	RegisterHandlersWithOptions(r, a, GinServerOptions{BaseURL: a.BasePath})
 	return a, nil
 }
 
@@ -57,12 +57,8 @@ func (a *API) ListDomains(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, domains)
 }
-
 func (a *API) GraphGoals(c *gin.Context, params GraphGoalsParams) {
 	g, _ := a.goals(c)
-	if c.IsAborted() {
-		return
-	}
 	gr := Graph{Nodes: nodes(g), Edges: edges(g, ptr.Deref(params.Rules))}
 	okResponse(c, gr)
 }
@@ -83,22 +79,22 @@ func (a *API) ListGoals(c *gin.Context) {
 }
 
 func (a *API) GraphNeighbours(c *gin.Context, params GraphNeighboursParams) {
+	e := a.Engine
 	r := Neighbours{}
 	if !check(c, http.StatusBadRequest, c.BindJSON(&r)) {
 		return
 	}
-	start, constraint := a.start(c, &r.Start)
-	depth := r.Depth
-	if c.IsAborted() {
+	start, err := TraverseStart(e, r.Start)
+	if !check(c, http.StatusBadRequest, err) {
 		return
 	}
-	ctx, cancel := korrel8r.WithConstraint(c.Request.Context(), constraint.Default())
+	ctx, cancel := korrel8r.WithConstraint(c.Request.Context(), r.Start.Constraint.Default())
 	defer cancel()
-	g, err := traverse.New(a.Engine, a.Engine.Graph()).Neighbours(ctx, start, depth)
-	gr := Graph{Nodes: nodes(g), Edges: edges(g, ptr.Deref(params.Rules))}
-	if !interrupted(c) {
-		check(c, http.StatusBadRequest, err)
+	g, err := traverse.New(e, e.Graph()).Neighbours(ctx, start, r.Depth)
+	if !check(c, http.StatusNotFound, err) {
+		return
 	}
+	gr := Graph{Nodes: nodes(g), Edges: edges(g, ptr.Deref(params.Rules))}
 	okResponse(c, gr)
 }
 
@@ -128,108 +124,47 @@ func (a *API) SetConfig(c *gin.Context, params SetConfigParams) {
 	c.JSON(http.StatusOK, params)
 }
 
-func (a *API) goals(c *gin.Context) (g *graph.Graph, goals []korrel8r.Class) {
+// goals is shared between GraphGoals and ListGoals
+func (a *API) goals(c *gin.Context) (*graph.Graph, []korrel8r.Class) {
+	e := a.Engine
 	r := Goals{}
 	if !check(c, http.StatusBadRequest, c.BindJSON(&r)) {
 		return nil, nil
 	}
-	start, constraint := a.start(c, &r.Start)
-	goals = a.classes(c, r.Goals)
-	if c.IsAborted() {
+	start, err := TraverseStart(e, r.Start)
+	if !check(c, http.StatusBadRequest, err) {
 		return nil, nil
 	}
-	g = a.Engine.Graph().ShortestPaths(start.Class, goals...)
-	var err error
-	ctx, cancel := korrel8r.WithConstraint(c.Request.Context(), constraint.Default())
+	goals, err := e.Classes(([]string)(r.Goals))
+	if !check(c, http.StatusBadRequest, err) {
+		return nil, nil
+	}
+	g := e.Graph().ShortestPaths(start.Class, goals...)
+	ctx, cancel := korrel8r.WithConstraint(c.Request.Context(), r.Start.Constraint.Default())
 	defer cancel()
 	g, err = traverse.New(a.Engine, g).Goals(ctx, start, goals)
-	if !interrupted(c) && !traverse.IsPartialError(err) {
-		check(c, http.StatusNotFound, err)
-	}
+	check(c, http.StatusNotFound, err)
 	return g, goals
 }
 
-func (a *API) queries(c *gin.Context, queryStrings []string) []korrel8r.Query {
-	var queries []korrel8r.Query
-	for _, q := range queryStrings {
-		query, err := a.Engine.Query(q)
-		if !check(c, http.StatusBadRequest, err, "query parameter") {
-			return nil
-		}
-		queries = append(queries, query)
-	}
-	return queries
-}
-
-func (a *API) objects(c *gin.Context, class korrel8r.Class, raw []json.RawMessage) (objects []korrel8r.Object) {
-	for _, r := range raw {
-		o, err := class.Unmarshal([]byte(r))
-		if !check(c, http.StatusBadRequest, err, "decoding object of class %v", class.String()) {
-			return nil
-		}
-		objects = append(objects, o)
-	}
-	return objects
-}
-
-// start validates and extracts data from the Start part of a request.
-func (a *API) start(c *gin.Context, start *Start) (traverse.Start, *korrel8r.Constraint) {
-	queries := a.queries(c, start.Queries)
-	var class korrel8r.Class
-	if start.Class == "" && len(queries) > 0 {
-		class = queries[0].Class()
-		if class == nil {
-			return traverse.Start{}, nil
-		}
-	} else {
-		class = a.class(c, start.Class)
-	}
-	if class == nil {
-		return traverse.Start{}, nil
-	}
-	objects := a.objects(c, class, start.Objects)
-	return traverse.Start{Class: class, Objects: objects, Queries: queries}, constraint(start.Constraint)
-}
-
-func constraint(c *Constraint) *korrel8r.Constraint {
-	if c == nil {
-		return nil
-	}
-	return &korrel8r.Constraint{
-		Start:   c.Start,
-		End:     c.End,
-		Limit:   c.Limit,
-		Timeout: c.Timeout,
-	}
-}
-
 func check(c *gin.Context, code int, err error, format ...any) (ok bool) {
-	if err != nil && !c.IsAborted() {
-		if len(format) > 0 {
-			err = fmt.Errorf("%v: %w", fmt.Sprintf(format[0].(string), format[1:]...), err)
-		}
+	if err != nil && len(format) > 0 {
+		err = fmt.Errorf("%v: %w", fmt.Sprintf(format[0].(string), format[1:]...), err)
+	}
+	switch {
+	case c.IsAborted():
+		return false
+	case err == nil:
+		return true
+	case traverse.IsPartialError(err):
+		_ = c.Error(err) // Save the error for interrupted()
+		return true      // Allow the handler to succeed
+	default:
 		ginErr := c.Error(err)
-		if !traverse.IsPartialError(err) { // Don't abort on a partial error.
-			c.AbortWithStatusJSON(code, ginErr.JSON())
-			log.Error(err, "Request failed", "url", c.Request.URL, "code", code, "error", err)
-		}
+		c.AbortWithStatusJSON(code, ginErr.JSON())
+		log.Error(err, "Request failed", "url", c.Request.URL, "code", code, "error", err)
+		return false
 	}
-	return err == nil && !c.IsAborted()
-}
-
-func (a *API) class(c *gin.Context, className string) korrel8r.Class {
-	class, err := a.Engine.Class(className)
-	check(c, http.StatusBadRequest, err)
-	return class
-}
-
-func (a *API) classes(c *gin.Context, apiClasses []string) (classes []korrel8r.Class) {
-	for _, apiClass := range apiClasses {
-		if class := a.class(c, apiClass); class != nil {
-			classes = append(classes, class)
-		}
-	}
-	return classes
 }
 
 // context sets up authorization and deadline context for outgoing requests.
@@ -251,18 +186,20 @@ func (a *API) context(c *gin.Context) {
 	c.Next()
 }
 
+// Interrupted checks for a context error or partial error,
+// indicating we may have a partial result.
 func interrupted(c *gin.Context) bool {
-	return c.Request.Context().Err() == context.DeadlineExceeded ||
-		c.Errors.Last() != nil && traverse.IsPartialError(c.Errors.Last())
+	return c.Errors.Last() != nil && traverse.IsPartialError(c.Errors.Last()) ||
+		c.Request.Context().Err() == context.DeadlineExceeded
 }
 
+// okResponse sets an OK response with a body if we were not already aborted.
 func okResponse(c *gin.Context, body any) {
-	if c.IsAborted() {
-		return
+	if !c.IsAborted() {
+		status := http.StatusOK
+		if interrupted(c) {
+			status = http.StatusPartialContent
+		}
+		c.JSON(status, body)
 	}
-	status := http.StatusOK
-	if interrupted(c) {
-		status = http.StatusPartialContent
-	}
-	c.JSON(status, body)
 }
