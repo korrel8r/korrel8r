@@ -14,6 +14,7 @@ require (
 	github.com/go-logr/stdr v1.2.2
 	github.com/go-openapi/runtime v0.28.0
 	github.com/go-openapi/strfmt v0.23.0
+	github.com/metoro-io/mcp-golang v0.13.0
 	github.com/oapi-codegen/runtime v1.1.1
 	github.com/pkg/profile v1.7.0
 	github.com/prometheus/alertmanager v0.28.0
@@ -32,6 +33,17 @@ require (
 	k8s.io/client-go v0.32.1
 	sigs.k8s.io/controller-runtime v0.20.0
 	sigs.k8s.io/yaml v1.4.0
+)
+
+require (
+	github.com/bahlo/generic-list-go v0.2.0 // indirect
+	github.com/buger/jsonparser v1.1.1 // indirect
+	github.com/invopop/jsonschema v0.12.0 // indirect
+	github.com/tidwall/gjson v1.18.0 // indirect
+	github.com/tidwall/match v1.1.1 // indirect
+	github.com/tidwall/pretty v1.2.1 // indirect
+	github.com/tidwall/sjson v1.2.5 // indirect
+	github.com/wk8/go-ordered-map/v2 v2.1.8 // indirect
 )
 
 require (

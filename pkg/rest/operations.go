@@ -26,9 +26,10 @@ import (
 var log = logging.Log()
 
 type API struct {
-	Engine  *engine.Engine
-	Configs config.Configs
-	Router  *gin.Engine
+	Engine   *engine.Engine
+	Configs  config.Configs
+	Router   *gin.Engine
+	BasePath string
 }
 
 var _ ServerInterface = &API{}
@@ -36,10 +37,10 @@ var _ ServerInterface = &API{}
 // New API instance, registers handlers with a gin Engine.
 func New(e *engine.Engine, c config.Configs, r *gin.Engine) (*API, error) {
 	a := &API{Engine: e, Configs: c, Router: r}
+	a.BasePath, _ = Spec().Servers.BasePath()
 	r.Use(a.logger)
 	r.Use(a.context)
-	basePath, _ := Spec().Servers.BasePath()
-	RegisterHandlersWithOptions(r, a, GinServerOptions{BaseURL: basePath})
+	RegisterHandlersWithOptions(r, a, GinServerOptions{BaseURL: a.BasePath})
 	return a, nil
 }
 
@@ -57,7 +58,6 @@ func (a *API) ListDomains(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, domains)
 }
-
 func (a *API) GraphGoals(c *gin.Context, params GraphGoalsParams) {
 	g, _ := a.goals(c)
 	if c.IsAborted() {

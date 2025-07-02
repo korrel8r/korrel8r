@@ -1,22 +1,20 @@
-= korrel8r web
+= korrel8r mcp
 
-Start REST server. Listening address must be  provided via --http or --https.
+MCP server for Korrel8r
+
+== Synopsis
+
+Run korrel8r as an MCP stdio server that provides korrel8r resources and tools.
+For an HTTP streaming or SSE server use the 'web' command with the '--mcp' flag.
 
 ----
-korrel8r web [flags]
+korrel8r mcp [flags]
 ----
 
 == Options
 
 ----
-      --cert string    TLS certificate file (PEM format) for https
-  -h, --help           help for web
-      --http string    host:port address for insecure http listener
-      --https string   host:port address for secure https listener
-      --key string     Private key (PEM format) for https
-      --mcp            Enable HTTP MCP server
-      --rest           Enable HTTP REST server (default true)
-      --spec string    Dump OpenAPI specification to a file, '-' for stdout.
+  -h, --help   help for mcp
 ----
 
 == Options inherited from parent commands

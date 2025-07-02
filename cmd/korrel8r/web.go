@@ -11,9 +11,12 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/korrel8r/korrel8r/internal/pkg/build"
 	"github.com/korrel8r/korrel8r/internal/pkg/must"
+	"github.com/korrel8r/korrel8r/pkg/mcp"
 	"github.com/korrel8r/korrel8r/pkg/rest"
 	"github.com/spf13/cobra"
 )
+
+const mcpPath = "/mcp"
 
 var webCmd = &cobra.Command{
 	Use:   "web [flags]",
@@ -57,11 +60,18 @@ var webCmd = &cobra.Command{
 		gin.SetMode(gin.ReleaseMode)
 		router := gin.New()
 		router.Use(gin.Recovery())
-		_, err := rest.New(engine, configs, router)
-		must.Must(err)
+
+		if *restFlag {
+			rest := must.Must1(rest.New(engine, configs, router))
+			log.V(0).Info("REST API HTTP server", "path", rest.BasePath)
+		}
+		if *mcpFlag {
+			router.POST(mcpPath, must.Must1(mcp.GinHandler(engine)))
+			log.V(0).Info("Model Context Protocol HTTP server", "path", mcpPath)
+		}
 		s.Handler = router
 		if *profileFlag == "http" {
-			rest.WebProfile(router)
+			rest.WebProfile(router) // FIXME move to API?
 		}
 		log := log.WithValues("addr", s.Addr, "version", build.Version, "configuration", *configFlag)
 		if *httpFlag != "" {
@@ -78,6 +88,8 @@ var (
 	httpFlag, httpsFlag *string
 	certFlag, keyFlag   *string
 	specFlag            *string
+	mcpFlag             *bool
+	restFlag            *bool
 	WebProfile          func()
 )
 
@@ -88,4 +100,6 @@ func init() {
 	certFlag = webCmd.Flags().String("cert", "", "TLS certificate file (PEM format) for https")
 	keyFlag = webCmd.Flags().String("key", "", "Private key (PEM format) for https")
 	specFlag = webCmd.Flags().String("spec", "", "Dump OpenAPI specification to a file, '-' for stdout.")
+	mcpFlag = webCmd.Flags().Bool("mcp", false, "Enable HTTP MCP server")
+	restFlag = webCmd.Flags().Bool("rest", true, "Enable HTTP REST server")
 }
