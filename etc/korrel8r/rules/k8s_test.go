@@ -21,6 +21,16 @@ func TestK8sRules(t *testing.T) {
 			start: log.NewObject(`{"kubernetes":{"namespace_name":"default","pod_name":"baz"},"message":"bye"}`),
 			query: `k8s:Pod.v1:{"namespace":"default","name":"baz"}`,
 		},
+				{
+			rule:  "OtelLogToPod",
+			start: log.NewObject(`{"kubernetes":{"namespace_name":"foo","pod_name":"bar"},"message":"hello"}`),
+			query: `k8s:Pod.v1:{"namespace":"foo","name":"bar"}`,
+		},
+		{
+			rule:  "OtelLogToPod",
+			start: log.NewObject(`{"kubernetes":{"namespace_name":"default","pod_name":"baz"},"message":"bye"}`),
+			query: `k8s:Pod.v1:{"namespace":"default","name":"baz"}`,
+		},
 		{
 			rule: "SelectorToPods",
 			start: k8s.Object{
