@@ -74,12 +74,12 @@ paths:
       parameters:
         - name: rules
           in: query
-          description: include rules in graph edges
+          description: Include rules in graph edges.
           schema:
             type: boolean
             default: false
       requestBody:
-        description: search from start to goal classes
+        description: Search from start to goal classes.
         content:
           application/json:
             schema:
@@ -123,12 +123,12 @@ paths:
       parameters:
         - name: rules
           in: query
-          description: include rules in graph edges
+          description: Include rules in graph edges.
           schema:
             type: boolean
             default: false
       requestBody:
-        description: search from neighbours
+        description: Search from start for neighbours.
         content:
           application/json:
             schema:
@@ -238,33 +238,61 @@ paths:
                 $ref: '#/components/schemas/Error'
 components:
   schemas:
+
     Query:
       type: string
+      pattern: "[^:]+:[^:]+:[^:]+"
       description: >
-        A query string consists of three parts separated by ':', 'DOMAIN:CLASS:SELECTOR'.
-        DOMAIN is the name of a domain.
-        CLASS is the name of a class in the domain.
-        SELECTOR is a domain-specific query string to retrieve selected objects.
+        Represents a request to retrieve data for a particular Class.
+        It has 3 parts DOMAIN:CLASS:SELECTOR
+        DOMAIN: name of a domain.
+        CLASS: name of a class in the domain.
+        SELECTOR: domain-specific query string to retrieve selected objects.
+      example: 'k8s:Pod:{namespace: foo, name: bar, labels: { a: b }, fields: { c: d }}'
+      x-go-type-skip-optional-pointer: true
+
+    Class:
+      type: string
+      pattern: "[^:]+:[^:]+"
+      description: >
+        Names a class of objects with the same schema or structure.
+        It has 2 parts DOMAIN:CLASS
+        DOMAIN: name of a domain.
+        CLASS: name of a class in the domain.
+      example: 'trace:span'
+      x-go-type-skip-optional-pointer: true
+
     Constraint:
-      type: object
       description: Constrains the objects that will be included in search results.
+      type: object
+      x-go-type: korrel8r.Constraint
       properties:
         start:
           type: string
-          description: Start of time interval.
+          description: Ignore objects with timestamps before this start time.
           format: date-time
         end:
           type: string
-          description: End of time interval.
+          description: Ignore objects with timestamps after this end time.
           format: date-time
           example: "2017-07-21T17:32:28.1341231Z"
         limit:
           type: integer
-          description: Limit number of objects returned per query.
+          description: Limit total number of objects per query.
         timeout:
-          type: string
-          x-go-type: time.Duration
-          description: Timeout per request, h/m/s/ms/ns format
+          description: Give up on requests to data stores if they take longer than this duration.
+          allOf:
+            - $ref: '#/components/schemas/Duration'
+
+    Duration:
+      type: string
+      description: >
+         The duration string is a sequence of decimal numbers, each with optional
+         fraction and a unit suffix. Valid time units are: ns, us (or µs), ms, s, m, h.
+      format: duration
+      example: 2h45m
+      x-go-type: time.Duration
+
     Domain:
       type: object
       description: Domain configuration information.
@@ -284,11 +312,13 @@ components:
       required: [start, goal]
       properties:
         start:
-          type: string
           description: Class name of the start node.
+          allOf:
+            - $ref: '#/components/schemas/Class'
         goal:
-          type: string
           description: Class name of the goal node.
+          allOf:
+            - $ref: '#/components/schemas/Class'
         rules:
           type: array
           x-go-type-skip-optional-pointer: true
@@ -297,6 +327,7 @@ components:
           items:
             $ref: '#/components/schemas/Rule'
       description: Directed edge in the result graph, from Start to Goal classes.
+
     Error:
       description: Error result containing an error message.
       type: object
@@ -305,6 +336,7 @@ components:
         error:
           type: string
           description: Error message.
+
     Goals:
       type: object
       required: [goals, start]
@@ -313,13 +345,13 @@ components:
           type: array
           x-go-type-skip-optional-pointer: true
           description: Goal classes for correlation.
-          example:
-            - domain:class
+          example: [ "k8s:Pod" ]
           items:
-            type: string
+            $ref: '#/components/schemas/Class'
         start:
           $ref: '#/components/schemas/Start'
       description: Starting point for a goals search.
+
     Graph:
       type: object
       properties:
@@ -336,6 +368,7 @@ components:
           items:
             $ref: '#/components/schemas/Node'
       description: Graph resulting from a correlation search.
+
     Neighbours:
       type: object
       required: [depth, start]
@@ -346,6 +379,7 @@ components:
         start:
           $ref: '#/components/schemas/Start'
       description: Starting point for a neighbours search.
+
     Node:
       type: object
       required: [class]
@@ -353,7 +387,6 @@ components:
         class:
           type: string
           description: Full class name
-          format: "domain:class"
         count:
           type: integer
           description: Number of results for this class, after de-duplication.
@@ -364,6 +397,7 @@ components:
           items:
             $ref: '#/components/schemas/QueryCount'
       description: Node in the result graph, contains results for a single class.
+
     QueryCount:
       type: object
       required: [query]
@@ -372,9 +406,11 @@ components:
           type: integer
           description: Number of results, omitted if the query was not executed.
         query:
-          $ref: '#/components/schemas/Query'
           description: Query for correlation data.
+          allOf:
+            - $ref: '#/components/schemas/Query'
       description: Query with number of results.
+
     Rule:
       type: object
       required: [name]
@@ -389,15 +425,19 @@ components:
           items:
             $ref: '#/components/schemas/QueryCount'
       description: Rule is a correlation rule with a list of queries and results counts found during navigation.
+
     Start:
       type: object
       properties:
         class:
-          type: string
-          x-go-type-skip-optional-pointer: true
           description: Class of starting objects and queries.
+          allOf:
+            - $ref: '#/components/schemas/Class'
+          x-go-type-skip-optional-pointer: true
         constraint:
-          $ref: '#/components/schemas/Constraint'
+          allOf:
+            - $ref: '#/components/schemas/Constraint'
+          description: Constrain the objects that will be returned.
         objects:
           description: Objects serialized as JSON.
           type: array
@@ -411,10 +451,10 @@ components:
           x-go-type-skip-optional-pointer: true
           description: Queries for starting objects
           items:
-            type: string
+            $ref: '#/components/schemas/Query'
       description: Start identifies a set of starting objects for correlation.
     Store:
       type: object
       additionalProperties:
         type: string
-      description: Store is a map of name:value attributes used to connect to a store.
+      description: Store is a map string keys and values used to connect to a store.

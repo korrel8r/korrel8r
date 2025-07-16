@@ -125,7 +125,7 @@ Specify a set of start objects, as queries or serialized objects, and a goal cla
 |Name| Description| Required| Default| Pattern
 
 | request
-| search from start to goal classes <<Goals>>
+| Search from start to goal classes. <<Goals>>
 | X
 | 
 | 
@@ -141,7 +141,7 @@ Specify a set of start objects, as queries or serialized objects, and a goal cla
 |Name| Description| Required| Default| Pattern
 
 | rules
-| include rules in graph edges 
+| Include rules in graph edges. 
 | -
 | false
 | 
@@ -235,7 +235,7 @@ Specify a set of start objects, as queries or serialized objects, and a depth fo
 |Name| Description| Required| Default| Pattern
 
 | request
-| search from neighbours <<Neighbours>>
+| Search from start for neighbours. <<Neighbours>>
 | X
 | 
 | 
@@ -251,7 +251,7 @@ Specify a set of start objects, as queries or serialized objects, and a depth fo
 |Name| Description| Required| Default| Pattern
 
 | rules
-| include rules in graph edges 
+| Include rules in graph edges. 
 | -
 | false
 | 
@@ -526,7 +526,7 @@ Execute a single Korrel8r 'query' and return the list of serialized objects foun
 | Query string. 
 | X
 | null
-| 
+| /[^:]+:[^:]+:[^:]+/
 
 |===
 
@@ -606,29 +606,29 @@ Constrains the objects that will be included in search results.
 | 
 | 
 |   Date  
-| Start of time interval.
+| Ignore objects with timestamps before this start time.
 | date-time    
 
 | end
 | 
 | 
 |   Date  
-| End of time interval.
+| Ignore objects with timestamps after this end time.
 | date-time    
 
 | limit
 | 
 | 
 |   Integer  
-| Limit number of objects returned per query.
+| Limit total number of objects per query.
 |     
 
 | timeout
 | 
 | 
 |   String  
-| Timeout per request, h/m/s/ms/ns format
-|     
+| Give up on requests to data stores if they take longer than this duration.
+| duration    
 
 |===
 
@@ -824,7 +824,7 @@ Node in the result graph, contains results for a single class.
 | 
 |   String  
 | Full class name
-| domain:class    
+|     
 
 | count
 | 
@@ -866,7 +866,7 @@ Query with number of results.
 | X
 | 
 |   String  
-| A query string consists of three parts separated by &#39;:&#39;, &#39;DOMAIN:CLASS:SELECTOR&#39;. DOMAIN is the name of a domain. CLASS is the name of a class in the domain. SELECTOR is a domain-specific query string to retrieve selected objects. 
+| Query for correlation data.
 |     
 
 |===
@@ -924,7 +924,7 @@ Start identifies a set of starting objects for correlation.
 | 
 | 
 | <<Constraint>>    
-| 
+| Constrain the objects that will be returned.
 |     
 
 | objects
@@ -948,7 +948,7 @@ Start identifies a set of starting objects for correlation.
 [#Store]
 === _Store_ 
 
-Store is a map of name:value attributes used to connect to a store.
+Store is a map string keys and values used to connect to a store.
 
 
 [.fields-Store]
