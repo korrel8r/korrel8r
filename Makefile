@@ -29,9 +29,9 @@ export GOCOVERDIR := $(abspath _cover)
 # Generated files
 VERSION_TXT=internal/pkg/build/version.txt
 OPENAPI_SPEC=doc/korrel8r-openapi.yaml
-OAPI_CODEGEN_GO=pkg/rest/oapi-codegen.go
+GEN_OPENAPI_GO=pkg/rest/gen-openapi.go
 
-generate: $(VERSION_TXT) $(OAPI_CODEGEN_GO)
+generate: $(VERSION_TXT) $(GEN_OPENAPI_GO)
 	mkdir -p $(GOCOVERDIR)
 	hack/copyright.sh
 
@@ -50,7 +50,7 @@ runw: generate $(GOW)					## Run `korrel8r web` with auto-rebuild if source chan
 	$(GOW) -v run ./cmd/korrel8r web -c $(CONFIG) $(KORREL8R_FLAGS)
 
 clean: ## Remove generated files, including checked-in files.
-	rm -rf _site generate doc/gen tmp $(BIN) $(GOCOVERDIR)
+	rm -rf _site generate doc/gen tmp $(GEN_OPENAPI_GO) $(BIN) $(GOCOVERDIR)
 
 ifneq ($(VERSION),$(file <$(VERSION_TXT)))
 .PHONY: $(VERSION_TXT) # Force update if VERSION_TXT does not match $(VERSION)
@@ -61,9 +61,8 @@ $(VERSION_TXT):
 $(BIN):
 	mkdir -p $(BIN)
 
-$(OAPI_CODEGEN_GO): $(OPENAPI_SPEC) $(OAPI_CODEGEN)
+$(GEN_OPENAPI_GO): $(OPENAPI_SPEC) $(OAPI_CODEGEN)
 	$(OAPI_CODEGEN) -generate types,gin,spec -package rest -o $@ $<
-
 
 SHELLCHECK:= $(BIN)/shellcheck
 $(SHELLCHECK): $(BIN)

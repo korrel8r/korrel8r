@@ -167,6 +167,18 @@ func TestAPI_PostNeighbours_none(t *testing.T) {
 	)
 }
 
+func TestAPIPostNeighboursInvalidClass(t *testing.T) {
+	e := testEngine(t)
+	a := newTestAPI(t, e)
+	w := a.do(t, "POST", "/api/v1alpha1/graphs/neighbours",
+		Neighbours{
+			Start: Start{Queries: []string{"mock:b:y"}, Class: "not-a-class"},
+			Depth: 0,
+		})
+	require.Equal(t, http.StatusBadRequest, w.Code)
+	require.Equal(t, `{"error":"invalid class name: not-a-class"}`, w.Body.String())
+}
+
 func TestAPI_GetObjects_empty(t *testing.T) {
 	d := mock.NewDomain("x")
 	q := mock.NewQuery(d.Class("y"), "test")
@@ -177,6 +189,15 @@ func TestAPI_GetObjects_empty(t *testing.T) {
 	w := a.do(t, "GET", "/api/v1alpha1/objects?query="+url.QueryEscape(q.String()), nil)
 	require.Equal(t, http.StatusOK, w.Code)
 	require.Equal(t, "[]", w.Body.String())
+}
+
+func TestAPI_GetObjects_invalid_query(t *testing.T) {
+	e, err := engine.Build().Engine()
+	require.NoError(t, err)
+	a := newTestAPI(t, e)
+	w := a.do(t, "GET", "/api/v1alpha1/objects?query="+url.QueryEscape("not-a-query"), nil)
+	require.Equal(t, http.StatusBadRequest, w.Code)
+	require.Equal(t, `{"error":"invalid query string: not-a-query"}`, w.Body.String())
 }
 
 func ginEngine() *gin.Engine {

@@ -153,9 +153,10 @@ func (a *API) queries(c *gin.Context, queryStrings []string) []korrel8r.Query {
 	var queries []korrel8r.Query
 	for _, q := range queryStrings {
 		query, err := a.Engine.Query(q)
-		if check(c, http.StatusBadRequest, err, "query parameter") {
-			queries = append(queries, query)
+		if !check(c, http.StatusBadRequest, err, "query parameter") {
+			return nil
 		}
+		queries = append(queries, query)
 	}
 	return queries
 }
@@ -177,6 +178,9 @@ func (a *API) start(c *gin.Context, start *Start) (traverse.Start, *korrel8r.Con
 	var class korrel8r.Class
 	if start.Class == "" && len(queries) > 0 {
 		class = queries[0].Class()
+		if class == nil {
+			return traverse.Start{}, nil
+		}
 	} else {
 		class = a.class(c, start.Class)
 	}
@@ -215,7 +219,7 @@ func check(c *gin.Context, code int, err error, format ...any) (ok bool) {
 
 func (a *API) class(c *gin.Context, className string) korrel8r.Class {
 	class, err := a.Engine.Class(className)
-	check(c, http.StatusNotFound, err)
+	check(c, http.StatusBadRequest, err)
 	return class
 }
 
