@@ -7,7 +7,9 @@ package rules_test
 
 import (
 	"fmt"
+	"maps"
 	"os"
+	"slices"
 	"strings"
 	"testing"
 
@@ -19,7 +21,6 @@ import (
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"github.com/korrel8r/korrel8r/pkg/unique"
 	"github.com/stretchr/testify/assert"
-	"golang.org/x/exp/maps"
 	"k8s.io/apimachinery/pkg/api/meta/testrestmapper"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	fakediscovery "k8s.io/client-go/discovery/fake"
@@ -59,7 +60,7 @@ func TestMain(m *testing.M) {
 	}
 	m.Run()
 	if len(rules) > 0 {
-		fmt.Printf("FAIL: %v rules not tested:\n- %v\n", len(rules), strings.Join(maps.Keys(rules), "\n- "))
+		fmt.Printf("FAIL: %v rules not tested:\n- %v\n", len(rules), strings.Join(slices.Collect(maps.Keys(rules)), "\n- "))
 		os.Exit(1)
 	}
 }
