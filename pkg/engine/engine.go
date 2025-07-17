@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"maps"
 	"slices"
 	"strings"
 	"text/template"
@@ -17,7 +18,6 @@ import (
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r/impl"
 	"github.com/korrel8r/korrel8r/pkg/result"
-	"golang.org/x/exp/maps"
 )
 
 var log = logging.Log()
@@ -33,7 +33,7 @@ type Engine struct {
 }
 
 func (e *Engine) Domains() []korrel8r.Domain {
-	domains := maps.Values(e.domains)
+	domains := slices.Collect(maps.Values(e.domains))
 	slices.SortFunc(domains, func(a, b korrel8r.Domain) int { return strings.Compare(a.Name(), b.Name()) })
 	return domains
 }
