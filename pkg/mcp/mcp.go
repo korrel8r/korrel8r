@@ -5,15 +5,18 @@ package mcp
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
+	"time"
 
 	"github.com/korrel8r/korrel8r/internal/pkg/build"
+	"github.com/korrel8r/korrel8r/internal/pkg/logging"
 	"github.com/korrel8r/korrel8r/internal/pkg/text"
 	"github.com/korrel8r/korrel8r/pkg/engine"
 	"github.com/korrel8r/korrel8r/pkg/engine/traverse"
-	"github.com/korrel8r/korrel8r/pkg/graph"
+	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"github.com/korrel8r/korrel8r/pkg/rest"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
@@ -28,9 +31,8 @@ type DomainParams struct {
 }
 
 type NeighbourParams = rest.Neighbours
+
 type GoalParams = rest.Goals
-type Start = rest.Start
-type Graph = rest.Graph
 
 const (
 	ListDomains           = "list_domains"
@@ -46,13 +48,13 @@ type Server struct {
 
 func NewServer(e *engine.Engine) *Server {
 	s := mcp.NewServer(&mcp.Implementation{Name: "korrle8r", Title: "Korrle8r MCP Server", Version: build.Version}, nil)
+	s.AddReceivingMiddleware(logger)
 	addTools(e, s)
-	// TODO register prompts, instructions, resources.
+	s.AddReceivingMiddleware()
 	return &Server{Server: s, Engine: e}
 }
 
 func addTools(e *engine.Engine, s *mcp.Server) {
-
 	mcp.AddTool(s, &mcp.Tool{
 		Name: ListDomains,
 		Description: `
@@ -90,13 +92,20 @@ Some domains have only a single class, others (like the 'k8s' domain) have many.
 Returns a JSON graph of correlated objects.
 From a set of start objects, follow correlation rules to find related objects up to the specified depth.`,
 	},
-		func(ctx context.Context, ss *mcp.ServerSession, p *mcp.CallToolParamsFor[NeighbourParams]) (*mcp.CallToolResultFor[*Graph], error) {
+		func(ctx context.Context, ss *mcp.ServerSession, p *mcp.CallToolParamsFor[NeighbourParams]) (*mcp.CallToolResultFor[rest.Graph], error) {
 			args := p.Arguments
+			logging.Log().V(2).Info("FIXME createneighboursgraph", args)
 			start, err := rest.TraverseStart(e, args.Start)
 			if err != nil {
-				return errorResultFor[*Graph](err), nil
+				return errorResultFor[rest.Graph](err), nil
 			}
-			return graphResult(traverse.New(e, e.Graph()).Neighbours(ctx, start, args.Depth)), nil
+			ctx, cancel := korrel8r.WithConstraint(ctx, args.Start.Constraint.Default())
+			defer cancel()
+			g, err := traverse.New(e, e.Graph()).Neighbours(ctx, start, args.Depth)
+			if err != nil {
+				return errorResultFor[rest.Graph](err), nil
+			}
+			return structuredResult(*rest.NewGraph(g, false)), nil
 		})
 
 	mcp.AddTool(s, &mcp.Tool{
@@ -105,17 +114,23 @@ From a set of start objects, follow correlation rules to find related objects up
 Returns a JSON graph of correlated objects.
 From a set of start objects, follow all paths leading to one of the goal classes.`,
 	},
-		func(ctx context.Context, ss *mcp.ServerSession, p *mcp.CallToolParamsFor[GoalParams]) (*mcp.CallToolResultFor[*Graph], error) {
+		func(ctx context.Context, ss *mcp.ServerSession, p *mcp.CallToolParamsFor[GoalParams]) (*mcp.CallToolResultFor[rest.Graph], error) {
 			args := p.Arguments
 			start, err := rest.TraverseStart(e, args.Start)
 			if err != nil {
-				return errorResultFor[*Graph](err), nil
+				return errorResultFor[rest.Graph](err), nil
 			}
+			ctx, cancel := korrel8r.WithConstraint(ctx, args.Start.Constraint.Default())
+			defer cancel()
 			goals, err := e.Classes(args.Goals)
 			if err != nil {
-				return errorResultFor[*Graph](err), nil
+				return errorResultFor[rest.Graph](err), nil
 			}
-			return graphResult(traverse.New(e, e.Graph()).Goals(ctx, start, goals)), nil
+			g, err := traverse.New(e, e.Graph()).Goals(ctx, start, goals)
+			if err != nil {
+				return errorResultFor[rest.Graph](err), nil
+			}
+			return structuredResult(*rest.NewGraph(g, false)), nil
 		})
 }
 
@@ -134,18 +149,39 @@ func textResult(text string) *mcp.CallToolResult {
 	return &mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{Text: text}}}
 }
 
-func graphResult(g *graph.Graph, err error) *mcp.CallToolResultFor[*Graph] {
-	if err != nil {
-		return errorResultFor[*Graph](err)
-	}
-	return &mcp.CallToolResultFor[*Graph]{StructuredContent: rest.NewGraph(g, false)}
-}
-
 func errorResultFor[T any](err error) *mcp.CallToolResultFor[T] {
 	return &mcp.CallToolResultFor[T]{
-		Content: []mcp.Content{&mcp.TextContent{Text: fmt.Sprintf("Error: %v", err)}},
+		Content: []mcp.Content{&mcp.TextContent{Text: fmt.Sprintf(`error: %v`, err.Error())}},
 		IsError: true,
 	}
 }
 
 var errorResult = errorResultFor[any]
+
+// logger is middleware to do debug logging of MCP methods
+func logger[S mcp.Session](handler mcp.MethodHandler[S]) mcp.MethodHandler[S] {
+	return func(ctx context.Context, s S, method string, params mcp.Params) (result mcp.Result, err error) {
+		log := logging.Log()
+		if log.V(3).Enabled() {
+			start := time.Now()
+			defer func() {
+				latency := time.Since(start)
+				log.V(3).Info("MCP method",
+					"method", method,
+					"params", params,
+					"result", result,
+					"latency", latency)
+			}()
+		}
+		return handler(ctx, s, method, params)
+	}
+}
+
+func structuredResult[T any](value T) *mcp.CallToolResultFor[T] {
+	// Also return result as JSON text content for older clients.
+	text, _ := json.Marshal(value)
+	return &mcp.CallToolResultFor[T]{
+		Content:           []mcp.Content{&mcp.TextContent{Text: string(text)}},
+		StructuredContent: value,
+	}
+}

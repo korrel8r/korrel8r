@@ -53,7 +53,7 @@ func TestCreateNeighboursGraph(t *testing.T) {
 	client := newClient(t, newEngine(t))
 	r, err := client.CallTool(context.Background(), &mcp.CallToolParams{
 		Name:      CreateNeighboursGraph,
-		Arguments: NeighbourParams{Depth: 5, Start: Start{Queries: []string{"mock:a:x"}}},
+		Arguments: NeighbourParams{Depth: 5, Start: rest.Start{Queries: []string{"mock:a:x"}}},
 	})
 	require.NoError(t, err)
 	got := graphContent(t, r)
@@ -67,7 +67,7 @@ func TestCreateGoalsGraph(t *testing.T) {
 		Name: CreateGoalsGraph,
 		Arguments: GoalParams{
 			Goals: []string{"mock:b"},
-			Start: Start{Queries: []string{"mock:a:x"}},
+			Start: rest.Start{Queries: []string{"mock:a:x"}},
 		},
 	})
 	require.NoError(t, err)

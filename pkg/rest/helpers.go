@@ -189,12 +189,15 @@ func TraverseStart(e *engine.Engine, start Start) (traverse.Start, error) {
 			return traverse.Start{}, err
 		}
 		if class == nil {
-			class = query.Class() // Default from query
+			class = query.Class() // Use class of first query
 		}
 		if query.Class() != class {
 			return traverse.Start{}, fmt.Errorf("query class mismatch: expected class %v in query %v", class, q)
 		}
 		queries = append(queries, query)
+	}
+	if class == nil {
+		return traverse.Start{}, fmt.Errorf("no class provided to start graph traversal")
 	}
 	var objects []korrel8r.Object
 	for _, raw := range start.Objects {
