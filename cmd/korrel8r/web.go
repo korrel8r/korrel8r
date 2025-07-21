@@ -59,15 +59,15 @@ var webCmd = &cobra.Command{
 
 		if *restFlag {
 			rest := must.Must1(rest.New(engine, configs, router))
-			log.V(0).Info("REST API HTTP server", "path", rest.BasePath)
+			log.V(0).Info("Enable REST endpoint", "path", rest.BasePath)
 		}
 		if *mcpFlag {
 			router.POST(mcp.StreamablePath, gin.WrapH(mcp.NewServer(engine).HTTPHandler()))
-			log.V(0).Info("Model Context Protocol Streamable HTTP server", "path", mcp.StreamablePath)
+			log.V(0).Info("Enable MCP Streamable endpoint", "path", mcp.StreamablePath)
 		}
 		if *sseFlag {
 			router.POST(mcp.SSEPath, gin.WrapH(mcp.NewServer(engine).HTTPHandler()))
-			log.V(0).Info("Model Context Protocol Streamable HTTP server", "path", mcp.SSEPath)
+			log.V(0).Info("Enable MCP SSE endpoint", "path", mcp.SSEPath)
 		}
 		s.Handler = router
 		if *profileFlag == "http" {
