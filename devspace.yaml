@@ -20,8 +20,7 @@ pipelines:
       stop_dev --all
       scale_up_coo
 vars:
-  IMAGE_DEVSPACE:
-    default: ${REGISTRY_BASE}/korrel8r-devspace:latest
+  REGISTRY_BASE:
 dev:
   # app container replaces the COO's korrel8r deployment with an auto-rebuild container.
   # Changes to the local source are synced and cause a rebuild and restart of the container.
@@ -29,7 +28,19 @@ dev:
     # Find the korrel8r container by label selector.
     labelSelector: { app.kubernetes.io/instance: korrel8r }
     container: korrel8r
-    # Sync files necessary for auto-rebuild
+    devImage: ${REGISTRY_BASE}/korrel8r:devspace
+    command:
+      - gow                     # Re-run if source file change
+      - run
+      - ./cmd/korrel8r
+      - web
+      - --https=:9443
+      - --cert=/secrets/tls.crt
+      - --key=/secrets/tls.key
+      - --config=etc/korrel8r/openshift-svc.yaml
+      - -v3
+
+    # Sync local files necessary for auto-rebuild to the development container.
     sync:
       - path: './:/src'
         excludePaths:
@@ -44,12 +55,9 @@ dev:
         startContainer: true
         waitInitialSync: true
 
-    devImage: ${IMAGE_DEVSPACE}
-    command: ["gow", "run", "./cmd/korrel8r", "web", "-c", "./etc/korrel8r/openshift-svc.yaml", "-v3"]
-
     # Forward the ports to be able access your application via localhost
     ports:
-      - port: "8080"
+      - port: "9443"
 
     # Inject a lightweight SSH server into the container (so your IDE can connect to the remote dev env
     ssh:

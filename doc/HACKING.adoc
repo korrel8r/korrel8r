@@ -57,20 +57,26 @@ Use `korrel8r --help` for more commands and options.
 make deploy
 ----
 
-TIP: Set  `REGISTRY_BASE` or `IMG` to the repository where you want to push images.
+IMPORTANT: Set  `REGISTRY_BASE` to the repository where you want to push images.
 
 .Browse the interactive REST API:
   xdg-open $(oc get route/korrel8r -n korrel8r -o 'template=https://{{.spec.host}}')
 
-== Deploying with devspace
+=== Run with devspace
 
-Devspace is a tool that can replace an existing pod with a development pod that
-is synced to your local source code, so changes are automatically reflected in the cluster.
+IMPORTANT: Set  `REGISTRY_BASE` to the repository where you want to push images.
 
-[,terminal]
-----
-make devspace
-----
+Devspace automatically syncs local code changes to the cluster, which speeds up development.
+It replaces a cluster pod with a development pod that can receive hot-updates as source changes.
+
+. Install https://www.devspace.sh/docs/getting-started/installation:[devspace].
+. Set namespace you want to deploy in using `devspace use namespace {NAMESPACE}`
+. Create a live-update development image: `make devspace-image`
+. Start the devspace sync `devspace dev`.
+. Make code changes locally, the running korrel8r will re-start automatically!
+
+The `devspace.yaml` config file runs korrel8r as it is deployed by the Cluster Observability Operator.
+You can edit the file to run it in a difference namespace or with different configuration.
 
 == Contributing to documentation
 
