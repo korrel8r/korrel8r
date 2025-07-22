@@ -120,17 +120,44 @@ exit Claude desktop with *File > Exit*  (not *File > Close*) and re-start.
 - Did not make any successful queries. The korrel8r query syntax is not widely discussed on the internet.
 - Hit usage restrictions of free Claude very quickly, it is not a practical tool for further experiments.
 
-=== Next steps
+== Openshift Lightspeed
 
-- Improve documentation and examples of the query format available via MCP `info` - i.e. the REST API `description` and `example` elements.
+Openshift Lightspeed integrates a chatbot into the Openshift console. Install as follows:
+
+. From Operatorhub, install the 'OpenShift Lightspeed Operator'
+. Configure lightspeed and a secret with your OpenAI API token.
++
+----
+SECRET=<your-token-string> envsubst < credentials.yaml | oc apply -f -  -f olsconfig.yaml
+----
+. Scale down the operator so you can manally edit the configmap. +
+  `kubectl scale --replicas=0 -n openshift-lightspeed deployment/lightspeed-operator-controller-manager`
+. Edit the config file and add this section under `ols_config`
++
+----
+include::olsconfig-cm-patch.yaml[]
+----
+
+[WARNING]
+====
+Incomplete, had problems with access quotas to OpenAI. To be continued.
+
+F  oc logs -n openshift-lightspeed deployment/lightspeed-app-server
+
+  2025-07-22 18:19:03,002 [ols.app.endpoints.health:health.py:59] ERROR: LLM connection check failed with - Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
+====
+
+== Next steps
+
+- Improve documentation and examples of the query format available via MCP `info` - i.e. the REST API `description` and `example` elements
 - Add more HTTP links to the korrel8r website in the API doc, so models can follow those links and use the doc there.
 - Use Red Hat light-speed to drive the experiment instead of public models.
 - Write a dedicated MCP server rather than generating from REST. Reasons:
-  - Restrict operations that the model can call.
-  - Provide "you are a blah, you must do blah" type of prompts and descriptions, which would be unsuitable in REST docs.
-  - Use features of the MCP protocol that are not available in a REST mapping - resources, prompts.
-  - Allow exposing new/different MCP tools or data structures that may not make sense for the REST API.
-  - Easier to deploy when built-in to korrel8r than as a separate proxy/bridge.
+- Enable interaction between console, korrel8r & AI.
+  - Let AI change the console page (Troubleshooting-Panel? Korrel8r? Both?)
+  - Use Korrel8r as an entry point for AI to query all back-end stores.
+  - Provide a way for LLMs to refer to resources/signals/console pages - korrel8r query format?
+  - Inject console context into chat context.
 
 == Debugging tricks
 
@@ -145,29 +172,3 @@ npx @modelcontextprotocol/inspector
 ----
 
 IMPORTANT: Open the URL marked "Open inspector with token pre-filled:" in your browser.
-
-== Next steps
-
-- Improve documentation and examples of the query format available via MCP `info` - i.e. the REST API `description` and `example` elements.
-- Add more HTTP links to the korrel8r website in the API doc, so models can follow those links and use the doc there.
-- Use Red Hat light-speed to drive the experiment instead of public models.
-- Write a dedicated MCP server rather than generating from REST. Reasons:
-
-
-== Next steps
-
-- Write custom MCP API instead of conversion from REST. Reasons:
-  - Restrict MCP operations that the model can call.
-  - Provide "you are a blah, you must do blah" type of prompts and descriptions, unsuitable in REST docs.
-  - Use MCP features not available in a REST mapping - resources, prompts, others?
-  - Expose new/different MCP tools that don't make sense on the REST API.
-
-- Use AI to help with the rewrite?
-- Find a way to re-use common documentation/definitions between all 3 APIs (CLI, MCP, REST)
-- Drive from Red Hat light-speed integration.
-
-- Enable interaction between console, korrel8r & AI.
-  - Let AI change the console page (Troubleshooting-Panel? Korrel8r? Both?)
-  - Use Korrel8r as an entry point for AI to query all back-end stores?
-  - Provide a way for LLMs to refer to resources/signals/console pages - korrel8r query format?
-  - Inject console context into chat context.

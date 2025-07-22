@@ -1,0 +1,32 @@
+apiVersion: ols.openshift.io/v1alpha1
+kind: OLSConfig
+metadata:
+  name: cluster
+spec:
+  llm:
+    providers:
+      - credentialsSecretRef:
+          name: credentials
+        models:
+          - name: gpt-4o-mini
+        name: openai
+        type: openai
+        url: 'https://api.openai.com/v1'
+  ols:
+    conversationCache:
+      postgres:
+        credentialsSecret: lightspeed-postgres-secret
+        dbName: postgres
+        maxConnections: 2000
+        sharedBuffers: 256MB
+        user: postgres
+      type: postgres
+    defaultModel: gpt-4o-mini
+    defaultProvider: openai
+    deployment:
+      console:
+        replicas: 1
+      replicas: 1
+    logLevel: INFO
+  olsDataCollector:
+    logLevel: INFO

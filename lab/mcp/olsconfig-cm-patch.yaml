@@ -1,0 +1,9 @@
+data:
+  olsconfig.yaml: |
+    ols_config:
+
+      mcp_servers:
+        - name: korrel8r
+          transport: sse
+          sse:
+            url: https://korrel8r.openshift-cluster-observability-operator.svc.cluster.local:9443/sse
