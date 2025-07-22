@@ -4,121 +4,64 @@
 :link-korrel8r: https://korrel8r.github.io/korrel8r/
 :toc: left
 
-link:{link-mcp}[Model Context Protocol] (MCP) allows LLMs to use external tools.
-This is an experiment in using link:{link-korrel8r}[Korrel8r] as an MCP tool.
+Large Language Models using link:{link-korrel8r}[Korrel8r] via the link:{link-mcp}[Model Context Protocol].
 
 CAUTION: This is an experiment in progress. Everything is subject to change without notice.
 
-link:{link-openapi-mcp}[openapi-mcp] creates an MCP server from an OpenAPI spec.
-The MCP server exposes the API description so that models can learn how to use the tool.
-Korrel8r is a REST service so we can use `openapi-mcp` to create an MCP "wrapper".
+IMPORTANT: You must `oc login` to an Openshift cluster.
 
-IMPORTANT: You must `oc login` and be logged in to an Openshift cluster.
+== Running korrel8r as MCP server
 
+The `korrel8r mcp` command runs an MCP stdio server.
 
-== Run Korrel8r
+The `korrel8r web` command serves 3 endpoints:
 
-The Cluster Observability Operator (COO) deploys korrel8r for you in the cluster.
-To use the COO korrel8r instance, set its URL in your environment:
+- `/api/v1alpha1` - REST API
+- `/mcp` - MCP streaming protocol
+- `/sse` - MCP Server-Sent Events protocol
 
+You can connect to a korrel8r service in the cluster like this:
+
+  oc create route reencrypt --service=korrel8r
   export KORREL8R_URL=$(oc get routes/korrel8r -n openshift-cluster-observability-operator -o template='https://{{.spec.host}}')
 
-You can also run korrel8r locally, using routes to connect to stores in the cluster.
-
+You can run korrel8r locally, using routes to connect to stores in the cluster.
   korrel8r web --http :8080 --config ../etc/korrel8r/openshift-route.yaml
   export KORREL8R_URL=http://localhost:8080
 
-== Generating an MCP server from the REST API
-
-=== Install openapi-mcp
-
-[,terminal]
-----
-go install github.com/jedisct1/openapi-mcp/cmd/openapi-mcp@latest
-----
-
-The MCP server can run in two modes:
-- as a "stdio" server, intended to be run by a local AI proxy.
-- as a stand-alone HTTP proxy, receiving MCP requests and forwarding REST calls to korrel8r.
-
-This shell script runs the MCP server:
-
-.korrel8r-mcp.sh
-[,bash]
-----
-include::korrel8r-mcp.sh[]
-----
-
-NOTE: This script runs openapi-mcp as a `stdio` server for experimentation purposes.
-A more realistic deployment would run a HTTP MCP server in the cluster beside korrel8r.
-
-=== MCP configuration
-
-The following configuration tells MCP clients (AI model proxies) how to run `korrel8r-mcp.sh`
-as an MCP server in `stdio` mode.
-
-.mcpconfig.json
-[,json]
-----
-{
-  "mcpServers": {
-    "korrel8r": {
-      "command": "</abs/path/to/>korrel8r-mcp.sh"
-    }
-  }
-}
-----
-
 == Claude Desktop
 
-Claude desktop is a local proxy for the claude.ai model.
-It was the first experiment because it's widely advertised to work with local MCP servers.
+Claude desktop was the first experiment because it is easy to register a local MCP server.
 
 === Installing on Fedora 42
 
 Claude-desktop is not officially packaged for Linux, but there is an unofficial fedora package.
 Clone the repository and follow README to build & install.
 
-[,terminal]
-----
-git clone https://github.com/sneered/claude-desktop-fedora.git
-----
+  git clone https://github.com/sneered/claude-desktop-fedora.git
 
 This didn't immediately work, there were errors about GT 3/4 version clashes.
 Installing an *older* version of electron (the portable runtime that Claude uses) fixed the problem.
 
-[,terminal]
-----
-sudo npm remove -g electron
-sudo npm install -g electron@v35.5.1
-----
+  sudo npm remove -g electron
+  sudo npm install -g electron@v35.5.1
 
-=== Configure
+=== Configure and Run
 
 Copy the configuration file (or edit the Claude configuration file) as follows:
 
-[,terminal]
-----
-co mcpconfig.json ~/.config/Claude/claude_desktop_config.json
-----
+s  claude/config.sh
+  claude-desktop
 
-IMPORTANT: If you modify the configuration or the `korrel8r-mcp.sh` script,
-exit Claude desktop with *File > Exit*  (not *File > Close*) and re-start.
+IMPORTANT: If you modify korrel8r or its configuration file,
+exit Claude desktop with *File > Exit* (not *File > Close*) and re-start.
 
-=== Results
 
-- Finds the korrel8r tool and is able to read and report the available endpoints.
-- Successfully calls `listDomains` (no parameters) and describes the available domains.
-- Tries very hard to make queries
-  - tries each endpoint available, many formats.
-  - cannot format korrel8r queries correctly
-- Halucinates a graph out of nothing
+==== Korrel8r built-in MCP interface
 
-.Results
-- Claude does query the MCP info and try to use each of the API endpoints.
-- Successfully lists domains, and describes them sensibly.
-- Did not make any successful queries. The korrel8r query syntax is not widely discussed on the internet.
-- Hit usage restrictions of free Claude very quickly, it is not a practical tool for further experiments.
+First attempt
+https://claude.ai/share/b36a14f5-8bf9-41e4-82f4-ccf648ce2cbf
+Gets everything correct except pod query "name:korrel8r" - doesn't include class
 
 == Openshift Lightspeed
 
@@ -142,7 +85,7 @@ include::olsconfig-cm-patch.yaml[]
 ====
 Incomplete, had problems with access quotas to OpenAI. To be continued.
 
-F  oc logs -n openshift-lightspeed deployment/lightspeed-app-server
+  oc logs -n openshift-lightspeed deployment/lightspeed-app-server
 
   2025-07-22 18:19:03,002 [ols.app.endpoints.health:health.py:59] ERROR: LLM connection check failed with - Error code: 429 - {'error': {'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, read the docs: https://platform.openai.com/docs/guides/error-codes/api-errors.', 'type': 'insufficient_quota', 'param': None, 'code': 'insufficient_quota'}}
 ====
@@ -161,9 +104,6 @@ F  oc logs -n openshift-lightspeed deployment/lightspeed-app-server
 
 == Debugging tricks
 
-The following command install and runs an interactive browser-based tool that can connect to any MCP server.
-It will show metadata, let you call tools interactively and examine the responses.
-
 A browser-based tool that can connect to any MCP server.
 It will show metadata and allow you to experiment with calling tools.
 [,terminal]
@@ -172,3 +112,53 @@ npx @modelcontextprotocol/inspector
 ----
 
 IMPORTANT: Open the URL marked "Open inspector with token pre-filled:" in your browser.
+
+== Next steps
+
+- Use Red Hat light-speed to drive the experiment instead of Claude.
+- Improve prompting and descriptions from MCP server.
+- Enable interaction between console, korrel8r & AI.
+  - Let AI change the console page (Troubleshooting-Panel? Korrel8r? Both?)
+  - Use Korrel8r as an entry point for AI to query all back-end stores?
+  - Provide a way for LLMs to refer to resources/signals/console pages - korrel8r query format?
+  - Inject console context into chat context.
+
+= Old experiments
+
+For the record, here are some earlier experiments that were tried.
+
+== Generating an MCP server from the REST API
+
+link:{link-openapi-mcp}[openapi-mcp] is a tool that converts MCP to REST based on an OpenAPI spec.
+The MCP server exposes the API descriptions from the spec and forwards MCP calls as REST calls.
+
+.Installing
+[,terminal]
+----
+go install github.com/jedisct1/openapi-mcp/cmd/openapi-mcp@latest
+----
+
+This shell script runs an MCP stdio server:
+
+.korrel8r-mcp-proxy.sh
+[,bash]
+----
+include::korrel8r-mcp-proxy.sh[]
+----
+
+The results were encouraging, but required deploying a separate proxy and did not give
+full access to MCP protocol features (prompts, instructions, resource etc.)
+This motivated the built-in MCP server in korrel8r to avoid these limitations.
+
+- Finds the korrel8r tool and is able to read and report the available endpoints.
+- Successfully calls `listDomains` (no parameters) and describes the available domains.
+- Tries very hard to make queries
+  - tries each endpoint available, many formats.
+  - cannot format korrel8r queries correctly
+- Halucinates a graph out of nothing
+
+.Results
+- Claude does query the MCP info and try to use each of the API endpoints.
+- Successfully lists domains, and describes them sensibly.
+- Did not make any successful queries. The korrel8r query syntax is not widely discussed on the internet.
+- Hit usage restrictions of free Claude very quickly, it is not a practical tool for further experiments.

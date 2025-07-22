@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "korrel8r": {
+      "command": "korrel8r",
+      "args": [
+        "--config",
+        "${KORREL8R_CONFIG_DIR}/openshift-route.yaml"
+      ]
+    }
+  }
+}
