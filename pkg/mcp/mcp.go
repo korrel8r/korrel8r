@@ -94,7 +94,6 @@ From a set of start objects, follow correlation rules to find related objects up
 	},
 		func(ctx context.Context, ss *mcp.ServerSession, p *mcp.CallToolParamsFor[NeighbourParams]) (*mcp.CallToolResultFor[rest.Graph], error) {
 			args := p.Arguments
-			logging.Log().V(2).Info("FIXME createneighboursgraph", args)
 			start, err := rest.TraverseStart(e, args.Start)
 			if err != nil {
 				return errorResultFor[rest.Graph](err), nil
