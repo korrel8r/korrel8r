@@ -1,0 +1,138 @@
+https://claude.ai/share/b36a14f5-8bf9-41e4-82f4-ccf648ce2cbf
+
+list the korrel8r domains
+
+Edit
+I'll list the available Korrel8r domains for you.
+
+
+K
+
+list_domains
+
+
+Here are the available Korrel8r domains:
+
+alert - Alerts that metric values are out of bounds
+incident - Incidents group alerts into higher-level groups
+k8s - Resource objects in a Kubernetes API server
+log - Records from container and node logs
+metric - Time-series of measured values
+mock - Mock domain
+netflow - Network flows from source nodes to destination nodes
+otellog - Log Records in the otel format
+trace - Traces from Pods and Nodes
+These domains represent different types of observability data and Kubernetes resources that Korrel8r can correlate across to help with troubleshooting and analysis.
+
+
+
+
+What classes are there in the trace domain?
+
+Edit
+I'll list the classes available in the trace domain.
+
+
+K
+
+list_domain_classes
+
+
+The trace domain contains one class:
+
+span - Represents individual trace spans, which are the basic building blocks of distributed traces that capture operations and their timing within a system
+Spans contain information about operations like their start time, duration, service name, operation name, and other metadata that help track requests as they flow through distributed systems.
+
+
+
+
+show me a graph of  a neighbourhood of 3 around the korrel8r deployment
+
+Edit
+I'll create a neighborhood graph with depth 3 around the Korrel8r deployment. First, let me get the Kubernetes deployment object for Korrel8r and then generate the correlation graph.
+
+
+K
+
+create_neighbours_graph
+
+
+Let me first check what classes are available in the k8s domain to use the correct format:
+
+
+K
+
+list_domain_classes
+
+
+Now I'll use the correct class format for Deployment:
+
+
+K
+
+create_neighbours_graph
+Request
+
+{
+  `depth`: 3,
+  `start`: {
+    `class`: `k8s:Deployment.v1.apps`,
+    `queries`: [
+      `name:korrel8r`
+    ]
+  }
+}
+Response
+
+Error: domain not found: name
+Let me try a different approach and search for the korrel8r deployment without specifying a query filter:
+
+
+K
+
+create_neighbours_graph
+
+
+Let me try with a simpler query format:
+
+
+K
+
+create_neighbours_graph
+
+
+Let me try without specifying a query and see what deployments are available:
+
+
+K
+
+create_neighbours_graph
+
+
+Let me try a different approach with a simpler query structure:
+
+
+K
+
+create_neighbours_graph
+
+
+It appears there might be an issue with the current Korrel8r instance or no deployments are available. Let me try a different approach and look for any available Kubernetes objects, starting with pods:
+
+
+K
+
+create_neighbours_graph
+
+
+It seems there may be an issue with the Korrel8r service or no Kubernetes resources are currently available in the system. This could happen if:
+
+The Korrel8r service isn't connected to a Kubernetes cluster
+There are no resources in the cluster
+There's a connectivity issue with the data sources
+Without active Kubernetes resources to correlate, I cannot generate a meaningful neighborhood graph around a Korrel8r deployment. To create such a graph, you would typically need:
+
+A running Korrel8r deployment in a Kubernetes cluster
+Associated pods, services, and other Kubernetes resources
+Observability data (logs, metrics, traces) that correlate to those resources
+Once Korrel8r has access to these resources, a depth-3 neighborhood graph around a deployment would typically show connections to related pods, services, config maps, secrets, and potentially correlated logs, metrics, and alerts.
