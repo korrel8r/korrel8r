@@ -14,12 +14,9 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/korrel8r/korrel8r/internal/pkg/logging"
 	"github.com/korrel8r/korrel8r/pkg/unique"
 	"sigs.k8s.io/yaml"
 )
-
-var log = logging.Log()
 
 // Load loads all configurations from a file or URL.
 //
@@ -90,7 +87,6 @@ func (l *loader) load(source string) error {
 		return nil // Already loaded
 	}
 	l.loaded.Add(source)
-	log.V(2).Info("Configuration: Loading", "config", source)
 	b, err := readFileOrURL(source)
 	if err != nil {
 		return fmt.Errorf("%v: %w", source, err)
