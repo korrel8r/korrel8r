@@ -176,7 +176,7 @@ func (n *node) Run(ctx context.Context) {
 		}
 		before := len(n.Result.List())
 		err := n.engine.Get(ctx, q, korrel8r.ConstraintFrom(ctx), n.Result)
-		n.errs.Log(err, "Get failed", "error", err, "query", q)
+		n.errs.Log(err, "Get failed", "query", q)
 		result := n.Result.List()[before:]
 		for _, o := range result {
 			n.applyRules(ctx, o)
@@ -210,7 +210,7 @@ func (n *node) applyRules(ctx context.Context, o korrel8r.Object) {
 				n.errs.Log(qe.err, "Rule did not apply", "rule", l.Rule.Name())
 				return
 			}
-			log.V(4).Info("Applied", "rule", l.Rule.Name(), "query", qe.q)
+			log.V(4).Info("Create query", "rule", l.Rule.Name(), "query", qe.q)
 		}
 		if qe.q.Class() != l.Goal().Class { // Wrong line, save for later
 			applied[l.Rule] = qe

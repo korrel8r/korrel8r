@@ -34,8 +34,8 @@ func setup() *engine.Engine {
 	if err != nil {
 		panic(err)
 	}
-	for _, c := range configs {
-		c.Stores = nil // Use fake stores, not configured defaults.
+	for i := range configs {
+		configs[i].Stores = nil // Use fake stores, not configured defaults.
 	}
 	c := fake.NewClientBuilder().WithRESTMapper(testrestmapper.TestOnlyStaticRESTMapper(scheme.Scheme)).Build()
 	s, err := k8s.NewStoreWithDiscovery(c, &rest.Config{}, &fakeDiscovery{})
@@ -44,7 +44,7 @@ func setup() *engine.Engine {
 	}
 	e, err := engine.Build().
 		Domains(domains.All...).
-		Stores(s). // NOTE: k8s store must come before configs, some templates use k8s functions.
+		Stores(s).
 		Config(configs).
 		Engine()
 	if err != nil {

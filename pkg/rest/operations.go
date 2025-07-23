@@ -156,13 +156,13 @@ func check(c *gin.Context, code int, err error, format ...any) (ok bool) {
 		return false
 	case err == nil:
 		return true
-	case traverse.IsPartialError(err):
+	case korrel8r.IsPartialError(err):
 		_ = c.Error(err) // Save the error for interrupted()
 		return true      // Allow the handler to succeed
 	default:
 		ginErr := c.Error(err)
 		c.AbortWithStatusJSON(code, ginErr.JSON())
-		log.Error(err, "Request failed", "url", c.Request.URL, "code", code, "error", err)
+		log.V(1).Info("Request failed", "url", c.Request.URL, "code", code, "error", err)
 		return false
 	}
 }
@@ -189,7 +189,7 @@ func (a *API) context(c *gin.Context) {
 // Interrupted checks for a context error or partial error,
 // indicating we may have a partial result.
 func interrupted(c *gin.Context) bool {
-	return c.Errors.Last() != nil && traverse.IsPartialError(c.Errors.Last()) ||
+	return c.Errors.Last() != nil && korrel8r.IsPartialError(c.Errors.Last()) ||
 		c.Request.Context().Err() == context.DeadlineExceeded
 }
 

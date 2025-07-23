@@ -87,20 +87,21 @@ func (b *Builder) StoreConfigs(storeConfigs ...config.Store) *Builder {
 	return b
 }
 
+// store adds a store wrapper.
+// Exactly one of sc and s must be non-nil.
 func (b *Builder) store(sc config.Store, s korrel8r.Store) *storeHolder {
 	var wrapper *storeHolder
 	wrapper, b.err = wrap(b.e, sc, s)
 	if b.err != nil {
 		return nil
 	}
-	s, b.err = wrapper.Ensure()
-	if b.err != nil {
-		return nil
+	b.e.stores[wrapper.Domain()].Add(wrapper)
+	// Store errors don't prevent startup, but check and log a warning.
+	var err error
+	_, err = wrapper.Ensure()
+	if err != nil {
+		log.Info("warning: cannot connect to store", "domain", wrapper.Domain().Name(), "error", err)
 	}
-	if tf, ok := s.(interface{ TemplateFuncs() map[string]any }); ok {
-		maps.Copy(b.e.templateFuncs, tf.TemplateFuncs())
-	}
-	b.err = b.e.stores[s.Domain()].Add(wrapper)
 	return wrapper
 }
 
