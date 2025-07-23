@@ -92,5 +92,6 @@ func newEngine() (*engine.Engine, config.Configs) {
 		Domains(append(domains.All, mock.NewDomain("mock"))...).
 		Config(c).
 		Engine())
+	log.V(2).Info("Configuration loaded", "source", *configFlag)
 	return e, c
 }

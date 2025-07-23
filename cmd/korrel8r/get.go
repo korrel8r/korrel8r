@@ -67,7 +67,7 @@ func init() {
 }
 
 func check(err error) {
-	if traverse.IsPartialError(err) {
+	if korrel8r.IsPartialError(err) {
 		fmt.Fprintln(os.Stderr, err)
 	} else {
 		must.Must(err)
@@ -106,7 +106,7 @@ var (
 		Run: func(cmd *cobra.Command, args []string) {
 			e, _ := newEngine()
 			var goals []korrel8r.Class
-			for _, g := range args[1:] {
+			for _, g := range args {
 				goals = append(goals, must.Must1(e.Class(g)))
 			}
 			ctx, cancel := korrel8r.WithConstraint(context.Background(), constraint())

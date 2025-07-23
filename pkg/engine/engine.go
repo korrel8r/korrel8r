@@ -159,8 +159,8 @@ func (e *Engine) Get(ctx context.Context, query korrel8r.Query, constraint *korr
 		defer cancel()
 	}
 	ss := e.stores[query.Class().Domain()]
-	if ss == nil {
-		return fmt.Errorf("no stores found for domain %v", query.Class().Domain())
+	if len(ss.stores) == 0 {
+		return fmt.Errorf("no stores found for domain %v", query.Class().Domain().Name())
 	}
 	return ss.Get(ctx, query, constraint, result)
 }

@@ -4,7 +4,6 @@ package engine
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"maps"
 	"reflect"
@@ -24,17 +23,19 @@ var (
 )
 
 // storeHolder is a wrapper to (re-)create a store on demand from its configuration.
+// Keeps track of errors connecting to the store for debugging.
+// Concurrent safe.
 type storeHolder struct {
 	lock sync.Mutex
 
 	Original config.Store   // Original template configuration to create the store.
 	Expanded config.Store   // Expanded template used for last creation attempt.
 	Store    korrel8r.Store // Store client. Nil if store needs to be re-created.
-	Err      error          // Last non-nil error from Store.Get() or Domain.Store()
-	ErrCount int            // Count of errors from Store.Get() and Domain.Store()
+	LastErr  error          // Last non-nil error connecting to the store.
+	ErrCount int            // Count of errors connecting to the store.
+	Engine   *Engine
 
-	Engine *Engine
-	domain korrel8r.Domain
+	domain korrel8r.Domain // Must be a method to fit Store interface.
 }
 
 // wrap wraps a [config.Store] or a [korrel8r.Store] as a *[storeHolder]
@@ -55,6 +56,17 @@ func wrap(e *Engine, sc config.Store, s korrel8r.Store) (*storeHolder, error) {
 
 func (s *storeHolder) Domain() korrel8r.Domain { return s.domain }
 
+func (s *storeHolder) RecordError(err error) {
+	if err != nil {
+		// Don't log same error twice in a row
+		if s.LastErr != nil && s.LastErr.Error() != err.Error() {
+			log.V(2).Info("Engine: Store error", "error", err, "domain", s.Domain().Name(), "config", s.Original)
+		}
+		s.LastErr = err
+		s.ErrCount++
+	}
+}
+
 // Get (re-)creates the store as required. Concurrent safe.
 func (s *storeHolder) Get(ctx context.Context, q korrel8r.Query, constraint *korrel8r.Constraint, result korrel8r.Appender) (err error) {
 	s.lock.Lock() // Lock for duration of Get() - serialize Get per store.
@@ -64,8 +76,7 @@ func (s *storeHolder) Get(ctx context.Context, q korrel8r.Query, constraint *kor
 	}
 	err = s.Store.Get(ctx, q, constraint, result)
 	if err != nil {
-		s.Err = err
-		s.ErrCount++
+		s.RecordError(err)
 		if s.Original != nil { // Only re-create if there is some configuration.
 			// Close the broken store if it is an io.Closer()
 			if c, ok := s.Store.(io.Closer); ok {
@@ -99,17 +110,12 @@ func (s *storeHolder) ensure() (korrel8r.Store, error) {
 	if s.Store != nil {
 		return s.Store, nil // Already exists.
 	}
-	defer func() {
-		if err != nil {
-			s.Err = err
-			s.ErrCount++
-			log.V(2).Info("Engine: Store error", "error", err, "config", s.Original)
-		}
-	}()
+	defer s.RecordError(err)
+
 	// Expand the store config each time - the results may change.
 	s.Expanded = config.Store{}
 	for k, original := range s.Original {
-		expanded, err := s.Engine.execTemplate(fmt.Sprintf("%v store", s.domain.Name()), original, nil)
+		expanded, err := s.Engine.execTemplate(s.Domain().Name()+" store template", original, nil)
 		if err != nil {
 			return nil, err
 		}
@@ -143,14 +149,13 @@ func newStores(d korrel8r.Domain) *stores {
 
 func (ss *stores) Domain() korrel8r.Domain { return ss.domain }
 
-func (ss *stores) Add(newStore *storeHolder) error {
+func (ss *stores) Add(newStore *storeHolder) {
 	// Check for duplicate configuration
 	if newStore.Original != nil && slices.ContainsFunc(ss.stores,
 		func(s *storeHolder) bool { return reflect.DeepEqual(s.Original, newStore.Original) }) {
-		return fmt.Errorf("duplicate store configuration: %v", newStore.Original)
+		return // Ignore duplicates
 	}
 	ss.stores = append(ss.stores, newStore)
-	return nil
 }
 
 func (ss *stores) Get(ctx context.Context, q korrel8r.Query, constraint *korrel8r.Constraint, result korrel8r.Appender) error {
@@ -158,7 +163,6 @@ func (ss *stores) Get(ctx context.Context, q korrel8r.Query, constraint *korrel8
 		errs unique.Errors
 		ok   bool
 	)
-	// TODO review this logic. Return [korrel8r.PartialError] rather than nil?
 	for _, s := range ss.stores {
 		// Iterate over stores and accumulate all results.
 		err := s.Get(ctx, q, constraint, result)
@@ -166,6 +170,9 @@ func (ss *stores) Get(ctx context.Context, q korrel8r.Query, constraint *korrel8
 		ok = (err == nil) || ok // Remember if any call succeeds.
 	}
 	if ok { // If any call succeeded, this is a success
+		if errs.Err() != nil {
+			log.V(2).Info("Get succeeded with errors", "errors", errs.Err())
+		}
 		return nil
 	}
 	return errs.Err()
@@ -188,8 +195,8 @@ func (ss *stores) StoreClasses() ([]korrel8r.Class, error) {
 func (ss *stores) Configs() (ret []config.Store) {
 	for _, s := range ss.stores {
 		sc := maps.Clone(s.Expanded)
-		if s.Err != nil {
-			sc[config.StoreKeyError] = s.Err.Error()
+		if s.LastErr != nil {
+			sc[config.StoreKeyError] = s.LastErr.Error()
 		}
 		if s.ErrCount > 0 {
 			sc[config.StoreKeyErrorCount] = strconv.Itoa(s.ErrCount)
@@ -202,7 +209,7 @@ func (ss *stores) Configs() (ret []config.Store) {
 // Ensure calls [configuredStore.Ensure] on all configured stores.
 func (ss *stores) Ensure() (ks []korrel8r.Store) {
 	for _, s := range ss.stores {
-		// Not an error if create fails, will be registered in stores.
+		// Not an error if create fails, will be logged by the store wrapper.
 		if k, err := s.Ensure(); err == nil && k != nil {
 			ks = append(ks, k)
 		}

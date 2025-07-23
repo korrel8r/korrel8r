@@ -27,3 +27,21 @@ func IsErrorType[T error](err error) bool {
 	var target T
 	return errors.As(err, &target)
 }
+
+// PartialError indicates some errors were encountered but there are still some results.
+type PartialError struct{ Err error }
+
+func (e *PartialError) Error() string {
+	return errors.Join(errors.New("results may be incomplete, there were errors"), e.Err).Error()
+}
+
+var _ error = &PartialError{}
+
+func IsPartialError(err error) bool { return IsErrorType[*PartialError](err) }
+
+func IgnorePartialError(err error) error {
+	if IsPartialError(err) {
+		return nil
+	}
+	return err
+}

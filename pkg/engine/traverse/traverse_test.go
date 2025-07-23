@@ -167,7 +167,7 @@ func TestPartialError(t *testing.T) {
 	require.NoError(t, err)
 	start := Start{Class: ca, Objects: []korrel8r.Object{0}}
 	g, err := New(e, e.Graph()).Neighbours(context.Background(), start, 3)
-	var pe *PartialError
+	var pe *korrel8r.PartialError
 	assert.ErrorContains(t, err, "no good")
 	assert.ErrorAs(t, err, &pe)
 	assert.ElementsMatch(t, g.NodesFor(ca, cb, cc), graph.NodesOf(g.Nodes()))
@@ -186,9 +186,9 @@ func TestErrors(t *testing.T) {
 	assert.EqualError(t, errs.Err(), "bad\nworse", "")
 	errs.Log(errors.New("bad"), "") // Don't repeat
 	assert.EqualError(t, errs.Err(), "bad\nworse", "")
-	assert.False(t, IsPartialError(errs.Err()))
+	assert.False(t, korrel8r.IsPartialError(errs.Err()))
 	errs.Log(nil, "") // Partial success
-	assert.True(t, IsPartialError(errs.Err()))
+	assert.True(t, korrel8r.IsPartialError(errs.Err()))
 	assert.ErrorContains(t, errs.Err(), "bad\nworse")
 }
 

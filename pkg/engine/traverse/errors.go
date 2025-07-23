@@ -3,7 +3,6 @@
 package traverse
 
 import (
-	"errors"
 	"sync"
 
 	"github.com/go-logr/logr"
@@ -44,26 +43,8 @@ func (e *Errors) Err() error {
 	case e.errs.Err() == nil:
 		return nil
 	case e.ok > 0:
-		return &PartialError{e.errs.Err()}
+		return &korrel8r.PartialError{Err: e.errs.Err()}
 	default:
 		return e.errs.Err()
 	}
-}
-
-// PartialError indicates some errors were encountered but there are still some results.
-type PartialError struct{ Err error }
-
-func (e *PartialError) Error() string {
-	return errors.Join(errors.New("results may be incomplete, there were errors"), e.Err).Error()
-}
-
-var _ error = &PartialError{}
-
-func IsPartialError(err error) bool { return korrel8r.IsErrorType[*PartialError](err) }
-
-func IgnorePartialError(err error) error {
-	if IsPartialError(err) {
-		return nil
-	}
-	return err
 }

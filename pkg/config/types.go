@@ -98,5 +98,5 @@ type Class struct {
 type Tuning struct {
 	// RequestTimeout cancel requests if they last longer than this timeout.
 	// Cancelling a correlation operation may return an error or a partial result (HTTP 206).
-	RequestTimeout Duration `json:"requestTimeout,omitempty"`
+	RequestTimeout Duration `json:"requestTimeout"`
 }
