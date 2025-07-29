@@ -16,8 +16,8 @@ import (
 )
 
 type LokiResponse struct {
-	Status string        `json:"status"`
-	Data   lokiData      `json:"data"`
+	Status string   `json:"status"`
+	Data   lokiData `json:"data"`
 }
 
 type lokiData struct {
@@ -62,6 +62,7 @@ func (t LokiLogEntryTuple) ToStructuredLogEntry() (*StructuredLogEntry, error) {
 
 // StructuredLogEntry is a strongly typed representation of a Loki log line with optional structured metadata.
 type StructuredLogEntry struct {
+	// FIXME use time.Time wrapper
 	Timestamp          string                 `json:"timestamp"`
 	ParsedTime         time.Time              `json:"-"`
 	Line               string                 `json:"line"`
@@ -180,12 +181,12 @@ func collectSorted(streams []lokiStream, collect CollectFunc) {
 			entry, _ := raw.ToStructuredLogEntry()
 			//fmt.Printf("Timestamp: %s, Log: %s, Metadata: %+v\n", entry.Timestamp, entry.Line, entry.StructuredMetadata)
 			otellog := &OtelLog{
-				Body: entry.Line,
+				Body:      entry.Line,
 				Timestamp: entry.ParsedTime,
 			}
 			for k, v := range streams[i].Stream {
 				otellog.Attributes[k] = v
-			}		
+			}
 			for k, v := range entry.StructuredMetadata {
 				otellog.Attributes[k] = v
 			}

@@ -72,12 +72,12 @@ paths:
       operationId: graphGoals
       tags: [correlate]
       parameters:
-        - name: rules
+        - name: options
           in: query
-          description: Include rules in graph edges.
           schema:
-            type: boolean
-            default: false
+            $ref: '#/components/schemas/GraphOptions'
+          style: form
+          explode: true
       requestBody:
         description: Search from start to goal classes.
         content:
@@ -121,12 +121,12 @@ paths:
       operationId: graphNeighbours
       tags: [correlate]
       parameters:
-        - name: rules
+        - name: options
           in: query
-          description: Include rules in graph edges.
           schema:
-            type: boolean
-            default: false
+            $ref: '#/components/schemas/GraphOptions'
+          style: form
+          explode: true
       requestBody:
         description: Search from start for neighbours.
         content:
@@ -453,8 +453,20 @@ components:
           items:
             $ref: '#/components/schemas/Query'
       description: Start identifies a set of starting objects for correlation.
+
     Store:
       type: object
       additionalProperties:
         type: string
       description: Store is a map string keys and values used to connect to a store.
+
+    GraphOptions:
+      type: object
+      description: Options controlling the form of the returned graph.
+      properties:
+        rules:
+          description: Include rule names in graph edges.
+          type: boolean
+        zeros:
+          description: Include queries that returned no results.
+          type: boolean

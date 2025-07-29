@@ -181,6 +181,7 @@ func (n *node) Run(ctx context.Context) {
 		for _, o := range result {
 			n.applyRules(ctx, o)
 		}
+		// NOTE: keep queries with 0 results to record that we tried, so we won't try again.
 		n.Queries.Set(q, len(result))
 		if l != nil { // Initial queries don't have a line
 			l.Queries.Set(q, len(result))

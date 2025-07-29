@@ -91,6 +91,38 @@ func TestAPIGraphGoals_rules(t *testing.T) {
 		})
 }
 
+func TestAPIGraphGoalsZeros(t *testing.T) {
+	e := testEngine(t)
+	assertDo(t, newTestAPI(t, e), "POST", "/api/v1alpha1/graphs/goals?zeros=true",
+		Goals{
+			Start: Start{
+				Class:   "mock:a",
+				Objects: []json.RawMessage{[]byte(`"x"`)},
+			},
+			Goals: []string{"mock:b"},
+		},
+		http.StatusOK,
+		Graph{
+			Nodes: []Node{
+				{
+					Class: "mock:a",
+					Count: ptr.To(1),
+				},
+				{
+					Class: "mock:b",
+					Count: ptr.To(1),
+					Queries: []QueryCount{
+						{Query: "mock:b:y", Count: ptr.To(1)},
+						{Query: "mock:b:none", Count: ptr.To(0)},
+					},
+				}},
+			Edges: []Edge{{
+				Start: "mock:a",
+				Goal:  "mock:b",
+			}},
+		})
+}
+
 func TestAPIPostNeighbours(t *testing.T) {
 	e := testEngine(t)
 	assertDo(t, newTestAPI(t, e), "POST", "/api/v1alpha1/graphs/neighbours",
@@ -261,8 +293,11 @@ func testEngine(t *testing.T) (e *engine.Engine) {
 	s := mock.NewStore(d)
 	s.AddQuery("mock:a:x", "ax")
 	s.AddQuery("mock:b:y", "by")
-	r := mock.NewRule("a-b", list(a), list(b), mock.NewQuery(b, "y"))
-	e, err := engine.Build().Domains(d).Stores(s).Rules(r).Engine()
+	s.AddQuery("mock:b:none", nil)
+	e, err := engine.Build().Domains(d).Stores(s).Rules(
+		mock.NewRule("a-b", list(a), list(b), mock.NewQuery(b, "y")),
+		mock.NewRule("a-none", list(a), list(b), mock.NewQuery(b, "none")),
+	).Engine()
 	require.NoError(t, err)
 	return e
 }

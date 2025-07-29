@@ -59,7 +59,7 @@ func (a *API) ListDomains(c *gin.Context) {
 }
 func (a *API) GraphGoals(c *gin.Context, params GraphGoalsParams) {
 	g, _ := a.goals(c)
-	gr := Graph{Nodes: nodes(g), Edges: edges(g, ptr.Deref(params.Rules))}
+	gr := Graph{Nodes: nodes(g, ptr.Deref(params.Options)), Edges: edges(g, ptr.Deref(params.Options))}
 	okResponse(c, gr)
 }
 
@@ -72,7 +72,7 @@ func (a *API) ListGoals(c *gin.Context) {
 	set := unique.NewSet(goals...)
 	g.EachNode(func(n *graph.Node) {
 		if set.Has(n.Class) {
-			nodes = append(nodes, node(n))
+			nodes = append(nodes, node(n, GraphOptions{}))
 		}
 	})
 	okResponse(c, nodes)
@@ -94,7 +94,8 @@ func (a *API) GraphNeighbours(c *gin.Context, params GraphNeighboursParams) {
 	if !check(c, http.StatusNotFound, err) {
 		return
 	}
-	gr := Graph{Nodes: nodes(g), Edges: edges(g, ptr.Deref(params.Rules))}
+	opts := ptr.Deref(params.Options)
+	gr := Graph{Nodes: nodes(g, opts), Edges: edges(g, opts)}
 	okResponse(c, gr)
 }
 
