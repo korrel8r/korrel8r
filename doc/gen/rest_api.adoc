@@ -140,10 +140,10 @@ Specify a set of start objects, as queries or serialized objects, and a goal cla
 |===
 |Name| Description| Required| Default| Pattern
 
-| rules
-| Include rules in graph edges. 
+| options
+|  
 | -
-| false
+| null
 | 
 
 |===
@@ -250,10 +250,10 @@ Specify a set of start objects, as queries or serialized objects, and a depth fo
 |===
 |Name| Description| Required| Default| Pattern
 
-| rules
-| Include rules in graph edges. 
+| options
+|  
 | -
-| false
+| null
 | 
 
 |===
@@ -773,6 +773,35 @@ Graph resulting from a correlation search.
 | 
 |   List   of <<Node>>
 | List of graph nodes.
+|     
+
+|===
+
+
+
+[#GraphOptions]
+=== _GraphOptions_ 
+
+Options controlling the form of the returned graph.
+
+
+[.fields-GraphOptions]
+[cols="2,1,1,2,4,1"]
+|===
+| Field Name| Required| Nullable | Type| Description | Format
+
+| rules
+| 
+| 
+|   Boolean  
+| Include rule names in graph edges.
+|     
+
+| zeros
+| 
+| 
+|   Boolean  
+| Include queries that returned no results.
 |     
 
 |===

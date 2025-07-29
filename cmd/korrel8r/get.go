@@ -22,13 +22,19 @@ import (
 
 // Common flags for neighbours and goals
 var (
-	class     string
-	queries   []string
-	objects   []string
-	withRules bool
-
+	class                 string
+	queries               []string
+	objects               []string
+	withRules             bool
+	withZeros             bool
 	limit                 int
 	since, until, timeout time.Duration
+
+	// Gather graph options into a struct.
+	graphOptions = rest.GraphOptions{
+		Rules: &withRules,
+		Zeros: &withZeros,
+	}
 )
 
 func startFlags(cmd *cobra.Command) {
@@ -36,6 +42,7 @@ func startFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVar(&class, "class", "", "Class for serialized start objects")
 	cmd.Flags().StringArrayVar(&objects, "object", nil, "Serialized start object, can be multiple.")
 	cmd.Flags().BoolVar(&withRules, "rules", false, "Include rule names in returned graph")
+	cmd.Flags().BoolVar(&withZeros, "zeros", false, "Include queries that returned zero results.")
 }
 
 func constraintFlags(cmd *cobra.Command) {
@@ -85,7 +92,7 @@ var (
 			defer cancel()
 			g, err := traverse.New(e, e.Graph()).Neighbours(ctx, start(e), depth)
 			check(err)
-			newPrinter(os.Stdout).Print(rest.NewGraph(g, withRules))
+			newPrinter(os.Stdout).Print(rest.NewGraph(g, graphOptions))
 		},
 	}
 	depth int
@@ -113,7 +120,7 @@ var (
 			defer cancel()
 			g, err := traverse.New(e, e.Graph()).Goals(ctx, start(e), goals)
 			check(err)
-			newPrinter(os.Stdout).Print(rest.NewGraph(g, withRules))
+			newPrinter(os.Stdout).Print(rest.NewGraph(g, graphOptions))
 		},
 	}
 )

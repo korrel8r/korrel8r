@@ -25,14 +25,13 @@ var (
 	BasePath = must.Must1(Spec.Servers.BasePath())
 )
 
-func queryCounts(gq graph.Queries) []QueryCount {
+func queryCounts(gq graph.Queries, opts GraphOptions) []QueryCount {
 	qcs := make([]QueryCount, 0, len(gq))
 	for _, qc := range gq {
-		count := &qc.Count
-		if *count == -1 {
-			count = nil // -1 means not evaluated, omit from result.
+		if qc.Count <= 0 && !ptr.Deref(opts.Zeros) {
+			continue // Omit query counts with no results
 		}
-		qcs = append(qcs, QueryCount{Query: qc.Query.String(), Count: count})
+		qcs = append(qcs, QueryCount{Query: qc.Query.String(), Count: &qc.Count})
 	}
 	slices.SortFunc(qcs, func(a, b QueryCount) int {
 		if n := cmp.Compare(ptr.Deref(a.Count), ptr.Deref(b.Count)); n != 0 {
@@ -43,56 +42,57 @@ func queryCounts(gq graph.Queries) []QueryCount {
 	return qcs
 }
 
-func rule(l *graph.Line) (r Rule) {
+func rule(l *graph.Line, opts GraphOptions) (r Rule) {
 	r.Name = l.Rule.Name()
-	r.Queries = queryCounts(l.Queries)
+	r.Queries = queryCounts(l.Queries, opts)
 	return r
 }
 
-func node(n *graph.Node) Node {
+func node(n *graph.Node, opts GraphOptions) Node {
 	return Node{
 		Class:   n.Class.String(),
-		Queries: queryCounts(n.Queries),
+		Queries: queryCounts(n.Queries, opts),
 		Count:   ptr.To(len(n.Result.List())),
 	}
 }
 
-func nodes(g *graph.Graph) []Node {
+func nodes(g *graph.Graph, opts GraphOptions) []Node {
+
 	if g == nil {
 		return nil
 	}
 	nodes := []Node{} // Want [] not null for empty in JSON.
 	g.EachNode(func(n *graph.Node) {
 		if !n.Empty() { // Skip empty nodes
-			nodes = append(nodes, node(n))
+			nodes = append(nodes, node(n, opts))
 		}
 	})
 	return nodes
 }
 
-func edge(e *graph.Edge, rules bool) Edge {
+func edge(e *graph.Edge, opts GraphOptions) Edge {
 	edge := Edge{
 		Start: e.Start().Class.String(),
 		Goal:  e.Goal().Class.String(),
 	}
-	if rules {
+	if ptr.Deref(opts.Rules) {
 		e.EachLine(func(l *graph.Line) {
 			if l.Queries.Total() != 0 {
-				edge.Rules = append(edge.Rules, rule(l))
+				edge.Rules = append(edge.Rules, rule(l, opts))
 			}
 		})
 	}
 	return edge
 }
 
-func edges(g *graph.Graph, withRules bool) []Edge {
+func edges(g *graph.Graph, opts GraphOptions) []Edge {
 	var edges []Edge
 	if g == nil {
 		return nil
 	}
 	g.EachEdge(func(e *graph.Edge) {
 		if !e.Goal().Empty() { // Skip edges that lead to an empty node.
-			edges = append(edges, edge(e, withRules))
+			edges = append(edges, edge(e, opts))
 		}
 	})
 	return edges
@@ -136,8 +136,8 @@ func Normalize(v any) any {
 }
 
 // NewGraph returns a new rest.Graph corresponding to the internal graph.Graph.
-func NewGraph(g *graph.Graph, withRules bool) *Graph {
-	return &Graph{Nodes: nodes(g), Edges: edges(g, withRules)}
+func NewGraph(g *graph.Graph, opts GraphOptions) *Graph {
+	return &Graph{Nodes: nodes(g, opts), Edges: edges(g, opts)}
 }
 
 func copyBody(r *http.Request) string {
