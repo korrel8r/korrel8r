@@ -104,7 +104,7 @@ From a set of start objects, follow correlation rules to find related objects up
 			if err != nil {
 				return errorResultFor[rest.Graph](err), nil
 			}
-			return structuredResult(*rest.NewGraph(g, false)), nil
+			return structuredResult(*rest.NewGraph(g, rest.GraphOptions{})), nil
 		})
 
 	mcp.AddTool(s, &mcp.Tool{
@@ -129,7 +129,7 @@ From a set of start objects, follow all paths leading to one of the goal classes
 			if err != nil {
 				return errorResultFor[rest.Graph](err), nil
 			}
-			return structuredResult(*rest.NewGraph(g, false)), nil
+			return structuredResult(*rest.NewGraph(g, rest.GraphOptions{})), nil
 		})
 }
 

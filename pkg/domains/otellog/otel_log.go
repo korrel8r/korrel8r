@@ -52,12 +52,13 @@ import (
 
 var (
 	// Verify implementing interfaces.
-	_ korrel8r.Domain    = Domain
-	_ korrel8r.Store     = &store{}
-	_ korrel8r.Store     = &stackStore{}
-	_ korrel8r.Query     = Query{}
-	_ korrel8r.Class     = Class("")
-//	_ korrel8r.Previewer = Class("")
+	_ korrel8r.Domain = Domain
+	_ korrel8r.Store  = &store{}
+	_ korrel8r.Store  = &stackStore{}
+	_ korrel8r.Query  = Query{}
+	_ korrel8r.Class  = Class("")
+
+// _ korrel8r.Previewer = Class("")
 )
 
 // Domain for otellog records produced by openshift-logging.
@@ -123,9 +124,10 @@ func (*domain) Store(s any) (korrel8r.Store, error) {
 // Class is the log_type name.
 type Class string
 
-func (c Class) Domain() korrel8r.Domain                     { return Domain }
-func (c Class) Name() string                                { return string(c) }
-func (c Class) String() string                              { return impl.ClassString(c) }
+func (c Class) Domain() korrel8r.Domain { return Domain }
+func (c Class) Name() string            { return string(c) }
+func (c Class) String() string          { return impl.ClassString(c) }
+
 //func (c Class) Preview(o korrel8r.Object) (line string)     { return Preview(o) }
 
 // Preview extracts the message from a OTEL log record.
@@ -158,11 +160,11 @@ type Object = *OtelLog
 // Implements the OpenTelemetry API [Spec].
 //
 // Otellog: [https://opentelemetry.io/docs/concepts/signals/logs/#log-record]
-type OtelLog struct {
-	Body        string                 `json:"body"`           // ← Log line
-	Severity    string                 `json:"severityText"`   // ← Can become a label
-	Timestamp   time.Time                 `json:"timestamp"`      // ← Loki timestamp
-	Attributes  map[string]any `json:"attributes,omitempty"` // ← Becomes atreams and structured metadata
+type OtelLog struct { // FIXME OTELLog
+	Body       string         `json:"body"`                 // ← Log line
+	Severity   string         `json:"severityText"`         // ← Can become a label
+	Timestamp  time.Time      `json:"timestamp"`            // ← Loki timestamp
+	Attributes map[string]any `json:"attributes,omitempty"` // ← Becomes atreams and structured metadata
 }
 
 // Query is a LogQL query string
