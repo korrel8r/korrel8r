@@ -30,9 +30,9 @@ type Builder struct {
 
 func Build() *Builder {
 	e := &Engine{
-		domains:     map[string]korrel8r.Domain{},
-		stores:      map[korrel8r.Domain]*stores{},
-		rulesByName: map[string]korrel8r.Rule{},
+		domains:      map[string]korrel8r.Domain{},
+		storeHolders: map[korrel8r.Domain]*storeHolders{},
+		rulesByName:  map[string]korrel8r.Rule{},
 	}
 	// Add template functions that are always available.
 	e.templateFuncs = template.FuncMap{"query": e.query}
@@ -41,13 +41,14 @@ func Build() *Builder {
 	return &Builder{e: e}
 }
 
+// Domains adds domains that will be recognized by the engine.
 func (b *Builder) Domains(domains ...korrel8r.Domain) *Builder {
 	for _, d := range domains {
 		switch b.e.domains[d.Name()] {
 		case d: // Already present
 		case nil:
 			b.e.domains[d.Name()] = d
-			b.e.stores[d] = newStores(d)
+			b.e.storeHolders[d] = newStoreHolders(d)
 			if tf, ok := d.(interface{ TemplateFuncs() map[string]any }); ok {
 				maps.Copy(b.e.templateFuncs, tf.TemplateFuncs())
 			}
@@ -59,6 +60,7 @@ func (b *Builder) Domains(domains ...korrel8r.Domain) *Builder {
 	return b
 }
 
+// Stores add ready-to-use stores to the engine. Compare with StoreConfigs.
 func (b *Builder) Stores(stores ...korrel8r.Store) *Builder {
 	for _, s := range stores {
 		if b.err != nil {
@@ -74,6 +76,8 @@ func (b *Builder) Stores(stores ...korrel8r.Store) *Builder {
 	return b
 }
 
+// StoreConfigs adds store configuration to the engine.
+// The stores are (re)created on demand or after an error.
 func (b *Builder) StoreConfigs(storeConfigs ...config.Store) *Builder {
 	for _, sc := range storeConfigs {
 		if b.err != nil {
@@ -87,7 +91,7 @@ func (b *Builder) StoreConfigs(storeConfigs ...config.Store) *Builder {
 	return b
 }
 
-// store adds a store wrapper.
+// store adds a store wrapper with configuration or a working Store.
 // Exactly one of sc and s must be non-nil.
 func (b *Builder) store(sc config.Store, s korrel8r.Store) *storeHolder {
 	var wrapper *storeHolder
@@ -95,7 +99,7 @@ func (b *Builder) store(sc config.Store, s korrel8r.Store) *storeHolder {
 	if b.err != nil {
 		return nil
 	}
-	b.e.stores[wrapper.Domain()].Add(wrapper)
+	b.e.storeHolders[wrapper.Domain()].Add(wrapper)
 	// Store errors don't prevent startup, but check and log a warning.
 	var err error
 	_, err = wrapper.Ensure()
@@ -156,7 +160,8 @@ func (b *Builder) ConfigFile(file string) *Builder {
 // Engine returns the final engine, which can not be modified.
 // The [Builder] is reset to the initial state returned by [Build].
 func (b *Builder) Engine() (*Engine, error) {
-	for _, f := range b.finally { // Complete deferred configuration
+	// Complete deferred configuration
+	for _, f := range b.finally {
 		f()
 		if b.err != nil {
 			break
