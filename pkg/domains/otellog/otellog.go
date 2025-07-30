@@ -131,7 +131,7 @@ func (c Class) Unmarshal(b []byte) (korrel8r.Object, error) {
 }
 
 func (c Class) ID(o korrel8r.Object) any {
-	if log, _ := o.(*OtelLog); log != nil {
+	if log, _ := o.(*OTELLog); log != nil {
 		return log.Timestamp
 	}
 	return nil
@@ -140,14 +140,14 @@ func (c Class) ID(o korrel8r.Object) any {
 // Object represents an OpenTelemetry [log]
 //
 // [log]: https://opentelemetry.io/docs/concepts/signals/logs/#log-record
-type Object = *OtelLog
+type Object = *OTELLog
 
-// OtelLog is an OpenTelemetry [log], the smallest unit of work for logging.
+// OTELLog is an OpenTelemetry [log], the smallest unit of work for logging.
 //
 // Implements the OpenTelemetry API [Spec].
 //
-// Otellog: [https://opentelemetry.io/docs/concepts/signals/logs/#log-record]
-type OtelLog struct {
+// OTELlog: [https://opentelemetry.io/docs/concepts/signals/logs/#log-record]
+type OTELLog struct {
 	Body       string         `json:"body"`                 // ← Log line
 	Severity   string         `json:"severityText"`         // ← Can become a label
 	Timestamp  time.Time      `json:"timestamp"`            // ← Loki timestamp
@@ -198,7 +198,7 @@ func (s *store) Get(ctx context.Context, query korrel8r.Query, constraint *korre
 	if err != nil {
 		return err
 	}
-	return s.Client.Get(ctx, q.Data(), constraint, func(l *OtelLog) { result.Append(l) })
+	return s.Client.Get(ctx, q.Data(), constraint, func(l *OTELLog) { result.Append(l) })
 }
 
 type stackStore struct{ store }
@@ -208,7 +208,7 @@ func (s *stackStore) Get(ctx context.Context, query korrel8r.Query, constraint *
 	if err != nil {
 		return err
 	}
-	return s.GetStack(ctx, q.Data(), q.Class().Name(), constraint, func(l *OtelLog) { result.Append(l) })
+	return s.GetStack(ctx, q.Data(), q.Class().Name(), constraint, func(l *OTELLog) { result.Append(l) })
 }
 
 var logTypeRe = regexp.MustCompile(`{[^}]*log_type(=~*)"([^"]+)"}`)

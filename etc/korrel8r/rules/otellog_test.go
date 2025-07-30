@@ -11,12 +11,12 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestSelectorToOtelLogsRules(t *testing.T) {
+func TestSelectorToOTELLogsRules(t *testing.T) {
 	e := setup()
 	// Verify rules selected the correct set of start classes
 	classes := unique.NewList[korrel8r.Class]()
 	for _, r := range e.Rules() {
-		if r.Name() == "SelectorToOtelLogs" {
+		if r.Name() == "SelectorToOTELLogs" {
 			classes.Append(r.Start()...)
 		}
 	}
@@ -33,10 +33,10 @@ func TestSelectorToOtelLogsRules(t *testing.T) {
 	assert.ElementsMatch(t, want, classes.List, "%#v", classes.List)
 }
 
-func TestOtelLogRules(t *testing.T) {
+func TestOTELLogRules(t *testing.T) {
 	for _, x := range []ruleTest{
 		{
-			rule: "SelectorToOtelLogs",
+			rule: "SelectorToOTELLogs",
 			start: k8s.Object{
 				"metadata": k8s.Object{"namespace": "ns", "name": "x"},
 				"spec": k8s.Object{
@@ -45,12 +45,12 @@ func TestOtelLogRules(t *testing.T) {
 			query: `otellog:application:{kubernetes_namespace_name="ns"}|kubernetes_labels_a_b_c="x"`,
 		},
 		{
-			rule:  "PodToOtelLogs",
+			rule:  "PodToOTELLogs",
 			start: newK8s("Pod", "project", "application", nil),
 			query: `otellog:application:{kubernetes_namespace_name="project",kubernetes_pod_name="application"}`,
 		},
 		{
-			rule:  "PodToOtelLogs",
+			rule:  "PodToOTELLogs",
 			start: newK8s("Pod", "kube-something", "infrastructure", nil),
 			query: `otellog:infrastructure:{kubernetes_namespace_name="kube-something",kubernetes_pod_name="infrastructure"}`,
 		},
