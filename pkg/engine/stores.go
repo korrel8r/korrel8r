@@ -19,7 +19,7 @@ import (
 
 var (
 	_ korrel8r.Store = &storeHolder{}
-	_ korrel8r.Store = &stores{}
+	_ korrel8r.Store = &storeHolder{}
 )
 
 // storeHolder is a wrapper to (re-)create a store on demand from its configuration.
@@ -134,22 +134,22 @@ func (s *storeHolder) ensure() (korrel8r.Store, error) {
 	return s.Store, err
 }
 
-// stores contains multiple store wrappers stores and iterates over them in Get.
-type stores struct {
+// storeHolders contains multiple store wrappers storeHolders and iterates over them in Get.
+type storeHolders struct {
 	domain korrel8r.Domain
 	stores []*storeHolder
 }
 
-func newStores(d korrel8r.Domain) *stores {
-	return &stores{
+func newStoreHolders(d korrel8r.Domain) *storeHolders {
+	return &storeHolders{
 		domain: d,
 		stores: []*storeHolder{},
 	}
 }
 
-func (ss *stores) Domain() korrel8r.Domain { return ss.domain }
+func (ss *storeHolders) Domain() korrel8r.Domain { return ss.domain }
 
-func (ss *stores) Add(newStore *storeHolder) {
+func (ss *storeHolders) Add(newStore *storeHolder) {
 	// Check for duplicate configuration
 	if newStore.Original != nil && slices.ContainsFunc(ss.stores,
 		func(s *storeHolder) bool { return reflect.DeepEqual(s.Original, newStore.Original) }) {
@@ -158,7 +158,7 @@ func (ss *stores) Add(newStore *storeHolder) {
 	ss.stores = append(ss.stores, newStore)
 }
 
-func (ss *stores) Get(ctx context.Context, q korrel8r.Query, constraint *korrel8r.Constraint, result korrel8r.Appender) error {
+func (ss *storeHolders) Get(ctx context.Context, q korrel8r.Query, constraint *korrel8r.Constraint, result korrel8r.Appender) error {
 	var (
 		errs unique.Errors
 		ok   bool
@@ -180,7 +180,7 @@ func (ss *stores) Get(ctx context.Context, q korrel8r.Query, constraint *korrel8
 
 // Classes returns the total set of classes for all the stores.
 // It may return a non-nil error and a non-nil partial list of classes.
-func (ss *stores) StoreClasses() ([]korrel8r.Class, error) {
+func (ss *storeHolders) StoreClasses() ([]korrel8r.Class, error) {
 	list := unique.NewList[korrel8r.Class]()
 	errs := &unique.Errors{}
 	for _, s := range ss.stores {
@@ -192,7 +192,7 @@ func (ss *stores) StoreClasses() ([]korrel8r.Class, error) {
 }
 
 // Configs returns the expanded configurations for each store.
-func (ss *stores) Configs() (ret []config.Store) {
+func (ss *storeHolders) Configs() (ret []config.Store) {
 	for _, s := range ss.stores {
 		sc := maps.Clone(s.Expanded)
 		if s.LastErr != nil {
@@ -207,7 +207,7 @@ func (ss *stores) Configs() (ret []config.Store) {
 }
 
 // Ensure calls [configuredStore.Ensure] on all configured stores.
-func (ss *stores) Ensure() (ks []korrel8r.Store) {
+func (ss *storeHolders) Ensure() (ks []korrel8r.Store) {
 	for _, s := range ss.stores {
 		// Not an error if create fails, will be logged by the store wrapper.
 		if k, err := s.Ensure(); err == nil && k != nil {
