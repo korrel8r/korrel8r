@@ -25,13 +25,13 @@ type tempoResponse struct {
 }
 
 type tempoTrace struct {
-	TraceID         TraceID            `json:"traceID"`
-	RootServiceName string             `json:"rootServiceName,omitempty"`
-	RootTraceName   string             `json:"rootTraceName,omitempty"`
-	Start           otel.UnixNanoTime  `json:"startTimeUnixNano,omitempty"`
-	Duration        otel.MilliDuration `json:"durationMs,omitempty"`
-	SpanSets        []tempoSpanSet     `json:"spanSets,omitempty"`
-	SpanSet         tempoSpanSet       `json:"spanSet,omitempty"` // Backwards compatibility
+	TraceID         TraceID             `json:"traceID"`
+	RootServiceName string              `json:"rootServiceName,omitempty"`
+	RootTraceName   string              `json:"rootTraceName,omitempty"`
+	Start           *otel.UnixNanoTime  `json:"startTimeUnixNano,omitempty"`
+	Duration        *otel.MilliDuration `json:"durationMs,omitempty"`
+	SpanSets        []tempoSpanSet      `json:"spanSets,omitempty"`
+	SpanSet         *tempoSpanSet       `json:"spanSet,omitempty"` // Backwards compatibility
 }
 
 type tempoSpanSet struct {
@@ -129,7 +129,9 @@ func (r *tempoResponse) collect(collect func(*Span)) {
 		for _, spanSet := range tt.SpanSets {
 			tt.collect(spanSet, collect)
 		}
-		tt.collect(tt.SpanSet, collect)
+		if tt.SpanSet != nil {
+			tt.collect(*tt.SpanSet, collect)
+		}
 	}
 }
 
