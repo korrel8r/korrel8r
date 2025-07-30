@@ -70,7 +70,7 @@ type StructuredLogEntry struct {
 }
 
 // CollectFunc is called for each entry returned by a query.
-type CollectFunc func(*OtelLog)
+type CollectFunc func(*OTELLog)
 
 // Client for loki HTTP API
 type Client struct {
@@ -179,7 +179,7 @@ func collectSorted(streams []lokiStream, collect CollectFunc) {
 
 		for _, raw := range streams[i].Values {
 			entry, _ := raw.ToStructuredLogEntry()
-			otellog := &OtelLog{
+			otellog := &OTELLog{
 				Body:       entry.Line,
 				Timestamp:  entry.ParsedTime,
 				Attributes: make(map[string]any), // Initialize the map to prevent nil map assignment panic
