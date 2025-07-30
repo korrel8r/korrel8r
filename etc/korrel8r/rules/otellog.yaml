@@ -1,5 +1,5 @@
 rules:
-  - name: OtelLogToPod
+  - name: OTELLogToPod
     start:
       domain: otellog
     goal:
@@ -13,7 +13,7 @@ rules:
           k8s:Pod.v1:{namespace: "{{$namespace}}", name: "{{$name}}"}
         {{- end -}}
 
-  - name: SelectorToOtelLogs
+  - name: SelectorToOTELLogs
     start:
       domain: k8s
       classes: [selectors]
@@ -24,7 +24,7 @@ rules:
         otellog:{{logTypeForNamespace .metadata.namespace}}:{kubernetes_namespace_name="{{.metadata.namespace}}"}
             {{- range $k,$v:=.spec.selector.matchLabels}}|kubernetes_labels_{{logSafeLabel $k}}="{{$v}}"{{end -}}
 
-  - name: PodToOtelLogs
+  - name: PodToOTELLogs
     start:
       domain: k8s
       classes: [Pod]
