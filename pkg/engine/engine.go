@@ -26,7 +26,7 @@ var log = logging.Log()
 // Once created (see [Build]) an engine is immutable and concurrent safe.
 type Engine struct {
 	domains       map[string]korrel8r.Domain
-	stores        map[korrel8r.Domain]*stores
+	storeHolders  map[korrel8r.Domain]*storeHolders
 	templateFuncs template.FuncMap
 	rulesByName   map[string]korrel8r.Rule
 	rules         []korrel8r.Rule
@@ -45,10 +45,10 @@ func (e *Engine) Domain(name string) (korrel8r.Domain, error) {
 	return nil, korrel8r.DomainNotFoundError(name)
 }
 
-// StoreFor returns the aggregated store for a domain, nil if the domain does not exist.
+// StoreFor returns the aggregated store for a domain, nil if there is none.
 func (e *Engine) StoreFor(d korrel8r.Domain) korrel8r.Store {
-	s := e.stores[d]
-	if s == nil {
+	s := e.storeHolders[d]
+	if s == nil || len(s.stores) == 0 {
 		return nil
 	}
 	return s
@@ -56,7 +56,7 @@ func (e *Engine) StoreFor(d korrel8r.Domain) korrel8r.Store {
 
 // StoresFor returns the list of individual stores for a domain.
 func (e *Engine) StoresFor(d korrel8r.Domain) []korrel8r.Store {
-	if ss := e.stores[d]; ss != nil {
+	if ss := e.storeHolders[d]; ss != nil {
 		return ss.Ensure()
 	}
 	return nil
@@ -64,7 +64,7 @@ func (e *Engine) StoresFor(d korrel8r.Domain) []korrel8r.Store {
 
 // StoreConfigsFor returns the expanded store configurations and status.
 func (e *Engine) StoreConfigsFor(d korrel8r.Domain) []config.Store {
-	if ss, ok := e.stores[d]; ok {
+	if ss, ok := e.storeHolders[d]; ok {
 		return ss.Configs()
 	}
 	return nil
@@ -158,7 +158,7 @@ func (e *Engine) Get(ctx context.Context, query korrel8r.Query, constraint *korr
 		ctx, cancel = context.WithTimeout(ctx, timeout)
 		defer cancel()
 	}
-	ss := e.stores[query.Class().Domain()]
+	ss := e.storeHolders[query.Class().Domain()]
 	if len(ss.stores) == 0 {
 		return fmt.Errorf("no stores found for domain %v", query.Class().Domain().Name())
 	}

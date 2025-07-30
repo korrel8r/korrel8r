@@ -36,16 +36,20 @@ var (
 	pod       = Domain.Class("Pod").(Class)
 )
 
+func newQuery(c Class, namespace, name string, labels, fields map[string]string) *Query {
+	return NewQuery(c, Selector{Namespace: namespace, Name: name, Labels: labels, Fields: fields})
+}
+
 func TestDomain_Query(t *testing.T) {
 	for _, x := range []struct {
 		s    string
 		want korrel8r.Query
 	}{
-		{`k8s:Namespace:{"name":"foo"}`, NewQuery(namespace, "", "foo", nil, nil)},
-		{`k8s:Namespace:{name: foo}`, NewQuery(namespace, "", "foo", nil, nil)},
-		{`k8s:Pod:{namespace: foo, name: bar}`, NewQuery(pod, "foo", "bar", nil, nil)},
+		{`k8s:Namespace:{"name":"foo"}`, newQuery(namespace, "", "foo", nil, nil)},
+		{`k8s:Namespace:{name: foo}`, newQuery(namespace, "", "foo", nil, nil)},
+		{`k8s:Pod:{namespace: foo, name: bar}`, newQuery(pod, "foo", "bar", nil, nil)},
 		{`k8s:Pod:{namespace: foo, name: bar, labels: { a: b }, fields: { c: d }}`,
-			NewQuery(pod, "foo", "bar", map[string]string{"a": "b"}, map[string]string{"c": "d"})},
+			newQuery(pod, "foo", "bar", map[string]string{"a": "b"}, map[string]string{"c": "d"})},
 	} {
 		t.Run(x.s, func(t *testing.T) {
 			got, err := Domain.Query(x.s)
@@ -98,9 +102,9 @@ func TestStore_Get(t *testing.T) {
 		q    korrel8r.Query
 		want []types.NamespacedName
 	}{
-		{NewQuery(pod, "x", "fred", nil, nil), []types.NamespacedName{fred}},
-		{NewQuery(pod, "x", "", nil, nil), []types.NamespacedName{fred, barney}},
-		{NewQuery(pod, "", "", client.MatchingLabels{"app": "foo"}, nil), []types.NamespacedName{fred, wilma}},
+		{newQuery(pod, "x", "fred", nil, nil), []types.NamespacedName{fred}},
+		{newQuery(pod, "x", "", nil, nil), []types.NamespacedName{fred, barney}},
+		{newQuery(pod, "", "", client.MatchingLabels{"app": "foo"}, nil), []types.NamespacedName{fred, wilma}},
 	} {
 		t.Run(fmt.Sprintf("%#v", x.q), func(t *testing.T) {
 			var result mock.Result
@@ -144,7 +148,7 @@ func TestStore_Get_Constraint(t *testing.T) {
 	} {
 		t.Run(fmt.Sprintf("%+v", x.constraint), func(t *testing.T) {
 			var result mock.Result
-			err = store.Get(context.Background(), NewQuery(pod, "test", "", nil, nil), x.constraint, &result)
+			err = store.Get(context.Background(), newQuery(pod, "test", "", nil, nil), x.constraint, &result)
 			require.NoError(t, err)
 			var got []string
 			for _, v := range result {
