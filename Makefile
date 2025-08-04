@@ -85,7 +85,8 @@ test: generate		## Run all tests, no cache. Requires an openshift cluster.
 test-no-cluster: generate	## Run all tests that don't require an openshift cluster.
 	go test -fullpath -race -skip '.*/Openshift' ./...
 
-cover:  $(GOCOVERDIR) ## Run tests with accumulated coverage stats in _cover.
+cover:  ## Run tests with accumulated coverage stats in _cover.
+	@rm -rf  $(GOCOVERDIR) ; mkdir -p $(GOCOVERDIR)
 	@echo == Individual package test coverage.
 	go test -fullpath -cover ./... -test.gocoverdir=$(GOCOVERDIR)
 	@echo
@@ -94,9 +95,6 @@ cover:  $(GOCOVERDIR) ## Run tests with accumulated coverage stats in _cover.
 
 bench: generate	$(BENCHSTAT)	## Run all benchmarks.
 	go test -fullpath -bench=. -run=NONE ./... > _bench-$(shell date +%s).txt ; $(BENCHSTAT) _bench-*.txt
-
-$(GOCOVERDIR):
-	@mkdir -p $@
 
 image-build:  generate ## Build image locally, don't push.
 	$(IMGTOOL) build --tag=$(IMAGE) -f Containerfile .

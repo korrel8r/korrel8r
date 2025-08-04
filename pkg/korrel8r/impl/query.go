@@ -16,7 +16,7 @@ func ParseQuery(domain korrel8r.Domain, query string) (class korrel8r.Class, dat
 		return nil, "", fmt.Errorf("invalid query: %v", query)
 	}
 	if d != domain.Name() {
-		return nil, "", fmt.Errorf("wrong query domain, want %v: %v", domain, query)
+		return nil, "", fmt.Errorf("wrong query domain, want %v: %v", domain.Name(), query)
 	}
 	class = domain.Class(c)
 	if class == nil {

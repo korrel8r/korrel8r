@@ -23,13 +23,13 @@ func SetLogger(l logr.Logger) {
 // NewClient provides a general-purpose k8s client.
 // It may be used by other domains that need to talk to the cluster.
 // If cfg is nil, use GetConfig() to get a default config.
-func NewClient(cfg *rest.Config) (c client.Client, err error) {
+func NewClient(cfg *rest.Config) (c client.WithWatch, err error) {
 	if cfg == nil {
 		if cfg, err = GetConfig(); err != nil {
 			return nil, err
 		}
 	}
-	return client.New(cfg, client.Options{})
+	return client.NewWithWatch(cfg, client.Options{})
 }
 
 // NewHTTPClient returns a new client with TLS settings from Store config.

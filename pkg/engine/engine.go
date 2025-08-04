@@ -152,6 +152,7 @@ func (e *Engine) Graph() *graph.Graph { return graph.NewData(e.Rules()...).FullG
 
 // Get results for query from all stores for the query domain.
 func (e *Engine) Get(ctx context.Context, query korrel8r.Query, constraint *korrel8r.Constraint, result korrel8r.Appender) (err error) {
+	log.V(5).Info("Get", "query", query.String(), "constraint", constraint.String())
 	constraint = constraint.Default()
 	if timeout := constraint.GetTimeout(); timeout > 0 {
 		var cancel func()

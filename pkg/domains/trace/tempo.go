@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/korrel8r/korrel8r/internal/pkg/types"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r/impl"
 	"github.com/korrel8r/korrel8r/pkg/otel"
@@ -25,13 +26,13 @@ type tempoResponse struct {
 }
 
 type tempoTrace struct {
-	TraceID         TraceID             `json:"traceID"`
-	RootServiceName string              `json:"rootServiceName,omitempty"`
-	RootTraceName   string              `json:"rootTraceName,omitempty"`
-	Start           *otel.UnixNanoTime  `json:"startTimeUnixNano,omitempty"`
-	Duration        *otel.MilliDuration `json:"durationMs,omitempty"`
-	SpanSets        []tempoSpanSet      `json:"spanSets,omitempty"`
-	SpanSet         *tempoSpanSet       `json:"spanSet,omitempty"` // Backwards compatibility
+	TraceID         TraceID              `json:"traceID"`
+	RootServiceName string               `json:"rootServiceName,omitempty"`
+	RootTraceName   string               `json:"rootTraceName,omitempty"`
+	Start           *types.UnixNanoTime  `json:"startTimeUnixNano,omitempty"`
+	Duration        *types.MilliDuration `json:"durationMs,omitempty"`
+	SpanSets        []tempoSpanSet       `json:"spanSets,omitempty"`
+	SpanSet         *tempoSpanSet        `json:"spanSet,omitempty"` // Backwards compatibility
 }
 
 type tempoSpanSet struct {
@@ -39,10 +40,10 @@ type tempoSpanSet struct {
 }
 
 type tempoSpan struct {
-	SpanID     SpanID             `json:"spanID"` // Span identifier.
-	Start      otel.UnixNanoTime  `json:"startTimeUnixNano"`
-	Duration   otel.MilliDuration `json:"durationNanos"`
-	Attributes otel.KeyValueList  `json:"attributes"`
+	SpanID     SpanID              `json:"spanID"` // Span identifier.
+	Start      types.UnixNanoTime  `json:"startTimeUnixNano"`
+	Duration   types.MilliDuration `json:"durationNanos"`
+	Attributes otel.KeyValueList   `json:"attributes"`
 }
 
 type client struct {

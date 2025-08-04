@@ -96,16 +96,16 @@ func newK8s(class, namespace, name string, object k8s.Object) k8s.Object {
 	if object == nil {
 		object = k8s.Object{}
 	}
-	u := k8s.Wrap(object)
+	u := k8s.ToUnstructured(object)
 	c := k8s.Domain.Class(class).(k8s.Class)
 	u.GetObjectKind().SetGroupVersionKind(c.GVK())
 	u.SetNamespace(namespace)
 	u.SetName(name)
-	return k8s.Unwrap(u)
+	return k8s.FromUnstructured(u)
 }
 
 func k8sEvent(o k8s.Object, name string) k8s.Object {
-	u := k8s.Wrap(o)
+	u := k8s.ToUnstructured(o)
 	gvk := u.GetObjectKind().GroupVersionKind()
 	e := newK8s("Event", name, u.GetNamespace(), k8s.Object{
 		"involvedObject": k8s.Object{

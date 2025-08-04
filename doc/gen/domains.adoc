@@ -392,6 +392,39 @@ Object represents an OpenTelemetry link:https://opentelemetry.io/docs/concepts/s
 
 See Go documentation for https://pkg.go.dev/github.com/korrel8r/korrel8r/pkg/domains/otellog#Object[Object]
 
+[#_podlog_domain]
+= podlog domain
+
+
+Domain podlog provides direct access to Kubernetes Pod logs via the Kube API-server.
+
+Logs are returned in OTEL format.
+
+== Store
+
+The store is the Kube API server itself, providing direct access to live pod log files. Logs are not guaranteed to be persisted after a pod is destroyed. No parameters are required, a podlog store automatically connects using Kube configuration.
+
+----
+domain: podlog
+----
+
+
+== Query
+
+
+Query has the same fields as a link:https://pkg.go.dev/github.com/korrel8r/korrel8r/pkg/domains/k8s#Query[k8s.Query] with and additional 'containers' field.
+
+
+See Go documentation for https://pkg.go.dev/github.com/korrel8r/korrel8r/pkg/domains/podlog#Query[Query]
+
+== Object
+
+
+
+
+
+See Go documentation for https://pkg.go.dev/github.com/korrel8r/korrel8r/pkg/domains/podlog#Object[Object]
+
 [#_trace_domain]
 = trace domain
 

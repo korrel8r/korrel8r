@@ -4,6 +4,7 @@ package otellog
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -11,6 +12,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/korrel8r/korrel8r/internal/pkg/types"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r/impl"
 )
@@ -40,16 +42,11 @@ func (t LokiLogEntryTuple) ToStructuredLogEntry() (*StructuredLogEntry, error) {
 
 	if len(t) >= 2 {
 		if ts, ok := t[0].(string); ok {
-			entry.Timestamp = ts
-			if ns, err := strconv.ParseInt(ts, 10, 64); err == nil {
-				entry.ParsedTime = time.Unix(0, ns)
-			} else {
+			if err := json.Unmarshal([]byte(ts), &entry.Timestamp); err != nil {
 				return nil, fmt.Errorf("invalid timestamp format: %v", err)
 			}
 		}
-		if line, ok := t[1].(string); ok {
-			entry.Line = line
-		}
+		entry.Line, _ = t[1].(string)
 	}
 	if len(t) == 3 {
 		if metadata, ok := t[2].(map[string]interface{}); ok {
@@ -62,9 +59,7 @@ func (t LokiLogEntryTuple) ToStructuredLogEntry() (*StructuredLogEntry, error) {
 
 // StructuredLogEntry is a strongly typed representation of a Loki log line with optional structured metadata.
 type StructuredLogEntry struct {
-	// FIXME use time.Time wrapper
-	Timestamp          string                 `json:"timestamp"`
-	ParsedTime         time.Time              `json:"-"`
+	Timestamp          types.UnixNanoTime     `json:"timestamp"`
 	Line               string                 `json:"line"`
 	StructuredMetadata map[string]interface{} `json:"structured_metadata,omitempty"`
 }
@@ -181,7 +176,7 @@ func collectSorted(streams []lokiStream, collect CollectFunc) {
 			entry, _ := raw.ToStructuredLogEntry()
 			otellog := &OTELLog{
 				Body:       entry.Line,
-				Timestamp:  entry.ParsedTime,
+				Timestamp:  entry.Timestamp.Time,
 				Attributes: make(map[string]any), // Initialize the map to prevent nil map assignment panic
 			}
 			for k, v := range streams[i].Stream {
