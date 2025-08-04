@@ -13,7 +13,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/api/meta/testrestmapper"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -23,13 +22,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
-
-func fakeClientRM(rm meta.RESTMapper) client.Client {
-	return fake.NewClientBuilder().WithRESTMapper(rm).Build()
-}
-func fakeClient() client.Client {
-	return fakeClientRM(testrestmapper.TestOnlyStaticRESTMapper(scheme.Scheme))
-}
 
 var (
 	namespace = Domain.Class("Namespace").(Class)
@@ -112,7 +104,7 @@ func TestStore_Get(t *testing.T) {
 			require.NoError(t, err)
 			var got []types.NamespacedName
 			for _, v := range result {
-				u := Wrap(v.(Object))
+				u := ToUnstructured(v.(Object))
 				got = append(got, types.NamespacedName{Namespace: u.GetNamespace(), Name: u.GetName()})
 			}
 			assert.ElementsMatch(t, x.want, got)
@@ -152,7 +144,7 @@ func TestStore_Get_Constraint(t *testing.T) {
 			require.NoError(t, err)
 			var got []string
 			for _, v := range result {
-				got = append(got, Wrap(v.(Object)).GetName())
+				got = append(got, ToUnstructured(v.(Object)).GetName())
 			}
 			assert.ElementsMatch(t, x.want, got, "%v != %v", x.want, got)
 		})
@@ -184,7 +176,8 @@ func TestStore_Classes(t *testing.T) {
 			{GroupVersion: "v1", APIResources: []metav1.APIResource{{Version: "v1", Kind: "Pod"}}},
 			{GroupVersion: "v1.apps", APIResources: []metav1.APIResource{{Group: "apps", Version: "v1", Kind: "Deployment"}}},
 		}}
-	store, err := NewStoreWithDiscovery(fakeClient(), &rest.Config{}, &d)
+	fakeClient := fake.NewClientBuilder().WithRESTMapper(testrestmapper.TestOnlyStaticRESTMapper(scheme.Scheme)).Build()
+	store, err := NewStoreWithDiscovery(fakeClient, &rest.Config{}, &d)
 	assert.NoError(t, err)
 	classes, err := store.StoreClasses()
 	assert.NoError(t, err)

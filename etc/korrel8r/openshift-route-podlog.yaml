@@ -1,0 +1,5 @@
+
+stores:
+  - domain: podlog
+include:
+  - openshift-route.yaml
