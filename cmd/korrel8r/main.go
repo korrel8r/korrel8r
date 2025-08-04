@@ -29,7 +29,7 @@ var (
 
 	// Global Flags
 	outputFlag  = rootCmd.PersistentFlags().StringP("output", "o", "yaml", "Output format: [json, json-pretty, yaml]")
-	verboseFlag = rootCmd.PersistentFlags().IntP("verbose", "v", 0, "Verbosity for logging (0: notice/error/warn, 1: info, 2: debug, 3: trace-per-request, 4: trace-per-rule, 5: trace-per-object)")
+	verboseFlag = rootCmd.PersistentFlags().IntP("verbose", "v", 0, "Verbosity for logging (0: notice/error/warn, 1: info, 2: debug, 3: trace-per-request, 4: trace-per-rule, 5: trace-per-query+)")
 	configFlag  = rootCmd.PersistentFlags().StringP("config", "c", getConfig(), "Configuration file")
 	panicFlag   = rootCmd.PersistentFlags().Bool("panic", false, "Panic on error")
 	// see profile.go for profile flag

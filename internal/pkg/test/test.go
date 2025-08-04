@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math/rand"
 	"net"
 	"os/exec"
 	"strings"
@@ -89,4 +90,13 @@ func JSONPretty(v any) string {
 		return err.Error()
 	}
 	return w.String()
+}
+
+func RandomName(n int) string {
+	const letters = "abcdefghijklmnopqrstuvwxyz0123456789"
+	b := make([]byte, n)
+	for i := range b {
+		b[i] = letters[rand.Intn(len(letters))]
+	}
+	return string(b)
 }

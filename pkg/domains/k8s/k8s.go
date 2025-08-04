@@ -28,6 +28,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/discovery"
@@ -83,7 +84,7 @@ type Selector struct {
 //		  domain: k8s
 type Store struct {
 	cfg      *rest.Config
-	c        client.Client
+	c        client.WithWatch
 	base     *url.URL
 	discover discovery.DiscoveryInterface
 }
@@ -145,7 +146,7 @@ func (d domain) Query(s string) (korrel8r.Query, error) {
 
 func (c Class) ID(o korrel8r.Object) any {
 	if o, _ := o.(Object); o != nil {
-		return client.ObjectKeyFromObject(Wrap(o))
+		return client.ObjectKeyFromObject(ToUnstructured(o))
 	}
 	return nil
 }
@@ -181,7 +182,7 @@ func (c Class) Unmarshal(b []byte) (korrel8r.Object, error) {
 func (c Class) New() Object {
 	u := &unstructured.Unstructured{}
 	u.GetObjectKind().SetGroupVersionKind(c.GVK())
-	return Unwrap(u)
+	return FromUnstructured(u)
 }
 
 func NewQuery(c Class, s Selector) *Query { return &Query{class: c, Selector: s} }
@@ -192,7 +193,7 @@ func (q Query) String() string        { return impl.QueryString(q) }
 
 // NewStore creates a new k8s store.
 // Called with nil, nil uses default kube config values.
-func NewStore(c client.Client, cfg *rest.Config) (*Store, error) {
+func NewStore(c client.WithWatch, cfg *rest.Config) (*Store, error) {
 	var err error
 	if cfg == nil {
 		cfg, err = GetConfig()
@@ -215,7 +216,7 @@ func NewStore(c client.Client, cfg *rest.Config) (*Store, error) {
 
 // NewStoreWithDiscovery creates a store with the specified discovery interface.
 // Intended for tests with a fake client and discovery.
-func NewStoreWithDiscovery(c client.Client, cfg *rest.Config, di discovery.DiscoveryInterface) (*Store, error) {
+func NewStoreWithDiscovery(c client.WithWatch, cfg *rest.Config, di discovery.DiscoveryInterface) (*Store, error) {
 	host := cfg.Host
 	if host == "" {
 		host = "localhost"
@@ -224,9 +225,9 @@ func NewStoreWithDiscovery(c client.Client, cfg *rest.Config, di discovery.Disco
 	return &Store{cfg: cfg, c: c, base: base, discover: di}, err
 }
 
-func (s Store) Domain() korrel8r.Domain { return Domain }
-func (s Store) Client() client.Client   { return s.c }
-func (s Store) Config() *rest.Config    { return s.cfg }
+func (s Store) Domain() korrel8r.Domain  { return Domain }
+func (s Store) Client() client.WithWatch { return s.c }
+func (s Store) Config() *rest.Config     { return s.cfg }
 
 func (s *Store) Get(ctx context.Context, query korrel8r.Query, c *korrel8r.Constraint, result korrel8r.Appender) (err error) {
 	// Skip the call if the class is not known
@@ -244,7 +245,7 @@ func (s *Store) Get(ctx context.Context, query korrel8r.Query, c *korrel8r.Const
 	}
 	appender := korrel8r.AppenderFunc(func(o korrel8r.Object) {
 		// Include only objects created before or during the constraint interval.
-		if c.CompareTime(Wrap(o.(Object)).GetCreationTimestamp().Time) <= 0 {
+		if c.CompareTime(ToUnstructured(o.(Object)).GetCreationTimestamp().Time) <= 0 {
 			result.Append(o)
 		}
 	})
@@ -285,11 +286,11 @@ func (s *Store) StoreClasses() (classes []korrel8r.Class, err error) {
 }
 
 func (s *Store) getObject(ctx context.Context, q *Query, result korrel8r.Appender) error {
-	u := Wrap(q.class.New())
+	u := ToUnstructured(q.class.New())
 	if err := s.c.Get(ctx, types.NamespacedName{Namespace: q.Namespace, Name: q.Name}, u); err != nil {
 		return err
 	}
-	result.Append(Unwrap(u))
+	result.Append(FromUnstructured(u))
 	return nil
 }
 
@@ -319,15 +320,29 @@ func (s *Store) getList(ctx context.Context, q *Query, result korrel8r.Appender,
 		}
 	}()
 	for i := range list.Items {
-		result.Append(Unwrap(&list.Items[i]))
+		result.Append(FromUnstructured(&list.Items[i]))
 	}
 	return nil
 }
 
-func Wrap(o Object) *unstructured.Unstructured {
+func ToUnstructured(o Object) *unstructured.Unstructured {
 	return &unstructured.Unstructured{Object: o}
 }
 
-func Unwrap(u *unstructured.Unstructured) Object {
+func FromUnstructured(u *unstructured.Unstructured) Object {
 	return Object(u.Object)
+}
+
+func ToStructured(o Object, target any) error {
+	return runtime.DefaultUnstructuredConverter.FromUnstructured(o, target)
+}
+
+func AsStructured[T any](o Object) (*T, error) {
+	var target T
+	err := ToStructured(o, &target)
+	return &target, err
+}
+
+func FromStructured(source any) (Object, error) {
+	return runtime.DefaultUnstructuredConverter.ToUnstructured(source)
 }
