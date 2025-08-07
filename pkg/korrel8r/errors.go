@@ -32,7 +32,7 @@ func IsErrorType[T error](err error) bool {
 type PartialError struct{ Err error }
 
 func (e *PartialError) Error() string {
-	return errors.Join(errors.New("results may be incomplete, there were errors"), e.Err).Error()
+	return fmt.Sprintf("results may be incomplete, partial errors: %v", e.Err)
 }
 
 var _ error = &PartialError{}

@@ -32,7 +32,6 @@ OPENAPI_SPEC=doc/korrel8r-openapi.yaml
 GEN_OPENAPI_GO=pkg/rest/gen-openapi.go
 
 generate: $(VERSION_TXT) $(GEN_OPENAPI_GO)
-	mkdir -p $(GOCOVERDIR)
 	hack/copyright.sh
 
 all: lint test _site image-build ## Build and test everything locally. Recommended before pushing.
@@ -43,14 +42,11 @@ build: generate $(BIN)				## Build korrel8r executable.
 install: generate							## Build and install korrel8r with go install.
 	go install ./cmd/korrel8r
 
-run: generate									## Run `korrel8r web` for debugging.
-	go run ./cmd/korrel8r web -c $(CONFIG) $(KORREL8R_FLAGS)
-
-run-mcp: generate									## Run `korrel8r mcp` for debugging.
-	go run ./cmd/korrel8r mcp -c $(CONFIG) $(KORREL8R_FLAGS)
+run: generate									## Run korrel8r with default configuration.
+	go run ./cmd/korrel8r -c $(CONFIG) $(ARGS)
 
 runw: generate $(GOW)					## Run `korrel8r web` with auto-rebuild if source changes.
-	$(GOW) -v run ./cmd/korrel8r web -c $(CONFIG) $(KORREL8R_FLAGS)
+	$(GOW) -v run ./cmd/korrel8r -c $(CONFIG) $(ARGS)
 
 clean: ## Remove generated files, including checked-in files.
 	rm -rf _site generate doc/gen tmp $(GEN_OPENAPI_GO) $(BIN) $(GOCOVERDIR)
@@ -85,6 +81,7 @@ test: generate		## Run all tests, no cache. Requires an openshift cluster.
 test-no-cluster: generate	## Run all tests that don't require an openshift cluster.
 	go test -fullpath -race -skip '.*/Openshift' ./...
 
+.PHONY: cover
 cover:  ## Run tests with accumulated coverage stats in _cover.
 	@rm -rf  $(GOCOVERDIR) ; mkdir -p $(GOCOVERDIR)
 	@echo == Individual package test coverage.
@@ -154,10 +151,11 @@ doc: doc/gen/domains.adoc doc/gen/rest_api.adoc doc/gen/cmd
 	@touch $@
 
 DOMAINS=$(shell echo pkg/domains/*/ | xargs basename -a)
-DOMAIN_PKGS=$(foreach D,$(DOMAINS),github.com/korrel8r/korrel8r/pkg/domains/$(D))
-doc/gen/domains.adoc: $(shell find pkg/domains internal/cmd/domain-adoc internal/pkg/asciidoc) generate
+doc/gen/domain_%.adoc: pkg/domains/%/*.go generate
 	@mkdir -p $(dir $@)
-	go run ./internal/cmd/domain-adoc $(DOMAIN_PKGS) > $@
+	go run ./internal/cmd/domain-adoc github.com/korrel8r/korrel8r/pkg/domains/$* > $@
+doc/gen/domains.adoc: $(foreach D,$(DOMAINS),doc/gen/domain_$(D).adoc)
+	rm -f $@; for D in $(DOMAINS); do echo -e "\ninclude::domain_$$D.adoc[]\n" >>$@; done
 
 OPENAPI_CFG=doc/openapi-asciidoc.yaml
 doc/gen/rest_api.adoc: $(OPENAPI_SPEC) $(OPENAPI_GEN) $(OPENAPI_CFG)

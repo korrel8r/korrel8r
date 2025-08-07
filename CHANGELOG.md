@@ -10,6 +10,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 _Note unreleased changes on main here pending the next release_
 
 ### Changed
+- BREAKING CHANGE: combined otellog and podlog domains into log domain.
+  - Both OTEL AND Viaq log objects are now flat maps with "_" separated keys.
+  - New k8s query syntax for all logs: {name: namespace: labels: fields: containers:}
+  - Still supports LogQL queries for stored logs.
+  - Default config: store first, fall back to direct API server access.
+
+### Changed
 - Replaced Swagger 2 specification with OpenAPI 3, updated REST API code.
 - Added authorization present/absent in debugging logs (no auth material included)
 - Added doc/lab/model-context-protocol.adoc with MCP experiments.
