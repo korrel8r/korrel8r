@@ -4,13 +4,13 @@
 package mock
 
 import (
+	"encoding/json"
 	"fmt"
 	"slices"
 	"strings"
 	"time"
 
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
-	"github.com/korrel8r/korrel8r/pkg/korrel8r/impl"
 )
 
 var (
@@ -43,9 +43,16 @@ func (d *Domain) Store(cfg any) (korrel8r.Store, error) { return NewStoreConfig(
 func (d *Domain) Class(name string) korrel8r.Class      { return Class{name: name, domain: d} }
 func (d *Domain) Classes() []korrel8r.Class             { return d.classes }
 
-func (d *Domain) Query(s string) (korrel8r.Query, error) {
-	class, data, err := impl.ParseQuery(d, s)
-	return NewQuery(class, data), err
+func (d *Domain) Query(query string) (korrel8r.Query, error) {
+	domainName, className, selector := querySplit(query)
+	if domainName != d.Name() {
+		return nil, fmt.Errorf("wrong query domain, want %v: %v", d.Name(), query)
+	}
+	class := d.Class(className)
+	if class == nil {
+		return nil, korrel8r.ClassNotFoundError(className)
+	}
+	return NewQuery(class, selector), nil
 }
 
 type Class struct {
@@ -53,11 +60,15 @@ type Class struct {
 	domain korrel8r.Domain
 }
 
-func (c Class) Domain() korrel8r.Domain                     { return c.domain }
-func (c Class) String() string                              { return impl.ClassString(c) }
-func (c Class) Name() string                                { return c.name }
-func (c Class) ID(o korrel8r.Object) any                    { return o }
-func (c Class) Unmarshal(b []byte) (korrel8r.Object, error) { return impl.UnmarshalAs[Object](b) }
+func (c Class) Domain() korrel8r.Domain  { return c.domain }
+func (c Class) String() string           { return classString(c) }
+func (c Class) Name() string             { return c.name }
+func (c Class) ID(o korrel8r.Object) any { return o }
+func (c Class) Unmarshal(b []byte) (korrel8r.Object, error) {
+	var o Object
+	err := json.Unmarshal(b, &o)
+	return o, err
+}
 
 type ApplyFunc func(korrel8r.Object) (korrel8r.Query, error)
 
@@ -126,7 +137,7 @@ func NewQueryError(c korrel8r.Class, selector string, err error) korrel8r.Query 
 
 func (q Query) Class() korrel8r.Class { return q.class }
 func (q Query) Data() string          { return q.data }
-func (q Query) String() string        { return impl.QueryString(q) }
+func (q Query) String() string        { return queryString(q) }
 
 // Timestamper interface for objects with a Timestamp() method.
 type Timestamper interface{ Timestamp() time.Time }
@@ -136,3 +147,25 @@ type Result []korrel8r.Object
 
 func (r *Result) Append(objects ...korrel8r.Object) { *r = append(*r, objects...) }
 func (r Result) List() []korrel8r.Object            { return []korrel8r.Object(r) }
+
+// Helper functions to replace impl dependencies
+const sep = korrel8r.NameSeparator
+
+func classString(c korrel8r.Class) string { return c.Domain().Name() + sep + c.Name() }
+
+func queryString(q korrel8r.Query) string { return classString(q.Class()) + sep + q.Data() }
+
+func querySplit(query string) (domain, class, data string) {
+	query = strings.TrimSpace(query)
+	s := strings.SplitN(query, sep, 3)
+	if len(s) > 0 {
+		domain = s[0]
+	}
+	if len(s) > 1 {
+		class = s[1]
+	}
+	if len(s) > 2 {
+		data = s[2]
+	}
+	return domain, class, data
+}
