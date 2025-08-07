@@ -9,9 +9,6 @@ stores:
   - domain: log
     lokiStack: https://logging-loki-gateway-http.openshift-logging.svc:8080
     certificateAuthority: /var/run/secrets/kubernetes.io/serviceaccount/service-ca.crt
-  - domain: otellog
-    lokiStack: https://logging-loki-gateway-http.openshift-logging.svc:8080
-    certificateAuthority: /var/run/secrets/kubernetes.io/serviceaccount/service-ca.crt
   - domain: metric
     metric: https://thanos-querier.openshift-monitoring.svc:9091
     certificateAuthority: /var/run/secrets/kubernetes.io/serviceaccount/service-ca.crt

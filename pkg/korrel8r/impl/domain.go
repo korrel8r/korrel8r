@@ -35,3 +35,5 @@ func (d *Domain) Description() string              { return d.description }
 func (d *Domain) Name() string                     { return d.name }
 func (d *Domain) Class(name string) korrel8r.Class { return d.classMap[name] }
 func (d *Domain) Classes() []korrel8r.Class        { return d.classes }
+
+func (d *Domain) String() string { return d.name }

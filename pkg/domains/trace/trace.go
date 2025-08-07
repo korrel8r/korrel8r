@@ -2,6 +2,34 @@
 
 // Package trace implements OpenTelemetry [traces] stored in the Grafana [Tempo] data store.
 //
+// # Class
+//
+// Class singleton `trace:span` representing an OpenTelemetry [span]
+//
+// A trace is simply a set of spans with the same trace-id.
+// There is no explicit class or object representing a trace.
+//
+// # Object
+//
+// Object represents an OpenTelemetry [span]
+//
+// A trace is simply a set of spans with the same trace-id.
+// There is no explicit class or object representing a trace.
+//
+// # Query
+//
+// Query selector has two forms: a [TraceQL] query string, or a list of trace IDs.
+//
+// A [TraceQL] query selects spans from many traces that match the query criteria.
+// Example:
+//
+//	`trace:span:{resource.k8s.namespace.name="korrel8r"}`
+//
+// A trace-id query is a list of hexadecimal trace IDs. It returns all the
+// spans included by each trace. Example:
+//
+//	`trace:span:a7880cc221e84e0d07b15993358811b7,b7880cc221e84e0d07b15993358811b7
+//
 // # Store
 //
 // The trace domain accepts an optional "tempostack" field with a URL for tempostack.
@@ -13,6 +41,8 @@
 //
 // [Tempo]: https://grafana.com/docs/tempo/latest/
 // [traces]: https://opentelemetry.io/docs/concepts/signals/traces
+// [TraceQL]: https://grafana.com/docs/tempo/latest/traceql/
+// [span]: https://opentelemetry.io/docs/concepts/signals/traces/#spans
 package trace
 
 import (
@@ -76,12 +106,6 @@ func (domain) Store(s any) (korrel8r.Store, error) {
 	return NewTempoStackStore(u, hc)
 }
 
-// Class singleton `trace:span` representing OpenTelemetry [spans]
-//
-// A trace is simply a set of spans with the same trace-id.
-// There is no explicit class or object representing a trace.
-//
-// [spans]: https://opentelemetry.io/docs/concepts/signals/traces/#spans
 type Class struct{}
 
 func (c Class) Domain() korrel8r.Domain { return Domain }
@@ -96,12 +120,6 @@ func (c Class) ID(o korrel8r.Object) any {
 	return nil
 }
 
-// Object represents an OpenTelemetry [span]
-//
-// A trace is simply a set of spans with the same trace-id.
-// There is no explicit class or object representing a trace.
-//
-// [span]: https://opentelemetry.io/docs/concepts/signals/traces/#spans
 type Object = *Span
 
 // TraceID is a hex-encoded 16 byte identifier.
@@ -158,19 +176,6 @@ func (s *Span) Duration() time.Duration {
 	return s.EndTime.Sub(s.StartTime)
 }
 
-// Query selector has two forms: a [TraceQL] query string, or a list of trace IDs.
-//
-// A [TraceQL] query selects spans from many traces that match the query criteria.
-// Example:
-//
-//	`trace:span:{resource.kubernetes.namespace.name="korrel8r"}`
-//
-// A trace-id query is a list of hexadecimal trace IDs. It returns all the
-// spans included by each trace. Example:
-//
-//	`trace:span:a7880cc221e84e0d07b15993358811b7,b7880cc221e84e0d07b15993358811b7
-//
-// [TraceQL]: https://grafana.com/docs/tempo/latest/traceql/
 type Query string
 
 func NewQuery(traceQL string) korrel8r.Query { return Query(strings.TrimSpace(traceQL)) }

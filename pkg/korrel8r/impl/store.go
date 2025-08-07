@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"time"
 
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 )
@@ -27,7 +28,12 @@ func (s *Store) StoreClasses() ([]korrel8r.Class, error) { return s.domain.Class
 
 // Get and decode a REST response, for stores that use raw HTTP clients.
 // body is decoded from the response, it must point to a JSON decodable type.
-func Get[T any](ctx context.Context, u *url.URL, hc *http.Client, body T) (err error) {
+func Get[T any](ctx context.Context, u *url.URL, hc *http.Client, timeout time.Duration, body T) (err error) {
+	if timeout > 0 {
+		hc2 := *hc // Make a copy
+		hc2.Timeout = timeout
+		hc = &hc2
+	}
 	req, err := http.NewRequestWithContext(ctx, "GET", u.String(), nil)
 	if err != nil {
 		return err

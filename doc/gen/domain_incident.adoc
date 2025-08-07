@@ -1,0 +1,42 @@
+
+[#_incident_domain]
+= Incident
+
+image:https://pkg.go.dev/badge/github.com/korrel8r/korrel8r.svg[Go Reference,link="https://pkg.go.dev/github.com/korrel8r/korrel8r/pkg/domains/incident"]
+
+
+Package incident provides mapping to link:https://github.com/openshift/cluster-health-analyzer[https://github.com/openshift/cluster-health-analyzer] incidents.
+
+== Class
+
+There is a single class `incident:incident`.
+
+== Object
+
+An incident object contains id and mapping to the sources (alert is the only supported source type at the moment).
+
+== Query
+
+One can query the incident by its id.
+
+----
+incident:incident:{"id":"id-of-the-incident"}
+----
+
+It's also possible to provide labels from an alert to get a corresponding incident.
+
+----
+incident:incident:{"alertLabels":{
+ "alertname":"AlertmanagerReceiversNotConfigured",
+ "namespace":"openshift-monitoring"}}
+----
+
+== Store
+
+A client of Prometheus. Store configuration:
+
+----
+domain: incident
+metrics: PROMETHEUS_URL
+----
+

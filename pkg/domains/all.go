@@ -9,8 +9,6 @@ import (
 	"github.com/korrel8r/korrel8r/pkg/domains/log"
 	"github.com/korrel8r/korrel8r/pkg/domains/metric"
 	"github.com/korrel8r/korrel8r/pkg/domains/netflow"
-	"github.com/korrel8r/korrel8r/pkg/domains/otellog"
-	"github.com/korrel8r/korrel8r/pkg/domains/podlog"
 	"github.com/korrel8r/korrel8r/pkg/domains/trace"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 )
@@ -18,8 +16,6 @@ import (
 var All = []korrel8r.Domain{
 	k8s.Domain,
 	log.Domain,
-	otellog.Domain,
-	podlog.Domain,
 	netflow.Domain,
 	trace.Domain,
 	alert.Domain,

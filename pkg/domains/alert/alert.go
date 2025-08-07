@@ -52,7 +52,6 @@ import (
 	"github.com/prometheus/client_golang/api"
 	v1 "github.com/prometheus/client_golang/api/prometheus/v1"
 	"github.com/prometheus/common/model"
-	"sigs.k8s.io/yaml"
 )
 
 var (
@@ -75,12 +74,12 @@ func (d domain) Query(s string) (korrel8r.Query, error) {
 	}
 
 	var simpleQuery map[string]string
-	err = yaml.UnmarshalStrict([]byte(qs), &simpleQuery)
+	err = impl.Unmarshal([]byte(qs), &simpleQuery)
 	if err == nil {
 		query = []map[string]string{simpleQuery}
 	} else {
 		// Try more complex variant of the query, accepting list of maps.
-		err = yaml.UnmarshalStrict([]byte(qs), &query)
+		err = impl.Unmarshal([]byte(qs), &query)
 		if err != nil {
 			return nil, err
 		}

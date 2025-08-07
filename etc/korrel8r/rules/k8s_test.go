@@ -13,22 +13,12 @@ func TestK8sRules(t *testing.T) {
 	for _, x := range []ruleTest{
 		{
 			rule:  "LogToPod",
-			start: log.NewObject(`{"kubernetes":{"namespace_name":"foo","pod_name":"bar"},"message":"hello"}`),
+			start: log.Object{"kubernetes_namespace_name": "foo", "kubernetes_pod_name": "bar", "message": "hello"},
 			query: `k8s:Pod.v1:{"namespace":"foo","name":"bar"}`,
 		},
 		{
 			rule:  "LogToPod",
-			start: log.NewObject(`{"kubernetes":{"namespace_name":"default","pod_name":"baz"},"message":"bye"}`),
-			query: `k8s:Pod.v1:{"namespace":"default","name":"baz"}`,
-		},
-		{
-			rule:  "OTELLogToPod",
-			start: log.NewObject(`{"Attributes":{"k8s_namespace_name":"foo","k8s_pod_name":"bar"},"Body":"hello"}`),
-			query: `k8s:Pod.v1:{"namespace":"foo","name":"bar"}`,
-		},
-		{
-			rule:  "OTELLogToPod",
-			start: log.NewObject(`{"Attributes":{"k8s_namespace_name":"default","k8s_pod_name":"baz"},"Body":"bye"}`),
+			start: log.Object{"kubernetes_namespace_name": "default", "kubernetes_pod_name": "baz", "message": "bye"},
 			query: `k8s:Pod.v1:{"namespace":"default","name":"baz"}`,
 		},
 		{

@@ -40,19 +40,19 @@ func TestLogRules(t *testing.T) {
 			start: k8s.Object{
 				"metadata": k8s.Object{"namespace": "ns", "name": "x"},
 				"spec": k8s.Object{
-					"selector": k8s.Object{"matchLabels": k8s.Object{"a.b/c": "x"}},
+					"selector": k8s.Object{"matchLabels": map[string]string{"a.b/c": "x"}},
 				}},
-			query: `log:application:{kubernetes_namespace_name="ns"}|json|kubernetes_labels_a_b_c="x"`,
+			query: `log:application:{"name":"ns","labels":{"a.b/c":"x"}}`,
 		},
 		{
 			rule:  "PodToLogs",
 			start: newK8s("Pod", "project", "application", nil),
-			query: `log:application:{kubernetes_namespace_name="project",kubernetes_pod_name="application"}|json`,
+			query: `log:application:{"namespace":"project","name":"application"}`,
 		},
 		{
 			rule:  "PodToLogs",
 			start: newK8s("Pod", "kube-something", "infrastructure", nil),
-			query: `log:infrastructure:{kubernetes_namespace_name="kube-something",kubernetes_pod_name="infrastructure"}|json`,
+			query: `log:infrastructure:{"namespace":"kube-something","name":"infrastructure"}`,
 		},
 	} {
 		x.Run(t)

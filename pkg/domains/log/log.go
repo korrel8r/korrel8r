@@ -1,51 +1,97 @@
 // Copyright: This file is part of korrel8r, released under https://github.com/korrel8r/korrel8r/blob/main/LICENSE
 
-// Package log is a domain for openshift-logging ViaQ logs stored in Loki or LokiStack.
+// Package log is a korrel8r domain for log records.
+//
+// Logs can be stored in Loki, LokiStack, or they can be retrieved directly from the Kubernetes API server.
 //
 // # Class
 //
 // There are 3 classes corresponding to the 3 openshift logging log types:
 //
-//	log:application
-//	log:infrastructure
-//	log:audit
+//   - log:application
+//   - log:infrastructure
+//   - log:audit
 //
 // # Object
 //
-// A log object is a JSON map[string]any in ViaQ format.
+// A log object is a map of string attributes.
+// The set of attribute names and values may vary depending on how the logs were collected.
+// Attribute names contain only ASCII letters, digits, underscores, and colons, and cannot start with a digit.
+//
+// For Loki logs, all Loki stream and structured metadata labels are included as attributes.
+// If the log body is a JSON object, all nested fields paths are flattened into attribute names.
+//
+// Special attributes:
+//
+//   - "body" contains the original log message.
+//   - "timestamp" is the time the log was produced (if known) in RFC3999 format.
+//   - "observed_timestamp" is the time the log was stored in RFC3999 format.
+//
+// Viaq logs have attributes like: "kubernetes_namespace_name", "kubernetes_pod_name"
+//
+// OTEL logs have attributes like: "k8s_namespace_name", "k8s_pod_name"
 //
 // # Query
 //
-// A query is a [LogQL] query string, prefixed by the logging class, for example:
+// A query starts with the log class, followed by one of the following:
+//   - A [LogQL] expression: LogQL queries can only be used to retrieve stored logs
+//   - A container selector: This can be used for stored logs and/or direct API log access.
+//
+// This is a literal [LogQL] expression that will be passed to the Loki store.
 //
 //	log:infrastructure:{ kubernetes_namespace_name="openshift-cluster-version", kubernetes_pod_name=~".*-operator-.*" }
 //
-// # Store
+// A container selector is a JSON map of the form:
 //
-// Store configuration:
+//	{
+//	  "namespace": "pod_namespace",
+//	  "name": "pod_name",
+//	  "labels": { "label_name": "label_value", ... },
+//	  "fields": { "field_name": "field_value", ... },
+//	  "containers": ["container_name", "another_container_name", ...],
+//	}
 //
-//		domain: log
-//		loki: https://url_of_remote_loki
-//		lokistack: https://url_of_lokistack
-//	  direct: true|false
+// For example: to get all logs from pods in namespace "app" that have containers named "foo" or "bar"
 //
-// - At most one of loki or lokistack may be set.
-// - direct enables direct access to running pod logs via the API server.
-// - Combining direct with loki/lokistack uses direct access as a fallback if loki fails.
+//	log:infrastructure:{ "namespace": "app", "labels":["foo", "bar"]}
+//
+// # Store Configuration
+//
+//	domain: log
+//	lokiStack: https://url_of_lokistack
+//	direct: true
+//
+// This will connect to a Lokistack instance and try to get logs from there. If it fails
+// it will fall back to using the API server directly.
+// You can configure a store with just `direct: true` to use the API server only,
+// or with just `lokiStack` to use the Loki store only.
+//
+// # Template functions
+//
+// The following functions can be used in rule templates when the log domain is available:
+//
+//	logTypeForNamespace
+//	  Takes a namespace string argument.
+//	  Returns the log type: "application" or "infrastructure"
+//
+//	logSafeLabel
+//	  Replace all characters other than alphanumerics, '_' and ':' with '_'.
+//
+//	logSafeLabels
+//	  Takes a map[string]string argument.
+//	  Returns a map where each key is replaced by calling logSafeLabel()
 //
 // [LogQL]: https://grafana.com/docs/loki/latest/query/
 package log
 
 import (
-	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
-	"net/http"
 	"net/url"
-	"regexp"
-	"strings"
+	"strconv"
+	"time"
 
-	"github.com/korrel8r/korrel8r/internal/pkg/loki"
 	"github.com/korrel8r/korrel8r/pkg/config"
 	"github.com/korrel8r/korrel8r/pkg/domains/k8s"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
@@ -55,27 +101,20 @@ import (
 var (
 	// Verify implementing interfaces.
 	_ korrel8r.Domain    = Domain
-	_ korrel8r.Store     = &store{}
-	_ korrel8r.Store     = &stackStore{}
-	_ korrel8r.Query     = Query{}
+	_ korrel8r.Store     = &Store{}
+	_ korrel8r.Query     = &Query{}
 	_ korrel8r.Class     = Class("")
 	_ korrel8r.Previewer = Class("")
 )
 
-// Domain for log records produced by openshift-logging.
 var Domain = &domain{
-	impl.NewDomain("log", "Records from container and node logs.", Application, Infrastructure, Audit),
+	impl.NewDomain("log", "Records from container and node logs.",
+		Class(Application), Class(Infrastructure), Class(Audit)),
 }
 
 type domain struct{ *impl.Domain }
 
-func (d *domain) Query(s string) (korrel8r.Query, error) {
-	c, s, err := impl.ParseQuery(d, s)
-	if err != nil {
-		return nil, err
-	}
-	return NewQuery(c.(Class), s), nil
-}
+func (d *domain) Query(query string) (korrel8r.Query, error) { return NewQuery(query) }
 
 const (
 	StoreKeyLoki      = "loki"
@@ -88,37 +127,57 @@ func (*domain) Store(s any) (korrel8r.Store, error) {
 	if err != nil {
 		return nil, err
 	}
+	ks, err := k8s.NewStore(nil, nil)
+	if err != nil {
+		return nil, err
+	}
+	return NewStore(cs, ks)
+}
+
+type Store = impl.TryStores
+
+func NewStore(cs config.Store, k8sStore *k8s.Store) (*Store, error) {
+	var stores impl.TryStores // Collect loki and pod store
+	loki, lokiStack, direct := cs[StoreKeyLoki], cs[StoreKeyLokiStack], cs[StoreKeyDirect]
+
+	if loki != "" && lokiStack != "" {
+		return nil, fmt.Errorf("can't set both loki and lokiStack URLs")
+	}
 	hc, err := k8s.NewHTTPClient(cs)
 	if err != nil {
 		return nil, err
 	}
-
-	loki, lokiStack, direct := cs[StoreKeyLoki], cs[StoreKeyLokiStack], cs[StoreKeyDirect]
-	switch {
-
-	case loki != "" && lokiStack != "":
-		return nil, fmt.Errorf("can't set both loki and lokiStack URLs")
-
-	case loki != "":
+	if loki != "" {
 		u, err := url.Parse(loki)
 		if err != nil {
 			return nil, err
 		}
-		return NewPlainLokiStore(u, hc)
-
-	case lokiStack != "":
+		stores = append(stores, NewLokiStore(u, hc))
+	}
+	if lokiStack != "" {
 		u, err := url.Parse(lokiStack)
 		if err != nil {
 			return nil, err
 		}
-		return NewLokiStackStore(u, hc)
-
-	default:
-		return nil, fmt.Errorf("must set one of loki or lokiStack URLs")
+		stores = append(stores, NewLokiStackStore(u, hc))
 	}
+
+	if ok, err := strconv.ParseBool(direct); direct != "" && err != nil {
+		return nil, err
+	} else if ok {
+		direct, err := newDirectStore(k8sStore)
+		if err != nil {
+			return nil, err
+		}
+		stores = append(stores, direct)
+	}
+
+	if len(stores) == 0 {
+		return nil, errors.New("must set at least one of loki, lokiStack or direct")
+	}
+	return &stores, nil
 }
 
-// Class is the log_type name.
 type Class string
 
 func (c Class) Domain() korrel8r.Domain                     { return Domain }
@@ -127,104 +186,93 @@ func (c Class) String() string                              { return impl.ClassS
 func (c Class) Unmarshal(b []byte) (korrel8r.Object, error) { return impl.UnmarshalAs[Object](b) }
 func (c Class) Preview(o korrel8r.Object) (line string)     { return Preview(o) }
 
-// Preview extracts the message from a Viaq log record.
-func Preview(x korrel8r.Object) (line string) {
-	if m := x.(Object)["message"]; m != nil {
-		s, _ := m.(string)
-		return s
+func Preview(x korrel8r.Object) string {
+	if o, _ := x.(Object); o != nil {
+		return o[AttrBody]
 	}
 	return ""
 }
 
-// Object is a map in Viaq format.
-type Object map[string]any
+type Object map[string]string
 
-func NewObject(line string) Object { o, _ := impl.UnmarshalAs[Object]([]byte(line)); return o }
-
-func (o *Object) UnmarshalJSON(line []byte) error {
-	if err := json.Unmarshal([]byte(line), (*map[string]any)(o)); err != nil {
-		*o = map[string]any{"message": line}
+func (o Object) Body() string                          { return o["body"] }
+func (o Object) ObservedTimestamp() (time.Time, error) { return ParseTime(o["observed_timestamp"]) }
+func (o Object) Timestamp() (time.Time, error)         { return ParseTime(o["timestamp"]) }
+func (o Object) SortTime() (time.Time, error) {
+	ts, err := ParseTime(o[AttrTimestamp])
+	if err != nil {
+		ts, err = ParseTime(o[AttrObservedTimestamp])
 	}
-	return nil
+	return ts, err
 }
 
-// Query is a LogQL query string
+// ParseTime parses a timestamp in RFC3999 or Unix nanosecond format.
+func ParseTime(ts string) (time.Time, error) {
+	tt, err := time.Parse(time.RFC3339Nano, ts)
+	if err == nil {
+		return tt, nil
+	}
+	if n, err := strconv.ParseInt(ts, 10, 64); err == nil {
+		return time.Unix(0, n), nil
+	}
+	return time.Time{}, err
+}
+
 type Query struct {
-	logQL string // `json:",omitempty"`
-	class Class  // `json:",omitempty"`
+	logQL  string
+	direct *ContainerSelector
+	class  Class
 }
 
-func NewQuery(c Class, logQL string) korrel8r.Query {
-	logQL = strings.TrimSpace(logQL)
-	if c == "" {
-		c = logQueryClass(logQL)
+func (q *Query) Class() korrel8r.Class { return q.class }
+func (q *Query) String() string        { return impl.QueryString(q) }
+func (q *Query) Data() string {
+	if q.direct != nil {
+		d, _ := json.Marshal(q.direct)
+		return string(d)
 	}
-	return Query{class: c, logQL: logQL}
+	return q.logQL
+}
+
+func NewQuery(query string) (*Query, error) {
+	class, selector, err := impl.ParseQuery(Domain, query)
+	if err != nil {
+		return nil, err
+	}
+	q := &Query{class: class.(Class)}
+	// Try to unmarshal selector to direct pod selector.
+	var direct ContainerSelector
+	if err := impl.Unmarshal([]byte(selector), &direct); err == nil {
+		q.direct = &direct
+		// FIXME defer LogQL conversion to store, when we know the label sets in use.
+		q.logQL = q.direct.LogQL()
+	} else { // Otherwise assume LogQL
+		q.logQL = selector
+	}
+	return q, nil
 }
 
 const (
-	Application    Class = "application"
-	Infrastructure Class = "infrastructure"
-	Audit          Class = "audit"
+	Application    = "application"
+	Infrastructure = "infrastructure"
+	Audit          = "audit"
 )
 
-func (q Query) Class() korrel8r.Class { return q.class }
-func (q Query) Data() string          { return q.logQL }
-func (q Query) String() string        { return impl.QueryString(q) }
+// Separate attributes from timestamp/body intrinsics?
+// Document attributes
 
-// NewLokiStackStore returns a store that uses a LokiStack observatorium-style URLs.
-func NewLokiStackStore(base *url.URL, h *http.Client) (korrel8r.Store, error) {
-	return &stackStore{store: store{Client: loki.New(h, base), Store: impl.NewStore(Domain)}}, nil
-}
+const (
+	AttrObservedTimestamp = "observed_timestamp"
+	AttrTimestamp         = "timestamp"
+	Attr_Timestamp        = "_timestamp"
+	AttrBody              = "body"
+	AttrMessage           = "message"
 
-// NewPlainLokiStore returns a store that uses plain Loki URLs.
-func NewPlainLokiStore(base *url.URL, h *http.Client) (korrel8r.Store, error) {
-	return &store{Client: loki.New(h, base), Store: impl.NewStore(Domain)}, nil
-}
+	AttrK8sPodName       = "k8s_pod_name"
+	AttrK8sNamespaceName = "k8s_namespace_name"
+	AttrK8sContainerName = "k8s_container_name"
 
-type store struct {
-	*loki.Client
-	*impl.Store
-}
-
-func (s *store) Get(ctx context.Context, query korrel8r.Query, constraint *korrel8r.Constraint, result korrel8r.Appender) error {
-	q, err := impl.TypeAssert[Query](query)
-	if err != nil {
-		return err
-	}
-	return s.Client.Get(ctx, q.Data(), constraint, func(e *loki.Entry) { result.Append(NewObject(e.Line)) })
-}
-
-type stackStore struct{ store }
-
-func (s *stackStore) Get(ctx context.Context, query korrel8r.Query, constraint *korrel8r.Constraint, result korrel8r.Appender) error {
-	q, err := impl.TypeAssert[Query](query)
-	if err != nil {
-		return err
-	}
-	return s.GetStack(ctx, q.Data(), q.Class().Name(), constraint, func(e *loki.Entry) { result.Append(NewObject(e.Line)) })
-}
-
-var logTypeRe = regexp.MustCompile(`{[^}]*log_type(=~*)"([^"]+)"}`)
-
-// queryClass get the class name implied by a LogQL query or nil.
-func logQueryClass(logQL string) Class {
-	// Parser at github.com/grafana/loki/logql does not work with go modules.
-	// See https://github.com/grafana/loki/issues/2826][v2 go module semantic versioning
-	// Use a simple regexp approach instead.
-	if m := logTypeRe.FindStringSubmatch(logQL); m != nil {
-		switch m[1] {
-		case "=":
-			return Class(m[2])
-		case "=~":
-			if re, err := regexp.Compile(m[2]); err == nil {
-				for _, c := range Domain.Classes() {
-					if re.MatchString(c.Name()) {
-						return c.(Class)
-					}
-				}
-			}
-		}
-	}
-	return Application
-}
+	AttrKubernetesPodName       = "kubernetes_pod_name"
+	AttrKubernetesNamespaceName = "kubernetes_namespace_name"
+	AttrKubernetesContainerName = "kubernetes_container_name"
+)

@@ -1,0 +1,48 @@
+
+[#_k8s_domain]
+= K8s
+
+image:https://pkg.go.dev/badge/github.com/korrel8r/korrel8r.svg[Go Reference,link="https://pkg.go.dev/github.com/korrel8r/korrel8r/pkg/domains/k8s"]
+
+
+Package k8s implements link:https://kubernetes.io/docs/concepts/overview/[Kubernetes] resources stored in a Kube API server.
+
+== Class
+
+Class represents a kind of kubernetes resource. The format of a class name is: "k8s:KIND\[.VERSION]\[.GROUP]".
+
+Missing VERSION implies "v1", if present VERSION must follow the link:https://kubernetes.io/docs/tasks/extend-kubernetes/custom-resources/custom-resource-definition-versioning/#version-priority[Kubernetes version patterns]. Missing GROUP implies the core group.
+
+Examples: `k8s:Pod`, `ks8:Pod/v1`, `k8s:Deployment.apps`, `k8s:Deployment.apps/v1`, `k8s:Route.route.openshift.io/v1`
+
+== Object
+
+Object represents a kubernetes resource as a map, map keys are serialized field names. Rule templates should use the JSON (lowerCase) field names, NOT the UpperCase Go struct field names.
+
+== Query
+
+Example:
+
+----
+k8s:Pod.v1:{"namespace":"openshift-cluster-version","name":"cluster-version-operator-8d86bcb65-btlgn"}
+----
+
+== Store
+
+The k8s domain automatically connects to the current cluster (as determined by kubectl), no additional configuration is needed.
+
+----
+ stores:
+	  domain: k8s
+----
+
+== Template Functions
+
+The following template functions are available to rules.
+
+----
+k8sClass
+    Takes string arguments (apiVersion, kind).
+    Returns the korrel8r.Class implied by the arguments, or an error.
+----
+

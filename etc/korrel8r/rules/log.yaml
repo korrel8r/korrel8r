@@ -7,7 +7,7 @@ rules:
       classes: [Pod]
     result:
       query: |-
-        k8s:Pod:{namespace: "{{.kubernetes.namespace_name}}", name: "{{.kubernetes.pod_name}}"}
+        k8s:Pod:{namespace: "{{.kubernetes_namespace_name}}", name: "{{.kubernetes_pod_name}}"}
 
   - name: SelectorToLogs
     start:
@@ -17,8 +17,9 @@ rules:
       domain: log
     result:
       query: |-
-        log:{{logTypeForNamespace .metadata.namespace}}:{kubernetes_namespace_name="{{.metadata.namespace}}"}|json
-            {{- range $k,$v:=.spec.selector.matchLabels}}|kubernetes_labels_{{logSafeLabel $k}}="{{$v}}"{{end -}}
+        log:{{logTypeForNamespace .metadata.namespace}}:{
+          "name":"{{.metadata.namespace}}",
+          "labels":{{.spec.selector.matchLabels | logSafeLabels | mustToJson}} }
 
   - name: PodToLogs
     start:
@@ -28,4 +29,4 @@ rules:
       domain: log
     result:
       query: |-
-        log:{{ logTypeForNamespace .metadata.namespace }}:{kubernetes_namespace_name="{{.metadata.namespace}}",kubernetes_pod_name="{{.metadata.name}}"}|json
+        log:{{ logTypeForNamespace .metadata.namespace }}:{"namespace":"{{.metadata.namespace}}","name":"{{.metadata.name}}"}

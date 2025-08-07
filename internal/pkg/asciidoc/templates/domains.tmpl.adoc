@@ -1,17 +1,7 @@
 
 [#_{{.Package.Name}}_domain]
-= {{ .Package.Name }} domain
+= {{ .Package.Name | title }}
 
-{{ regexReplaceAll "^Package" .Package.Doc "Domain" | .Asciidoc }}
+image:https://pkg.go.dev/badge/github.com/korrel8r/korrel8r.svg[Go Reference,link="{{ .DocLinkURL "" }}"]
 
-== Query
-
-{{ (.Type "Query").Doc | .Asciidoc }}
-
-See Go documentation for {{ .DocLinkURL "Query" }}[Query]
-
-== Object
-
-{{ (.Type "Object").Doc | .Asciidoc }}
-
-See Go documentation for {{ .DocLinkURL "Object" }}[Object]
+{{ .Package.Doc | .Asciidoc }}
