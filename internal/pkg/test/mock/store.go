@@ -14,7 +14,6 @@ import (
 
 	"github.com/korrel8r/korrel8r/pkg/config"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
-	"github.com/korrel8r/korrel8r/pkg/korrel8r/impl"
 	"github.com/korrel8r/korrel8r/pkg/unique"
 	yaml "sigs.k8s.io/yaml"
 )
@@ -30,7 +29,7 @@ type Store struct {
 	lookup         []QueryFunc
 	queries        *QueryMap
 
-	*impl.Store
+	domain korrel8r.Domain
 }
 
 func NewStore(d korrel8r.Domain, c ...korrel8r.Class) *Store {
@@ -43,7 +42,7 @@ func NewStore(d korrel8r.Domain, c ...korrel8r.Class) *Store {
 	}
 	qm := NewQueryMap()
 	return &Store{
-		Store:   impl.NewStore(d),
+		domain:  d,
 		classes: unique.NewSet(c...),
 		queries: qm,
 		lookup:  []QueryFunc{containsResult, qm.Get},
@@ -56,7 +55,7 @@ func NewStoreConfig(d korrel8r.Domain, cfg any) (*Store, error) {
 	if cfg == nil {
 		return s, nil // Nothing to load
 	}
-	cs, err := impl.TypeAssert[config.Store](cfg)
+	cs, err := typeAssert[config.Store](cfg)
 	if err != nil {
 		return nil, err
 	}
@@ -96,7 +95,9 @@ func (s *Store) Get(ctx context.Context, q korrel8r.Query, constraint *korrel8r.
 	return nil
 }
 
-func (s *Store) Resolve(korrel8r.Query) *url.URL { panic("not implemented") }
+func (s *Store) Domain() korrel8r.Domain                 { return s.domain }
+func (s *Store) StoreClasses() ([]korrel8r.Class, error) { return s.classes.List(), nil }
+func (s *Store) Resolve(korrel8r.Query) *url.URL         { panic("not implemented") }
 
 func (s *Store) AddLookup(lookup QueryFunc) { s.lookup = append(s.lookup, lookup) }
 
@@ -146,11 +147,11 @@ func (s *Store) LoadData(data []byte) error {
 		return err
 	}
 	for qs, raw := range loaded {
-		q, err := s.Domain().Query(qs)
-		s.classes.Add(q.Class())
+		q, err := s.domain.Query(qs)
 		if err != nil {
 			return err
 		}
+		s.classes.Add(q.Class())
 		var result []korrel8r.Object
 		for _, r := range raw {
 			o, err := q.Class().Unmarshal([]byte(r))
@@ -238,4 +239,12 @@ func (s QueryDir) Get(q korrel8r.Query) ([]korrel8r.Object, error) {
 			}
 		}
 	}
+}
+
+func typeAssert[T any](x any) (v T, err error) {
+	v, ok := x.(T)
+	if !ok {
+		err = fmt.Errorf("wrong type: want %T, got (%T)(%#v)", v, x, x)
+	}
+	return v, err
 }
