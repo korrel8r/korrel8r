@@ -31,7 +31,9 @@ var (
 )
 
 // SkipIfNoCluster call t.Skip() if not logged in to a cluster.
-func SkipIfNoCluster(t testing.TB) {
+// Returns a client.Client if the cluster is available.
+func SkipIfNoCluster(t testing.TB) client.Client {
+	var c client.Client
 	clusterOnce.Do(func() {
 		log.SetLogger(logging.Log())
 		var cfg *rest.Config
@@ -39,7 +41,6 @@ func SkipIfNoCluster(t testing.TB) {
 		if errCluster != nil {
 			return
 		}
-		var c client.Client
 		c, errCluster = client.New(cfg, client.Options{})
 		if errCluster != nil {
 			return
@@ -52,6 +53,7 @@ func SkipIfNoCluster(t testing.TB) {
 	if errCluster != nil {
 		t.Skipf("Skipping: no cluster: %v", errCluster)
 	}
+	return c
 }
 
 // ListenPort returns a free ephemeral port for listening.

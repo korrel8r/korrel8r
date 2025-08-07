@@ -70,7 +70,7 @@ func TempNamespace(t *testing.T, c client.Client, prefix string) *corev1.Namespa
 	t.Logf("temporary namespace: %v", namespace)
 	ns := &corev1.Namespace{ObjectMeta: v1.ObjectMeta{Name: namespace, Labels: TestLabels}}
 	require.NoError(t, c.Create(t.Context(), ns))
-	t.Cleanup(func() { _ = c.Delete(t.Context(), ns) })
+	t.Cleanup(func() { _ = c.Delete(context.Background(), ns) })
 	return ns
 }
 

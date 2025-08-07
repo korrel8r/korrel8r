@@ -62,7 +62,7 @@ Query::
 A string of the form `_domain:class:selector_` which selects a set of objects from a store.
 Korrel8r does not define a query language, selectors use the native query language of the store.
 For example, a <<_trace_domain>> query ussing TraceQL: +
-`trace:span:{.kubernetes.namespace.name="foobar"}`
+`trace:span:{.k8s.namespace.name="foobar"}`
 
 === About rules
 

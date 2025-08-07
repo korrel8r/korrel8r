@@ -159,10 +159,10 @@ func Preview(x korrel8r.Object) (line string) {
 // Object is a map holding netflow entries
 type Object map[string]any
 
-func NewObject(entry *loki.Entry) Object {
+func NewObject(entry *loki.Log) Object {
 	var label_object, o Object
 	o = make(map[string]any)
-	_ = json.Unmarshal([]byte(entry.Line), &o)
+	_ = json.Unmarshal([]byte(entry.Body), &o)
 	if entry.Labels != nil {
 		label_object = make(map[string]any)
 		for k, v := range entry.Labels {
@@ -203,7 +203,7 @@ func (s *store) Get(ctx context.Context, query korrel8r.Query, c *korrel8r.Const
 	if err != nil {
 		return err
 	}
-	return s.Client.Get(ctx, q.Data(), c, func(e *loki.Entry) { result.Append(NewObject(e)) })
+	return s.Client.Get(ctx, q.Data(), c, func(e *loki.Log) { result.Append(NewObject(e)) })
 }
 
 type stackStore struct{ store }
@@ -215,5 +215,5 @@ func (s *stackStore) Get(ctx context.Context, query korrel8r.Query, c *korrel8r.
 		return err
 	}
 
-	return s.GetStack(ctx, q.Data(), "network", c, func(e *loki.Entry) { result.Append(NewObject(e)) })
+	return s.GetStack(ctx, q.Data(), "network", c, func(e *loki.Log) { result.Append(NewObject(e)) })
 }

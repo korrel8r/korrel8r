@@ -1,0 +1,93 @@
+
+[#_log_domain]
+= Log
+
+image:https://pkg.go.dev/badge/github.com/korrel8r/korrel8r.svg[Go Reference,link="https://pkg.go.dev/github.com/korrel8r/korrel8r/pkg/domains/log"]
+
+
+Package log is a korrel8r domain for log records.
+
+Logs can be stored in Loki, LokiStack, or they can be retrieved directly from the Kubernetes API server.
+
+== Class
+
+There are 3 classes corresponding to the 3 openshift logging log types:
+
+* log:application
+* log:infrastructure
+* log:audit
+
+== Object
+
+A log object is a map of string attributes. The set of attribute names and values may vary depending on how the logs were collected. Attribute names contain only ASCII letters, digits, underscores, and colons, and cannot start with a digit.
+
+For Loki logs, all Loki stream and structured metadata labels are included as attributes. If the log body is a JSON object, all nested fields paths are flattened into attribute names.
+
+Special attributes:
+
+* "body" contains the original log message.
+* "timestamp" is the time the log was produced (if known) in RFC3999 format.
+* "observed_timestamp" is the time the log was stored in RFC3999 format.
+
+Viaq logs have attributes like: "kubernetes_namespace_name", "kubernetes_pod_name"
+
+OTEL logs have attributes like: "k8s_namespace_name", "k8s_pod_name"
+
+== Query
+
+A query starts with the log class, followed by one of the following:
+
+* A link:https://grafana.com/docs/loki/latest/query/[LogQL] expression: LogQL queries can only be used to retrieve stored logs
+* A container selector: This can be used for stored logs and/or direct API log access.
+
+This is a literal link:https://grafana.com/docs/loki/latest/query/[LogQL] expression that will be passed to the Loki store.
+
+----
+log:infrastructure:{ kubernetes_namespace_name="openshift-cluster-version", kubernetes_pod_name=~".*-operator-.*" }
+----
+
+A container selector is a JSON map of the form:
+
+----
+{
+  "namespace": "pod_namespace",
+  "name": "pod_name",
+  "labels": { "label_name": "label_value", ... },
+  "fields": { "field_name": "field_value", ... },
+  "containers": ["container_name", "another_container_name", ...],
+}
+----
+
+For example: to get all logs from pods in namespace "app" that have containers named "foo" or "bar"
+
+----
+log:infrastructure:{ "namespace": "app", "labels":["foo", "bar"]}
+----
+
+== Store Configuration
+
+----
+domain: log
+lokiStack: https://url_of_lokistack
+direct: true
+----
+
+This will connect to a Lokistack instance and try to get logs from there. If it fails it will fall back to using the API server directly. You can configure a store with just `direct: true` to use the API server only, or with just `lokiStack` to use the Loki store only.
+
+== Template functions
+
+The following functions can be used in rule templates when the log domain is available:
+
+----
+logTypeForNamespace
+  Takes a namespace string argument.
+  Returns the log type: "application" or "infrastructure"
+
+logSafeLabel
+  Replace all characters other than alphanumerics, '_' and ':' with '_'.
+
+logSafeLabels
+  Takes a map[string]string argument.
+  Returns a map where each key is replaced by calling logSafeLabel()
+----
+

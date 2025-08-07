@@ -82,6 +82,23 @@ func (d *Domain) Type(name string) *doc.Type {
 	return &doc.Type{}
 }
 
+// Func returns the doc/func definition for name.
+func (d *Domain) Func(name string) *doc.Func {
+	if i := slices.IndexFunc(d.Package.Funcs, func(d *doc.Func) bool { return d.Name == name }); i >= 0 {
+		return d.Package.Funcs[i]
+	}
+	return &doc.Func{}
+}
+
+// Var returns  the doc/var definition for name.
+func (d *Domain) Var(name string) *doc.Value {
+	if i := slices.IndexFunc(d.Package.Vars,
+		func(d *doc.Value) bool { return slices.Contains(d.Names, name) }); i >= 0 {
+		return d.Package.Vars[i]
+	}
+	return nil
+}
+
 func (d *Domain) docLinkURL(link *comment.DocLink) string {
 	// Convert local refs into package-qualified refs for lookup in real Go doc.
 	if link.ImportPath == "" {

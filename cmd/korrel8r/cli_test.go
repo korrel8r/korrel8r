@@ -29,8 +29,6 @@ log       Records from container and node logs.
 metric    Time-series of measured values
 mock      Mock domain.
 netflow   Network flows from source nodes to destination nodes.
-otellog   Log Records in the otel format.
-podlog    Live container logs via the Kube API server.
 trace     Traces from Pods and Nodes.
 `
 	assert.Equal(t, strings.TrimSpace(want), strings.TrimSpace(string(out)))
@@ -91,8 +89,6 @@ func TestMain_stores(t *testing.T) {
     }
   ],
   "netflow": null,
-  "otellog": null,
-  "podlog": null,
   "trace": null
 }`
 	assert.Equal(t, strings.TrimSpace(want), strings.TrimSpace(string(out)))
