@@ -22,15 +22,16 @@
 //
 // # Store
 //
-// To connect to a lokiStack store use this configuration:
+// Store configuration:
 //
-//	domain: log
-//	lokistack: URL_OF_LOKISTACK_PROXY
+//		domain: log
+//		loki: https://url_of_remote_loki
+//		lokistack: https://url_of_lokistack
+//	  direct: true|false
 //
-// To connect to plain loki store use:
-//
-//	domain: log
-//	loki: URL_OF_LOKI
+// - At most one of loki or lokistack may be set.
+// - direct enables direct access to running pod logs via the API server.
+// - Combining direct with loki/lokistack uses direct access as a fallback if loki fails.
 //
 // [LogQL]: https://grafana.com/docs/loki/latest/query/
 package log
@@ -62,11 +63,6 @@ var (
 )
 
 // Domain for log records produced by openshift-logging.
-//
-// There are several possible log store configurations:
-// - Default LokiStack store on current Openshift cluster: `{}`
-// - Remote LokiStack: `{ "lokiStack": "https://url-of-lokistack"}`
-// - Plain Loki store: `{ "loki": "https://url-of-loki"}`
 var Domain = &domain{
 	impl.NewDomain("log", "Records from container and node logs.", Application, Infrastructure, Audit),
 }
@@ -84,6 +80,7 @@ func (d *domain) Query(s string) (korrel8r.Query, error) {
 const (
 	StoreKeyLoki      = "loki"
 	StoreKeyLokiStack = "lokiStack"
+	StoreKeyDirect    = "direct"
 )
 
 func (*domain) Store(s any) (korrel8r.Store, error) {
@@ -96,7 +93,7 @@ func (*domain) Store(s any) (korrel8r.Store, error) {
 		return nil, err
 	}
 
-	loki, lokiStack := cs[StoreKeyLoki], cs[StoreKeyLokiStack]
+	loki, lokiStack, direct := cs[StoreKeyLoki], cs[StoreKeyLokiStack], cs[StoreKeyDirect]
 	switch {
 
 	case loki != "" && lokiStack != "":
