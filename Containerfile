@@ -14,7 +14,7 @@ COPY cmd cmd
 COPY pkg pkg
 COPY internal internal
 
-RUN --mount=type=cache,target="/root/.cache/go-build" CGO_ENABLED=0 GOOS=linux GOFLAGS=-mod=readonly go build -tags netgo ./cmd/korrel8r
+RUN --mount=type=cache,target="/root/.cache/go-build" CGO_ENABLED=1 GOOS=linux GOFLAGS="-mod=readonly -tags=strictfipsruntime,openssl" GOEXPERIMENT=strictfipsruntime go build -tags netgo ./cmd/korrel8r
 
 # Commit build cache
 RUN true
