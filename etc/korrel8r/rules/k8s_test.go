@@ -53,6 +53,15 @@ func TestK8sRules(t *testing.T) {
 			query: `alert:alert:{"namespace":"aNamespace","pod":"foo"}`,
 		},
 		{
+			rule: "PodToNode",
+			start: newK8s("Pod", "ns", "pod", k8s.Object{
+				"spec": k8s.Object{
+					"nodeName": "worker-1",
+				},
+			}),
+			query: `k8s:Node.v1:{"name":"worker-1"}`,
+		},
+		{
 			rule: "DependentToOwner",
 			start: newK8s("Pod", "aNamespace", "foo", k8s.Object{
 				"metadata": k8s.Object{
@@ -63,6 +72,58 @@ func TestK8sRules(t *testing.T) {
 					}}},
 			}),
 			query: `k8s:Deployment.v1.apps:{"namespace":"aNamespace","name":"owner"}`,
+		},
+		{
+			rule: "VmiToNode",
+			start: newK8s("VirtualMachineInstance.kubevirt.io", "vm-ns", "vm-name", k8s.Object{
+				"status": k8s.Object{
+					"nodeName": "worker-1",
+				},
+			}),
+			query: `k8s:Node.v1:{"name":"worker-1"}`,
+		},
+		{
+			rule: "VmToPVC",
+			start: newK8s("VirtualMachine.kubevirt.io", "vm-ns", "vm-name", k8s.Object{
+				"spec": k8s.Object{
+					"dataVolumeTemplates": []k8s.Object{
+						{"name": "dv1"},
+					},
+				},
+			}),
+			query: `k8s:PersistentVolumeClaim.v1:{"namespace":"vm-ns","name":"dv1"}`,
+		},
+		{
+			rule: "PVCToPV",
+			start: newK8s("PersistentVolumeClaim", "ns", "pvc-1", k8s.Object{
+				"spec": k8s.Object{
+					"volumeName": "pv-123",
+				},
+			}),
+			query: `k8s:PersistentVolume.v1:{"name":"pv-123"}`,
+		},
+		{
+			rule: "PVToStorageClass",
+			start: newK8s("PersistentVolume", "", "pv-123", k8s.Object{
+				"spec": k8s.Object{
+					"storageClassName": "sc-1",
+				},
+			}),
+			query: `k8s:StorageClass.v1.storage.k8s.io:{"name":"sc-1"}`,
+		},
+		{
+			rule: "PVCToStorageClass",
+			start: newK8s("PersistentVolumeClaim", "ns", "pvc-1", k8s.Object{
+				"spec": k8s.Object{
+					"storageClassName": "sc-1",
+				},
+			}),
+			query: `k8s:StorageClass.v1.storage.k8s.io:{"name":"sc-1"}`,
+		},
+		{
+			rule:  "VmToVmi",
+			start: newK8s("VirtualMachine.kubevirt.io", "vm-ns", "vm-name", nil),
+			query: `k8s:VirtualMachineInstance.v1.kubevirt.io:{"namespace":"vm-ns","fields":{"metadata.ownerReferences.name":"vm-name"}}`,
 		},
 	} {
 		x.Run(t)
