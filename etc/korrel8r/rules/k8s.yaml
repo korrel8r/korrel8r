@@ -135,3 +135,80 @@ rules:
              {{k8sClass .apiVersion .kind}}:{"namespace":"{{$.metadata.namespace}}","name":"{{.name}}"}
            {{- end}}
          {{end -}}
+
+   - name: PodToNode
+     start:
+       domain: k8s
+       classes: [Pod]
+     goal:
+       domain: k8s
+       classes: [Node]
+     result:
+       query: |-
+         k8s:Node:{"name":"{{.spec.nodeName}}"}
+
+   - name: VmiToNode
+     start:
+       domain: k8s
+       classes: [VirtualMachineInstance.kubevirt.io]
+     goal:
+       domain: k8s
+       classes: [Node]
+     result:
+       query: |-
+         k8s:Node:{"name":"{{.status.nodeName}}"}
+
+   - name: VmToPVC
+     start:
+       domain: k8s
+       classes: [VirtualMachine.kubevirt.io]
+     goal:
+       domain: k8s
+       classes: [PersistentVolumeClaim]
+     result:
+       query: |-
+         k8s:PersistentVolumeClaim:{"namespace":"{{.metadata.namespace}}","name":"{{ (first .spec.dataVolumeTemplates).name }}"}
+
+   - name: PVCToPV
+     start:
+       domain: k8s
+       classes: [PersistentVolumeClaim]
+     goal:
+       domain: k8s
+       classes: [PersistentVolume]
+     result:
+       query: |-
+         k8s:PersistentVolume:{"name":"{{.spec.volumeName}}"}
+
+   - name: PVToStorageClass
+     start:
+       domain: k8s
+       classes: [PersistentVolume]
+     goal:
+       domain: k8s
+       classes: [StorageClass]
+     result:
+       query: |-
+         k8s:StorageClass.storage.k8s.io:{"name":"{{.spec.storageClassName}}"}
+
+   - name: PVCToStorageClass
+     start:
+       domain: k8s
+       classes: [PersistentVolumeClaim]
+     goal:
+       domain: k8s
+       classes: [StorageClass]
+     result:
+       query: |-
+         k8s:StorageClass.storage.k8s.io:{"name":"{{.spec.storageClassName}}"}
+
+   - name: VmToVmi
+     start:
+       domain: k8s
+       classes: [VirtualMachine.kubevirt.io]
+     goal:
+       domain: k8s
+       classes: [VirtualMachineInstance.kubevirt.io]
+     result:
+       query: |-
+         k8s:VirtualMachineInstance.kubevirt.io:{"namespace":"{{.metadata.namespace}}","fields":{"metadata.ownerReferences.name":"{{.metadata.name}}"}}
