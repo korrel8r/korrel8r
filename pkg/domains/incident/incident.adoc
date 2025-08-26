@@ -1,9 +1,4 @@
-
-[#_incident_domain]
-= Incident
-
-image:https://pkg.go.dev/badge/github.com/korrel8r/korrel8r.svg[Go Reference,link="https://pkg.go.dev/github.com/korrel8r/korrel8r/pkg/domains/incident"]
-
+= Incident domain
 
 Package incident provides mapping to link:https://github.com/openshift/cluster-health-analyzer[https://github.com/openshift/cluster-health-analyzer] incidents.
 
@@ -40,3 +35,4 @@ domain: incident
 metrics: PROMETHEUS_URL
 ----
 
+image:https://pkg.go.dev/badge/github.com/korrel8r/korrel8r.svg[Go Reference,link="https://pkg.go.dev/github.com/korrel8r/korrel8r/pkg/domains/incident"]

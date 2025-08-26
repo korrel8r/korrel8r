@@ -150,12 +150,8 @@ _site/man: $(shell find ./cmd)	## Generated man pages.
 doc: doc/gen/domains.adoc doc/gen/rest_api.adoc doc/gen/cmd
 	@touch $@
 
-DOMAINS=$(shell echo pkg/domains/*/ | xargs basename -a)
-doc/gen/domain_%.adoc: pkg/domains/%/*.go generate
-	@mkdir -p $(dir $@)
-	go run ./internal/cmd/domain-adoc github.com/korrel8r/korrel8r/pkg/domains/$* > $@
-doc/gen/domains.adoc: $(foreach D,$(DOMAINS),doc/gen/domain_$(D).adoc)
-	rm -f $@; for D in $(DOMAINS); do echo -e "\ninclude::domain_$$D.adoc[]\n" >>$@; done
+doc/gen/domains.adoc: $(wildcard pkg/domains/*/*.adoc)
+	rm -f $@; for D in $^; do echo -e "\ninclude::../../$$D[]\n" >>$@; done
 
 OPENAPI_CFG=doc/openapi-asciidoc.yaml
 doc/gen/rest_api.adoc: $(OPENAPI_SPEC) $(OPENAPI_GEN) $(OPENAPI_CFG)

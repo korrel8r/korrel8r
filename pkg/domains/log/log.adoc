@@ -1,0 +1,133 @@
+= Log domain
+:logql: https://grafana.com/docs/loki/latest/query[LogQL]
+
+Logs can be stored on the cluster in LokiStack or in an external Loki server.
+They can also be retrieved directly from the Kubernetes API server.
+Direct API server access does not provide long-term log storage,
+but it gives short-term access when there is no long term log store available.
+
+== Class
+
+There are 3 classes corresponding to the 3 openshift logging log types:
+
+  - `log:application`
+  - `log:infrastructure`
+  - `log:audit`
+
+== Object
+
+A log object is a set of  _attributes_ in a map with string keys and values. +
+Attribute names contain only ASCII letters, digits, underscores, and  (required for Loki labels).
+Other characters are replaced with "_".
+
+For stored logs: Loki stream labels and structured metadata labels become attributes.
+If the log body is a JSON object, all nested field paths are flattened into attribute names.
+
+For direct logs: the pod, namespace, and label meta-data are added as attributes
+using the same label names as for stored logs.
+
+Special attributes:
+
+  - `body` - original log message.
+  - `timestamp` - time the log was produced, if known, in RFC3999 format.
+  - `observed_timestamp` - time the log was first stored or recorded, in RFC3999 format.
+
+=== Viaq and OTEL attributes
+
+The openshift logging collector can store loges in two formats:
+
+  - _Viaq_: legacy format with attributes like: "kubernetes_namespace_name", "kubernetes_pod_name"
+  - _OTEL_: new standard format with attributes like: "k8s_namespace_name", "k8s_pod_name".
+    Note the use of "_" rather than "." to give legal Loki label names.
+    Otherwise these names are as given in the OTEL specification.
+
+For stored logs, korrel8r returns whatever format has been stored in Loki.
+For direct logs, _both_ Viaq and OTEL attributes are included to aid migration.
+
+== Query
+
+A query starts with the log class, followed by one of the following:
+
+  - A container selector: This can be used for stored logs and/or direct API log access.
+  - A {LogQL} expression: LogQL queries can only be used to retrieve stored logs
+
+=== Container selectors
+
+A container selector is a JSON map of the form:
+
+[,json]
+----
+{
+  "namespace": "pod_namespace",
+  "name": "pod_name",
+  "labels": { "label_name": "label_value", ... },
+  "fields": { "field_name": "field_value", ... },
+  "containers": ["container_name", "another_container_name", ...],
+}
+----
+
+All fields are optional.
+For example: to get logs from containers named "foo" or "bar" in pods from namespace "app":
+
+----
+log:application:{ "namespace": "app", "containers":["foo", "bar"]}
+----
+
+If stored logs are available, the container selector is automatically translated into
+an equivalent LogQL expression.
+
+=== LogQL queries
+
+A LogQL query includes a literal {LogQL} expression, for example:
+
+----
+log:infrastructure:{kubernetes_namespace_name="openshift-cluster-version", kubernetes_pod_name=~".*-operator-.*"}
+----
+
+=== Viaq and OTEL
+
+When translating container selectors into LogQL, Korrel8r currently uses Viaq attributes.
+This works with existing deployments and with the early support for  OTEL logging,
+which include backaward-compatible Viaq labels.
+
+Korrel8r will be updated to use OTEL directly in future.
+
+== Store Configuration
+
+The store configuration must include `domain: log`.
+It may include an optional `loki: URL` or `lokiStack: URL`, but not both.
+It may include an optional `direct: true` to enable direct API server logs.
+
+The default configuration is:
+
+[source]
+----
+domain: log
+lokiStack: https:url_of_default_lokiStack
+direct: true
+----
+
+Korrel8r log queries will do the following:
+
+1. Try to connect to the loki/lokiStack URL and retrieve stored logs.
+2. If that fails, use the API server directly as an alternate.
+
+You can also configure a store with only `direct: true` to use only API server access,
+or only `loki` or `lokiStack` to use only stored logs.
+
+== Template functions
+
+The following functions can be used in rule templates when the log domain is available:
+
+logTypeForNamespace::
+Takes a namespace string argument.
+Returns the log type: "application" or "infrastructure"
+
+logSafeLabel::
+Replace all characters other than alphanumerics, '_' and ':' with '_'.
+
+logSafeLabels::
+Takes a `map[string]string` argument.
+Returns a map where each key is replaced by the result of `logSafeLabel`
+
+image:https://pkg.go.dev/badge/github.com/korrel8r/korrel8r.svg[Go Reference,link="https://pkg.go.dev/github.com/korrel8r/korrel8r/pkg/domains/log"]

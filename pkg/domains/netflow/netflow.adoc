@@ -1,9 +1,4 @@
-
-[#_netflow_domain]
-= Netflow
-
-image:https://pkg.go.dev/badge/github.com/korrel8r/korrel8r.svg[Go Reference,link="https://pkg.go.dev/github.com/korrel8r/korrel8r/pkg/domains/netflow"]
-
+= Netflow domain
 
 Package netflow is a domain for network observability flow events stored in Loki or LokiStack.
 
@@ -17,7 +12,7 @@ A log object is a JSON `map\[string]any` in link:https://docs.openshift.com/cont
 
 == Query
 
-A query is a link:https://grafana.com/docs/loki/latest/query/[LogQL] query string, prefixed by `netflow:network:`, for example:
+A query is a https://grafana.com/docs/loki/latest/query/[LogQL] query string, prefixed by `netflow:network:`, for example:
 
 ----
 netflow:network:{SrcK8S_Type="Pod", SrcK8S_Namespace="myNamespace"}
@@ -39,3 +34,4 @@ domain: netflow
 loki: URL_OF_LOKI
 ----
 
+image:https://pkg.go.dev/badge/github.com/korrel8r/korrel8r.svg[Go Reference,link="https://pkg.go.dev/github.com/korrel8r/korrel8r/pkg/domains/netflow"]

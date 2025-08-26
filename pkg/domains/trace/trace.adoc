@@ -1,11 +1,9 @@
-
-[#_trace_domain]
-= Trace
-
-image:https://pkg.go.dev/badge/github.com/korrel8r/korrel8r.svg[Go Reference,link="https://pkg.go.dev/github.com/korrel8r/korrel8r/pkg/domains/trace"]
-
+= Trace domain
+include::../../../doc/attributes.adoc[]
 
 Package trace implements OpenTelemetry link:https://opentelemetry.io/docs/concepts/signals/traces[traces] stored in the Grafana link:https://grafana.com/docs/tempo/latest/[Tempo] data store.
+
+
 
 == Class
 
@@ -45,3 +43,4 @@ stores:
   tempostack: "https://url-of-tempostack"
 ----
 
+{goref-badge}[float=right,link={pkg-dev-domains}/trace]
