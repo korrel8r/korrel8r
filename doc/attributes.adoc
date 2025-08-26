@@ -16,7 +16,9 @@
 :otel-signals: https://opentelemetry.io/docs/concepts/signals/
 :pkg-korrel8r: https://pkg.go.dev/github.com/korrel8/korrel8/pkg/korrel8
 :curl: https://curl.se/[curl]
-
+:goref-badge: image:https://pkg.go.dev/badge/github.com/korrel8r/korrel8r.svg
+:pkg-dev: https://pkg.go.dev/github.com/korrel8r/korrel8r/
+:pkg-dev-domains: https://pkg.go.dev/github.com/korrel8r/korrel8r/pkg/domains
 // Abbreviations
 :icon: image:images/icon.svg[width=24]
 :operator: Korrel8r Community Operator

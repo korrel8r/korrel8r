@@ -452,16 +452,17 @@ Korrel8r provides additional _template functions_ to simplify writing rules and 
 
 // TODO: automate the above, get this from pkg/engine doc comments.
 
-== Domain Reference
+
+
+== Glossary
+include::glossary.adoc[]
+
+= Domain Reference
 
 Reference details for the for the classes, objects, queries and stores of each available domain.
 
-include::gen/domains.adoc[leveloffset=+2]
+include::gen/domains.adoc[leveloffset=+1]
 
 [[_rest_api]]
-include::gen/rest_api.adoc[leveloffset=+1]
+include::gen/rest_api.adoc[]
 
-[glossary]
-= Glossary
-
-include::glossary.adoc[]

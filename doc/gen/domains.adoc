@@ -1,21 +1,21 @@
 
-include::domain_alert.adoc[]
+include::../../pkg/domains/alert/alert.adoc[]
 
 
-include::domain_incident.adoc[]
+include::../../pkg/domains/incident/incident.adoc[]
 
 
-include::domain_k8s.adoc[]
+include::../../pkg/domains/k8s/k8s.adoc[]
 
 
-include::domain_log.adoc[]
+include::../../pkg/domains/log/log.adoc[]
 
 
-include::domain_metric.adoc[]
+include::../../pkg/domains/metric/metric.adoc[]
 
 
-include::domain_netflow.adoc[]
+include::../../pkg/domains/netflow/netflow.adoc[]
 
 
-include::domain_trace.adoc[]
+include::../../pkg/domains/trace/trace.adoc[]
 

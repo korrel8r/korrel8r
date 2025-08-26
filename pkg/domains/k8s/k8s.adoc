@@ -1,11 +1,6 @@
+= K8s domain
 
-[#_k8s_domain]
-= K8s
-
-image:https://pkg.go.dev/badge/github.com/korrel8r/korrel8r.svg[Go Reference,link="https://pkg.go.dev/github.com/korrel8r/korrel8r/pkg/domains/k8s"]
-
-
-Package k8s implements link:https://kubernetes.io/docs/concepts/overview/[Kubernetes] resources stored in a Kube API server.
+link:https://kubernetes.io/docs/concepts/overview/[Kubernetes] resources stored in a Kube API server.
 
 == Class
 
@@ -40,9 +35,8 @@ The k8s domain automatically connects to the current cluster (as determined by k
 
 The following template functions are available to rules.
 
-----
-k8sClass
+k8sClass::
     Takes string arguments (apiVersion, kind).
     Returns the korrel8r.Class implied by the arguments, or an error.
-----
 
+image:https://pkg.go.dev/badge/github.com/korrel8r/korrel8r.svg[Go Reference,link="https://pkg.go.dev/github.com/korrel8r/korrel8r/pkg/domains/k8s"]

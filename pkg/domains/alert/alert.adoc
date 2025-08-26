@@ -1,8 +1,5 @@
-
 [#_alert_domain]
-= Alert
-
-image:https://pkg.go.dev/badge/github.com/korrel8r/korrel8r.svg[Go Reference,link="https://pkg.go.dev/github.com/korrel8r/korrel8r/pkg/domains/alert"]
+= Alert domain
 
 
 Package alert provides Prometheus alerts, queries and access to Thanos and AlertManager stores.
@@ -41,3 +38,4 @@ alertmanager: ALERTMANAGER_URL
 
 Either or both of `metrics` or `alertmanager` may be present.
 
+image:https://pkg.go.dev/badge/github.com/korrel8r/korrel8r.svg[Go Reference,link="https://pkg.go.dev/github.com/korrel8r/korrel8r/pkg/domains/alert"]
