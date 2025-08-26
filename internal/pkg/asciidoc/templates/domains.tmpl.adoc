@@ -1,7 +1,0 @@
-
-[#_{{.Package.Name}}_domain]
-= {{ .Package.Name | title }}
-
-image:https://pkg.go.dev/badge/github.com/korrel8r/korrel8r.svg[Go Reference,link="{{ .DocLinkURL "" }}"]
-
-{{ .Package.Doc | .Asciidoc }}
