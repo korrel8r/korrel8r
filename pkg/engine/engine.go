@@ -79,7 +79,7 @@ func (e *Engine) ClassesFor(d korrel8r.Domain) ([]korrel8r.Class, error) {
 	if s := e.StoreFor(d); s != nil {
 		return s.StoreClasses()
 	}
-	return nil, fmt.Errorf("no classes for domain: %v", d)
+	return nil, nil
 }
 
 // Class parses a full class name and returns the
@@ -109,9 +109,22 @@ func (e *Engine) DomainClass(domain, class string) (korrel8r.Class, error) {
 	if err != nil {
 		return nil, err
 	}
+	notFound := func() error {
+		fullname := strings.Join([]string{domain, class}, korrel8r.NameSeparator)
+		return korrel8r.ClassNotFoundError(fullname)
+	}
 	c := d.Class(class)
 	if c == nil {
-		return nil, korrel8r.ClassNotFoundError(class)
+		return nil, notFound()
+	}
+	if len(d.Classes()) == 0 { // Domain does not validate classes, check with store.
+		classes, err := e.ClassesFor(d)
+		if err != nil {
+			return nil, err
+		}
+		if len(classes) > 0 && slices.Index(classes, c) < 0 {
+			return nil, notFound() // Not valid according to store
+		}
 	}
 	return c, nil
 }
