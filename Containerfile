@@ -20,7 +20,7 @@ RUN --mount=type=cache,target="/root/.cache/go-build" CGO_ENABLED=1 GOOS=linux G
 RUN true
 
 # Build a minimal runtime image
-FROM registry.access.redhat.com/ubi9/ubi-micro
+FROM registry.access.redhat.com/ubi9/ubi-minimal
 
 WORKDIR /
 COPY --from=builder /src/korrel8r /usr/bin/korrel8r
