@@ -211,4 +211,4 @@ rules:
        classes: [VirtualMachineInstance.kubevirt.io]
      result:
        query: |-
-         k8s:VirtualMachineInstance.kubevirt.io:{"namespace":"{{.metadata.namespace}}","fields":{"metadata.ownerReferences.name":"{{.metadata.name}}"}}
+         k8s:VirtualMachineInstance.kubevirt.io:{"namespace":"{{.metadata.namespace}}","name":"{{.metadata.name}}"}
