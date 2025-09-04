@@ -54,6 +54,7 @@ dev:
           - '!/etc'
         startContainer: true
         waitInitialSync: true
+        printLogs: true
 
     # Forward the ports to be able access your application via localhost
     ports:

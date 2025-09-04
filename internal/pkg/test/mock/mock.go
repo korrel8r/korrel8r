@@ -32,7 +32,7 @@ type Domain struct {
 func NewDomain(name string, classes ...string) *Domain {
 	d := &Domain{name: name}
 	for _, c := range classes {
-		d.classes = append(d.classes, d.Class(c))
+		d.classes = append(d.classes, Class{name: c, domain: d})
 	}
 	return d
 }
@@ -40,8 +40,14 @@ func (d *Domain) Name() string                          { return d.name }
 func (d *Domain) String() string                        { return d.Name() }
 func (d *Domain) Description() string                   { return "Mock domain." }
 func (d *Domain) Store(cfg any) (korrel8r.Store, error) { return NewStoreConfig(d, cfg) }
-func (d *Domain) Class(name string) korrel8r.Class      { return Class{name: name, domain: d} }
-func (d *Domain) Classes() []korrel8r.Class             { return d.classes }
+func (d *Domain) Class(name string) korrel8r.Class {
+	c := korrel8r.Class(Class{name: name, domain: d})
+	if len(d.classes) > 0 && slices.Index(d.classes, c) < 0 {
+		return nil
+	}
+	return c
+}
+func (d *Domain) Classes() []korrel8r.Class { return d.classes }
 
 func (d *Domain) Query(query string) (korrel8r.Query, error) {
 	domainName, className, selector := querySplit(query)
