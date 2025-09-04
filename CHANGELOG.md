@@ -25,6 +25,9 @@ _Note unreleased changes on main here pending the next release_
 - Dropped Built-in swagger UI.
   Was only useful for trivial experiments, can use korrrelrcli as client instead.
 
+### Fixed
+- Fixed bug causing panic if invalid class was passed to the REST API in a goal search.
+
 ## [0.8.1] - 2025-05-23
 
 ### Added
