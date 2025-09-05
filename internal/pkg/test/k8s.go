@@ -34,11 +34,12 @@ func NewRESTMapper(gvks ...schema.GroupVersionKind) *meta.DefaultRESTMapper {
 	return rm
 }
 
-func WaitForPodReady(t *testing.T, c client.Client, namespace, name string) {
+func WaitForPodReady(t testing.TB, c client.Client, namespace, name string) {
+	i := 0
 	err := wait.PollUntilContextTimeout(t.Context(), 5*time.Second, time.Minute, true,
 		func(ctx context.Context) (ok bool, err error) {
 			defer func() {
-				if !ok || err != nil {
+				if i > 1 && (!ok || err != nil) { // Skip first message
 					t.Logf("waiting for pod %v/%v, err: %v", namespace, name, err)
 				}
 			}()
@@ -64,13 +65,18 @@ func IsPodReady(pod *corev1.Pod) bool {
 
 var TestLabels = map[string]string{"test": "korrel8r"}
 
-func TempNamespace(t *testing.T, c client.Client, prefix string) *corev1.Namespace {
+func TempNamespace(t testing.TB, c client.Client, prefix string) *corev1.Namespace {
 	t.Helper()
 	namespace := prefix + RandomName(8)
-	t.Logf("temporary namespace: %v", namespace)
 	ns := &corev1.Namespace{ObjectMeta: v1.ObjectMeta{Name: namespace, Labels: TestLabels}}
 	require.NoError(t, c.Create(t.Context(), ns))
-	t.Cleanup(func() { _ = c.Delete(context.Background(), ns) })
+	t.Cleanup(func() {
+		if t.Failed() {
+			t.Logf("failed test, keeping namespace: %v ", namespace)
+		} else {
+			_ = c.Delete(context.Background(), ns)
+		}
+	})
 	return ns
 }
 

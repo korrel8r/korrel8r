@@ -52,8 +52,7 @@ func (f *Fixture) ClusterEngine(t testing.TB) *engine.Engine {
 	if f.SkipCluster {
 		t.Skipf("Skip: domain %v skipping cluster tests", f.Query.Class().Domain())
 	}
-	test.SkipIfNoCluster(t)
-
+	test.RequireCluster(t)
 	out, err := exec.Command("git", "root").Output()
 	require.NoError(t, err)
 	config := filepath.Join(strings.TrimSpace(string(out)), "etc", "korrel8r", "openshift-route.yaml")
