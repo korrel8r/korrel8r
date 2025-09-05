@@ -123,7 +123,7 @@ func TestK8sRules(t *testing.T) {
 		{
 			rule:  "VmToVmi",
 			start: newK8s("VirtualMachine.kubevirt.io", "vm-ns", "vm-name", nil),
-			query: `k8s:VirtualMachineInstance.v1.kubevirt.io:{"namespace":"vm-ns","fields":{"metadata.ownerReferences.name":"vm-name"}}`,
+			query: `k8s:VirtualMachineInstance.v1.kubevirt.io:{"namespace":"vm-ns","name":"vm-name"}`,
 		},
 	} {
 		x.Run(t)
