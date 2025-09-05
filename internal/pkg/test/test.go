@@ -6,53 +6,38 @@ package test
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"math/rand"
 	"net"
 	"os/exec"
 	"strings"
-	"sync"
 	"testing"
 	"time"
 
 	"github.com/korrel8r/korrel8r/internal/pkg/logging"
+	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
-	"sigs.k8s.io/controller-runtime/pkg/log"
+	klog "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-var (
-	clusterOnce sync.Once
-	errCluster  = errors.New("cluster status unknown")
-)
+func init() {
+	klog.SetLogger(logging.Log()) // Send controller-runtime logs to our logger.
+}
 
-// SkipIfNoCluster call t.Skip() if not logged in to a cluster.
-// Returns a client.Client if the cluster is available.
-func SkipIfNoCluster(t testing.TB) client.Client {
-	var c client.Client
-	clusterOnce.Do(func() {
-		log.SetLogger(logging.Log())
-		var cfg *rest.Config
-		cfg, errCluster = config.GetConfig()
-		if errCluster != nil {
-			return
-		}
-		c, errCluster = client.New(cfg, client.Options{})
-		if errCluster != nil {
-			return
-		}
-		ns := &corev1.Namespace{}
-		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-		defer cancel()
-		errCluster = c.Get(ctx, types.NamespacedName{Name: "default"}, ns)
-	})
-	if errCluster != nil {
-		t.Skipf("Skipping: no cluster: %v", errCluster)
-	}
+// RequireCluster returns a client or fails the test if there is no connected cluster.
+func RequireCluster(t testing.TB) client.Client {
+	cfg, err := config.GetConfig()
+	require.NoError(t, err)
+	c, err := client.New(cfg, client.Options{})
+	require.NoError(t, err)
+	ns := &corev1.Namespace{}
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	err = c.Get(ctx, types.NamespacedName{Name: "default"}, ns)
+	require.NoError(t, err)
 	return c
 }
 

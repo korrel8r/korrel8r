@@ -51,15 +51,14 @@ func (f *Fixture) TestMarshalUnmashal(t *testing.T) {
 	require.Equal(t, o, o2)
 }
 
-// TestGetCluster requires a cluster with all signal stores available.
-// Tests that query constraints work with real stores.
+// TestGetCluster that query constraints work with real stores.
+// Requires a cluster with the relevant signal stores available.
 func (f *Fixture) TestGetCluster(t *testing.T) {
 	t.Helper()
 	e := f.ClusterEngine(t)
 	limit := 3
 	constraint := &korrel8r.Constraint{Limit: &limit}
 	r := result.New(f.Query.Class())
-	if assert.NoError(t, e.Get(context.Background(), f.Query, constraint, r), f.Query) {
-		assert.Equal(t, limit, len(r.List()), f.Query)
-	}
+	require.NoError(t, e.Get(context.Background(), f.Query, constraint, r), f.Query)
+	assert.Equal(t, limit, len(r.List()), f.Query)
 }
