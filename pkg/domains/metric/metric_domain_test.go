@@ -11,8 +11,8 @@ import (
 
 // TODO https://github.com/korrel8r/korrel8r/issues/148  store does not respect limits. Remove SkipCluster when fixed.
 var fixture = domain.Fixture{
-	Query:       metric.Query(`{namespace="kube-system"}`),
-	SkipCluster: true,
+	Query:        metric.Query(`{namespace="kube-system"}`),
+	ClusterSetup: func(testing.TB) bool { return false },
 }
 
 func TestMetricDomain(t *testing.T)      { fixture.Test(t) }
