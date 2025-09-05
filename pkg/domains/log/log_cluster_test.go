@@ -41,8 +41,8 @@ func routeHost(t *testing.T, c client.Client, namespace, name string) string {
 	return host
 }
 
-// TestPodQueries tests that pod-style queries work for direct and loki stores.
-func TestPodQueries(t *testing.T) {
+// TestPodQueriesCluster tests that pod-style queries work for direct and loki stores.
+func TestPodQueriesCluster(t *testing.T) {
 	// Set up pods to create logs.
 	c := test.RequireCluster(t)
 	const n = 5
@@ -159,7 +159,7 @@ func getLogs(t testing.TB, s korrel8r.Store, q *log.Query, constraint *korrel8r.
 			t.Logf("waiting for logs, want %v got %v: %v: %v", min, len(logs), q, err)
 		}
 		return false
-	}, 30*time.Second, time.Second/10, "query %v, want %v logs got %v", q, min, len(logs))
+	}, time.Minute, time.Second/10, "query %v, want %v logs got %v", q, min, len(logs))
 	require.NoError(t, err)
 	return logs
 }

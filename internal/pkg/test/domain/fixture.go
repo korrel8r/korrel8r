@@ -10,7 +10,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/korrel8r/korrel8r/internal/pkg/test"
 	"github.com/korrel8r/korrel8r/pkg/config"
 	"github.com/korrel8r/korrel8r/pkg/domains"
 	"github.com/korrel8r/korrel8r/pkg/engine"
@@ -25,10 +24,10 @@ const (
 
 // TODO document use of fixture.
 type Fixture struct {
-	Query       korrel8r.Query // Query returns BatchLen objects.
-	BatchLen    int            // BatchLen is the length of Query result.
-	SkipCluster bool           // SkipCluster run only mock tests.
-	MockEngine  *engine.Engine // MockEngine is initialized by [Fixuture.Init()]
+	Query        korrel8r.Query        // Query returns BatchLen objects.
+	BatchLen     int                   // BatchLen is the length of Query result.
+	ClusterSetup func(testing.TB) bool // Set up for cluster part of test. Return false to run only mock tests.
+	MockEngine   *engine.Engine        // MockEngine is initialized by [Fixuture.Init()]
 }
 
 // Init initializes [Fixture.MockEngine] with a mock store for f.Query().Class().Domain
@@ -49,10 +48,9 @@ func (f *Fixture) Init(t testing.TB) {
 func (f *Fixture) ClusterEngine(t testing.TB) *engine.Engine {
 	// TODO review test logic for cluster vs. no-cluster tests.
 	t.Helper()
-	if f.SkipCluster {
+	if f.ClusterSetup != nil && !f.ClusterSetup(t) {
 		t.Skipf("Skip: domain %v skipping cluster tests", f.Query.Class().Domain())
 	}
-	test.RequireCluster(t)
 	out, err := exec.Command("git", "root").Output()
 	require.NoError(t, err)
 	config := filepath.Join(strings.TrimSpace(string(out)), "etc", "korrel8r", "openshift-route.yaml")
