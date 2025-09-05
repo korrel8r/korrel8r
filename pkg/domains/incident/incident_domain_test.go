@@ -9,7 +9,10 @@ import (
 	"github.com/korrel8r/korrel8r/pkg/domains/incident"
 )
 
-var fixture = domain.Fixture{Query: incident.Query{}, SkipCluster: true}
+var fixture = domain.Fixture{
+	Query:        incident.Query{},
+	ClusterSetup: func(testing.TB) bool { return false },
+}
 
 func TestAlertDomain(t *testing.T)      { fixture.Test(t) }
 func BenchmarkAlertDomain(b *testing.B) { fixture.Benchmark(b) }
