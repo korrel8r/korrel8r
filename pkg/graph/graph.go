@@ -9,6 +9,7 @@ package graph
 import (
 	"fmt"
 
+	"github.com/korrel8r/korrel8r/internal/pkg/logging"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"github.com/korrel8r/korrel8r/pkg/unique"
 
@@ -160,7 +161,12 @@ func (g *Graph) ShortestPaths(start korrel8r.Class, goals ...korrel8r.Class) *Gr
 	paths := path.DijkstraAllFrom(g.NodeFor(start), g)
 	sub := g.Data.EmptyGraph()
 	for _, goal := range goals {
-		v := g.NodeFor(goal).ID()
+		n := g.NodeFor(goal)
+		if n == nil {
+			log.V(1).Info("Goal not in graph", "class", goal)
+			continue
+		}
+		v := n.ID()
 		paths.AllToFunc(v, func(path []graph.Node) {
 			for i := 1; i < len(path); i++ {
 				lines := g.Lines(path[i-1].ID(), path[i].ID())
@@ -185,3 +191,5 @@ var (
 	LinesOf = graph.LinesOf
 	EdgesOf = graph.EdgesOf
 )
+
+var log = logging.Log()

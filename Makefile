@@ -25,6 +25,7 @@ include .bingo/Variables.mk	# Versioned tools
 BIN ?= _bin
 export PATH := $(abspath $(BIN)):$(PATH)
 export GOCOVERDIR := $(abspath _cover)
+$(shell mkdir -p $(GOCOVERDIR))
 
 # Generated files
 VERSION_TXT=internal/pkg/build/version.txt
@@ -79,7 +80,10 @@ test: generate		## Run all tests, no cache. Requires an openshift cluster.
 	go test -fullpath -race ./...
 
 test-no-cluster: generate	## Run all tests that don't require an openshift cluster.
-	go test -fullpath -race -skip '.*/Openshift' ./...
+	go test -fullpath -race  -skip='Cluster|/Cluster' ./...
+
+test-clean: ## Remove test namespaces from the cluster
+	kubectl delete ns -l test=korrel8r
 
 .PHONY: cover
 cover:  ## Run tests with accumulated coverage stats in _cover.

@@ -117,7 +117,6 @@ func queryURL(logQL string, c *korrel8r.Constraint) *url.URL {
 		v.Add("start", formatTime(start))
 	}
 	u := &url.URL{Path: queryRangePath, RawQuery: v.Encode()}
-	log.V(5).Info("Loki query", "logql", logQL, "constraint", c, "url", u)
 	return u
 }
 
@@ -125,6 +124,7 @@ func formatTime(t time.Time) string { return strconv.FormatInt(t.UTC().UnixNano(
 
 func (c *Client) get(ctx context.Context, u *url.URL, constraint *korrel8r.Constraint, collect CollectFunc) error {
 	u = c.BaseURL.ResolveReference(u)
+	log.V(5).Info("Loki GET", "url", u)
 	qr := response{}
 	if err := impl.Get(ctx, u, c.Client, constraint.GetTimeout(), &qr); err != nil {
 		return err

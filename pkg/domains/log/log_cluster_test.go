@@ -1,6 +1,6 @@
 // Copyright: This file is part of korrel8r, released under https://github.com/korrel8r/korrel8r/blob/main/LICENSE
 
-package log
+package log_test
 
 import (
 	"fmt"
@@ -10,6 +10,7 @@ import (
 
 	"github.com/korrel8r/korrel8r/internal/pkg/test"
 	"github.com/korrel8r/korrel8r/pkg/config"
+	"github.com/korrel8r/korrel8r/pkg/domains/log"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"github.com/korrel8r/korrel8r/pkg/ptr"
 	"github.com/korrel8r/korrel8r/pkg/result"
@@ -21,9 +22,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func newQuery(t *testing.T, q string, args ...any) *Query {
+func newQuery(t *testing.T, q string, args ...any) *log.Query {
 	t.Helper()
-	query, err := NewQuery(fmt.Sprintf(q, args...))
+	query, err := log.NewQuery(fmt.Sprintf(q, args...))
 	require.NoError(t, err)
 	return query
 }
@@ -40,10 +41,10 @@ func routeHost(t *testing.T, c client.Client, namespace, name string) string {
 	return host
 }
 
-// TestPodQueries tests that pod-style queries work for direct and loki stores.
-func TestPodQueries(t *testing.T) {
+// TestPodQueriesCluster tests that pod-style queries work for direct and loki stores.
+func TestPodQueriesCluster(t *testing.T) {
 	// Set up pods to create logs.
-	c := test.SkipIfNoCluster(t)
+	c := test.RequireCluster(t)
 	const n = 5
 	namespace := test.TempNamespace(t, c, "podlog-").Name
 	ctx := t.Context()
@@ -52,7 +53,7 @@ func TestPodQueries(t *testing.T) {
 	test.WaitForPodReady(t, c, namespace, "foo")
 	test.WaitForPodReady(t, c, namespace, "bar")
 
-	for _, storeType := range []string{"lokiStack", "direct"} {
+	for _, storeType := range []string{"direct", "lokiStack"} {
 		t.Run(storeType, func(t *testing.T) {
 			var storeConfig config.Store
 			switch storeType {
@@ -61,13 +62,16 @@ func TestPodQueries(t *testing.T) {
 			case "lokiStack":
 				storeConfig = config.Store{"lokiStack": "https://" + routeHost(t, c, "openshift-logging", "logging-loki")}
 			}
-			s, err := Domain.Store(storeConfig)
+			s, err := log.Domain.Store(storeConfig)
 			require.NoError(t, err)
+
+			// Fail fast if we can't get a single log.
+			_ = getLogs(t, s, newQuery(t, "log:application:{name: foo, namespace: %v}", namespace), nil, 1)
 
 			t.Run("simple", func(t *testing.T) {
 				got := getLogs(t, s, newQuery(t, "log:application:{name: foo, namespace: %v}", namespace), nil, n)
 				if assert.Equal(t, wantBodies("box: hello", 1, n), bodies(got)) {
-					m := got[0].(Object)
+					m := got[0].(log.Object)
 					assert.Equal(t, "box: hello 1", m["body"])
 					assert.Equal(t, "box", m["k8s_container_name"], m)
 					assert.Equal(t, "foo", m["kubernetes_pod_name"])
@@ -108,9 +112,9 @@ func TestPodQueries(t *testing.T) {
 				all := getLogs(t, s, q, nil, n)
 				require.Len(t, all, n)
 				// Make a constraint that excludes the first and last logs by timestamp.
-				start, err := all[0].(Object).SortTime()
+				start, err := all[0].(log.Object).SortTime()
 				require.NoError(t, err)
-				end, err := all[n-1].(Object).SortTime()
+				end, err := all[n-1].(log.Object).SortTime()
 				require.NoError(t, err)
 				constraint := &korrel8r.Constraint{Start: ptr.To(start.Add(1)), End: ptr.To(end.Add(-1))}
 
@@ -137,20 +141,26 @@ func TestPodQueries(t *testing.T) {
 	}
 }
 
-func getLogs(t testing.TB, s korrel8r.Store, q *Query, constraint *korrel8r.Constraint, min int) (logs []korrel8r.Object) {
+func getLogs(t testing.TB, s korrel8r.Store, q *log.Query, constraint *korrel8r.Constraint, min int) (logs []korrel8r.Object) {
 	t.Helper()
 	var err error
-	assert.Eventually(t, func() bool {
+	i := 0
+	require.Eventually(t, func() bool {
 		r := result.New(q.Class())
-		err = s.Get(t.Context(), q, constraint, r)
-		logs = r.List()
-		ok := err == nil && len(logs) >= min
-		if !ok {
-			t.Logf("waiting for logs, want %v got %v: %v", min, len(logs), q.String())
+		if err = s.Get(t.Context(), q, constraint, r); err != nil {
+			return true
 		}
-		return ok
-	}, time.Minute, time.Second, "query %v, want %v logs got %v", q.String(), min, len(logs))
-	assert.NoError(t, err)
+		logs = r.List()
+		if len(logs) >= min {
+			return true
+		}
+		i++
+		if i%50 == 0 { // Report every 50th iteration, i.e. every 5 seconds
+			t.Logf("waiting for logs, want %v got %v: %v: %v", min, len(logs), q, err)
+		}
+		return false
+	}, time.Minute, time.Second/10, "query %v, want %v logs got %v", q, min, len(logs))
+	require.NoError(t, err)
 	return logs
 }
 
@@ -159,7 +169,7 @@ func bodies(logs []korrel8r.Object) []string { return fields("body", logs) }
 func fields(field string, logs []korrel8r.Object) []string {
 	var result []string
 	for _, l := range logs {
-		result = append(result, l.(Object)[field])
+		result = append(result, l.(log.Object)[field])
 	}
 	return result
 }

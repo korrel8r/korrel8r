@@ -123,6 +123,20 @@ func TestAPIGraphGoalsZeros(t *testing.T) {
 		})
 }
 
+func TestAPIGraphGoals_bad_goal(t *testing.T) {
+	e := testEngine(t)
+	assertDo(t, newTestAPI(t, e), "POST", "/api/v1alpha1/graphs/goals?zeros=true",
+		Goals{
+			Start: Start{
+				Class:   "mock:a",
+				Objects: []json.RawMessage{[]byte(`"x"`)},
+			},
+			Goals: []string{"mock:nosuchclass"},
+		},
+		http.StatusBadRequest,
+		Graph{})
+}
+
 func TestAPIPostNeighbours(t *testing.T) {
 	e := testEngine(t)
 	assertDo(t, newTestAPI(t, e), "POST", "/api/v1alpha1/graphs/neighbours",
@@ -288,7 +302,7 @@ func assertDo[T any](t *testing.T, a *testAPI, method, url string, req any, code
 
 func testEngine(t *testing.T) (e *engine.Engine) {
 	t.Helper()
-	d := mock.NewDomain("mock")
+	d := mock.NewDomain("mock", "a", "b")
 	a, b := d.Class("a"), d.Class("b")
 	s := mock.NewStore(d)
 	s.AddQuery("mock:a:x", "ax")
