@@ -65,10 +65,6 @@ var webCmd = &cobra.Command{
 			router.POST(mcp.StreamablePath, gin.WrapH(mcp.NewServer(engine).HTTPHandler()))
 			log.V(0).Info("Enable MCP Streamable endpoint", "path", mcp.StreamablePath)
 		}
-		if *sseFlag {
-			router.POST(mcp.SSEPath, gin.WrapH(mcp.NewServer(engine).HTTPHandler()))
-			log.V(0).Info("Enable MCP SSE endpoint", "path", mcp.SSEPath)
-		}
 		s.Handler = router
 		if *profileFlag == "http" {
 			rest.WebProfile(router)
@@ -89,7 +85,6 @@ var (
 	certFlag, keyFlag   *string
 	specFlag            *string
 	mcpFlag             *bool
-	sseFlag             *bool
 	restFlag            *bool
 	WebProfile          func()
 )
@@ -102,6 +97,5 @@ func init() {
 	keyFlag = webCmd.Flags().String("key", "", "Private key (PEM format) for https")
 	specFlag = webCmd.Flags().String("spec", "", "Dump OpenAPI specification to a file, '-' for stdout.")
 	restFlag = webCmd.Flags().Bool("rest", true, "Enable HTTP REST server on "+rest.BasePath)
-	mcpFlag = webCmd.Flags().Bool("mcp", true, "Enable MCP streaming protocol on "+mcp.StreamablePath)
-	sseFlag = webCmd.Flags().Bool("sse", true, "Enable MCP Server-Sent Events protocol server on "+mcp.SSEPath)
+	mcpFlag = webCmd.Flags().Bool("mcp", true, "Enable MCP streamable HTTP protocol on "+mcp.StreamablePath)
 }

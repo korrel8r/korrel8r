@@ -23,7 +23,6 @@ import (
 
 const (
 	StreamablePath = "/mcp"
-	SSEPath        = "/sse"
 )
 
 type DomainParams struct {

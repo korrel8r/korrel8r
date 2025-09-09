@@ -18,7 +18,6 @@ The `korrel8r web` command serves 3 endpoints:
 
 - `/api/v1alpha1` - REST API
 - `/mcp` - MCP streaming protocol
-- `/sse` - MCP Server-Sent Events protocol
 
 You can connect to a korrel8r service in the cluster like this:
 
