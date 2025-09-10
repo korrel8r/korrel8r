@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 _Note unreleased changes on main here pending the next release_
 
+## [0.8.2] - 2025-09-10
+
+### Added
+- Support for logs stored in the OTEL format.
+- Log output from k8s/client-go package included in logs.
+- Rules to correlation virtual machine resources
+
 ### Changed
 - BREAKING CHANGE: combined otellog and podlog domains into log domain.
   - Both OTEL AND Viaq log objects are now flat maps with "_" separated keys.
@@ -22,17 +29,13 @@ _Note unreleased changes on main here pending the next release_
 - Added doc/lab/model-context-protocol.adoc with MCP experiments.
 
 ### Removed
-- Dropped Built-in swagger UI.
-  Was only useful for trivial experiments, can use korrrelrcli as client instead.
+- Dropped Built-in swagger UI, use curl or korrrelrcli as client instead.
 
 ### Fixed
 - Fixed bug causing panic if invalid class was passed to the REST API in a goal search.
 
 ## [0.8.1] - 2025-05-23
 
-### Added
-- Support for logs stored in the OTEL format.
-- Log output from k8s/client-go package included in logs.
 
 ## [0.8.0] - 2025-02-12
 
