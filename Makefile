@@ -6,7 +6,7 @@ help: ## Display this help.
 	@grep -E '^## [A-Z0-9_]+: ' Makefile | sed 's/^## \([A-Z0-9_]*\): \(.*\)/\1#\2/' | column -s'#' -t
 
 ## VERSION: Semantic version for release, use -dev for development pre-release versions.
-VERSION?=0.8.2-dev
+VERSION?=0.8.2
 ## REGISTRY_BASE: Image registry base, for example quay.io/somebody
 REGISTRY_BASE?=$(error REGISTRY_BASE must be set to push images)
 ## IMGTOOL: May be podman or docker.
@@ -151,10 +151,11 @@ _site/man: $(shell find ./cmd)	## Generated man pages.
 	go run ./cmd/korrel8r doc man $@
 	@touch $@
 
+.PHONY: doc
 doc: doc/gen/domains.adoc doc/gen/rest_api.adoc doc/gen/cmd
-	@touch $@
 
 doc/gen/domains.adoc: $(wildcard pkg/domains/*/*.adoc)
+	@mkdir -p $(dir $@)
 	rm -f $@; for D in $^; do echo -e "\ninclude::../../$$D[]\n" >>$@; done
 
 OPENAPI_CFG=doc/openapi-asciidoc.yaml
@@ -170,7 +171,7 @@ $(KRAMDOC):
 	@mkdir -p $(dir $@)
 	gem install kramdown-asciidoc --user-install --bindir $(BIN)
 
-doc/gen/cmd: $(shell find ./cmd/korrel8r) $(KORREL8RCLI) $(KRAMDOC) ## Generated command documentation
+doc/gen/cmd: generate $(shell find ./cmd/korrel8r) $(KORREL8RCLI) $(KRAMDOC) ## Generated command documentation
 	@mkdir -p $@
 	unset KORREL8R_CONFIG; go run ./cmd/korrel8r doc markdown $@
 	$(KORREL8RCLI) doc markdown $@
