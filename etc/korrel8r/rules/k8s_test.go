@@ -99,7 +99,7 @@ func TestK8sRules(t *testing.T) {
 			start: newK8s("VirtualMachine.kubevirt.io", "vm-ns", "vm-name", k8s.Object{
 				"spec": k8s.Object{
 					"dataVolumeTemplates": []k8s.Object{
-						{"name": "dv1"},
+						{"metadata": k8s.Object{"name": "dv1"}},
 					},
 				},
 			}),
@@ -136,6 +136,11 @@ func TestK8sRules(t *testing.T) {
 			rule:  "VmToVmi",
 			start: newK8s("VirtualMachine.kubevirt.io", "vm-ns", "vm-name", nil),
 			query: `k8s:VirtualMachineInstance.v1.kubevirt.io:{"namespace":"vm-ns","name":"vm-name"}`,
+		},
+		{
+			rule:  "VmiToPod",
+			start: newK8s("VirtualMachineInstance.kubevirt.io", "vm-ns", "vm-name", nil),
+			query: `k8s:Pod.v1:{"namespace":"vm-ns","labels":{"kubevirt.io":"virt-launcher","vm.kubevirt.io/name":"vm-name"}}`,
 		},
 	} {
 		x.Run(t)

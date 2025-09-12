@@ -170,7 +170,9 @@ rules:
        classes: [PersistentVolumeClaim]
      result:
        query: |-
-         k8s:PersistentVolumeClaim:{"namespace":"{{.metadata.namespace}}","name":"{{ (first .spec.dataVolumeTemplates).name }}"}
+         {{- range .spec.dataVolumeTemplates }}
+         k8s:PersistentVolumeClaim:{"namespace":"{{$.metadata.namespace}}","name":"{{.metadata.name}}"}
+         {{- end }}
 
    - name: PVCToPV
      start:
@@ -215,3 +217,14 @@ rules:
      result:
        query: |-
          k8s:VirtualMachineInstance.kubevirt.io:{"namespace":"{{.metadata.namespace}}","name":"{{.metadata.name}}"}
+
+   - name: VmiToPod
+     start:
+       domain: k8s
+       classes: [VirtualMachineInstance.kubevirt.io]
+     goal:
+       domain: k8s
+       classes: [Pod]
+     result:
+       query: |-
+         k8s:Pod:{"namespace":"{{.metadata.namespace}}","labels":{"vm.kubevirt.io/name":"{{.metadata.name}}","kubevirt.io":"virt-launcher"}}
