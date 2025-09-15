@@ -13,6 +13,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/korrel8r/korrel8r/internal/pkg/must"
 	"github.com/korrel8r/korrel8r/pkg/domains/k8s"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r/impl"
@@ -23,7 +24,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
-var podClass = k8s.ClassNamed("Pod.v1")
+var podClass = must.Must1(k8s.ParseClass("Pod.v1"))
 
 type directStore struct {
 	*impl.Store

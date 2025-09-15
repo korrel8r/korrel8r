@@ -226,11 +226,6 @@ func (b *Builder) classes(r config.Rule, spec *config.ClassSpec) []korrel8r.Clas
 		}
 		return list.List
 	} else { // Wildcard
-		classes, err := b.e.ClassesFor(d)
-		if err != nil {
-			// Log a message but continue
-			log.Error(err, "Skip rule", "rule", r)
-		}
-		return classes
+		return d.Classes()
 	}
 }

@@ -70,18 +70,6 @@ func (e *Engine) StoreConfigsFor(d korrel8r.Domain) []config.Store {
 	return nil
 }
 
-// ClassesFor collects classes from  the domain or its stores.
-func (e *Engine) ClassesFor(d korrel8r.Domain) ([]korrel8r.Class, error) {
-	classes := d.Classes()
-	if len(classes) > 0 {
-		return classes, nil
-	}
-	if s := e.StoreFor(d); s != nil {
-		return s.StoreClasses()
-	}
-	return nil, nil
-}
-
 // Class parses a full class name and returns the
 func (e *Engine) Class(fullname string) (korrel8r.Class, error) {
 	d, c := impl.ClassSplit(fullname)
@@ -116,15 +104,6 @@ func (e *Engine) DomainClass(domain, class string) (korrel8r.Class, error) {
 	c := d.Class(class)
 	if c == nil {
 		return nil, notFound()
-	}
-	if len(d.Classes()) == 0 { // Domain does not validate classes, check with store.
-		classes, err := e.ClassesFor(d)
-		if err != nil {
-			return nil, err
-		}
-		if len(classes) > 0 && slices.Index(classes, c) < 0 {
-			return nil, notFound() // Not valid according to store
-		}
 	}
 	return c, nil
 }

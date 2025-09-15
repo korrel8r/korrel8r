@@ -23,8 +23,7 @@ type Store struct {
 
 func NewStore(d korrel8r.Domain) *Store { return &Store{d} }
 
-func (s *Store) Domain() korrel8r.Domain                 { return s.domain }
-func (s *Store) StoreClasses() ([]korrel8r.Class, error) { return s.domain.Classes(), nil }
+func (s *Store) Domain() korrel8r.Domain { return s.domain }
 
 // Get and decode a REST response, for stores that use raw HTTP clients.
 // body is decoded from the response, it must point to a JSON decodable type.
