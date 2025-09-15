@@ -24,7 +24,6 @@ func TestStore(t *testing.T) {
 	testDomainSingleton = d
 	s := testStore{NewStore(d)}
 	assert.Equal(t, d, s.Domain())
-	cs, err := s.StoreClasses()
-	assert.NoError(t, err)
+	cs := d.Classes()
 	assert.Equal(t, []korrel8r.Class{testClass("a"), testClass("b")}, cs)
 }

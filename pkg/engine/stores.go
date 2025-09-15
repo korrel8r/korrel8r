@@ -88,14 +88,6 @@ func (s *storeHolder) Get(ctx context.Context, q korrel8r.Query, constraint *kor
 	return err
 }
 
-func (s *storeHolder) StoreClasses() ([]korrel8r.Class, error) {
-	if wrapped, err := s.Ensure(); err != nil {
-		return nil, err
-	} else {
-		return wrapped.StoreClasses()
-	}
-}
-
 // Ensure the store is connected.
 func (s *storeHolder) Ensure() (korrel8r.Store, error) {
 	s.lock.Lock()
@@ -176,19 +168,6 @@ func (ss *storeHolders) Get(ctx context.Context, q korrel8r.Query, constraint *k
 		return nil
 	}
 	return errs.Err()
-}
-
-// Classes returns the total set of classes for all the stores.
-// It may return a non-nil error and a non-nil partial list of classes.
-func (ss *storeHolders) StoreClasses() ([]korrel8r.Class, error) {
-	list := unique.NewList[korrel8r.Class]()
-	errs := &unique.Errors{}
-	for _, s := range ss.stores {
-		classes, err := s.StoreClasses()
-		errs.Add(err)
-		list.Append(classes...)
-	}
-	return list.List, errs.Err()
 }
 
 // Configs returns the expanded configurations for each store.

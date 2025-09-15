@@ -15,8 +15,7 @@ var _ korrel8r.Store = TryStores{}
 // TryStores Get tries each store in turn. Uses the first store to satisfy other Store methods.
 type TryStores []korrel8r.Store
 
-func (ts TryStores) Domain() korrel8r.Domain                 { return ts[0].Domain() }
-func (ts TryStores) StoreClasses() ([]korrel8r.Class, error) { return ts[0].StoreClasses() }
+func (ts TryStores) Domain() korrel8r.Domain { return ts[0].Domain() }
 
 func (ts TryStores) Get(ctx context.Context, q korrel8r.Query, c *korrel8r.Constraint, a korrel8r.Appender) error {
 	var errs error
