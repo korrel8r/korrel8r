@@ -132,7 +132,10 @@ rules:
        query: |-
          {{- with index .metadata "ownerReferences"}}
            {{- with first . -}}
-             {{k8sClass .apiVersion .kind}}:{"namespace":"{{$.metadata.namespace}}","name":"{{.name}}"}
+             {{$class := k8sClass .apiVersion .kind -}}
+             {{$class}}:{
+               {{- if k8sIsNamespaced $class}}"namespace":"{{$.metadata.namespace}}",{{- end -}}
+             "name":"{{.name}}"}
            {{- end}}
          {{end -}}
 
@@ -188,7 +191,7 @@ rules:
        classes: [PersistentVolume]
      goal:
        domain: k8s
-       classes: [StorageClass]
+       classes: [StorageClass.storage.k8s.io]
      result:
        query: |-
          k8s:StorageClass.storage.k8s.io:{"name":"{{.spec.storageClassName}}"}
@@ -199,7 +202,7 @@ rules:
        classes: [PersistentVolumeClaim]
      goal:
        domain: k8s
-       classes: [StorageClass]
+       classes: [StorageClass.storage.k8s.io]
      result:
        query: |-
          k8s:StorageClass.storage.k8s.io:{"name":"{{.spec.storageClassName}}"}

@@ -87,8 +87,6 @@ type Store interface {
 	// If Constraint is non-nil, only objects satisfying the constraint are returned.
 	// Note: a "not found" condition should give an empty result, it should not be reported as an error.
 	Get(context.Context, Query, *Constraint, Appender) error
-	// StoreClasses gets the list of classes supported by the [Store]. See [Domain.Classes]
-	StoreClasses() ([]Class, error)
 }
 
 // Query is a request that selects some subset of Objects from a Store.

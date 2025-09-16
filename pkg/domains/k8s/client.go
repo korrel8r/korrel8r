@@ -12,12 +12,12 @@ import (
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
-	"sigs.k8s.io/controller-runtime/pkg/log"
+	klog "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 // SetLogger sets the logger for controller-runtime.
 func SetLogger(l logr.Logger) {
-	log.SetLogger(l)
+	klog.SetLogger(l)
 }
 
 // NewClient provides a general-purpose k8s client.

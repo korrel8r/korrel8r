@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/korrel8r/korrel8r/internal/pkg/must"
 	"github.com/korrel8r/korrel8r/internal/pkg/test/mock"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"github.com/stretchr/testify/assert"
@@ -19,13 +20,15 @@ import (
 	fakediscovery "k8s.io/client-go/discovery/fake"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
+	clienttesting "k8s.io/client-go/testing"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 var (
-	namespace = Domain.Class("Namespace").(Class)
-	pod       = Domain.Class("Pod").(Class)
+	namespace  = must.Must1(ParseClass("Namespace"))
+	pod        = must.Must1(ParseClass("Pod"))
+	deployment = must.Must1(ParseClass("Deployment.apps"))
 )
 
 func newQuery(c Class, namespace, name string, labels, fields map[string]string) *Query {
@@ -83,7 +86,7 @@ func TestStore_Get(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{Name: "wilma", Namespace: "y", Labels: map[string]string{"app": "foo"}},
 			},
 		).Build()
-	store, err := NewStore(c, &rest.Config{})
+	store, err := Domain.NewStore(c, &rest.Config{})
 	require.NoError(t, err)
 	var (
 		fred   = types.NamespacedName{Namespace: "x", Name: "fred"}
@@ -126,7 +129,7 @@ func TestStore_Get_Constraint(t *testing.T) {
 	c := fake.NewClientBuilder().
 		WithRESTMapper(testrestmapper.TestOnlyStaticRESTMapper(scheme.Scheme)).
 		WithObjects(early, ontime, late).Build()
-	store, err := NewStore(c, &rest.Config{})
+	store, err := Domain.NewStore(c, &rest.Config{})
 	require.NoError(t, err)
 
 	for _, x := range []struct {
@@ -152,34 +155,37 @@ func TestStore_Get_Constraint(t *testing.T) {
 	// Need to validate labels and all get variations on fake client or env test...
 }
 
-// FakedDiscovery adds
-type FakeDiscovery struct {
-	FakePreferred                []*metav1.APIResourceList
-	FakeNamespacePreferred       []*metav1.APIResourceList
-	*fakediscovery.FakeDiscovery // Stubs to implement interface
-}
-
-func (f *FakeDiscovery) ServerPreferredResources() ([]*metav1.APIResourceList, error) {
-	return f.FakePreferred, nil
-}
-
-func (f *FakeDiscovery) ServerPreferredNamespacedResources() ([]*metav1.APIResourceList, error) {
-	return f.FakeNamespacePreferred, nil
-}
-
-func TestStore_Classes(t *testing.T) {
-	d := FakeDiscovery{
-		FakePreferred: []*metav1.APIResourceList{
-			{GroupVersion: "v1", APIResources: []metav1.APIResource{{Version: "v1", Kind: "Namespace"}}},
+func fakeStore(t *testing.T) *Store {
+	fc := fake.NewClientBuilder().
+		WithRESTMapper(testrestmapper.TestOnlyStaticRESTMapper(scheme.Scheme)).
+		Build()
+	fd := &fakediscovery.FakeDiscovery{
+		Fake: &clienttesting.Fake{
+			Resources: []*metav1.APIResourceList{
+				{GroupVersion: "v1", APIResources: []metav1.APIResource{
+					{Kind: "Namespace", Namespaced: false},
+					{Kind: "Pod", Namespaced: true},
+				}},
+				{GroupVersion: "apps/v1", APIResources: []metav1.APIResource{
+					{Kind: "Deployment", Namespaced: true},
+				}},
+			},
 		},
-		FakeNamespacePreferred: []*metav1.APIResourceList{
-			{GroupVersion: "v1", APIResources: []metav1.APIResource{{Version: "v1", Kind: "Pod"}}},
-			{GroupVersion: "v1.apps", APIResources: []metav1.APIResource{{Group: "apps", Version: "v1", Kind: "Deployment"}}},
-		}}
-	fakeClient := fake.NewClientBuilder().WithRESTMapper(testrestmapper.TestOnlyStaticRESTMapper(scheme.Scheme)).Build()
-	store, err := NewStoreWithDiscovery(fakeClient, &rest.Config{}, &d)
-	assert.NoError(t, err)
-	classes, err := store.StoreClasses()
-	assert.NoError(t, err)
-	assert.ElementsMatch(t, []korrel8r.Class{Domain.Class("Pod.v1"), Domain.Class("Namespace.v1"), Domain.Class("Deployment.v1.apps")}, classes)
+	}
+	store, err := Domain.NewStoreWithDiscovery(fc, &rest.Config{}, fd)
+	require.NoError(t, err)
+	return store
+}
+
+func TestDomain_Classes(t *testing.T) {
+	fakeStore(t) // Called for side effect of creating classes in domain
+	want := []korrel8r.Class{deployment, namespace, pod}
+	assert.Subset(t, Domain.Classes(), want)
+}
+
+func TestClass_IsNamespaceed(t *testing.T) {
+	fakeStore(t) // Called for side effect of creating classes in domain
+	assert.False(t, namespace.IsNamespaced())
+	assert.True(t, deployment.IsNamespaced())
+	assert.True(t, pod.IsNamespaced())
 }

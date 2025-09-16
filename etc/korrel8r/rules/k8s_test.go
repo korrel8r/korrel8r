@@ -67,11 +67,23 @@ func TestK8sRules(t *testing.T) {
 				"metadata": k8s.Object{
 					"ownerReferences": []k8s.Object{{
 						"name":       "owner",
-						"kind":       "Deployment",
+						"kind":       "Deployment", // Namespace scoped owner
 						"apiVersion": "apps/v1",
 					}}},
 			}),
 			query: `k8s:Deployment.v1.apps:{"namespace":"aNamespace","name":"owner"}`,
+		},
+		{
+			rule: "DependentToOwner",
+			start: newK8s("Pod", "aNamespace", "foo", k8s.Object{
+				"metadata": k8s.Object{
+					"ownerReferences": []k8s.Object{{
+						"name":       "owner",
+						"kind":       "PersistentVolume", // Cluster scoped owner
+						"apiVersion": "v1",
+					}}},
+			}),
+			query: `k8s:PersistentVolume.v1:{"name":"owner"}`,
 		},
 		{
 			rule: "VmiToNode",

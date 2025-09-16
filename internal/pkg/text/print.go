@@ -33,11 +33,7 @@ func (e *Printer) ListDomains(w io.Writer) {
 }
 
 func (p *Printer) ListClasses(w io.Writer, d korrel8r.Domain) {
-	classes, err := p.ClassesFor(d)
-	if err != nil {
-		p.Error(w, err)
-		return
-	}
+	classes := d.Classes()
 	for _, c := range classes {
 		fmt.Fprintln(w, c.Name())
 	}

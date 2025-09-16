@@ -95,9 +95,8 @@ func (s *Store) Get(ctx context.Context, q korrel8r.Query, constraint *korrel8r.
 	return nil
 }
 
-func (s *Store) Domain() korrel8r.Domain                 { return s.domain }
-func (s *Store) StoreClasses() ([]korrel8r.Class, error) { return s.classes.List(), nil }
-func (s *Store) Resolve(korrel8r.Query) *url.URL         { panic("not implemented") }
+func (s *Store) Domain() korrel8r.Domain         { return s.domain }
+func (s *Store) Resolve(korrel8r.Query) *url.URL { panic("not implemented") }
 
 func (s *Store) AddLookup(lookup QueryFunc) { s.lookup = append(s.lookup, lookup) }
 

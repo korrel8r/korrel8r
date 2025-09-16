@@ -14,11 +14,15 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
-// TemplateFuncs for this domain. See package description.
-func (domain) TemplateFuncs() map[string]any {
+// TemplateFuncs for this store. See description at top of file.
+func (d *domain) TemplateFuncs() map[string]any {
 	return map[string]any{
 		"k8sClass": func(apiVersion, kind string) korrel8r.Class {
 			return Class(schema.FromAPIVersionAndKind(apiVersion, kind))
+		},
+		"k8sIsNamespaced": func(c korrel8r.Class) bool {
+			kc, ok := c.(Class)
+			return ok && kc.IsNamespaced()
 		},
 	}
 }

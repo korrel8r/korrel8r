@@ -46,7 +46,7 @@ func (*domain) Store(s any) (korrel8r.Store, error) {
 	if err != nil {
 		return nil, err
 	}
-	ks, err := k8s.NewStore(nil, nil)
+	ks, err := k8s.Domain.NewStore(nil, nil)
 	if err != nil {
 		return nil, err
 	}
