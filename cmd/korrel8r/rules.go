@@ -43,11 +43,14 @@ var rulesCmd = &cobra.Command{
 		} else { // Print rules as text
 			for _, r := range e.Rules() {
 				if test(r) {
-					fmt.Fprintln(w, r)
-					if *ruleLong {
-						fmt.Fprintln(w, "  start: ", r.Start())
-						fmt.Fprintln(w, "  goal: ", r.Goal())
+					summarize := func(classes []korrel8r.Class) string {
+						if len(classes) > 1 && !*ruleLong {
+							return fmt.Sprintf("[%v, ...]", classes[0])
+						} else {
+							return fmt.Sprintf("%v", classes)
+						}
 					}
+					fmt.Fprintf(w, "%v: %v -> %v\n", r.Name(), summarize(r.Start()), summarize(r.Goal()))
 				}
 			}
 		}
