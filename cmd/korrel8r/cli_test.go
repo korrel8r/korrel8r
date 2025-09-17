@@ -54,15 +54,15 @@ func TestMain_rules(t *testing.T) {
 	}{
 		{
 			args: []string{"rules"},
-			want: "foobar\nbarfoo",
+			want: "foobar: [mock:foo] -> [mock:bar]\nbarfoo: [mock:bar] -> [mock:foo]",
 		},
 		{
 			args: []string{"rules", "--start", "mock:foo"},
-			want: "foobar",
+			want: "foobar: [mock:foo] -> [mock:bar]",
 		},
 		{
 			args: []string{"rules", "--goal", "mock:foo"},
-			want: "barfoo",
+			want: "barfoo: [mock:bar] -> [mock:foo]",
 		},
 	} {
 		t.Run(strings.Join(x.args, " "), func(t *testing.T) {

@@ -38,6 +38,11 @@ func TestK8sRules(t *testing.T) {
 			query: `k8s:Pod.v1:{"namespace":"aNamespace","name":"foo"}`,
 		},
 		{
+			rule:  "Event2ToAll",
+			start: k8sEvent2(newK8s("Pod", "aNamespace", "foo", nil), "a"),
+			query: `k8s:Pod.v1:{"namespace":"aNamespace","name":"foo"}`,
+		},
+		{
 			rule:  "AllToEvent",
 			start: newK8s("Pod", "aNamespace", "foo", nil),
 			query: `k8s:Event.v1:{"fields":{"involvedObject.apiVersion":"v1","involvedObject.kind":"Pod","involvedObject.name":"foo","involvedObject.namespace":"aNamespace"}}`,

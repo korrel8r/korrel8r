@@ -1,42 +1,4 @@
 aliases:
-  - name: workloads
-    domain: k8s
-    classes:
-      - Pod
-      - Deployment.apps
-      - StatefulSet.apps
-      - Secret
-      - ConfigMap
-      - CronJob.batch
-      - Job.batch
-      - DaemonSet.apps
-      - ReplicaSet.apps
-      - ReplicationController
-      - HorizontalPodAutoscaler.autoscaling
-
-  - name: networking
-    domain: k8s
-    classes:
-      - Service
-      - NetworkPolicy.networking.k8s.io
-
-  - name: storage
-    domain: k8s
-    classes:
-      - PersistentVolumeClaim
-      - PersistentVolume
-      - StorageClass.storage.k8s.io
-      - VolumeAttachment.storage.k8s.io
-
-  - name: users
-    domain: k8s
-    classes:
-      - ServiceAccount
-      - Role.rbac.authorization.k8s.io
-      - RoleBinding.rbac.authorization.k8s.io
-      - ClusterRole.rbac.authorization.k8s.io
-      - ClusterRoleBinding.rbac.authorization.k8s.io
-
   - name: selectors
     domain: k8s
     classes:
@@ -49,22 +11,6 @@ aliases:
       - StatefulSet.apps
       - Job.batch
       - PodDisruptionBudget.policy
-
-  - name: namespacedResources
-    domain: k8s
-    classes:
-      - Pod
-      - Deployment.apps
-      - StatefulSet.apps
-      - CronJob.batch
-      - Job.batch
-      - DaemonSet.apps
-      - ReplicaSet.apps
-      - ReplicationController
-      - PersistentVolumeClaim
-      - Service
-      - Ingress.networking.k8s.io
-
 rules:
    - name: PodToAlert
      start:
@@ -91,12 +37,24 @@ rules:
    - name: EventToAll
      start:
        domain: k8s
-       classes: [Event]
+       classes: [Event.v1]
      goal:
        domain: k8s
      result:
        query: |-
          {{- with .involvedObject -}}
+         {{k8sClass .apiVersion .kind}}:{namespace: {{.namespace}}, name: {{.name}}}
+         {{- end -}}
+
+   - name: Event2ToAll
+     start:
+       domain: k8s
+       classes: [Event.v1.events.k8s.io]
+     goal:
+       domain: k8s
+     result:
+       query: |-
+         {{- with .regarding -}}
          {{k8sClass .apiVersion .kind}}:{namespace: {{.namespace}}, name: {{.name}}}
          {{- end -}}
 

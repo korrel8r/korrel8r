@@ -120,8 +120,21 @@ func newK8s(class, namespace, name string, object k8s.Object) k8s.Object {
 func k8sEvent(o k8s.Object, name string) k8s.Object {
 	u := k8s.ToUnstructured(o)
 	gvk := u.GetObjectKind().GroupVersionKind()
-	e := newK8s("Event", name, u.GetNamespace(), k8s.Object{
+	e := newK8s("Event.v1", name, u.GetNamespace(), k8s.Object{
 		"involvedObject": k8s.Object{
+			"kind":       gvk.Kind,
+			"namespace":  u.GetNamespace(),
+			"name":       u.GetName(),
+			"apiVersion": gvk.GroupVersion().String(),
+		}})
+	return e
+}
+
+func k8sEvent2(o k8s.Object, name string) k8s.Object {
+	u := k8s.ToUnstructured(o)
+	gvk := u.GetObjectKind().GroupVersionKind()
+	e := newK8s("Event.v1.events.k8s.io", name, u.GetNamespace(), k8s.Object{
+		"regarding": k8s.Object{
 			"kind":       gvk.Kind,
 			"namespace":  u.GetNamespace(),
 			"name":       u.GetName(),
