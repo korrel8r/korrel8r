@@ -171,11 +171,6 @@ Specify a set of start objects, as queries or serialized objects, and a goal cla
 |  <<Graph>>
 
 
-| 206
-| interrupted, partial result
-|  <<Graph>>
-
-
 | 400
 | invalid parameters
 |  <<Error>>
@@ -278,11 +273,6 @@ Specify a set of start objects, as queries or serialized objects, and a depth fo
 
 | 200
 | OK
-|  <<Graph>>
-
-
-| 206
-| interrupted, partial result
 |  <<Graph>>
 
 
@@ -794,14 +784,21 @@ Options controlling the form of the returned graph.
 | 
 | 
 |   Boolean  
-| Include rule names in graph edges.
+| If true include rule names in graph edges.
 |     
 
 | zeros
 | 
 | 
 |   Boolean  
-| Include queries that returned no results.
+| if true include queries that returned no results.
+|     
+
+| errors
+| 
+| 
+|   Boolean  
+| if true include non-fatal error messages.
 |     
 
 |===

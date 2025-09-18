@@ -17,7 +17,7 @@ func TestLoad(t *testing.T) {
 		{
 			Source:  "testdata/config.json",
 			Include: []string{"config1.yaml", "config.json", "config2.yaml"},
-			Tuning:  &Tuning{RequestTimeout: Duration{Duration: time.Second}},
+			Tuning:  &Tuning{RequestTimeout: &Duration{Duration: time.Second}},
 		},
 		{
 			Source: "testdata/config1.yaml",

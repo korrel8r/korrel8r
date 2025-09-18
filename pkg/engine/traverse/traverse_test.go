@@ -4,7 +4,6 @@ package traverse
 
 import (
 	"context"
-	"errors"
 	"testing"
 
 	"github.com/korrel8r/korrel8r/internal/pkg/test"
@@ -154,42 +153,6 @@ func TestTraverserNeighbours(t *testing.T) {
 			t.Fatalf("unexpected rule: %v", l.Rule)
 		}
 	})
-}
-
-func TestPartialError(t *testing.T) {
-	d := mock.NewDomain("mock")
-	ca, cb, cc := d.Class("a"), d.Class("b"), d.Class("c")
-	s := mock.NewStore(d, ca, cb, cc)
-	e, err := engine.Build().Rules(
-		r("ab", ca, cb, mock.NewQuery(cb, "1,2", 1, 2)),
-		r("bc", cb, cc, mock.NewQueryError(cc, "err", errors.New("no good"))),
-	).Stores(s).Engine()
-	require.NoError(t, err)
-	start := Start{Class: ca, Objects: []korrel8r.Object{0}}
-	g, err := New(e, e.Graph()).Neighbours(context.Background(), start, 3)
-	var pe *korrel8r.PartialError
-	assert.ErrorContains(t, err, "no good")
-	assert.ErrorAs(t, err, &pe)
-	assert.ElementsMatch(t, g.NodesFor(ca, cb, cc), graph.NodesOf(g.Nodes()))
-	assert.Equal(t, []any{0}, g.NodeFor(ca).Result.List())
-	assert.Equal(t, []any{1, 2}, g.NodeFor(cb).Result.List())
-	assert.Empty(t, g.NodeFor(cc).Result.List())
-}
-
-func TestErrors(t *testing.T) {
-	assert.NoError(t, NewErrors(log).Err())
-
-	errs := NewErrors(log)
-	errs.Log(errors.New("bad"), "")
-	assert.EqualError(t, errs.Err(), "bad", "")
-	errs.Log(errors.New("worse"), "")
-	assert.EqualError(t, errs.Err(), "bad\nworse", "")
-	errs.Log(errors.New("bad"), "") // Don't repeat
-	assert.EqualError(t, errs.Err(), "bad\nworse", "")
-	assert.False(t, korrel8r.IsPartialError(errs.Err()))
-	errs.Log(nil, "") // Partial success
-	assert.True(t, korrel8r.IsPartialError(errs.Err()))
-	assert.ErrorContains(t, errs.Err(), "bad\nworse")
 }
 
 func list[T any](x ...T) []T { return x }

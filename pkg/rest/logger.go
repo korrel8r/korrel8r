@@ -36,9 +36,6 @@ func (a *API) logger(c *gin.Context) {
 		if c.IsAborted() {
 			log = log.WithValues("errors", c.Errors.Errors())
 		}
-		if interrupted(c) {
-			log = log.WithValues("interrupted", c.Request.Context().Err())
-		}
 		if log.V(5).Enabled() { // Response is big, trace at per-object level.
 			log = log.WithValues("response", rw.String())
 		}

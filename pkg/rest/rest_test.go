@@ -164,7 +164,7 @@ func TestAPIPostNeighbours(t *testing.T) {
 	)
 }
 
-func TestAPIPostNeighboursPartial(t *testing.T) {
+func TestAPIPostNeighboursError(t *testing.T) {
 	e := testEngine(t)
 	s := e.StoresFor(e.Domains()[0])[0].(*mock.Store)
 	s.AddQuery("mock:b:y", errors.New("oh dear"))
@@ -173,7 +173,7 @@ func TestAPIPostNeighboursPartial(t *testing.T) {
 			Start: Start{Queries: []string{"mock:a:x"}},
 			Depth: 1,
 		},
-		http.StatusPartialContent,
+		http.StatusOK,
 		Graph{
 			Nodes: []Node{{
 				Class:   "mock:a",

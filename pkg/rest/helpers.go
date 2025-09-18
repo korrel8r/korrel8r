@@ -57,7 +57,6 @@ func node(n *graph.Node, opts GraphOptions) Node {
 }
 
 func nodes(g *graph.Graph, opts GraphOptions) []Node {
-
 	if g == nil {
 		return nil
 	}
@@ -136,7 +135,11 @@ func Normalize(v any) any {
 }
 
 // NewGraph returns a new rest.Graph corresponding to the internal graph.Graph.
-func NewGraph(g *graph.Graph, opts GraphOptions) *Graph {
+func NewGraph(g *graph.Graph, optsPtr *GraphOptions) *Graph {
+	if g == nil {
+		return &Graph{}
+	}
+	opts := ptr.Deref(optsPtr)
 	return &Graph{Nodes: nodes(g, opts), Edges: edges(g, opts)}
 }
 
