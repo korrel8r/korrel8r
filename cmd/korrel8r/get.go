@@ -73,14 +73,6 @@ func init() {
 	constraintFlags(objectsCmd)
 }
 
-func check(err error) {
-	if korrel8r.IsPartialError(err) {
-		fmt.Fprintln(os.Stderr, err)
-	} else {
-		must.Must(err)
-	}
-}
-
 var (
 	neighboursCmd = &cobra.Command{
 		Use:   "neighbours",
@@ -91,8 +83,8 @@ var (
 			ctx, cancel := korrel8r.WithConstraint(context.Background(), constraint())
 			defer cancel()
 			g, err := traverse.New(e, e.Graph()).Neighbours(ctx, start(e), depth)
-			check(err)
-			newPrinter(os.Stdout).Print(rest.NewGraph(g, graphOptions))
+			must.Must(err)
+			newPrinter(os.Stdout).Print(rest.NewGraph(g, &graphOptions))
 		},
 	}
 	depth int
@@ -119,8 +111,8 @@ var (
 			ctx, cancel := korrel8r.WithConstraint(context.Background(), constraint())
 			defer cancel()
 			g, err := traverse.New(e, e.Graph()).Goals(ctx, start(e), goals)
-			check(err)
-			newPrinter(os.Stdout).Print(rest.NewGraph(g, graphOptions))
+			must.Must(err)
+			newPrinter(os.Stdout).Print(rest.NewGraph(g, &graphOptions))
 		},
 	}
 )

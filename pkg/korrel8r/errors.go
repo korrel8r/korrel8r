@@ -28,19 +28,9 @@ func IsErrorType[T error](err error) bool {
 	return errors.As(err, &target)
 }
 
-// PartialError indicates some errors were encountered but there are still some results.
-type PartialError struct{ Err error }
-
-func (e *PartialError) Error() string {
-	return fmt.Sprintf("results may be incomplete, partial errors: %v", e.Err)
-}
-
-var _ error = &PartialError{}
-
-func IsPartialError(err error) bool { return IsErrorType[*PartialError](err) }
-
-func IgnorePartialError(err error) error {
-	if IsPartialError(err) {
+// If err is of type T, return nil. Else return err.
+func IgnoreErrorType[T error](err error) error {
+	if IsErrorType[T](err) {
 		return nil
 	}
 	return err

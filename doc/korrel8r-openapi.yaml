@@ -92,12 +92,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Graph'
-        "206":
-          description: interrupted, partial result
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Graph'
         "400":
           description: invalid parameters
           content:
@@ -137,12 +131,6 @@ paths:
       responses:
         "200":
           description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Graph'
-        "206":
-          description: interrupted, partial result
           content:
             application/json:
               schema:
@@ -465,8 +453,11 @@ components:
       description: Options controlling the form of the returned graph.
       properties:
         rules:
-          description: Include rule names in graph edges.
+          description: If true include rule names in graph edges.
           type: boolean
         zeros:
-          description: Include queries that returned no results.
+          description: if true include queries that returned no results.
+          type: boolean
+        errors:
+          description: if true include non-fatal error messages.
           type: boolean

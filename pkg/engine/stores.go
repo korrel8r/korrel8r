@@ -4,6 +4,7 @@ package engine
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"maps"
 	"reflect"
@@ -151,23 +152,23 @@ func (ss *storeHolders) Add(newStore *storeHolder) {
 }
 
 func (ss *storeHolders) Get(ctx context.Context, q korrel8r.Query, constraint *korrel8r.Constraint, result korrel8r.Appender) error {
-	var (
-		errs unique.Errors
-		ok   bool
-	)
+	errs := unique.NewList[string]()
+	ok := false
 	for _, s := range ss.stores {
 		// Iterate over stores and accumulate all results.
 		err := s.Get(ctx, q, constraint, result)
-		errs.Add(err)
+		if err != nil {
+			errs.Add(err.Error())
+		}
 		ok = (err == nil) || ok // Remember if any call succeeds.
 	}
 	if ok { // If any call succeeded, this is a success
-		if errs.Err() != nil {
-			log.V(2).Info("Get succeeded with errors", "errors", errs.Err())
+		if len(errs.List) > 0 {
+			log.V(2).Info("Get succeeded with non-fatal errors", "errors", errs.List)
 		}
 		return nil
 	}
-	return errs.Err()
+	return fmt.Errorf("Get failed: %v", errs.List)
 }
 
 // Configs returns the expanded configurations for each store.

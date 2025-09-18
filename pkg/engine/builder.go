@@ -208,7 +208,7 @@ func (b *Builder) configRule(r config.Rule) {
 	b.rules(rules.NewTemplateRule(start, goal, tmpl))
 }
 
-func (b *Builder) classes(r config.Rule, spec *config.ClassSpec) []korrel8r.Class {
+func (b *Builder) classes(_ config.Rule, spec *config.ClassSpec) []korrel8r.Class {
 	var d korrel8r.Domain
 	d, b.err = b.e.Domain(spec.Domain)
 	if b.err != nil {

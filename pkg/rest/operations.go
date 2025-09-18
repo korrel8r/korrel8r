@@ -58,7 +58,7 @@ func (a *API) ListDomains(c *gin.Context) {
 }
 func (a *API) GraphGoals(c *gin.Context, params GraphGoalsParams) {
 	g, _ := a.goals(c)
-	gr := Graph{Nodes: nodes(g, ptr.Deref(params.Options)), Edges: edges(g, ptr.Deref(params.Options))}
+	gr := NewGraph(g, params.Options)
 	okResponse(c, gr)
 }
 
@@ -93,8 +93,7 @@ func (a *API) GraphNeighbours(c *gin.Context, params GraphNeighboursParams) {
 	if !check(c, http.StatusNotFound, err) {
 		return
 	}
-	opts := ptr.Deref(params.Options)
-	gr := Graph{Nodes: nodes(g, opts), Edges: edges(g, opts)}
+	gr := NewGraph(g, params.Options)
 	okResponse(c, gr)
 }
 
@@ -148,58 +147,40 @@ func (a *API) goals(c *gin.Context) (*graph.Graph, []korrel8r.Class) {
 }
 
 func check(c *gin.Context, code int, err error, format ...any) (ok bool) {
-	if err != nil && len(format) > 0 {
+	if c.IsAborted() {
+		return false
+	}
+	if err == nil {
+		return true
+	}
+	if len(format) > 0 {
 		err = fmt.Errorf("%v: %w", fmt.Sprintf(format[0].(string), format[1:]...), err)
 	}
-	switch {
-	case c.IsAborted():
-		return false
-	case err == nil:
-		return true
-	case korrel8r.IsPartialError(err):
-		_ = c.Error(err) // Save the error for interrupted()
-		return true      // Allow the handler to succeed
-	default:
-		ginErr := c.Error(err)
-		c.AbortWithStatusJSON(code, ginErr.JSON())
-		log.V(1).Info("Request failed", "url", c.Request.URL, "code", code, "error", err)
-		return false
-	}
+	c.AbortWithStatusJSON(code, c.Error(err).JSON())
+	log.V(1).Info("Request failed", "url", c.Request.URL, "code", code, "error", err)
+	return false
 }
 
-// context sets up authorization and deadline context for outgoing requests.
+// context sets up authorization and local deadline for outgoing requests.
 func (a *API) context(c *gin.Context) {
 	ctx := auth.Context(c.Request) // add authentication
-
-	timeout := korrel8r.DefaultTimeout
+	requestTimeout := ptr.To(time.Minute)
 	if len(a.Configs) > 0 {
 		tuning := a.Configs[0].Tuning
-		if tuning != nil && tuning.RequestTimeout.Duration > 0 {
-			timeout = tuning.RequestTimeout.Duration
+		if tuning != nil && tuning.RequestTimeout != nil {
+			requestTimeout = &tuning.RequestTimeout.Duration
 		}
 	}
-	deadline := time.Now().Add(timeout)
-	ctx, cancel := context.WithDeadline(ctx, deadline)
+	ctx, cancel := context.WithDeadline(ctx, time.Now().Add(*requestTimeout))
 	c.Request = c.Request.WithContext(ctx)
 	defer cancel()
 
 	c.Next()
 }
 
-// Interrupted checks for a context error or partial error,
-// indicating we may have a partial result.
-func interrupted(c *gin.Context) bool {
-	return c.Errors.Last() != nil && korrel8r.IsPartialError(c.Errors.Last()) ||
-		c.Request.Context().Err() == context.DeadlineExceeded
-}
-
 // okResponse sets an OK response with a body if we were not already aborted.
 func okResponse(c *gin.Context, body any) {
 	if !c.IsAborted() {
-		status := http.StatusOK
-		if interrupted(c) {
-			status = http.StatusPartialContent
-		}
-		c.JSON(status, body)
+		c.JSON(http.StatusOK, body)
 	}
 }

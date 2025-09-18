@@ -18,12 +18,12 @@ import (
 type async struct {
 	engine *engine.Engine
 	graph  *graph.Graph // full graph provided initially.
-	errs   *Errors
+	errs   *unique.List[string]
 }
 
 // NewAsync returns an asynchronous Traverser that can do multiple store queries concurrently.
 func NewAsync(e *engine.Engine, g *graph.Graph) Traverser {
-	return &async{engine: e, graph: g, errs: NewErrors(log.V(2))}
+	return &async{engine: e, graph: g, errs: unique.NewList[string]()}
 }
 
 // Goals runs a goal-directed search.
@@ -68,8 +68,7 @@ func (a *async) run(ctx context.Context, start Start, traverse func(v graph.Visi
 
 	var busy sync.WaitGroup
 	defer func() {
-		busy.Wait()        // wait for all goroutines.
-		err = a.errs.Err() // Set the error return from the async error
+		busy.Wait() // wait for all goroutines.
 	}()
 
 	// Breadth-first traversal of sub-graph to start the goroutines.
@@ -108,7 +107,6 @@ func (a *async) ensureNode(g *graph.Graph, n *graph.Node) *node {
 			g:          g,
 			queryChan:  make(chan lineQuery, 1),
 			queriesOut: unique.Set[string]{},
-			errs:       a.errs,
 		}
 		g.MergeNode(n)
 	}
@@ -124,7 +122,6 @@ type node struct {
 	queryChan  chan lineQuery     // Incoming queries.
 	senders    atomic.Int64       // Count of senders to queryChan.
 	queriesOut unique.Set[string] // Deduplicate outgoing queries.
-	errs       *Errors
 }
 
 // lineQuery is a query and the line it arrived on.
@@ -176,7 +173,7 @@ func (n *node) Run(ctx context.Context) {
 		}
 		before := len(n.Result.List())
 		err := n.engine.Get(ctx, q, korrel8r.ConstraintFrom(ctx), n.Result)
-		n.errs.Log(err, "Get failed", "query", q)
+		log.V(2).Error(err, "Get failed", "query", q)
 		result := n.Result.List()[before:]
 		for _, o := range result {
 			n.applyRules(ctx, o)
@@ -208,10 +205,10 @@ func (n *node) applyRules(ctx context.Context, o korrel8r.Object) {
 		if !ok {                  // No, apply now
 			qe.q, qe.err = l.Rule.Apply(o)
 			if qe.q == nil { // Rule failed or does not apply
-				n.errs.Log(qe.err, "Rule did not apply", "rule", l.Rule.Name())
+				log.V(2).Error(qe.err, "Rule did not apply", "rule", l.Rule.Name())
 				return
 			}
-			log.V(4).Info("Create query", "rule", l.Rule.Name(), "query", qe.q)
+			log.V(4).Info("Create query", "rule", l.Rule.Name(), "queryGreat", qe.q)
 		}
 		if qe.q.Class() != l.Goal().Class { // Wrong line, save for later
 			applied[l.Rule] = qe
