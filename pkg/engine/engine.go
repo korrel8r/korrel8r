@@ -146,11 +146,9 @@ func (e *Engine) Graph() *graph.Graph { return graph.NewData(e.Rules()...).FullG
 func (e *Engine) Get(ctx context.Context, query korrel8r.Query, constraint *korrel8r.Constraint, result korrel8r.Appender) (err error) {
 	log.V(5).Info("Get", "query", query.String(), "constraint", constraint.String())
 	constraint = constraint.Default()
-	if timeout := constraint.GetTimeout(); timeout > 0 {
-		var cancel func()
-		ctx, cancel = context.WithTimeout(ctx, timeout)
-		defer cancel()
-	}
+	ctx, cancel := korrel8r.WithConstraint(ctx, constraint)
+	defer cancel()
+
 	ss := e.storeHolders[query.Class().Domain()]
 	if len(ss.stores) == 0 {
 		return fmt.Errorf("no stores found for domain %v", query.Class().Domain().Name())

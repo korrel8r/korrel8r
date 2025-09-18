@@ -37,8 +37,7 @@ var _ ServerInterface = &API{}
 func New(e *engine.Engine, c config.Configs, r *gin.Engine) (*API, error) {
 	a := &API{Engine: e, Configs: c, Router: r}
 	a.BasePath = BasePath
-	r.Use(a.logger)
-	r.Use(a.context)
+	r.Use(a.logger, a.context)
 	RegisterHandlersWithOptions(r, a, GinServerOptions{BaseURL: a.BasePath})
 	return a, nil
 }

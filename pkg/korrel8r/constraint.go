@@ -104,9 +104,11 @@ type constraintKey struct{}
 
 // WithConstraint attaches a constraint to a context.
 func WithConstraint(ctx context.Context, c *Constraint) (context.Context, context.CancelFunc) {
-	ctx = context.WithValue(ctx, constraintKey{}, c) // Attach the constraint
-	if c.GetTimeout() > 0 {                          // Add the timeout if defined.
-		return context.WithTimeout(ctx, c.GetTimeout())
+	if c != nil {
+		ctx = context.WithValue(ctx, constraintKey{}, c) // Attach the constraint
+		if c.GetTimeout() > 0 {                          // Add the timeout if defined.
+			return context.WithTimeout(ctx, c.GetTimeout())
+		}
 	}
 	return ctx, func() {}
 }
