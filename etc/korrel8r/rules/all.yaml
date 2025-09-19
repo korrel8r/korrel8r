@@ -1,6 +1,6 @@
 include:
-  - alert.yaml
   - k8s.yaml
+  - alert.yaml
   - log.yaml
   - netflow.yaml
   - trace.yaml
