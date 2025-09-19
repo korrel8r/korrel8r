@@ -22,7 +22,6 @@ func TestSelectorToLogsRules(t *testing.T) {
 	}
 	want := []korrel8r.Class{
 		k8s.Class{Group: "", Version: "v1", Kind: "ReplicationController"},
-		k8s.Class{Group: "", Version: "v1", Kind: "PersistentVolumeClaim"},
 		k8s.Class{Group: "", Version: "v1", Kind: "Service"},
 		k8s.Class{Group: "apps", Version: "v1", Kind: "Deployment"},
 		k8s.Class{Group: "batch", Version: "v1", Kind: "Job"},

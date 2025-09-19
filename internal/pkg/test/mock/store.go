@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"sync"
 
+	"github.com/korrel8r/korrel8r/internal/pkg/test"
 	"github.com/korrel8r/korrel8r/pkg/config"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"github.com/korrel8r/korrel8r/pkg/unique"
@@ -121,11 +122,7 @@ func (s *Store) AddQuery(q any, result any) {
 
 // NewQuery returns a query that will get the result. The query data is the JSON string of the result.
 func (s *Store) NewQuery(c korrel8r.Class, result ...korrel8r.Object) korrel8r.Query {
-	b, err := json.Marshal(result)
-	if err != nil {
-		panic(err)
-	}
-	q := NewQuery(c, string(b))
+	q := NewQuery(c, test.JSONString(result))
 	s.AddQuery(q, result)
 	return q
 }

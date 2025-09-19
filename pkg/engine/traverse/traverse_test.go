@@ -3,7 +3,10 @@
 package traverse
 
 import (
+	"cmp"
 	"context"
+	"fmt"
+	"slices"
 	"testing"
 
 	"github.com/korrel8r/korrel8r/internal/pkg/test"
@@ -15,144 +18,169 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TODO: Clean up and make test more concise and readable.
-
-func r(name string, start, goal korrel8r.Class, apply any) korrel8r.Rule {
-	return mock.NewRule(name, list(start), list(goal), apply)
-}
-
 func TestTraverserGoals(t *testing.T) {
-	d := mock.NewDomain("mock")
-	c := d.Class
-	ca, cb, cc, cz := c("a"), c("b"), c("c"), c("z")
-	s := mock.NewStore(d, ca, cb, cc, cz)
-
-	e, err := engine.Build().Rules(
+	b := mock.NewBuilder("d")
+	e, err := engine.Build().Rules(b.Rules([][]any{
 		// Return 2 results, must follow both
-		r("ab", ca, cb, mock.NewQuery(cb, "1", 1, 2)),
+		{"ab", "d:a", "d:b", b.Query("d:b", "1", 1, 2)},
 		// 2 rules, must follow both. Incorporate data from start object.
-		r("bc1", cb, cc, func(start korrel8r.Object) (korrel8r.Query, error) {
-			return mock.NewQuery(cc, test.JSONString(start), start), nil
-		}),
-		r("bc2", cb, cc, func(start korrel8r.Object) (korrel8r.Query, error) {
+		{"bc1", "d:b", "d:c", func(start korrel8r.Object) (korrel8r.Query, error) {
+			return b.Query("d:c", test.JSONString(start), start), nil
+		}},
+		{"bc2", "d:b", "d:c", func(start korrel8r.Object) (korrel8r.Query, error) {
 			result := start.(int) + 10
-			return mock.NewQuery(cc, test.JSONString(result), result), nil
-		}),
-		r("cz", cc, cz, func(start korrel8r.Object) (korrel8r.Query, error) {
-			return mock.NewQuery(cz, test.JSONString(start), start), nil
-		}),
-	).Stores(s).Engine()
+			return b.Query("d:c", test.JSONString(result), result), nil
+		}},
+		{"dz", "d:c", "d:z", func(start korrel8r.Object) (korrel8r.Query, error) {
+			return b.Query("d:z", test.JSONString(start), start), nil
+		}},
+	})...).Stores(b.Store("d", nil)).Engine()
 	require.NoError(t, err)
 
 	a := NewAsync(e, e.Graph())
-	start := Start{Class: ca, Objects: []korrel8r.Object{0}}
-	g, err := a.Goals(context.Background(), start, list(cz))
-	assert.NoError(t, err)
-	// Check node results
-	assert.ElementsMatch(t, []korrel8r.Object{0}, g.NodeFor(ca).Result.List())
-	assert.ElementsMatch(t, []korrel8r.Object{1, 2}, g.NodeFor(cb).Result.List())
-	assert.ElementsMatch(t, []korrel8r.Object{1, 2, 11, 12}, g.NodeFor(cc).Result.List())
-	assert.ElementsMatch(t, []korrel8r.Object{1, 2, 11, 12}, g.NodeFor(cz).Result.List())
-	// Check line results
-	g.EachLine(func(l *graph.Line) {
-		switch l.Rule.Name() {
-		case "ab":
-			q, err := l.Rule.Apply(0)
-			require.NoError(t, err)
-			assert.Equal(t, 2, l.Queries.Get(q), q.String())
-			assert.Len(t, l.Queries, 1)
-		case "bc1", "bc2":
-			q1, err := l.Rule.Apply(1)
-			require.NoError(t, err)
-			q2, err := l.Rule.Apply(2)
-			require.NoError(t, err)
-			assert.Len(t, l.Queries, 2)
-			assert.Equal(t, 1, l.Queries.Get(q1))
-			assert.Equal(t, 1, l.Queries.Get(q2))
-		case "cz":
-			q1, err := l.Rule.Apply(1)
-			require.NoError(t, err)
-			q2, err := l.Rule.Apply(2)
-			require.NoError(t, err)
-			q3, err := l.Rule.Apply(11)
-			require.NoError(t, err)
-			q4, err := l.Rule.Apply(12)
-			require.NoError(t, err)
-			assert.Len(t, l.Queries, 4)
-			assert.Equal(t, 1, l.Queries.Get(q1), q1.String())
-			assert.Equal(t, 1, l.Queries.Get(q2), q2.String())
-			assert.Equal(t, 1, l.Queries.Get(q3), q3.String())
-			assert.Equal(t, 1, l.Queries.Get(q4), q4.String())
-		default:
-			t.Fatalf("unexpected rule: %v", l.Rule)
+	start := Start{Class: b.Class("d:a"), Objects: []korrel8r.Object{0}}
+	goal := b.Class("d:z")
+	g, err := a.Goals(context.Background(), start, list(goal))
+	if assert.NoError(t, err) {
+		lines := []string{
+			"\"ab\"(d:a->d:b)",
+			"\"bc1\"(d:b->d:c)",
+			"\"bc2\"(d:b->d:c)",
+			"\"dz\"(d:c->d:z)",
 		}
-	})
+		assert.ElementsMatch(t, lines, lineStrings(g), "%#v", lineStrings(g))
+
+		nodes := []string{
+			"d:a [0]",
+			"d:b [1,2]",
+			"d:c [1,11,12,2]",
+			"d:z [1,11,12,2]",
+		}
+		assert.ElementsMatch(t, nodes, nodeStrings(g), "%#v", nodeStrings(g))
+	}
 }
 
 func TestTraverserNeighbours(t *testing.T) {
-	d := mock.NewDomain("mock")
-	ca, cb, cc, cz := d.Class("a"), d.Class("b"), d.Class("d.Class"), d.Class("z")
-	s := mock.NewStore(d, ca, cb, cc, cz)
-
-	e, err := engine.Build().Rules(
-		// Return 2 results, must follow both
-		r("ab", ca, cb, mock.NewQuery(cb, "1", 1, 2)),
-		// 2 rules, must follow both. Incorporate data from start object.
-		r("bc1", cb, cc, func(start korrel8r.Object) (korrel8r.Query, error) {
-			return mock.NewQuery(cc, test.JSONString(start), start), nil
-		}),
-		r("bc2", cb, cc, func(start korrel8r.Object) (korrel8r.Query, error) {
-			result := start.(int) + 10
-			return mock.NewQuery(cc, test.JSONString(result), result), nil
-		}),
-		r("cz", cc, cz, func(start korrel8r.Object) (korrel8r.Query, error) {
-			return mock.NewQuery(cz, test.JSONString(start), start), nil
-		}),
-	).Stores(s).Engine()
+	b := mock.NewBuilder("d")
+	e, err := engine.Build().Rules(b.Rules([][]any{
+		{"ab", "d:a", "d:b", b.Query("d:b", "ab", 1)},
+		{"ac", "d:a", "d:c", b.Query("d:c", "ac", 2)},
+		{"bx", "d:b", "d:x", b.Query("d:x", "bx", 3)},
+		{"cy", "d:c", "d:y", b.Query("d:y", "cy", 4)},
+		{"yz", "d:y", "d:z", b.Query("d:z", "yz", 5)},
+		{"zq", "d:z", "d:q", b.Query("d:q", "zq", 6)},
+	})...).Stores(b.Store("d", nil)).Engine()
 	require.NoError(t, err)
 
-	a := NewAsync(e, e.Graph())
-	start := Start{Class: ca, Objects: []korrel8r.Object{0}}
-	g, err := a.Neighbours(context.Background(), start, 2)
-	assert.NoError(t, err)
-	// Check node results
-	assert.ElementsMatch(t, []korrel8r.Object{0}, g.NodeFor(ca).Result.List())
-	assert.ElementsMatch(t, []korrel8r.Object{1, 2}, g.NodeFor(cb).Result.List())
-	assert.ElementsMatch(t, []korrel8r.Object{1, 2, 11, 12}, g.NodeFor(cc).Result.List())
-	// Check line results
-	g.EachLine(func(l *graph.Line) {
-		switch l.Rule.Name() {
-		case "ab":
-			q, err := l.Rule.Apply(0)
-			require.NoError(t, err)
-			assert.Equal(t, 2, l.Queries.Get(q), q.String())
-			assert.Len(t, l.Queries, 1)
-		case "bc1", "bc2":
-			q1, err := l.Rule.Apply(1)
-			require.NoError(t, err)
-			q2, err := l.Rule.Apply(2)
-			require.NoError(t, err)
-			assert.Len(t, l.Queries, 2)
-			assert.Equal(t, 1, l.Queries.Get(q1))
-			assert.Equal(t, 1, l.Queries.Get(q2))
-		case "cz":
-			q1, err := l.Rule.Apply(1)
-			require.NoError(t, err)
-			q2, err := l.Rule.Apply(2)
-			require.NoError(t, err)
-			q3, err := l.Rule.Apply(11)
-			require.NoError(t, err)
-			q4, err := l.Rule.Apply(12)
-			require.NoError(t, err)
-			assert.Len(t, l.Queries, 4)
-			assert.Equal(t, 1, l.Queries.Get(q1), q1.String())
-			assert.Equal(t, 1, l.Queries.Get(q2), q2.String())
-			assert.Equal(t, 1, l.Queries.Get(q3), q3.String())
-			assert.Equal(t, 1, l.Queries.Get(q4), q4.String())
-		default:
-			t.Fatalf("unexpected rule: %v", l.Rule)
-		}
-	})
+	for _, x := range []struct {
+		depth int
+		lines []string
+		nodes []string
+	}{
+		{
+			depth: 4,
+			lines: []string{
+				"\"ab\"(d:a->d:b)",
+				"\"ac\"(d:a->d:c)",
+				"\"bx\"(d:b->d:x)",
+				"\"cy\"(d:c->d:y)",
+				"\"yz\"(d:y->d:z)",
+				"\"zq\"(d:z->d:q)",
+			},
+			nodes: []string{
+				"d:a [0]",
+				"d:b [1]",
+				"d:c [2]",
+				"d:x [3]",
+				"d:y [4]",
+				"d:z [5]",
+				"d:q [6]",
+			},
+		},
+		{
+			depth: 3,
+			lines: []string{
+				"\"ab\"(d:a->d:b)",
+				"\"ac\"(d:a->d:c)",
+				"\"bx\"(d:b->d:x)",
+				"\"cy\"(d:c->d:y)",
+				"\"yz\"(d:y->d:z)",
+			},
+			nodes: []string{
+				"d:a [0]",
+				"d:b [1]",
+				"d:c [2]",
+				"d:x [3]",
+				"d:y [4]",
+				"d:z [5]",
+			},
+		},
+		{
+			depth: 2,
+			lines: []string{
+				"\"ab\"(d:a->d:b)",
+				"\"ac\"(d:a->d:c)",
+				"\"bx\"(d:b->d:x)",
+				"\"cy\"(d:c->d:y)",
+			},
+			nodes: []string{
+				"d:a [0]",
+				"d:b [1]",
+				"d:c [2]",
+				"d:x [3]",
+				"d:y [4]",
+			},
+		},
+		{
+			depth: 1, lines: []string{
+				"\"ab\"(d:a->d:b)",
+				"\"ac\"(d:a->d:c)",
+			},
+			nodes: []string{
+				"d:a [0]",
+				"d:b [1]",
+				"d:c [2]",
+			},
+		},
+		{
+			depth: 0,
+			lines: []string{},
+			nodes: []string{
+				"d:a [0]",
+			},
+		},
+	} {
+		t.Run(fmt.Sprintf("depth %v", x.depth), func(t *testing.T) {
+			start := Start{Class: b.Class("d:a"), Objects: []korrel8r.Object{0}}
+			g, err := NewAsync(e, e.Graph()).Neighbours(context.Background(), start, x.depth)
+			if assert.NoError(t, err) {
+				assert.ElementsMatch(t, x.lines, lineStrings(g), "%#v", lineStrings(g))
+				assert.ElementsMatch(t, x.nodes, nodeStrings(g), "%#v", nodeStrings(g))
+			}
+		})
+	}
 }
 
-func list[T any](x ...T) []T { return x }
+func list[T any](x ...T) []T {
+	return x
+}
+
+func lineStrings(g *graph.Graph) (lines []string) {
+	g.EachLine(func(l *graph.Line) { lines = append(lines, l.String()) })
+	return lines
+}
+
+func nodeStrings(g *graph.Graph) (nodes []string) {
+	g.EachNode(func(n *graph.Node) {
+		nodes = append(nodes, fmt.Sprintf("%v %v", n.Class.String(), resultString(n.Result.List())))
+	})
+	return nodes
+}
+
+func resultString(list []any) string {
+	slices.SortFunc(list, func(a, b any) int {
+		ja, jb := test.JSONString(a), test.JSONString(b)
+		return cmp.Compare(ja, jb)
+	})
+	return test.JSONString(list)
+}

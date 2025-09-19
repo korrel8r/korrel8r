@@ -119,6 +119,12 @@ func (g *Graph) EachLineTo(goal *Node, visit func(*Line)) {
 	}
 }
 
+func (g *Graph) AllLines() []*Line {
+	var lines []*Line
+	g.EachLine(func(l *Line) { lines = append(lines, l) })
+	return lines
+}
+
 // NodesSubgraph returns a new graph containing nodes and all lines between them.
 func (g *Graph) NodesSubgraph(nodes []graph.Node) *Graph {
 	sub := g.Data.EmptyGraph()

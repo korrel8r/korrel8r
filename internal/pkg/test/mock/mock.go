@@ -84,27 +84,22 @@ type Rule struct {
 	apply       ApplyFunc
 }
 
-// NewRule creates a rule: apply can be an [ApplyFunc] or a [korrel8r.Query].
+// NewRule creates a rule: apply can be an [ApplyFunc], [korrel8r.Query] or nil.
 func NewRule(name string, start, goal []korrel8r.Class, apply any) *Rule {
+	r := &Rule{name: name, start: start, goal: goal}
 	switch apply := apply.(type) {
 	case func(korrel8r.Object) (korrel8r.Query, error):
-		return NewRuleFunc(name, start, goal, apply)
+		r.apply = apply
 	case korrel8r.Query:
-		return NewRuleQuery(name, start, goal, apply)
+		r.apply = func(korrel8r.Object) (korrel8r.Query, error) { return apply, nil }
+	case nil:
+		r.apply = func(korrel8r.Object) (korrel8r.Query, error) {
+			return nil, fmt.Errorf("mock rule has no result: %v", r)
+		}
 	default:
 		panic(fmt.Errorf("expected korrel8r.Query or mock.ApplyFunc, got: (%T)%v", apply, apply))
 	}
-}
-
-// NewRuleQuery create rule, [Apply] calls apply.
-func NewRuleFunc(name string, start, goal []korrel8r.Class, apply ApplyFunc) *Rule {
-	return &Rule{name: name, start: start, goal: goal, apply: apply}
-}
-
-// NewRuleQuery create rule, [Apply] returns a fixed query.
-func NewRuleQuery(name string, start, goal []korrel8r.Class, q korrel8r.Query) *Rule {
-	apply := func(korrel8r.Object) (korrel8r.Query, error) { return q, nil }
-	return NewRuleFunc(name, start, goal, apply)
+	return r
 }
 
 func (r *Rule) Start() []korrel8r.Class { return r.start }
@@ -174,4 +169,92 @@ func querySplit(query string) (domain, class, data string) {
 		data = s[2]
 	}
 	return domain, class, data
+}
+
+// Builder provides convenience functions for creating mock queries and rules from string values.
+type Builder struct {
+	Domains []korrel8r.Domain
+}
+
+// NewBuilder -  domains can be a korrel8r.Domain or a string to create a mock domain.
+func NewBuilder(domains ...any) *Builder {
+	b := &Builder{}
+	for _, d := range domains {
+		switch d := d.(type) {
+		case korrel8r.Domain:
+			b.Domains = append(b.Domains, d)
+		case string:
+			b.Domains = append(b.Domains, NewDomain(d))
+		default:
+			panic(fmt.Errorf("expecting korrel8r.Domain or string, got: (%T)%v", d, d))
+		}
+	}
+	return b
+}
+
+func (b *Builder) Domain(name string) korrel8r.Domain {
+	i := slices.IndexFunc(b.Domains, func(d korrel8r.Domain) bool { return name == d.Name() })
+	if i < 0 {
+		panic(fmt.Errorf("mock builder: unknown domain: %v", name))
+	}
+	return b.Domains[i]
+}
+
+func (b *Builder) Class(v any) korrel8r.Class {
+	switch v := v.(type) {
+	case korrel8r.Class:
+		return v
+	case string:
+		d, c, _ := strings.Cut(v, korrel8r.NameSeparator)
+		return b.Domain(d).Class(c)
+	default:
+		panic(fmt.Errorf("mock builder: unknown class: (%T)%v", v, v))
+	}
+}
+
+func (b *Builder) Classes(vs ...any) (classes []korrel8r.Class) {
+	for _, v := range vs {
+		switch v := v.(type) {
+		case []korrel8r.Class:
+			classes = append(classes, v...)
+		default:
+			classes = append(classes, b.Class(v))
+		}
+	}
+	return classes
+}
+
+func (b *Builder) Rule(name string, start, goal, apply any) korrel8r.Rule {
+	return NewRule(name, b.Classes(start), b.Classes(goal), apply)
+}
+
+// Rules args are [[name?, start, goal, apply?]]
+func (b *Builder) Rules(args [][]any) []korrel8r.Rule {
+	var rules []korrel8r.Rule
+	for _, arg := range args {
+		var apply any
+		if len(arg) > 3 {
+			apply = arg[3]
+		}
+		rules = append(rules, b.Rule(arg[0].(string), arg[1], arg[2], apply))
+	}
+	return rules
+}
+
+// result can be [error] or [object...]
+func (b *Builder) Query(class any, selector string, result ...any) korrel8r.Query {
+	if len(result) == 1 { // Possible error
+		if err, ok := result[0].(error); ok {
+			return NewQueryError(b.Class(class), selector, err)
+		}
+	}
+	return NewQuery(b.Class(class), selector, result...)
+}
+
+func (b *Builder) Store(domain string, cfg any) korrel8r.Store {
+	s, err := b.Domain(domain).Store(cfg)
+	if err != nil {
+		panic(fmt.Errorf("mock builder: store error: %w", err))
+	}
+	return s
 }
