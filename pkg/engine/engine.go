@@ -144,16 +144,24 @@ func (e *Engine) Graph() *graph.Graph { return graph.NewData(e.Rules()...).FullG
 
 // Get results for query from all stores for the query domain.
 func (e *Engine) Get(ctx context.Context, query korrel8r.Query, constraint *korrel8r.Constraint, result korrel8r.Appender) (err error) {
-	log.V(5).Info("Get", "query", query.String(), "constraint", constraint.String())
+	count := 0
 	constraint = constraint.Default()
+
+	defer func() {
+		if err != nil {
+			log.V(2).Info("Get failed", "error", err, "query", query.String(), "constraint", constraint.String())
+		} else {
+			log.V(5).Info("Get", "query", query.String(), "constraint", constraint.String(), "count", count)
+		}
+	}()
+
 	ctx, cancel := korrel8r.WithConstraint(ctx, constraint)
 	defer cancel()
-
 	ss := e.storeHolders[query.Class().Domain()]
 	if len(ss.stores) == 0 {
 		return fmt.Errorf("no stores found for domain %v", query.Class().Domain().Name())
 	}
-	return ss.Get(ctx, query, constraint, result)
+	return ss.Get(ctx, query, constraint, korrel8r.AppenderFunc(func(o korrel8r.Object) { count++; result.Append(o) }))
 }
 
 // query implements the template function 'query'.

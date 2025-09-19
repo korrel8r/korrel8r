@@ -94,7 +94,6 @@ func (a *async) run(ctx context.Context, start Start, traverse func(v graph.Visi
 	}
 
 	// will return when all goroutines have called busy.Done.
-	log.V(2).Info("Result graph", "nodes", g.Nodes().Len(), "edges", g.Edges().Len())
 	return g, nil
 }
 
@@ -102,11 +101,10 @@ func (a *async) run(ctx context.Context, start Start, traverse func(v graph.Visi
 func (a *async) ensureNode(g *graph.Graph, n *graph.Node) *node {
 	if n.Value == nil {
 		n.Value = &node{
-			Node:       n,
-			engine:     a.engine,
-			g:          g,
-			queryChan:  make(chan lineQuery, 1),
-			queriesOut: unique.Set[string]{},
+			Node:      n,
+			engine:    a.engine,
+			g:         g,
+			queryChan: make(chan lineQuery, 1),
 		}
 		g.MergeNode(n)
 	}
@@ -117,11 +115,10 @@ func (a *async) ensureNode(g *graph.Graph, n *graph.Node) *node {
 type node struct {
 	*graph.Node
 
-	engine     *engine.Engine
-	g          *graph.Graph
-	queryChan  chan lineQuery     // Incoming queries.
-	senders    atomic.Int64       // Count of senders to queryChan.
-	queriesOut unique.Set[string] // Deduplicate outgoing queries.
+	engine    *engine.Engine
+	g         *graph.Graph
+	queryChan chan lineQuery // Incoming queries.
+	senders   atomic.Int64   // Count of senders to queryChan.
 }
 
 // lineQuery is a query and the line it arrived on.
@@ -172,27 +169,28 @@ func (n *node) Run(ctx context.Context) {
 			continue // Already processed this query.
 		}
 		before := len(n.Result.List())
-		err := n.engine.Get(ctx, q, korrel8r.ConstraintFrom(ctx), n.Result)
-		log.V(2).Error(err, "Get failed", "query", q)
+		// Error is logged by engine.Get
+		// Keep queries with errors or empty results to record that we tried, so we won't try again.
+		_ = n.engine.Get(ctx, q, korrel8r.ConstraintFrom(ctx), n.Result)
 		result := n.Result.List()[before:]
 		for _, o := range result {
 			n.applyRules(ctx, o)
 		}
-		// NOTE: keep queries with 0 results to record that we tried, so we won't try again.
 		n.Queries.Set(q, len(result))
 		if l != nil { // Initial queries don't have a line
 			l.Queries.Set(q, len(result))
 		}
 	}
+	if ctx.Err() != nil {
+		log.Error(ctx.Err(), "Cancelled")
+	}
 }
 
-// applyRules generates outgoing queries.
+// applyRules generates outgoing queries for an object.
 func (n *node) applyRules(ctx context.Context, o korrel8r.Object) {
 	// Rules with multiple goal classes can appear on multiple outbound lines.
-	// We don't know the actual goal class till the rule is first applied.
-	// The rule may be first applied on the wrong line for the actual goal class.
-	//
-	// SO: remember rules applied on the wrong line, send them on the correct line.
+	// We don't know the actual goal class till the rule is applied.
+	// Apply the rule the first time it is encountered, store results to send on the line for the query class.
 	applied := map[korrel8r.Rule]struct {
 		q   korrel8r.Query
 		err error
@@ -204,21 +202,15 @@ func (n *node) applyRules(ctx context.Context, o korrel8r.Object) {
 		qe, ok := applied[l.Rule] // Already applied?
 		if !ok {                  // No, apply now
 			qe.q, qe.err = l.Rule.Apply(o)
-			if qe.q == nil { // Rule failed or does not apply
-				log.V(2).Error(qe.err, "Rule did not apply", "rule", l.Rule.Name())
+			applied[l.Rule] = qe
+			if qe.q == nil {
+				log.V(4).Info("Rule did not apply", "rule", l.Rule.Name(), "class", n.Class, "object", korrel8r.GetID(n.Class, o), "error", qe.err)
 				return
 			}
-			log.V(4).Info("Create query", "rule", l.Rule.Name(), "queryGreat", qe.q)
+			log.V(4).Info("Applied rule", "rule", l, "query", qe.q)
 		}
-		if qe.q.Class() != l.Goal().Class { // Wrong line, save for later
-			applied[l.Rule] = qe
-			return
+		if qe.q != nil && qe.q.Class() == l.Goal().Class { // Send query
+			getNode(l.Goal()).queryChan <- lineQuery{Query: qe.q, Line: l}
 		}
-		qs := qe.q.String()
-		if n.queriesOut.Has(qs) { // De-duplicate query
-			return // This query has been sent before.
-		}
-		n.queriesOut.Add(qs)
-		getNode(l.Goal()).queryChan <- lineQuery{Query: qe.q, Line: l}
 	})
 }

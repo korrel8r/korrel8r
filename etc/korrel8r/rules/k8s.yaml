@@ -2,7 +2,6 @@ aliases:
   - name: selectors
     domain: k8s
     classes:
-      - PersistentVolumeClaim
       - ReplicationController
       - Service
       - DaemonSet.apps
