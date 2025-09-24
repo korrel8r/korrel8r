@@ -185,3 +185,52 @@ rules:
      result:
        query: |-
          k8s:Pod:{"namespace":"{{.metadata.namespace}}","labels":{"vm.kubevirt.io/name":"{{.metadata.name}}","kubevirt.io":"virt-launcher"}}
+
+   - name: CSVToCRD
+     start:
+       domain: k8s
+       classes: [ClusterServiceVersion.operators.coreos.com]
+     goal:
+       domain: k8s
+       classes: [CustomResourceDefinition.apiextensions.k8s.io]
+     result:
+       query: |-
+         {{- range .spec.customresourcedefinitions.owned }}
+         k8s:CustomResourceDefinition.apiextensions.k8s.io:{"name":"{{ .name }}"}
+         {{- end }}
+
+   - name: CRDToCR
+     start:
+       domain: k8s
+       classes: [CustomResourceDefinition.apiextensions.k8s.io]
+     goal:
+       domain: k8s
+     result:
+       query: |-
+         {{- $ver := (index .spec.versions 0).name -}}
+         {{- $gv := printf "%s/%s" .spec.group $ver -}}
+         {{k8sClass $gv .spec.names.kind}}:{}
+
+   - name: CRToPod
+     start:
+       domain: k8s
+     goal:
+       domain: k8s
+       classes: [Pod]
+     result:
+       query: |-
+         {{- with .metadata.labels }}
+         k8s:Pod:{"namespace":"{{$.metadata.namespace}}","labels": {{ mustToJson . }}}
+         {{- end }}
+
+   - name: CRToPVC
+     start:
+       domain: k8s
+     goal:
+       domain: k8s
+       classes: [PersistentVolumeClaim]
+     result:
+       query: |-
+         {{- with .metadata.labels }}
+         k8s:PersistentVolumeClaim:{"namespace":"{{$.metadata.namespace}}","labels": {{ mustToJson . }}}
+         {{- end }}
