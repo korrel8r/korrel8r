@@ -147,6 +147,44 @@ func TestK8sRules(t *testing.T) {
 			start: newK8s("VirtualMachineInstance.kubevirt.io", "vm-ns", "vm-name", nil),
 			query: `k8s:Pod.v1:{"namespace":"vm-ns","labels":{"kubevirt.io":"virt-launcher","vm.kubevirt.io/name":"vm-name"}}`,
 		},
+		{
+			rule: "CSVToCRD",
+			start: newK8s("ClusterServiceVersion.operators.coreos.com", "operators", "test-operator.v0.1.0", k8s.Object{
+				"spec": k8s.Object{
+					"customresourcedefinitions": k8s.Object{
+						"owned": []k8s.Object{{
+							"name": "widgets.example.com",
+						}},
+					},
+				},
+			}),
+			query: `k8s:CustomResourceDefinition.v1.apiextensions.k8s.io:{"name":"widgets.example.com"}`,
+		},
+		{
+			rule: "CRDToCR",
+			start: newK8s("CustomResourceDefinition.apiextensions.k8s.io", "", "widgets.example.com", k8s.Object{
+				"spec": k8s.Object{
+					"group":    "example.com",
+					"names":    k8s.Object{"kind": "Widget"},
+					"versions": []k8s.Object{{"name": "v1"}},
+				},
+			}),
+			query: `k8s:Widget.v1.example.com:{}`,
+		},
+		{
+			rule: "CRToPod",
+			start: newK8s("Widget.example.com", "test-ns", "test-cr", k8s.Object{
+				"metadata": k8s.Object{"labels": k8s.Object{"app": "test"}},
+			}),
+			query: `k8s:Pod.v1:{"namespace":"test-ns","labels":{"app":"test"}}`,
+		},
+		{
+			rule: "CRToPVC",
+			start: newK8s("Widget.example.com", "test-ns", "test-cr", k8s.Object{
+				"metadata": k8s.Object{"labels": k8s.Object{"app": "test"}},
+			}),
+			query: `k8s:PersistentVolumeClaim.v1:{"namespace":"test-ns","labels":{"app":"test"}}`,
+		},
 	} {
 		x.Run(t)
 	}
