@@ -22,7 +22,7 @@ func (d *domain) TemplateFuncs() map[string]any {
 		},
 		"k8sIsNamespaced": func(c korrel8r.Class) bool {
 			kc, ok := c.(Class)
-			return ok && kc.IsNamespaced()
+			return ok && kc.Namespaced()
 		},
 	}
 }

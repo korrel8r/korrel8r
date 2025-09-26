@@ -26,6 +26,9 @@ type Builder struct {
 	e       *Engine
 	err     error
 	finally []func()
+
+	// Skipped rules by missing class.
+	missingClasses map[string][]string
 }
 
 func Build() *Builder {
@@ -38,7 +41,7 @@ func Build() *Builder {
 	e.templateFuncs = template.FuncMap{"query": e.query}
 	maps.Copy(e.templateFuncs, sprig.TxtFuncMap())
 
-	return &Builder{e: e}
+	return &Builder{e: e, missingClasses: map[string][]string{}}
 }
 
 // Domains adds domains that will be recognized by the engine.
@@ -167,6 +170,9 @@ func (b *Builder) Engine() (*Engine, error) {
 			break
 		}
 	}
+	for class, rules := range b.missingClasses {
+		log.V(1).Info("skipped rules with missing class", "class", class, "rules", rules)
+	}
 	e, err := b.e, b.err
 	*b = *Build() // Reset the builder.
 	return e, err
@@ -208,7 +214,7 @@ func (b *Builder) configRule(r config.Rule) {
 	b.rules(rules.NewTemplateRule(start, goal, tmpl))
 }
 
-func (b *Builder) classes(_ config.Rule, spec *config.ClassSpec) []korrel8r.Class {
+func (b *Builder) classes(r config.Rule, spec *config.ClassSpec) []korrel8r.Class {
 	var d korrel8r.Domain
 	d, b.err = b.e.Domain(spec.Domain)
 	if b.err != nil {
@@ -219,10 +225,13 @@ func (b *Builder) classes(_ config.Rule, spec *config.ClassSpec) []korrel8r.Clas
 		for _, class := range spec.Classes {
 			c := d.Class(class)
 			if c == nil {
-				b.err = korrel8r.ClassNotFoundError(class)
-				return nil
+				// A missing class is not a fatal error, because some domains (k8s)
+				// may have different sets of classes (custom resources) for different clusters
+				// Collect and log a report at end of configuration.
+				b.missingClasses[class] = append(b.missingClasses[class], r.Name)
+			} else {
+				list.Append(c)
 			}
-			list.Append(c)
 		}
 		return list.List
 	} else { // Wildcard

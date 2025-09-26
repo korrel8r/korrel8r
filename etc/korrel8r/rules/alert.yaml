@@ -14,10 +14,10 @@ rules:
       domain: alert
     goal:
       domain: k8s
-      classes: [Pod.]
+      classes: [Pod.v1]
     result:
       query: |-
-        k8s:Pod.:{namespace: "{{.Labels.namespace}}", name: "{{.Labels.pod}}"}
+        k8s:Pod.v1:{namespace: "{{.Labels.namespace}}", name: "{{.Labels.pod}}"}
 
   - name: AlertToPodDisruptionBudget
     start:

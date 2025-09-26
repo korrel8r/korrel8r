@@ -11,14 +11,14 @@ import (
 func TestAlertTo(t *testing.T) {
 	for _, x := range []ruleTest{
 		{
-			rule:  "AlertToDeployment",
-			start: &alert.Object{Labels: map[string]string{"namespace": "foo", "deployment": "bar"}},
-			query: `k8s:Deployment.v1.apps:{"namespace":"foo","name":"bar"}`,
-		},
-		{
 			rule:  "AlertToPod",
 			start: &alert.Object{Labels: map[string]string{"namespace": "foo", "pod": "bar"}},
 			query: `k8s:Pod.v1:{"namespace":"foo","name":"bar"}`,
+		},
+		{
+			rule:  "AlertToDeployment",
+			start: &alert.Object{Labels: map[string]string{"namespace": "foo", "deployment": "bar"}},
+			query: `k8s:Deployment.v1.apps:{"namespace":"foo","name":"bar"}`,
 		},
 		{
 			rule:  "AlertToDaemonSet",

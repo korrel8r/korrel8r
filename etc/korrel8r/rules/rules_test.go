@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"maps"
 	"os"
+	"runtime"
 	"slices"
 	"strings"
 	"testing"
@@ -30,6 +31,35 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
+// Add custom resources used by tests to this list, otherwise tests will fail wit "class not found"
+var customResourcesForTests = []*metav1.APIResourceList{
+	{
+		GroupVersion: "operators.coreos.com/v1alpha1",
+		APIResources: []metav1.APIResource{
+			{Kind: "ClusterServiceVersion", Namespaced: false},
+		},
+	},
+	{
+		GroupVersion: "apiextensions.k8s.io/v1",
+		APIResources: []metav1.APIResource{
+			{Kind: "CustomResourceDefinition", Namespaced: false},
+		},
+	},
+	{
+		GroupVersion: "kubevirt.io/v1",
+		APIResources: []metav1.APIResource{
+			{Kind: "VirtualMachineInstance", Namespaced: true},
+		},
+	},
+	{
+		GroupVersion: "config.openshift.io/v1",
+		APIResources: []metav1.APIResource{
+			{Kind: "Node", Namespaced: false},
+		},
+	},
+}
+
+// setup an engine, add customResources to the k8s domain.
 func setup() *engine.Engine {
 	configs, err := config.Load("all.yaml")
 	if err != nil {
@@ -41,17 +71,13 @@ func setup() *engine.Engine {
 	c := fake.NewClientBuilder().
 		WithRESTMapper(testrestmapper.TestOnlyStaticRESTMapper(scheme.Scheme)).
 		Build()
-	// Create a fake discovery with custom resources needed by the test.
-	fd := &fakediscovery.FakeDiscovery{
-		Fake: &clienttesting.Fake{
-			Resources: []*metav1.APIResourceList{
-				{GroupVersion: "kubevirt.io", APIResources: []metav1.APIResource{
-					{Kind: "VirtualMachineInstance", Namespaced: true},
-				}},
-			},
-		},
-	}
-	s, err := k8s.Domain.NewStoreWithDiscovery(c, &rest.Config{}, fd)
+	// Create a store to add custom resources needed by the test. See customResourcesForTests above.
+	s, err := k8s.Domain.NewStoreWithDiscovery(
+		c,
+		&rest.Config{},
+		&fakediscovery.FakeDiscovery{
+			Fake: &clienttesting.Fake{Resources: customResourcesForTests},
+		})
 	if err != nil {
 		panic(err)
 	}
@@ -110,7 +136,12 @@ func newK8s(class, namespace, name string, object k8s.Object) k8s.Object {
 		object = k8s.Object{}
 	}
 	u := k8s.ToUnstructured(object)
-	c := k8s.Domain.Class(class).(k8s.Class)
+	kc := k8s.Domain.Class(class)
+	if kc == nil {
+		_, file, line, _ := runtime.Caller(0)
+		panic(fmt.Errorf("class not found: k8s:%v. To add it, update customResourcesForTests at %v:%v", class, file, line))
+	}
+	c := kc.(k8s.Class)
 	u.GetObjectKind().SetGroupVersionKind(c.GVK())
 	u.SetNamespace(namespace)
 	u.SetName(name)

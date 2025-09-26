@@ -13,7 +13,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/korrel8r/korrel8r/internal/pkg/must"
 	"github.com/korrel8r/korrel8r/pkg/domains/k8s"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r/impl"
@@ -23,8 +22,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 )
-
-var podClass = must.Must1(k8s.ParseClass("Pod.v1"))
 
 type directStore struct {
 	*impl.Store
@@ -59,6 +56,7 @@ func (s *directStore) Get(ctx context.Context, query korrel8r.Query, constraint 
 	group, ctx := errgroup.WithContext(ctx)
 
 	// Get pods for the query
+	var podClass = k8s.Domain.Class("Pod").(k8s.Class)
 	podQuery := k8s.NewQuery(podClass, q.direct.Selector)
 	pods := result.NewList()
 	if err := s.K8sStore.Get(ctx, podQuery, constraint, pods); err != nil {

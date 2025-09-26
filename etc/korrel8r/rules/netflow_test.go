@@ -44,7 +44,7 @@ func Test_NetflowFromK8S(t *testing.T) {
 		},
 		{
 			rule:  "K8sSrcOwnerToNetflow",
-			start: newK8s("Deployment.app", "bar", "foo", nil),
+			start: newK8s("Deployment.apps", "bar", "foo", nil),
 			query: `netflow:network:{SrcK8S_Namespace="bar", SrcK8S_OwnerName="foo"}`,
 		},
 		{
@@ -54,7 +54,7 @@ func Test_NetflowFromK8S(t *testing.T) {
 		},
 		{
 			rule:  "K8sDstOwnerToNetflow",
-			start: newK8s("Deployment.app", "bar", "foo", nil),
+			start: newK8s("Deployment.apps", "bar", "foo", nil),
 			query: `netflow:network:{DstK8S_Namespace="bar", DstK8S_OwnerName="foo"}`,
 		},
 	} {

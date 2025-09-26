@@ -64,12 +64,8 @@ import (
 
 var (
 	log    = logging.Log()
-	Domain = &domain{classScopes: map[korrel8r.Class]bool{}}
+	Domain = newDomain()
 )
-
-func init() {
-	Domain.addClasses(defaultResources)
-}
 
 type Class schema.GroupVersionKind
 
@@ -116,9 +112,19 @@ var (
 
 // domain implementation
 type domain struct {
-	m           sync.Mutex
-	classScopes map[korrel8r.Class]bool
-	classes     []korrel8r.Class
+	m         sync.Mutex
+	resources map[korrel8r.Class]metav1.APIResource
+	groups    map[string]*metav1.APIGroup
+	classes   []korrel8r.Class // Sorted class list
+}
+
+func newDomain() *domain {
+	d := &domain{
+		resources: map[korrel8r.Class]metav1.APIResource{},
+		groups:    map[string]*metav1.APIGroup{},
+	}
+	d.addClasses(nil, defaultResources)
+	return d
 }
 
 func (d *domain) Name() string              { return "k8s" }
@@ -126,57 +132,75 @@ func (d *domain) String() string            { return d.Name() }
 func (d *domain) Description() string       { return "Resource objects in a Kubernetes API server" }
 func (d *domain) Classes() []korrel8r.Class { d.m.Lock(); defer d.m.Unlock(); return d.classes }
 
-func (d *domain) addClasses(list []*metav1.APIResourceList) {
-	for _, l := range list {
+func nonBlank(v1, v2 string) string {
+	if v1 == "" {
+		return v2
+	}
+	return v1
+}
+
+func (d *domain) addClasses(groups []*metav1.APIGroup, resourceLists []*metav1.APIResourceList) {
+	d.m.Lock()
+	defer d.m.Unlock()
+	for _, g := range groups {
+		d.groups[g.Name] = g
+	}
+	for _, l := range resourceLists {
 		gv, err := schema.ParseGroupVersion(l.GroupVersion)
-		if err != nil {
+		if err != nil || gv.Version == "" || gv.Version[0] != 'v' {
 			continue
 		}
 		for _, r := range l.APIResources {
-			g := r.Group
-			if g == "" {
-				g = gv.Group
+			gvk := schema.GroupVersionKind{
+				Group:   nonBlank(r.Group, gv.Group),
+				Version: nonBlank(r.Version, gv.Version),
+				Kind:    r.Kind,
 			}
-			v := r.Version
-			if v == "" {
-				v = gv.Version
+			c := Class(gvk)
+			d.resources[c] = r
+			// Make sure every known resource has a group with a preferred version.
+			if _, ok := d.groups[gvk.Group]; !ok {
+				gvd := metav1.GroupVersionForDiscovery{
+					Version:      gvk.Version,
+					GroupVersion: gvk.GroupVersion().String(),
+				}
+				d.groups[gvk.Group] = &metav1.APIGroup{
+					Name:             gvk.Group,
+					Versions:         []metav1.GroupVersionForDiscovery{gvd},
+					PreferredVersion: gvd,
+				}
 			}
-			c := Class(schema.GroupVersionKind{Group: g, Version: v, Kind: r.Kind})
-			d.classScopes[c] = r.Namespaced
 		}
 	}
 	// Update the sorted class list.
-	d.classes = slices.Collect(maps.Keys(d.classScopes))
+	d.classes = slices.Collect(maps.Keys(d.resources))
 	slices.SortFunc(d.classes, func(a, b korrel8r.Class) int { return cmp.Compare(a.String(), b.String()) })
 }
 
 // Store connects to the kube config default cluster. The config parameter is ignored.
-func (d *domain) Store(config any) (s korrel8r.Store, err error) {
-	return d.NewStore(nil, nil)
-}
+func (d *domain) Store(any) (korrel8r.Store, error) { return d.NewStore(nil, nil) }
 
 // classRE regexp matching for KIND[.VERSION][.GROUP]
 var classRE = regexp.MustCompile(`^([^./]+)(?:\.(v[0-9]+(?:(?:alpha|beta)[0-9]*)?))?(?:\.([^/]*))?$`)
 
-// Class returns a named class.
-// Non-nil return does not mean the resource is available on the current cluster.
-// See Class.IsKnown().
+// Class returns a named class. Returns nil if the class cannot be found on the cluster.
+// If version is missing from name, attempt to use the cluster preferred version.
 func (d *domain) Class(name string) korrel8r.Class {
-	if c, err := ParseClass(name); err == nil {
-		return c
+	m := classRE.FindStringSubmatch(name)
+	if m == nil {
+		return nil
 	}
-	return nil
-}
-
-func ParseClass(name string) (Class, error) {
-	if m := classRE.FindStringSubmatch(name); m != nil {
-		gvk := schema.GroupVersionKind{Kind: m[1], Version: m[2], Group: m[3]}
-		if gvk.Version == "" {
-			gvk.Version = "v1"
+	gvk := schema.GroupVersionKind{Kind: m[1], Version: m[2], Group: m[3]}
+	d.m.Lock()
+	defer d.m.Unlock()
+	if gvk.Version == "" {
+		g := d.groups[gvk.Group]
+		if g == nil {
+			return nil
 		}
-		return Class(gvk), nil
+		gvk.Version = g.PreferredVersion.Version
 	}
-	return Class{}, korrel8r.ClassNotFoundError(impl.NameJoin(Domain.Name(), name))
+	return Class(gvk)
 }
 
 func (d *domain) Query(s string) (korrel8r.Query, error) {
@@ -186,6 +210,48 @@ func (d *domain) Query(s string) (korrel8r.Query, error) {
 	}
 	query.class = class.(Class)
 	return &query, nil
+}
+
+// NewStore creates a new k8s store.
+// Called with nil, nil uses default kube config values.
+func (d *domain) NewStore(c client.WithWatch, cfg *rest.Config) (*Store, error) {
+	var err error
+	if cfg == nil {
+		cfg, err = GetConfig()
+		if err != nil {
+			return nil, err
+		}
+	}
+	if c == nil {
+		c, err = NewClient(cfg)
+		if err != nil {
+			return nil, err
+		}
+	}
+	dc, err := discovery.NewDiscoveryClientForConfig(cfg)
+	if err != nil {
+		return nil, err
+	}
+	return d.NewStoreWithDiscovery(c, cfg, dc)
+}
+
+// NewStoreWithDiscovery creates a store with the specified discovery interface.
+// Intended for tests with a fake client and discovery.
+func (d *domain) NewStoreWithDiscovery(c client.WithWatch, cfg *rest.Config, di discovery.DiscoveryInterface) (*Store, error) {
+	host := cfg.Host
+	if host == "" {
+		host = "localhost"
+	}
+	base, _, err := rest.DefaultServerURL(host, cfg.APIPath, schema.GroupVersion{}, true)
+	if err != nil {
+		return nil, err
+	}
+	groups, resources, err := di.ServerGroupsAndResources()
+	if err != nil {
+		log.Info("k8s discovery error, continuing", "error", err) // Log but continue.
+	}
+	d.addClasses(groups, resources)
+	return &Store{cfg: cfg, c: c, base: base, discover: di}, nil
 }
 
 func (c Class) ID(o korrel8r.Object) any {
@@ -229,20 +295,12 @@ func (c Class) New() Object {
 	return FromUnstructured(u)
 }
 
-// IsNamespaced returns true if the k8s resource represented by this class is namespaced
-func (c Class) IsNamespaced() bool {
+// Namespaced returns true if the k8s resource represented by this class is namespaced
+func (c Class) Namespaced() bool {
 	Domain.m.Lock()
 	defer Domain.m.Unlock()
-	ns, ok := Domain.classScopes[c]
-	return ns || !ok
-}
-
-// IsKnown returns true if the k8s resource represented by this class is known to the API server.
-func (c Class) IsKnown() bool {
-	Domain.m.Lock()
-	defer Domain.m.Unlock()
-	_, ok := Domain.classScopes[c]
-	return ok
+	ns := Domain.resources[c]
+	return ns.Namespaced
 }
 
 func NewQuery(c Class, s Selector) *Query { return &Query{class: c, Selector: s} }
@@ -250,48 +308,6 @@ func NewQuery(c Class, s Selector) *Query { return &Query{class: c, Selector: s}
 func (q Query) Class() korrel8r.Class { return q.class }
 func (q Query) Data() string          { b, _ := json.Marshal(q); return string(b) }
 func (q Query) String() string        { return impl.QueryString(q) }
-
-// NewStore creates a new k8s store.
-// Called with nil, nil uses default kube config values.
-func (d *domain) NewStore(c client.WithWatch, cfg *rest.Config) (*Store, error) {
-	var err error
-	if cfg == nil {
-		cfg, err = GetConfig()
-		if err != nil {
-			return nil, err
-		}
-	}
-	if c == nil {
-		c, err = NewClient(cfg)
-		if err != nil {
-			return nil, err
-		}
-	}
-	dc, err := discovery.NewDiscoveryClientForConfig(cfg)
-	if err != nil {
-		return nil, err
-	}
-	return d.NewStoreWithDiscovery(c, cfg, dc)
-}
-
-// NewStoreWithDiscovery creates a store with the specified discovery interface.
-// Intended for tests with a fake client and discovery.
-func (d *domain) NewStoreWithDiscovery(c client.WithWatch, cfg *rest.Config, di discovery.DiscoveryInterface) (*Store, error) {
-	host := cfg.Host
-	if host == "" {
-		host = "localhost"
-	}
-	base, _, err := rest.DefaultServerURL(host, cfg.APIPath, schema.GroupVersion{}, true)
-	if err != nil {
-		return nil, err
-	}
-	_, resources, err := di.ServerGroupsAndResources()
-	if err != nil {
-		log.Info("k8s discovery error, continuing", "error", err) // Log but continue.
-	}
-	d.addClasses(resources)
-	return &Store{cfg: cfg, c: c, base: base, discover: di}, nil
-}
 
 func (s *Store) Domain() korrel8r.Domain  { return Domain }
 func (s *Store) Client() client.WithWatch { return s.c }
@@ -426,7 +442,7 @@ var defaultResources = []*metav1.APIResourceList{
 	{GroupVersion: "policy/v1", APIResources: []metav1.APIResource{
 		{Namespaced: true, Kind: "PodDisruptionBudget"},
 	}},
-	{GroupVersion: "storage.k8s.io", APIResources: []metav1.APIResource{
+	{GroupVersion: "storage.k8s.io/v1", APIResources: []metav1.APIResource{
 		{Namespaced: false, Kind: "VolumeSnapshotClass"},
 		{Namespaced: false, Kind: "VolumeSnapshotContent"},
 		{Namespaced: true, Kind: "VolumeSnapshot"},
