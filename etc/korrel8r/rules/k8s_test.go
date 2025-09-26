@@ -152,38 +152,37 @@ func TestK8sRules(t *testing.T) {
 			start: newK8s("ClusterServiceVersion.operators.coreos.com", "operators", "test-operator.v0.1.0", k8s.Object{
 				"spec": k8s.Object{
 					"customresourcedefinitions": k8s.Object{
-						"owned": []k8s.Object{{
-							"name": "widgets.example.com",
-						}},
+						"owned": []k8s.Object{{"name": "nodes.config.openshift.io"}},
 					},
 				},
 			}),
-			query: `k8s:CustomResourceDefinition.v1.apiextensions.k8s.io:{"name":"widgets.example.com"}`,
+			query: `k8s:CustomResourceDefinition.v1.apiextensions.k8s.io:{"name":"nodes.config.openshift.io"}`,
 		},
 		{
-			rule: "CRDToCR",
-			start: newK8s("CustomResourceDefinition.apiextensions.k8s.io", "", "widgets.example.com", k8s.Object{
+			rule: "CRDToInstances",
+			start: newK8s("CustomResourceDefinition.apiextensions.k8s.io", "", "nodes.config.openshift.io", k8s.Object{
 				"spec": k8s.Object{
-					"group":    "example.com",
-					"names":    k8s.Object{"kind": "Widget"},
+					"group":    "config.openshift.io",
+					"names":    k8s.Object{"kind": "Node"},
 					"versions": []k8s.Object{{"name": "v1"}},
 				},
 			}),
-			query: `k8s:Widget.v1.example.com:{}`,
+			query: `k8s:Node.v1.config.openshift.io:{}`,
 		},
 		{
-			rule: "CRToPod",
-			start: newK8s("Widget.example.com", "test-ns", "test-cr", k8s.Object{
-				"metadata": k8s.Object{"labels": k8s.Object{"app": "test"}},
+			rule: "SubscriptionToCSV",
+			start: newK8s("Subscription.v1alpha1.operators.coreos.com", "foo", "bar", k8s.Object{
+				"spec": k8s.Object{
+					"channel":         "stable-6.3",
+					"name":            "cluster-logging",
+					"source":          "redhat-operators",
+					"sourceNamespace": "openshift-marketplace",
+				},
+				"status": k8s.Object{
+					"currentCSV": "blah",
+				},
 			}),
-			query: `k8s:Pod.v1:{"namespace":"test-ns","labels":{"app":"test"}}`,
-		},
-		{
-			rule: "CRToPVC",
-			start: newK8s("Widget.example.com", "test-ns", "test-cr", k8s.Object{
-				"metadata": k8s.Object{"labels": k8s.Object{"app": "test"}},
-			}),
-			query: `k8s:PersistentVolumeClaim.v1:{"namespace":"test-ns","labels":{"app":"test"}}`,
+			query: `k8s:ClusterServiceVersion.v1alpha1.operators.coreos.com:{"name":"blah"}`,
 		},
 	} {
 		x.Run(t)

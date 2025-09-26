@@ -186,20 +186,31 @@ rules:
        query: |-
          k8s:Pod:{"namespace":"{{.metadata.namespace}}","labels":{"vm.kubevirt.io/name":"{{.metadata.name}}","kubevirt.io":"virt-launcher"}}
 
+   - name: SubscriptionToCSV
+     start:
+       domain: k8s
+       classes: [Subscription.v1alpha1.operators.coreos.com]
+     goal:
+       domain: k8s
+       classes: [ClusterServiceVersion.v1alpha1.operators.coreos.com]
+     result:
+       query: |-
+         k8s:ClusterServiceVersion.v1alpha1.operators.coreos.com:{"name":"{{index .status "currentCSV"}}"}
+
    - name: CSVToCRD
      start:
        domain: k8s
-       classes: [ClusterServiceVersion.operators.coreos.com]
+       classes: [ClusterServiceVersion.v1alpha1.operators.coreos.com]
      goal:
        domain: k8s
-       classes: [CustomResourceDefinition.apiextensions.k8s.io]
+       classes: [CustomResourceDefinition.v1.apiextensions.k8s.io]
      result:
        query: |-
          {{- range .spec.customresourcedefinitions.owned }}
          k8s:CustomResourceDefinition.apiextensions.k8s.io:{"name":"{{ .name }}"}
          {{- end }}
 
-   - name: CRDToCR
+   - name: CRDToInstances
      start:
        domain: k8s
        classes: [CustomResourceDefinition.apiextensions.k8s.io]
@@ -207,30 +218,4 @@ rules:
        domain: k8s
      result:
        query: |-
-         {{- $ver := (index .spec.versions 0).name -}}
-         {{- $gv := printf "%s/%s" .spec.group $ver -}}
-         {{k8sClass $gv .spec.names.kind}}:{}
-
-   - name: CRToPod
-     start:
-       domain: k8s
-     goal:
-       domain: k8s
-       classes: [Pod]
-     result:
-       query: |-
-         {{- with .metadata.labels }}
-         k8s:Pod:{"namespace":"{{$.metadata.namespace}}","labels": {{ mustToJson . }}}
-         {{- end }}
-
-   - name: CRToPVC
-     start:
-       domain: k8s
-     goal:
-       domain: k8s
-       classes: [PersistentVolumeClaim]
-     result:
-       query: |-
-         {{- with .metadata.labels }}
-         k8s:PersistentVolumeClaim:{"namespace":"{{$.metadata.namespace}}","labels": {{ mustToJson . }}}
-         {{- end }}
+         k8s:{{.spec.names.kind}}.{{(index .spec.versions 0).name}}.{{.spec.group}}:{}

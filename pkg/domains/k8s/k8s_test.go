@@ -8,7 +8,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/korrel8r/korrel8r/internal/pkg/must"
 	"github.com/korrel8r/korrel8r/internal/pkg/test/mock"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"github.com/stretchr/testify/assert"
@@ -16,23 +15,47 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta/testrestmapper"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
-	fakediscovery "k8s.io/client-go/discovery/fake"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
-	clienttesting "k8s.io/client-go/testing"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 var (
-	namespace  = must.Must1(ParseClass("Namespace"))
-	pod        = must.Must1(ParseClass("Pod"))
-	deployment = must.Must1(ParseClass("Deployment.apps"))
+	namespace  = Domain.Class("Namespace").(Class)
+	pod        = Domain.Class("Pod").(Class)
+	deployment = Domain.Class("Deployment.apps").(Class)
 )
 
 func newQuery(c Class, namespace, name string, labels, fields map[string]string) *Query {
 	return NewQuery(c, Selector{Namespace: namespace, Name: name, Labels: labels, Fields: fields})
+}
+
+func TestDomain_Class(t *testing.T) {
+	for _, x := range []struct {
+		name    string
+		group   string
+		version string
+		kind    string
+	}{
+		{"Pod", "", "v1", "Pod"},
+		{"Pod.", "", "v1", "Pod"},
+		{"Pod.v1", "", "v1", "Pod"},
+		{"Deployment.apps", "apps", "v1", "Deployment"},
+		{"Deployment.v1.apps", "apps", "v1", "Deployment"},
+		{"StorageClass.storage.k8s.io", "storage.k8s.io", "v1", "StorageClass"},
+		{"StorageClass.v1.storage.k8s.io", "storage.k8s.io", "v1", "StorageClass"},
+	} {
+		t.Run(x.name, func(t *testing.T) {
+			kc := Domain.Class(x.name)
+			assert.IsType(t, Class{}, kc, "%v", x.name)
+			c := kc.(Class)
+			assert.NotNil(t, c, x.name)
+			assert.Equal(t, schema.GroupVersionKind{Group: x.group, Version: x.version, Kind: x.kind}, c.GVK())
+		})
+	}
 }
 
 func TestDomain_Query(t *testing.T) {
@@ -155,37 +178,13 @@ func TestStore_Get_Constraint(t *testing.T) {
 	// Need to validate labels and all get variations on fake client or env test...
 }
 
-func fakeStore(t *testing.T) *Store {
-	fc := fake.NewClientBuilder().
-		WithRESTMapper(testrestmapper.TestOnlyStaticRESTMapper(scheme.Scheme)).
-		Build()
-	fd := &fakediscovery.FakeDiscovery{
-		Fake: &clienttesting.Fake{
-			Resources: []*metav1.APIResourceList{
-				{GroupVersion: "v1", APIResources: []metav1.APIResource{
-					{Kind: "Namespace", Namespaced: false},
-					{Kind: "Pod", Namespaced: true},
-				}},
-				{GroupVersion: "apps/v1", APIResources: []metav1.APIResource{
-					{Kind: "Deployment", Namespaced: true},
-				}},
-			},
-		},
-	}
-	store, err := Domain.NewStoreWithDiscovery(fc, &rest.Config{}, fd)
-	require.NoError(t, err)
-	return store
-}
-
-func TestDomain_Classes(t *testing.T) {
-	fakeStore(t) // Called for side effect of creating classes in domain
+func TestDomain_DefaultClasses(t *testing.T) {
 	want := []korrel8r.Class{deployment, namespace, pod}
 	assert.Subset(t, Domain.Classes(), want)
 }
 
-func TestClass_IsNamespaceed(t *testing.T) {
-	fakeStore(t) // Called for side effect of creating classes in domain
-	assert.False(t, namespace.IsNamespaced())
-	assert.True(t, deployment.IsNamespaced())
-	assert.True(t, pod.IsNamespaced())
+func TestClass_DefaultNamespaceed(t *testing.T) {
+	assert.False(t, namespace.Namespaced())
+	assert.True(t, deployment.Namespaced())
+	assert.True(t, pod.Namespaced())
 }
