@@ -24,15 +24,15 @@ func TestTraverserGoals(t *testing.T) {
 		// Return 2 results, must follow both
 		{"ab", "d:a", "d:b", b.Query("d:b", "1", 1, 2)},
 		// 2 rules, must follow both. Incorporate data from start object.
-		{"bc1", "d:b", "d:c", func(start korrel8r.Object) (korrel8r.Query, error) {
-			return b.Query("d:c", test.JSONString(start), start), nil
+		{"bc1", "d:b", "d:c", func(start korrel8r.Object) ([]korrel8r.Query, error) {
+			return []korrel8r.Query{b.Query("d:c", test.JSONString(start), start)}, nil
 		}},
-		{"bc2", "d:b", "d:c", func(start korrel8r.Object) (korrel8r.Query, error) {
+		{"bc2", "d:b", "d:c", func(start korrel8r.Object) ([]korrel8r.Query, error) {
 			result := start.(int) + 10
-			return b.Query("d:c", test.JSONString(result), result), nil
+			return []korrel8r.Query{b.Query("d:c", test.JSONString(result), result)}, nil
 		}},
-		{"dz", "d:c", "d:z", func(start korrel8r.Object) (korrel8r.Query, error) {
-			return b.Query("d:z", test.JSONString(start), start), nil
+		{"dz", "d:c", "d:z", func(start korrel8r.Object) ([]korrel8r.Query, error) {
+			return []korrel8r.Query{b.Query("d:z", test.JSONString(start), start)}, nil
 		}},
 	})...).Stores(b.Store("d", nil)).Engine()
 	require.NoError(t, err)

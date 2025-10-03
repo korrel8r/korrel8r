@@ -64,12 +64,13 @@ rules:
        domain: k8s
        classes: [Event.]
      result:
-       query: |-
+       query: >
          k8s:Event:{"fields":{
-                      "involvedObject.namespace":"{{.metadata.namespace}}",
-                      "involvedObject.name": "{{.metadata.name}}",
-                      "involvedObject.kind": "{{.kind}}",
-                      "involvedObject.apiVersion": "{{.apiVersion}}"} }
+         "involvedObject.namespace":"{{.metadata.namespace}}",
+         "involvedObject.name": "{{.metadata.name}}",
+         "involvedObject.kind": "{{.kind}}",
+         "involvedObject.apiVersion": "{{.apiVersion}}"
+         } }
 
    - name: AllToMetric
      start:

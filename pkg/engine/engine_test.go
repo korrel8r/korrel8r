@@ -70,13 +70,14 @@ func TestEngine_PropagateConstraints(t *testing.T) {
 	// Rules to test constraints.
 	e, err := engine.Build().Rules(
 		// Generate objects with timepoints.
-		mock.NewRule("ab", []korrel8r.Class{a}, []korrel8r.Class{b}, func(korrel8r.Object) (korrel8r.Query, error) {
-			return s.NewQuery(b, obj{"x", early}, obj{"y", ontime}, obj{"z", late}), nil
+		mock.NewRule("ab", []korrel8r.Class{a}, []korrel8r.Class{b}, func(korrel8r.Object) ([]korrel8r.Query, error) {
+			return []korrel8r.Query{s.NewQuery(b, obj{"x", early}, obj{"y", ontime}, obj{"z", late})}, nil
 		}),
 		// Generate objects with timeponts and record name of previous object.
-		mock.NewRule("bc", []korrel8r.Class{b}, []korrel8r.Class{c}, func(o korrel8r.Object) (korrel8r.Query, error) {
+		mock.NewRule("bc", []korrel8r.Class{b}, []korrel8r.Class{c}, func(o korrel8r.Object) ([]korrel8r.Query, error) {
 			name := o.(obj).Name
-			return s.NewQuery(c, obj{"u" + name, early}, obj{"v" + name, ontime}, obj{"w" + name, late}), nil
+			return []korrel8r.Query{s.NewQuery(c, obj{"u" + name, early}, obj{"v" + name, ontime}, obj{"w" + name, late})}, nil
+
 		})).Stores(s).Engine()
 	require.NoError(t, err)
 

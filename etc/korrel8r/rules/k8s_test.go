@@ -14,12 +14,12 @@ func TestK8sRules(t *testing.T) {
 		{
 			rule:  "LogToPod",
 			start: log.Object{"kubernetes_namespace_name": "foo", "kubernetes_pod_name": "bar", "message": "hello"},
-			query: `k8s:Pod.v1:{"namespace":"foo","name":"bar"}`,
+			want:  []string{`k8s:Pod.v1:{"namespace":"foo","name":"bar"}`},
 		},
 		{
 			rule:  "LogToPod",
 			start: log.Object{"kubernetes_namespace_name": "default", "kubernetes_pod_name": "baz", "message": "bye"},
-			query: `k8s:Pod.v1:{"namespace":"default","name":"baz"}`,
+			want:  []string{`k8s:Pod.v1:{"namespace":"default","name":"baz"}`},
 		},
 		{
 			rule: "SelectorToPods",
@@ -30,32 +30,32 @@ func TestK8sRules(t *testing.T) {
 					"selector": k8s.Object{"matchLabels": k8s.Object{"test": "testme"}},
 					"template": k8s.Object{"metadata": k8s.Object{"name": "x", "namespace": "ns"}}},
 			},
-			query: `k8s:Pod.v1:{"namespace":"ns","labels":{"test":"testme"}}`,
+			want: []string{`k8s:Pod.v1:{"namespace":"ns","labels":{"test":"testme"}}`},
 		},
 		{
 			rule:  "EventToAll",
 			start: k8sEvent(newK8s("Pod", "aNamespace", "foo", nil), "a"),
-			query: `k8s:Pod.v1:{"namespace":"aNamespace","name":"foo"}`,
+			want:  []string{`k8s:Pod.v1:{"namespace":"aNamespace","name":"foo"}`},
 		},
 		{
 			rule:  "Event2ToAll",
 			start: k8sEvent2(newK8s("Pod", "aNamespace", "foo", nil), "a"),
-			query: `k8s:Pod.v1:{"namespace":"aNamespace","name":"foo"}`,
+			want:  []string{`k8s:Pod.v1:{"namespace":"aNamespace","name":"foo"}`},
 		},
 		{
 			rule:  "AllToEvent",
 			start: newK8s("Pod", "aNamespace", "foo", nil),
-			query: `k8s:Event.v1:{"fields":{"involvedObject.apiVersion":"v1","involvedObject.kind":"Pod","involvedObject.name":"foo","involvedObject.namespace":"aNamespace"}}`,
+			want:  []string{`k8s:Event.v1:{"fields":{"involvedObject.apiVersion":"v1","involvedObject.kind":"Pod","involvedObject.name":"foo","involvedObject.namespace":"aNamespace"}}`},
 		},
 		{
 			rule:  "AllToMetric",
 			start: newK8s("Pod", "aNamespace", "foo", nil),
-			query: `metric:metric:{namespace="aNamespace",pod="foo"}`,
+			want:  []string{`metric:metric:{namespace="aNamespace",pod="foo"}`},
 		},
 		{
 			rule:  "PodToAlert",
 			start: newK8s("Pod", "aNamespace", "foo", nil),
-			query: `alert:alert:{"namespace":"aNamespace","pod":"foo"}`,
+			want:  []string{`alert:alert:{"namespace":"aNamespace","pod":"foo"}`},
 		},
 		{
 			rule: "PodToNode",
@@ -64,7 +64,7 @@ func TestK8sRules(t *testing.T) {
 					"nodeName": "worker-1",
 				},
 			}),
-			query: `k8s:Node.v1:{"name":"worker-1"}`,
+			want: []string{`k8s:Node.v1:{"name":"worker-1"}`},
 		},
 		{
 			rule: "DependentToOwner",
@@ -76,7 +76,7 @@ func TestK8sRules(t *testing.T) {
 						"apiVersion": "apps/v1",
 					}}},
 			}),
-			query: `k8s:Deployment.v1.apps:{"namespace":"aNamespace","name":"owner"}`,
+			want: []string{`k8s:Deployment.v1.apps:{"namespace":"aNamespace","name":"owner"}`},
 		},
 		{
 			rule: "DependentToOwner",
@@ -88,7 +88,7 @@ func TestK8sRules(t *testing.T) {
 						"apiVersion": "v1",
 					}}},
 			}),
-			query: `k8s:PersistentVolume.v1:{"name":"owner"}`,
+			want: []string{`k8s:PersistentVolume.v1:{"name":"owner"}`},
 		},
 		{
 			rule: "VmiToNode",
@@ -97,7 +97,7 @@ func TestK8sRules(t *testing.T) {
 					"nodeName": "worker-1",
 				},
 			}),
-			query: `k8s:Node.v1:{"name":"worker-1"}`,
+			want: []string{`k8s:Node.v1:{"name":"worker-1"}`},
 		},
 		{
 			rule: "VmToPVC",
@@ -105,10 +105,14 @@ func TestK8sRules(t *testing.T) {
 				"spec": k8s.Object{
 					"dataVolumeTemplates": []k8s.Object{
 						{"metadata": k8s.Object{"name": "dv1"}},
+						{"metadata": k8s.Object{"name": "dv2"}},
 					},
 				},
 			}),
-			query: `k8s:PersistentVolumeClaim.v1:{"namespace":"vm-ns","name":"dv1"}`,
+			want: []string{
+				`k8s:PersistentVolumeClaim.v1:{"namespace":"vm-ns","name":"dv1"}`,
+				`k8s:PersistentVolumeClaim.v1:{"namespace":"vm-ns","name":"dv2"}`,
+			},
 		},
 		{
 			rule: "PVCToPV",
@@ -117,7 +121,7 @@ func TestK8sRules(t *testing.T) {
 					"volumeName": "pv-123",
 				},
 			}),
-			query: `k8s:PersistentVolume.v1:{"name":"pv-123"}`,
+			want: []string{`k8s:PersistentVolume.v1:{"name":"pv-123"}`},
 		},
 		{
 			rule: "PVToStorageClass",
@@ -126,7 +130,7 @@ func TestK8sRules(t *testing.T) {
 					"storageClassName": "sc-1",
 				},
 			}),
-			query: `k8s:StorageClass.v1.storage.k8s.io:{"name":"sc-1"}`,
+			want: []string{`k8s:StorageClass.v1.storage.k8s.io:{"name":"sc-1"}`},
 		},
 		{
 			rule: "PVCToStorageClass",
@@ -135,28 +139,34 @@ func TestK8sRules(t *testing.T) {
 					"storageClassName": "sc-1",
 				},
 			}),
-			query: `k8s:StorageClass.v1.storage.k8s.io:{"name":"sc-1"}`,
+			want: []string{`k8s:StorageClass.v1.storage.k8s.io:{"name":"sc-1"}`},
 		},
 		{
 			rule:  "VmToVmi",
 			start: newK8s("VirtualMachine.kubevirt.io", "vm-ns", "vm-name", nil),
-			query: `k8s:VirtualMachineInstance.v1.kubevirt.io:{"namespace":"vm-ns","name":"vm-name"}`,
+			want:  []string{`k8s:VirtualMachineInstance.v1.kubevirt.io:{"namespace":"vm-ns","name":"vm-name"}`},
 		},
 		{
 			rule:  "VmiToPod",
 			start: newK8s("VirtualMachineInstance.kubevirt.io", "vm-ns", "vm-name", nil),
-			query: `k8s:Pod.v1:{"namespace":"vm-ns","labels":{"kubevirt.io":"virt-launcher","vm.kubevirt.io/name":"vm-name"}}`,
+			want:  []string{`k8s:Pod.v1:{"namespace":"vm-ns","labels":{"kubevirt.io":"virt-launcher","vm.kubevirt.io/name":"vm-name"}}`},
 		},
 		{
 			rule: "CSVToCRD",
 			start: newK8s("ClusterServiceVersion.operators.coreos.com", "operators", "test-operator.v0.1.0", k8s.Object{
 				"spec": k8s.Object{
 					"customresourcedefinitions": k8s.Object{
-						"owned": []k8s.Object{{"name": "nodes.config.openshift.io"}},
+						"owned": []k8s.Object{
+							{"name": "things.test.io"},
+							{"name": "items.test.io"},
+						},
 					},
 				},
 			}),
-			query: `k8s:CustomResourceDefinition.v1.apiextensions.k8s.io:{"name":"nodes.config.openshift.io"}`,
+			want: []string{
+				`k8s:CustomResourceDefinition.v1.apiextensions.k8s.io:{"name":"things.test.io"}`,
+				`k8s:CustomResourceDefinition.v1.apiextensions.k8s.io:{"name":"items.test.io"}`,
+			},
 		},
 		{
 			rule: "CRDToInstances",
@@ -167,7 +177,7 @@ func TestK8sRules(t *testing.T) {
 					"versions": []k8s.Object{{"name": "v1"}},
 				},
 			}),
-			query: `k8s:Node.v1.config.openshift.io:{}`,
+			want: []string{`k8s:Node.v1.config.openshift.io:{}`},
 		},
 		{
 			rule: "SubscriptionToCSV",
@@ -182,7 +192,7 @@ func TestK8sRules(t *testing.T) {
 					"currentCSV": "blah",
 				},
 			}),
-			query: `k8s:ClusterServiceVersion.v1alpha1.operators.coreos.com:{"name":"blah"}`,
+			want: []string{`k8s:ClusterServiceVersion.v1alpha1.operators.coreos.com:{"name":"blah"}`},
 		},
 	} {
 		x.Run(t)

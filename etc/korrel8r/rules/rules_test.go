@@ -20,6 +20,7 @@ import (
 	"github.com/korrel8r/korrel8r/pkg/domains/k8s"
 	"github.com/korrel8r/korrel8r/pkg/engine"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
+	slices2 "github.com/korrel8r/korrel8r/pkg/slices"
 	"github.com/korrel8r/korrel8r/pkg/unique"
 	"github.com/stretchr/testify/assert"
 	"k8s.io/apimachinery/pkg/api/meta/testrestmapper"
@@ -112,7 +113,7 @@ var rules = unique.Set[string]{}
 type ruleTest struct {
 	rule  string
 	start korrel8r.Object
-	query string
+	want  []string
 }
 
 func (x ruleTest) Run(t *testing.T) {
@@ -124,7 +125,7 @@ func (x ruleTest) Run(t *testing.T) {
 		if assert.NotNil(t, r, "missing rule: "+x.rule) {
 			got, err := r.Apply(x.start)
 			if assert.NoError(t, err, x.rule) && assert.NotNil(t, got) {
-				assert.Equal(t, x.query, got.String())
+				assert.Equal(t, x.want, slices2.Strings(got))
 			}
 		}
 		tested(x.rule)

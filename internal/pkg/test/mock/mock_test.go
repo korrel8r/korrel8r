@@ -166,8 +166,8 @@ func TestNewRule_WithApplyFunc(t *testing.T) {
 	start := []korrel8r.Class{d.Class("start")}
 	goal := []korrel8r.Class{d.Class("goal")}
 
-	applyFunc := func(obj korrel8r.Object) (korrel8r.Query, error) {
-		return mock.NewQuery(goal[0], "applied"), nil
+	applyFunc := func(obj korrel8r.Object) ([]korrel8r.Query, error) {
+		return []korrel8r.Query{mock.NewQuery(goal[0], "applied")}, nil
 	}
 
 	rule := mock.NewRule("test-rule", start, goal, applyFunc)
@@ -179,7 +179,7 @@ func TestNewRule_WithApplyFunc(t *testing.T) {
 
 	q, err := rule.Apply("test-object")
 	require.NoError(t, err)
-	assert.Equal(t, "applied", q.Data())
+	assert.Equal(t, "applied", q[0].Data())
 }
 
 func TestNewRule_WithQuery(t *testing.T) {
@@ -192,7 +192,7 @@ func TestNewRule_WithQuery(t *testing.T) {
 
 	q, err := rule.Apply("any-object")
 	require.NoError(t, err)
-	assert.Equal(t, "static-query", q.Data())
+	assert.Equal(t, "static-query", q[0].Data())
 }
 
 func TestNewRule_WithNil(t *testing.T) {
