@@ -101,7 +101,7 @@ type Class string
 
 func (c Class) Domain() korrel8r.Domain                     { return Domain }
 func (c Class) Name() string                                { return string(c) }
-func (c Class) String() string                              { return impl.ClassString(c) }
+func (c Class) String() string                              { return korrel8r.ClassString(c) }
 func (c Class) Unmarshal(b []byte) (korrel8r.Object, error) { return impl.UnmarshalAs[Object](b) }
 func (c Class) Preview(o korrel8r.Object) (line string)     { return Preview(o) }
 
@@ -144,7 +144,7 @@ type Query struct {
 }
 
 func (q *Query) Class() korrel8r.Class { return q.class }
-func (q *Query) String() string        { return impl.QueryString(q) }
+func (q *Query) String() string        { return korrel8r.QueryString(q) }
 func (q *Query) Data() string {
 	if q.direct != nil {
 		d, _ := json.Marshal(q.direct)

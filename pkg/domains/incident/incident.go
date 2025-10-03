@@ -105,7 +105,7 @@ type Class struct{}
 
 func (c Class) Domain() korrel8r.Domain { return Domain }
 func (c Class) Name() string            { return name }
-func (c Class) String() string          { return impl.ClassString(c) }
+func (c Class) String() string          { return korrel8r.ClassString(c) }
 func (c Class) Description() string {
 	return description
 }
@@ -142,7 +142,7 @@ type Query struct {
 
 func (q Query) Class() korrel8r.Class { return Class{} }
 func (q Query) Data() string          { b, _ := json.Marshal(q); return string(b) }
-func (q Query) String() string        { return impl.QueryString(q) }
+func (q Query) String() string        { return korrel8r.QueryString(q) }
 
 // Store is a client of Prometheus.
 type Store struct {

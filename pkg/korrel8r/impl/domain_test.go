@@ -34,7 +34,7 @@ var _ korrel8r.Class = testClass("")
 var testDomainSingleton korrel8r.Domain
 
 func (c testClass) Domain() korrel8r.Domain                     { return testDomainSingleton }
-func (c testClass) String() string                              { return ClassString(c) }
+func (c testClass) String() string                              { return korrel8r.ClassString(c) }
 func (c testClass) Name() string                                { return string(c) }
 func (c testClass) ID(o korrel8r.Object) any                    { return o }
 func (c testClass) Unmarshal(b []byte) (korrel8r.Object, error) { return nil, nil }

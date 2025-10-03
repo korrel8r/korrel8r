@@ -110,7 +110,7 @@ type Class struct{}
 
 func (c Class) Domain() korrel8r.Domain { return Domain }
 func (c Class) Name() string            { return "span" }
-func (c Class) String() string          { return impl.ClassString(c) }
+func (c Class) String() string          { return korrel8r.ClassString(c) }
 
 func (c Class) Unmarshal(b []byte) (korrel8r.Object, error) { return impl.UnmarshalAs[Object](b) }
 func (c Class) ID(o korrel8r.Object) any {
@@ -182,7 +182,7 @@ func NewQuery(traceQL string) korrel8r.Query { return Query(strings.TrimSpace(tr
 
 func (q Query) Class() korrel8r.Class { return Class{} }
 func (q Query) Data() string          { return string(q) }
-func (q Query) String() string        { return impl.QueryString(q) }
+func (q Query) String() string        { return korrel8r.QueryString(q) }
 
 // NewTempoStackStore returns a store that uses a TempoStack observatorium-style URLs.
 func NewTempoStackStore(base *url.URL, h *http.Client) (korrel8r.Store, error) {

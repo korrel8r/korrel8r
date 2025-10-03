@@ -271,7 +271,7 @@ func (c Class) Preview(o korrel8r.Object) string {
 }
 
 func (c Class) Domain() korrel8r.Domain      { return Domain }
-func (c Class) String() string               { return impl.ClassString(c) }
+func (c Class) String() string               { return korrel8r.ClassString(c) }
 func (c Class) GVK() schema.GroupVersionKind { return schema.GroupVersionKind(c) }
 
 func (c Class) Name() string {
@@ -307,7 +307,7 @@ func NewQuery(c Class, s Selector) *Query { return &Query{class: c, Selector: s}
 
 func (q Query) Class() korrel8r.Class { return q.class }
 func (q Query) Data() string          { b, _ := json.Marshal(q); return string(b) }
-func (q Query) String() string        { return impl.QueryString(q) }
+func (q Query) String() string        { return korrel8r.QueryString(q) }
 
 func (s *Store) Domain() korrel8r.Domain  { return Domain }
 func (s *Store) Client() client.WithWatch { return s.c }
