@@ -16,7 +16,6 @@ import (
 	"github.com/korrel8r/korrel8r/pkg/config"
 	"github.com/korrel8r/korrel8r/pkg/graph"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
-	"github.com/korrel8r/korrel8r/pkg/korrel8r/impl"
 	"github.com/korrel8r/korrel8r/pkg/result"
 )
 
@@ -72,7 +71,7 @@ func (e *Engine) StoreConfigsFor(d korrel8r.Domain) []config.Store {
 
 // Class parses a full class name and returns the
 func (e *Engine) Class(fullname string) (korrel8r.Class, error) {
-	d, c := impl.ClassSplit(fullname)
+	d, c := korrel8r.ClassSplit(fullname)
 	if c == "" {
 		return nil, fmt.Errorf("invalid class name: %v", fullname)
 	} else {

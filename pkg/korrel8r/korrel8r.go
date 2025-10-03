@@ -156,6 +156,3 @@ type Rule interface {
 	// Name is a short, unique, human-readable name to identify the rule.
 	Name() string
 }
-
-// NameSeparator used in DOMAIN:CLASS and DOMAIN:CLASS:QUERY strings.
-const NameSeparator = ":"

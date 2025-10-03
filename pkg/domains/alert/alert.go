@@ -119,7 +119,7 @@ type Class struct{}
 
 func (c Class) Domain() korrel8r.Domain                     { return Domain }
 func (c Class) Name() string                                { return "alert" }
-func (c Class) String() string                              { return impl.ClassString(c) }
+func (c Class) String() string                              { return korrel8r.ClassString(c) }
 func (c Class) Unmarshal(b []byte) (korrel8r.Object, error) { return impl.UnmarshalAs[*Object](b) }
 func (c Class) ID(o korrel8r.Object) any {
 	if o, ok := o.(*Object); ok {
@@ -170,7 +170,7 @@ type Query struct {
 
 func (q Query) Class() korrel8r.Class { return Class{} }
 func (q Query) Data() string          { return q.Qs }
-func (q Query) String() string        { return impl.QueryString(q) }
+func (q Query) String() string        { return korrel8r.QueryString(q) }
 
 // Store is a client of Prometheus and AlertManager.
 type Store struct {

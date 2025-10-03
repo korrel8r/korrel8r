@@ -135,7 +135,7 @@ type Class struct{}
 
 func (c Class) Domain() korrel8r.Domain { return Domain }
 func (c Class) Name() string            { return "network" }
-func (c Class) String() string          { return impl.ClassString(c) }
+func (c Class) String() string          { return korrel8r.ClassString(c) }
 
 func (c Class) Unmarshal(data []byte) (korrel8r.Object, error) { return impl.UnmarshalAs[Object](data) }
 
@@ -180,7 +180,7 @@ func NewQuery(logQL string) korrel8r.Query { return Query(strings.TrimSpace(logQ
 
 func (q Query) Class() korrel8r.Class { return Class{} }
 func (q Query) Data() string          { return string(q) }
-func (q Query) String() string        { return impl.QueryString(q) }
+func (q Query) String() string        { return korrel8r.QueryString(q) }
 
 // NewLokiStackStore returns a store that uses a LokiStack observatorium-style URLs.
 func NewLokiStackStore(base *url.URL, h *http.Client) (korrel8r.Store, error) {

@@ -25,7 +25,7 @@ var (
 	BasePath = must.Must1(Spec.Servers.BasePath())
 )
 
-func queryCounts(gq graph.Queries, opts GraphOptions) []QueryCount {
+func queryCounts(gq graph.Queries, _ GraphOptions) []QueryCount {
 	qcs := make([]QueryCount, 0, len(gq))
 	for _, qc := range gq {
 		if qc.Count <= 0 {

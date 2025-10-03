@@ -82,7 +82,7 @@ type Class struct{} // Singleton class
 
 func (c Class) Domain() korrel8r.Domain { return Domain }
 func (c Class) Name() string            { return name }
-func (c Class) String() string          { return impl.ClassString(c) }
+func (c Class) String() string          { return korrel8r.ClassString(c) }
 
 func (c Class) Unmarshal(b []byte) (korrel8r.Object, error) { return impl.UnmarshalAs[Object](b) }
 func (c Class) Preview(o korrel8r.Object) string            { return Preview(o) }

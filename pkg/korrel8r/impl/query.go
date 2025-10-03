@@ -10,7 +10,7 @@ import (
 
 // ParseQuery parses a query string into class and data parts.
 func ParseQuery(domain korrel8r.Domain, query string) (class korrel8r.Class, data string, err error) {
-	d, c, q := QuerySplit(query)
+	d, c, q := korrel8r.QuerySplit(query)
 	if q == "" {
 		return nil, "", fmt.Errorf("invalid query: %v", query)
 	}
