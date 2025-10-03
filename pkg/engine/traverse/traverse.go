@@ -186,13 +186,15 @@ func (w *worker) Run(ctx context.Context) {
 			if ctx.Err() != nil {
 				return
 			}
-			q, err := r.Apply(o)
-			if err != nil || q == nil {
+			queries, err := r.Apply(o)
+			if err != nil || len(queries) == 0 {
 				log.V(4).Info("Rule did not apply", "rule", r.Name(), "start", w.node.Class, "error", err)
 			} else {
-				if line := w.graph.FindLine(w.node.Class, q.Class(), r); line != nil {
-					log.V(4).Info("Rule applied", "line", line, "query", q)
-					w.outbox.Add(queryLine{Query: q, Line: line})
+				for _, q := range queries {
+					if line := w.graph.FindLine(w.node.Class, q.Class(), r); line != nil {
+						log.V(4).Info("Rule applied", "line", line, "query", q)
+						w.outbox.Add(queryLine{Query: q, Line: line})
+					}
 				}
 			}
 		}

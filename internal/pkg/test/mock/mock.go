@@ -77,7 +77,7 @@ func (c Class) Unmarshal(b []byte) (korrel8r.Object, error) {
 	return o, err
 }
 
-type ApplyFunc func(korrel8r.Object) (korrel8r.Query, error)
+type ApplyFunc = func(korrel8r.Object) ([]korrel8r.Query, error)
 
 type Rule struct {
 	name        string
@@ -89,12 +89,12 @@ type Rule struct {
 func NewRule(name string, start, goal []korrel8r.Class, apply any) *Rule {
 	r := &Rule{name: name, start: start, goal: goal}
 	switch apply := apply.(type) {
-	case func(korrel8r.Object) (korrel8r.Query, error):
+	case ApplyFunc:
 		r.apply = apply
 	case korrel8r.Query:
-		r.apply = func(korrel8r.Object) (korrel8r.Query, error) { return apply, nil }
+		r.apply = func(korrel8r.Object) ([]korrel8r.Query, error) { return []korrel8r.Query{apply}, nil }
 	case nil:
-		r.apply = func(korrel8r.Object) (korrel8r.Query, error) {
+		r.apply = func(korrel8r.Object) ([]korrel8r.Query, error) {
 			return nil, fmt.Errorf("mock rule has no result: %v", r)
 		}
 	default:
@@ -108,7 +108,7 @@ func (r *Rule) Goal() []korrel8r.Class  { return r.goal }
 func (r *Rule) Name() string            { return r.name }
 func (r *Rule) String() string          { return r.Name() }
 
-func (r *Rule) Apply(start korrel8r.Object) (korrel8r.Query, error) { return r.apply(start) }
+func (r *Rule) Apply(start korrel8r.Object) ([]korrel8r.Query, error) { return r.apply(start) }
 
 // RuleLess orders rules.
 func RuleLess(a, b korrel8r.Rule) int {

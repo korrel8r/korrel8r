@@ -41,17 +41,17 @@ func TestLogRules(t *testing.T) {
 				"spec": k8s.Object{
 					"selector": k8s.Object{"matchLabels": map[string]string{"a.b/c": "x"}},
 				}},
-			query: `log:application:{"name":"ns","labels":{"a.b/c":"x"}}`,
+			want: []string{`log:application:{"name":"ns","labels":{"a.b/c":"x"}}`},
 		},
 		{
 			rule:  "PodToLogs",
 			start: newK8s("Pod", "project", "application", nil),
-			query: `log:application:{"namespace":"project","name":"application"}`,
+			want:  []string{`log:application:{"namespace":"project","name":"application"}`},
 		},
 		{
 			rule:  "PodToLogs",
 			start: newK8s("Pod", "kube-something", "infrastructure", nil),
-			query: `log:infrastructure:{"namespace":"kube-something","name":"infrastructure"}`,
+			want:  []string{`log:infrastructure:{"namespace":"kube-something","name":"infrastructure"}`},
 		},
 	} {
 		x.Run(t)

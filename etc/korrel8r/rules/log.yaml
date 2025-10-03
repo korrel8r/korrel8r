@@ -16,10 +16,10 @@ rules:
     goal:
       domain: log
     result:
-      query: |-
+      query: >
         log:{{logTypeForNamespace .metadata.namespace}}:{
-          "name":"{{.metadata.namespace}}",
-          "labels":{{.spec.selector.matchLabels | logSafeLabels | mustToJson}} }
+        "name":"{{.metadata.namespace}}",
+        "labels":{{.spec.selector.matchLabels | logSafeLabels | mustToJson}} }
 
   - name: PodToLogs
     start:
@@ -29,4 +29,4 @@ rules:
       domain: log
     result:
       query: |-
-        log:{{ logTypeForNamespace .metadata.namespace }}:{"namespace":"{{.metadata.namespace}}","name":"{{.metadata.name}}"}
+        log:{{logTypeForNamespace .metadata.namespace}}:{"namespace":"{{.metadata.namespace}}","name":"{{.metadata.name}}"}

@@ -147,8 +147,8 @@ var _ Appender = AppenderFunc(nil) // AppenderFunc implements appender
 // Template-based rules are implemented by [github.com/korrel8r/korrel8r/pkg/rules]
 // Rules types must be comparable.
 type Rule interface {
-	// Apply the rule to a start Object, return a Query for results.
-	Apply(start Object) (Query, error)
+	// Apply the rule to a start Object, return a list of Query for results.
+	Apply(start Object) ([]Query, error)
 	// Start returns a list of start classes that the rule can apply to, all in the same start domain.
 	Start() []Class
 	// Goal returns a list of goal classes that may result from this rule, all in the same goal domain.

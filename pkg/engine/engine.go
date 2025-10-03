@@ -24,7 +24,7 @@ var log = logging.Log()
 // Engine manages a set of rules and stores to perform correlation.
 // Once created (see [Build]) an engine is immutable and concurrent safe.
 type Engine struct {
-	domains       map[string]korrel8r.Domain
+	domains       korrel8r.Domains
 	storeHolders  map[korrel8r.Domain]*storeHolders
 	templateFuncs template.FuncMap
 	rulesByName   map[string]korrel8r.Rule
@@ -37,12 +37,7 @@ func (e *Engine) Domains() []korrel8r.Domain {
 	return domains
 }
 
-func (e *Engine) Domain(name string) (korrel8r.Domain, error) {
-	if d := e.domains[name]; d != nil {
-		return d, nil
-	}
-	return nil, fmt.Errorf("unknown domain: %v", name)
-}
+func (e *Engine) Domain(name string) (korrel8r.Domain, error) { return e.domains.Domain(name) }
 
 // StoreFor returns the aggregated store for a domain, nil if there is none.
 func (e *Engine) StoreFor(d korrel8r.Domain) korrel8r.Store {
@@ -69,7 +64,7 @@ func (e *Engine) StoreConfigsFor(d korrel8r.Domain) []config.Store {
 	return nil
 }
 
-// Class parses a full class name and returns the
+// Class parses a full class name and returns the [korrel8r.Class]
 func (e *Engine) Class(fullname string) (korrel8r.Class, error) {
 	d, c := korrel8r.ClassSplit(fullname)
 	if c == "" {

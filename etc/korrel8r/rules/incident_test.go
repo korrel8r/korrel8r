@@ -14,7 +14,7 @@ func TestIncident(t *testing.T) {
 		{
 			rule:  "AlertToIncident",
 			start: &alert.Object{Labels: map[string]string{"namespace": "foo", "deployment": "bar"}},
-			query: `incident:incident:{"alertLabels":{"deployment":"bar","namespace":"foo"}}`,
+			want:  []string{`incident:incident:{"alertLabels":{"deployment":"bar","namespace":"foo"}}`},
 		},
 		{
 			rule: "IncidentToAlert",
@@ -24,7 +24,7 @@ func TestIncident(t *testing.T) {
 					{"namespace": "foo", "deployment": "bar"},
 					{"namespace": "foobaz", "deployment": "barbaz"},
 				}},
-			query: `alert:alert:[{"deployment":"bar","namespace":"foo"},{"deployment":"barbaz","namespace":"foobaz"}]`,
+			want: []string{`alert:alert:[{"deployment":"bar","namespace":"foo"},{"deployment":"barbaz","namespace":"foobaz"}]`},
 		},
 	} {
 		x.Run(t)

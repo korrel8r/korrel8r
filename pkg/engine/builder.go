@@ -33,7 +33,7 @@ type Builder struct {
 
 func Build() *Builder {
 	e := &Engine{
-		domains:      map[string]korrel8r.Domain{},
+		domains:      korrel8r.Domains{},
 		storeHolders: map[korrel8r.Domain]*storeHolders{},
 		rulesByName:  map[string]korrel8r.Rule{},
 	}
@@ -50,7 +50,7 @@ func (b *Builder) Domains(domains ...korrel8r.Domain) *Builder {
 		switch b.e.domains[d.Name()] {
 		case d: // Already present
 		case nil:
-			b.e.domains[d.Name()] = d
+			b.e.domains.Add(d)
 			b.e.storeHolders[d] = newStoreHolders(d)
 			if tf, ok := d.(interface{ TemplateFuncs() map[string]any }); ok {
 				maps.Copy(b.e.templateFuncs, tf.TemplateFuncs())
