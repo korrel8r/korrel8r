@@ -28,7 +28,7 @@ var (
 func queryCounts(gq graph.Queries, opts GraphOptions) []QueryCount {
 	qcs := make([]QueryCount, 0, len(gq))
 	for _, qc := range gq {
-		if qc.Count <= 0 && !ptr.Deref(opts.Zeros) {
+		if qc.Count <= 0 {
 			continue // Omit query counts with no results
 		}
 		qcs = append(qcs, QueryCount{Query: qc.Query.String(), Count: &qc.Count})

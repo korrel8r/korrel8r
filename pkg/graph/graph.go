@@ -8,10 +8,10 @@ package graph
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/korrel8r/korrel8r/internal/pkg/logging"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
-	"github.com/korrel8r/korrel8r/pkg/unique"
 
 	"gonum.org/v1/gonum/graph"
 	"gonum.org/v1/gonum/graph/encoding"
@@ -54,20 +54,12 @@ func New(data *Data) *Graph {
 	}
 }
 
-func (g *Graph) NodeFor(c korrel8r.Class) *Node { return g.Data.NodeFor(c) }
-
-func (g *Graph) NodeForErr(c korrel8r.Class) (node *Node, err error) {
-	if n := g.NodeFor(c); n != nil {
-		return n, nil
+func (g *Graph) NodeFor(c korrel8r.Class) *Node {
+	n := g.Data.NodeFor(c)
+	if n == nil || g.Node(n.ID()) == nil {
+		return nil
 	}
-	return nil, fmt.Errorf("class not found in rule graph: %v", c)
-}
-
-func (g *Graph) NodesFor(classes ...korrel8r.Class) (nodes []*Node) {
-	for _, c := range classes {
-		nodes = append(nodes, g.NodeFor(c))
-	}
-	return nodes
+	return n
 }
 
 func (g *Graph) EachNode(visit func(*Node)) {
@@ -80,7 +72,7 @@ func (g *Graph) EachNode(visit func(*Node)) {
 func (g *Graph) EachEdge(visit func(*Edge)) {
 	edges := g.Edges()
 	for edges.Next() {
-		edge := Edge(edges.Edge().(multi.Edge))
+		edge := Edge{Edge: edges.Edge().(multi.Edge)}
 		visit(&edge)
 	}
 }
@@ -117,33 +109,6 @@ func (g *Graph) EachLineTo(goal *Node, visit func(*Line)) {
 	for starts.Next() {
 		g.EachLineBetween(starts.Node().(*Node), goal, visit)
 	}
-}
-
-func (g *Graph) AllLines() []*Line {
-	var lines []*Line
-	g.EachLine(func(l *Line) { lines = append(lines, l) })
-	return lines
-}
-
-// NodesSubgraph returns a new graph containing nodes and all lines between them.
-func (g *Graph) NodesSubgraph(nodes []graph.Node) *Graph {
-	sub := g.Data.EmptyGraph()
-	nodeSet := unique.Set[int64]{}
-	for _, n := range nodes {
-		nodeSet.Add(n.ID())
-	}
-	for _, n := range nodes {
-		to := g.From(n.ID())
-		for to.Next() {
-			if nodeSet.Has(to.Node().ID()) {
-				lines := g.Lines(n.ID(), to.Node().ID())
-				for lines.Next() {
-					sub.SetLine(lines.Line())
-				}
-			}
-		}
-	}
-	return sub
 }
 
 // Select creates a sub-graph of all lines where keep(line) is true.
@@ -185,10 +150,52 @@ func (g *Graph) ShortestPaths(start korrel8r.Class, goals ...korrel8r.Class) *Gr
 	return sub
 }
 
-func (g *Graph) MergeNode(n *Node) {
-	if g.Node(n.ID()) == nil {
-		g.AddNode(n)
+// GoalSearch traverses the shortest paths from start to all goals, in breadth first order.
+func (g *Graph) GoalSearch(start korrel8r.Class, goals []korrel8r.Class, v Visitor) {
+	g.ShortestPaths(start, goals...).BreadthFirst(start, v, nil)
+}
+
+// Neighbours traverses a breadth-first neighbourhood of start up to depth.
+func (g *Graph) Neighbours(startClass korrel8r.Class, maxDepth int, v Visitor) {
+	start := g.NodeFor(startClass)
+	if start == nil {
+		return
 	}
+	depth := 0
+	line := func(l *Line) bool {
+		if depth < maxDepth {
+			return v.Line(l)
+		}
+		return false
+	}
+	until := func(n *Node, d int) bool { depth = d; return d > maxDepth }
+	g.BreadthFirst(startClass, FuncVisitor{LineF: line, NodeF: v.Node}, until)
+}
+
+// FindLine finds a line between start and goal with rule. Nil if not found.
+func (g *Graph) FindLine(start, goal korrel8r.Class, rule korrel8r.Rule) *Line {
+	u, v := g.NodeFor(start), g.NodeFor(goal)
+	if u == nil || v == nil {
+		return nil
+	}
+	lines := g.Lines(u.ID(), v.ID())
+	for lines.Next() {
+		l := lines.Line().(*Line)
+		if l.Rule == rule {
+			return l
+		}
+	}
+	return nil
+}
+
+func (g *Graph) String() string {
+	w := &strings.Builder{}
+	fmt.Fprintln(w, "<Graph>")
+	g.EachLine(func(l *Line) {
+		fmt.Fprintln(w, l.String())
+	})
+	fmt.Fprintln(w, "</Graph>")
+	return w.String()
 }
 
 // Pull useful functions into this package.

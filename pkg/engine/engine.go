@@ -42,7 +42,7 @@ func (e *Engine) Domain(name string) (korrel8r.Domain, error) {
 	if d := e.domains[name]; d != nil {
 		return d, nil
 	}
-	return nil, korrel8r.DomainNotFoundError(name)
+	return nil, fmt.Errorf("unknown domain: %v", name)
 }
 
 // StoreFor returns the aggregated store for a domain, nil if there is none.
@@ -97,13 +97,9 @@ func (e *Engine) DomainClass(domain, class string) (korrel8r.Class, error) {
 	if err != nil {
 		return nil, err
 	}
-	notFound := func() error {
-		fullname := strings.Join([]string{domain, class}, korrel8r.NameSeparator)
-		return korrel8r.ClassNotFoundError(fullname)
-	}
 	c := d.Class(class)
 	if c == nil {
-		return nil, notFound()
+		return nil, fmt.Errorf("class not found: %v%v%v", domain, korrel8r.NameSeparator, class)
 	}
 	return c, nil
 }

@@ -63,11 +63,12 @@ func TestTraverse(t *testing.T) {
 
 }
 
+// TestNeighbours verifies that we find all nodes connected by <= depth edges of the start.
 func TestNeighbours(t *testing.T) {
 	rm := ruleMap{}
 	r := func(i, j int) korrel8r.Rule { return rm.r(i, j) }
 
-	g := testGraph([]rule{r(1, 11), r(11, 1), r(1, 12), r(1, 13), r(11, 22), r(12, 22), r(12, 13), r(22, 99)})
+	g := testGraph([]rule{r(1, 11), r(11, 1), r(1, 12), r(1, 13), r(11, 22), r(12, 22), r(12, 13), r(22, 33), r(22, 1), r(33, 99)})
 	for _, x := range []struct {
 		depth int
 		rules [][]string
@@ -85,13 +86,18 @@ func TestNeighbours(t *testing.T) {
 		},
 		{
 			depth: 2,
-			rules: [][]string{{"1_11", "1_12", "1_13"}, {"11_22", "12_22"}},
+			rules: [][]string{{"1_11", "1_12", "1_13"}, {"11_1", "11_22", "12_13", "12_22"}},
 			nodes: []int{1, 11, 12, 13, 22},
 		},
 		{
 			depth: 3,
-			rules: [][]string{{"1_11", "1_12", "1_13"}, {"11_22", "12_22"}, {"22_99"}},
-			nodes: []int{1, 11, 12, 13, 22, 99},
+			rules: [][]string{{"1_11", "1_12", "1_13"}, {"11_1", "11_22", "12_13", "12_22"}, {"22_1", "22_33"}},
+			nodes: []int{1, 11, 12, 13, 22, 33},
+		},
+		{
+			depth: 4,
+			rules: [][]string{{"1_11", "1_12", "1_13"}, {"11_1", "11_22", "12_13", "12_22"}, {"22_1", "22_33"}, {"33_99"}},
+			nodes: []int{1, 11, 12, 13, 22, 33, 99},
 		},
 	} {
 		t.Run(fmt.Sprintf("depth=%v", x.depth), func(t *testing.T) {

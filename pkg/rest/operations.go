@@ -89,7 +89,7 @@ func (a *API) GraphNeighbours(c *gin.Context, params GraphNeighboursParams) {
 	}
 	ctx, cancel := korrel8r.WithConstraint(c.Request.Context(), r.Start.Constraint.Default())
 	defer cancel()
-	g, err := traverse.New(e, e.Graph()).Neighbours(ctx, start, r.Depth)
+	g, err := traverse.Neighbours(ctx, e, start, r.Depth)
 	if !check(c, http.StatusNotFound, err) {
 		return
 	}
@@ -138,10 +138,9 @@ func (a *API) goals(c *gin.Context) (*graph.Graph, []korrel8r.Class) {
 	if !check(c, http.StatusBadRequest, err) {
 		return nil, nil
 	}
-	g := e.Graph().ShortestPaths(start.Class, goals...)
 	ctx, cancel := korrel8r.WithConstraint(c.Request.Context(), r.Start.Constraint.Default())
 	defer cancel()
-	g, err = traverse.New(a.Engine, g).Goals(ctx, start, goals)
+	g, err := traverse.Goals(ctx, a.Engine, start, goals)
 	check(c, http.StatusNotFound, err)
 	return g, goals
 }
@@ -157,7 +156,6 @@ func check(c *gin.Context, code int, err error, format ...any) (ok bool) {
 		err = fmt.Errorf("%v: %w", fmt.Sprintf(format[0].(string), format[1:]...), err)
 	}
 	c.AbortWithStatusJSON(code, c.Error(err).JSON())
-	log.V(1).Info("Request failed", "url", c.Request.URL, "code", code, "error", err)
 	return false
 }
 

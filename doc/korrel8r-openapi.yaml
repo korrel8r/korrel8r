@@ -455,9 +455,6 @@ components:
         rules:
           description: If true include rule names in graph edges.
           type: boolean
-        zeros:
-          description: if true include queries that returned no results.
-          type: boolean
         errors:
           description: if true include non-fatal error messages.
           type: boolean

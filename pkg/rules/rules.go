@@ -12,7 +12,6 @@ import (
 	"bytes"
 
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
-	"github.com/korrel8r/korrel8r/pkg/korrel8r/impl"
 )
 
 // NewTemplateRule returns a korrel8r.Rule that uses a Go template to transform objects to queries.
@@ -20,7 +19,7 @@ func NewTemplateRule(start, goal []korrel8r.Class, query *template.Template) kor
 	return &templateRule{start: start, goal: goal, query: query}
 }
 
-var _ = impl.AssertRule(&templateRule{})
+var _ korrel8r.Rule = &templateRule{}
 
 type templateRule struct {
 	query       *template.Template

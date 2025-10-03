@@ -99,7 +99,7 @@ From a set of start objects, follow correlation rules to find related objects up
 			}
 			ctx, cancel := korrel8r.WithConstraint(ctx, args.Start.Constraint.Default())
 			defer cancel()
-			g, err := traverse.New(e, e.Graph()).Neighbours(ctx, start, args.Depth)
+			g, err := traverse.Neighbours(ctx, e, start, args.Depth)
 			if err != nil {
 				return errorResultFor[rest.Graph](err), nil
 			}
@@ -124,7 +124,7 @@ From a set of start objects, follow all paths leading to one of the goal classes
 			if err != nil {
 				return errorResultFor[rest.Graph](err), nil
 			}
-			g, err := traverse.New(e, e.Graph()).Goals(ctx, start, goals)
+			g, err := traverse.Goals(ctx, e, start, goals)
 			if err != nil {
 				return errorResultFor[rest.Graph](err), nil
 			}

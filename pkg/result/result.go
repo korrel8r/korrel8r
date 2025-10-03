@@ -38,7 +38,7 @@ type Set struct {
 }
 
 func NewSet(id korrel8r.IDer) *Set {
-	return &Set{dedup: unique.NewDeduplicator(id.ID)}
+	return &Set{dedup: *unique.NewDeduplicator(id.ID)}
 }
 func (r Set) List() []korrel8r.Object { return r.list }
 
