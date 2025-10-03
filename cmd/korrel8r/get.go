@@ -26,14 +26,12 @@ var (
 	queries               []string
 	objects               []string
 	withRules             bool
-	withZeros             bool
 	limit                 int
 	since, until, timeout time.Duration
 
 	// Gather graph options into a struct.
 	graphOptions = rest.GraphOptions{
 		Rules: &withRules,
-		Zeros: &withZeros,
 	}
 )
 
@@ -42,7 +40,6 @@ func startFlags(cmd *cobra.Command) {
 	cmd.Flags().StringVar(&class, "class", "", "Class for serialized start objects")
 	cmd.Flags().StringArrayVar(&objects, "object", nil, "Serialized start object, can be multiple.")
 	cmd.Flags().BoolVar(&withRules, "rules", false, "Include rule names in returned graph")
-	cmd.Flags().BoolVar(&withZeros, "zeros", false, "Include queries that returned zero results.")
 }
 
 func constraintFlags(cmd *cobra.Command) {
@@ -82,7 +79,7 @@ var (
 			e, _ := newEngine()
 			ctx, cancel := korrel8r.WithConstraint(context.Background(), constraint())
 			defer cancel()
-			g, err := traverse.New(e, e.Graph()).Neighbours(ctx, start(e), depth)
+			g, err := traverse.Neighbours(ctx, e, start(e), depth)
 			must.Must(err)
 			newPrinter(os.Stdout).Print(rest.NewGraph(g, &graphOptions))
 		},
@@ -110,7 +107,7 @@ var (
 			}
 			ctx, cancel := korrel8r.WithConstraint(context.Background(), constraint())
 			defer cancel()
-			g, err := traverse.New(e, e.Graph()).Goals(ctx, start(e), goals)
+			g, err := traverse.Goals(ctx, e, start(e), goals)
 			must.Must(err)
 			newPrinter(os.Stdout).Print(rest.NewGraph(g, &graphOptions))
 		},

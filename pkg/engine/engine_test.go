@@ -34,7 +34,7 @@ func TestEngine_Class(t *testing.T) {
 		{".x", nil, "invalid class name: .x"},
 		{"x", nil, "invalid class name: x"},
 		{"", nil, "invalid class name: "},
-		{"bad:foo", nil, `domain not found: bad`},
+		{"bad:foo", nil, `unknown domain: bad`},
 	} {
 		t.Run(x.name, func(t *testing.T) {
 			e, err := engine.Build().Rules(rule).Engine()
@@ -104,10 +104,9 @@ func TestEngine_PropagateConstraints(t *testing.T) {
 	} {
 		t.Run(fmt.Sprintf("%v", i), func(t *testing.T) {
 			goals := []korrel8r.Class{c}
-			g := e.Graph().ShortestPaths(a, goals...)
 			ctx, cancel := korrel8r.WithConstraint(context.Background(), x.constraint)
 			defer cancel()
-			g, err := traverse.New(e, g).Goals(ctx, traverse.Start{Class: a, Objects: []korrel8r.Object{obj{"a", ontime}}}, goals)
+			g, err := traverse.Goals(ctx, e, traverse.Start{Class: a, Objects: []korrel8r.Object{obj{"a", ontime}}}, goals)
 			assert.NoError(t, err)
 			got := g.NodeFor(c).Result.List()
 			assert.Equal(t, asStrings(x.want), asStrings(got), "want %v got %v", x.want, got)

@@ -32,26 +32,6 @@ func (v FuncVisitor) Node(n *Node) {
 
 func (v FuncVisitor) Line(l *Line) bool { return v.LineF == nil || v.LineF(l) }
 
-type CollectVisitor struct {
-	Visitor Visitor // The visitor to apply
-	Graph   *Graph  // The collected graph.
-}
-
-func (v *CollectVisitor) Node(n *Node) {
-	v.Visitor.Node(n)
-	if v.Graph.Node(n.ID()) == nil {
-		v.Graph.AddNode(n)
-	}
-}
-
-func (v *CollectVisitor) Line(l *Line) bool {
-	ok := v.Visitor.Line(l)
-	if ok {
-		v.Graph.SetLine(l)
-	}
-	return ok
-}
-
 // BreadthFirst traversal visiting each node in g that is reachable from start.
 // If until(n) returns true, the traversal stops and n is returned. Otherwise nil is returned.
 func (g *Graph) BreadthFirst(start korrel8r.Class, v Visitor, until func(*Node, int) bool) *Node {
@@ -70,52 +50,6 @@ func (g *Graph) BreadthFirst(start korrel8r.Class, v Visitor, until func(*Node, 
 	return nil
 }
 
-// DepthFirst traversal visiting each node in g that is reachable from start in depth first order.
-// If until(n) returns true, the traversal stops and n is returned. Otherwise nil is returned.
-func (g *Graph) DepthFirst(start korrel8r.Class, v Visitor, until func(*Node) bool) *Node {
-	df := traverse.DepthFirst{
-		Traverse: traverseFunc(g, v),
-		Visit:    visitFunc(v),
-	}
-	var untilFunc func(n graph.Node) bool
-	if until != nil {
-		untilFunc = func(n graph.Node) bool { return until(n.(*Node)) }
-	}
-	if startNode := g.NodeFor(start); startNode != nil {
-		n, _ := df.Walk(g, startNode, untilFunc).(*Node)
-		return n
-	}
-	return nil
-}
-
-// GoalSearch traverses the shortest paths from start to all goals, in breadth first order.
-func (g *Graph) GoalSearch(start korrel8r.Class, goals []korrel8r.Class, v Visitor) {
-	g.ShortestPaths(start, goals...).BreadthFirst(start, v, nil)
-}
-
-// Neighbours traverses a breadth-first neighbourhood of start up to depth.
-// It never follows lines to already nodes of lower depth, so the traversal is acyclic.
-func (g *Graph) Neighbours(start korrel8r.Class, depth int, v Visitor) {
-	ranked := map[int64]int{} // Depths of nodes already ranked.
-	line := func(l *Line) bool {
-		from := ranked[l.From().ID()]
-		if from >= depth {
-			return false // Don't exceed depth.
-		}
-		if to, seen := ranked[l.To().ID()]; !seen {
-			ranked[l.To().ID()] = from + 1
-		} else if to <= from {
-			return false // Lower rank
-		}
-		return v.Line(l)
-	}
-	until := func(n *Node, d int) bool {
-		ranked[n.ID()] = d
-		return d > depth
-	}
-	g.BreadthFirst(start, FuncVisitor{LineF: line, NodeF: v.Node}, until)
-}
-
 func visitFunc(v Visitor) func(graph.Node) { return func(n graph.Node) { v.Node(n.(*Node)) } }
 
 func traverseFunc(g *Graph, v Visitor) func(graph.Edge) bool {
@@ -126,5 +60,3 @@ func traverseFunc(g *Graph, v Visitor) func(graph.Edge) bool {
 		return ok
 	}
 }
-
-// TODO: can we simplify by reducing this layer and use topo.graph functions more directly?

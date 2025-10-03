@@ -56,7 +56,8 @@ func (d *Domain) Query(query string) (korrel8r.Query, error) {
 	}
 	class := d.Class(className)
 	if class == nil {
-		return nil, korrel8r.ClassNotFoundError(className)
+		return nil, fmt.Errorf("class not found: %v%v%v", domainName, korrel8r.NameSeparator, className)
+
 	}
 	return NewQuery(class, selector), nil
 }

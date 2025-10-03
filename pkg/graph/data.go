@@ -118,8 +118,6 @@ type Node struct {
 	Class   korrel8r.Class
 	Result  result.Result // Accumulate incoming query results.
 	Queries Queries       // All queries leading to this node.
-
-	Value any // Value is an extra value that can be stored on a node.
 }
 
 func (n *Node) String() string { return n.Class.String() }
@@ -168,7 +166,7 @@ func (l *Line) DOTID() string  { return l.Rule.Name() }
 func (l *Line) Start() *Node   { return l.From().(*Node) }
 func (l *Line) Goal() *Node    { return l.To().(*Node) }
 
-type Edge multi.Edge
+type Edge struct{ multi.Edge }
 
 func (e *Edge) Start() *Node { return e.F.(*Node) }
 func (e *Edge) Goal() *Node  { return e.T.(*Node) }

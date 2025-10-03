@@ -12,7 +12,6 @@ import (
 	"github.com/korrel8r/korrel8r/pkg/rules"
 	"github.com/korrel8r/korrel8r/pkg/unique"
 	"github.com/stretchr/testify/assert"
-	"gonum.org/v1/gonum/graph"
 )
 
 type ruleMap map[string]korrel8r.Rule
@@ -23,40 +22,6 @@ func (rm ruleMap) r(i, j int) korrel8r.Rule {
 		rm[name] = rules.NewTemplateRule([]korrel8r.Class{c(i)}, []korrel8r.Class{c(j)}, template.New(name))
 	}
 	return rm[name]
-}
-
-func TestGraph_NodesSubGraph(t *testing.T) {
-	rm := ruleMap{}
-	r := func(i, j int) korrel8r.Rule { return rm.r(i, j) }
-
-	for _, x := range []struct {
-		name        string
-		graph, want []korrel8r.Rule
-		include     []int
-	}{
-		{
-			name:    "one",
-			graph:   []korrel8r.Rule{r(1, 2), r(1, 3), r(3, 11), r(3, 12), r(12, 13)},
-			include: []int{1, 3, 12},
-			want:    []korrel8r.Rule{r(1, 3), r(3, 12)},
-		},
-		{
-			name:    "two",
-			graph:   []korrel8r.Rule{r(1, 2), r(1, 3), r(3, 11), r(3, 12), r(12, 13)},
-			include: []int{1},
-			want:    nil,
-		},
-	} {
-		t.Run(x.name, func(t *testing.T) {
-			g := testGraph(x.graph)
-			var nodes []graph.Node
-			for _, i := range x.include {
-				nodes = append(nodes, g.NodeFor(c(i)))
-			}
-			sub := g.NodesSubgraph(nodes)
-			assert.Equal(t, x.want, graphRules(sub))
-		})
-	}
 }
 
 func TestGraph_Select(t *testing.T) {

@@ -19,7 +19,6 @@ korrel8r neighbours [flags]
       --since duration       Only get results since this long ago.
       --timeout duration     Timeout for store requests.
       --until duration       Only get results until this long ago.
-      --zeros                Include queries that returned zero results.
 ----
 
 == Options inherited from parent commands

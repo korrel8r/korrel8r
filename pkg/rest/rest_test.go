@@ -91,38 +91,6 @@ func TestAPIGraphGoals_rules(t *testing.T) {
 		})
 }
 
-func TestAPIGraphGoalsZeros(t *testing.T) {
-	e := testEngine(t)
-	assertDo(t, newTestAPI(t, e), "POST", "/api/v1alpha1/graphs/goals?zeros=true",
-		Goals{
-			Start: Start{
-				Class:   "mock:a",
-				Objects: []json.RawMessage{[]byte(`"x"`)},
-			},
-			Goals: []string{"mock:b"},
-		},
-		http.StatusOK,
-		Graph{
-			Nodes: []Node{
-				{
-					Class: "mock:a",
-					Count: ptr.To(1),
-				},
-				{
-					Class: "mock:b",
-					Count: ptr.To(1),
-					Queries: []QueryCount{
-						{Query: "mock:b:y", Count: ptr.To(1)},
-						{Query: "mock:b:none", Count: ptr.To(0)},
-					},
-				}},
-			Edges: []Edge{{
-				Start: "mock:a",
-				Goal:  "mock:b",
-			}},
-		})
-}
-
 func TestAPIGraphGoals_bad_goal(t *testing.T) {
 	e := testEngine(t)
 	assertDo(t, newTestAPI(t, e), "POST", "/api/v1alpha1/graphs/goals?zeros=true",

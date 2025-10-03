@@ -787,13 +787,6 @@ Options controlling the form of the returned graph.
 | If true include rule names in graph edges.
 |     
 
-| zeros
-| 
-| 
-|   Boolean  
-| if true include queries that returned no results.
-|     
-
 | errors
 | 
 | 

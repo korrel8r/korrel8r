@@ -10,9 +10,6 @@ import (
 
 const sep = korrel8r.NameSeparator
 
-func NameJoin(parts ...string) string { return strings.Join(parts, sep) }
-func NameSplit(s string) []string     { return strings.Split(s, sep) }
-
 func ClassString(c korrel8r.Class) string { return c.Domain().Name() + sep + c.Name() }
 
 func ClassSplit(fullname string) (domain, class string) {

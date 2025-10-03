@@ -37,10 +37,9 @@ func TestTraverserGoals(t *testing.T) {
 	})...).Stores(b.Store("d", nil)).Engine()
 	require.NoError(t, err)
 
-	a := NewAsync(e, e.Graph())
 	start := Start{Class: b.Class("d:a"), Objects: []korrel8r.Object{0}}
 	goal := b.Class("d:z")
-	g, err := a.Goals(context.Background(), start, list(goal))
+	g, err := Goals(context.Background(), e, start, list(goal))
 	if assert.NoError(t, err) {
 		lines := []string{
 			"\"ab\"(d:a->d:b)",
@@ -48,7 +47,7 @@ func TestTraverserGoals(t *testing.T) {
 			"\"bc2\"(d:b->d:c)",
 			"\"dz\"(d:c->d:z)",
 		}
-		assert.ElementsMatch(t, lines, lineStrings(g), "%#v", lineStrings(g))
+		assert.ElementsMatch(t, lines, lineStrings(g))
 
 		nodes := []string{
 			"d:a [0]",
@@ -56,7 +55,7 @@ func TestTraverserGoals(t *testing.T) {
 			"d:c [1,11,12,2]",
 			"d:z [1,11,12,2]",
 		}
-		assert.ElementsMatch(t, nodes, nodeStrings(g), "%#v", nodeStrings(g))
+		assert.ElementsMatch(t, nodes, nodeStrings(g))
 	}
 }
 
@@ -152,7 +151,7 @@ func TestTraverserNeighbours(t *testing.T) {
 	} {
 		t.Run(fmt.Sprintf("depth %v", x.depth), func(t *testing.T) {
 			start := Start{Class: b.Class("d:a"), Objects: []korrel8r.Object{0}}
-			g, err := NewAsync(e, e.Graph()).Neighbours(context.Background(), start, x.depth)
+			g, err := Neighbours(context.Background(), e, start, x.depth)
 			if assert.NoError(t, err) {
 				assert.ElementsMatch(t, x.lines, lineStrings(g), "%#v", lineStrings(g))
 				assert.ElementsMatch(t, x.nodes, nodeStrings(g), "%#v", nodeStrings(g))
