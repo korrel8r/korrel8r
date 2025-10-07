@@ -10,7 +10,7 @@ korrel8r neighbours [flags]
 
 ----
       --class string         Class for serialized start objects
-  -d, --depth int            Depth of neighbourhood search. (default 2)
+  -d, --depth int            Depth of neighbourhood search. (default 3)
   -h, --help                 help for neighbours
       --limit int            Limit total number of results.
       --object stringArray   Serialized start object, can be multiple.
