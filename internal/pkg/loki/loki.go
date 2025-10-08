@@ -93,10 +93,8 @@ func (c *Client) GetStack(ctx context.Context, logQL, tenant string, constraint 
 }
 
 const ( // Query URL keywords
-	query     = "query"
-	direction = "direction"
-	forward   = "forward"
-	limit     = "limit"
+	query = "query"
+	limit = "limit"
 
 	lokiStackPath  = "/api/logs/v1/"
 	queryRangePath = "/loki/api/v1/query_range"
@@ -105,7 +103,6 @@ const ( // Query URL keywords
 func queryURL(logQL string, c *korrel8r.Constraint) *url.URL {
 	v := url.Values{}
 	v.Add(query, logQL)
-	v.Add(direction, forward)
 	if c.GetLimit() > 0 {
 		v.Add(limit, fmt.Sprintf("%v", c.GetLimit()))
 	}
@@ -140,14 +137,14 @@ func (c *Client) get(ctx context.Context, u *url.URL, constraint *korrel8r.Const
 }
 
 // Visit each log record in the streams in timestamp order.
-// NOTE: assumes query direction is "forward" (newest first)
+// NOTE: assumes query direction is default "backward" (newest first)
 func collectSorted(streams []stream, collect CollectFunc) {
 	ts := func(i int) time.Time { return streams[i].Values[0].Time }
 	for {
-		// Find the stream with the earliest timestamp on its first value.
+		// Find the stream with the latest timestamp on its first value.
 		i := -1
 		for j, s := range streams {
-			if len(s.Values) > 0 && (i < 0 || ts(j).Before(ts(i))) {
+			if len(s.Values) > 0 && (i < 0 || ts(j).After(ts(i))) {
 				i = j
 			}
 		}

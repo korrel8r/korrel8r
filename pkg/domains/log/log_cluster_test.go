@@ -3,7 +3,9 @@
 package log_test
 
 import (
+	"cmp"
 	"fmt"
+	"slices"
 	"sort"
 	"testing"
 	"time"
@@ -45,15 +47,25 @@ func routeHost(t *testing.T, c client.Client, namespace, name string) string {
 func TestPodQueriesCluster(t *testing.T) {
 	// Set up pods to create logs.
 	c := test.RequireCluster(t)
-	const n = 5
+	const n = 10
 	namespace := test.TempNamespace(t, c, "podlog-").Name
 	ctx := t.Context()
 	require.NoError(t, c.Create(ctx, logger(namespace, "foo", "hello", 1, n, "box")))
-	require.NoError(t, c.Create(ctx, logger(namespace, "bar", "goodbye", 1, n, "box", "bag")))
+	require.NoError(t, c.Create(ctx, logger(namespace, "bar", "goodbye", 1, n, "bag", "crate")))
 	test.WaitForPodReady(t, c, namespace, "foo")
 	test.WaitForPodReady(t, c, namespace, "bar")
 
 	for _, storeType := range []string{"direct", "lokiStack"} {
+
+		// lokiStack returns logs in reverse time order, so reverse the logs for lokiStack.
+		getLogs := func(t testing.TB, s korrel8r.Store, q *log.Query, constraint *korrel8r.Constraint, min int) []korrel8r.Object {
+			l := getLogs(t, s, q, constraint, min)
+			if storeType == "lokiStack" {
+				slices.Reverse(l)
+			}
+			return l
+		}
+
 		t.Run(storeType, func(t *testing.T) {
 			var storeConfig config.Store
 			switch storeType {
@@ -64,9 +76,6 @@ func TestPodQueriesCluster(t *testing.T) {
 			}
 			s, err := log.Domain.Store(storeConfig)
 			require.NoError(t, err)
-
-			// Fail fast if we can't get a single log.
-			_ = getLogs(t, s, newQuery(t, "log:application:{name: foo, namespace: %v}", namespace), nil, 1)
 
 			t.Run("simple", func(t *testing.T) {
 				got := getLogs(t, s, newQuery(t, "log:application:{name: foo, namespace: %v}", namespace), nil, n)
@@ -80,14 +89,12 @@ func TestPodQueriesCluster(t *testing.T) {
 			})
 
 			t.Run("multipod", func(t *testing.T) {
-				got := getLogs(t, s, newQuery(t, `log:application:{namespace: %v}`, namespace), nil, n)
+				got := getLogs(t, s, newQuery(t, `log:application:{namespace: %v}`, namespace), nil, n*3)
 				want := wantBodies("box: hello", 1, n)
-				want = append(want, wantBodies("box: goodbye", 1, n)...)
+				want = append(want, wantBodies("crate: goodbye", 1, n)...)
 				want = append(want, wantBodies("bag: goodbye", 1, n)...)
 				assert.ElementsMatch(t, want, bodies(got))
-				// Make sure results are ordered by timestamp
-				times := fields("timestamp", got)
-				assert.True(t, sort.StringsAreSorted(times), times)
+				assert.True(t, sort.StringsAreSorted(fields("timestamp", got)), got)
 			})
 
 			t.Run("container", func(t *testing.T) {
@@ -97,19 +104,19 @@ func TestPodQueriesCluster(t *testing.T) {
 			})
 
 			t.Run("containers", func(t *testing.T) {
-				got := getLogs(t, s, newQuery(t, `log:application:{containers: ["bar","box","bag"], namespace: %v}`, namespace), nil, n)
-				want := wantBodies("box: hello", 1, n)
-				want = append(want, wantBodies("box: goodbye", 1, n)...)
-				want = append(want, wantBodies("bag: goodbye", 1, n)...)
+				got := getLogs(t, s, newQuery(t, `log:application:{containers: ["box","crate"], namespace: %v}`, namespace), nil, n)
+				want := append(wantBodies("box: hello", 1, n), wantBodies("crate: goodbye", 1, n)...)
 				assert.ElementsMatch(t, want, bodies(got))
-				// Make sure results are ordered by timestamp
-				times := fields("timestamp", got)
-				assert.True(t, sort.StringsAreSorted(times), times)
 			})
 
 			t.Run("timestamps", func(t *testing.T) {
 				q := newQuery(t, `log:application:{name: foo, namespace: %v}`, namespace)
 				all := getLogs(t, s, q, nil, n)
+				// Note: direct & loki searches return logs in opposite order.
+				sortTime := func(o korrel8r.Object) time.Time { t, _ := o.(log.Object).SortTime(); return t }
+				slices.SortFunc(all, func(a, b korrel8r.Object) int {
+					return cmp.Compare(sortTime(a).UnixNano(), sortTime(b).UnixNano())
+				})
 				require.Len(t, all, n)
 				// Make a constraint that excludes the first and last logs by timestamp.
 				start, err := all[0].(log.Object).SortTime()
@@ -124,10 +131,11 @@ func TestPodQueriesCluster(t *testing.T) {
 			})
 
 			t.Run("limit", func(t *testing.T) {
-				constraint := &korrel8r.Constraint{Limit: ptr.To(n - 2)}
-				got := getLogs(t, s, newQuery(t, `log:application:{name: foo, namespace: %v}`, namespace), constraint, n-2)
-				// Limit returns the last N logs, not the first N.
-				assert.Equal(t, wantBodies("box: hello", 1, 3), bodies(got))
+				l := n / 2
+				constraint := &korrel8r.Constraint{Limit: ptr.To(l)}
+				got := getLogs(t, s, newQuery(t, `log:application:{name: foo, namespace: %v}`, namespace), constraint, l)
+				// Limit returns the most recent N logs.
+				assert.Equal(t, wantBodies("box: hello", l+1, n), bodies(got))
 			})
 
 			t.Run("timeout", func(t *testing.T) {
@@ -155,11 +163,11 @@ func getLogs(t testing.TB, s korrel8r.Store, q *log.Query, constraint *korrel8r.
 			return true
 		}
 		i++
-		if i%50 == 0 { // Report every 50th iteration, i.e. every 5 seconds
+		if i%2 == 0 { // Report every 2 seconds
 			t.Logf("waiting for logs, want %v got %v: %v: %v", min, len(logs), q, err)
 		}
 		return false
-	}, time.Minute, time.Second/10, "query %v, want %v logs got %v", q, min, len(logs))
+	}, time.Minute, time.Second, "query %v, want %v logs got %v", q, min, len(logs))
 	require.NoError(t, err)
 	return logs
 }

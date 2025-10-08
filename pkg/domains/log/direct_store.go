@@ -16,6 +16,7 @@ import (
 	"github.com/korrel8r/korrel8r/pkg/domains/k8s"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r/impl"
+	"github.com/korrel8r/korrel8r/pkg/ptr"
 	"github.com/korrel8r/korrel8r/pkg/result"
 	"golang.org/x/sync/errgroup"
 	corev1 "k8s.io/api/core/v1"
@@ -82,6 +83,10 @@ func (s *directStore) Get(ctx context.Context, query korrel8r.Query, constraint 
 		if err != nil {
 			return err
 		}
+		var limit *int64
+		if constraint.GetLimit() > 0 {
+			limit = ptr.To(int64(constraint.GetLimit()))
+		}
 		for _, c := range pod.Spec.Containers {
 			if !q.direct.IsContainerSelected(c.Name) {
 				continue
@@ -89,6 +94,7 @@ func (s *directStore) Get(ctx context.Context, query korrel8r.Query, constraint 
 			opts := &corev1.PodLogOptions{
 				Container:  c.Name,
 				Timestamps: true,
+				TailLines:  limit, // No more than limit for each container.
 			}
 			if start := constraint.GetStart(); !start.IsZero() {
 				opts.SinceTime = &metav1.Time{Time: *constraint.Start}
@@ -155,7 +161,7 @@ func (s *directStore) readPodLogs(ctx context.Context, stream io.ReadCloser, out
 				}
 			}
 		}
-		// Check limit
+		// Check overall limit for all containers/pods
 		limit := int64(constraint.GetLimit())
 		if limit > 0 && count.Add(1) > limit {
 			return
