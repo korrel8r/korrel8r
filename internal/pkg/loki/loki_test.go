@@ -112,9 +112,8 @@ func TestQueryURL(t *testing.T) {
 				Limit: ptr.To(100),
 			},
 			expected: map[string]string{
-				"query":     `{app="test"}`,
-				"direction": "forward",
-				"limit":     "100",
+				"query": `{app="test"}`,
+				"limit": "100",
 			},
 		},
 		{
@@ -126,11 +125,10 @@ func TestQueryURL(t *testing.T) {
 				Limit: ptr.To(50),
 			},
 			expected: map[string]string{
-				"query":     `{service="api"}`,
-				"direction": "forward",
-				"limit":     "50",
-				"start":     "1000000000000",
-				"end":       "2000000000000",
+				"query": `{service="api"}`,
+				"limit": "50",
+				"start": "1000000000000",
+				"end":   "2000000000000",
 			},
 		},
 		{
@@ -140,9 +138,8 @@ func TestQueryURL(t *testing.T) {
 				Start: ptr.To(time.Unix(1500, 0)),
 			},
 			expected: map[string]string{
-				"query":     `{container="nginx"}`,
-				"direction": "forward",
-				"start":     "1500000000000",
+				"query": `{container="nginx"}`,
+				"start": "1500000000000",
 				// end should be present (auto-added when start is set)
 			},
 		},
@@ -153,9 +150,8 @@ func TestQueryURL(t *testing.T) {
 				End: ptr.To(time.Unix(3000, 0)),
 			},
 			expected: map[string]string{
-				"query":     `{job="prometheus"}`,
-				"direction": "forward",
-				"end":       "3000000000000",
+				"query": `{job="prometheus"}`,
+				"end":   "3000000000000",
 			},
 		},
 		{
@@ -163,8 +159,7 @@ func TestQueryURL(t *testing.T) {
 			logQL:      `{instance="localhost"}`,
 			constraint: &korrel8r.Constraint{},
 			expected: map[string]string{
-				"query":     `{instance="localhost"}`,
-				"direction": "forward",
+				"query": `{instance="localhost"}`,
 			},
 		},
 	}
@@ -214,16 +209,16 @@ func TestCollectSorted(t *testing.T) {
 				{
 					Stream: map[string]string{"app": "test"},
 					Values: []Log{
-						{Time: timeFromSec(100), Body: "log1"},
-						{Time: timeFromSec(200), Body: "log2"},
 						{Time: timeFromSec(300), Body: "log3"},
+						{Time: timeFromSec(200), Body: "log2"},
+						{Time: timeFromSec(100), Body: "log1"},
 					},
 				},
 			},
 			expected: []Log{
-				{Time: timeFromSec(100), Body: "log1", Labels: Labels{"app": "test"}},
-				{Time: timeFromSec(200), Body: "log2", Labels: Labels{"app": "test"}},
 				{Time: timeFromSec(300), Body: "log3", Labels: Labels{"app": "test"}},
+				{Time: timeFromSec(200), Body: "log2", Labels: Labels{"app": "test"}},
+				{Time: timeFromSec(100), Body: "log1", Labels: Labels{"app": "test"}},
 			},
 		},
 		{
@@ -232,23 +227,23 @@ func TestCollectSorted(t *testing.T) {
 				{
 					Stream: map[string]string{"service": "api"},
 					Values: []Log{
-						{Time: timeFromSec(100), Body: "api1"},
 						{Time: timeFromSec(300), Body: "api3"},
+						{Time: timeFromSec(100), Body: "api1"},
 					},
 				},
 				{
 					Stream: map[string]string{"service": "web"},
 					Values: []Log{
-						{Time: timeFromSec(200), Body: "web2"},
 						{Time: timeFromSec(400), Body: "web4"},
+						{Time: timeFromSec(200), Body: "web2"},
 					},
 				},
 			},
 			expected: []Log{
-				{Time: timeFromSec(100), Body: "api1", Labels: Labels{"service": "api"}},
-				{Time: timeFromSec(200), Body: "web2", Labels: Labels{"service": "web"}},
-				{Time: timeFromSec(300), Body: "api3", Labels: Labels{"service": "api"}},
 				{Time: timeFromSec(400), Body: "web4", Labels: Labels{"service": "web"}},
+				{Time: timeFromSec(300), Body: "api3", Labels: Labels{"service": "api"}},
+				{Time: timeFromSec(200), Body: "web2", Labels: Labels{"service": "web"}},
+				{Time: timeFromSec(100), Body: "api1", Labels: Labels{"service": "api"}},
 			},
 		},
 		{
@@ -276,9 +271,7 @@ func TestCollectSorted(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var collected []Log
-			collectFunc := func(entry *Log) {
-				collected = append(collected, *entry)
-			}
+			collectFunc := func(entry *Log) { collected = append(collected, *entry) }
 			collectSorted(tt.streams, collectFunc)
 			assert.Equal(t, collected, tt.expected)
 		})

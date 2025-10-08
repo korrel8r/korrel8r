@@ -46,7 +46,7 @@ var (
 	// DefaultDuration is the global default duration for query constraints.
 	DefaultDuration = time.Hour
 	// DefaultLimit is the global default max items limit for query constraints.
-	DefaultLimit = 100
+	DefaultLimit = 1000
 	// DefaultTimeout is default max timeout for requests and queries.
 	DefaultTimeout = time.Second * 10
 )
