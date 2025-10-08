@@ -2,23 +2,36 @@
 # Store service URLs assume that stores are installed in their default locations.
 stores:
   - domain: k8s
+
+  # Alert stores in openshift-monitoring
   - domain: alert
     metrics: https://thanos-querier.openshift-monitoring.svc:9091
     alertmanager: https://alertmanager-main.openshift-monitoring.svc:9094
     certificateAuthority: /var/run/secrets/kubernetes.io/serviceaccount/service-ca.crt
+  # Alerts stored in openshift-user-workload-monitoring
+  - domain: alert
+    metrics: https://thanos-querier.openshift-user-workload-monitoring.svc:9091
+    alertmanager: https://alertmanager-main.openshift-user-workload-monitoring.svc:9094
+    certificateAuthority: /var/run/secrets/kubernetes.io/serviceaccount/service-ca.crt
+
   - domain: log
     lokiStack: https://logging-loki-gateway-http.openshift-logging.svc:8080
     certificateAuthority: /var/run/secrets/kubernetes.io/serviceaccount/service-ca.crt
+
   - domain: metric
     metric: https://thanos-querier.openshift-monitoring.svc:9091
     certificateAuthority: /var/run/secrets/kubernetes.io/serviceaccount/service-ca.crt
+
   - domain: netflow
     lokiStack: https://loki-gateway-http.netobserv.svc:8080
     certificateAuthority: /var/run/secrets/kubernetes.io/serviceaccount/service-ca.crt
+
   - domain: trace
     tempoStack: https://tempo-platform-gateway.openshift-tempo-operator.svc.cluster.local:8080/api/traces/v1/platform/tempo/api/search
     certificateAuthority: /var/run/secrets/kubernetes.io/serviceaccount/service-ca.crt
+
   - domain: incident
     metrics: https://thanos-querier.openshift-monitoring.svc:9091
+
 include:
   - rules/all.yaml
