@@ -104,7 +104,7 @@ image: image-build ## Build and push image. IMG must be set to a writable image 
 	$(IMGTOOL) push -q $(IMAGE)
 
 image-latest: image ## Build and push image with 'latest' alias
-	$(IMGTOOL) push -q "$(IMAGE)" "$(IMG):latest"
+	$(IMGTOOL) push -q $(IMAGE) $(IMG):latest
 
 WAIT_DEPLOYMENT=hack/wait.sh rollout $(NAMESPACE) deployment.apps/korrel8r
 DEPLOY_ROUTE=kubectl apply -k config/route -n $(NAMESPACE) || echo "skipping route" # Non-openshift cluster
@@ -186,7 +186,7 @@ release:			## Push images and release tags for a release.
 	$(MAKE) clean
 	$(MAKE) pre-release
 	hack/tag-release.sh $(VERSION)
-	$(IMGTOOL) push -q "$(IMAGE)" "$(IMG):latest"
+	$(MAKE) image-latest
 	@echo Released $(VERSION) to $(REGISTRY_BASE)
 
 BINGO=$(GOBIN)/bingo
