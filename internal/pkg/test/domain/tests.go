@@ -28,8 +28,10 @@ func (f *Fixture) TestGet(t *testing.T) {
 	r := result.New(f.Query.Class())
 	require.NoError(t, f.MockEngine.Get(context.Background(), f.Query, &korrel8r.Constraint{}, r))
 	if assert.Equal(t, BatchLen, len(r.List()), "wrong number of results: %v", f.Query) {
-		if _, ok := f.Query.Class().(korrel8r.IDer); ok { // Only test de-duplication for classes with ID.
+		// Test de-duplication for classes with ID.
+		if _, ok := f.Query.Class().(korrel8r.IDer); ok {
 			t.Run("TestGet_dedup", func(t *testing.T) {
+				// Re-read same query into the same result. We shouldn't get any new values.
 				require.NoError(t, f.MockEngine.Get(context.Background(), f.Query, &korrel8r.Constraint{}, r))
 				assert.Equal(t, BatchLen, len(r.List()), "de-duplication failed: %v", f.Query)
 			})

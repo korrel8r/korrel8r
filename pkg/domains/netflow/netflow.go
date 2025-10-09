@@ -36,6 +36,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"hash/fnv"
 	"maps"
 	"net/http"
 	"net/url"
@@ -50,12 +51,11 @@ import (
 
 var (
 	// Verify implementing interfaces.
-	_ korrel8r.Domain    = Domain
-	_ korrel8r.Store     = &store{}
-	_ korrel8r.Store     = &stackStore{}
-	_ korrel8r.Query     = Query("")
-	_ korrel8r.Class     = Class{}
-	_ korrel8r.Previewer = Class{}
+	_ korrel8r.Domain = Domain
+	_ korrel8r.Store  = &store{}
+	_ korrel8r.Store  = &stackStore{}
+	_ korrel8r.Query  = Query("")
+	_ korrel8r.Class  = Class{}
 )
 
 // Domain for log records produced by openshift-logging.
@@ -137,23 +137,18 @@ func (c Class) Domain() korrel8r.Domain { return Domain }
 func (c Class) Name() string            { return "network" }
 func (c Class) String() string          { return korrel8r.ClassString(c) }
 
-func (c Class) Unmarshal(data []byte) (korrel8r.Object, error) { return impl.UnmarshalAs[Object](data) }
+func (c Class) Unmarshal(data []byte) (korrel8r.Object, error) {
+	return impl.UnmarshalAs[Object](data)
+}
 
-// Preview extracts the message from a Viaq log record.
-func (c Class) Preview(o korrel8r.Object) (line string) { return Preview(o) }
-
-// Preview extracts the message from a Viaq log record.
-func Preview(x korrel8r.Object) (line string) {
-	if m := x.(Object)["SrcK8S_Namespace"]; m != nil {
-		s, _ := m.(string)
-		message := "Network Flows from :" + s
-		if m = x.(Object)["DstK8S_Namespace"]; m != nil {
-			d, _ := m.(string)
-			message = message + " to : " + d
-		}
-		return message
+// ID is a hash constructed from "interesting" attributes defined in idKeys
+func (c Class) ID(ko korrel8r.Object) any {
+	o, _ := ko.(Object)
+	hash := fnv.New64()
+	for _, k := range idKeys {
+		fmt.Fprintf(hash, "%v", o[k])
 	}
-	return ""
+	return hash.Sum64()
 }
 
 // Object is a map holding netflow entries
@@ -216,4 +211,38 @@ func (s *stackStore) Get(ctx context.Context, query korrel8r.Query, c *korrel8r.
 	}
 
 	return s.GetStack(ctx, q.Data(), "network", c, func(e *loki.Log) { result.Append(NewObject(e)) })
+}
+
+// Attributes to use when constructing an ID for de-duplication.
+// Choose attributes that help identify endpoints and don't vary during a single conversation.
+var idKeys = []string{
+	"SrcK8S_Name",
+	"SrcSubnetLabel",
+	"AgentIP",
+	"DstK8S_OwnerType",
+	"Proto",
+	"SrcK8S_OwnerType",
+	"DnsErrno",
+	"DstPort",
+	"DstSubnetLabel",
+	"SrcK8S_Namespace",
+	"SrcK8S_Type",
+	"DstK8S_Name",
+	"DstMac",
+	"K8S_FlowLayer",
+	"SrcAddr",
+	"SrcPort",
+	"service_name",
+	"DstK8S_HostName",
+	"DstK8S_Type",
+	"SrcMac",
+	"DstAddr",
+	"DstK8S_HostIP",
+	"DstK8S_Namespace",
+	"DstK8S_OwnerName",
+	"IfDirections",
+	"SrcK8S_HostIP",
+	"SrcK8S_HostName",
+	"SrcK8S_OwnerName",
+	"Dscp",
 }
