@@ -156,7 +156,7 @@ doc: doc/gen/domains.adoc doc/gen/rest_api.adoc doc/gen/cmd
 
 doc/gen/domains.adoc: $(wildcard pkg/domains/*/*.adoc)
 	@mkdir -p $(dir $@)
-	rm -f $@; for D in $^; do echo -e "\ninclude::../../$$D[]\n" >>$@; done
+	rm -f $@; for D in $^; do { echo; echo "include::../../$$D[]"; echo; } >>$@; done
 
 OPENAPI_CFG=doc/openapi-asciidoc.yaml
 doc/gen/rest_api.adoc: $(OPENAPI_SPEC) $(OPENAPI_GEN) $(OPENAPI_CFG)
