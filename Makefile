@@ -197,6 +197,6 @@ tools: $(BINGO) $(ASCIIDOCTOR) $(KRAMDOC) $(SHELLCHECK) ## Download all tools ne
 	$(BINGO) get
 
 DEVSPACE_IMAGE?="$(REGISTRY_BASE)/korrel8r:devspace"
-devspace-image: # Build the devspace image
+devspace-image:									## Rebuild the devspace base image
 	$(IMGTOOL) build --tag=$(DEVSPACE_IMAGE) -f devspace.Containerfile
 	$(IMGTOOL) push $(DEVSPACE_IMAGE)

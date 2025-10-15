@@ -8,10 +8,6 @@ stores:
     metrics: https://thanos-querier.openshift-monitoring.svc:9091
     alertmanager: https://alertmanager-main.openshift-monitoring.svc:9094
     certificateAuthority: /var/run/secrets/kubernetes.io/serviceaccount/service-ca.crt
-  # Alerts stored in openshift-user-workload-monitoring
-  - domain: alert
-    alertmanager: https://alertmanager-main.openshift-user-workload-monitoring.svc:9094
-    certificateAuthority: /var/run/secrets/kubernetes.io/serviceaccount/service-ca.crt
 
   - domain: log
     lokiStack: https://logging-loki-gateway-http.openshift-logging.svc:8080
@@ -26,7 +22,7 @@ stores:
     certificateAuthority: /var/run/secrets/kubernetes.io/serviceaccount/service-ca.crt
 
   - domain: trace
-    tempoStack: https://tempo-platform-gateway.openshift-tempo-operator.svc.cluster.local:8080/api/traces/v1/platform/tempo/api/search
+    tempoStack: https://tempo-platform-gateway.openshift-tracing.svc.cluster.local:8080/api/traces/v1/platform/tempo/api/search
     certificateAuthority: /var/run/secrets/kubernetes.io/serviceaccount/service-ca.crt
 
   - domain: incident
