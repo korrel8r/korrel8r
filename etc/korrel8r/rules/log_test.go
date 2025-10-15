@@ -41,7 +41,7 @@ func TestLogRules(t *testing.T) {
 				"spec": k8s.Object{
 					"selector": k8s.Object{"matchLabels": map[string]string{"a.b/c": "x"}},
 				}},
-			want: []string{`log:application:{"name":"ns","labels":{"a.b/c":"x"}}`},
+			want: []string{`log:application:{"namespace":"ns","labels":{"a.b/c":"x"}}`},
 		},
 		{
 			rule:  "PodToLogs",

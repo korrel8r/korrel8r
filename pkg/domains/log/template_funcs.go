@@ -2,7 +2,11 @@
 
 package log
 
-import "regexp"
+import (
+	"fmt"
+	"reflect"
+	"regexp"
+)
 
 // TemplateFuncs for this domain. See package description.
 func (domain) TemplateFuncs() map[string]any { return templateFuncs }
@@ -19,12 +23,18 @@ var labelBad = regexp.MustCompile(`^[^a-zA-Z_:]|[^a-zA-Z0-9_:]`)
 // Returns a valid Loki stream label by replacing illegal characters in its argument with "_"
 func SafeLabel(label string) string { return labelBad.ReplaceAllString(label, "_") }
 
-func SafeLabels(labels map[string]string) map[string]string {
-	result := map[string]string{}
-	for k, v := range labels {
-		result[SafeLabel(k)] = v
+func SafeLabels(labelMap any) (any, error) {
+	in := reflect.ValueOf(labelMap)
+	if in.Type().Key().Kind() != reflect.String {
+		return nil, fmt.Errorf("safeLabels: expecting map[string]T, got %T", labelMap)
 	}
-	return labels
+	out := reflect.MakeMap(in.Type())
+	i := in.MapRange()
+	for i.Next() {
+		k := SafeLabel(i.Key().String())
+		out.SetMapIndex(reflect.ValueOf(k), i.Value())
+	}
+	return labelMap, nil
 }
 
 func logTypeForNamespace(namespace string) string {
