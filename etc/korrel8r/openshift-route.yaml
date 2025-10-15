@@ -7,9 +7,6 @@ stores:
   - domain: alert
     metrics: 'https://{{(query "k8s:Route.v1.route.openshift.io:{namespace: openshift-monitoring, name: thanos-querier}" | first).spec.host}}'
     alertmanager: 'https://{{(query "k8s:Route.v1.route.openshift.io:{namespace: openshift-monitoring, name: alertmanager-main}" | first).spec.host}}'
-  # Alerts stored in openshift-user-workload-monitoring
-  - domain: alert
-    alertmanager: 'https://{{(query "k8s:Route.v1.route.openshift.io:{namespace: openshift-user-workload-monitoring, name: alertmanager-main}" | first).spec.host}}'
 
   - domain: log
     lokiStack: 'https://{{(query "k8s:Route.v1.route.openshift.io:{namespace: openshift-logging, name: logging-loki}" | first).spec.host}}'
