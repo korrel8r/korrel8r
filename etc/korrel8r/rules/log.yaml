@@ -18,7 +18,7 @@ rules:
     result:
       query: >
         log:{{logTypeForNamespace .metadata.namespace}}:{
-        "name":"{{.metadata.namespace}}",
+        "namespace":"{{.metadata.namespace}}",
         "labels":{{.spec.selector.matchLabels | logSafeLabels | mustToJson}} }
 
   - name: PodToLogs

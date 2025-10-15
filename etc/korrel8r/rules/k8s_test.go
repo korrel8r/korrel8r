@@ -58,6 +58,11 @@ func TestK8sRules(t *testing.T) {
 			want:  []string{`alert:alert:{"namespace":"aNamespace","pod":"foo"}`},
 		},
 		{
+			rule:  "DeploymentToAlert",
+			start: newK8s("Deployment", "aNamespace", "foo", nil),
+			want:  []string{`alert:alert:{"namespace":"aNamespace","deployment":"foo"}`},
+		},
+		{
 			rule: "PodToNode",
 			start: newK8s("Pod", "ns", "pod", k8s.Object{
 				"spec": k8s.Object{
