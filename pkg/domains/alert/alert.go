@@ -253,26 +253,19 @@ func (s *Store) Get(ctx context.Context, query korrel8r.Query, c *korrel8r.Const
 	}
 
 	// Gather matching alerts from the Prometheus Rules API.
-	rulesResult, err := s.prometheusAPI.Rules(ctx)
+	prometheusRules, err := s.prometheusAPI.Rules(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to query rules from Prometheus API: %w", err)
 	}
 
-	subqueries := q.Parsed
-	if len(subqueries) == 0 {
-		// An edge case where there are no sub-queries loaded: make an implicit
-		// empty one to match all alerts.
-		subqueries = []map[string]string{nil}
-	}
-
-	for _, sq := range subqueries {
-		alerts, err := s.getSubquery(ctx, rulesResult, sq)
+	for _, subquery := range q.Parsed {
+		alerts, err := s.getSubquery(ctx, prometheusRules, subquery)
 		if err != nil {
 			return err
 		}
 
 		for _, a := range alerts {
-			// Only include alerts that overlap with the constraint interval.
+			// Only include alerts that overlap with the constraint interval or have no start/end time.
 			if c.CompareTime(a.StartsAt) <= 0 && c.CompareTime(a.EndsAt) >= 0 {
 				result.Append(a)
 			}
@@ -282,89 +275,76 @@ func (s *Store) Get(ctx context.Context, query korrel8r.Query, c *korrel8r.Const
 	return nil
 }
 
-func (s *Store) getSubquery(ctx context.Context, rulesResult v1.RulesResult, q map[string]string) (alerts []*Object, err error) {
-	for _, rg := range rulesResult.Groups {
+func (s *Store) getSubquery(ctx context.Context, prometheusRules v1.RulesResult, subQuery map[string]string) ([]*Object, error) {
+	var alerts []*Object
+	for _, rg := range prometheusRules.Groups {
 		for _, r := range rg.Rules {
 			ar, ok := r.(v1.AlertingRule)
 			if !ok {
 				continue
 			}
-
 			for _, a := range ar.Alerts {
-				if !matchesSubquery(q, a) {
-					continue
+				if matchesSubquery(subQuery, a) {
+					alerts = append(alerts, &Object{
+						Labels:      convertLabelSetToMap(a.Labels),
+						Annotations: convertLabelSetToMap(a.Annotations),
+						Status:      string(a.State),
+						Value:       a.Value,
+						StartsAt:    a.ActiveAt,
+						Expression:  ar.Query,
+						Fingerprint: a.Labels.Fingerprint().String(),
+					})
 				}
-
-				alerts = append(alerts, &Object{
-					Labels:      convertLabelSetToMap(a.Labels),
-					Annotations: convertLabelSetToMap(a.Annotations),
-					Status:      string(a.State),
-					Value:       a.Value,
-					StartsAt:    a.ActiveAt,
-					Expression:  ar.Query,
-					Fingerprint: a.Labels.Fingerprint().String(),
-				})
 			}
 		}
 	}
 
 	// Gather matching alerts from the Alertmanager API and merge with the existing alerts.
 	var filters []string
-	for k, v := range q {
+	for k, v := range subQuery {
 		filters = append(filters, fmt.Sprintf("%v=%v", k, v))
 	}
-	resp, err := s.alertmanagerAPI.Alert.GetAlerts(alert.NewGetAlertsParamsWithContext(ctx).WithFilter(filters))
+	alertManagerAlerts, err := s.alertmanagerAPI.Alert.GetAlerts(alert.NewGetAlertsParamsWithContext(ctx).WithFilter(filters))
 	if err != nil {
 		return nil, fmt.Errorf("failed to query alerts from Alertmanager API: %w", err)
 	}
-
-	for _, a := range resp.Payload {
-		// We can't perform an exact label comparison because alerts from
-		// Alertmanager may have more labels than Prometheus alerts (due to
-		// external labels for instance).
-		// We consider an Alertmanager alert to be the same as a Prometheus
-		// alert if the Alertmanager labels are a super-set of the Prometheus
-		// labels.
-		var o *Object
-		for _, pa := range alerts {
-			found := true
-			for k, v := range pa.Labels {
-				if a.Labels[k] != v {
-					found = false
-					break
-				}
-			}
-
-			if found {
-				o = pa
-				break
-			}
-		}
-
-		// If the alert doesn't exist in Prometheus, skip it.
-		if o == nil {
-			break
-		}
-
-		o.StartsAt = time.Time(*a.StartsAt)
-		o.EndsAt = time.Time(*a.EndsAt)
-		o.GeneratorURL = a.GeneratorURL.String()
-		for _, r := range a.Receivers {
-			o.Receivers = append(o.Receivers, Receiver{Name: *r.Name})
-		}
-		o.SilencedBy = a.Status.SilencedBy
-		o.InhibitedBy = a.Status.InhibitedBy
-
-		if o.Status == "" {
-			o.Status = *a.Status.State
-			if o.Status != "suppressed" {
-				o.Status = "firing"
-			}
-		} else if *a.Status.State == "suppressed" {
-			o.Status = *a.Status.State
-		}
+	for _, pa := range alerts {
+		s.augmentAlert(pa, alertManagerAlerts)
 	}
-
 	return alerts, nil
 
+}
+
+// augmentAlert augment a prometheus alert using the matching alertManager alert if there is one.
+func (*Store) augmentAlert(pa *Object, alertManagerAlerts *alert.GetAlertsOK) {
+	// We can't perform an exact label comparison because alerts from
+	// Alertmanager may have more labels than Prometheus alerts (due to
+	// external labels for instance).
+	// We consider an Alertmanager alert to be the same as a Prometheus
+	// alert if the Alertmanager labels are a super-set of the Prometheus
+	// labels.
+	for _, ama := range alertManagerAlerts.Payload {
+		for k, v := range pa.Labels {
+			if ama.Labels[k] != v {
+				continue
+			}
+			pa.StartsAt = time.Time(*ama.StartsAt)
+			pa.EndsAt = time.Time(*ama.EndsAt)
+			pa.GeneratorURL = ama.GeneratorURL.String()
+			for _, r := range ama.Receivers {
+				pa.Receivers = append(pa.Receivers, Receiver{Name: *r.Name})
+			}
+			pa.SilencedBy = ama.Status.SilencedBy
+			pa.InhibitedBy = ama.Status.InhibitedBy
+
+			if pa.Status == "" {
+				pa.Status = *ama.Status.State
+				if pa.Status != "suppressed" {
+					pa.Status = "firing"
+				}
+			} else if *ama.Status.State == "suppressed" {
+				pa.Status = *ama.Status.State
+			}
+		}
+	}
 }

@@ -27,15 +27,15 @@ func (c *Constraint) String() string {
 }
 
 // CompareTime returns -1 if t is before the constraint interval, +1 if it is after,
-// and 0 if it is in the interval, or if there is no interval.
+// and 0 if: in the interval, there is no interval or when.IsZero().
 // Safe to call with c == nil
 func (c *Constraint) CompareTime(when time.Time) int {
 	switch {
 	case c == nil:
 		return 0
-	case c.Start != nil && when.Before(*c.Start):
+	case c.Start != nil && !when.IsZero() && when.Before(*c.Start):
 		return -1
-	case c.End != nil && when.After(*c.End):
+	case c.End != nil && !when.IsZero() && when.After(*c.End):
 		return +1
 	}
 	return 0

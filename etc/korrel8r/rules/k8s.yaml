@@ -21,6 +21,16 @@ rules:
        query: |-
          alert:alert:{"namespace":"{{.metadata.namespace}}","pod":"{{.metadata.name}}"}
 
+   - name: DeploymentToAlert
+     start:
+       domain: k8s
+       classes: [Deployment.apps]
+     goal:
+       domain: alert
+     result:
+       query: |-
+         alert:alert:{"namespace":"{{.metadata.namespace}}","deployment":"{{.metadata.name}}"}
+
    - name: SelectorToPods
      start:
        domain: k8s
