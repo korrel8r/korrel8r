@@ -27,6 +27,7 @@ stores:
 
   - domain: incident
     metrics: https://thanos-querier.openshift-monitoring.svc:9091
+    certificateAuthority: /var/run/secrets/kubernetes.io/serviceaccount/service-ca.crt
 
 include:
   - rules/all.yaml
