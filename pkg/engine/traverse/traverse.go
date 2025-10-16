@@ -5,6 +5,7 @@ package traverse
 
 import (
 	"context"
+	"fmt"
 	"sync"
 
 	"github.com/korrel8r/korrel8r/internal/pkg/logging"
@@ -86,6 +87,9 @@ func (t *traverser) run(ctx context.Context, start Start, traverse func(v graph.
 
 	// Prime the start worker
 	w := t.workers[start.Class]
+	if w == nil {
+		return nil, fmt.Errorf("start class not found: %v", start.Class)
+	}
 	w.node.Result.Append(start.Objects...)
 	for _, q := range start.Queries {
 		w.inbox.Add(queryLine{Query: q})
