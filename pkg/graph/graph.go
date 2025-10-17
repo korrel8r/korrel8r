@@ -8,15 +8,16 @@ package graph
 
 import (
 	"fmt"
-	"strings"
+	"math"
+	"slices"
 
-	"github.com/korrel8r/korrel8r/internal/pkg/logging"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 
 	"gonum.org/v1/gonum/graph"
 	"gonum.org/v1/gonum/graph/encoding"
 	"gonum.org/v1/gonum/graph/multi"
 	"gonum.org/v1/gonum/graph/path"
+	"gonum.org/v1/gonum/graph/traverse"
 )
 
 // Graph is a directed multigraph with [korrel8r.Class] noes and [korrel8r.Rule] lines.
@@ -54,12 +55,40 @@ func New(data *Data) *Graph {
 	}
 }
 
+// Weight an edge by the "spread" of its rules.
+//
+// Wildcard rules in domains with many classes (e.g. k8s, DependentToOwner) are "expensive".
+// They create many speculative graph lines, but following these lines often leads nowhere.
+// Weight edges based on the least expensive rule, in other words avoid
+// consider an edge expensive if it has with only expensive rules.
+func (g *Graph) Weight(u, v int64) (w float64, ok bool) {
+	if u == v {
+		return 0, true
+	}
+	l := g.Lines(u, v)
+	w = math.Inf(1)
+	for l.Next() {
+		ok = true
+		goals := l.Line().(*Line).Rule.Goal()
+		w = math.Min(w, float64(len(goals)))
+	}
+	return w, ok
+}
+
 func (g *Graph) NodeFor(c korrel8r.Class) *Node {
 	n := g.Data.NodeFor(c)
 	if n == nil || g.Node(n.ID()) == nil {
 		return nil
 	}
 	return n
+}
+
+func (g *Graph) NodeForErr(c korrel8r.Class) (*Node, error) {
+	n := g.NodeFor(c)
+	if n == nil {
+		return nil, fmt.Errorf("class not found in graph: %v", c)
+	}
+	return n, nil
 }
 
 func (g *Graph) EachNode(visit func(*Node)) {
@@ -127,49 +156,53 @@ func (g *Graph) DOTAttributers() (graph, node, edge encoding.Attributer) {
 	return g.GraphAttrs, g.NodeAttrs, g.EdgeAttrs
 }
 
-// ShortestPaths returns a new sub-graph containing all shortest paths between start and goals.
-func (g *Graph) ShortestPaths(start korrel8r.Class, goals ...korrel8r.Class) *Graph {
-	paths := path.DijkstraAllFrom(g.NodeFor(start), g)
+// GoalPaths returns a new sub-graph containing only nodes on a path to the goal class.
+// Includes k-shortest paths with cost <= shortest+1.
+func (g *Graph) GoalPaths(start korrel8r.Class, goals []korrel8r.Class) (*Graph, error) {
+	u, err := g.NodeForErr(start)
+	if err != nil {
+		return nil, err
+	}
 	sub := g.Data.EmptyGraph()
+	sub.AddNode(u)
 	for _, goal := range goals {
-		n := g.NodeFor(goal)
-		if n == nil {
-			log.V(1).Info("Goal not in graph", "class", goal)
-			continue
+		v, err := g.NodeForErr(goal)
+		if err != nil {
+			return nil, err
 		}
-		v := n.ID()
-		paths.AllToFunc(v, func(path []graph.Node) {
+		// Find shortest paths, and shortest+1 paths
+		paths := path.YenKShortestPaths(g, -1, 1, u, v)
+		for _, path := range paths {
 			for i := 1; i < len(path); i++ {
 				lines := g.Lines(path[i-1].ID(), path[i].ID())
 				for lines.Next() {
 					sub.SetLine(lines.Line())
 				}
 			}
-		})
-	}
-	return sub
-}
-
-// GoalSearch traverses the shortest paths from start to all goals, in breadth first order.
-func (g *Graph) GoalSearch(start korrel8r.Class, goals []korrel8r.Class, v Visitor) {
-	g.ShortestPaths(start, goals...).BreadthFirst(start, v, nil)
-}
-
-// Neighbours traverses a breadth-first neighbourhood of start up to depth.
-func (g *Graph) Neighbours(startClass korrel8r.Class, maxDepth int, v Visitor) {
-	start := g.NodeFor(startClass)
-	if start == nil {
-		return
-	}
-	depth := 0
-	line := func(l *Line) bool {
-		if depth < maxDepth {
-			return v.Line(l)
 		}
-		return false
 	}
-	until := func(n *Node, d int) bool { depth = d; return d > maxDepth }
-	g.BreadthFirst(startClass, FuncVisitor{LineF: line, NodeF: v.Node}, until)
+	return sub, nil
+}
+
+// Neighbours returns a breadth-first neighbourhood following up to maxDepth edges from start.
+func (g *Graph) Neighbours(start korrel8r.Class, maxDepth int) (*Graph, error) {
+	sub := g.Data.EmptyGraph()
+	u, err := g.NodeForErr(start)
+	if err != nil {
+		return nil, err
+	}
+	sub.AddNode(u)
+	depth := 0
+	bf := traverse.BreadthFirst{
+		Traverse: func(e graph.Edge) bool {
+			ok := depth < maxDepth
+			if ok {
+				EdgeFor(e).EachLine(func(l *Line) { sub.SetLine(l) })
+			}
+			return ok
+		}}
+	_ = bf.Walk(g, u, func(n graph.Node, d int) bool { depth = d; return d > maxDepth })
+	return sub, nil
 }
 
 // FindLine finds a line between start and goal with rule. Nil if not found.
@@ -188,14 +221,30 @@ func (g *Graph) FindLine(start, goal korrel8r.Class, rule korrel8r.Rule) *Line {
 	return nil
 }
 
-func (g *Graph) String() string {
-	w := &strings.Builder{}
-	fmt.Fprintln(w, "<Graph>")
+// Remove empty nodes and lines from the graph.
+func (g *Graph) RemoveEmpty() {
 	g.EachLine(func(l *Line) {
-		fmt.Fprintln(w, l.String())
+		if l.Queries.Total() == 0 {
+			g.RemoveLine(l.F.ID(), l.T.ID(), l.ID())
+		}
 	})
-	fmt.Fprintln(w, "</Graph>")
-	return w.String()
+	g.EachNode(func(n *Node) {
+		if len(n.Result.List()) == 0 {
+			g.RemoveNode(n.ID())
+		}
+	})
+}
+
+func (g *Graph) LineStrings() (lines []string) {
+	g.EachLine(func(l *Line) { lines = append(lines, l.String()) })
+	slices.Sort(lines)
+	return lines
+}
+
+func (g *Graph) NodeStrings(sorted bool) (nodes []string) {
+	g.EachNode(func(n *Node) { nodes = append(nodes, n.String(sorted)) })
+	slices.Sort(nodes)
+	return nodes
 }
 
 // Pull useful functions into this package.
@@ -204,5 +253,3 @@ var (
 	LinesOf = graph.LinesOf
 	EdgesOf = graph.EdgesOf
 )
-
-var log = logging.Log()
