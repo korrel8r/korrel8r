@@ -5,116 +5,176 @@ package graph
 import (
 	"fmt"
 	"testing"
-	"text/template"
 
 	"github.com/korrel8r/korrel8r/internal/pkg/test/mock"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
-	"github.com/korrel8r/korrel8r/pkg/rules"
-	"github.com/korrel8r/korrel8r/pkg/unique"
 	"github.com/stretchr/testify/assert"
 )
 
-type ruleMap map[string]korrel8r.Rule
-
-func (rm ruleMap) r(i, j int) korrel8r.Rule {
-	name := fmt.Sprintf("%v_%v", i, j)
-	if _, ok := rm[name]; !ok {
-		rm[name] = rules.NewTemplateRule([]korrel8r.Class{c(i)}, []korrel8r.Class{c(j)}, template.New(name))
-	}
-	return rm[name]
-}
-
-func TestGraph_Select(t *testing.T) {
-	rm := ruleMap{}
-	r := func(i, j int) korrel8r.Rule { return rm.r(i, j) }
+func TestGoalPaths(t *testing.T) {
+	b := mock.NewBuilder("d")
+	r := b.Rule
+	// Paths:
+	// a-(b1,b2)-c len(3)
+	// a-(b1,b2)-c-d len(4)
+	// a-x-y-z-d len(5)
+	g := NewData(
+		r("ab", "d:a", "d:b", nil),
+		r("bc1", "d:b", "d:c", nil),
+		r("bc2", "d:b", "d:c", nil),
+		r("cd", "d:c", "d:d", nil),
+		r("ax", "d:a", "d:x", nil),
+		r("xy", "d:x", "d:y", nil),
+		r("yz", "d:y", "d:z", nil),
+		r("za", "d:z", "d:a", nil), // Cycle
+		r("zd", "d:z", "d:d", nil),
+		r("ze", "d:z", "d:e", nil),
+		r("ed", "d:e", "d:d", nil),
+	).FullGraph()
 
 	for _, x := range []struct {
-		name        string
-		graph, want []korrel8r.Rule
-		pick        func(*Line) bool
+		name         string
+		start        korrel8r.Class
+		goals        []korrel8r.Class
+		lines, nodes []string
 	}{
 		{
-			name:  "one",
-			graph: []rule{r(1, 2), r(1, 3), r(3, 11), r(3, 12), r(12, 13)},
-			pick:  func(l *Line) bool { return unique.Set[korrel8r.Rule]{r(1, 3): {}, r(3, 11): {}}.Has(l.Rule) },
-			want:  []korrel8r.Rule{r(1, 3), r(3, 11)},
+			name:  "shortest",
+			start: b.Class("d:a"),
+			goals: b.Classes("d:c"),
+			lines: []string{"ab(d:a->d:b)", "bc1(d:b->d:c)", "bc2(d:b->d:c)"},
+			nodes: []string{"d:a", "d:b", "d:c"},
 		},
 		{
-			name:  "two",
-			graph: []korrel8r.Rule{r(1, 2), r(1, 3), r(3, 11), r(3, 12), r(12, 13)},
-			pick:  func(l *Line) bool { return false },
-			want:  nil,
+			name:  "k-shortest+1",
+			start: b.Class("d:a"),
+			goals: b.Classes("d:d"),
+			lines: []string{
+				"ab(d:a->d:b)", "bc1(d:b->d:c)", "bc2(d:b->d:c)", "cd(d:c->d:d)",
+				"ax(d:a->d:x)", "xy(d:x->d:y)", "yz(d:y->d:z)", "zd(d:z->d:d)"},
+			nodes: []string{"d:a", "d:b", "d:c", "d:d", "d:x", "d:y", "d:z"},
+		},
+		{
+			name:  "weighted shortest",
+			start: b.Class("d:a"),
+			goals: b.Classes("d:d"),
+			lines: []string{
+				"ab(d:a->d:b)", "bc1(d:b->d:c)", "bc2(d:b->d:c)", "cd(d:c->d:d)",
+				"ax(d:a->d:x)", "xy(d:x->d:y)", "yz(d:y->d:z)", "zd(d:z->d:d)"},
+			nodes: []string{"d:a", "d:b", "d:c", "d:d", "d:x", "d:y", "d:z"},
+		},
+		{
+			name:  "cycle",
+			start: b.Class("d:a"),
+			goals: b.Classes("d:z"),
+			lines: []string{"ax(d:a->d:x)", "xy(d:x->d:y)", "yz(d:y->d:z)"},
+			nodes: []string{"d:a", "d:x", "d:y", "d:z"},
 		},
 	} {
 		t.Run(x.name, func(t *testing.T) {
-			g := testGraph(x.graph).Select(x.pick)
-			assert.Equal(t, x.want, graphRules(g))
+			sub, err := g.GoalPaths(x.start, x.goals)
+			if assert.NoError(t, err) {
+				assert.ElementsMatch(t, x.lines, sub.LineStrings(), "%#v", sub.LineStrings())
+				assert.ElementsMatch(t, x.nodes, sub.NodeStrings(true), "%#v", sub.NodeStrings(true))
+			}
 		})
 	}
 }
 
-func TestGraph_EachNode(t *testing.T) {
-	rm := ruleMap{}
-	r := func(i, j int) rule { return rm.r(i, j) }
+func TestNeighbours(t *testing.T) {
+	b := mock.NewBuilder("d")
+	r := b.Rule
+	g := NewData(
+		r("ab", "d:a", "d:b", nil),
+		r("ac", "d:a", "d:c", nil),
+		r("bx", "d:b", "d:x", nil),
+		r("cy", "d:c", "d:y", nil),
+		r("yz", "d:y", "d:z", nil),
+		r("zq", "d:z", "d:q", nil),
+	).FullGraph()
 
-	var nodes []*Node
-	g := testGraph([]rule{r(1, 2), r(1, 3), r(3, 11), r(3, 12), r(12, 13)})
-	g.EachNode(func(n *Node) { nodes = append(nodes, n) })
-	var want []*Node
-	for _, i := range []int{1, 2, 3, 11, 12, 13} {
-		want = append(want, g.NodeFor(c(i)))
-	}
-	assert.ElementsMatch(t, want, nodes)
-}
-
-func TestGraph_LinesBetween(t *testing.T) {
-	rm := ruleMap{}
-	r := func(i, j int) korrel8r.Rule { return rm.r(i, j) }
-	g := testGraph([]rule{r(1, 2), r(1, 3), r(1, 2), r(12, 13)})
-	rules := func(start, goal korrel8r.Class) []string {
-		var rules []string
-		g.EachLineBetween(g.NodeFor(start), g.NodeFor(goal), func(l *Line) {
-			rules = append(rules, l.Rule.Name())
-		})
-		return rules
-	}
-	assert.ElementsMatch(t, rules(c(1), c(2)), []string{"1_2", "1_2"})
-	assert.ElementsMatch(t, rules(c(1), c(3)), []string{"1_3"})
-	assert.Empty(t, rules(c(1), c(13)))
-}
-
-func TestGraph_ShortestPaths(t *testing.T) {
-	rm := ruleMap{}
-	r := func(i, j int) korrel8r.Rule { return rm.r(i, j) }
 	for _, x := range []struct {
-		name        string
-		graph, want []rule
+		depth int
+		lines []string
+		nodes []string
 	}{
 		{
-			name:  "simple",
-			graph: []rule{r(1, 2), r(1, 3), r(3, 11), r(3, 12), r(12, 13)},
-			want:  []rule{r(1, 3), r(3, 12), r(12, 13)},
+			depth: 4,
+			lines: []string{
+				"ab(d:a->d:b)",
+				"ac(d:a->d:c)",
+				"bx(d:b->d:x)",
+				"cy(d:c->d:y)",
+				"yz(d:y->d:z)",
+				"zq(d:z->d:q)",
+			},
+			nodes: []string{
+				"d:a",
+				"d:b",
+				"d:c",
+				"d:x",
+				"d:y",
+				"d:z",
+				"d:q",
+			},
 		},
 		{
-			name:  "multiple",
-			graph: []rule{r(1, 2), r(1, 3), r(3, 11), r(2, 12), r(3, 12), r(12, 13)},
-			want:  []rule{r(1, 2), r(1, 3), r(2, 12), r(3, 12), r(12, 13)},
+			depth: 3,
+			lines: []string{
+				"ab(d:a->d:b)",
+				"ac(d:a->d:c)",
+				"bx(d:b->d:x)",
+				"cy(d:c->d:y)",
+				"yz(d:y->d:z)",
+			},
+			nodes: []string{
+				"d:a",
+				"d:b",
+				"d:c",
+				"d:x",
+				"d:y",
+				"d:z",
+			},
 		},
 		{
-			name:  "lengths",
-			graph: []rule{r(1, 2), r(1, 3), r(1, 13), r(2, 12), r(3, 12), r(12, 13)},
-			want:  []rule{r(1, 13)},
+			depth: 2,
+			lines: []string{
+				"ab(d:a->d:b)",
+				"ac(d:a->d:c)",
+				"bx(d:b->d:x)",
+				"cy(d:c->d:y)",
+			},
+			nodes: []string{
+				"d:a",
+				"d:b",
+				"d:c",
+				"d:x",
+				"d:y",
+			},
 		},
 		{
-			name:  "empty",
-			graph: []rule{r(1, 2), r(1, 3), r(3, 11), r(12, 13)},
-			want:  nil,
-		}} {
-		t.Run(x.name, func(t *testing.T) {
-			g := testGraph(x.graph)
-			paths := g.ShortestPaths(c(1), c(13))
-			mock.SortRules(x.want)
-			assert.Equal(t, x.want, graphRules(paths))
+			depth: 1, lines: []string{
+				"ab(d:a->d:b)",
+				"ac(d:a->d:c)",
+			},
+			nodes: []string{
+				"d:a",
+				"d:b",
+				"d:c",
+			},
+		},
+		{
+			depth: 0,
+			lines: []string{},
+			nodes: []string{"d:a"},
+		},
+	} {
+		t.Run(fmt.Sprintf("depth %v", x.depth), func(t *testing.T) {
+			sub, err := g.Neighbours(b.Class("d:a"), x.depth)
+			if assert.NoError(t, err) {
+				assert.ElementsMatch(t, x.lines, sub.LineStrings())
+				assert.ElementsMatch(t, x.nodes, sub.NodeStrings(true))
+			}
 		})
 	}
 }

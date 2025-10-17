@@ -17,3 +17,7 @@ func Transform[T, U any](t []T, f func(T) U) []U {
 func Strings[T any](t []T) []string {
 	return Transform(t, func(v T) string { return fmt.Sprintf("%v", v) })
 }
+
+func Anys[T any](t []T) []any {
+	return Transform(t, func(v T) any { return v })
+}

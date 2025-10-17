@@ -5,7 +5,6 @@ package traverse
 
 import (
 	"context"
-	"fmt"
 	"sync"
 
 	"github.com/korrel8r/korrel8r/internal/pkg/logging"
@@ -18,15 +17,21 @@ import (
 // Goals traverses all paths from start objects to all goal classes.
 func Goals(ctx context.Context, e *engine.Engine, start Start, goals []korrel8r.Class) (*graph.Graph, error) {
 	log.V(2).Info("Goal directed search", "start", start, "goals", goals, "constraint", korrel8r.ConstraintFrom(ctx))
-	traverser := newTraverser(e)
-	return traverser.run(ctx, start, func(v graph.Visitor) { traverser.graph.GoalSearch(start.Class, goals, v) })
+	g, err := e.Graph().GoalPaths(start.Class, goals)
+	if err != nil {
+		return nil, err
+	}
+	return newTraverser(e, g).run(ctx, start)
 }
 
 // Neighbours traverses to all neighbours of the start objects, traversing links up to the given depth.
 func Neighbours(ctx context.Context, e *engine.Engine, start Start, depth int) (*graph.Graph, error) {
 	log.V(2).Info("Neighbourhood search", "start", start, "depth", depth, "constraint", korrel8r.ConstraintFrom(ctx))
-	traverser := newTraverser(e)
-	return traverser.run(ctx, start, func(v graph.Visitor) { traverser.graph.Neighbours(start.Class, depth, v) })
+	g, err := e.Graph().Neighbours(start.Class, depth)
+	if err != nil {
+		return nil, err
+	}
+	return newTraverser(e, g).run(ctx, start)
 }
 
 // Start point information for graph traversal.
@@ -62,40 +67,36 @@ type queryLine struct {
 
 func (ql queryLine) ID() string { return ql.Query.String() }
 
-func newTraverser(e *engine.Engine) *traverser {
+func newTraverser(e *engine.Engine, g *graph.Graph) *traverser {
 	return &traverser{
 		engine:  e,
-		graph:   e.Graph(),
+		graph:   g,
 		workers: map[korrel8r.Class]*worker{},
 	}
 }
 
 // run starts the search and waits for it to complete.
-func (t *traverser) run(ctx context.Context, start Start, traverse func(v graph.Visitor)) (*graph.Graph, error) {
-	// Create workers for the relevant parts of the graph.
-	traverse(graph.FuncVisitor{
-		NodeF: func(n *graph.Node) {
-			t.newWorker(n)
-		},
-		LineF: func(l *graph.Line) bool {
-			t.newWorker(l.Start())
-			t.newWorker(l.Goal())
-			t.workers[l.Start().Class].rules.Add(l.Rule)
-			return true
-		},
-	})
+func (t *traverser) run(ctx context.Context, start Start) (*graph.Graph, error) {
 
 	// Prime the start worker
-	w := t.workers[start.Class]
-	if w == nil {
-		return nil, fmt.Errorf("start class not found: %v", start.Class)
+	startNode, err := t.graph.NodeForErr(start.Class)
+	if err != nil {
+		return nil, err
 	}
+	w := t.newWorker(startNode)
 	w.node.Result.Append(start.Objects...)
 	for _, q := range start.Queries {
 		w.inbox.Add(queryLine{Query: q})
 	}
 
-	// Run workers until no work is left.
+	// Create workers for start and goal of all rules in the graph.
+	t.graph.EachLine(func(l *graph.Line) {
+		t.newWorker(l.Start())
+		t.newWorker(l.Goal())
+		t.workers[l.Start().Class].rules.Add(l.Rule)
+	})
+
+	// Run until no work is left.
 	for {
 		if ctx.Err() != nil {
 			return nil, ctx.Err()
@@ -121,7 +122,7 @@ func (t *traverser) run(ctx context.Context, start Start, traverse func(v graph.
 		}
 		busy.Wait() // Wait for worker.Run() goroutines to complete.
 
-		// Redistribute outboxes to inboxes.
+		// Redistribute outboxes to inboxes. Not concurrent touches all workers.
 		for _, w := range working {
 			for _, ql := range w.outbox.List {
 				if next := t.workers[ql.Query.Class()]; next != nil {
@@ -132,31 +133,23 @@ func (t *traverser) run(ctx context.Context, start Start, traverse func(v graph.
 			w.outbox.Clear()
 		}
 	}
-
-	// Remove empty nodes and lines from the graph.
-	t.graph.EachLine(func(l *graph.Line) {
-		if l.Queries.Total() == 0 {
-			t.graph.RemoveLine(l.F.ID(), l.T.ID(), l.ID())
-		}
-	})
-	t.graph.EachNode(func(n *graph.Node) {
-		if len(n.Result.List()) == 0 {
-			t.graph.RemoveNode(n.ID())
-		}
-	})
+	t.graph.RemoveEmpty()
 	return t.graph, nil
 }
 
-func (t *traverser) newWorker(n *graph.Node) {
-	if t.workers[n.Class] == nil {
-		t.workers[n.Class] = &worker{
+func (t *traverser) newWorker(n *graph.Node) *worker {
+	w := t.workers[n.Class]
+	if w == nil {
+		w = &worker{
 			traverser: t,
 			node:      n,
 			rules:     unique.NewList[korrel8r.Rule](),
 			inbox:     unique.NewDeduplicator(queryLine.ID).List(),
 			outbox:    unique.NewDeduplicator(queryLine.ID).List(),
 		}
+		t.workers[n.Class] = w
 	}
+	return w
 }
 
 func (w *worker) HasWork() bool {

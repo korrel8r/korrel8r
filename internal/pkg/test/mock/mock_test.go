@@ -330,13 +330,10 @@ func TestBuilder_Rules(t *testing.T) {
 	d := mock.NewDomain("testdomain", "start1", "start2", "goal1", "goal2")
 	b := mock.NewBuilder(d)
 
-	args := [][]any{
-		{"rule1", "testdomain:start1", "testdomain:goal1"},
-		{"rule2", "testdomain:start2", "testdomain:goal2", nil},
+	rules := []korrel8r.Rule{
+		b.Rule("rule1", "testdomain:start1", "testdomain:goal1", nil),
+		b.Rule("rule2", "testdomain:start2", "testdomain:goal2", nil),
 	}
-
-	rules := b.Rules(args)
-
 	assert.Len(t, rules, 2)
 	assert.Equal(t, "rule1", rules[0].Name())
 	assert.Equal(t, "rule2", rules[1].Name())

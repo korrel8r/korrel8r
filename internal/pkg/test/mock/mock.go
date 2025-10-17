@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
+	slices2 "github.com/korrel8r/korrel8r/pkg/slices"
 )
 
 var (
@@ -218,6 +219,10 @@ func (b *Builder) Classes(vs ...any) (classes []korrel8r.Class) {
 		switch v := v.(type) {
 		case []korrel8r.Class:
 			classes = append(classes, v...)
+		case []any:
+			classes = append(classes, b.Classes(v...)...)
+		case []string:
+			classes = append(classes, b.Classes(slices2.Anys(v)...)...)
 		default:
 			classes = append(classes, b.Class(v))
 		}
@@ -225,21 +230,10 @@ func (b *Builder) Classes(vs ...any) (classes []korrel8r.Class) {
 	return classes
 }
 
+// Rule creates a new rule. start and goal can be a single class or class name, or a slice.
+// See [NewRule] for parameter details.
 func (b *Builder) Rule(name string, start, goal, apply any) korrel8r.Rule {
 	return NewRule(name, b.Classes(start), b.Classes(goal), apply)
-}
-
-// Rules args are [[name?, start, goal, apply?]]
-func (b *Builder) Rules(args [][]any) []korrel8r.Rule {
-	var rules []korrel8r.Rule
-	for _, arg := range args {
-		var apply any
-		if len(arg) > 3 {
-			apply = arg[3]
-		}
-		rules = append(rules, b.Rule(arg[0].(string), arg[1], arg[2], apply))
-	}
-	return rules
 }
 
 // result can be [error] or [object...]
