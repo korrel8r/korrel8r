@@ -14,16 +14,18 @@ You can list git changes with:
 
 == Prepare for release
 
-Edit Makefile and set 'VERSION=X.Y.Z' for the new release.
+Edit Makefile and set 'VERSION?=X.Y.Z' for the new release.
 Make sure you are logged in to `quay.io/korrel8r` to push images.
 
   make clean; make pre-release REGISTRY_BASE=quay.io/korrel8r
 
 Use `git status` to verify that all changes are related to the version number change.
 
-Commit and push your changes to `origin/vX.Y` with commit message 'Release X.Y.Z'
+Commit and push your changes with commit message 'Release X.Y.Z'
+- Push directly to `main` if version X.Y.Z is the next release version.
+- Push to branch `vX.Y` if it exists, and merge or cherry pick changes back to `main` as appropriate.
 
-Cherry pick the release commit back to `main` to keep the main CHANGELOG up to date.
+The `vX.Y` branch only needs to be created if/when main has moved on to a version > X.Y.
 
 == Publish the release
 

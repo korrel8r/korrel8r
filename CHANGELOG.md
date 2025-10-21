@@ -9,6 +9,26 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 _Note unreleased changes on main here pending the next release_
 
+## [0.8.4] - 2025-10-21
+
+### Added
+- Allow rule templates to generate multiple queries.
+- Add rules connecting operator to k8s resources
+- Add rule for Event.event.k8s.io type events.
+
+### Changed
+- performance: More efficient and effective goal search.
+- performance: Avoid repeated application of failed rules.
+
+### Fixed
+- fix: Missing nil pointer check in traverser.run
+- fix: Regression in log rules
+- fix: COO-1250 Korrel8r can not access custom alerts
+- fix: Correct tempo store URL, remove incorrect user-workload URLs.
+- fix: Log limits and ordering.
+- fix: Neighborhood searches find all nodes.
+- fix: Allow rules to handle cluster-scoped objects correctly
+
 ## [0.8.2] - 2025-09-10
 
 ### Added
