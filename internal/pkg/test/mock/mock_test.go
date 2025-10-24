@@ -142,7 +142,15 @@ func TestClass_Methods(t *testing.T) {
 	assert.Equal(t, d, c.Domain())
 	assert.Equal(t, "testdomain:testclass", c.String())
 	obj := map[string]any{"test": "value"}
-	assert.Equal(t, "map[test:value]", korrel8r.GetID(c, obj))
+	assert.Equal(t, "map[test:value]", GetID(c, obj))
+}
+
+// GetID returns the object ID using if class is an IDer, "" otherwise.
+func GetID(class korrel8r.Class, object korrel8r.Object) string {
+	if ider, _ := class.(korrel8r.IDer); ider != nil {
+		return fmt.Sprintf("%v", ider.ID(object))
+	}
+	return ""
 }
 
 func TestClass_Unmarshal(t *testing.T) {
