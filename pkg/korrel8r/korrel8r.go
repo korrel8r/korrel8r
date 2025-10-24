@@ -16,7 +16,6 @@ package korrel8r
 
 import (
 	"context"
-	"fmt"
 )
 
 // Domain is the entry-point to a package implementing a korrel8r domain.
@@ -67,14 +66,6 @@ type Class interface {
 // Classes that implement IDer can be de-duplicated when collected in a Result.map
 type IDer interface {
 	ID(Object) any // ID must be a comparable type.
-}
-
-// GetID returns the object ID using if class is an IDer, "" otherwise.
-func GetID(class Class, object Object) string {
-	if ider, _ := class.(IDer); ider != nil {
-		return fmt.Sprintf("%v", ider.ID(object))
-	}
-	return ""
 }
 
 // Store is a source of signal data that can be queried.
