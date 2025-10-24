@@ -3,8 +3,8 @@ name: korrel8r
 
 functions:
   # Scale down COO so it doesn't fight over the korrel8r deployment
-  scale_down_coo: kubectl scale --replicas=0 -n ${DEVSPACE_NAMESPACE} deployment/korrel8r
-  scale_up_coo:   kubectl scale --replicas=1 -n ${DEVSPACE_NAMESPACE} deployment/korrel8r
+  scale_down_coo: kubectl scale --replicas=0 -n ${DEVSPACE_NAMESPACE} deployment/observability-operator
+  scale_up_coo:   kubectl scale --replicas=1 -n ${DEVSPACE_NAMESPACE} deployment/observability-operator
 
 # This is a list of `pipelines` that DevSpace can execute (you can define your own)
 pipelines:
@@ -30,7 +30,7 @@ dev:
     container: korrel8r
     devImage: ${REGISTRY_BASE}/korrel8r:devspace
     command:
-      - gow                     # Re-run if source file change
+      - go
       - run
       - ./cmd/korrel8r
       - web
@@ -52,6 +52,8 @@ dev:
           - '!/pkg'
           - '!/internal'
           - '!/etc'
+        onUpload:
+          restartContainer: true
         startContainer: true
         waitInitialSync: true
         printLogs: true

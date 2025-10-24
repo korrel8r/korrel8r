@@ -18,8 +18,5 @@ COPY go.mod go.mod
 COPY go.sum go.sum
 RUN go mod download -x
 
-# Install gow: watches source changes and rebuilds go programs.
-RUN go install github.com/mitranim/gow@latest
-
 RUN mkdir -p /.devspace
 RUN chmod -R g+rw /.devspace /src

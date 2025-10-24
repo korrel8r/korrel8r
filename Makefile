@@ -46,9 +46,6 @@ install: generate							## Build and install korrel8r with go install.
 run: generate									## Run korrel8r with default configuration.
 	go run ./cmd/korrel8r -c $(CONFIG) $(ARGS)
 
-runw: generate $(GOW)					## Run `korrel8r web` with auto-rebuild if source changes.
-	$(GOW) -v run ./cmd/korrel8r -c $(CONFIG) $(ARGS)
-
 clean: ## Remove generated files, including checked-in files.
 	rm -rf _site generate doc/gen tmp $(GEN_OPENAPI_GO) $(BIN) $(GOCOVERDIR)
 
