@@ -83,14 +83,28 @@ func TestTraverserNeighbours(t *testing.T) {
 		nodes []string
 	}{
 		{
-			depth: 4,
+			depth: 0,
+			lines: []string{},
+			nodes: []string{"d:a[0]"},
+		},
+		{
+			depth: 1, lines: []string{
+				"ab(d:a->d:b)",
+				"ac(d:a->d:c)",
+			},
+			nodes: []string{
+				"d:a[0]",
+				"d:b[1]",
+				"d:c[2]",
+			},
+		},
+		{
+			depth: 2,
 			lines: []string{
 				"ab(d:a->d:b)",
 				"ac(d:a->d:c)",
 				"bx(d:b->d:x)",
 				"cy(d:c->d:y)",
-				"yz(d:y->d:z)",
-				"zq(d:z->d:q)",
 			},
 			nodes: []string{
 				"d:a[0]",
@@ -98,8 +112,6 @@ func TestTraverserNeighbours(t *testing.T) {
 				"d:c[2]",
 				"d:x[3]",
 				"d:y[4]",
-				"d:z[5]",
-				"d:q[6]",
 			},
 		},
 		{
@@ -121,12 +133,14 @@ func TestTraverserNeighbours(t *testing.T) {
 			},
 		},
 		{
-			depth: 2,
+			depth: 4,
 			lines: []string{
 				"ab(d:a->d:b)",
 				"ac(d:a->d:c)",
 				"bx(d:b->d:x)",
 				"cy(d:c->d:y)",
+				"yz(d:y->d:z)",
+				"zq(d:z->d:q)",
 			},
 			nodes: []string{
 				"d:a[0]",
@@ -134,24 +148,8 @@ func TestTraverserNeighbours(t *testing.T) {
 				"d:c[2]",
 				"d:x[3]",
 				"d:y[4]",
-			},
-		},
-		{
-			depth: 1, lines: []string{
-				"ab(d:a->d:b)",
-				"ac(d:a->d:c)",
-			},
-			nodes: []string{
-				"d:a[0]",
-				"d:b[1]",
-				"d:c[2]",
-			},
-		},
-		{
-			depth: 0,
-			lines: []string{},
-			nodes: []string{
-				"d:a[0]",
+				"d:z[5]",
+				"d:q[6]",
 			},
 		},
 	} {

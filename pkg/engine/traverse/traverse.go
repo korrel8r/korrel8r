@@ -21,17 +21,17 @@ func Goals(ctx context.Context, e *engine.Engine, start Start, goals []korrel8r.
 	if err != nil {
 		return nil, err
 	}
-	return newTraverser(e, g).run(ctx, start)
+	return newTraverser(e, g).run(ctx, start, -1)
 }
 
 // Neighbours traverses to all neighbours of the start objects, traversing links up to the given depth.
 func Neighbours(ctx context.Context, e *engine.Engine, start Start, depth int) (*graph.Graph, error) {
 	log.V(2).Info("Neighbourhood search", "start", start, "depth", depth, "constraint", korrel8r.ConstraintFrom(ctx))
-	g, err := e.Graph().Neighbours(start.Class, depth)
+	g, err := e.Graph().Neighbours(start.Class, depth) // Reduce the graph.
 	if err != nil {
 		return nil, err
 	}
-	return newTraverser(e, g).run(ctx, start)
+	return newTraverser(e, g).run(ctx, start, depth)
 }
 
 // Start point information for graph traversal.
@@ -76,7 +76,8 @@ func newTraverser(e *engine.Engine, g *graph.Graph) *traverser {
 }
 
 // run starts the search and waits for it to complete.
-func (t *traverser) run(ctx context.Context, start Start) (*graph.Graph, error) {
+// If depth is >= 0 the search is limited to that depth. If depth < 0 there is no depth limit.
+func (t *traverser) run(ctx context.Context, start Start, depth int) (*graph.Graph, error) {
 
 	// Prime the start worker
 	startNode, err := t.graph.NodeForErr(start.Class)
@@ -96,8 +97,9 @@ func (t *traverser) run(ctx context.Context, start Start) (*graph.Graph, error) 
 		t.workers[l.Start().Class].rules.Add(l.Rule)
 	})
 
-	// Run until no work is left.
-	for {
+	// Run until no work is left or we have reached the requested depth.
+	// Depth < 0 means no depth limit.
+	for i := 0; i <= depth || depth < 0; i++ {
 		if ctx.Err() != nil {
 			return nil, ctx.Err()
 		}
@@ -156,7 +158,7 @@ func (w *worker) HasWork() bool {
 	return len(w.inbox.List) > 0 || len(w.node.Result.List()) > w.processed
 }
 
-// Run processes queries in inbox and stores result queries in outbox
+// Run processes queries in inbox, populates graph results, applies rules, and stores new queries in outbox.
 func (w *worker) Run(ctx context.Context) {
 	defer func() {
 		w.inbox.Clear()
