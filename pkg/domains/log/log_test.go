@@ -372,30 +372,6 @@ func TestClassUnmarshalAndPreview(t *testing.T) {
 	})
 }
 
-func TestSafeLabel(t *testing.T) {
-	tests := []struct {
-		name     string
-		input    string
-		expected string
-	}{
-		{"Valid label", "valid_label_123", "valid_label_123"},
-		{"Label with colon", "app:version", "app:version"},
-		{"Label starting with number", "123invalid", "_23invalid"},
-		{"Label with special chars", "app-name.service", "app_name_service"},
-		{"Label with spaces", "my app", "my_app"},
-		{"Empty string", "", ""},
-		{"Only invalid chars", "-.@", "___"},
-		{"Mixed valid/invalid", "app-1.2.3", "app_1_2_3"},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := SafeLabel(tt.input)
-			assert.Equal(t, tt.expected, result)
-		})
-	}
-}
-
 func TestLogTypeForNamespace(t *testing.T) {
 	tests := []struct {
 		name      string
@@ -423,11 +399,11 @@ func TestLogTypeForNamespace(t *testing.T) {
 
 func TestContainerSelector_LogQL(t *testing.T) {
 	tests := []struct {
-		name               string
-		selector           ContainerSelector
-		expected           string
-		expectedContains   []string // For cases where label order is non-deterministic
-		useContainsCheck   bool
+		name             string
+		selector         ContainerSelector
+		expected         string
+		expectedContains []string // For cases where label order is non-deterministic
+		useContainsCheck bool
 	}{
 		{
 			name:     "Empty selector",

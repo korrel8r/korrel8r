@@ -19,7 +19,7 @@ rules:
       query: >
         log:{{logTypeForNamespace .metadata.namespace}}:{
         "namespace":"{{.metadata.namespace}}",
-        "labels":{{.spec.selector.matchLabels | logSafeLabels | mustToJson}} }
+        "labels":{{.spec.selector.matchLabels | mustToJson}} }
 
   - name: PodToLogs
     start:

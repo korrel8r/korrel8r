@@ -142,8 +142,7 @@ func TestPodQueriesCluster(t *testing.T) {
 				q := newQuery(t, `log:application:{namespace: %v}`, namespace)
 				constraint := &korrel8r.Constraint{Timeout: ptr.To(time.Nanosecond)}
 				err := s.Get(t.Context(), q, constraint, result.New(q.Class()))
-				t.Logf("(%T)%v", err, err)
-				assert.Error(t, err)
+				assert.ErrorContains(t, err, "context deadline exceeded")
 			})
 		})
 	}

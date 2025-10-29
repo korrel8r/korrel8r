@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/korrel8r/korrel8r/pkg/rest/auth"
 )
 
 // logger is a Gin handler to log requests for debugging.
@@ -20,10 +19,6 @@ func (a *API) logger(c *gin.Context) {
 		"url", c.Request.URL,
 		"from", c.Request.RemoteAddr,
 	)
-	if log.V(3).Enabled() {
-		auth := c.Request.Header.Get(auth.Header)
-		log = log.WithValues("hasAuth", auth != "")
-	}
 	log.V(3).Info("Request received", "body", copyBody(c.Request))
 	// Wrap the ResponseWriter to capture the response
 	rw := newResponseWriter(c.Writer)

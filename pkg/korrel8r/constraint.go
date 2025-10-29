@@ -43,12 +43,12 @@ func (c *Constraint) CompareTime(when time.Time) int {
 
 // Default values can be modified in init() or main(), but not after korrel8r functions are called.
 var (
-	// DefaultDuration is the global default duration for query constraints.
+	// DefaultDuration is the global default duration (time range) for query constraints.
 	DefaultDuration = time.Hour
 	// DefaultLimit is the global default max items limit for query constraints.
 	DefaultLimit = 1000
 	// DefaultTimeout is default max timeout for requests and queries.
-	DefaultTimeout = time.Second * 10
+	DefaultTimeout = time.Second * 30
 )
 
 // Default fills in default values. Safe to call with c == nil.
