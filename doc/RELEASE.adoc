@@ -25,7 +25,7 @@ Commit and push your changes with commit message 'Release X.Y.Z'
 - Push directly to `main` if version X.Y.Z is the next release version.
 - Push to branch `vX.Y` if it exists, and merge or cherry pick changes back to `main` as appropriate.
 
-The `vX.Y` branch only needs to be created if/when main has moved on to a version > X.Y.
+The `vX.Y` branch only needs to be created if/when main has moved on to a version > X.Y and there are vX.Y.Z patches.
 
 == Publish the release
 
@@ -36,8 +36,3 @@ This does the following:
 - Creates and pushes the git tag 'vX.Y.Z'
 - Updates the 'latest' image tag to point to the new images.
 
-== Update main
-
-If necessary, port changes on the release branch back to `main`.
-
-Cherry pick the release commit back to `main` to keep the main CHANGELOG up to date.

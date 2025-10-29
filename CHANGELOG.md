@@ -9,7 +9,16 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 _Note unreleased changes on main here pending the next release_
 
-## [0.8.4] - 2025-10-21
+## [0.8.4] - 2025-10-29
+
+### Fixed
+- Invalid Loki labels in log queries
+- Neighbourhood searches exceeding requested depth.
+
+### Changed
+- performance: De-duplicate netflows with same network parameters.
+
+## [0.8.3] - 2025-10-21
 
 ### Added
 - Allow rule templates to generate multiple queries.
