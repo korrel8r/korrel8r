@@ -25,7 +25,7 @@ func SafeLabel(label string) string { return labelBad.ReplaceAllString(label, "_
 
 func SafeLabels(labelMap any) (any, error) {
 	in := reflect.ValueOf(labelMap)
-	if in.Type().Key().Kind() != reflect.String {
+	if in.Kind() != reflect.Map || in.Type().Key().Kind() != reflect.String {
 		return nil, fmt.Errorf("safeLabels: expecting map[string]T, got %T", labelMap)
 	}
 	out := reflect.MakeMap(in.Type())
@@ -34,7 +34,7 @@ func SafeLabels(labelMap any) (any, error) {
 		k := SafeLabel(i.Key().String())
 		out.SetMapIndex(reflect.ValueOf(k), i.Value())
 	}
-	return labelMap, nil
+	return out.Interface(), nil
 }
 
 func logTypeForNamespace(namespace string) string {
