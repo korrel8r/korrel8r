@@ -4,6 +4,7 @@ package engine
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"maps"
@@ -11,6 +12,7 @@ import (
 	"slices"
 	"strconv"
 	"sync"
+	"text/template"
 
 	"github.com/korrel8r/korrel8r/internal/pkg/test/mock"
 	"github.com/korrel8r/korrel8r/pkg/config"
@@ -108,8 +110,16 @@ func (s *storeHolder) ensure() (korrel8r.Store, error) {
 	// Expand the store config each time - the results may change.
 	s.Expanded = config.Store{}
 	for k, original := range s.Original {
-		expanded, err := s.Engine.execTemplate(s.Domain().Name()+" store template", original, nil)
+		// FIXME double unwrap??
+		expanded, err := s.Engine.execTemplate(s.domain.Name()+"-store", original, nil)
 		if err != nil {
+			var execErr template.ExecError
+			if errors.As(err, &execErr) {
+				err2 := errors.Unwrap(execErr.Err)
+				if err2 != nil {
+					err = err2
+				}
+			}
 			return nil, err
 		}
 		s.Expanded[k] = expanded

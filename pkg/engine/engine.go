@@ -16,7 +16,6 @@ import (
 	"github.com/korrel8r/korrel8r/pkg/config"
 	"github.com/korrel8r/korrel8r/pkg/graph"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
-	"github.com/korrel8r/korrel8r/pkg/result"
 )
 
 var log = logging.Log()
@@ -152,17 +151,6 @@ func (e *Engine) Get(ctx context.Context, query korrel8r.Query, constraint *korr
 		return fmt.Errorf("no stores found for domain %v", query.Class().Domain().Name())
 	}
 	return ss.Get(ctx, query, constraint, korrel8r.AppenderFunc(func(o korrel8r.Object) { count++; result.Append(o) }))
-}
-
-// query implements the template function 'query'.
-func (e *Engine) query(query string) ([]korrel8r.Object, error) {
-	q, err := e.Query(query)
-	if err != nil {
-		return nil, err
-	}
-	results := result.New(q.Class())
-	err = e.Get(context.Background(), q, nil, results)
-	return results.List(), err
 }
 
 // NewTemplate returns a template set up with options and funcs for this engine.

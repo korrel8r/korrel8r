@@ -162,7 +162,7 @@ func getLogs(t testing.TB, s korrel8r.Store, q *log.Query, constraint *korrel8r.
 			return true
 		}
 		i++
-		if i%2 == 0 { // Report every 2 seconds
+		if i%5 == 0 { // Report every 5 seconds
 			t.Logf("waiting for logs, want %v got %v: %v: %v", min, len(logs), q, err)
 		}
 		return false

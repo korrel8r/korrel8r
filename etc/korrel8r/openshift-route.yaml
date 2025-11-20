@@ -5,24 +5,24 @@ stores:
 
   # Alert stores in openshift-monitoring
   - domain: alert
-    metrics: 'https://{{(query "k8s:Route.v1.route.openshift.io:{namespace: openshift-monitoring, name: thanos-querier}" | first).spec.host}}'
-    alertmanager: 'https://{{(query "k8s:Route.v1.route.openshift.io:{namespace: openshift-monitoring, name: alertmanager-main}" | first).spec.host}}'
+    metrics: 'https://{{k8sRouteHost "openshift-monitoring" "thanos-querier"}}'
+    alertmanager: 'https://{{k8sRouteHost "openshift-monitoring" "alertmanager-main"}}'
 
   - domain: log
-    lokiStack: 'https://{{(query "k8s:Route.v1.route.openshift.io:{namespace: openshift-logging, name: logging-loki}" | first).spec.host}}'
+    lokiStack: 'https://{{k8sRouteHost "openshift-logging" "logging-loki"}}'
     direct: true
 
   - domain: metric
-    metric: 'https://{{(query "k8s:Route.v1.route.openshift.io:{namespace: openshift-monitoring, name: thanos-querier}" | first).spec.host}}'
+    metric: 'https://{{k8sRouteHost "openshift-monitoring" "thanos-querier"}}'
 
   - domain: netflow
-    lokiStack: 'https://{{(query "k8s:Route.v1.route.openshift.io:{namespace: netobserv, name: loki}" | first).spec.host}}'
+    lokiStack: 'https://{{k8sRouteHost "netobserv" "loki"}}'
 
   - domain: trace
-    tempoStack: 'https://{{(query "k8s:Route.v1.route.openshift.io:{namespace: openshift-tracing, name: tempo-platform-gateway}" | first).spec.host}}/api/traces/v1/platform/tempo/api/search'
+    tempoStack: 'https://{{k8sRouteHost "openshift-tracing" "tempo-platform-gateway"}}/api/traces/v1/platform/tempo/api/search'
 
   - domain: incident
-    metrics: 'https://{{(query "k8s:Route.v1.route.openshift.io:{namespace: openshift-monitoring, name: thanos-querier}" | first).spec.host}}'
+    metrics: 'https://{{k8sRouteHost "openshift-monitoring" "thanos-querier"}}'
 
 include:
   - rules/all.yaml
