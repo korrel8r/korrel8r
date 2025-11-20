@@ -1,4 +1,6 @@
 # Makefile is self-documenting, comments starting with '##' are extracted as help text.
+# Variables: ## line comment before the variable..
+# Targets: ## inline comment after the target.
 help: ## Display this help.
 	@echo; echo = Targets =
 	@grep -E '^[A-Za-z0-9_-]+:.*##' Makefile | sed 's/:.*##\s*/#/' | column -s'#' -t
@@ -13,8 +15,6 @@ REGISTRY_BASE?=$(error REGISTRY_BASE must be set to push images)
 IMGTOOL?=$(or $(shell which podman 2>/dev/null),$(shell which docker 2>/dev/null),$(error Cannot find podman or docker in PATH))
 ## NAMESPACE: Namespace for `make deploy`
 NAMESPACE=korrel8r
-## CONFIG: Configuration file for `make run`
-CONFIG?=etc/korrel8r/openshift-route.yaml
 
 # Name of image.
 IMG?=$(REGISTRY_BASE)/korrel8r
@@ -35,16 +35,13 @@ GEN_OPENAPI_GO=pkg/rest/gen-openapi.go
 generate: $(VERSION_TXT) $(GEN_OPENAPI_GO)
 	hack/copyright.sh
 
-all: lint test _site image-build ## Build and test everything locally. Recommended before pushing.
+all: lint test _site image-build ## Build and test everything locally. Recommended before commit.
 
 build: generate $(BIN)				## Build korrel8r executable.
 	go build -o $(BIN)/korrel8r ./cmd/korrel8r
 
 install: generate							## Build and install korrel8r with go install.
 	go install ./cmd/korrel8r
-
-run: generate									## Run korrel8r with default configuration.
-	go run ./cmd/korrel8r -c $(CONFIG) $(ARGS)
 
 clean: ## Remove generated files, including checked-in files.
 	rm -rf _site generate doc/gen tmp $(GEN_OPENAPI_GO) $(BIN) $(GOCOVERDIR)
@@ -97,7 +94,7 @@ bench: generate	$(BENCHSTAT)	## Run all benchmarks.
 image-build:  generate ## Build image locally, don't push.
 	$(IMGTOOL) build --tag=$(IMAGE) -f Containerfile .
 
-image: image-build ## Build and push image. IMG must be set to a writable image repository.
+image: image-build ## Build and push image.
 	$(IMGTOOL) push -q $(IMAGE)
 
 image-latest: image ## Build and push image with 'latest' alias
@@ -111,16 +108,14 @@ kustomize-edit: $(KUSTOMIZE)
 	$(KUSTOMIZE) edit set image "$(REGISTRY_BASE)/korrel8r=$(IMAGE)";	\
 	$(KUSTOMIZE) edit set namespace "$(NAMESPACE)"
 
-deploy: image kustomize-edit	## Deploy to current cluster using kustomize.
+deploy: image kustomize-edit ## Deploy to current cluster using kustomize.
 	kubectl apply -k config
 	$(DEPLOY_ROUTE)
 	$(WAIT_DEPLOYMENT)
 
-undeploy:			# Delete resources created by `make deploy`
+undeploy:			## Delete resources created by `make deploy`
 	@kubectl delete -k config/route || true
 	@kubectl delete -k config || true
-
-## Documentation
 
 ASCIIDOCTOR:=$(BIN)/asciidoctor
 $(ASCIIDOCTOR): $(BIN)
@@ -175,11 +170,13 @@ doc/gen/cmd: generate $(shell find ./cmd/korrel8r) $(KORREL8RCLI) $(KRAMDOC) ## 
 	hack/md-to-adoc.sh $(KRAMDOC) $@/*.md
 	@touch $@
 
-pre-release:	## Prepare for a release. Push results before `make release`
+# See doc/RELEASE.adoc
+pre-release:
 	$(MAKE) all image kustomize-edit
 	@echo Ready to release $(VERSION) to $(REGISTRY_BASE)
 
-release:			## Push images and release tags for a release.
+# See doc/RELEASE.adoc
+release:
 	$(MAKE) clean
 	$(MAKE) pre-release
 	hack/tag-release.sh $(VERSION)
@@ -190,7 +187,8 @@ BINGO=$(GOBIN)/bingo
 $(BINGO): # Bootstrap bingo
 	go install github.com/bwplotka/bingo@v0.9.0
 
-tools: $(BINGO) $(ASCIIDOCTOR) $(KRAMDOC) $(SHELLCHECK) ## Download all tools needed for development
+# Force download of all tools needed for development
+tools: $(BINGO) $(ASCIIDOCTOR) $(KRAMDOC) $(SHELLCHECK)
 	$(BINGO) get
 
 DEVSPACE_IMAGE?="$(REGISTRY_BASE)/korrel8r:devspace"
