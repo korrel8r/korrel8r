@@ -3,12 +3,14 @@
 **Development and contribution guide for korrel8r - for humans and AI agents**
 
 > **New to korrel8r?**
-> - [README.md](README.md) for project overview and pointers.
-> - [User Guide](https://korrel8r.github.io/korrel8r) explains installing and using korrel8r.
+> - [README.md](README.md) - Project overview and key information
+> - [User Guide](https://korrel8r.github.io/korrel8r) - Complete user documentation (essential for understanding user workflows)
 
-This is an introduction for developers working on the korrel8r code base.
+This guide covers the korrel8r codebase, development setup, and contribution workflows.
 
 ## Architecture Overview
+
+> **Understanding User Workflows**: Before diving into the code, read the [User Guide](https://korrel8r.github.io/korrel8r/#how_korrel8r_works) to understand how users interact with domains, classes, queries, and rules.
 
 ### Domains (`pkg/domains/`)
 A `Domain` implements one type of observability data and clients for the associated stores.
@@ -26,6 +28,7 @@ Each rule contains a Go templates that define how to correlate data.
 - Start and goal classes may be in the same or different domains.
 - The template is applied to an `Object` of a start class, and generates a `Query` to return objects of a goal class.
 - Rules are defined in YAML files, new can be added without rebuilding korrel8r.
+- See [User Guide Configuration](https://korrel8r.github.io/korrel8r/#_configuration) for rule syntax and examples.
 
 ### Engine (`pkg/engine/`)
 
@@ -84,8 +87,7 @@ make help
 
 ### Running locally
 
-Korrel8r can run outside of the cluster using configuration `etc/korrel8r/openshift-route.yaml`.
-This uses the current cluster login and exported routes to access the cluster and stores. 
+Korrel8r can run outside of the cluster for development. See the [User Guide](https://korrel8r.github.io/korrel8r/#_running_outside_the_cluster) for complete setup instructions.
 
 ``` bash
 # Set default configuration.

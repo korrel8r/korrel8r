@@ -1,0 +1,487 @@
+= Korrel8r User Guide
+Korrel8r Project <https://github.com/korrel8r/korrel8r>
+:doctype: book
+:toc: left
+:toclevels: 4
+include::attributes.adoc[]
+
+Navigate relationships between cluster resources and observability signals.
+
+== What is Korrel8r?
+
+Observability for Kubernetes clusters often involves multiple systems;
+logs in Loki, metrics in Prometheus, traces in Tempo, events in the API server,
+alerts in Alertmanager and so on.
+Each system has different data models, query languages, and APIs.
+When troubleshooting, you need to piece together information from multiple sources.
+
+Korrel8r is a _rule-based correlation engine_ that automatically discovers and graphs
+related resources and observability signals across multiple data stores.
+Given any starting point - an alert, a service or deployment that is in trouble etc -
+korrel8r will search for related data, potentially following multiple relationships
+between objects in different data stores.
+
+Goal Search::
+Find paths from starting objects to a specific type of target data.
+For example: "Find all logs related to this Alert" might cause korrel8r to connect
+the alert to related deployments, the deployments to their pods, and finally the pods to logs.
+
+Neighborhood Search::
+Find all data reachable within N steps from starting objects.
+For example: "Show me everything related to this Pod within 2 steps" might return
+deployments and services that own the Pod, logs from the pods containers,
+metrics describing the Pod, network flows with the Pod as an endpoint and so on.
+
+=== Key Capabilities
+
+- **Universal correlation**: Connects data across multiple formats, stores, and query languages (OTEL, Prometheus/PromQL, Loki/LogQL, etc.)
+- **Multiple stores**: Relationships can span data in Prometheus, Loki, Alertmanager, Kubernetes API server, and more
+- **Extensible rules**: Configurable YAML rules define how different data types relate to each other
+- **Extensible domains**: Add new domains to handle new signal types, query languages, and data stores
+- **Flexible deployment**: Deploy as a REST service or use from the command line
+
+=== Who Uses Korrel8r
+
+- **Cluster administrators, SREs, and developers** who need to troubleshoot issues across complex Kubernetes environments
+- **Observability tool builders** who want to display and manipulate correlation graphs
+- **Integrated solutions**  for example the {troubleshooting-ui-plugin}
+
+
+=== About OpenTelemetry
+
+The {otel} project (OTEL) defines standard vocabularies for traces, metrics, and logs.
+Korrel8r can correlate OTEL data with other data formats for observability signals.
+
+Korrel8r complements OTEL by:
+
+- Bridging between OTEL and non-OTEL systems
+- Providing correlation rules between different signal types
+- Supporting data types beyond the current OTEL specification (like Kubernetes events or network flows)
+- Working with any query language or storage system
+
+== How Korrel8r Works
+
+Korrel8r organizes observability data into **domains**, and uses **rules** to navigate between them.
+
+=== Domains organize data
+
+A _domain_ represents one type of signal or resource. For example:
+- `k8s` domain: Kubernetes resources (Pods, Services, Deployments, etc.)
+- `log` domain: Application and system logs
+- `metric` domain: Prometheus metrics
+- `trace` domain: Distributed traces
+- `alert` domain: Prometheus alerts
+
+Available domains are described in the <<_domain_reference>>.
+
+Each domain defines the following abstractions, allowing Korrel8r to treat domains uniformly:
+
+Object::
+Individual data items returned by queries,
+for example a specific Pod, log entry, metric time series, trace span, etc.
+Signals and resources are all considered "objects".
+
+Store::
+A backend service that holds the data (Kubernetes API, Prometheus, Loki, etc.)
+
+Class::
+A specific type of data within a domain. Class names have the format `domain:class`. +
+Examples: `k8s:Pod`, `k8s:Deployment`, `log:application`, `trace:span`
+
+Query::
+A request for data, formatted as `domain:class:selector`.
+The selector uses the native query language of the underlying store. +
+Examples:
+- `k8s:Pod:{namespace: "default"}` (Kubernetes resource selector)
+- `log:application:{.kubernetes.namespace.name="default"}` (LogQL query)
+- `trace:span:{.k8s.namespace.name="foobar"}` (Tempo query)
+
+=== Rules connect data
+
+_Rules_ express relationships between classes, possibly in different domains. +
+For example:
+- "Pods belong to a Deployment" - relates `k8s:Pod` to `k8s:Deployment`
+- "Pods generate logs" - relates `k8s:Pod` to `log:application`
+- "Applications emit metrics" - relates `k8s:Pod` to `metric:metric`
+
+Rules are <<_about_templates,templates>> that generate a _goal query_ using data from a _start object_.
+The start and goal can be different classes, possibly from different domains.
+If a rule cannot be applied to an object it may return a blank string, or raise an error.
+
+The set of rules forms a graph connecting all the classes of data that korrel8r knows about.
+Korrel8r works by traversing this graph: applying rules to some initial objects, executing the
+resulting queries, retrieving more objects and so on.
+
+== Getting Started
+
+Korrel8r can run in different environments depending on your needs:
+
+- **In-cluster service** (recommended for production): Deployed as a Kubernetes service
+- **Out-of-cluster service**: Running locally or externally, connecting via routes/ingress
+- **Command line**: Direct command execution for testing and development
+
+See <<_configuration>> for details on configuring stores and rules.
+
+[IMPORTANT]
+====
+**Authentication**: Korrel8r uses Bearer Tokens to authenticate with cluster stores.
+
+- As a service: Impersonates clients by forwarding their Bearer tokens
+- Command line: Uses your current `kubectl` login credentials
+====
+
+=== Installation Options
+
+==== Cluster Observability Operator (Recommended)
+
+The {rh-coo} automatically installs and configures Korrel8r on {rh-ocp} clusters,
+configured to connect to the available stores and the console.
+
+==== Direct Deployment
+
+This deploys korrel8r in the namespace `korrel8r` with a configuration suitable for {rh-ocp} clusters.
+Modify `configmap/korrel8r` to change the configuration.
+
+.Deploy the latest version
+[source,terminal]
+----
+oc apply -k github.com/korrel8r/korrel8r/config/?version=main
+----
+
+.Deploy a specific version (replace X.Y.Z)
+[source,terminal]
+----
+oc apply -k github.com/korrel8r/korrel8r/config/?version=vX.Y.Z
+----
+
+==== Accessing the Service
+
+To access Korrel8r from outside the cluster, create a route:
+
+[source,terminal]
+----
+oc apply -k github.com/korrel8r/korrel8r/config/route?version=main
+export KORREL8R_URL=$(oc get route/korrel8r -n korrel8r -o template='https://{{.spec.host}}')
+curl --oauth2-bearer $(oc whoami -t) http://$KORREL8R_URL/api/v1alpha1/domains
+----
+
+=== Running Outside the Cluster
+
+You can run Korrel8r locally for development and testing.
+This connects to cluster stores via routes or ingress.
+
+.Step 1: Install the Korrel8r command
+[source,terminal]
+----
+go install github.com/korrel8r/korrel8r/cmd/korrel8r@latest
+korrel8r --help  # View available commands
+----
+
+.Step 2: Download configuration for external access
+[source,terminal]
+----
+curl -o korrel8r.yaml https://raw.githubusercontent.com/korrel8r/korrel8r/main/etc/korrel8r/openshift-route.yaml
+----
+
+.Step 3: Run the service locally
+[source,terminal]
+----
+korrel8r -v2 --config korrel8r.yaml web --http=localhost:8080
+----
+
+Your local Korrel8r service is now available at `http://localhost:8080`.
+
+=== Using Korrel8r
+
+Once your Korrel8r service is running, it provides a <<_rest_api,REST API>>.
+You can interact with it in several ways:
+
+- **Command line client** (`korrel8rcli`) - Purpose-built for Korrel8r
+- **Direct HTTP request** - Direct HTTP calls using `curl` or similar tools
+- **OpenShift Console** - Integrated troubleshooting panel
+- **Web browser** - Built-in visualization (experimental)
+
+[IMPORTANT]
+====
+Clients require a _Bearer Token_ to authenticate.
+If you are logged in to a cluster, you can find your bearer token like this:
+[source.terminal]
+----
+oc whoami -t
+----
+====
+
+==== Command Line Client (`korrel8rcli`)
+
+The `korrel8rcli` client provides a simple way to explore correlations from the command line.
+
+.Installation
+[source,terminal]
+----
+go install github.com/korrel8r/client/cmd/korrel8rcli@latest
+korrel8rcli --help  # View available commands
+----
+
+.Basic Usage
+`korrel8rcli` automatically uses your cluster login credentials.
+Replace `$KORREL8R_URL` with your URL:
+
+===== Checking Available Domains
+
+First, check what data sources are available in your cluster:
+
+[source,terminal]
+----
+korrel8rcli -u $KORREL8R_URL domains
+----
+
+This shows all configured domains and their connection status. Example output:
+[source,yaml]
+----
+- name: k8s        # Kubernetes resources
+  stores: [...]
+- name: log        # Application logs (Loki)
+  stores: [...]
+- name: metric     # Prometheus metrics
+  stores: [...]
+- name: alert      # Prometheus alerts
+  stores: [...]
+- name: trace      # Distributed traces
+  stores: [...]
+----
+
+===== Finding Related Data
+
+**Neighbourhood Search**: Find all data related to a specific resource:
+
+[source,terminal]
+----
+# Find everything related to a deployment
+korrel8rcli -u $KORREL8R_URL neighbours --query 'k8s:Deployment:{namespace: korrel8r}'
+
+# Find everything related to a specific pod
+korrel8rcli -u $KORREL8R_URL neighbours --query 'k8s:Pod:{namespace: default, name: my-pod}'
+----
+
+**Goal Search**: Find specific types of related data:
+
+[source,terminal]
+----
+# Find all logs related to a deployment
+korrel8rcli -u $KORREL8R_URL goals --start 'k8s:Deployment:{namespace: korrel8r}' --goal 'log:application'
+
+# Find all alerts related to a namespace
+korrel8rcli -u $KORREL8R_URL goals --start 'k8s:Namespace:{name: production}' --goal 'alert:alert'
+----
+
+===== Web Visualization (Experimental)
+
+[CAUTION]
+====
+This feature is experimental and may change in future versions.
+====
+
+The `korrel8rcli` tool includes a web interface for visualizing correlation graphs:
+
+[source,terminal]
+----
+korrel8rcli web -u $KORREL8R_URL --addr :9090
+----
+
+Open http://localhost:9090 in your browser. You can:
+- Enter a query in the "Start" box (e.g., `k8s:Pod:{namespace: default}`)
+- Specify search depth (for neighbourhood) or target class (for goal search)
+- View interactive correlation graphs
+
+image::images/korrel8rcli-example.png[Example correlation graph visualization]
+
+==== Direct REST API Access
+
+You can use `curl` or any HTTP client to directly interact with the Korrel8r REST API:
+
+[source,terminal]
+----
+# Get available domains
+curl --oauth2-bearer $(oc whoami -t) $KORREL8R_URL/api/v1alpha1/domains
+
+# Perform a neighbourhood search
+curl --oauth2-bearer $(oc whoami -t) \
+     "$KORREL8R_URL/api/v1alpha1/graphs/neighbours?depth=2&query=k8s:Pod:{namespace:default}"
+----
+
+See the complete <<_rest_api,REST API Reference>> for all available endpoints.
+
+==== OpenShift Console Integration
+
+The {rh-ocp} Console includes a troubleshooting panel that uses Korrel8r to display clickable correlation graphs. When viewing resources in the console, you can navigate between related logs, metrics, alerts, and other observability data.
+
+=== Troubleshooting
+
+[TIP]
+====
+You can increase the verbosity of korrel8r logging at run time using the
+xref:gen/rest_api.adoc#_setconfig[`config` API].
+====
+.Using korrel8rcli
+[source,terminal,subs=attributes+]
+----
+korrel8rcli config --set-verbose=9
+----
+
+.Using curl
+[source,terminal]
+----
+curl --oauth2-bearer $(oc whoami -t) -X PUT http://localhost:8080/api/v1alpha1/config?verbose=9
+----
+
+== Configuration
+
+Korrel8r loads configuration from a file or URL specified by the `--config` option:
+
+[source,terminal]
+----
+korrel8r --config <file_or_url>
+----
+
+The {project}[Korrel8r project] provides link:{etc-korrel8r}[example configuration files].
+You can download them or use them directly via URL.
+
+link:{raw-etc-korrel8r}/openshift-route.yaml[openshift-route.yaml]::
+Run korrel8r outside the cluster, connect to stores via routes:
+
+link:{raw-etc-korrel8r}/openshift-svc.yaml[openshift-svc.yaml]::
+Used to run korrel8r as an in-cluster service, connect to stores via service URLs.
+
+The configuration is a YAML file with the following sections:
+
+=== include
+
+.Other configuration fragments to include.
+[source,yaml]
+----
+include:
+  - "path_or_url"
+----
+
+=== stores
+
+.Connections to data stores.
+[source,yaml]
+----
+stores:
+  - domain: "domain_name" <1>
+    # Domain-specific fields <2>
+----
+
+<1> Domain name of the store (required).
+<2> Domain-specific fields for connection parameters. See <<_domain_reference>>.
+
+Every entry in the `stores` section has a `domain` field to identify the domain.
+Other fields depend on the domain, see <<_domain_reference>>.
+
+Store fields may contain <<_about_templates,templates>> that expand to URLs.
+
+[source,yaml]
+.Example: configuring a store URL from an Openshift Route resource.
+----
+stores:
+  - domain: log
+    lokiStack: <-
+      {{$r := get "k8s:Route.route.openshift.io/v1:{namespace: openshift-logging, name: logging-loki}" -}} <1>
+      https://{{ (first $r).Spec.Host -}} <2>
+----
+
+<1> Get a list of routes in "openshift-logging" named "logging-loki".
+<2> Use the .Spec.Host field of the first route as the host for the store URL.
+
+=== rules
+
+.Rules to relate different classes of data.
+[source,yaml]
+----
+rules:
+  - name: "rule_name" <1>
+    start: <2>
+      domain: "domain_name"
+      classes:
+        - "class_name"
+    goal: <3>
+      domain: "domain_name"
+      classes:
+        - "class_name"
+    result:
+      query: "query_template" <4>
+----
+
+<1> Name identifies the rule in graphs and for debugging.
+<2> Start objects for this rule must belong to one of the `classes` in the `domain`.
+<3> Goal queries generated by this rule may must retrieve one of the `classes` in the `domain`.
+<4> Result queries are generated by executing the query {go-template}` with the start object as context.
+
+Korrel8r comes with a comprehensive set of rules by default, but you can modify them or add your own.
+
+A rule has the following key elements:
+
+* A set of _start_ classes. The rule can apply to objects belonging to one of these classes.
+* A set of _goal_ classes. The rule can generate queries for any of these classes.
+* A Go template to generate a goal query from a start object.
+
+The query template should generate a string of the form:
+
+----
+<domain-name>:<class-name>:<query-details>
+----
+
+The _query-details_ part depends on the domain, see <<_domain_reference>>
+
+// TODO: Examples
+
+=== aliases
+
+.Short-hand alias names for groups of classes.
+[source,yaml]
+----
+aliases:
+  - name: "alias_name" <1>
+    domain: "domain_name" <2>
+    classes: <3>
+      - "class_name"
+----
+
+<1> Alias name can be used in rule definitions wherever a class name is allowed.
+<2> Domain for classes in this alias.
+<3> Classes belonging to this alias.
+
+=== About Templates
+
+Korrel8r rules and store configuration can include {go-templates}.
+
+[TIP]
+This is the same templat syntax as the `kubectl` command with the `--output=template` option.
+
+Korrel8r provides additional _template functions_ to simplify writing rules and configurations:
+
+- The {sprig} library of general purpose template functions is always available.
+- Some domains (for example the <<_k8s_domain>>) provide domain-specific functions, see the <<_domain_reference>>.
+- The following function is available for store configurations:
+  query::
+    Takes a single argument, a korrel8r query string.
+    Executes the query and returns the result as a `[]any`.
+    May return an error.
++
+.Example: Query the k8s cluster for a route, extract the "host" field.
+----
+{{(query "k8s:Route.route.openshift.io:{namespace: netobserv, name: loki}" | first).spec.host}}
+----
+
+// TODO: automate the above, get this from pkg/engine doc comments.
+
+= Domain Reference
+
+Reference details for the for the classes, objects, queries and stores of each available domain.
+
+include::gen/domains.adoc[leveloffset=+1]
+
+[[_rest_api]]
+include::gen/rest_api.adoc[]
+
