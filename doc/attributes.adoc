@@ -19,6 +19,7 @@
 :goref-badge: image:https://pkg.go.dev/badge/github.com/korrel8r/korrel8r.svg
 :pkg-dev: https://pkg.go.dev/github.com/korrel8r/korrel8r/
 :pkg-dev-domains: https://pkg.go.dev/github.com/korrel8r/korrel8r/pkg/domains
+:troubleshooting-ui-plugin: https://docs.redhat.com/en/documentation/red_hat_openshift_cluster_observability_operator/1-latest/html/ui_plugins_for_red_hat_openshift_cluster_observability_operator/troubleshooting-ui-plugin[OpenShift troubleshooting panel]
 // Abbreviations
 :icon: image:images/icon.svg[width=24]
 :operator: Korrel8r Community Operator
