@@ -8,7 +8,7 @@ help: ## Display this help.
 	@grep -E '^## [A-Z0-9_]+: ' Makefile | sed 's/^## \([A-Z0-9_]*\): \(.*\)/\1#\2/' | column -s'#' -t
 
 ## VERSION: Semantic version for release, use -dev for development pre-release versions.
-VERSION?=0.8.4
+VERSION?=0.8.5-dev
 ## REGISTRY_BASE: Image registry base, for example quay.io/somebody
 REGISTRY_BASE?=$(error REGISTRY_BASE must be set to push images)
 ## IMGTOOL: May be podman or docker.
@@ -133,7 +133,7 @@ _site: doc $(shell find doc etc/korrel8r -name gen -prune -o -print) $(ASCIIDOCT
 	git submodule update --force
 	@mkdir -p $@/doc/images
 	cp -r doc/images etc/korrel8r $@
-	$(ASCIIDOCTOR) $(ADOC_FLAGS) -D$@ doc/README.adoc -o index.html
+	$(ASCIIDOCTOR) $(ADOC_FLAGS) -D$@ doc/user-guide.adoc -o index.html
 	$(ASCIIDOCTOR) $(ADOC_FLAGS) -D$@/gen/cmd doc/gen/cmd/*.adoc
 	$(and $(LINKCHECKER),$(LINKCHECKER) $(LINKCHECK_FLAGS) $@)
 	@touch $@

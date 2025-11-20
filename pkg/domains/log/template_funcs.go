@@ -8,14 +8,12 @@ import (
 	"regexp"
 )
 
-// TemplateFuncs for this domain. See package description.
-func (domain) TemplateFuncs() map[string]any { return templateFuncs }
-
-// See package documentation
-var templateFuncs = map[string]any{
-	"logSafeLabel":        SafeLabel,
-	"logSafeLabels":       SafeLabels,
-	"logTypeForNamespace": logTypeForNamespace,
+func (domain) TemplateFuncs() map[string]any {
+	return map[string]any{
+		"logSafeLabel":        SafeLabel,
+		"logSafeLabels":       SafeLabels,
+		"logTypeForNamespace": logTypeForNamespace,
+	}
 }
 
 var labelBad = regexp.MustCompile(`^[^a-zA-Z_:]|[^a-zA-Z0-9_:]`)

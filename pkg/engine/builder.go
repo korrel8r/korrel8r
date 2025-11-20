@@ -38,7 +38,7 @@ func Build() *Builder {
 		rulesByName:  map[string]korrel8r.Rule{},
 	}
 	// Add template functions that are always available.
-	e.templateFuncs = template.FuncMap{"query": e.query}
+	e.templateFuncs = globalTemplateFuncs(e)
 	maps.Copy(e.templateFuncs, sprig.TxtFuncMap())
 
 	return &Builder{e: e, missingClasses: map[string][]string{}}
@@ -107,7 +107,7 @@ func (b *Builder) store(sc config.Store, s korrel8r.Store) *storeHolder {
 	var err error
 	_, err = wrapper.Ensure()
 	if err != nil {
-		log.Info("warning: cannot connect to store", "domain", wrapper.Domain().Name(), "error", err)
+		log.Info("cannot connect to store", "domain", wrapper.Domain().Name(), "error", err)
 	}
 	return wrapper
 }

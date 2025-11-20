@@ -14,7 +14,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
-// TemplateFuncs for this store. See description at top of file.
 func (d *domain) TemplateFuncs() map[string]any {
 	return map[string]any{
 		"k8sClass": func(apiVersion, kind string) korrel8r.Class {
