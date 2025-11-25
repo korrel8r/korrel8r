@@ -105,10 +105,10 @@ func TestAPIGraphGoals_bad_goal(t *testing.T) {
 		Graph{})
 }
 
-func TestAPIPostNeighbours(t *testing.T) {
+func TestAPIPostNeighbors(t *testing.T) {
 	e := testEngine(t)
-	assertDo(t, newTestAPI(t, e), "POST", "/api/v1alpha1/graphs/neighbours",
-		Neighbours{
+	assertDo(t, newTestAPI(t, e), "POST", "/api/v1alpha1/graphs/neighbors",
+		Neighbors{
 			Start: Start{
 				Class:   "mock:a",
 				Objects: []json.RawMessage{[]byte(`"x"`)},
@@ -132,12 +132,40 @@ func TestAPIPostNeighbours(t *testing.T) {
 	)
 }
 
-func TestAPIPostNeighboursError(t *testing.T) {
+// Alternate spelling
+func TestAPIPostNeighbours(t *testing.T) {
+	e := testEngine(t)
+	assertDo(t, newTestAPI(t, e), "POST", "/api/v1alpha1/graphs/neighbours",
+		Neighbors{
+			Start: Start{
+				Class:   "mock:a",
+				Objects: []json.RawMessage{[]byte(`"x"`)},
+			},
+			Depth: 1,
+		},
+		http.StatusOK,
+		Graph{
+			Nodes: []Node{
+				{
+					Class: "mock:a",
+					Count: ptr.To(1),
+				},
+				{
+					Class:   "mock:b",
+					Count:   ptr.To(1),
+					Queries: []QueryCount{{Query: "mock:b:y", Count: ptr.To(1)}},
+				}},
+			Edges: []Edge{{Start: "mock:a", Goal: "mock:b"}},
+		},
+	)
+}
+
+func TestAPIPostNeighborsError(t *testing.T) {
 	e := testEngine(t)
 	s := e.StoresFor(e.Domains()[0])[0].(*mock.Store)
 	s.AddQuery("mock:b:y", errors.New("oh dear"))
-	assertDo(t, newTestAPI(t, e), "POST", "/api/v1alpha1/graphs/neighbours",
-		Neighbours{
+	assertDo(t, newTestAPI(t, e), "POST", "/api/v1alpha1/graphs/neighbors",
+		Neighbors{
 			Start: Start{Queries: []string{"mock:a:x"}},
 			Depth: 1,
 		},
@@ -153,10 +181,10 @@ func TestAPIPostNeighboursError(t *testing.T) {
 	)
 }
 
-func TestAPIPostNeighboursEmpty(t *testing.T) {
+func TestAPIPostNeighborsEmpty(t *testing.T) {
 	e := testEngine(t)
-	assertDo(t, newTestAPI(t, e), "POST", "/api/v1alpha1/graphs/neighbours",
-		Neighbours{
+	assertDo(t, newTestAPI(t, e), "POST", "/api/v1alpha1/graphs/neighbors",
+		Neighbors{
 			Start: Start{Queries: []string{"mock:a:nossuchthing"}},
 			Depth: 1,
 		},
@@ -164,10 +192,10 @@ func TestAPIPostNeighboursEmpty(t *testing.T) {
 	)
 }
 
-func TestAPIPostNeighboursNone(t *testing.T) {
+func TestAPIPostNeighborsNone(t *testing.T) {
 	e := testEngine(t)
-	assertDo(t, newTestAPI(t, e), "POST", "/api/v1alpha1/graphs/neighbours",
-		Neighbours{
+	assertDo(t, newTestAPI(t, e), "POST", "/api/v1alpha1/graphs/neighbors",
+		Neighbors{
 			Start: Start{Queries: []string{"mock:b:y"}},
 			Depth: 0,
 		},
@@ -181,11 +209,11 @@ func TestAPIPostNeighboursNone(t *testing.T) {
 	)
 }
 
-func TestAPIPostNeighboursInvalidClass(t *testing.T) {
+func TestAPIPostNeighborsInvalidClass(t *testing.T) {
 	e := testEngine(t)
 	a := newTestAPI(t, e)
-	w := a.do(t, "POST", "/api/v1alpha1/graphs/neighbours",
-		Neighbours{
+	w := a.do(t, "POST", "/api/v1alpha1/graphs/neighbors",
+		Neighbors{
 			Start: Start{Queries: []string{"mock:b:y"}, Class: "not-a-class"},
 			Depth: 0,
 		})

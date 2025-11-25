@@ -41,7 +41,7 @@ The `Engine` is the heart of Korrel8r.
   1. Call stores to evaluate queries, which generates more objects.
   1. Repeat until search criteria are met.
 - Goal search: find paths from a start object to a specific class of related data.
-- Neighbourhood search:  find all data reachable in <= N rules from the start object.
+- Neighborhood search:  find all data reachable in <= N rules from the start object.
 
 ## Development Setup
 ### Prerequisites
@@ -93,8 +93,8 @@ Korrel8r can run outside of the cluster for development. See the [User Guide](ht
 # Set default configuration.
 export KORREL8R_CONFIG="$PWD/etc/korrel8r/openshift-route.yaml"
 
-# Execute a single neighbourhood query
-korrel8r neighbours --query 'k8s:Deployment:{namespace: korrel8r}'
+# Execute a single neighborhood query
+korrel8r neighbors --query 'k8s:Deployment:{namespace: korrel8r}'
 
 # Run as an out-of-cluster server
 korrel8r web --http :8080

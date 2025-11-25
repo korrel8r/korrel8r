@@ -29,7 +29,7 @@ type DomainParams struct {
 	Domain string `json:"domain" jsonschema:"Name of the domain to list"`
 }
 
-type NeighbourParams = rest.Neighbours
+type NeighborParams = rest.Neighbors
 
 type GoalParams = rest.Goals
 
@@ -37,7 +37,7 @@ const (
 	ListDomains           = "list_domains"
 	ListDomainClasses     = "list_domain_classes"
 	CreateGoalsGraph      = "create_goals_graph"
-	CreateNeighboursGraph = "create_neighbours_graph"
+	CreateNeighborsGraph = "create_neighbors_graph"
 )
 
 type Server struct {
@@ -86,12 +86,12 @@ Some domains have only a single class, others (like the 'k8s' domain) have many.
 		})
 
 	mcp.AddTool(s, &mcp.Tool{
-		Name: CreateNeighboursGraph,
+		Name: CreateNeighborsGraph,
 		Description: `
 Returns a JSON graph of correlated objects.
 From a set of start objects, follow correlation rules to find related objects up to the specified depth.`,
 	},
-		func(ctx context.Context, ss *mcp.ServerSession, p *mcp.CallToolParamsFor[NeighbourParams]) (*mcp.CallToolResultFor[rest.Graph], error) {
+		func(ctx context.Context, ss *mcp.ServerSession, p *mcp.CallToolParamsFor[NeighborParams]) (*mcp.CallToolResultFor[rest.Graph], error) {
 			args := p.Arguments
 			start, err := rest.TraverseStart(e, args.Start)
 			if err != nil {
@@ -99,7 +99,7 @@ From a set of start objects, follow correlation rules to find related objects up
 			}
 			ctx, cancel := korrel8r.WithConstraint(ctx, args.Start.Constraint.Default())
 			defer cancel()
-			g, err := traverse.Neighbours(ctx, e, start, args.Depth)
+			g, err := traverse.Neighbors(ctx, e, start, args.Depth)
 			if err != nil {
 				return errorResultFor[rest.Graph](err), nil
 			}

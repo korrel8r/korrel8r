@@ -23,13 +23,7 @@ paths:
       operationId: setConfig
       tags: [configure]
       parameters:
-        - name: verbose
-          in: query
-          description: Verbose setting for logging.
-          schema:
-            type: integer
-            minimum: 0
-            maximum: 10
+        - $ref: '#/components/parameters/Verbose'
       responses:
         "200":
           description: OK
@@ -72,12 +66,7 @@ paths:
       operationId: graphGoals
       tags: [correlate]
       parameters:
-        - name: options
-          in: query
-          schema:
-            $ref: '#/components/schemas/GraphOptions'
-          style: form
-          explode: true
+        - $ref: '#/components/parameters/GraphOptions'
       requestBody:
         description: Search from start to goal classes.
         content:
@@ -105,28 +94,23 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
       x-codegen-request-body-name: request
-  /graphs/neighbours:
+  /graphs/neighbors:
     post:
-      summary: Create a neighbourhood graph around a start object to a given depth.
+      summary: Create a neighborhood graph around a start object to a given depth.
       description: >
         Specify a set of start objects, as queries or serialized objects,
-        and a depth for the neighbourhood search.
+        and a depth for the neighborhood search.
         Returns a graph of all paths with depth or less edges leading from start objects.
-      operationId: graphNeighbours
+      operationId: graphNeighbors
       tags: [correlate]
       parameters:
-        - name: options
-          in: query
-          schema:
-            $ref: '#/components/schemas/GraphOptions'
-          style: form
-          explode: true
+        - $ref: '#/components/parameters/GraphOptions'
       requestBody:
-        description: Search from start for neighbours.
+        description: Search from start for neighbors.
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Neighbours'
+              $ref: '#/components/schemas/Neighbors'
         required: true
       responses:
         "200":
@@ -148,6 +132,47 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
       x-codegen-request-body-name: request
+
+  # DEPRECATED - alternate spelling.
+  /graphs/neighbours:
+    post:
+      summary: Create a neighborhood graph around a start object to a given depth.
+      description: >
+        Specify a set of start objects, as queries or serialized objects,
+        and a depth for the neighborhood search.
+        Returns a graph of all paths with depth or less edges leading from start objects.
+      operationId: graphNeighbours
+      tags: [correlate]
+      parameters:
+        - $ref: '#/components/parameters/GraphOptions'
+      requestBody:
+        description: Search from start for neighbors.
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Neighbors'
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Graph'
+        "400":
+          description: invalid parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        "404":
+          description: result not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      x-codegen-request-body-name: request
+
   /lists/goals:
     post:
       summary: Create a list of goal nodes related to a starting point.
@@ -192,15 +217,10 @@ paths:
       description: >
         Execute a single Korrel8r 'query' and return the list of serialized objects found.
         Does not perform any correlation actions.
-      operationId: query
+      operationId: objects
       tags: [query]
       parameters:
-        - name: query
-          in: query
-          description: Query string.
-          required: true
-          schema:
-              $ref: '#/components/schemas/Query'
+        - $ref: '#/components/parameters/Query'
       responses:
         "200":
           description: OK
@@ -226,7 +246,6 @@ paths:
                 $ref: '#/components/schemas/Error'
 components:
   schemas:
-
     Query:
       type: string
       pattern: "[^:]+:[^:]+:[^:]+"
@@ -357,16 +376,16 @@ components:
             $ref: '#/components/schemas/Node'
       description: Graph resulting from a correlation search.
 
-    Neighbours:
+    Neighbors:
       type: object
       required: [depth, start]
       properties:
         depth:
           type: integer
-          description: Max depth of neighbours graph.
+          description: Max depth of neighbors graph.
         start:
           $ref: '#/components/schemas/Start'
-      description: Starting point for a neighbours search.
+      description: Starting point for a neighbors search.
 
     Node:
       type: object
@@ -458,3 +477,26 @@ components:
         errors:
           description: if true include non-fatal error messages.
           type: boolean
+  parameters:
+    GraphOptions:
+      name: options
+      in: query
+      schema:
+        $ref: '#/components/schemas/GraphOptions'
+      style: form
+      explode: true
+    Verbose:
+      name: verbose
+      in: query
+      description: Verbose setting for logging.
+      schema:
+        type: integer
+        minimum: 0
+        maximum: 10
+    Query:
+      name: query
+      in: query
+      description: Query string.
+      required: true
+      schema:
+        $ref: '#/components/schemas/Query'

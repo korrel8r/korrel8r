@@ -2,7 +2,7 @@
 Korrel8r Project <https://github.com/korrel8r/korrel8r>
 :doctype: book
 :toc: left
-:toclevels: 4
+:toclevels: 3
 include::attributes.adoc[]
 
 Navigate relationships between cluster resources and observability signals.
@@ -252,15 +252,15 @@ This shows all configured domains and their connection status. Example output:
 
 ===== Finding Related Data
 
-**Neighbourhood Search**: Find all data related to a specific resource:
+**Neighborhood Search**: Find all data related to a specific resource:
 
 [source,terminal]
 ----
 # Find everything related to a deployment
-korrel8rcli -u $KORREL8R_URL neighbours --query 'k8s:Deployment:{namespace: korrel8r}'
+korrel8rcli -u $KORREL8R_URL neighbors --query 'k8s:Deployment:{namespace: korrel8r}'
 
 # Find everything related to a specific pod
-korrel8rcli -u $KORREL8R_URL neighbours --query 'k8s:Pod:{namespace: default, name: my-pod}'
+korrel8rcli -u $KORREL8R_URL neighbors --query 'k8s:Pod:{namespace: default, name: my-pod}'
 ----
 
 **Goal Search**: Find specific types of related data:
@@ -290,7 +290,7 @@ korrel8rcli web -u $KORREL8R_URL --addr :9090
 
 Open http://localhost:9090 in your browser. You can:
 - Enter a query in the "Start" box (e.g., `k8s:Pod:{namespace: default}`)
-- Specify search depth (for neighbourhood) or target class (for goal search)
+- Specify search depth (for neighborhood) or target class (for goal search)
 - View interactive correlation graphs
 
 image::images/korrel8rcli-example.png[Example correlation graph visualization]
@@ -304,9 +304,9 @@ You can use `curl` or any HTTP client to directly interact with the Korrel8r RES
 # Get available domains
 curl --oauth2-bearer $(oc whoami -t) $KORREL8R_URL/api/v1alpha1/domains
 
-# Perform a neighbourhood search
+# Perform a neighborhood search
 curl --oauth2-bearer $(oc whoami -t) \
-     "$KORREL8R_URL/api/v1alpha1/graphs/neighbours?depth=2&query=k8s:Pod:{namespace:default}"
+     "$KORREL8R_URL/api/v1alpha1/graphs/neighbors?depth=2&query=k8s:Pod:{namespace:default}"
 ----
 
 See the complete <<_rest_api,REST API Reference>> for all available endpoints.
@@ -474,14 +474,9 @@ Korrel8r provides additional _template functions_ to simplify writing rules and 
 {{(query "k8s:Route.route.openshift.io:{namespace: netobserv, name: loki}" | first).spec.host}}
 ----
 
-// TODO: automate the above, get this from pkg/engine doc comments.
-
 = Domain Reference
-
-Reference details for the for the classes, objects, queries and stores of each available domain.
 
 include::gen/domains.adoc[leveloffset=+1]
 
 [[_rest_api]]
 include::gen/rest_api.adoc[]
-

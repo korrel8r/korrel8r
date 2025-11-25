@@ -47,11 +47,11 @@ $(KUSTOMIZE): $(BINGO_DIR)/kustomize.mod
 	@echo "(re)installing $(GOBIN)/kustomize-v5.5.0"
 	@cd $(BINGO_DIR) && GOWORK=off $(GO) build -mod=mod -modfile=kustomize.mod -o=$(GOBIN)/kustomize-v5.5.0 "sigs.k8s.io/kustomize/kustomize/v5"
 
-OAPI_CODEGEN := $(GOBIN)/oapi-codegen-v2.4.1
+OAPI_CODEGEN := $(GOBIN)/oapi-codegen-v2.5.1
 $(OAPI_CODEGEN): $(BINGO_DIR)/oapi-codegen.mod
 	@# Install binary/ries using Go 1.14+ build command. This is using bwplotka/bingo-controlled, separate go module with pinned dependencies.
-	@echo "(re)installing $(GOBIN)/oapi-codegen-v2.4.1"
-	@cd $(BINGO_DIR) && GOWORK=off $(GO) build -mod=mod -modfile=oapi-codegen.mod -o=$(GOBIN)/oapi-codegen-v2.4.1 "github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen"
+	@echo "(re)installing $(GOBIN)/oapi-codegen-v2.5.1"
+	@cd $(BINGO_DIR) && GOWORK=off $(GO) build -mod=mod -modfile=oapi-codegen.mod -o=$(GOBIN)/oapi-codegen-v2.5.1 "github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen"
 
 SHFMT := $(GOBIN)/shfmt-v3.10.0
 $(SHFMT): $(BINGO_DIR)/shfmt.mod

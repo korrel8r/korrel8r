@@ -64,7 +64,7 @@ func TestTraverserGoals(t *testing.T) {
 	}
 }
 
-func TestTraverserNeighbours(t *testing.T) {
+func TestTraverserNeighbors(t *testing.T) {
 	b := mock.NewBuilder("d")
 	r := b.Rule
 	e, err := engine.Build().Rules(
@@ -155,7 +155,7 @@ func TestTraverserNeighbours(t *testing.T) {
 	} {
 		t.Run(fmt.Sprintf("depth %v", x.depth), func(t *testing.T) {
 			start := Start{Class: b.Class("d:a"), Objects: []korrel8r.Object{0}}
-			g, err := Neighbours(context.Background(), e, start, x.depth)
+			g, err := Neighbors(context.Background(), e, start, x.depth)
 			if assert.NoError(t, err) {
 				assert.ElementsMatch(t, x.lines, g.LineStrings())
 				assert.ElementsMatch(t, x.nodes, g.NodeStrings(true))

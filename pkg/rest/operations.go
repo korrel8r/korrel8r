@@ -77,9 +77,9 @@ func (a *API) ListGoals(c *gin.Context) {
 	okResponse(c, nodes)
 }
 
-func (a *API) GraphNeighbours(c *gin.Context, params GraphNeighboursParams) {
+func (a *API) GraphNeighbors(c *gin.Context, params GraphNeighborsParams) {
 	e := a.Engine
-	r := Neighbours{}
+	r := Neighbors{}
 	if !check(c, http.StatusBadRequest, c.BindJSON(&r)) {
 		return
 	}
@@ -89,7 +89,7 @@ func (a *API) GraphNeighbours(c *gin.Context, params GraphNeighboursParams) {
 	}
 	ctx, cancel := korrel8r.WithConstraint(c.Request.Context(), r.Start.Constraint.Default())
 	defer cancel()
-	g, err := traverse.Neighbours(ctx, e, start, r.Depth)
+	g, err := traverse.Neighbors(ctx, e, start, r.Depth)
 	if !check(c, http.StatusNotFound, err) {
 		return
 	}
@@ -97,7 +97,14 @@ func (a *API) GraphNeighbours(c *gin.Context, params GraphNeighboursParams) {
 	okResponse(c, gr)
 }
 
-func (a *API) Query(c *gin.Context, params QueryParams) {
+// GraphNeighbours alias for alternate spelling.
+//
+// Deprecated: Use GraphNeighbors, korrel8r now uses US spelling consistently.
+func (a *API) GraphNeighbours(c *gin.Context, params GraphNeighboursParams) {
+	a.GraphNeighbors(c, GraphNeighborsParams(params))
+}
+
+func (a *API) Objects(c *gin.Context, params ObjectsParams) {
 	query, err := a.Engine.Query(params.Query)
 	if !check(c, http.StatusBadRequest, err) {
 		return

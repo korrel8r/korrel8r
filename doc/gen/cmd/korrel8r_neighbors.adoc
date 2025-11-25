@@ -1,17 +1,17 @@
-= korrel8r neighbours
+= korrel8r neighbors
 
-Get graph of nearest neighbours
+Get graph of nearest neighbors
 
 ----
-korrel8r neighbours [flags]
+korrel8r neighbors [flags]
 ----
 
 == Options
 
 ----
       --class string         Class for serialized start objects
-  -d, --depth int            Depth of neighbourhood search. (default 3)
-  -h, --help                 help for neighbours
+  -d, --depth int            Depth of neighborhood search. (default 3)
+  -h, --help                 help for neighbors
       --limit int            Limit total number of results.
       --object stringArray   Serialized start object, can be multiple.
   -q, --query stringArray    Query string for start objects, can be multiple.

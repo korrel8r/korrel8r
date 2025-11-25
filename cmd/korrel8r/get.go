@@ -17,7 +17,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// Common flags for neighbours and goals
+// Common flags for neighbors and goals
 var (
 	class                 string
 	queries               []string
@@ -68,15 +68,15 @@ func init() {
 }
 
 var (
-	neighboursCmd = &cobra.Command{
-		Use:   "neighbours",
-		Short: "Get graph of nearest neighbours",
+	neighborsCmd = &cobra.Command{
+		Use:   "neighbors",
+		Short: "Get graph of nearest neighbors",
 		Args:  cobra.NoArgs,
 		Run: func(cmd *cobra.Command, args []string) {
 			e, _ := newEngine()
 			ctx, cancel := korrel8r.WithConstraint(context.Background(), constraint())
 			defer cancel()
-			g, err := traverse.Neighbours(ctx, e, start(e), depth)
+			g, err := traverse.Neighbors(ctx, e, start(e), depth)
 			must.Must(err)
 			newPrinter(os.Stdout).Print(rest.NewGraph(g, &graphOptions))
 		},
@@ -85,10 +85,10 @@ var (
 )
 
 func init() {
-	rootCmd.AddCommand(neighboursCmd)
-	startFlags(neighboursCmd)
-	constraintFlags(neighboursCmd)
-	neighboursCmd.Flags().IntVarP(&depth, "depth", "d", 3, "Depth of neighbourhood search.")
+	rootCmd.AddCommand(neighborsCmd)
+	startFlags(neighborsCmd)
+	constraintFlags(neighborsCmd)
+	neighborsCmd.Flags().IntVarP(&depth, "depth", "d", 3, "Depth of neighborhood search.")
 }
 
 var (

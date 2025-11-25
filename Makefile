@@ -150,11 +150,10 @@ doc/gen/domains.adoc: $(wildcard pkg/domains/*/*.adoc)
 	@mkdir -p $(dir $@)
 	rm -f $@; for D in $^; do { echo; echo "include::../../$$D[]"; echo; } >>$@; done
 
-OPENAPI_CFG=doc/openapi-asciidoc.yaml
-doc/gen/rest_api.adoc: $(OPENAPI_SPEC) $(OPENAPI_GEN) $(OPENAPI_CFG)
+doc/gen/rest_api.adoc: $(OPENAPI_SPEC) $(OPENAPI_GEN)
 	@mkdir -p $(dir $@)
-	$(IMGTOOL) run --rm -v $(shell pwd):/app docker.io/openapitools/openapi-generator-cli \
-		generate -g asciidoc -c app/$(OPENAPI_CFG) -i app/$< -o app/$@.dir
+	$(IMGTOOL) run --rm -v $(CURDIR):/app:z docker.io/openapitools/openapi-generator-cli \
+		generate -g asciidoc -c /app/doc/openapi-asciidoc.yaml -i /app/$< -o /app/$@.dir
 	@mv -f $@.dir/index.adoc $@
 	@rm -rf $@.dir
 

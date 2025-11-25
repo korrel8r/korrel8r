@@ -46,7 +46,7 @@ Spans contain information about operations like their start time, duration, serv
 
 
 
-show me a graph of  a neighbourhood of 3 around the korrel8r deployment
+show me a graph of  a neighborhood of 3 around the korrel8r deployment
 
 Edit
 I'll create a neighborhood graph with depth 3 around the Korrel8r deployment. First, let me get the Kubernetes deployment object for Korrel8r and then generate the correlation graph.
@@ -54,7 +54,7 @@ I'll create a neighborhood graph with depth 3 around the Korrel8r deployment. Fi
 
 K
 
-create_neighbours_graph
+create_neighbors_graph
 
 
 Let me first check what classes are available in the k8s domain to use the correct format:
@@ -70,7 +70,7 @@ Now I'll use the correct class format for Deployment:
 
 K
 
-create_neighbours_graph
+create_neighbors_graph
 Request
 
 {
@@ -90,7 +90,7 @@ Let me try a different approach and search for the korrel8r deployment without s
 
 K
 
-create_neighbours_graph
+create_neighbors_graph
 
 
 Let me try with a simpler query format:
@@ -98,7 +98,7 @@ Let me try with a simpler query format:
 
 K
 
-create_neighbours_graph
+create_neighbors_graph
 
 
 Let me try without specifying a query and see what deployments are available:
@@ -106,7 +106,7 @@ Let me try without specifying a query and see what deployments are available:
 
 K
 
-create_neighbours_graph
+create_neighbors_graph
 
 
 Let me try a different approach with a simpler query structure:
@@ -114,7 +114,7 @@ Let me try a different approach with a simpler query structure:
 
 K
 
-create_neighbours_graph
+create_neighbors_graph
 
 
 It appears there might be an issue with the current Korrel8r instance or no deployments are available. Let me try a different approach and look for any available Kubernetes objects, starting with pods:
@@ -122,7 +122,7 @@ It appears there might be an issue with the current Korrel8r instance or no depl
 
 K
 
-create_neighbours_graph
+create_neighbors_graph
 
 
 It seems there may be an issue with the Korrel8r service or no Kubernetes resources are currently available in the system. This could happen if:
