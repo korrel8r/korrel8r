@@ -204,16 +204,121 @@ ifdef::internal-generation[]
 endif::internal-generation[]
 
 
+[.graphNeighbors]
+==== graphNeighbors
+
+`POST /graphs/neighbors`
+
+Create a neighborhood graph around a start object to a given depth.
+
+===== Description
+
+Specify a set of start objects, as queries or serialized objects, and a depth for the neighborhood search. Returns a graph of all paths with depth or less edges leading from start objects. 
+
+
+// markup not found, no include::{specDir}graphs/neighbors/POST/spec.adoc[opts=optional]
+
+
+
+===== Parameters
+
+
+====== Body Parameter
+
+[cols="2,3,1,1,1"]
+|===
+|Name| Description| Required| Default| Pattern
+
+| request
+| Search from start for neighbors. <<Neighbors>>
+| X
+| 
+| 
+
+|===
+
+
+
+====== Query Parameters
+
+[cols="2,3,1,1,1"]
+|===
+|Name| Description| Required| Default| Pattern
+
+| options
+|  
+| -
+| null
+| 
+
+|===
+
+
+===== Return Type
+
+<<Graph>>
+
+
+===== Content Type
+
+* application/json
+
+===== Responses
+
+.HTTP Response Codes
+[cols="2,3,1"]
+|===
+| Code | Message | Datatype
+
+
+| 200
+| OK
+|  <<Graph>>
+
+
+| 400
+| invalid parameters
+|  <<Error>>
+
+
+| 404
+| result not found
+|  <<Error>>
+
+|===
+
+===== Samples
+
+
+// markup not found, no include::{snippetDir}graphs/neighbors/POST/http-request.adoc[opts=optional]
+
+
+// markup not found, no include::{snippetDir}graphs/neighbors/POST/http-response.adoc[opts=optional]
+
+
+
+// file not found, no * wiremock data link :graphs/neighbors/POST/POST.json[]
+
+
+ifdef::internal-generation[]
+===== Implementation
+
+// markup not found, no include::{specDir}graphs/neighbors/POST/implementation.adoc[opts=optional]
+
+
+endif::internal-generation[]
+
+
 [.graphNeighbours]
 ==== graphNeighbours
 
 `POST /graphs/neighbours`
 
-Create a neighbourhood graph around a start object to a given depth.
+Create a neighborhood graph around a start object to a given depth.
 
 ===== Description
 
-Specify a set of start objects, as queries or serialized objects, and a depth for the neighbourhood search. Returns a graph of all paths with depth or less edges leading from start objects. 
+Specify a set of start objects, as queries or serialized objects, and a depth for the neighborhood search. Returns a graph of all paths with depth or less edges leading from start objects. 
 
 
 // markup not found, no include::{specDir}graphs/neighbours/POST/spec.adoc[opts=optional]
@@ -230,7 +335,7 @@ Specify a set of start objects, as queries or serialized objects, and a depth fo
 |Name| Description| Required| Default| Pattern
 
 | request
-| Search from start for neighbours. <<Neighbours>>
+| Search from start for neighbors. <<Neighbors>>
 | X
 | 
 | 
@@ -484,8 +589,8 @@ ifdef::internal-generation[]
 endif::internal-generation[]
 
 
-[.query]
-==== query
+[.objects]
+==== objects
 
 `GET /objects`
 
@@ -798,13 +903,13 @@ Options controlling the form of the returned graph.
 
 
 
-[#Neighbours]
-=== _Neighbours_ 
+[#Neighbors]
+=== _Neighbors_ 
 
-Starting point for a neighbours search.
+Starting point for a neighbors search.
 
 
-[.fields-Neighbours]
+[.fields-Neighbors]
 [cols="2,1,1,2,4,1"]
 |===
 | Field Name| Required| Nullable | Type| Description | Format
@@ -813,7 +918,7 @@ Starting point for a neighbours search.
 | X
 | 
 |   Integer  
-| Max depth of neighbours graph.
+| Max depth of neighbors graph.
 |     
 
 | start

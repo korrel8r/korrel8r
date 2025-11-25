@@ -24,10 +24,10 @@ func Goals(ctx context.Context, e *engine.Engine, start Start, goals []korrel8r.
 	return newTraverser(e, g).run(ctx, start, -1)
 }
 
-// Neighbours traverses to all neighbours of the start objects, traversing links up to the given depth.
-func Neighbours(ctx context.Context, e *engine.Engine, start Start, depth int) (*graph.Graph, error) {
-	log.V(2).Info("Neighbourhood search", "start", start, "depth", depth, "constraint", korrel8r.ConstraintFrom(ctx))
-	g, err := e.Graph().Neighbours(start.Class, depth) // Reduce the graph.
+// Neighbors traverses to all neighbors of the start objects, traversing links up to the given depth.
+func Neighbors(ctx context.Context, e *engine.Engine, start Start, depth int) (*graph.Graph, error) {
+	log.V(2).Info("Neighborhood search", "start", start, "depth", depth, "constraint", korrel8r.ConstraintFrom(ctx))
+	g, err := e.Graph().Neighbors(start.Class, depth) // Reduce the graph.
 	if err != nil {
 		return nil, err
 	}

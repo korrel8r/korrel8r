@@ -13,7 +13,7 @@ _Note unreleased changes on main here pending the next release_
 
 ### Fixed
 - Invalid Loki labels in log queries
-- Neighbourhood searches exceeding requested depth.
+- Neighborhood searches exceeding requested depth.
 
 ### Changed
 - performance: De-duplicate netflows with same network parameters.
@@ -81,7 +81,7 @@ _Note unreleased changes on main here pending the next release_
 - incidents domain: Incidents group alerts into higher-level groups. 
 - Added DependentToOwner rule to follow k8s ownerReferences
 - Improved diagnostic logging: de-duplicate errors, better log messages.
-- Added --rules flag to korrel8r goals, neighbours
+- Added --rules flag to korrel8r goals, neighbors
 - File-based mock stores for internal testing.
 
 ## [0.7.6] - 2024-12-19
@@ -93,7 +93,7 @@ _Note unreleased changes on main here pending the next release_
 ### Added
 - feat(#182): Faster concurrent graph traversal
 - Profiling options
-- Commands: goals, neighbours
+- Commands: goals, neighbors
 
 ## [0.7.5] - 2024-11-22
 
@@ -115,7 +115,7 @@ _Note unreleased changes on main here pending the next release_
 
 ### Fixed
 - General overhaul of project documentation.
-- Always include start node in neighbours search
+- Always include start node in neighbors search
 - Fix nil pointer errors in REST error handling.
 - Re-organized trace domain for better OTEL compliance.
 - Trim trailing/leading whitespace from query strings.

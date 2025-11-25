@@ -184,8 +184,8 @@ func (g *Graph) GoalPaths(start korrel8r.Class, goals []korrel8r.Class) (*Graph,
 	return sub, nil
 }
 
-// Neighbours returns a breadth-first neighbourhood following up to maxDepth edges from start.
-func (g *Graph) Neighbours(start korrel8r.Class, maxDepth int) (*Graph, error) {
+// Neighbors returns a breadth-first neighborhood following up to maxDepth edges from start.
+func (g *Graph) Neighbors(start korrel8r.Class, maxDepth int) (*Graph, error) {
 	sub := g.Data.EmptyGraph()
 	u, err := g.NodeForErr(start)
 	if err != nil {

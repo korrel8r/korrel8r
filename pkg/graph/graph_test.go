@@ -81,7 +81,7 @@ func TestGoalPaths(t *testing.T) {
 	}
 }
 
-func TestNeighbours(t *testing.T) {
+func TestNeighbors(t *testing.T) {
 	b := mock.NewBuilder("d")
 	r := b.Rule
 	g := NewData(
@@ -170,7 +170,7 @@ func TestNeighbours(t *testing.T) {
 		},
 	} {
 		t.Run(fmt.Sprintf("depth %v", x.depth), func(t *testing.T) {
-			sub, err := g.Neighbours(b.Class("d:a"), x.depth)
+			sub, err := g.Neighbors(b.Class("d:a"), x.depth)
 			if assert.NoError(t, err) {
 				assert.ElementsMatch(t, x.lines, sub.LineStrings())
 				assert.ElementsMatch(t, x.nodes, sub.NodeStrings(true))

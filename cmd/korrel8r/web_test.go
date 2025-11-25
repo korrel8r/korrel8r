@@ -120,7 +120,7 @@ var testResponse = rest.Normalize(rest.Graph{
 
 func TestMain_server_graph(t *testing.T) {
 	u := startServer(t, http.DefaultClient, "http", "-c", "testdata/korrel8r.yaml").String()
-	resp, err := request(t, http.DefaultClient, "POST", u+"/graphs/neighbours", testRequest)
+	resp, err := request(t, http.DefaultClient, "POST", u+"/graphs/neighbors", testRequest)
 	require.NoError(t, err)
 	var got rest.Graph
 	assert.NoError(t, json.Unmarshal([]byte(resp), &got))
@@ -135,7 +135,7 @@ func TestMain_concurrent_requests(t *testing.T) {
 		workers.Add(1)
 		go func() {
 			defer workers.Done()
-			resp, err := request(t, http.DefaultClient, "POST", u+"/graphs/neighbours", testRequest)
+			resp, err := request(t, http.DefaultClient, "POST", u+"/graphs/neighbors", testRequest)
 			var got rest.Graph
 			ok := assert.NoError(t, err) &&
 				assert.NoError(t, json.Unmarshal([]byte(resp), &got)) &&

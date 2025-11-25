@@ -25,7 +25,7 @@ func TestListTools(t *testing.T) {
 		names = append(names, tool.Name)
 	}
 	assert.ElementsMatch(t, names,
-		[]string{"create_neighbours_graph", "create_goals_graph", "list_domain_classes", "list_domains"})
+		[]string{"create_neighbors_graph", "create_goals_graph", "list_domain_classes", "list_domains"})
 }
 
 func TestListDomains(t *testing.T) {
@@ -49,11 +49,11 @@ func TestListDomainClasses(t *testing.T) {
 	assert.Equal(t, want, r.Content, test.JSONPretty(r))
 }
 
-func TestCreateNeighboursGraph(t *testing.T) {
+func TestCreateNeighborsGraph(t *testing.T) {
 	client := newClient(t, newEngine(t))
 	r, err := client.CallTool(context.Background(), &mcp.CallToolParams{
-		Name:      CreateNeighboursGraph,
-		Arguments: NeighbourParams{Depth: 5, Start: rest.Start{Queries: []string{"mock:a:x"}}},
+		Name:      CreateNeighborsGraph,
+		Arguments: NeighborParams{Depth: 5, Start: rest.Start{Queries: []string{"mock:a:x"}}},
 	})
 	require.NoError(t, err)
 	got := graphContent(t, r)
