@@ -149,7 +149,7 @@ func (s *Store) Get(ctx context.Context, kquery korrel8r.Query, c *korrel8r.Cons
 	u := s.baseURL.JoinPath("series")
 	u.RawQuery = q.Encode()
 	var r response
-	if err := impl.Get(ctx, u, s.Client, c.GetTimeout(), &r); err != nil {
+	if err := impl.Get(ctx, u, s.Client, &r); err != nil {
 		return err
 	}
 	if r.Status != "success" {

@@ -147,7 +147,13 @@ func (b *Builder) Config(configs config.Configs) *Builder {
 			b.err = fmt.Errorf("%v: %w", source, b.err)
 			return b
 		}
+		b.Tuning(c.Tuning)
 	}
+	return b
+}
+
+func (b *Builder) Tuning(t *config.Tuning) *Builder {
+	b.e.Tuning.Copy(t)
 	return b
 }
 

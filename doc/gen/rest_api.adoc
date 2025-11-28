@@ -722,7 +722,7 @@ Constrains the objects that will be included in search results.
 | 
 | 
 |   String  
-| Give up on requests to data stores if they take longer than this duration.
+| DEPRECATED store calls are cancelled with the request.
 | duration    
 
 |===

@@ -16,7 +16,6 @@ import (
 	"github.com/korrel8r/korrel8r/internal/pkg/text"
 	"github.com/korrel8r/korrel8r/pkg/engine"
 	"github.com/korrel8r/korrel8r/pkg/engine/traverse"
-	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"github.com/korrel8r/korrel8r/pkg/rest"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
@@ -34,9 +33,9 @@ type NeighborParams = rest.Neighbors
 type GoalParams = rest.Goals
 
 const (
-	ListDomains           = "list_domains"
-	ListDomainClasses     = "list_domain_classes"
-	CreateGoalsGraph      = "create_goals_graph"
+	ListDomains          = "list_domains"
+	ListDomainClasses    = "list_domain_classes"
+	CreateGoalsGraph     = "create_goals_graph"
 	CreateNeighborsGraph = "create_neighbors_graph"
 )
 
@@ -46,10 +45,16 @@ type Server struct {
 }
 
 func NewServer(e *engine.Engine) *Server {
+	timeout := func(handler mcp.MethodHandler[*mcp.ServerSession]) mcp.MethodHandler[*mcp.ServerSession] {
+		return func(ctx context.Context, ss *mcp.ServerSession, method string, params mcp.Params) (result mcp.Result, err error) {
+			ctx, cancel := e.WithTimeout(ctx, 0)
+			defer cancel()
+			return handler(ctx, ss, method, params)
+		}
+	}
 	s := mcp.NewServer(&mcp.Implementation{Name: "korrle8r", Title: "Korrle8r MCP Server", Version: build.Version}, nil)
-	s.AddReceivingMiddleware(logger)
 	addTools(e, s)
-	s.AddReceivingMiddleware()
+	s.AddReceivingMiddleware(logger, timeout)
 	return &Server{Server: s, Engine: e}
 }
 
@@ -97,8 +102,6 @@ From a set of start objects, follow correlation rules to find related objects up
 			if err != nil {
 				return errorResultFor[rest.Graph](err), nil
 			}
-			ctx, cancel := korrel8r.WithConstraint(ctx, args.Start.Constraint.Default())
-			defer cancel()
 			g, err := traverse.Neighbors(ctx, e, start, args.Depth)
 			if err != nil {
 				return errorResultFor[rest.Graph](err), nil
@@ -118,8 +121,6 @@ From a set of start objects, follow all paths leading to one of the goal classes
 			if err != nil {
 				return errorResultFor[rest.Graph](err), nil
 			}
-			ctx, cancel := korrel8r.WithConstraint(ctx, args.Start.Constraint.Default())
-			defer cancel()
 			goals, err := e.Classes(args.Goals)
 			if err != nil {
 				return errorResultFor[rest.Graph](err), nil

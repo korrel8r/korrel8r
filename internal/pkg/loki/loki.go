@@ -82,14 +82,14 @@ func New(c *http.Client, base *url.URL) *Client { return &Client{Client: c, Base
 // Get uses the plain Loki API to get logs for a LogQL query with a Constraint.
 func (c *Client) Get(ctx context.Context, logQL string, constraint *korrel8r.Constraint, collect CollectFunc) error {
 	u := queryURL(logQL, constraint)
-	return c.get(ctx, u, constraint, collect)
+	return c.get(ctx, u, collect)
 }
 
 // GetStack uses the LokiStack tenant API to get logs for a LogQL query with a Constraint.
 func (c *Client) GetStack(ctx context.Context, logQL, tenant string, constraint *korrel8r.Constraint, collect CollectFunc) error {
 	u := queryURL(logQL, constraint)
 	u.Path = path.Join(lokiStackPath, tenant, u.Path)
-	return c.get(ctx, u, constraint, collect)
+	return c.get(ctx, u, collect)
 }
 
 const ( // Query URL keywords
@@ -119,11 +119,11 @@ func queryURL(logQL string, c *korrel8r.Constraint) *url.URL {
 
 func formatTime(t time.Time) string { return strconv.FormatInt(t.UTC().UnixNano(), 10) }
 
-func (c *Client) get(ctx context.Context, u *url.URL, constraint *korrel8r.Constraint, collect CollectFunc) error {
+func (c *Client) get(ctx context.Context, u *url.URL, collect CollectFunc) error {
 	u = c.BaseURL.ResolveReference(u)
 	log.V(5).Info("Loki GET", "url", u)
 	qr := response{}
-	if err := impl.Get(ctx, u, c.Client, constraint.GetTimeout(), &qr); err != nil {
+	if err := impl.Get(ctx, u, c.Client, &qr); err != nil {
 		return err
 	}
 	if qr.Status != "success" {

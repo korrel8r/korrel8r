@@ -57,7 +57,7 @@ func TestEngine_PropagateConstraints(t *testing.T) {
 	d := mock.NewDomain("mock")
 	a, b, c := d.Class("a"), d.Class("b"), d.Class("c")
 	// Time range [start,end] and some time points.
-	start := time.Now()
+	start := time.Unix(0, 0)
 	end := start.Add(time.Minute)
 	afterEnd := end.Add(time.Minute)
 	early, ontime, late := start.Add(-1), start.Add(1), end.Add(1)
@@ -105,12 +105,13 @@ func TestEngine_PropagateConstraints(t *testing.T) {
 	} {
 		t.Run(fmt.Sprintf("%v", i), func(t *testing.T) {
 			goals := []korrel8r.Class{c}
-			ctx, cancel := korrel8r.WithConstraint(context.Background(), x.constraint)
-			defer cancel()
-			g, err := traverse.Goals(ctx, e, traverse.Start{Class: a, Objects: []korrel8r.Object{obj{"a", ontime}}}, goals)
+			start := traverse.Start{Class: a, Objects: []korrel8r.Object{obj{"a", ontime}}, Constraint: x.constraint}
+			g, err := traverse.Goals(context.Background(), e, start, goals)
 			assert.NoError(t, err)
-			got := g.NodeFor(c).Result.List()
-			assert.Equal(t, asStrings(x.want), asStrings(got), "want %v got %v", x.want, got)
+			if node := g.NodeFor(c); assert.NotNil(t, node) {
+				got := node.Result.List()
+				assert.Equal(t, asStrings(x.want), asStrings(got), "want %v got %v", x.want, got)
+			}
 		})
 	}
 }

@@ -117,7 +117,7 @@ func (c *client) get(ctx context.Context, traceQL string, constraint *korrel8r.C
 	u.RawQuery = v.Encode()
 
 	var response tempoResponse
-	if err := impl.Get(ctx, &u, c.hc, constraint.GetTimeout(), &response); err != nil {
+	if err := impl.Get(ctx, &u, c.hc, &response); err != nil {
 		return err
 	}
 	response.collect(collect)

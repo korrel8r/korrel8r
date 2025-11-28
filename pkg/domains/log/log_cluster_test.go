@@ -4,6 +4,7 @@ package log_test
 
 import (
 	"cmp"
+	"context"
 	"fmt"
 	"slices"
 	"sort"
@@ -59,6 +60,7 @@ func TestPodQueriesCluster(t *testing.T) {
 
 		// lokiStack returns logs in reverse time order, so reverse the logs for lokiStack.
 		getLogs := func(t testing.TB, s korrel8r.Store, q *log.Query, constraint *korrel8r.Constraint, min int) []korrel8r.Object {
+			t.Helper()
 			l := getLogs(t, s, q, constraint, min)
 			if storeType == "lokiStack" {
 				slices.Reverse(l)
@@ -140,8 +142,9 @@ func TestPodQueriesCluster(t *testing.T) {
 
 			t.Run("timeout", func(t *testing.T) {
 				q := newQuery(t, `log:application:{namespace: %v}`, namespace)
-				constraint := &korrel8r.Constraint{Timeout: ptr.To(time.Nanosecond)}
-				err := s.Get(t.Context(), q, constraint, result.New(q.Class()))
+				ctx, cancel := context.WithTimeout(t.Context(), time.Nanosecond)
+				defer cancel()
+				err := s.Get(ctx, q, nil, result.New(q.Class()))
 				assert.ErrorContains(t, err, "context deadline exceeded")
 			})
 		})
