@@ -7,7 +7,6 @@ import (
 
 	"github.com/go-logr/logr"
 	kconfig "github.com/korrel8r/korrel8r/pkg/config"
-	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"github.com/korrel8r/korrel8r/pkg/rest/auth"
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -45,15 +44,17 @@ func NewHTTPClient(s kconfig.Store) (*http.Client, error) {
 	return rest.HTTPClientFor(cfg)
 }
 
+// TODO make this configurable.
+const kubeFlowLimit = 1000
+
 // GetConfig returns a rest.Config with settings for use by korrel8r.
 func GetConfig() (*rest.Config, error) {
 	cfg, err := config.GetConfig()
 	if err != nil {
 		return nil, err
 	}
-	// TODO make these configurable.
-	cfg.QPS = float32(korrel8r.DefaultLimit)
-	cfg.Burst = korrel8r.DefaultLimit
+	cfg.QPS = float32(kubeFlowLimit)
+	cfg.Burst = kubeFlowLimit
 	cfg.Wrap(auth.Wrap)
 	return cfg, nil
 }

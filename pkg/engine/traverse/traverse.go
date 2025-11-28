@@ -16,37 +16,39 @@ import (
 
 // Goals traverses all paths from start objects to all goal classes.
 func Goals(ctx context.Context, e *engine.Engine, start Start, goals []korrel8r.Class) (*graph.Graph, error) {
-	log.V(2).Info("Goal directed search", "start", start, "goals", goals, "constraint", korrel8r.ConstraintFrom(ctx))
+	log.V(2).Info("Goal directed search", "start", start, "goals", goals, "constraint", start.Constraint)
 	g, err := e.Graph().GoalPaths(start.Class, goals)
 	if err != nil {
 		return nil, err
 	}
-	return newTraverser(e, g).run(ctx, start, -1)
+	return newTraverser(e, g, start.Constraint).run(ctx, start, -1)
 }
 
 // Neighbors traverses to all neighbors of the start objects, traversing links up to the given depth.
 func Neighbors(ctx context.Context, e *engine.Engine, start Start, depth int) (*graph.Graph, error) {
-	log.V(2).Info("Neighborhood search", "start", start, "depth", depth, "constraint", korrel8r.ConstraintFrom(ctx))
+	log.V(2).Info("Neighbourhood search", "start", start, "depth", depth, "constraint", start.Constraint)
 	g, err := e.Graph().Neighbors(start.Class, depth) // Reduce the graph.
 	if err != nil {
 		return nil, err
 	}
-	return newTraverser(e, g).run(ctx, start, depth)
+	return newTraverser(e, g, start.Constraint).run(ctx, start, depth)
 }
 
 // Start point information for graph traversal.
 type Start struct {
-	Class   korrel8r.Class    // Start class.
-	Objects []korrel8r.Object // Start objects, must be of Start class.
-	Queries []korrel8r.Query  // Queries for start objects, must be of Start class.
+	Class      korrel8r.Class       // Start class.
+	Objects    []korrel8r.Object    // Start objects, must be of Start class.
+	Queries    []korrel8r.Query     // Queries for start objects, must be of Start class.
+	Constraint *korrel8r.Constraint // Constraint to apply during the traversal.
 }
 
 var log = logging.Log()
 
 type traverser struct {
-	engine  *engine.Engine
-	graph   *graph.Graph
-	workers map[korrel8r.Class]*worker
+	engine     *engine.Engine
+	graph      *graph.Graph
+	workers    map[korrel8r.Class]*worker
+	constraint *korrel8r.Constraint
 }
 
 // A worker gets queries from a store, applies rules and sends new queries to other workers.
@@ -67,11 +69,12 @@ type queryLine struct {
 
 func (ql queryLine) ID() string { return ql.Query.String() }
 
-func newTraverser(e *engine.Engine, g *graph.Graph) *traverser {
+func newTraverser(e *engine.Engine, g *graph.Graph, c *korrel8r.Constraint) *traverser {
 	return &traverser{
-		engine:  e,
-		graph:   g,
-		workers: map[korrel8r.Class]*worker{},
+		engine:     e,
+		graph:      g,
+		workers:    map[korrel8r.Class]*worker{},
+		constraint: c,
 	}
 }
 
@@ -171,7 +174,7 @@ func (w *worker) Run(ctx context.Context) {
 		}
 		before := len(w.node.Result.List())
 		// Error is logged by engine.Get
-		_ = w.engine.Get(ctx, ql.Query, korrel8r.ConstraintFrom(ctx), w.node.Result)
+		_ = w.engine.Get(ctx, ql.Query, w.constraint, w.node.Result)
 		result := w.node.Result.List()[before:]
 		w.node.Queries.Set(ql.Query, len(result))
 		if ql.Line != nil {

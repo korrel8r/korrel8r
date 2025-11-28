@@ -4,20 +4,22 @@ package rest
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"net/url"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/korrel8r/korrel8r/internal/pkg/test/mock"
 	"github.com/korrel8r/korrel8r/pkg/config"
 	"github.com/korrel8r/korrel8r/pkg/engine"
+	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"github.com/korrel8r/korrel8r/pkg/ptr"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -221,25 +223,50 @@ func TestAPIPostNeighborsInvalidClass(t *testing.T) {
 	require.Equal(t, `{"error":"invalid class name: not-a-class"}`, w.Body.String())
 }
 
-func TestAPIGetObjects_empty(t *testing.T) {
+func TestAPIGetObjects(t *testing.T) {
 	d := mock.NewDomain("x")
-	q := mock.NewQuery(d.Class("y"), "test")
 	s := mock.NewStore(d)
 	e, err := engine.Build().Domains(d).Stores(s).Engine()
 	require.NoError(t, err)
 	a := newTestAPI(t, e)
-	w := a.do(t, "GET", "/api/v1alpha1/objects?query="+url.QueryEscape(q.String()), nil)
+
+	s.AddQuery("x:y:getfoo", "foo")
+	w := a.do(t, "GET", "/api/v1alpha1/objects?query=x:y:getfoo", nil)
+	require.Equal(t, http.StatusOK, w.Code)
+	require.Equal(t, `["foo"]`, w.Body.String())
+
+	w = a.do(t, "GET", "/api/v1alpha1/objects?query=x:y:nothing", nil)
 	require.Equal(t, http.StatusOK, w.Code)
 	require.Equal(t, "[]", w.Body.String())
 }
 
-func TestAPIGetObjects_invalid_query(t *testing.T) {
-	e, err := engine.Build().Engine()
+// blockingStore Get blocks until the context is cancelled.
+type blockingStore struct{ domain korrel8r.Domain }
+
+func (s *blockingStore) Domain() korrel8r.Domain { return s.domain }
+
+func (s *blockingStore) Get(ctx context.Context, _ korrel8r.Query, _ *korrel8r.Constraint, _ korrel8r.Appender) error {
+	<-ctx.Done()
+	return ctx.Err()
+}
+
+func TestConfigTuningTimeout(t *testing.T) {
+	d := mock.NewDomain("x")
+	s := &blockingStore{d}
+	timeout := 10 * time.Millisecond
+	cfg := config.Config{
+		Tuning: &config.Tuning{RequestTimeout: ptr.To(config.Duration{Duration: timeout})},
+	}
+	e, err := engine.Build().Domains(d).Stores(s).Config(config.Configs{cfg}).Engine()
 	require.NoError(t, err)
 	a := newTestAPI(t, e)
-	w := a.do(t, "GET", "/api/v1alpha1/objects?query="+url.QueryEscape("not-a-query"), nil)
-	require.Equal(t, http.StatusBadRequest, w.Code)
-	require.Equal(t, `{"error":"invalid query string: not-a-query"}`, w.Body.String())
+
+	start := time.Now()
+	w := a.do(t, "GET", "/api/v1alpha1/objects?query=x:y:z", nil)
+	delay := time.Since(start)
+	assert.InEpsilon(t, timeout, delay, 0.1, "delay: %v", delay)
+	// TODO this should be StatusRequestTimeout
+	assert.Equal(t, http.StatusNotFound, w.Code)
 }
 
 func ginEngine() *gin.Engine {

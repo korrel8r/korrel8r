@@ -110,7 +110,6 @@ func (s *storeHolder) ensure() (korrel8r.Store, error) {
 	// Expand the store config each time - the results may change.
 	s.Expanded = config.Store{}
 	for k, original := range s.Original {
-		// FIXME double unwrap??
 		expanded, err := s.Engine.execTemplate(s.domain.Name()+"-store", original, nil)
 		if err != nil {
 			var execErr template.ExecError

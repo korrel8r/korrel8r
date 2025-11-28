@@ -46,14 +46,6 @@ func (s *directStore) Get(ctx context.Context, query korrel8r.Query, constraint 
 	if q.direct == nil {
 		return fmt.Errorf("direct log store cannot execute Loki query: %v", query)
 	}
-
-	var cancel func()
-	if timeout := constraint.GetTimeout(); timeout > 0 {
-		ctx, cancel = context.WithDeadline(ctx, time.Now().Add(timeout))
-	} else {
-		ctx, cancel = context.WithCancel(ctx)
-	}
-	defer cancel()
 	group, ctx := errgroup.WithContext(ctx)
 
 	// Get pods for the query

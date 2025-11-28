@@ -57,7 +57,9 @@ var (
 			q := must.Must1(e.Query(args[0]))
 			p := newPrinter(os.Stdout)
 			defer p.Close()
-			must.Must(e.Get(context.Background(), q, constraint(), p))
+			ctx, cancel := e.WithTimeout(context.Background(), timeout)
+			defer cancel()
+			must.Must(e.Get(ctx, q, constraint(), p))
 		},
 	}
 )
@@ -74,7 +76,7 @@ var (
 		Args:  cobra.NoArgs,
 		Run: func(cmd *cobra.Command, args []string) {
 			e, _ := newEngine()
-			ctx, cancel := korrel8r.WithConstraint(context.Background(), constraint())
+			ctx, cancel := e.WithTimeout(context.Background(), timeout)
 			defer cancel()
 			g, err := traverse.Neighbors(ctx, e, start(e), depth)
 			must.Must(err)
@@ -102,7 +104,7 @@ var (
 			for _, g := range args {
 				goals = append(goals, must.Must1(e.Class(g)))
 			}
-			ctx, cancel := korrel8r.WithConstraint(context.Background(), constraint())
+			ctx, cancel := e.WithTimeout(context.Background(), timeout)
 			defer cancel()
 			g, err := traverse.Goals(ctx, e, start(e), goals)
 			must.Must(err)
@@ -121,9 +123,6 @@ func constraint() *korrel8r.Constraint {
 	c := &korrel8r.Constraint{}
 	if limit > 0 {
 		c.Limit = ptr.To(limit)
-	}
-	if timeout > 0 {
-		c.Timeout = ptr.To(timeout)
 	}
 	now := time.Now()
 	if since > 0 {
@@ -145,7 +144,7 @@ func start(e *engine.Engine) traverse.Start {
 	default:
 		must.Must(fmt.Errorf("must provide a class or at least one query"))
 	}
-	start := traverse.Start{Class: c}
+	start := traverse.Start{Class: c, Constraint: constraint()}
 	for _, q := range queries {
 		start.Queries = append(start.Queries, must.Must1(e.Query(q)))
 	}

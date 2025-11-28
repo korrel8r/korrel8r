@@ -11,6 +11,7 @@ import (
 	"slices"
 	"strings"
 	"text/template"
+	"time"
 
 	"github.com/korrel8r/korrel8r/internal/pkg/logging"
 	"github.com/korrel8r/korrel8r/pkg/config"
@@ -28,6 +29,9 @@ type Engine struct {
 	templateFuncs template.FuncMap
 	rulesByName   map[string]korrel8r.Rule
 	rules         []korrel8r.Rule
+
+	// Tuning parameters
+	Tuning config.Tuning
 }
 
 func (e *Engine) Domains() []korrel8r.Domain {
@@ -143,9 +147,6 @@ func (e *Engine) Get(ctx context.Context, query korrel8r.Query, constraint *korr
 			log.V(5).Info("Get", "query", query.String(), "constraint", constraint.String(), "count", count)
 		}
 	}()
-
-	ctx, cancel := korrel8r.WithConstraint(ctx, constraint)
-	defer cancel()
 	ss := e.storeHolders[query.Class().Domain()]
 	if len(ss.stores) == 0 {
 		return fmt.Errorf("no stores found for domain %v", query.Class().Domain().Name())
@@ -172,4 +173,16 @@ func (e *Engine) execTemplate(name, tmplString string, data any) (string, error)
 		return "", err
 	}
 	return w.String(), nil
+}
+
+// WithTimeout sets timeout on ctx, using configured default value if timeout == 0.
+// If timeout == 0 and there is no default value, the returned context has no timeout.
+func (e *Engine) WithTimeout(ctx context.Context, timeout time.Duration) (context.Context, func()) {
+	if timeout == 0 && e.Tuning.RequestTimeout != nil {
+		timeout = (*e.Tuning.RequestTimeout).Duration
+	}
+	if timeout == 0 {
+		return ctx, func() {}
+	}
+	return context.WithTimeout(ctx, timeout)
 }

@@ -210,5 +210,11 @@ func TraverseStart(e *engine.Engine, start Start) (traverse.Start, error) {
 		}
 		objects = append(objects, o)
 	}
-	return traverse.Start{Class: class, Objects: objects, Queries: queries}, nil
+
+	return traverse.Start{
+		Class:      class,
+		Objects:    objects,
+		Queries:    queries,
+		Constraint: start.Constraint,
+	}, nil
 }

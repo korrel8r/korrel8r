@@ -2,6 +2,8 @@
 
 package config
 
+import "github.com/korrel8r/korrel8r/pkg/ptr"
+
 // Config defines the configuration for an instance of korrel8r.
 // Configuration files may be JSON or YAML.
 type Config struct {
@@ -98,4 +100,14 @@ type Class struct {
 type Tuning struct {
 	// RequestTimeout cancels requests if they last longer than this timeout.
 	RequestTimeout *Duration `json:"requestTimeout,omitempty"`
+}
+
+// Copy all non-nil fields of x to t.
+func (t *Tuning) Copy(x *Tuning) {
+	if x == nil {
+		return
+	}
+	if x.RequestTimeout != nil {
+		t.RequestTimeout = ptr.To(*x.RequestTimeout)
+	}
 }

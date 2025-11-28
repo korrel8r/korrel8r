@@ -4,10 +4,8 @@
 package rest
 
 import (
-	"context"
 	"fmt"
 	"net/http"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/korrel8r/korrel8r/internal/pkg/logging"
@@ -16,7 +14,6 @@ import (
 	"github.com/korrel8r/korrel8r/pkg/engine/traverse"
 	"github.com/korrel8r/korrel8r/pkg/graph"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
-	"github.com/korrel8r/korrel8r/pkg/ptr"
 	"github.com/korrel8r/korrel8r/pkg/rest/auth"
 	"github.com/korrel8r/korrel8r/pkg/result"
 	"github.com/korrel8r/korrel8r/pkg/unique"
@@ -87,9 +84,7 @@ func (a *API) GraphNeighbors(c *gin.Context, params GraphNeighborsParams) {
 	if !check(c, http.StatusBadRequest, err) {
 		return
 	}
-	ctx, cancel := korrel8r.WithConstraint(c.Request.Context(), r.Start.Constraint.Default())
-	defer cancel()
-	g, err := traverse.Neighbors(ctx, e, start, r.Depth)
+	g, err := traverse.Neighbors(c.Request.Context(), e, start, r.Depth)
 	if !check(c, http.StatusNotFound, err) {
 		return
 	}
@@ -145,9 +140,7 @@ func (a *API) goals(c *gin.Context) (*graph.Graph, []korrel8r.Class) {
 	if !check(c, http.StatusBadRequest, err) {
 		return nil, nil
 	}
-	ctx, cancel := korrel8r.WithConstraint(c.Request.Context(), r.Start.Constraint.Default())
-	defer cancel()
-	g, err := traverse.Goals(ctx, a.Engine, start, goals)
+	g, err := traverse.Goals(c.Request.Context(), a.Engine, start, goals)
 	check(c, http.StatusNotFound, err)
 	return g, goals
 }
@@ -166,20 +159,11 @@ func check(c *gin.Context, code int, err error, format ...any) (ok bool) {
 	return false
 }
 
-// context sets up authorization and local deadline for outgoing requests.
+// context middle-ware sets up authentication and timeout in the request context.
 func (a *API) context(c *gin.Context) {
-	ctx := auth.Context(c.Request) // add authentication
-	requestTimeout := ptr.To(time.Minute)
-	if len(a.Configs) > 0 {
-		tuning := a.Configs[0].Tuning
-		if tuning != nil && tuning.RequestTimeout != nil {
-			requestTimeout = &tuning.RequestTimeout.Duration
-		}
-	}
-	ctx, cancel := context.WithDeadline(ctx, time.Now().Add(*requestTimeout))
-	c.Request = c.Request.WithContext(ctx)
+	ctx, cancel := a.Engine.WithTimeout(auth.Context(c.Request), 0)
 	defer cancel()
-
+	c.Request = c.Request.WithContext(ctx)
 	c.Next()
 }
 

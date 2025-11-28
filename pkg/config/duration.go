@@ -8,6 +8,7 @@ import (
 	"time"
 )
 
+// Duration is a time.Duration with JSON marshal/unmarshal using [time.ParseDuration] format.
 type Duration struct {
 	time.Duration
 }
