@@ -114,7 +114,7 @@ func TestPodQueriesCluster(t *testing.T) {
 				all := getLogs(t, s, q, nil, n)
 				// Note: direct & loki searches return logs in opposite order.
 				sortTime := func(o korrel8r.Object) time.Time { t, _ := o.(log.Object).SortTime(); return t }
-				slices.SortFunc(all, func(a, b korrel8r.Object) int {
+				slices.SortStableFunc(all, func(a, b korrel8r.Object) int {
 					return cmp.Compare(sortTime(a).UnixNano(), sortTime(b).UnixNano())
 				})
 				require.Len(t, all, n)
