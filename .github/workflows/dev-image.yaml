@@ -1,0 +1,36 @@
+name: Push Developer Image
+
+on:
+  workflow_run:
+    workflows: ["Full Test"]
+    types: [ completed ]
+    branches: [ "main" ]
+
+jobs:
+  build-image:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: git describe
+        id: describe
+        run: echo "version=$(git describe)" >> $GITHUB_OUTPUT
+
+      - name: log in to quay.io
+        uses: docker/login-action@v3
+        with:
+          registry: quay.io
+          username: ${{ secrets.QUAY_USERNAME }}
+          password: ${{ secrets.QUAY_PASSWORD }}
+
+      - name: Build and push developer image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Containerfile
+          push: true
+          tags: quay.io/korrel8r/korrel8r:dev-${{ steps.describe.outputs.version }}
+

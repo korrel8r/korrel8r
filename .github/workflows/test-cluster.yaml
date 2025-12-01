@@ -1,0 +1,31 @@
+# NOTE: Test cluster must be set up with all signal stacks.
+# See https://github.com/korrel8r/config/blob/main/openshift/Makefile
+name: Full Test
+
+on:
+  workflow_dispatch:
+    inputs:
+      description:
+        description: 'Test on Remote Kubernetes Cluster'
+        required: false
+        default: 'Manual test run'
+
+jobs:
+  test-with-cluster:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          # Note: version here should match the one in ../../go.mod
+          go-version: '1.24'
+
+      - name: Log in to cluster
+        run: ${{ secrets.TEST_CLUSTER_LOGIN_CMD }}
+
+      - name: Run Tests
+        run: make test
+
+      - name: Clean up resources
+        if: always()
+        run: make test-clean
