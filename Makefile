@@ -31,20 +31,20 @@ $(shell mkdir -p $(GOCOVERDIR))
 VERSION_TXT=internal/pkg/build/version.txt
 OPENAPI_SPEC=doc/korrel8r-openapi.yaml
 GEN_OPENAPI_GO=pkg/rest/gen-openapi.go
+GENERATED=$(VERSION_TXT) $(GEN_OPENAPI_GO)
 
-generate: $(VERSION_TXT) $(GEN_OPENAPI_GO)
-	hack/copyright.sh
+generate:  $(GENERATED)
 
 all: lint test _site image-build ## Build and test everything locally. Recommended before commit.
 
-build: generate $(BIN)				## Build korrel8r executable.
+build: $(GENERATED) $(BIN)				## Build korrel8r executable.
 	go build -o $(BIN)/korrel8r ./cmd/korrel8r
 
-install: generate							## Build and install korrel8r with go install.
+install: $(GENERATED)							## Build and install korrel8r with go install.
 	go install ./cmd/korrel8r
 
 clean: ## Remove generated files, including checked-in files.
-	rm -rf _site generate doc/gen tmp $(GEN_OPENAPI_GO) $(BIN) $(GOCOVERDIR)
+	rm -rf _site $(GENERATED) doc/gen tmp $(GEN_OPENAPI_GO) $(BIN) $(GOCOVERDIR)
 
 ifneq ($(VERSION),$(file <$(VERSION_TXT)))
 .PHONY: $(VERSION_TXT) # Force update if VERSION_TXT does not match $(VERSION)
@@ -62,7 +62,7 @@ SHELLCHECK:= $(BIN)/shellcheck
 $(SHELLCHECK): $(BIN)
 	./hack/install-shellcheck.sh $(BIN) 0.10.0
 
-lint: generate $(GOLANGCI_LINT) $(SHFMT) $(SHELLCHECK) ## Run the linter to find and fix code style problems.
+lint: $(GENERATED) $(GOLANGCI_LINT) $(SHFMT) $(SHELLCHECK) ## Run the linter to find and fix code style problems.
 	hack/copyright.sh
 	go mod tidy
 	$(GOLANGCI_LINT) run --fix
@@ -70,10 +70,10 @@ lint: generate $(GOLANGCI_LINT) $(SHFMT) $(SHELLCHECK) ## Run the linter to find
 	$(SHELLCHECK) -x -S style hack/*.sh
 
 .PHONY: test
-test: generate		## Run all tests, no cache. Requires an openshift cluster.
+test: $(GENERATED)		## Run all tests, no cache. Requires an openshift cluster.
 	go test -fullpath -race ./...
 
-test-no-cluster: generate	## Run all tests that don't require an openshift cluster.
+test-no-cluster: $(GENERATED)	## Run all tests that don't require an openshift cluster.
 	go test -fullpath -race  -skip='Cluster|/Cluster' ./...
 
 test-clean: ## Remove test namespaces from the cluster
@@ -88,10 +88,10 @@ cover:  ## Run tests with accumulated coverage stats in _cover.
 	@echo == Aggregate coverage across all tests.
 	go tool covdata percent -i $(GOCOVERDIR)
 
-bench: generate	$(BENCHSTAT)	## Run all benchmarks.
+bench: $(GENERATED)	$(BENCHSTAT)	## Run all benchmarks.
 	go test -fullpath -bench=. -run=NONE ./... > _bench-$(shell date +%s).txt ; $(BENCHSTAT) _bench-*.txt
 
-image-build:  generate ## Build image locally, don't push.
+image-build:  $(GENERATED) ## Build image locally, don't push.
 	$(IMGTOOL) build --tag=$(IMAGE) -f Containerfile .
 
 image: image-build ## Build and push image.
@@ -128,7 +128,7 @@ LINKCHECKER?=$(or $(shell type -p linkchecker),$(warning linkchecker not found: 
 LINKCHECK_FLAGS=--no-warnings --check-extern --ignore-url='//(localhost|[^:/]*\.example)([:/].*)?$$'
 
 # _site is published to github pages by .github/workflows/asciidoctor-ghpages.yml.
-_site: doc $(shell find doc etc/korrel8r -name gen -prune -o -print) $(ASCIIDOCTOR) ## Generate the website HTML.
+_site: doc $(shell find etc/korrel8r -name gen -prune -o -print) $(ASCIIDOCTOR) ## Generate the website HTML.
 	git submodule init
 	git submodule update --force
 	@mkdir -p $@/doc/images
@@ -143,8 +143,8 @@ _site/man: $(shell find ./cmd)	## Generated man pages.
 	go run ./cmd/korrel8r doc man $@
 	@touch $@
 
-.PHONY: doc
 doc: doc/gen/domains.adoc doc/gen/rest_api.adoc doc/gen/cmd
+	touch $@
 
 doc/gen/domains.adoc: $(wildcard pkg/domains/*/*.adoc)
 	@mkdir -p $(dir $@)
@@ -162,7 +162,7 @@ $(KRAMDOC):
 	@mkdir -p $(dir $@)
 	gem install kramdown-asciidoc --user-install --bindir $(BIN)
 
-doc/gen/cmd: generate $(shell find ./cmd/korrel8r) $(KORREL8RCLI) $(KRAMDOC) ## Generated command documentation
+doc/gen/cmd: $(GENERATED) $(shell find ./cmd/korrel8r) $(KORREL8RCLI) $(KRAMDOC) ## Generated command documentation
 	@mkdir -p $@
 	unset KORREL8R_CONFIG; go run ./cmd/korrel8r doc markdown $@
 	$(KORREL8RCLI) doc markdown $@

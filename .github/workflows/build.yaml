@@ -1,0 +1,56 @@
+name: Build
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch:  # Allow manual triggers
+
+# Security: Explicit permissions
+permissions:
+  contents: read
+  checks: write                 # For test result reporting
+  pull-requests: write          # For PR comments
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15         # Prevent runaway jobs
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25' # Should match ../../go.mod
+          cache: true        # Enable built-in Go module caching
+
+      - name: lint
+        uses: golangci/golangci-lint-action@v7
+        with:
+          # Note: version here should match the one in ../../.bingo/golangci-lint.mod
+          version: 'v2.1.5'
+          args: "--timeout=3m"
+          only-new-issues: ${{ github.event_name == 'pull_request' }}
+
+      - name: test
+        run: make test-no-cluster
+
+      - name: build
+        run: make build
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results
+          path: |
+            test-results/
+            coverage.out
+          retention-days: 30
+
+      - name: Test Summary
+        uses: test-summary/action@v2
+        if: always()
+        with:
+          paths: test-results/*.xml
