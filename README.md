@@ -43,6 +43,20 @@ We welcome contributions! See the [Developer Guide](AGENTS.md) for setup instruc
 - **[Project Board](https://github.com/orgs/korrel8r/projects/3)** - Current work and project status
 - **[Pull Requests](https://github.com/korrel8r/korrel8r/pulls)** - Submit contributions
 
+## Artifacts
+
+``` bash
+# Latest release
+go install github.com/korrel8r/korrel8r/cmd/korrel8r@latest # Executable
+docker pull quay.io/korrel8r/korrel8r:latest                # Image
+
+# Daily images from main for development, not tested for release.
+docker pull quay.io/korrel8r/korrel8r:dev-latest            # Latest
+docker pull quay.io/korrel8r/korrel8r:dev-v0.8.4-9-g7304c37 # 9 commits since release 0.8.4 
+```
+
+See all available images at: https://quay.io/repository/korrel8r/korrel8r?tab=tags
+
 ## License
 
 This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENSE) file for details.

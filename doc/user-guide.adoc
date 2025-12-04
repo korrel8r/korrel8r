@@ -116,9 +116,10 @@ resulting queries, retrieving more objects and so on.
 
 Korrel8r can run in different environments depending on your needs:
 
-- **In-cluster service** (recommended for production): Deployed as a Kubernetes service
-- **Out-of-cluster service**: Running locally or externally, connecting via routes/ingress
-- **Command line**: Direct command execution for testing and development
+- **In-cluster**:  Deployed as a Kubernetes service, recommended for production.
+- **Out-of-cluster**:
+  - **Command line**: direct execution of queries for automated scripts or tests.
+  - **Service**:  useful for testing, connect to cluster resources via routes.
 
 See <<_configuration>> for details on configuring stores and rules.
 
@@ -132,10 +133,11 @@ See <<_configuration>> for details on configuring stores and rules.
 
 === Installation Options
 
-==== Cluster Observability Operator (Recommended)
+==== Cluster Observability Operator (recommended)
 
 The {rh-coo} automatically installs and configures Korrel8r on {rh-ocp} clusters,
 configured to connect to the available stores and the console.
+This is the easiest way to get up and running.
 
 ==== Direct Deployment
 
