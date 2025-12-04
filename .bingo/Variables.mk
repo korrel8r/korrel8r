@@ -23,17 +23,11 @@ $(BENCHSTAT): $(BINGO_DIR)/benchstat.mod
 	@echo "(re)installing $(GOBIN)/benchstat-v0.0.0-20250106172127-400946f43c82"
 	@cd $(BINGO_DIR) && GOWORK=off $(GO) build -mod=mod -modfile=benchstat.mod -o=$(GOBIN)/benchstat-v0.0.0-20250106172127-400946f43c82 "golang.org/x/perf/cmd/benchstat"
 
-GOLANGCI_LINT := $(GOBIN)/golangci-lint-v2.1.5
+GOLANGCI_LINT := $(GOBIN)/golangci-lint-v2.7.1
 $(GOLANGCI_LINT): $(BINGO_DIR)/golangci-lint.mod
 	@# Install binary/ries using Go 1.14+ build command. This is using bwplotka/bingo-controlled, separate go module with pinned dependencies.
-	@echo "(re)installing $(GOBIN)/golangci-lint-v2.1.5"
-	@cd $(BINGO_DIR) && GOWORK=off $(GO) build -mod=mod -modfile=golangci-lint.mod -o=$(GOBIN)/golangci-lint-v2.1.5 "github.com/golangci/golangci-lint/v2/cmd/golangci-lint"
-
-GOW := $(GOBIN)/gow-v0.0.0-20250328223101-576bf37beebc
-$(GOW): $(BINGO_DIR)/gow.mod
-	@# Install binary/ries using Go 1.14+ build command. This is using bwplotka/bingo-controlled, separate go module with pinned dependencies.
-	@echo "(re)installing $(GOBIN)/gow-v0.0.0-20250328223101-576bf37beebc"
-	@cd $(BINGO_DIR) && GOWORK=off $(GO) build -mod=mod -modfile=gow.mod -o=$(GOBIN)/gow-v0.0.0-20250328223101-576bf37beebc "github.com/mitranim/gow"
+	@echo "(re)installing $(GOBIN)/golangci-lint-v2.7.1"
+	@cd $(BINGO_DIR) && GOWORK=off $(GO) build -mod=mod -modfile=golangci-lint.mod -o=$(GOBIN)/golangci-lint-v2.7.1 "github.com/golangci/golangci-lint/v2/cmd/golangci-lint"
 
 KORREL8RCLI := $(GOBIN)/korrel8rcli-v0.0.3
 $(KORREL8RCLI): $(BINGO_DIR)/korrel8rcli.mod

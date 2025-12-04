@@ -1,4 +1,4 @@
-name: Push Developer Image
+name: Daily Image
 
 on:
   schedule:

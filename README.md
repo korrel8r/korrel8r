@@ -1,8 +1,9 @@
 # Korrel8r
 
 [![Go Reference](https://pkg.go.dev/badge/github.com/korrel8r/korrel8r.svg)](https://pkg.go.dev/github.com/korrel8r/korrel8r)
-[![Build](https://github.com/korrel8r/korrel8r/actions/workflows/build.yml/badge.svg)](https://github.com/korrel8r/korrel8r/actions/workflows/build.yml)
-[![Publish](https://github.com/korrel8r/korrel8r/actions/workflows/publish.yml/badge.svg)](https://github.com/korrel8r/korrel8r/actions/workflows/publish.yml)
+[![Build](https://github.com/korrel8r/korrel8r/actions/workflows/build.yaml/badge.svg)](https://github.com/korrel8r/korrel8r/actions/workflows/build.yaml)
+[![Publish](https://github.com/korrel8r/korrel8r/actions/workflows/publish.yaml/badge.svg)](https://github.com/korrel8r/korrel8r/actions/workflows/publish.yaml)
+[![Daily Image](https://github.com/korrel8r/korrel8r/actions/workflows/daily-image.yaml/badge.svg)](https://github.com/korrel8r/korrel8r/actions/workflows/daily-image.yaml)
 
 **Navigate relationships between cluster resources and observability signals**
 
