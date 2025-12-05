@@ -25,7 +25,7 @@ jobs:
         run: |
           CHANGES="$(git log --since='24 hours ago' --oneline | wc -l)"
           echo "changes=$CHANGES" >> $GITHUB_OUTPUT
-          [[ "$CHANGES" == '0' ]] && echo "::notice::No changes in the last 24 hours, skipping build"
+          test "$CHANGES" = '0' && echo "::notice::No changes in the last 24 hours, skipping build"
 
       - uses: actions/setup-go@v5
         if: steps.status.outputs.changes != '0'

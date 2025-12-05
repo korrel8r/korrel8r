@@ -28,11 +28,7 @@ jobs:
           CHANGES="$(git log --since='24 hours ago' --oneline | wc -l)"
           echo "changes=$CHANGES" >> $GITHUB_OUTPUT
           echo "describe=$(git describe --always)" >> $GITHUB_OUTPUT
-          [[ "$CHANGES" == '0' ]] && echo "::notice::No changes in the last 24 hours, skipping build"
-
-      - name: Set up Docker Buildx
-        if: steps.status.outputs.changes != '0'
-        uses: docker/setup-buildx-action@v3
+          test "$CHANGES" = '0' && echo "::notice::No changes in the last 24 hours, skipping build"
 
       - name: Log in to quay.io
         if: steps.status.outputs.changes != '0'
@@ -41,6 +37,10 @@ jobs:
           registry: quay.io
           username: ${{ secrets.QUAY_USERNAME }}
           password: ${{ secrets.QUAY_PASSWORD }}
+
+      - name: Set up Docker Buildx
+        if: steps.status.outputs.changes != '0'
+        uses: docker/setup-buildx-action@v3
 
       - name: Extract metadata
         if: steps.status.outputs.changes != '0'
