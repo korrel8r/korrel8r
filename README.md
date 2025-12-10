@@ -43,6 +43,14 @@ We welcome contributions! See the [Developer Guide](AGENTS.md) for setup instruc
 - **[Project Board](https://github.com/orgs/korrel8r/projects/3)** - Current work and project status
 - **[Pull Requests](https://github.com/korrel8r/korrel8r/pulls)** - Submit contributions
 
+### AI-Assisted Development
+
+Korrel8r includes custom commands for Claude Code to streamline development:
+- `/generate-rule` - Interactive assistant for creating correlation rules
+- See [.claude/commands/](/.claude/commands/) for all available commands
+
+The [Developer Guide](AGENTS.md) includes specific tips for AI agents working with the codebase.
+
 ## Artifacts
 
 ``` bash
