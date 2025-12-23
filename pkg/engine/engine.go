@@ -139,17 +139,19 @@ func (e *Engine) Graph() *graph.Graph { return graph.NewData(e.Rules()...).FullG
 func (e *Engine) Get(ctx context.Context, query korrel8r.Query, constraint *korrel8r.Constraint, result korrel8r.Appender) (err error) {
 	count := 0
 	constraint = constraint.Default()
-
-	defer func() {
-		if err != nil {
-			log.V(2).Info("Get failed", "error", err, "query", query.String(), "constraint", constraint.String())
-		} else {
-			log.V(5).Info("Get", "query", query.String(), "constraint", constraint.String(), "count", count)
-		}
-	}()
 	ss := e.storeHolders[query.Class().Domain()]
 	if len(ss.stores) == 0 {
 		return fmt.Errorf("no stores found for domain %v", query.Class().Domain().Name())
+	}
+	if log.V(2).Enabled() {
+		start := time.Now()
+		defer func() {
+			if err != nil {
+				log.V(2).Info("Get failed", "error", err, "query", query.String(), "constraint", constraint.String(), "duration", time.Since(start))
+			} else {
+				log.V(5).Info("Get", "count", count, "query", query.String(), "constraint", constraint.String(), "duration", time.Since(start))
+			}
+		}()
 	}
 	return ss.Get(ctx, query, constraint, korrel8r.AppenderFunc(func(o korrel8r.Object) { count++; result.Append(o) }))
 }
