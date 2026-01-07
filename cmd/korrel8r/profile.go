@@ -3,9 +3,11 @@
 package main
 
 import (
-	"fmt"
+	"maps"
 	"os"
+	"slices"
 
+	"github.com/korrel8r/korrel8r/internal/pkg/enumflag"
 	"github.com/pkg/profile"
 )
 
@@ -15,16 +17,7 @@ const (
 )
 
 var (
-	profileFlag     = rootCmd.PersistentFlags().String("profile", os.Getenv(profileEnv), "Enable profiling, one of [block, cpu, goroutine, mem, alloc, heap, mutex, clock, http]")
-	profilePathFlag = rootCmd.PersistentFlags().String("profilePath", os.Getenv(profilePathEnv), "Output path for profile")
-)
-
-type noopStop struct{}
-
-func (noopStop) Stop() {}
-
-func StartProfile() interface{ Stop() } {
-	flags := map[string]func(*profile.Profile){
+	profileTypes = map[string]func(*profile.Profile){
 		"block":     profile.BlockProfile,
 		"cpu":       profile.CPUProfile,
 		"goroutine": profile.GoroutineProfile,
@@ -35,14 +28,24 @@ func StartProfile() interface{ Stop() } {
 		"clock":     profile.ClockProfile,
 		"trace":     profile.TraceProfile,
 	}
-	if opt, ok := flags[*profileFlag]; ok {
+	profileTypeFlag = enumflag.New(os.Getenv(profileEnv), slices.Collect(maps.Keys(profileTypes)))
+	profilePathFlag = rootCmd.PersistentFlags().String("profilePath", os.Getenv(profilePathEnv), "Output path for profile")
+)
+
+func init() {
+	rootCmd.PersistentFlags().Var(profileTypeFlag, "profile", profileTypeFlag.DocString("Enable profiling"))
+}
+
+type noopStop struct{}
+
+func (noopStop) Stop() {}
+
+func StartProfile() interface{ Stop() } {
+	if opt, ok := profileTypes[profileTypeFlag.String()]; ok {
 		if *profilePathFlag == "" {
 			*profilePathFlag = "."
 		}
 		return profile.Start(profile.ProfilePath(*profilePathFlag), opt)
-	}
-	if *profileFlag != "" {
-		panic(fmt.Errorf("invalid value for --profile flag: %v", *profileFlag))
 	}
 	return noopStop{}
 }

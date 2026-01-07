@@ -8,6 +8,7 @@ import (
 	"log"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/go-logr/logr"
 	"github.com/go-logr/stdr"
@@ -28,6 +29,22 @@ func init() { // Set env verbosity on init, Init() can over-ride.
 	if n, err := strconv.Atoi(os.Getenv(verboseEnv)); err == nil {
 		stdr.SetVerbosity(n)
 	}
+	// Redirect standard log output to use the logr.Logger
+	log.SetOutput(&logrWriter{logger: root})
+}
+
+// logrWriter is an io.Writer that forwards writes to a logr.Logger
+type logrWriter struct {
+	logger logr.Logger
+}
+
+// Write implements io.Writer, forwarding the message to the logr.Logger at V(3)
+func (w *logrWriter) Write(p []byte) (n int, err error) {
+	msg := strings.TrimSpace(string(p))
+	if msg != "" {
+		w.logger.V(3).Info(msg)
+	}
+	return len(p), nil
 }
 
 // Init sets verbosity based on flag or environment.

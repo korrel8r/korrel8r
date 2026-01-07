@@ -8,6 +8,7 @@ import (
 	"io"
 	"reflect"
 
+	"github.com/korrel8r/korrel8r/internal/pkg/enumflag"
 	"github.com/korrel8r/korrel8r/internal/pkg/must"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"sigs.k8s.io/yaml"
@@ -58,8 +59,10 @@ type yamlPrinter struct {
 func (p *yamlPrinter) Print(v any) { b, _ := yaml.Marshal(noNull(v)); _, _ = p.Write(b) }
 func (p *yamlPrinter) Close()      { p.Print(p.appender) }
 
+var outputFlag = enumflag.New("yaml", []string{"json", "json-pretty", "ndjson", "yaml"})
+
 func newPrinter(w io.Writer) printer {
-	switch *outputFlag {
+	switch outputFlag.String() {
 	case "json":
 		return &jsonPrinter{Encoder: json.NewEncoder(w)}
 
