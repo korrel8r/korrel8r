@@ -28,7 +28,6 @@ var (
 	}
 
 	// Global Flags
-	outputFlag  = rootCmd.PersistentFlags().StringP("output", "o", "yaml", "Output format: [json, json-pretty, yaml]")
 	verboseFlag = rootCmd.PersistentFlags().IntP("verbose", "v", 0, "Verbosity for logging (0: notice/error/warn, 1: info, 2: debug, 3: trace-per-request, 4: trace-per-rule, 5: trace-per-query+)")
 	configFlag  = rootCmd.PersistentFlags().StringP("config", "c", getConfig(), "Configuration file")
 	panicFlag   = rootCmd.PersistentFlags().Bool("panic", false, "Panic on error")
@@ -43,6 +42,7 @@ const (
 var profileStop interface{ Stop() }
 
 func init() {
+	rootCmd.PersistentFlags().VarP(outputFlag, "output", "o", outputFlag.DocString(""))
 	_ = rootCmd.PersistentFlags().MarkHidden("panic")
 	_ = rootCmd.PersistentFlags().MarkHidden("sync")
 	rootCmd.CompletionOptions.HiddenDefaultCmd = true
@@ -50,9 +50,7 @@ func init() {
 	cobra.OnInitialize(func() {
 		logging.Init(verboseFlag)
 		k8s.SetLogger(logging.Log())
-		if profileFlag != nil {
-			profileStop = StartProfile()
-		}
+		profileStop = StartProfile()
 	})
 
 	cobra.OnFinalize(func() {
