@@ -89,7 +89,7 @@ cover:  ## Run tests with accumulated coverage stats in _cover.
 	go tool covdata percent -i $(GOCOVERDIR)
 
 bench: $(GENERATED)	$(BENCHSTAT)	## Run all benchmarks.
-	go test -fullpath -bench=. -run=NONE ./... > _bench-$(shell date +%s).txt ; $(BENCHSTAT) _bench-*.txt
+	go test -fullpath -bench=. -run=NONE ./... > _bench-$(shell date -I).txt ; $(BENCHSTAT) _bench-*.txt
 
 image-build:  $(GENERATED) ## Build image locally, don't push.
 	$(IMGTOOL) build --tag=$(IMAGE) -f Containerfile .
