@@ -17,11 +17,11 @@ GO     ?= $(shell which go)
 #	@echo "Running benchstat"
 #	@$(BENCHSTAT) <flags/args..>
 #
-BENCHSTAT := $(GOBIN)/benchstat-v0.0.0-20250106172127-400946f43c82
+BENCHSTAT := $(GOBIN)/benchstat-v0.0.0-20251208221838-04cf7a2dca90
 $(BENCHSTAT): $(BINGO_DIR)/benchstat.mod
 	@# Install binary/ries using Go 1.14+ build command. This is using bwplotka/bingo-controlled, separate go module with pinned dependencies.
-	@echo "(re)installing $(GOBIN)/benchstat-v0.0.0-20250106172127-400946f43c82"
-	@cd $(BINGO_DIR) && GOWORK=off $(GO) build -mod=mod -modfile=benchstat.mod -o=$(GOBIN)/benchstat-v0.0.0-20250106172127-400946f43c82 "golang.org/x/perf/cmd/benchstat"
+	@echo "(re)installing $(GOBIN)/benchstat-v0.0.0-20251208221838-04cf7a2dca90"
+	@cd $(BINGO_DIR) && GOWORK=off $(GO) build -mod=mod -modfile=benchstat.mod -o=$(GOBIN)/benchstat-v0.0.0-20251208221838-04cf7a2dca90 "golang.org/x/perf/cmd/benchstat"
 
 GOLANGCI_LINT := $(GOBIN)/golangci-lint-v2.7.1
 $(GOLANGCI_LINT): $(BINGO_DIR)/golangci-lint.mod

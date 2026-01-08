@@ -6,7 +6,7 @@ package unique
 // Deduplicator keeps track of comparable keys that identify unique values.
 type Deduplicator[K comparable, V any] struct {
 	key  func(V) K
-	seen map[any]struct{}
+	seen Set[any]
 }
 
 // NewDeduplicator uses func key to extract keys from values.
