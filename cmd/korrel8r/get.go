@@ -19,24 +19,26 @@ import (
 
 // Common flags for neighbors and goals
 var (
-	class                 string
-	queries               []string
-	objects               []string
-	withRules             bool
-	limit                 int
-	since, until, timeout time.Duration
-
-	// Gather graph options into a struct.
+	class        string
+	queries      []string
+	objects      []string
+	limit        int
 	graphOptions = rest.GraphOptions{
-		Rules: &withRules,
+		Rules:   ptr.To(false),
+		Errors:  ptr.To(false),
+		Results: ptr.To(false),
 	}
+	// Constraint values
+	since, until, timeout time.Duration
 )
 
 func startFlags(cmd *cobra.Command) {
 	cmd.Flags().StringArrayVarP(&queries, "query", "q", nil, "Query string for start objects, can be multiple.")
 	cmd.Flags().StringVar(&class, "class", "", "Class for serialized start objects")
 	cmd.Flags().StringArrayVar(&objects, "object", nil, "Serialized start object, can be multiple.")
-	cmd.Flags().BoolVar(&withRules, "rules", false, "Include rule names in returned graph")
+	cmd.Flags().BoolVar(graphOptions.Rules, "rules", false, "Include rule names in returned graph")
+	cmd.Flags().BoolVar(graphOptions.Results, "results", false, "Include complete query results in graph")
+	cmd.Flags().BoolVar(graphOptions.Errors, "errors", false, "Include non-fatal errors in graph")
 }
 
 func constraintFlags(cmd *cobra.Command) {

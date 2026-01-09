@@ -10,10 +10,12 @@ korrel8r goals GOAL [GOAL...] [flags]
 
 ----
       --class string         Class for serialized start objects
+      --errors               Include non-fatal errors in graph
   -h, --help                 help for goals
       --limit int            Limit total number of results.
       --object stringArray   Serialized start object, can be multiple.
   -q, --query stringArray    Query string for start objects, can be multiple.
+      --results              Include complete query results in graph
       --rules                Include rule names in returned graph
       --since duration       Only get results since this long ago.
       --timeout duration     Timeout for store requests.

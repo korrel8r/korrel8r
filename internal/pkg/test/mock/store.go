@@ -136,7 +136,7 @@ func (s *Store) LoadFile(file string) error {
 	return s.LoadData(b)
 }
 
-// LoadData loads queries and results from bytes..
+// LoadData loads queries and results from a YAML map with query keys and result data.
 func (s *Store) LoadData(data []byte) error {
 	loaded := map[string][]json.RawMessage{}
 	if err := yaml.UnmarshalStrict(data, &loaded); err != nil {

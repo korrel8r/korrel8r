@@ -892,6 +892,13 @@ Options controlling the form of the returned graph.
 | If true include rule names in graph edges.
 |     
 
+| results
+| 
+| 
+|   Boolean  
+| If true include full JSON results with each Query.
+|     
+
 | errors
 | 
 | 
@@ -950,6 +957,13 @@ Node in the result graph, contains results for a single class.
 | Full class name
 |     
 
+| queries
+| 
+| 
+|   List   of <<QueryCount>>
+| Queries yielding results for this class.
+|     
+
 | count
 | 
 | 
@@ -957,12 +971,27 @@ Node in the result graph, contains results for a single class.
 | Number of results for this class, after de-duplication.
 |     
 
-| queries
+| result
 | 
 | 
-|   List   of <<QueryCount>>
-| Queries yielding results for this class.
+|   List   of <<Object>>
+| Serialized result contents, may be large.
 |     
+
+|===
+
+
+
+[#Object]
+=== _Object_ 
+
+Data object serialized as JSON.
+
+
+[.fields-Object]
+[cols="2,1,1,2,4,1"]
+|===
+| Field Name| Required| Nullable | Type| Description | Format
 
 |===
 
@@ -1054,8 +1083,8 @@ Start identifies a set of starting objects for correlation.
 | objects
 | 
 | 
-|   List   of <<map>>
-| Objects serialized as JSON.
+|   List   of <<Object>>
+| Start objects serialized as JSON.
 |     
 
 | queries

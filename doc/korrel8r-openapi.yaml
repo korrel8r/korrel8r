@@ -314,6 +314,7 @@ components:
           description: Stores configured for the domain.
           items:
             $ref: '#/components/schemas/Store'
+
     Edge:
       type: object
       required: [start, goal]
@@ -388,35 +389,41 @@ components:
       description: Starting point for a neighbors search.
 
     Node:
+      description: Node in the result graph, contains results for a single class.
       type: object
       required: [class]
       properties:
         class:
           type: string
           description: Full class name
-        count:
-          type: integer
-          description: Number of results for this class, after de-duplication.
         queries:
           type: array
           x-go-type-skip-optional-pointer: true
           description: Queries yielding results for this class.
           items:
             $ref: '#/components/schemas/QueryCount'
-      description: Node in the result graph, contains results for a single class.
+        count:
+          type: integer
+          description: Number of results for this class, after de-duplication.
+        result:
+          description: Serialized result contents, may be large.
+          type: array
+          x-go-type-skip-optional-pointer: true
+          items:
+            $ref:  '#/components/schemas/Object'
 
     QueryCount:
+      description: Query with number of results.
       type: object
       required: [query]
       properties:
         count:
-          type: integer
           description: Number of results, omitted if the query was not executed.
+          type: integer
         query:
           description: Query for correlation data.
           allOf:
             - $ref: '#/components/schemas/Query'
-      description: Query with number of results.
 
     Rule:
       type: object
@@ -433,6 +440,12 @@ components:
             $ref: '#/components/schemas/QueryCount'
       description: Rule is a correlation rule with a list of queries and results counts found during navigation.
 
+    Object:
+      description: Data object serialized as JSON.
+      type: object
+      additionalProperties: true
+      x-go-type: json.RawMessage
+
     Start:
       type: object
       properties:
@@ -446,13 +459,11 @@ components:
             - $ref: '#/components/schemas/Constraint'
           description: Constrain the objects that will be returned.
         objects:
-          description: Objects serialized as JSON.
+          description: Start objects serialized as JSON.
           type: array
           x-go-type-skip-optional-pointer: true
           items:
-            type: object
-            additionalProperties: true
-            x-go-type: json.RawMessage
+            $ref:  '#/components/schemas/Object'
         queries:
           type: array
           x-go-type-skip-optional-pointer: true
@@ -473,6 +484,9 @@ components:
       properties:
         rules:
           description: If true include rule names in graph edges.
+          type: boolean
+        results:
+          description: If true include full JSON results with each Query.
           type: boolean
         errors:
           description: if true include non-fatal error messages.
