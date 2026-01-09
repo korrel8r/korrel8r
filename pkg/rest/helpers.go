@@ -5,6 +5,7 @@ package rest
 import (
 	"bytes"
 	"cmp"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -49,11 +50,18 @@ func rule(l *graph.Line, opts GraphOptions) (r Rule) {
 }
 
 func node(n *graph.Node, opts GraphOptions) Node {
-	return Node{
+	node := Node{
 		Class:   n.Class.String(),
 		Queries: queryCounts(n.Queries, opts),
 		Count:   ptr.To(len(n.Result.List())),
 	}
+	if ptr.Deref(opts.Results) {
+		for _, o := range n.Result.List() {
+			j, _ := json.Marshal(o)
+			node.Result = append(node.Result, j)
+		}
+	}
+	return node
 }
 
 func nodes(g *graph.Graph, opts GraphOptions) []Node {

@@ -20,7 +20,7 @@ import (
 	"gonum.org/v1/gonum/graph/traverse"
 )
 
-// Graph is a directed multigraph with [korrel8r.Class] noes and [korrel8r.Rule] lines.
+// Graph is a directed multigraph with [korrel8r.Class] nodes and [korrel8r.Rule] lines.
 // Nodes and lines carry attributes for rendering by GraphViz.
 //
 // Concurrency: Graph is mutable, normal concurrency rules apply regarding read/write operations.
