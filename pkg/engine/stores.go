@@ -127,7 +127,8 @@ func (s *storeHolder) ensure() (korrel8r.Store, error) {
 	if _, ok := s.Expanded[config.StoreKeyMock]; ok {
 		// Special case for mock store, any domain can have a mock store.
 		s.Store, err = mock.NewStoreConfig(s.domain, s.Expanded)
-	} else { // Domain-specific store
+	} else {
+		// Domain-specific store
 		s.Store, err = s.domain.Store(s.Expanded)
 	}
 	if err != nil {

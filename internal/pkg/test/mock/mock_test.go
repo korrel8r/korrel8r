@@ -125,9 +125,9 @@ func TestDomain_Query(t *testing.T) {
 	assert.Equal(t, "class1", q.Class().Name())
 	assert.Equal(t, "selector", q.Data())
 
-	_, err = d.Query("wrongdomain:class1:selector")
+	_, err = d.Query("baddomain:class1:selector")
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "wrong query domain")
+	assert.Contains(t, err.Error(), "query mismatch")
 
 	_, err = d.Query("testdomain:nonexistent:selector")
 	assert.Error(t, err)

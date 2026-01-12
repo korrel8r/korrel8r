@@ -53,7 +53,7 @@ func (d *Domain) Classes() []korrel8r.Class { return d.classes }
 func (d *Domain) Query(query string) (korrel8r.Query, error) {
 	domainName, className, selector := querySplit(query)
 	if domainName != d.Name() {
-		return nil, fmt.Errorf("wrong query domain, want %v: %v", d.Name(), query)
+		return nil, fmt.Errorf("mock domain %v: query mismatch: %v", d.Name(), query)
 	}
 	class := d.Class(className)
 	if class == nil {

@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"time"
 
 	"github.com/korrel8r/korrel8r/internal/pkg/test"
 	"github.com/korrel8r/korrel8r/pkg/config"
@@ -26,9 +27,12 @@ import (
 type Store struct {
 	// ConstraintFunc (optional) returns true if object is accepted.
 	ConstraintFunc func(*korrel8r.Constraint, korrel8r.Object) bool
-	classes        unique.Set[korrel8r.Class]
-	lookup         []QueryFunc
-	queries        *QueryMap
+	// Delay causes an artificial delay in each [Store.Get] call. Default 0.
+	Delay time.Duration
+
+	classes unique.Set[korrel8r.Class]
+	lookup  []QueryFunc
+	queries *QueryMap
 
 	domain korrel8r.Domain
 }
@@ -79,6 +83,7 @@ func NewStoreConfig(d korrel8r.Domain, cfg any) (*Store, error) {
 }
 
 func (s *Store) Get(ctx context.Context, q korrel8r.Query, constraint *korrel8r.Constraint, r korrel8r.Appender) error {
+	time.Sleep(s.Delay) // Artificial delay.
 	for _, f := range s.lookup {
 		result, err := f(q)
 		if err != nil {
@@ -143,6 +148,12 @@ func (s *Store) LoadData(data []byte) error {
 		return err
 	}
 	for qs, raw := range loaded {
+		domain, _, _ := querySplit(qs)
+		if s.domain.Name() != domain {
+			// Ignore queries for other domains.
+			// Allows a single mock store file to be shared among domains.
+			continue
+		}
 		q, err := s.domain.Query(qs)
 		if err != nil {
 			return err
