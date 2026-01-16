@@ -22,7 +22,7 @@ jobs:
 
       - uses: actions/setup-go@v5
         with:
-          go-version: '1.25' # Should match ../../go.mod
+          go-version: '1.24' # Should match ../../go.mod
           cache: true        # Enable built-in Go module caching
 
       - name: lint
