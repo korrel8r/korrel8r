@@ -22,14 +22,10 @@ func TestDomain(t *testing.T) {
 	})
 
 	t.Run("Domain classes", func(t *testing.T) {
-		classes := Domain.Classes()
-		assert.Len(t, classes, 3)
-
-		classNames := make([]string, len(classes))
-		for i, c := range classes {
-			classNames[i] = c.Name()
+		assert.ElementsMatch(t, []Class{Application, Infrastructure, Audit}, Domain.Classes())
+		for _, c := range Domain.Classes() {
+			assert.Equal(t, c, Domain.Class(c.Name()))
 		}
-		assert.ElementsMatch(t, []string{Application, Infrastructure, Audit}, classNames)
 	})
 }
 
@@ -55,9 +51,9 @@ func TestClass(t *testing.T) {
 		class    Class
 		expected string
 	}{
-		{"Application", Class(Application), Application},
-		{"Infrastructure", Class(Infrastructure), Infrastructure},
-		{"Audit", Class(Audit), Audit},
+		{"Application", Application, Application.Name()},
+		{"Infrastructure", Infrastructure, Infrastructure.Name()},
+		{"Audit", Audit, Audit.Name()},
 		{"Custom", Class("custom"), "custom"},
 	}
 
@@ -80,7 +76,7 @@ func TestClass(t *testing.T) {
 }
 
 func TestClassUnmarshal(t *testing.T) {
-	class := Class(Application)
+	class := Application
 
 	t.Run("Valid JSON", func(t *testing.T) {
 		data := `{"body": "test message", "timestamp": "2023-01-01T00:00:00Z"}`
@@ -103,7 +99,7 @@ func TestClassUnmarshal(t *testing.T) {
 }
 
 func TestClassPreview(t *testing.T) {
-	class := Class(Application)
+	class := Application
 
 	t.Run("Valid Object", func(t *testing.T) {
 		obj := Object{
@@ -200,7 +196,7 @@ func TestNewObject(t *testing.T) {
 
 func TestQuery(t *testing.T) {
 	t.Run("LogQL query", func(t *testing.T) {
-		class := Class(Application)
+		class := Application
 		logQL := `{app="test"}`
 
 		query := &Query{
@@ -214,7 +210,7 @@ func TestQuery(t *testing.T) {
 	})
 
 	t.Run("Direct query", func(t *testing.T) {
-		class := Class(Infrastructure)
+		class := Infrastructure
 		containerSelector := &ContainerSelector{
 			Selector: k8s.Selector{
 				Name:      "test-pod",
@@ -248,7 +244,7 @@ func TestNewQuery(t *testing.T) {
 		query, err := NewQuery(queryStr)
 		assert.NoError(t, err)
 		assert.NotNil(t, query)
-		assert.Equal(t, Class(Application), query.class)
+		assert.Equal(t, Application, query.class)
 		assert.Equal(t, `{app="test"}`, query.logQL)
 		assert.Nil(t, query.direct)
 	})
@@ -267,7 +263,7 @@ func TestNewQuery(t *testing.T) {
 		query, err := NewQuery(queryStr)
 		assert.NoError(t, err)
 		assert.NotNil(t, query)
-		assert.Equal(t, Class(Infrastructure), query.class)
+		assert.Equal(t, Infrastructure, query.class)
 		assert.NotNil(t, query.direct)
 		assert.Equal(t, "test-pod", query.direct.Name)
 		assert.Equal(t, "default", query.direct.Namespace)
@@ -293,9 +289,9 @@ func TestNewQuery(t *testing.T) {
 
 func TestConstants(t *testing.T) {
 	t.Run("Class constants", func(t *testing.T) {
-		assert.Equal(t, "application", Application)
-		assert.Equal(t, "infrastructure", Infrastructure)
-		assert.Equal(t, "audit", Audit)
+		assert.Equal(t, "application", Application.Name())
+		assert.Equal(t, "infrastructure", Infrastructure.Name())
+		assert.Equal(t, "audit", Audit.Name())
 	})
 
 	t.Run("Store key constants", func(t *testing.T) {
@@ -340,7 +336,7 @@ func TestDomainQueryMethod(t *testing.T) {
 		query, err := d.Query("log:application:{}")
 		assert.NoError(t, err)
 		assert.NotNil(t, query)
-		assert.Equal(t, Class(Application), query.Class())
+		assert.Equal(t, Application, query.Class())
 	})
 
 	t.Run("Query method returns error for invalid input", func(t *testing.T) {
@@ -351,7 +347,7 @@ func TestDomainQueryMethod(t *testing.T) {
 }
 
 func TestClassUnmarshalAndPreview(t *testing.T) {
-	class := Class(Application)
+	class := Application
 
 	t.Run("Unmarshal calls through to implementation", func(t *testing.T) {
 		data := `{"body": "test", "level": "info"}`
@@ -376,7 +372,7 @@ func TestLogTypeForNamespace(t *testing.T) {
 	tests := []struct {
 		name      string
 		namespace string
-		expected  string
+		expected  Class
 	}{
 		{"Default namespace", "default", Infrastructure},
 		{"Openshift namespace", "openshift", Infrastructure},
@@ -392,7 +388,7 @@ func TestLogTypeForNamespace(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result := logTypeForNamespace(tt.namespace)
-			assert.Equal(t, tt.expected, result)
+			assert.Equal(t, tt.expected.Name(), result)
 		})
 	}
 }

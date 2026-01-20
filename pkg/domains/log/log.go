@@ -27,8 +27,7 @@ var (
 )
 
 var Domain = &domain{
-	impl.NewDomain("log", "Records from container and node logs.",
-		Class(Application), Class(Infrastructure), Class(Audit)),
+	impl.NewDomain("log", "Records from container and node logs.", Application, Infrastructure, Audit),
 }
 
 type domain struct{ *impl.Domain }
@@ -172,9 +171,9 @@ func NewQuery(query string) (*Query, error) {
 }
 
 const (
-	Application    = "application"
-	Infrastructure = "infrastructure"
-	Audit          = "audit"
+	Application    Class = "application"
+	Infrastructure Class = "infrastructure"
+	Audit          Class = "audit"
 )
 
 // Separate attributes from timestamp/body intrinsics?
