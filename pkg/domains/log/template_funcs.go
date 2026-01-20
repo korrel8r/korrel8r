@@ -37,9 +37,9 @@ func SafeLabels(labelMap any) (any, error) {
 
 func logTypeForNamespace(namespace string) string {
 	if infraNamespace.MatchString(namespace) {
-		return Infrastructure
+		return Infrastructure.Name()
 	}
-	return Application
+	return Application.Name()
 }
 
 var infraNamespace = regexp.MustCompile(`^(default|(openshift|kube)(-.*)?)$`)
