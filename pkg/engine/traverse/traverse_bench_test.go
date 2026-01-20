@@ -1,17 +1,17 @@
 // Copyright: This file is part of korrel8r, released under https://github.com/korrel8r/korrel8r/blob/main/LICENSE
 
-package traverse
+package traverse_test
 
 import (
-	"context"
-	"fmt"
 	"testing"
 	"time"
 
 	"github.com/korrel8r/korrel8r/internal/pkg/test/mock"
 	"github.com/korrel8r/korrel8r/pkg/config"
 	"github.com/korrel8r/korrel8r/pkg/domains"
+	"github.com/korrel8r/korrel8r/pkg/domains/log"
 	"github.com/korrel8r/korrel8r/pkg/engine"
+	"github.com/korrel8r/korrel8r/pkg/engine/traverse"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"github.com/stretchr/testify/require"
 )
@@ -42,29 +42,28 @@ func makeEngine(b *testing.B) *engine.Engine {
 	return e
 }
 
-func BenchmarkNeighbours(b *testing.B) {
+func BenchmarkNeighbors(b *testing.B) {
 	e := makeEngine(b)
-	for _, q := range []string{
-		`k8s:Deployment.v1.apps:{"namespace":"openshift-apiserver","name":"apiserver"}`,
-	} {
-		query, err := e.Query(q)
+	const depth = 3
+	query, err := e.Query(`k8s:Deployment.v1.apps:{"namespace":"openshift-apiserver","name":"apiserver"}`)
+	require.NoError(b, err)
+	start := traverse.Start{Class: query.Class(), Queries: []korrel8r.Query{query}}
+	b.ResetTimer()
+	for b.Loop() {
+		_, err := traverse.Neighbors(b.Context(), e, start, depth)
 		require.NoError(b, err)
-		// Set up start parameters for traversal
-		start := Start{
-			Class:   query.Class(),
-			Queries: []korrel8r.Query{query},
-		}
-		ctx := context.Background()
-		for i := range 3 {
-			b.ResetTimer()
-			b.Run(fmt.Sprintf("%v depth=%v", q, i+1),
-				func(b *testing.B) {
-					for b.Loop() {
-						// Execute a simple neighbor traversal, depth3, to benchmark the core traverse functionality
-						_, err := Neighbors(ctx, e, start, i+1)
-						require.NoError(b, err)
-					}
-				})
-		}
+	}
+}
+
+func BenchmarkGoals(b *testing.B) {
+	e := makeEngine(b)
+	goals := []korrel8r.Class{log.Infrastructure}
+	query, err := e.Query(`k8s:Deployment.v1.apps:{"namespace":"openshift-apiserver","name":"apiserver"}`)
+	require.NoError(b, err)
+	start := traverse.Start{Class: query.Class(), Queries: []korrel8r.Query{query}}
+	b.ResetTimer()
+	for b.Loop() {
+		_, err := traverse.Goals(b.Context(), e, start, goals)
+		require.NoError(b, err)
 	}
 }
