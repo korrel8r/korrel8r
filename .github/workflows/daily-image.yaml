@@ -28,7 +28,9 @@ jobs:
           CHANGES="$(git log --since='24 hours ago' --oneline | wc -l)"
           echo "changes=$CHANGES" >> $GITHUB_OUTPUT
           echo "describe=$(git describe --always)" >> $GITHUB_OUTPUT
-          test "$CHANGES" = '0' && echo "::notice::No changes in the last 24 hours, skipping build"
+          if [ "$CHANGES" = '0' ]; then
+             echo "::notice::No changes in the last 24 hours, skipping build"
+          fi
 
       - name: Log in to quay.io
         if: steps.status.outputs.changes != '0'
