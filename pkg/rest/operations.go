@@ -6,8 +6,11 @@ package rest
 import (
 	"fmt"
 	"net/http"
+	"slices"
+	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/korrel8r/korrel8r/internal/pkg/build"
 	"github.com/korrel8r/korrel8r/internal/pkg/logging"
 	"github.com/korrel8r/korrel8r/pkg/config"
 	"github.com/korrel8r/korrel8r/pkg/engine"
@@ -36,7 +39,20 @@ func New(e *engine.Engine, c config.Configs, r *gin.Engine) (*API, error) {
 	a.BasePath = BasePath
 	r.Use(a.logger, a.context)
 	RegisterHandlersWithOptions(r, a, GinServerOptions{BaseURL: a.BasePath})
+	// Helpful endpoints showing routes.
+	r.GET(a.BasePath, func(c *gin.Context) { spec, _ := GetSwagger(); c.JSON(http.StatusOK, spec) })
+	r.GET("/", a.homePage)
 	return a, nil
+}
+
+func (a *API) homePage(c *gin.Context) {
+	var endpoints []string
+	for _, r := range a.Router.Routes() {
+		endpoints = append(endpoints, r.Path)
+	}
+	slices.Sort(endpoints)
+	c.String(http.StatusOK,
+		fmt.Sprintf("Korrel8r %v\n\n%v", build.Version, strings.Join(endpoints, "\n")))
 }
 
 func (a *API) ListDomains(c *gin.Context) {
@@ -53,6 +69,20 @@ func (a *API) ListDomains(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, domains)
 }
+
+func (a *API) ListDomainClasses(c *gin.Context, domain string) {
+	d, err := a.Engine.Domain(domain)
+	if !check(c, http.StatusNotFound, err, "domain not found: %s", domain) {
+		return
+	}
+
+	var classNames []string
+	for _, class := range d.Classes() {
+		classNames = append(classNames, class.Name())
+	}
+	c.JSON(http.StatusOK, classNames)
+}
+
 func (a *API) GraphGoals(c *gin.Context, params GraphGoalsParams) {
 	g, _ := a.goals(c)
 	gr := NewGraph(g, params.Options)

@@ -510,6 +510,99 @@ endif::internal-generation[]
 === Query
 
 
+[.listDomainClasses]
+==== listDomainClasses
+
+`GET /domain/{domain}/classes`
+
+Get the list of classes for a domain.
+
+===== Description
+
+Returns a list of class names for the specified domain. 
+
+
+// markup not found, no include::{specDir}domain/\{domain\}/classes/GET/spec.adoc[opts=optional]
+
+
+
+===== Parameters
+
+====== Path Parameters
+
+[cols="2,3,1,1,1"]
+|===
+|Name| Description| Required| Default| Pattern
+
+| domain
+| Name of the domain to list classes for 
+| X
+| null
+| 
+
+|===
+
+
+
+
+
+
+===== Return Type
+
+
+<<List>>
+
+
+===== Content Type
+
+* application/json
+
+===== Responses
+
+.HTTP Response Codes
+[cols="2,3,1"]
+|===
+| Code | Message | Datatype
+
+
+| 200
+| OK
+| List[<<string>>] 
+
+
+| 400
+| invalid parameters
+|  <<Error>>
+
+
+| 404
+| domain not found
+|  <<Error>>
+
+|===
+
+===== Samples
+
+
+// markup not found, no include::{snippetDir}domain/\{domain\}/classes/GET/http-request.adoc[opts=optional]
+
+
+// markup not found, no include::{snippetDir}domain/\{domain\}/classes/GET/http-response.adoc[opts=optional]
+
+
+
+// file not found, no * wiremock data link :domain/{domain}/classes/GET/GET.json[]
+
+
+ifdef::internal-generation[]
+===== Implementation
+
+// markup not found, no include::{specDir}domain/\{domain\}/classes/GET/implementation.adoc[opts=optional]
+
+
+endif::internal-generation[]
+
+
 [.listDomains]
 ==== listDomains
 
