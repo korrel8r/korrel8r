@@ -57,6 +57,45 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+  /domain/{domain}/classes:
+    get:
+      summary: Get the list of classes for a domain.
+      description: >
+        Returns a list of class names for the specified domain.
+      operationId: listDomainClasses
+      tags: [query]
+      parameters:
+        - name: domain
+          in: path
+          required: true
+          description: Name of the domain to list classes for
+          schema:
+            type: string
+          example: k8s
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                x-go-type-skip-optional-pointer: true
+                items:
+                  type: string
+                  description: Class name (without domain prefix)
+                example: ["Pod", "Service", "Deployment"]
+        "400":
+          description: invalid parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        "404":
+          description: domain not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
   /graphs/goals:
     post:
       summary: Create a correlation graph from start objects to goal queries.
