@@ -150,10 +150,11 @@ doc/gen/domains.adoc: $(wildcard pkg/domains/*/*.adoc)
 	@mkdir -p $(dir $@)
 	rm -f $@; for D in $^; do { echo; echo "include::../../$$D[]"; echo; } >>$@; done
 
+#  Skip validation by openapi generator as it does not understand itemSchema
 doc/gen/rest_api.adoc: $(OPENAPI_SPEC) $(OPENAPI_GEN)
 	@mkdir -p $(dir $@)
 	$(IMGTOOL) run --rm -v $(CURDIR):/app:z docker.io/openapitools/openapi-generator-cli \
-		generate -g asciidoc -c /app/doc/openapi-asciidoc.yaml -i /app/$< -o /app/$@.dir
+		generate -g asciidoc -c /app/doc/openapi-asciidoc.yaml -i /app/$< -o /app/$@.dir --skip-validate-spec
 	@mv -f $@.dir/index.adoc $@
 	@rm -rf $@.dir
 

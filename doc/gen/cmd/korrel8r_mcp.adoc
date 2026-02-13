@@ -15,7 +15,6 @@ korrel8r mcp [flags]
 == Options
 
 ----
-      --dump   Dump MCP metadata to stdout
   -h, --help   help for mcp
 ----
 

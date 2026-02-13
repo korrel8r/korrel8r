@@ -2,3 +2,5 @@ github.com/aclements/go-moremath v0.0.0-20210112150236-f10218a38794 h1:xlwdaKcTN
 github.com/aclements/go-moremath v0.0.0-20210112150236-f10218a38794/go.mod h1:7e+I0LQFUI9AXWxOfsQROs9xPhoJtbsyWcjJqDd4KPY=
 golang.org/x/perf v0.0.0-20251208221838-04cf7a2dca90 h1:FReL7J7YSl0emFi9KEGgFurLHSCthxIGO9Z/DAWB/Bo=
 golang.org/x/perf v0.0.0-20251208221838-04cf7a2dca90/go.mod h1:qpveD9n6aNQQYZ0U7gpHrAUVDKaCYefmb+S5mEl7vWU=
+golang.org/x/perf v0.0.0-20260209182753-b57e4e371b65 h1:rM7vQbWj4cYb36+4C/ty2ff56mvj5H8NIGvkMnO8qas=
+golang.org/x/perf v0.0.0-20260209182753-b57e4e371b65/go.mod h1:Vpky7L0k/n9Z/a+/QY+RNWvbu1+XKwJtpI78D/xrw7U=

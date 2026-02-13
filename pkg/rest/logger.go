@@ -3,6 +3,7 @@
 package rest
 
 import (
+	"net/http"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -19,7 +20,7 @@ func (a *API) logger(c *gin.Context) {
 		"url", c.Request.URL,
 		"from", c.Request.RemoteAddr,
 	)
-	log.V(3).Info("Request received", "body", copyBody(c.Request))
+	log.V(4).Info("Request received", "body", copyBody(c.Request))
 	// Wrap the ResponseWriter to capture the response
 	rw := newResponseWriter(c.Writer)
 	c.Writer = rw
@@ -27,8 +28,9 @@ func (a *API) logger(c *gin.Context) {
 
 	defer func() {
 		latency := time.Since(start)
-		log = log.WithValues("status", c.Writer.Status(), "latency", latency)
-		if c.IsAborted() {
+		status := c.Writer.Status()
+		log = log.WithValues("code", status, "text", http.StatusText(status), "latency", latency)
+		if len(c.Errors.Errors()) > 0 {
 			log = log.WithValues("errors", c.Errors.Errors())
 		}
 		if log.V(5).Enabled() { // Response is big, trace at per-object level.
@@ -37,7 +39,7 @@ func (a *API) logger(c *gin.Context) {
 		if c.IsAborted() || c.Writer.Status()/100 != 2 {
 			log.V(2).Info("Request failed")
 		} else {
-			log.V(3).Info("Request success")
+			log.V(3).Info("Request succeeded")
 		}
 	}()
 	c.Next()

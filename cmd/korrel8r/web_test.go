@@ -78,35 +78,27 @@ func assertDo(t *testing.T, h *http.Client, want, method, url, body string) {
 	assert.JSONEq(t, want, got)
 }
 
+const domains = `[
+{"name":"alert", "description": "Alerts that metric values are out of bounds."},
+{"name":"incident", "description": "Incidents group alerts into higher-level groups."},
+{"name":"k8s", "description": "Resource objects in a Kubernetes API server"},
+{"name":"log", "description": "Records from container and node logs."},
+{"name":"metric", "description": "Time-series of measured values"},
+{"name":"mock","description": "Mock domain.", "stores":[{"domain":"mock", "mockData":"testdata/mock_store.yaml"}]},
+{"name":"netflow","description": "Network flows from source nodes to destination nodes."},
+{"name":"trace","description": "Traces from Pods and Nodes."}
+]`
+
 func TestMain_server_insecure(t *testing.T) {
 	u := startServer(t, http.DefaultClient, "http", "-c", "testdata/korrel8r.yaml").String() + "/domains"
-	assertDo(t, http.DefaultClient, `[
-{"name":"alert"},
-{"name":"incident"},
-{"name":"k8s"},
-{"name":"log"},
-{"name":"metric"},
-{"name":"mock","stores":[{"domain":"mock", "mockData":"testdata/mock_store.yaml"}]},
-{"name":"netflow"},
-{"name":"trace"}
-]`, "GET", u, "")
+	assertDo(t, http.DefaultClient, domains, "GET", u, "")
 }
 
 func TestMain_server_secure(t *testing.T) {
 	_, clientTLS := certSetup(t, tmpDir)
 	h := &http.Client{Transport: &http.Transport{TLSClientConfig: clientTLS}}
 	u := startServer(t, h, "https", "--cert", filepath.Join(tmpDir, "tls.crt"), "--key", filepath.Join(tmpDir, "tls.key"), "-c", "testdata/korrel8r.yaml").String() + "/domains"
-	assertDo(t, h, `[
-{"name":"alert"},
-{"name":"incident"},
-{"name":"k8s"},
-{"name":"log"},
-{"name":"metric"},
-{"name":"mock","stores":[{"domain":"mock", "mockData":"testdata/mock_store.yaml"}]},
-{"name":"netflow"},
-{"name":"trace"}
-]`,
-		"GET", u, "")
+	assertDo(t, h, domains, "GET", u, "")
 }
 
 const testRequest = `{  "depth": 1, "start": { "queries": [ "mock:foo:x" ] }}`
