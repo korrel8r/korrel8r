@@ -1,6 +1,6 @@
 # Build the korrel8r binary
 # Note: the Go version in this image must be compatible with ./go.mod
-FROM registry.access.redhat.com/ubi9/go-toolset AS builder
+FROM registry.access.redhat.com/ubi10/go-toolset AS builder
 
 USER 0
 WORKDIR /src
