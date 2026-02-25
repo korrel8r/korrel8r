@@ -10,7 +10,7 @@ Update CHANGELOG.md to reflect changes since last release, add the new release h
 Follow http://keepachangelog.com[these guidelines]. +
 You can list git changes with:
 
-  git log --oneline $(git describe --abbrev=0)..
+  git log --oneline $(git describe --abbrev=0).. --reverse
 
 == Prepare for release
 
@@ -21,18 +21,24 @@ Make sure you are logged in to `quay.io/korrel8r` to push images.
 
 Use `git status` to verify that all changes are related to the version number change.
 
-Commit and push your changes with commit message 'Release X.Y.Z'
-- Push directly to `main` if version X.Y.Z is the next release version.
-- Push to branch `vX.Y` if it exists, and merge or cherry pick changes back to `main` as appropriate.
+== Release latest version
 
-The `vX.Y` branch only needs to be created if/when main has moved on to a version > X.Y and there are vX.Y.Z patches.
+Updating the latest version to `X.Y.Z` is done on main to avoid needless branching.
 
-== Publish the release
+1. Commit and push your changes to `main` with commit message 'Release X.Y.Z'
+2. `make release REGISTRY_BASE=quay.io/korrel8r`
 
-  make release REGISTRY_BASE=quay.io/korrel8r
+`make release` does the following:
 
-This does the following:
-- `make clean` and re-build, verify nothing changes and the working tree is clean.
-- Creates and pushes the git tag 'vX.Y.Z'
-- Updates the 'latest' image tag to point to the new images.
+- `make clean` and re-build, verify nothing changes, working tree is clean.
+- Create and push the git tag 'vX.Y.Z'
+- Update the 'latest' image tag to point to the new images.
 
+== Release patch to old version
+
+Version branches are created only when needed.
+To release a patch `X.Y.Z` to an old X.Y version:
+
+1. Crate branch `vX.Y`, if it does not already exist, starting from tag `vX.Y.0`
+2. Commit and push your changes to branch `vX.Y` message 'Release X.Y.Z'
+3. `make release REGISTRY_BASE=quay.io/korrel8r`

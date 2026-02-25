@@ -29,6 +29,20 @@ Kubernetes clusters generate observability data across diverse systems - logs, m
 
 > **Get Started**: See the [User Guide](https://korrel8r.github.io/korrel8r) for installation, usage, and configuration details.
 
+## Installing
+
+``` bash
+# Latest release
+go install github.com/korrel8r/korrel8r/cmd/korrel8r@latest # Executable
+docker pull quay.io/korrel8r/korrel8r:latest                # Image
+
+# Daily images from main for development, not tested for release.
+docker pull quay.io/korrel8r/korrel8r:dev-latest            # Latest
+docker pull quay.io/korrel8r/korrel8r:dev-v0.8.4-9-g7304c37 # 9 commits since release 0.8.4 
+```
+
+See all available images at: https://quay.io/repository/korrel8r/korrel8r?tab=tags
+
 ## Documentation
 
 - **[User Guide](https://korrel8r.github.io/korrel8r)** - Complete installation, usage, and reference guide
@@ -50,20 +64,6 @@ Korrel8r includes custom commands for Claude Code to streamline development:
 - See [.claude/commands/](/.claude/commands/) for all available commands
 
 The [Developer Guide](AGENTS.md) includes specific tips for AI agents working with the codebase.
-
-## Artifacts
-
-``` bash
-# Latest release
-go install github.com/korrel8r/korrel8r/cmd/korrel8r@latest # Executable
-docker pull quay.io/korrel8r/korrel8r:latest                # Image
-
-# Daily images from main for development, not tested for release.
-docker pull quay.io/korrel8r/korrel8r:dev-latest            # Latest
-docker pull quay.io/korrel8r/korrel8r:dev-v0.8.4-9-g7304c37 # 9 commits since release 0.8.4 
-```
-
-See all available images at: https://quay.io/repository/korrel8r/korrel8r?tab=tags
 
 ## License
 
