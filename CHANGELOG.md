@@ -9,6 +9,23 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 _Note unreleased changes on main here pending the next release_
 
+## [0.8.5] - 2026-02-25
+
+### Fixed
+- fix: fix log record order, use stable sort by timestamp
+- fix: Consistent spelling "neighbor". "neighbour" kept for compatibility, but deprecated.
+
+### Added
+
+- Daily developer images available at `quay.io/korrel8r/korrel8r:dev-latest`
+- Add REST API to get the list of classes for each domain #278
+- Experimental: Add custom slash claude command to generate rules
+- Optionally include JSON object data in result graphs: `results` flag on command line or REST.
+
+### Changed
+- doc: Updated user guide
+- fix: Improve store connect error handling
+
 ## [0.8.4] - 2025-10-29
 
 ### Fixed
