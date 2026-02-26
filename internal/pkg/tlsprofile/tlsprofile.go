@@ -23,6 +23,14 @@ var tlsVersions = map[string]uint16{
 // cipherSuitesByName maps IANA cipher suite names to Go constants.
 var cipherSuitesByName map[string]uint16
 
+// curvesByName maps curve names to Go constants.
+var curvesByName = map[string]tls.CurveID{
+	"CurveP256": tls.CurveP256,
+	"CurveP384": tls.CurveP384,
+	"CurveP521": tls.CurveP521,
+	"X25519":    tls.X25519,
+}
+
 func init() {
 	cipherSuitesByName = make(map[string]uint16)
 	for _, cs := range tls.CipherSuites() {
@@ -47,6 +55,24 @@ func ParseTLSVersion(name string) (uint16, error) {
 	return v, nil
 }
 
+// ParseCurves converts a list of curve names to Go constants.
+// Valid values: "CurveP256", "CurveP384", "CurveP521", "X25519".
+func ParseCurves(names []string) ([]tls.CurveID, error) {
+	curves := make([]tls.CurveID, 0, len(names))
+	for _, name := range names {
+		id, ok := curvesByName[name]
+		if !ok {
+			valid := make([]string, 0, len(curvesByName))
+			for k := range curvesByName {
+				valid = append(valid, k)
+			}
+			return nil, fmt.Errorf("unknown curve %q, valid values: %s", name, strings.Join(valid, ", "))
+		}
+		curves = append(curves, id)
+	}
+	return curves, nil
+}
+
 // ParseCipherSuites converts a list of IANA cipher suite names to Go constants.
 func ParseCipherSuites(names []string) ([]uint16, error) {
 	suites := make([]uint16, 0, len(names))
@@ -61,9 +87,9 @@ func ParseCipherSuites(names []string) ([]uint16, error) {
 }
 
 // NewTLSConfig builds a [tls.Config] from TLS profile settings.
-// Either or both parameters may be empty/nil to leave that setting at the Go default.
-func NewTLSConfig(minVersion string, cipherSuiteNames []string) (*tls.Config, error) {
-	if minVersion == "" && len(cipherSuiteNames) == 0 {
+// Any parameter may be empty/nil to leave that setting at the Go default.
+func NewTLSConfig(minVersion string, cipherSuiteNames, curveNames []string) (*tls.Config, error) {
+	if minVersion == "" && len(cipherSuiteNames) == 0 && len(curveNames) == 0 {
 		return nil, nil
 	}
 	cfg := &tls.Config{}
@@ -80,6 +106,13 @@ func NewTLSConfig(minVersion string, cipherSuiteNames []string) (*tls.Config, er
 			return nil, err
 		}
 		cfg.CipherSuites = suites
+	}
+	if len(curveNames) > 0 {
+		curves, err := ParseCurves(curveNames)
+		if err != nil {
+			return nil, err
+		}
+		cfg.CurvePreferences = curves
 	}
 	return cfg, nil
 }
