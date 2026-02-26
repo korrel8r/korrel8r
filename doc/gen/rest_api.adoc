@@ -44,7 +44,7 @@ Modify selected configuration settings (e.g. log verbosity) on a running service
 |Name| Description| Required| Default| Pattern
 
 | verbose
-| Verbose setting for logging. 
+| Verbose level for logging. 
 | -
 | null
 | 
@@ -90,6 +90,168 @@ ifdef::internal-generation[]
 ===== Implementation
 
 // markup not found, no include::{specDir}config/PUT/implementation.adoc[opts=optional]
+
+
+endif::internal-generation[]
+
+
+[.Console]
+=== Console
+
+
+[.consoleUpdates]
+==== consoleUpdates
+
+`GET /console/updates`
+
+Updates for the console display from an agent.
+
+===== Description
+
+Use SSE (server-sent events) to send updates for the console display. The updates come from an agent using the MCP API. 
+
+
+// markup not found, no include::{specDir}console/updates/GET/spec.adoc[opts=optional]
+
+
+
+===== Parameters
+
+
+
+
+
+
+
+===== Return Type
+
+
+
+-
+
+===== Content Type
+
+* text/event-stream
+
+===== Responses
+
+.HTTP Response Codes
+[cols="2,3,1"]
+|===
+| Code | Message | Datatype
+
+
+| 200
+| Stream of console display updates.
+|  <<>>
+
+|===
+
+===== Samples
+
+
+// markup not found, no include::{snippetDir}console/updates/GET/http-request.adoc[opts=optional]
+
+
+// markup not found, no include::{snippetDir}console/updates/GET/http-response.adoc[opts=optional]
+
+
+
+// file not found, no * wiremock data link :console/updates/GET/GET.json[]
+
+
+ifdef::internal-generation[]
+===== Implementation
+
+// markup not found, no include::{specDir}console/updates/GET/implementation.adoc[opts=optional]
+
+
+endif::internal-generation[]
+
+
+[.setConsole]
+==== setConsole
+
+`PUT /console`
+
+Make console state available to an agent.
+
+===== Description
+
+Put the current state of the console so it can be retrieved by an agent via the MCP API. 
+
+
+// markup not found, no include::{specDir}console/PUT/spec.adoc[opts=optional]
+
+
+
+===== Parameters
+
+
+====== Body Parameter
+
+[cols="2,3,1,1,1"]
+|===
+|Name| Description| Required| Default| Pattern
+
+| request
+| Parameters for the updated console display. <<Console>>
+| X
+| 
+| 
+
+|===
+
+
+
+
+
+===== Return Type
+
+
+
+-
+
+===== Content Type
+
+* application/json
+
+===== Responses
+
+.HTTP Response Codes
+[cols="2,3,1"]
+|===
+| Code | Message | Datatype
+
+
+| 200
+| Console display updated successfully
+|  <<>>
+
+
+| 400
+| invalid parameters
+|  <<Error>>
+
+|===
+
+===== Samples
+
+
+// markup not found, no include::{snippetDir}console/PUT/http-request.adoc[opts=optional]
+
+
+// markup not found, no include::{snippetDir}console/PUT/http-response.adoc[opts=optional]
+
+
+
+// file not found, no * wiremock data link :console/PUT/PUT.json[]
+
+
+ifdef::internal-generation[]
+===== Implementation
+
+// markup not found, no include::{specDir}console/PUT/implementation.adoc[opts=optional]
 
 
 endif::internal-generation[]
@@ -141,7 +303,7 @@ Specify a set of start objects, as queries or serialized objects, and a goal cla
 |Name| Description| Required| Default| Pattern
 
 | options
-|  
+| Options controlling the form of the returned graph. 
 | -
 | null
 | 
@@ -246,7 +408,7 @@ Specify a set of start objects, as queries or serialized objects, and a depth fo
 |Name| Description| Required| Default| Pattern
 
 | options
-|  
+| Options controlling the form of the returned graph. 
 | -
 | null
 | 
@@ -351,7 +513,7 @@ Specify a set of start objects, as queries or serialized objects, and a depth fo
 |Name| Description| Required| Default| Pattern
 
 | options
-|  
+| Options controlling the form of the returned graph. 
 | -
 | null
 | 
@@ -779,6 +941,35 @@ endif::internal-generation[]
 == Models
 
 
+[#Console]
+=== _Console_ 
+
+Describes the data displayed in the users console.
+
+
+[.fields-Console]
+[cols="2,1,1,2,4,1"]
+|===
+| Field Name| Required| Nullable | Type| Description | Format
+
+| view
+| 
+| 
+|   String  
+| Represents a request to retrieve data for a particular Class. It has 3 parts DOMAIN:CLASS:SELECTOR DOMAIN: name of a domain. CLASS: name of a class in the domain. SELECTOR: domain-specific query string to retrieve selected objects. 
+|     
+
+| search
+| 
+| 
+| <<Search>>    
+| 
+|     
+
+|===
+
+
+
 [#Constraint]
 === _Constraint_ 
 
@@ -838,6 +1029,13 @@ Domain configuration information.
 | 
 |   String  
 | Name of the domain.
+|     
+
+| description
+| 
+| 
+|   String  
+| Brief description of the domain.
 |     
 
 | stores
@@ -967,13 +1165,13 @@ Graph resulting from a correlation search.
 
 
 
-[#GraphOptions]
-=== _GraphOptions_ 
-
-Options controlling the form of the returned graph.
+[#GraphGoalsOptionsParameter]
+=== _GraphGoalsOptionsParameter_ 
 
 
-[.fields-GraphOptions]
+
+
+[.fields-GraphGoalsOptionsParameter]
 [cols="2,1,1,2,4,1"]
 |===
 | Field Name| Required| Nullable | Type| Description | Format
@@ -1142,6 +1340,35 @@ Rule is a correlation rule with a list of queries and results counts found durin
 | 
 |   List   of <<QueryCount>>
 | Queries generated while following this rule.
+|     
+
+|===
+
+
+
+[#Search]
+=== _Search_ 
+
+Search parameters for the correlation search displayed in the console troubleshooting panel. Exactly one of goals, neighbors should be set.
+
+
+[.fields-Search]
+[cols="2,1,1,2,4,1"]
+|===
+| Field Name| Required| Nullable | Type| Description | Format
+
+| goals
+| 
+| 
+| <<Goals>>    
+| 
+|     
+
+| neighbors
+| 
+| 
+| <<Neighbors>>    
+| 
 |     
 
 |===

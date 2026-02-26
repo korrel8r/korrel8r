@@ -226,3 +226,21 @@ func TraverseStart(e *engine.Engine, start Start) (traverse.Start, error) {
 		Constraint: start.Constraint,
 	}, nil
 }
+
+func ListDomains(e *engine.Engine) []Domain {
+	var domains []Domain
+	for _, d := range e.Domains() {
+		var stores []Store
+		for _, sc := range e.StoreConfigsFor(d) {
+			if len(sc) > 0 {
+				stores = append(stores, (Store)(sc))
+			}
+		}
+		domains = append(domains, Domain{
+			Name:        d.Name(),
+			Description: d.Description(),
+			Stores:      stores,
+		})
+	}
+	return domains
+}

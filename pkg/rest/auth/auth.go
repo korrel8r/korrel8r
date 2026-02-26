@@ -8,10 +8,21 @@ import (
 	"net/http"
 )
 
+// Token extracts an authorization token from a context, if there is one.
+func Token(ctx context.Context) (string, bool) {
+	token, ok := ctx.Value(authKey{}).(string)
+	return token, ok
+}
+
+// WithToken adds an authorization token to a context.
+func WithToken(ctx context.Context, token string) context.Context {
+	return context.WithValue(ctx, authKey{}, token)
+}
+
 // Context returns an authorization-forwarding context for an incoming request.
 func Context(req *http.Request) context.Context {
-	auth := req.Header.Get(Header)
-	return context.WithValue(req.Context(), authKey{}, auth)
+	token := req.Header.Get(Header)
+	return WithToken(req.Context(), token)
 }
 
 // Wrap adds authorization-forwarding for outgoing requests with an authorization-forwarding context.
@@ -23,8 +34,8 @@ type roundTripper struct{ next http.RoundTripper }
 
 func (rt *roundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
 	ctx := req.Context()
-	if auth, ok := ctx.Value(authKey{}).(string); ok {
-		req.Header.Set(Header, auth)
+	if token, ok := Token(ctx); ok {
+		req.Header.Set(Header, token)
 	}
 	return rt.next.RoundTrip(req)
 }
