@@ -3,6 +3,7 @@
 package main_test
 
 import (
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -78,9 +79,7 @@ func assertDo(t *testing.T, h *http.Client, want, method, url, body string) {
 	assert.JSONEq(t, want, got)
 }
 
-func TestMain_server_insecure(t *testing.T) {
-	u := startServer(t, http.DefaultClient, "http", "-c", "testdata/korrel8r.yaml").String() + "/domains"
-	assertDo(t, http.DefaultClient, `[
+const domains = `[
 {"name":"alert"},
 {"name":"incident"},
 {"name":"k8s"},
@@ -89,7 +88,11 @@ func TestMain_server_insecure(t *testing.T) {
 {"name":"mock","stores":[{"domain":"mock", "mockData":"testdata/mock_store.yaml"}]},
 {"name":"netflow"},
 {"name":"trace"}
-]`, "GET", u, "")
+]`
+
+func TestMain_server_insecure(t *testing.T) {
+	u := startServer(t, http.DefaultClient, "http", "-c", "testdata/korrel8r.yaml").String() + "/domains"
+	assertDo(t, http.DefaultClient, domains, "GET", u, "")
 }
 
 func TestMain_server_secure(t *testing.T) {
@@ -125,6 +128,51 @@ func TestMain_server_graph(t *testing.T) {
 	var got rest.Graph
 	assert.NoError(t, json.Unmarshal([]byte(resp), &got))
 	require.Equal(t, testResponse, rest.Normalize(got))
+}
+
+func TestMain_server_tls_min_version(t *testing.T) {
+	dir := t.TempDir()
+	_, clientTLS := certSetup(t, dir)
+	certArgs := []string{
+		"--cert", filepath.Join(dir, "tls.crt"),
+		"--key", filepath.Join(dir, "tls.key"),
+		"--tls-min-version", "VersionTLS13",
+		"-c", "testdata/korrel8r.yaml",
+	}
+
+	// Start server requiring TLS 1.3
+	port, err := test.ListenPort()
+	require.NoError(t, err)
+	addr := net.JoinHostPort("localhost", strconv.Itoa(port))
+	cmd := command(t, append([]string{"web", "--https", addr}, certArgs...)...)
+	require.NoError(t, cmd.Start())
+	t.Cleanup(func() { _ = cmd.Process.Kill() })
+
+	// Client with TLS 1.3 should succeed.
+	tls13Client := &http.Client{Transport: &http.Transport{
+		TLSClientConfig: &tls.Config{
+			RootCAs:    clientTLS.RootCAs,
+			MinVersion: tls.VersionTLS13,
+			MaxVersion: tls.VersionTLS13,
+		},
+	}}
+	u := fmt.Sprintf("https://%v%v/domains", addr, rest.BasePath)
+	require.Eventually(t, func() bool {
+		_, err = tls13Client.Get(u)
+		return err == nil
+	}, 10*time.Second, time.Second/10, "timeout waiting for TLS 1.3 server")
+	assertDo(t, tls13Client, domains, "GET", u, "")
+
+	// Client limited to TLS 1.2 should fail.
+	tls12Client := &http.Client{Transport: &http.Transport{
+		TLSClientConfig: &tls.Config{
+			RootCAs:    clientTLS.RootCAs,
+			MinVersion: tls.VersionTLS12,
+			MaxVersion: tls.VersionTLS12,
+		},
+	}}
+	_, err = tls12Client.Get(u)
+	require.Error(t, err, "TLS 1.2 client should fail against TLS 1.3 server")
 }
 
 func TestMain_concurrent_requests(t *testing.T) {
