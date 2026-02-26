@@ -9,14 +9,16 @@ korrel8r web [flags]
 == Options
 
 ----
-      --cert string    TLS certificate file (PEM format) for https
-  -h, --help           help for web
-      --http string    host:port address for insecure http listener
-      --https string   host:port address for secure https listener
-      --key string     Private key (PEM format) for https
-      --mcp            Enable MCP streamable HTTP protocol on /mcp (default true)
-      --rest           Enable HTTP REST server on /api/v1alpha1 (default true)
-      --spec string    Dump OpenAPI specification to a file, '-' for stdout.
+      --cert string                 TLS certificate file (PEM format) for https
+  -h, --help                        help for web
+      --http string                 host:port address for insecure http listener
+      --https string                host:port address for secure https listener
+      --key string                  Private key (PEM format) for https
+      --mcp                         Enable MCP streamable HTTP protocol on /mcp (default true)
+      --rest                        Enable HTTP REST server on /api/v1alpha1 (default true)
+      --spec string                 Dump OpenAPI specification to a file, '-' for stdout.
+      --tls-cipher-suites strings   Comma-separated list of TLS cipher suites for https (IANA names)
+      --tls-min-version string      Minimum TLS version for https (e.g. VersionTLS12, VersionTLS13)
 ----
 
 == Options inherited from parent commands

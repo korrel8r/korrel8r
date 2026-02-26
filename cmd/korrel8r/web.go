@@ -11,6 +11,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/korrel8r/korrel8r/internal/pkg/build"
 	"github.com/korrel8r/korrel8r/internal/pkg/must"
+	"github.com/korrel8r/korrel8r/internal/pkg/tlsprofile"
 	"github.com/korrel8r/korrel8r/pkg/mcp"
 	"github.com/korrel8r/korrel8r/pkg/rest"
 	"github.com/spf13/cobra"
@@ -50,6 +51,10 @@ var webCmd = &cobra.Command{
 			if *certFlag == "" || *keyFlag == "" {
 				panic(fmt.Errorf("--cert and --key are required for https"))
 			}
+			s.TLSConfig = must.Must1(tlsprofile.NewTLSConfig(*tlsMinVersionFlag, *tlsCipherSuitesFlag))
+		}
+		if *httpFlag != "" && (len(*tlsCipherSuitesFlag) > 0 || *tlsMinVersionFlag != "") {
+			panic(fmt.Errorf("--tls-min-version and --tls-cipher-suites are not allowed with --http"))
 		}
 
 		engine, configs := newEngine()
@@ -86,6 +91,8 @@ var (
 	specFlag            *string
 	mcpFlag             *bool
 	restFlag            *bool
+	tlsMinVersionFlag   *string
+	tlsCipherSuitesFlag *[]string
 	WebProfile          func()
 )
 
@@ -98,4 +105,6 @@ func init() {
 	specFlag = webCmd.Flags().String("spec", "", "Dump OpenAPI specification to a file, '-' for stdout.")
 	restFlag = webCmd.Flags().Bool("rest", true, "Enable HTTP REST server on "+rest.BasePath)
 	mcpFlag = webCmd.Flags().Bool("mcp", true, "Enable MCP streamable HTTP protocol on "+mcp.StreamablePath)
+	tlsMinVersionFlag = webCmd.Flags().String("tls-min-version", "", "Minimum TLS version for https (e.g. VersionTLS12, VersionTLS13)")
+	tlsCipherSuitesFlag = webCmd.Flags().StringSlice("tls-cipher-suites", nil, "Comma-separated list of TLS cipher suites for https (IANA names)")
 }
