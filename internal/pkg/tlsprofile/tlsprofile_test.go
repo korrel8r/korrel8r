@@ -61,44 +61,83 @@ func TestParseCipherSuites(t *testing.T) {
 	})
 }
 
+func TestParseCurves(t *testing.T) {
+	t.Run("valid", func(t *testing.T) {
+		got, err := ParseCurves([]string{"CurveP256", "X25519"})
+		require.NoError(t, err)
+		assert.Equal(t, []tls.CurveID{tls.CurveP256, tls.X25519}, got)
+	})
+
+	t.Run("all", func(t *testing.T) {
+		got, err := ParseCurves([]string{"CurveP256", "CurveP384", "CurveP521", "X25519"})
+		require.NoError(t, err)
+		assert.Len(t, got, 4)
+	})
+
+	t.Run("empty", func(t *testing.T) {
+		got, err := ParseCurves(nil)
+		require.NoError(t, err)
+		assert.Empty(t, got)
+	})
+
+	t.Run("invalid", func(t *testing.T) {
+		_, err := ParseCurves([]string{"INVALID_CURVE"})
+		assert.ErrorContains(t, err, "unknown curve")
+	})
+}
+
 func TestNewTLSConfig(t *testing.T) {
-	t.Run("both_set", func(t *testing.T) {
-		cfg, err := NewTLSConfig("VersionTLS12", []string{"TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256"})
+	t.Run("all_set", func(t *testing.T) {
+		cfg, err := NewTLSConfig("VersionTLS12", []string{"TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256"}, []string{"CurveP256", "X25519"})
 		require.NoError(t, err)
 		require.NotNil(t, cfg)
 		assert.Equal(t, uint16(tls.VersionTLS12), cfg.MinVersion)
 		assert.Equal(t, []uint16{tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256}, cfg.CipherSuites)
+		assert.Equal(t, []tls.CurveID{tls.CurveP256, tls.X25519}, cfg.CurvePreferences)
 	})
 
 	t.Run("version_only", func(t *testing.T) {
-		cfg, err := NewTLSConfig("VersionTLS13", nil)
+		cfg, err := NewTLSConfig("VersionTLS13", nil, nil)
 		require.NoError(t, err)
 		require.NotNil(t, cfg)
 		assert.Equal(t, uint16(tls.VersionTLS13), cfg.MinVersion)
 		assert.Nil(t, cfg.CipherSuites)
+		assert.Nil(t, cfg.CurvePreferences)
 	})
 
 	t.Run("ciphers_only", func(t *testing.T) {
-		cfg, err := NewTLSConfig("", []string{"TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256"})
+		cfg, err := NewTLSConfig("", []string{"TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256"}, nil)
 		require.NoError(t, err)
 		require.NotNil(t, cfg)
 		assert.Equal(t, uint16(0), cfg.MinVersion)
 		assert.Equal(t, []uint16{tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256}, cfg.CipherSuites)
 	})
 
-	t.Run("neither_set", func(t *testing.T) {
-		cfg, err := NewTLSConfig("", nil)
+	t.Run("curves_only", func(t *testing.T) {
+		cfg, err := NewTLSConfig("", nil, []string{"X25519"})
+		require.NoError(t, err)
+		require.NotNil(t, cfg)
+		assert.Equal(t, []tls.CurveID{tls.X25519}, cfg.CurvePreferences)
+	})
+
+	t.Run("none_set", func(t *testing.T) {
+		cfg, err := NewTLSConfig("", nil, nil)
 		require.NoError(t, err)
 		assert.Nil(t, cfg)
 	})
 
 	t.Run("invalid_version", func(t *testing.T) {
-		_, err := NewTLSConfig("bad", nil)
+		_, err := NewTLSConfig("bad", nil, nil)
 		assert.ErrorContains(t, err, "unknown TLS version")
 	})
 
 	t.Run("invalid_cipher", func(t *testing.T) {
-		_, err := NewTLSConfig("", []string{"BAD_CIPHER"})
+		_, err := NewTLSConfig("", []string{"BAD_CIPHER"}, nil)
 		assert.ErrorContains(t, err, "unknown cipher suite")
+	})
+
+	t.Run("invalid_curve", func(t *testing.T) {
+		_, err := NewTLSConfig("", nil, []string{"BAD_CURVE"})
+		assert.ErrorContains(t, err, "unknown curve")
 	})
 }
