@@ -51,10 +51,10 @@ var webCmd = &cobra.Command{
 			if *certFlag == "" || *keyFlag == "" {
 				panic(fmt.Errorf("--cert and --key are required for https"))
 			}
-			s.TLSConfig = must.Must1(tlsprofile.NewTLSConfig(*tlsMinVersionFlag, *tlsCipherSuitesFlag))
+			s.TLSConfig = must.Must1(tlsprofile.NewTLSConfig(*tlsMinVersionFlag, *tlsCipherSuitesFlag, *tlsCurvesFlag))
 		}
-		if *httpFlag != "" && (len(*tlsCipherSuitesFlag) > 0 || *tlsMinVersionFlag != "") {
-			panic(fmt.Errorf("--tls-min-version and --tls-cipher-suites are not allowed with --http"))
+		if *httpFlag != "" && (len(*tlsCipherSuitesFlag) > 0 || *tlsMinVersionFlag != "" || len(*tlsCurvesFlag) > 0) {
+			panic(fmt.Errorf("--tls-min-version, --tls-cipher-suites, and --tls-curves are not allowed with --http"))
 		}
 
 		engine, configs := newEngine()
@@ -93,6 +93,7 @@ var (
 	restFlag            *bool
 	tlsMinVersionFlag   *string
 	tlsCipherSuitesFlag *[]string
+	tlsCurvesFlag       *[]string
 	WebProfile          func()
 )
 
@@ -107,4 +108,5 @@ func init() {
 	mcpFlag = webCmd.Flags().Bool("mcp", true, "Enable MCP streamable HTTP protocol on "+mcp.StreamablePath)
 	tlsMinVersionFlag = webCmd.Flags().String("tls-min-version", "", "Minimum TLS version for https (e.g. VersionTLS12, VersionTLS13)")
 	tlsCipherSuitesFlag = webCmd.Flags().StringSlice("tls-cipher-suites", nil, "Comma-separated list of TLS cipher suites for https (IANA names)")
+	tlsCurvesFlag = webCmd.Flags().StringSlice("tls-curves", nil, "Comma-separated list of TLS curves for https (e.g. CurveP256, CurveP384, CurveP521, X25519)")
 }
