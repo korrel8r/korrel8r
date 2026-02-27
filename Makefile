@@ -8,7 +8,7 @@ help: ## Display this help.
 	@grep -E '^## [A-Z0-9_]+: ' Makefile | sed 's/^## \([A-Z0-9_]*\): \(.*\)/\1#\2/' | column -s'#' -t
 
 ## VERSION: Semantic version for release, use -dev for development pre-release versions.
-VERSION?=0.9.0
+VERSION?=0.9.1
 ## REGISTRY_BASE: Image registry base, for example quay.io/somebody
 REGISTRY_BASE?=$(error REGISTRY_BASE must be set to push images)
 ## IMGTOOL: May be podman or docker.
@@ -33,7 +33,7 @@ OPENAPI_SPEC=doc/korrel8r-openapi.yaml
 GEN_OPENAPI_GO=pkg/rest/gen-openapi.go
 GENERATED=$(VERSION_TXT) $(GEN_OPENAPI_GO)
 
-generate:  $(GENERATED)
+generate:  $(GENERATED) kustomize-edit
 
 all: lint test _site image-build ## Build and test everything locally. Recommended before commit.
 
@@ -108,7 +108,7 @@ kustomize-edit: $(KUSTOMIZE)
 	$(KUSTOMIZE) edit set image "$(REGISTRY_BASE)/korrel8r=$(IMAGE)";	\
 	$(KUSTOMIZE) edit set namespace "$(NAMESPACE)"
 
-deploy: image kustomize-edit ## Deploy to current cluster using kustomize.
+deploy: image ## Deploy to current cluster using kustomize.
 	kubectl apply -k config
 	$(DEPLOY_ROUTE)
 	$(WAIT_DEPLOYMENT)

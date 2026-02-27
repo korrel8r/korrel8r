@@ -9,7 +9,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 _Note unreleased changes on main here pending the next release_
 
-## [0.8.5] - 2026-02-25
+## [0.9.1] - 2026-03-02
+- feat: Add TLS profile (min version, ciphers, curves) to HTTPS server
+
+## [0.9.0] - 2026-02-25
 
 ### Fixed
 - fix: fix log record order, use stable sort by timestamp
