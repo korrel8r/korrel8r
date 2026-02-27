@@ -3,7 +3,9 @@
 package korrel8r
 
 import (
-	"fmt"
+	"maps"
+	"slices"
+	"strings"
 )
 
 type Domains map[string]Domain
@@ -14,11 +16,21 @@ func (ds Domains) Domain(name string) (Domain, error) {
 	if d := ds[name]; d != nil {
 		return d, nil
 	}
-	return nil, fmt.Errorf("unknown domain: %v", name)
+	return nil, NewDomainNotFoundError(name)
+}
+
+func (ds Domains) List() []Domain {
+	ret := slices.Collect(maps.Values(ds))
+	slices.SortFunc(ret, func(a, b Domain) int { return strings.Compare(a.Name(), b.Name()) })
+	return ret
 }
 
 func (ds Domains) Class(fullname string) (Class, error) {
-	d, c := ClassSplit(fullname)
+	d, c, err := ClassSplit(fullname)
+	if err != nil {
+		return nil, err
+	}
+
 	return ds.DomainClass(d, c)
 }
 
@@ -29,13 +41,17 @@ func (ds Domains) DomainClass(domain, class string) (Class, error) {
 	}
 	c := d.Class(class)
 	if c == nil {
-		return nil, fmt.Errorf("unknown class: %v", join(domain, class))
+		return nil, NewClassNotFoundError(domain, class)
 	}
 	return c, nil
 }
 
 func (ds Domains) Query(query string) (Query, error) {
-	domain, _, _ := QuerySplit(query)
+	domain, _, _, err := QuerySplit(query)
+	if err != nil {
+		return nil, err
+	}
+
 	d, err := ds.Domain(domain)
 	if err != nil {
 		return nil, err

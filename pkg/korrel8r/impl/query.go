@@ -8,18 +8,18 @@ import (
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 )
 
-// ParseQuery parses a query string into class and data parts.
-func ParseQuery(domain korrel8r.Domain, query string) (class korrel8r.Class, data string, err error) {
-	d, c, q := korrel8r.QuerySplit(query)
-	if q == "" {
-		return nil, "", fmt.Errorf("invalid query: %v", query)
+// ParseQuery parses a query string into class and selector.
+func ParseQuery(domain korrel8r.Domain, query string) (class korrel8r.Class, selector string, err error) {
+	d, c, q, err := korrel8r.QuerySplit(query)
+	if err != nil {
+		return nil, "", err
 	}
 	if d != domain.Name() {
-		return nil, "", fmt.Errorf("wrong query domain, want %v: %v", domain.Name(), query)
+		return nil, "", fmt.Errorf("wrong domain, want %v: %v", domain.Name(), query)
 	}
 	class = domain.Class(c)
 	if class == nil {
-		return nil, "", fmt.Errorf("class not found: %v%v%v", domain, korrel8r.NameSeparator, class)
+		return nil, "", korrel8r.NewClassNotFoundError(d, c)
 	}
 	return class, q, nil
 }

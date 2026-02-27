@@ -3,43 +3,45 @@
 package korrel8r
 
 import (
-	"strings"
+	"fmt"
+	"regexp"
 )
 
-// NameSeparator used in DOMAIN:CLASS and DOMAIN:CLASS:QUERY strings.
-const NameSeparator = ":"
+var (
+	// labelRE for domain and class names. Disallow ':', space and URL-unsafe characters
+	labelRE = regexp.MustCompile(`[^:\s<>#%{}|\^\[\]]+`)
+	classRE = regexp.MustCompile(fmt.Sprintf("^(%v):(%v$)", labelRE, labelRE))
+	queryRE = regexp.MustCompile(fmt.Sprintf("^(%v):(%v):(.*)$", labelRE, labelRE))
+)
 
-func join(strs ...string) string { return strings.Join(strs, NameSeparator) }
-
-func split(str string, n int) []string {
-	return strings.SplitN(strings.TrimSpace(str), NameSeparator, n)
+func ClassSplit(fullname string) (domain, class string, err error) {
+	m := classRE.FindStringSubmatch(fullname)
+	if len(m) == 0 {
+		return "", "", fmt.Errorf("invalid class name: %v", fullname)
+	}
+	return m[1], m[2], nil
 }
 
-func ClassString(c Class) string { return join(c.Domain().Name(), c.Name()) }
-
-func ClassSplit(fullname string) (domain, class string) {
-	s := split(fullname, 2)
-	if len(s) > 0 {
-		domain = s[0]
+func QuerySplit(query string) (domain, class, data string, err error) {
+	m := queryRE.FindStringSubmatch(query)
+	if len(m) == 0 {
+		return "", "", "", fmt.Errorf("invalid query: %v", query)
 	}
-	if len(s) > 1 {
-		class = s[1]
-	}
-	return domain, class
+	return m[1], m[2], m[3], nil
 }
 
-func QueryString(q Query) string { return join(ClassString(q.Class()), q.Data()) }
+func ClassJoin(domain, name string) string {
+	return fmt.Sprintf("%v:%v", domain, name)
+}
 
-func QuerySplit(query string) (domain, class, data string) {
-	s := split(query, 3)
-	if len(s) > 0 {
-		domain = s[0]
-	}
-	if len(s) > 1 {
-		class = s[1]
-	}
-	if len(s) > 2 {
-		data = s[2]
-	}
-	return domain, class, data
+func QueryJoin(domain, class, selector string) string {
+	return fmt.Sprintf("%v:%v:%v", domain, class, selector)
+}
+
+func ClassString(c Class) string {
+	return fmt.Sprintf("%v:%v", c.Domain(), c.Name())
+}
+
+func QueryString(q Query) string {
+	return fmt.Sprintf("%v:%v", ClassString(q.Class()), q.Data())
 }
