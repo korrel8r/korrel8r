@@ -35,6 +35,7 @@ package alert
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -43,6 +44,7 @@ import (
 
 	openapiclient "github.com/go-openapi/runtime/client"
 	"github.com/go-openapi/strfmt"
+	"github.com/korrel8r/korrel8r/internal/pkg/logging"
 	"github.com/korrel8r/korrel8r/pkg/config"
 	"github.com/korrel8r/korrel8r/pkg/domains/k8s"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
@@ -52,9 +54,12 @@ import (
 	"github.com/prometheus/client_golang/api"
 	v1 "github.com/prometheus/client_golang/api/prometheus/v1"
 	"github.com/prometheus/common/model"
+	k8sclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 var (
+	log = logging.Log()
+
 	_ korrel8r.Domain = Domain
 	_ korrel8r.Class  = Class{}
 	_ korrel8r.Query  = Query{}
@@ -174,8 +179,12 @@ func (q Query) String() string        { return korrel8r.QueryString(q) }
 
 // Store is a client of Prometheus and AlertManager.
 type Store struct {
-	alertmanagerAPI *client.AlertmanagerAPI
-	prometheusAPI   v1.API
+	alertmanagerAPI      *client.AlertmanagerAPI
+	prometheusAPI        v1.API
+	prometheusURL        *url.URL         // Original URL from configuration
+	prometheusConfigPort string           // Port from configuration (e.g., "9091")
+	httpClient           *http.Client     // HTTP client for recreating prometheus client
+	k8sClient            k8sclient.Client // For RBAC permission checks
 	*impl.Store
 }
 
@@ -191,10 +200,20 @@ func NewStore(alertmanagerURL *url.URL, prometheusURL *url.URL, hc *http.Client)
 		return nil, err
 	}
 
+	// Get k8s client for RBAC checks
+	k8sClient, err := k8s.NewClient(nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get k8s client: %w", err)
+	}
+
 	return &Store{
-		alertmanagerAPI: alertmanagerAPI,
-		prometheusAPI:   prometheusAPI,
-		Store:           impl.NewStore(Domain),
+		alertmanagerAPI:      alertmanagerAPI,
+		prometheusAPI:        prometheusAPI,
+		prometheusURL:        prometheusURL,
+		prometheusConfigPort: prometheusURL.Port(),
+		httpClient:           hc,
+		k8sClient:            k8sClient,
+		Store:                impl.NewStore(Domain),
 	}, nil
 }
 
@@ -225,6 +244,17 @@ func newPrometheusClient(u *url.URL, hc *http.Client) (v1.API, error) {
 
 func (*Store) Domain() korrel8r.Domain { return Domain }
 
+// getEffectivePrometheusAPI returns a Prometheus API client with the appropriate port based on user permissions.
+// Admin users (with cluster-monitoring-view) use the configured port (typically 9091).
+// Non-admin users use the tenancy port 9093 for namespace-scoped rules/alerts access.
+func (s *Store) getEffectivePrometheusAPI(ctx context.Context) (v1.API, error) {
+	u, err := k8s.GetEffectivePrometheusURL(ctx, s.prometheusURL, s.prometheusConfigPort, s.k8sClient, "alert", k8s.TenancyPortRules)
+	if err != nil {
+		return nil, err
+	}
+	return newPrometheusClient(u, s.httpClient)
+}
+
 func convertLabelSetToMap(m model.LabelSet) map[string]string {
 	res := make(map[string]string, len(m))
 	for k, v := range m {
@@ -246,16 +276,117 @@ func matchesSubquery(q map[string]string, a *v1.Alert) bool {
 	return true
 }
 
+// extractNamespacesFromQuery extracts unique namespace values from parsed alert queries.
+func extractNamespacesFromQuery(q Query) map[string]bool {
+	namespaces := make(map[string]bool)
+	for _, subq := range q.Parsed {
+		if ns, ok := subq["namespace"]; ok && ns != "" {
+			namespaces[ns] = true
+		}
+	}
+	return namespaces
+}
+
+// getRulesWithNamespaceFilter queries the Rules API with namespace filtering.
+// This is used for non-admin users on port 9093 which requires namespace parameters.
+func (s *Store) getRulesWithNamespaceFilter(ctx context.Context, promAPI v1.API, q Query) (v1.RulesResult, error) {
+	// Extract unique namespaces from all subqueries
+	namespaces := extractNamespacesFromQuery(q)
+
+	// If no namespaces found in query, return empty result
+	// Port 9093 requires namespace filtering
+	if len(namespaces) == 0 {
+		log.V(2).Info("no namespaces found in alert query, returning empty result")
+		return v1.RulesResult{}, nil
+	}
+
+	log.V(2).Info("querying rules API with namespace filter", "namespaces", namespaces)
+
+	// Build URL with namespace query parameters
+	// Port 9093 expects: /api/v1/rules?namespace=ns1&namespace=ns2
+	u, err := k8s.GetEffectivePrometheusURL(ctx, s.prometheusURL, s.prometheusConfigPort, s.k8sClient, "alert", k8s.TenancyPortRules)
+	if err != nil {
+		return v1.RulesResult{}, err
+	}
+
+	// Add /api/v1/rules path
+	rulesURL := u.JoinPath("/api/v1/rules")
+
+	// Add namespace query parameters (required by port 9093)
+	queryParams := rulesURL.Query()
+	k8s.AddNamespaceParams(queryParams, namespaces)
+	rulesURL.RawQuery = queryParams.Encode()
+
+	// Make HTTP request
+	req, err := http.NewRequestWithContext(ctx, "GET", rulesURL.String(), nil)
+	if err != nil {
+		return v1.RulesResult{}, fmt.Errorf("failed to create rules request: %w", err)
+	}
+
+	log.V(3).Info("executing rules API request", "url", rulesURL.String())
+	resp, err := s.httpClient.Do(req)
+	if err != nil {
+		log.V(1).Info("failed to execute rules request", "error", err, "url", rulesURL.String())
+		return v1.RulesResult{}, fmt.Errorf("failed to execute rules request: %w", err)
+	}
+	defer func() {
+		if closeErr := resp.Body.Close(); closeErr != nil {
+			log.V(1).Info("failed to close response body", "error", closeErr)
+		}
+	}()
+
+	if resp.StatusCode != http.StatusOK {
+		log.V(1).Info("rules request returned non-OK status", "status", resp.StatusCode, "url", rulesURL.String())
+		return v1.RulesResult{}, fmt.Errorf("rules request returned status %d", resp.StatusCode)
+	}
+
+	// Parse response
+	var apiResp struct {
+		Status string         `json:"status"`
+		Data   v1.RulesResult `json:"data"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&apiResp); err != nil {
+		return v1.RulesResult{}, fmt.Errorf("failed to decode rules response: %w", err)
+	}
+
+	if apiResp.Status != "success" {
+		return v1.RulesResult{}, fmt.Errorf("rules API returned status: %s", apiResp.Status)
+	}
+
+	return apiResp.Data, nil
+}
+
 func (s *Store) Get(ctx context.Context, query korrel8r.Query, c *korrel8r.Constraint, result korrel8r.Appender) error {
 	q, err := impl.TypeAssert[Query](query)
 	if err != nil {
 		return err
 	}
 
-	// Gather matching alerts from the Prometheus Rules API.
-	prometheusRules, err := s.prometheusAPI.Rules(ctx)
+	// Get the effective Prometheus API based on user permissions (admin vs non-admin)
+	promAPI, err := s.getEffectivePrometheusAPI(ctx)
 	if err != nil {
-		return fmt.Errorf("failed to query rules from Prometheus API: %w", err)
+		return fmt.Errorf("failed to get effective Prometheus API: %w", err)
+	}
+
+	// Check if user has cluster-level access
+	hasClusterAccess, err := k8s.CanAccessPrometheusAPI(ctx, s.k8sClient)
+	if err != nil {
+		hasClusterAccess = false
+	}
+
+	var prometheusRules v1.RulesResult
+	if hasClusterAccess {
+		// Admin users: use the Rules API without namespace filtering (port 9091)
+		prometheusRules, err = promAPI.Rules(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to query rules from Prometheus API: %w", err)
+		}
+	} else {
+		// Non-admin users: use the Rules API with namespace filtering (port 9093)
+		prometheusRules, err = s.getRulesWithNamespaceFilter(ctx, promAPI, q)
+		if err != nil {
+			return fmt.Errorf("failed to query rules with namespace filter: %w", err)
+		}
 	}
 
 	for _, subquery := range q.Parsed {
@@ -300,16 +431,22 @@ func (s *Store) getSubquery(ctx context.Context, prometheusRules v1.RulesResult,
 	}
 
 	// Gather matching alerts from the Alertmanager API and merge with the existing alerts.
+	// This is optional - if the user doesn't have access to Alertmanager, we'll just
+	// return alerts from the Rules API without timing information.
 	var filters []string
 	for k, v := range subQuery {
 		filters = append(filters, fmt.Sprintf("%v=%v", k, v))
 	}
 	alertManagerAlerts, err := s.alertmanagerAPI.Alert.GetAlerts(alert.NewGetAlertsParamsWithContext(ctx).WithFilter(filters))
 	if err != nil {
-		return nil, fmt.Errorf("failed to query alerts from Alertmanager API: %w", err)
-	}
-	for _, pa := range alerts {
-		s.augmentAlert(pa, alertManagerAlerts)
+		// Log the error but don't fail - Alertmanager access may be restricted
+		// Non-admin users may not have access to Alertmanager
+		// Return alerts from Rules API only
+	} else {
+		// Augment alerts with Alertmanager data if available
+		for _, pa := range alerts {
+			s.augmentAlert(pa, alertManagerAlerts)
+		}
 	}
 	return alerts, nil
 

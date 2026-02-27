@@ -51,6 +51,7 @@ import (
 	"github.com/korrel8r/korrel8r/pkg/domains/k8s"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r/impl"
+	k8sclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 var (
@@ -146,7 +147,11 @@ func (q Query) String() string        { return korrel8r.QueryString(q) }
 
 // Store is a client of Prometheus.
 type Store struct {
-	prometheusAPI v1.API
+	prometheusAPI        v1.API
+	prometheusURL        *url.URL         // Original URL from configuration
+	prometheusConfigPort string           // Port from configuration (e.g., "9091")
+	httpClient           *http.Client     // HTTP client for recreating prometheus client
+	k8sClient            k8sclient.Client // For RBAC permission checks
 	*impl.Store
 }
 
@@ -157,9 +162,19 @@ func NewStore(prometheusURL *url.URL, hc *http.Client) (korrel8r.Store, error) {
 		return nil, err
 	}
 
+	// Get k8s client for RBAC checks
+	k8sClient, err := k8s.NewClient(nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get k8s client: %w", err)
+	}
+
 	return &Store{
-		prometheusAPI: prometheusAPI,
-		Store:         impl.NewStore(Domain),
+		prometheusAPI:        prometheusAPI,
+		prometheusURL:        prometheusURL,
+		prometheusConfigPort: prometheusURL.Port(),
+		httpClient:           hc,
+		k8sClient:            k8sClient,
+		Store:                impl.NewStore(Domain),
 	}, nil
 }
 
@@ -175,10 +190,27 @@ func newPrometheusClient(u *url.URL, hc *http.Client) (v1.API, error) {
 	return v1.NewAPI(client), nil
 }
 
+// getEffectivePrometheusAPI returns a Prometheus API client with the appropriate port based on user permissions.
+// Admin users (with cluster-monitoring-view) use the configured port (typically 9091).
+// Non-admin users use the tenancy port 9092 for namespace-scoped query access.
+func (s *Store) getEffectivePrometheusAPI(ctx context.Context) (v1.API, error) {
+	u, err := k8s.GetEffectivePrometheusURL(ctx, s.prometheusURL, s.prometheusConfigPort, s.k8sClient, "incident", k8s.TenancyPortQuery)
+	if err != nil {
+		return nil, err
+	}
+	return newPrometheusClient(u, s.httpClient)
+}
+
 func (s Store) Get(ctx context.Context, query korrel8r.Query, c *korrel8r.Constraint, result korrel8r.Appender) error {
 	q, err := impl.TypeAssert[Query](query)
 	if err != nil {
 		return err
+	}
+
+	// Get the effective Prometheus API based on user permissions (admin vs non-admin)
+	promAPI, err := s.getEffectivePrometheusAPI(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get effective Prometheus API: %w", err)
 	}
 
 	promq, t, err := preparePromQL(q, c)
@@ -188,7 +220,7 @@ func (s Store) Get(ctx context.Context, query korrel8r.Query, c *korrel8r.Constr
 
 	log.V(3).Info("Loading the incidents", "query", promq)
 
-	resp, _, err := s.prometheusAPI.Query(ctx, promq, t)
+	resp, _, err := promAPI.Query(ctx, promq, t)
 	if err != nil {
 		return fmt.Errorf("failed to query incidents from Prometheus API: %w", err)
 	}
