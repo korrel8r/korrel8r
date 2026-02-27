@@ -23,7 +23,7 @@ func (ts TryStores) Get(ctx context.Context, q korrel8r.Query, c *korrel8r.Const
 		if err := s.Get(ctx, q, c, a); err == nil {
 			return nil
 		} else {
-			log.V(5).Info("try-stores store error", "store", i, "remaining", len(ts)-i, "error", err)
+			log.V(5).Info("try-stores store error", "store", s.Domain(), "remaining", len(ts)-i, "error", err)
 			errs = errors.Join(errs, err)
 		}
 	}

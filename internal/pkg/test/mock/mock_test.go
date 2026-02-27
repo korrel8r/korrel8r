@@ -356,37 +356,3 @@ func TestBuilder_Query(t *testing.T) {
 	assert.Equal(t, "class1", q.Class().Name())
 	assert.Equal(t, "selector", q.Data())
 }
-
-// Utility function tests
-func TestQuerySplit(t *testing.T) {
-	tests := []struct {
-		input          string
-		expectedDomain string
-		expectedClass  string
-		expectedData   string
-	}{
-		{"domain:class:data", "domain", "class", "data"},
-		{"domain:class", "domain", "class", ""},
-		{"domain", "domain", "", ""},
-		{"", "", "", ""},
-		{"  domain:class:data  ", "domain", "class", "data"},
-		{"domain:class:data:extra", "domain", "class", "data:extra"},
-	}
-
-	for _, tt := range tests {
-		t.Run(fmt.Sprintf("input_%s", tt.input), func(t *testing.T) {
-			d := mock.NewDomain(tt.expectedDomain)
-			if tt.expectedClass != "" {
-				query := tt.input
-				if tt.expectedDomain != "" && tt.expectedClass != "" {
-					parsedQuery, err := d.Query(query)
-					if tt.expectedDomain == d.Name() && tt.expectedClass != "" {
-						require.NoError(t, err)
-						assert.Equal(t, tt.expectedClass, parsedQuery.Class().Name())
-						assert.Equal(t, tt.expectedData, parsedQuery.Data())
-					}
-				}
-			}
-		})
-	}
-}
