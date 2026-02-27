@@ -14,6 +14,7 @@ import (
 	"github.com/korrel8r/korrel8r/internal/pkg/tlsprofile"
 	"github.com/korrel8r/korrel8r/pkg/mcp"
 	"github.com/korrel8r/korrel8r/pkg/rest"
+	"github.com/korrel8r/korrel8r/pkg/rest/auth"
 	"github.com/spf13/cobra"
 )
 
@@ -61,14 +62,26 @@ var webCmd = &cobra.Command{
 		gin.SetMode(gin.ReleaseMode)
 		router := gin.New()
 		router.Use(gin.Recovery())
+		// Middleware to add authentication and timeout to the request context.
+		router.Use(func(c *gin.Context) {
+			ctx, cancel := engine.WithTimeout(auth.Context(c.Request), 0)
+			defer cancel()
+			c.Request = c.Request.WithContext(ctx)
+			c.Next()
+		})
 
+		var restAPI *rest.API
 		if *restFlag {
-			rest := must.Must1(rest.New(engine, configs, router))
-			log.V(0).Info("Enable REST endpoint", "path", rest.BasePath)
+			restAPI = must.Must1(rest.New(engine, configs, router))
+			log.V(0).Info("REST endpoint", "path", restAPI.BasePath)
 		}
 		if *mcpFlag {
-			router.POST(mcp.StreamablePath, gin.WrapH(mcp.NewServer(engine).HTTPHandler()))
-			log.V(0).Info("Enable MCP Streamable endpoint", "path", mcp.StreamablePath)
+			router.Any(mcp.StreamablePath, gin.WrapH(mcp.NewServer(engine, restAPI).HTTPHandler()))
+			log.V(0).Info("MCP Streamable endpoint", "path", mcp.StreamablePath)
+		}
+		if *mcpSSEFlag {
+			router.Any(mcp.SSEPath, gin.WrapH(mcp.NewServer(engine, restAPI).SSEHandler()))
+			log.V(0).Info("MCP SSE endpoint", "path", mcp.SSEPath)
 		}
 		s.Handler = router
 		if profileTypeFlag.String() == "http" {
@@ -90,6 +103,7 @@ var (
 	certFlag, keyFlag   *string
 	specFlag            *string
 	mcpFlag             *bool
+	mcpSSEFlag          *bool
 	restFlag            *bool
 	tlsMinVersionFlag   *string
 	tlsCipherSuitesFlag *[]string
@@ -99,14 +113,15 @@ var (
 
 func init() {
 	rootCmd.AddCommand(webCmd)
+	certFlag = webCmd.Flags().String("cert", "", "TLS certificate file (PEM format) for https")
 	httpFlag = webCmd.Flags().String("http", "", "host:port address for insecure http listener")
 	httpsFlag = webCmd.Flags().String("https", "", "host:port address for secure https listener")
-	certFlag = webCmd.Flags().String("cert", "", "TLS certificate file (PEM format) for https")
 	keyFlag = webCmd.Flags().String("key", "", "Private key (PEM format) for https")
-	specFlag = webCmd.Flags().String("spec", "", "Dump OpenAPI specification to a file, '-' for stdout.")
-	restFlag = webCmd.Flags().Bool("rest", true, "Enable HTTP REST server on "+rest.BasePath)
 	mcpFlag = webCmd.Flags().Bool("mcp", true, "Enable MCP streamable HTTP protocol on "+mcp.StreamablePath)
-	tlsMinVersionFlag = webCmd.Flags().String("tls-min-version", "", "Minimum TLS version for https (e.g. VersionTLS12, VersionTLS13)")
+	mcpSSEFlag = webCmd.Flags().Bool("mcpSSE", true, "Enable MCP Server-Sent Events protocol server on "+mcp.SSEPath)
+	restFlag = webCmd.Flags().Bool("rest", true, "Enable HTTP REST server on "+rest.BasePath)
+	specFlag = webCmd.Flags().String("spec", "", "Write OpenAPI specification to a file, '-' for stdout.")
 	tlsCipherSuitesFlag = webCmd.Flags().StringSlice("tls-cipher-suites", nil, "Comma-separated list of TLS cipher suites for https (IANA names)")
 	tlsCurvesFlag = webCmd.Flags().StringSlice("tls-curves", nil, "Comma-separated list of TLS curves for https (e.g. CurveP256, CurveP384, CurveP521, X25519)")
+	tlsMinVersionFlag = webCmd.Flags().String("tls-min-version", "", "Minimum TLS version for https (e.g. VersionTLS12, VersionTLS13)")
 }

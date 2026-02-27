@@ -5,15 +5,12 @@ package mcp
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
-	"io"
+	"errors"
 	"net/http"
 	"time"
 
 	"github.com/korrel8r/korrel8r/internal/pkg/build"
 	"github.com/korrel8r/korrel8r/internal/pkg/logging"
-	"github.com/korrel8r/korrel8r/internal/pkg/text"
 	"github.com/korrel8r/korrel8r/pkg/engine"
 	"github.com/korrel8r/korrel8r/pkg/engine/traverse"
 	"github.com/korrel8r/korrel8r/pkg/rest"
@@ -22,165 +19,214 @@ import (
 
 const (
 	StreamablePath = "/mcp"
+	SSEPath        = "/mcp/sse"
 )
+
+type ListDomainsResult struct {
+	Domains []rest.Domain `json:"domains" jsonschema:"List of domains"`
+}
 
 type DomainParams struct {
 	Domain string `json:"domain" jsonschema:"Name of the domain to list"`
 }
 
-type NeighborParams = rest.Neighbors
+type ListDomainClassesResult struct {
+	Domain  string   `json:"domain" jsonschema:"Domain name"`
+	Classes []string `json:"classes" jsonschema:"List of classes in the domain"`
+}
 
+type NeighborParams = rest.Neighbors
 type GoalParams = rest.Goals
+type ShowInConsoleParams = rest.Console
 
 const (
 	ListDomains          = "list_domains"
 	ListDomainClasses    = "list_domain_classes"
 	CreateGoalsGraph     = "create_goals_graph"
 	CreateNeighborsGraph = "create_neighbors_graph"
+	GetConsole           = "get_console"
+	ShowInConsole        = "show_in_console"
 )
 
 type Server struct {
 	*mcp.Server
 	Engine *engine.Engine
+	API    *rest.API
 }
 
-func NewServer(e *engine.Engine) *Server {
-	timeout := func(handler mcp.MethodHandler[*mcp.ServerSession]) mcp.MethodHandler[*mcp.ServerSession] {
-		return func(ctx context.Context, ss *mcp.ServerSession, method string, params mcp.Params) (result mcp.Result, err error) {
+// NewServer creates a new MCP server.
+// If api is not nil, session operations are enabled in conjunction with the REST API.
+func NewServer(e *engine.Engine, api *rest.API) *Server {
+	timeout := func(handler mcp.MethodHandler) mcp.MethodHandler {
+		return func(ctx context.Context, method string, req mcp.Request) (mcp.Result, error) {
 			ctx, cancel := e.WithTimeout(ctx, 0)
 			defer cancel()
-			return handler(ctx, ss, method, params)
+			return handler(ctx, method, req)
 		}
 	}
-	s := mcp.NewServer(&mcp.Implementation{Name: "korrle8r", Title: "Korrle8r MCP Server", Version: build.Version}, nil)
-	addTools(e, s)
+	s := &Server{
+		Server: mcp.NewServer(&mcp.Implementation{Name: "korrel8r", Title: "Korrel8r MCP Server", Version: build.Version}, nil),
+		Engine: e,
+		API:    api,
+	}
+	s.addTools(e, api)
 	s.AddReceivingMiddleware(logger, timeout)
-	return &Server{Server: s, Engine: e}
+	return s
 }
 
-func addTools(e *engine.Engine, s *mcp.Server) {
-	mcp.AddTool(s, &mcp.Tool{
+func (s *Server) addTools(e *engine.Engine, api *rest.API) {
+
+	mcp.AddTool(s.Server, &mcp.Tool{
 		Name: ListDomains,
 		Description: `
-Returns a list of Korrel8r domains.
-A domain contains obeservable signals or resources that use the same data model,
+Returns a list of Korrel8r domains with descriptions.
+A domain contains observable signals or resources that use the same data model,
 storage technology, and query syntax.
 `,
 	},
-		func(ctx context.Context, ss *mcp.ServerSession, p *mcp.CallToolParamsFor[struct{}]) (*mcp.CallToolResult, error) {
-			return textResult(text.WriteString(text.NewPrinter(e).ListDomains)), nil
+		func(ctx context.Context, req *mcp.CallToolRequest, input struct{}) (_ *mcp.CallToolResult, out ListDomainsResult, err error) {
+			return nil, ListDomainsResult{Domains: rest.ListDomains(e)}, nil
 		})
 
-	mcp.AddTool(s, &mcp.Tool{
+	mcp.AddTool(s.Server, &mcp.Tool{
 		Name: ListDomainClasses,
 		Description: `
-Returns a list of classes in a domain.
+List the classes in a domain.
 A domain contains one or more classes, representing objects with different structures.
 Some domains have only a single class, others (like the 'k8s' domain) have many.
 `,
 	},
-		func(ctx context.Context, ss *mcp.ServerSession, p *mcp.CallToolParamsFor[DomainParams]) (*mcp.CallToolResult, error) {
-			d, err := e.Domain(p.Arguments.Domain)
+		func(ctx context.Context, req *mcp.CallToolRequest, input DomainParams) (*mcp.CallToolResult, *ListDomainClassesResult, error) {
+			d, err := e.Domain(input.Domain)
 			if err != nil {
-				return errorResult(err), nil
+				return nil, nil, err
 			}
-			text := text.WriteString(func(w io.Writer) {
-				text.NewPrinter(e).ListClasses(w, d)
-			})
-			return textResult(text), nil
+			out := &ListDomainClassesResult{Domain: d.Name()}
+			for _, c := range d.Classes() {
+				out.Classes = append(out.Classes, c.Name())
+			}
+			return nil, out, nil
 		})
 
-	mcp.AddTool(s, &mcp.Tool{
+	mcp.AddTool(s.Server, &mcp.Tool{
 		Name: CreateNeighborsGraph,
 		Description: `
 Returns a JSON graph of correlated objects.
 From a set of start objects, follow correlation rules to find related objects up to the specified depth.`,
 	},
-		func(ctx context.Context, ss *mcp.ServerSession, p *mcp.CallToolParamsFor[NeighborParams]) (*mcp.CallToolResultFor[rest.Graph], error) {
-			args := p.Arguments
-			start, err := rest.TraverseStart(e, args.Start)
+		func(ctx context.Context, req *mcp.CallToolRequest, input NeighborParams) (*mcp.CallToolResult, *rest.Graph, error) {
+			start, err := rest.TraverseStart(e, input.Start)
 			if err != nil {
-				return errorResultFor[rest.Graph](err), nil
+				return nil, nil, err
 			}
-			g, err := traverse.Neighbors(ctx, e, start, args.Depth)
+			g, err := traverse.Neighbors(ctx, e, start, input.Depth)
 			if err != nil {
-				return errorResultFor[rest.Graph](err), nil
+				return nil, nil, err
 			}
-			return structuredResult(*rest.NewGraph(g, nil)), nil
+			return nil, rest.NewGraph(g, nil), nil
 		})
 
-	mcp.AddTool(s, &mcp.Tool{
+	mcp.AddTool(s.Server, &mcp.Tool{
 		Name: CreateGoalsGraph,
 		Description: `
 Returns a JSON graph of correlated objects.
 From a set of start objects, follow all paths leading to one of the goal classes.`,
 	},
-		func(ctx context.Context, ss *mcp.ServerSession, p *mcp.CallToolParamsFor[GoalParams]) (*mcp.CallToolResultFor[rest.Graph], error) {
-			args := p.Arguments
-			start, err := rest.TraverseStart(e, args.Start)
+		func(ctx context.Context, req *mcp.CallToolRequest, input GoalParams) (*mcp.CallToolResult, *rest.Graph, error) {
+			start, err := rest.TraverseStart(e, input.Start)
 			if err != nil {
-				return errorResultFor[rest.Graph](err), nil
+				return nil, nil, err
 			}
-			goals, err := e.Classes(args.Goals)
+			goals, err := e.Classes(input.Goals)
 			if err != nil {
-				return errorResultFor[rest.Graph](err), nil
+				return nil, nil, err
 			}
 			g, err := traverse.Goals(ctx, e, start, goals)
 			if err != nil {
-				return errorResultFor[rest.Graph](err), nil
+				return nil, nil, err
 			}
-			return structuredResult(*rest.NewGraph(g, nil)), nil
+			return nil, rest.NewGraph(g, nil), nil
+		})
+
+	mcp.AddTool(s.Server, &mcp.Tool{
+		Name: GetConsole,
+		Description: `
+Returns the current state of the console display, representing what the user is currently looking at.
+`,
+	},
+		func(ctx context.Context, req *mcp.CallToolRequest, input struct{}) (*mcp.CallToolResult, *rest.Console, error) {
+			if err := s.apiCheck(); err != nil {
+				return nil, nil, err
+			}
+			return nil, api.ConsoleState.Get(), nil
+		})
+
+	mcp.AddTool(s.Server, &mcp.Tool{
+		Name: ShowInConsole,
+		Description: `
+Send updated display parameters to the user's console, to allow the user to visualize the data in
+a rich graphical environment.
+`,
+	},
+		func(ctx context.Context, req *mcp.CallToolRequest, input ShowInConsoleParams) (*mcp.CallToolResult, any, error) {
+			if err := s.apiCheck(); err != nil {
+				return nil, nil, err
+			}
+			if err := rest.ConsoleOK(e, &input); err != nil {
+				return nil, nil, err
+			}
+			if err := api.ConsoleState.Send(&input); err != nil {
+				return nil, nil, err
+			}
+			return nil, nil, nil
 		})
 }
 
 // ServeStdio runs an MCP server, it returns when the client disconnects or the context is canceled.
 func (s *Server) ServeStdio(ctx context.Context) error {
-	return s.Run(ctx, mcp.NewStdioTransport())
+	return s.Run(ctx, &mcp.StdioTransport{})
 }
 
-// HTTPHandler  a handler for the Streaming MCP protocol.
+// HTTPHandler  a handler for the HTTP Streamable MCP protocol.
 func (s *Server) HTTPHandler() http.Handler {
-	// Use the same server for all requests. Server and Engine are concurrent-safe.
-	return mcp.NewStreamableHTTPHandler(func(*http.Request) *mcp.Server { return s.Server }, nil)
+	return mcp.NewStreamableHTTPHandler(s.handler, &mcp.StreamableHTTPOptions{})
 }
 
-func textResult(text string) *mcp.CallToolResult {
-	return &mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{Text: text}}}
+// SSEHandler returns a handler for the SSE MCP protocol.
+func (s *Server) SSEHandler() http.Handler {
+	return mcp.NewSSEHandler(s.handler, &mcp.SSEOptions{})
 }
 
-func errorResultFor[T any](err error) *mcp.CallToolResultFor[T] {
-	return &mcp.CallToolResultFor[T]{
-		Content: []mcp.Content{&mcp.TextContent{Text: fmt.Sprintf(`error: %v`, err.Error())}},
-		IsError: true,
+// handler returns the same server for all requests. Server and Engine are concurrent-safe.
+func (s *Server) handler(*http.Request) *mcp.Server { return s.Server }
+
+func (s *Server) apiCheck() error {
+	if s.API == nil {
+		return errors.New("not connected to console")
 	}
+	return nil
 }
-
-var errorResult = errorResultFor[any]
 
 // logger is middleware to do debug logging of MCP methods
-func logger[S mcp.Session](handler mcp.MethodHandler[S]) mcp.MethodHandler[S] {
-	return func(ctx context.Context, s S, method string, params mcp.Params) (result mcp.Result, err error) {
+func logger(handler mcp.MethodHandler) mcp.MethodHandler {
+	return func(ctx context.Context, method string, req mcp.Request) (result mcp.Result, err error) {
 		log := logging.Log()
 		if log.V(3).Enabled() {
 			start := time.Now()
 			defer func() {
 				latency := time.Since(start)
-				log.V(3).Info("MCP method",
+				log = log.WithValues(
 					"method", method,
-					"params", params,
-					"result", result,
-					"latency", latency)
+					"latency", latency,
+					"params", req.GetParams())
+				if err != nil {
+					log = log.WithValues("error", err)
+				} else {
+					log = log.WithValues("result", result)
+				}
+				log.V(3).Info("MCP")
 			}()
 		}
-		return handler(ctx, s, method, params)
-	}
-}
-
-func structuredResult[T any](value T) *mcp.CallToolResultFor[T] {
-	// Also return result as JSON text content for older clients.
-	text, _ := json.Marshal(value)
-	return &mcp.CallToolResultFor[T]{
-		Content:           []mcp.Content{&mcp.TextContent{Text: string(text)}},
-		StructuredContent: value,
+		return handler(ctx, method, req)
 	}
 }

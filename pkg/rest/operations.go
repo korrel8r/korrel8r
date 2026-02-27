@@ -4,10 +4,12 @@
 package rest
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/korrel8r/korrel8r/internal/pkg/build"
@@ -17,7 +19,6 @@ import (
 	"github.com/korrel8r/korrel8r/pkg/engine/traverse"
 	"github.com/korrel8r/korrel8r/pkg/graph"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
-	"github.com/korrel8r/korrel8r/pkg/rest/auth"
 	"github.com/korrel8r/korrel8r/pkg/result"
 	"github.com/korrel8r/korrel8r/pkg/unique"
 )
@@ -25,49 +26,44 @@ import (
 var log = logging.Log()
 
 type API struct {
-	Engine   *engine.Engine
-	Configs  config.Configs
-	Router   *gin.Engine
-	BasePath string
+	Engine       *engine.Engine
+	Configs      config.Configs
+	Router       *gin.Engine
+	BasePath     string
+	ConsoleState *ConsoleState
 }
 
 var _ ServerInterface = &API{}
 
 // New API instance, registers handlers with a gin Engine.
 func New(e *engine.Engine, c config.Configs, r *gin.Engine) (*API, error) {
-	a := &API{Engine: e, Configs: c, Router: r}
-	a.BasePath = BasePath
-	r.Use(a.logger, a.context)
-	RegisterHandlersWithOptions(r, a, GinServerOptions{BaseURL: a.BasePath})
+	api := &API{
+		Engine:       e,
+		Configs:      c,
+		Router:       r,
+		BasePath:     BasePath,
+		ConsoleState: NewConsoleState(),
+	}
+	rg := r.Group(api.BasePath)
+	rg.Use(api.logger) // Apply logger only to API endpoints
+	RegisterHandlers(rg, api)
 	// Helpful endpoints showing routes.
-	r.GET(a.BasePath, func(c *gin.Context) { spec, _ := GetSwagger(); c.JSON(http.StatusOK, spec) })
-	r.GET("/", a.homePage)
-	return a, nil
+	r.GET(api.BasePath, func(c *gin.Context) { spec, _ := GetSwagger(); c.JSON(http.StatusOK, spec) })
+	r.GET("/", api.homePage)
+	return api, nil
 }
 
 func (a *API) homePage(c *gin.Context) {
-	var endpoints []string
+	paths := unique.NewList[string]()
 	for _, r := range a.Router.Routes() {
-		endpoints = append(endpoints, r.Path)
+		paths.Add(r.Path)
 	}
-	slices.Sort(endpoints)
-	c.String(http.StatusOK,
-		fmt.Sprintf("Korrel8r %v\n\n%v", build.Version, strings.Join(endpoints, "\n")))
+	slices.Sort(paths.List)
+	c.String(http.StatusOK, fmt.Sprintf("Korrel8r %v\n\n%v", build.Version, strings.Join(paths.List, "\n")))
 }
 
 func (a *API) ListDomains(c *gin.Context) {
-	var domains []Domain
-	for _, d := range a.Engine.Domains() {
-		var stores []Store
-		for _, sc := range a.Engine.StoreConfigsFor(d) {
-			stores = append(stores, (Store)(sc))
-		}
-		domains = append(domains, Domain{
-			Name:   d.Name(),
-			Stores: stores,
-		})
-	}
-	c.JSON(http.StatusOK, domains)
+	c.JSON(http.StatusOK, ListDomains(a.Engine))
 }
 
 func (a *API) ListDomainClasses(c *gin.Context, domain string) {
@@ -189,17 +185,64 @@ func check(c *gin.Context, code int, err error, format ...any) (ok bool) {
 	return false
 }
 
-// context middle-ware sets up authentication and timeout in the request context.
-func (a *API) context(c *gin.Context) {
-	ctx, cancel := a.Engine.WithTimeout(auth.Context(c.Request), 0)
-	defer cancel()
-	c.Request = c.Request.WithContext(ctx)
-	c.Next()
-}
-
 // okResponse sets an OK response with a body if we were not already aborted.
 func okResponse(c *gin.Context, body any) {
 	if !c.IsAborted() {
 		c.JSON(http.StatusOK, body)
+	}
+}
+
+// Set the console display.
+// (POST /console)
+func (a *API) SetConsole(c *gin.Context) {
+	r := &Console{}
+	if !check(c, http.StatusBadRequest, c.BindJSON(r)) {
+		return
+	}
+	a.ConsoleState.Set(r)
+}
+
+// Notification of console updates.
+// (GET /console/updates)
+func (a *API) ConsoleUpdates(c *gin.Context) {
+	// Set SSE headers
+	w := c.Writer
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Connection", "keep-alive")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Headers", "Cache-Control")
+
+	w.Flush() // Send headers to start the SSE stream.
+
+	keepAliveTicker := time.NewTicker(time.Minute)
+	defer keepAliveTicker.Stop()
+
+	var err error
+	for {
+		if !check(c, http.StatusInternalServerError, err) {
+			log.V(3).Info("Console update write failed", "error", err)
+			return
+		}
+		select {
+		case update, ok := <-a.ConsoleState.Updates: // Wait for an update
+			if !ok {
+				log.V(3).Info("Console update internal shutdown")
+				return // Shut down
+			}
+			b, _ := json.Marshal(update)
+			_, err = fmt.Fprintf(w, "event: console-update\ndata: %v\n\n", string(b))
+			w.Flush()
+			log.V(3).Info("Console update sent", "event", update)
+
+		case <-keepAliveTicker.C:
+			// Send a keep-alive comment
+			_, err = fmt.Fprint(w, ":keepalive\n\n")
+			w.Flush()
+
+		case <-c.Request.Context().Done(): // Client disconnect
+			log.V(3).Info("Console update disconnected")
+			return
+		}
 	}
 }

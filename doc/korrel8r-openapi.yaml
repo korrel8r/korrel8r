@@ -14,6 +14,15 @@ externalDocs:
   description: Korrel8r User Guide
 servers:
   - url: /api/v1alpha1
+tags:
+  - name: console
+    description: >
+      Korrel8r can act as a bridge between a GUI console and an AI agent.
+      The agent uses Korrel8r's MCP API to discover what is displayed in the conosle,
+      and to send new data to update what is displayed.
+      The console uses the /console REST APIs to provide information about the current display,
+      and to accept updates from the agent to change the display.
+
 paths:
   /config:
     put:
@@ -23,7 +32,13 @@ paths:
       operationId: setConfig
       tags: [configure]
       parameters:
-        - $ref: '#/components/parameters/Verbose'
+        - name: verbose
+          description: Verbose level for logging.
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            maximum: 10
       responses:
         "200":
           description: OK
@@ -44,19 +59,19 @@ paths:
                 type: array
                 x-go-type-skip-optional-pointer: true
                 items:
-                  $ref: '#/components/schemas/Domain'
+                  $ref: "#/components/schemas/Domain"
         "400":
           description: invalid parameters
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
+                $ref: "#/components/schemas/Error"
         "404":
           description: result not found
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
+                $ref: "#/components/schemas/Error"
   /domain/{domain}/classes:
     get:
       summary: Get the list of classes for a domain.
@@ -89,13 +104,13 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
+                $ref: "#/components/schemas/Error"
         "404":
           description: domain not found
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
+                $ref: "#/components/schemas/Error"
   /graphs/goals:
     post:
       summary: Create a correlation graph from start objects to goal queries.
@@ -105,13 +120,13 @@ paths:
       operationId: graphGoals
       tags: [correlate]
       parameters:
-        - $ref: '#/components/parameters/GraphOptions'
+        - $ref: "#/components/parameters/GraphOptions"
       requestBody:
         description: Search from start to goal classes.
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Goals'
+              $ref: "#/components/schemas/Goals"
         required: true
       responses:
         "200":
@@ -119,19 +134,19 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Graph'
+                $ref: "#/components/schemas/Graph"
         "400":
           description: invalid parameters
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
+                $ref: "#/components/schemas/Error"
         "404":
           description: result not found
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
+                $ref: "#/components/schemas/Error"
       x-codegen-request-body-name: request
   /graphs/neighbors:
     post:
@@ -143,13 +158,13 @@ paths:
       operationId: graphNeighbors
       tags: [correlate]
       parameters:
-        - $ref: '#/components/parameters/GraphOptions'
+        - $ref: "#/components/parameters/GraphOptions"
       requestBody:
         description: Search from start for neighbors.
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Neighbors'
+              $ref: "#/components/schemas/Neighbors"
         required: true
       responses:
         "200":
@@ -157,19 +172,19 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Graph'
+                $ref: "#/components/schemas/Graph"
         "400":
           description: invalid parameters
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
+                $ref: "#/components/schemas/Error"
         "404":
           description: result not found
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
+                $ref: "#/components/schemas/Error"
       x-codegen-request-body-name: request
 
   # DEPRECATED - alternate spelling.
@@ -183,13 +198,13 @@ paths:
       operationId: graphNeighbours
       tags: [correlate]
       parameters:
-        - $ref: '#/components/parameters/GraphOptions'
+        - $ref: "#/components/parameters/GraphOptions"
       requestBody:
         description: Search from start for neighbors.
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Neighbors'
+              $ref: "#/components/schemas/Neighbors"
         required: true
       responses:
         "200":
@@ -197,19 +212,19 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Graph'
+                $ref: "#/components/schemas/Graph"
         "400":
           description: invalid parameters
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
+                $ref: "#/components/schemas/Error"
         "404":
           description: result not found
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
+                $ref: "#/components/schemas/Error"
       x-codegen-request-body-name: request
 
   /lists/goals:
@@ -225,7 +240,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Goals'
+              $ref: "#/components/schemas/Goals"
         required: true
       responses:
         "200":
@@ -236,19 +251,19 @@ paths:
                 type: array
                 x-go-type-skip-optional-pointer: true
                 items:
-                  $ref: '#/components/schemas/Node'
+                  $ref: "#/components/schemas/Node"
         "400":
           description: invalid parameters
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
+                $ref: "#/components/schemas/Error"
         "404":
           description: result not found
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
+                $ref: "#/components/schemas/Error"
       x-codegen-request-body-name: request
   /objects:
     get:
@@ -259,7 +274,12 @@ paths:
       operationId: objects
       tags: [query]
       parameters:
-        - $ref: '#/components/parameters/Query'
+        - name: query
+          description: Query string.
+          in: query
+          required: true
+          schema:
+            $ref: "#/components/schemas/Query"
       responses:
         "200":
           description: OK
@@ -276,13 +296,56 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
+                $ref: "#/components/schemas/Error"
         "404":
           description: result not found
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
+                $ref: "#/components/schemas/Error"
+
+  /console:
+    put:
+      summary: Make console state available to an agent.
+      description: >
+        Put the current state of the console so it can be retrieved by an agent via the MCP API.
+      tags: [console]
+      operationId: setConsole
+      requestBody:
+        description: Parameters for the updated console display.
+        content:
+          text/json:
+            schema:
+              $ref: "#/components/schemas/Console"
+        required: true
+      responses:
+        "200":
+          description: Console display updated successfully
+        "400":
+          description: invalid parameters
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+      x-codegen-request-body-name: request
+
+  /console/updates:
+    get:
+      summary: Updates for the console display from an agent.
+      description: >
+        Use SSE (server-sent events) to send updates for the console display.
+        The updates come from an agent using the MCP API.
+      tags: [console]
+      operationId: consoleUpdates
+      responses:
+        "200":
+          description: Stream of console display updates.
+          content:
+            text/event-stream:
+              itemSchema:
+                # Reference a schema that defines the structure of each individual event
+                $ref: "#/components/schemas/Console"
+
 components:
   schemas:
     Query:
@@ -294,7 +357,7 @@ components:
         DOMAIN: name of a domain.
         CLASS: name of a class in the domain.
         SELECTOR: domain-specific query string to retrieve selected objects.
-      example: 'k8s:Pod:{namespace: foo, name: bar, labels: { a: b }, fields: { c: d }}'
+      example: "k8s:Pod:{namespace: foo, name: bar, labels: { a: b }, fields: { c: d }}"
       x-go-type-skip-optional-pointer: true
 
     Class:
@@ -305,7 +368,7 @@ components:
         It has 2 parts DOMAIN:CLASS
         DOMAIN: name of a domain.
         CLASS: name of a class in the domain.
-      example: 'trace:span'
+      example: "trace:span"
       x-go-type-skip-optional-pointer: true
 
     Constraint:
@@ -328,13 +391,13 @@ components:
         timeout:
           description: DEPRECATED store calls are cancelled with the request.
           allOf:
-            - $ref: '#/components/schemas/Duration'
+            - $ref: "#/components/schemas/Duration"
 
     Duration:
       type: string
       description: >
-         The duration string is a sequence of decimal numbers, each with optional
-         fraction and a unit suffix. Valid time units are: ns, us (or µs), ms, s, m, h.
+        The duration string is a sequence of decimal numbers, each with optional
+        fraction and a unit suffix. Valid time units are: ns, us (or µs), ms, s, m, h.
       format: duration
       example: 2h45m
       x-go-type: time.Duration
@@ -347,12 +410,16 @@ components:
         name:
           type: string
           description: Name of the domain.
+        description:
+          type: string
+          description: Brief description of the domain.
+          x-go-type-skip-optional-pointer: true
         stores:
           type: array
-          x-go-type-skip-optional-pointer: true
           description: Stores configured for the domain.
           items:
-            $ref: '#/components/schemas/Store'
+            $ref: "#/components/schemas/Store"
+          x-go-type-skip-optional-pointer: true
 
     Edge:
       type: object
@@ -361,18 +428,18 @@ components:
         start:
           description: Class name of the start node.
           allOf:
-            - $ref: '#/components/schemas/Class'
+            - $ref: "#/components/schemas/Class"
         goal:
           description: Class name of the goal node.
           allOf:
-            - $ref: '#/components/schemas/Class'
+            - $ref: "#/components/schemas/Class"
         rules:
           type: array
           x-go-type-skip-optional-pointer: true
           x-omitempty: true
           description: Set of rules followed along this edge.
           items:
-            $ref: '#/components/schemas/Rule'
+            $ref: "#/components/schemas/Rule"
       description: Directed edge in the result graph, from Start to Goal classes.
 
     Error:
@@ -392,11 +459,11 @@ components:
           type: array
           x-go-type-skip-optional-pointer: true
           description: Goal classes for correlation.
-          example: [ "k8s:Pod" ]
+          example: ["k8s:Pod"]
           items:
-            $ref: '#/components/schemas/Class'
+            $ref: "#/components/schemas/Class"
         start:
-          $ref: '#/components/schemas/Start'
+          $ref: "#/components/schemas/Start"
       description: Starting point for a goals search.
 
     Graph:
@@ -407,13 +474,13 @@ components:
           type: array
           x-go-type-skip-optional-pointer: true
           items:
-            $ref: '#/components/schemas/Edge'
+            $ref: "#/components/schemas/Edge"
         nodes:
           description: List of graph nodes.
           type: array
           x-go-type-skip-optional-pointer: true
           items:
-            $ref: '#/components/schemas/Node'
+            $ref: "#/components/schemas/Node"
       description: Graph resulting from a correlation search.
 
     Neighbors:
@@ -424,7 +491,7 @@ components:
           type: integer
           description: Max depth of neighbors graph.
         start:
-          $ref: '#/components/schemas/Start'
+          $ref: "#/components/schemas/Start"
       description: Starting point for a neighbors search.
 
     Node:
@@ -440,7 +507,7 @@ components:
           x-go-type-skip-optional-pointer: true
           description: Queries yielding results for this class.
           items:
-            $ref: '#/components/schemas/QueryCount'
+            $ref: "#/components/schemas/QueryCount"
         count:
           type: integer
           description: Number of results for this class, after de-duplication.
@@ -449,7 +516,7 @@ components:
           type: array
           x-go-type-skip-optional-pointer: true
           items:
-            $ref:  '#/components/schemas/Object'
+            $ref: "#/components/schemas/Object"
 
     QueryCount:
       description: Query with number of results.
@@ -462,7 +529,7 @@ components:
         query:
           description: Query for correlation data.
           allOf:
-            - $ref: '#/components/schemas/Query'
+            - $ref: "#/components/schemas/Query"
 
     Rule:
       type: object
@@ -476,7 +543,7 @@ components:
           x-go-type-skip-optional-pointer: true
           description: Queries generated while following this rule.
           items:
-            $ref: '#/components/schemas/QueryCount'
+            $ref: "#/components/schemas/QueryCount"
       description: Rule is a correlation rule with a list of queries and results counts found during navigation.
 
     Object:
@@ -491,24 +558,24 @@ components:
         class:
           description: Class of starting objects and queries.
           allOf:
-            - $ref: '#/components/schemas/Class'
+            - $ref: "#/components/schemas/Class"
           x-go-type-skip-optional-pointer: true
         constraint:
           allOf:
-            - $ref: '#/components/schemas/Constraint'
+            - $ref: "#/components/schemas/Constraint"
           description: Constrain the objects that will be returned.
         objects:
           description: Start objects serialized as JSON.
           type: array
           x-go-type-skip-optional-pointer: true
           items:
-            $ref:  '#/components/schemas/Object'
+            $ref: "#/components/schemas/Object"
         queries:
           type: array
           x-go-type-skip-optional-pointer: true
           description: Queries for starting objects
           items:
-            $ref: '#/components/schemas/Query'
+            $ref: "#/components/schemas/Query"
       description: Start identifies a set of starting objects for correlation.
 
     Store:
@@ -517,39 +584,41 @@ components:
         type: string
       description: Store is a map string keys and values used to connect to a store.
 
-    GraphOptions:
+    Console:
+      description: Describes the data displayed in the users console.
       type: object
-      description: Options controlling the form of the returned graph.
       properties:
-        rules:
-          description: If true include rule names in graph edges.
-          type: boolean
-        results:
-          description: If true include full JSON results with each Query.
-          type: boolean
-        errors:
-          description: if true include non-fatal error messages.
-          type: boolean
+        view:
+          $ref: "#/components/schemas/Query"
+        search:
+          $ref: "#/components/schemas/Search"
+
+    Search:
+      description: Search parameters for the correlation search displayed in the console troubleshooting panel. Exactly one of goals, neighbors should be set.
+      type: object
+      properties:
+        goals:
+          $ref: "#/components/schemas/Goals"
+        neighbors:
+          $ref: "#/components/schemas/Neighbors"
+
   parameters:
     GraphOptions:
       name: options
+      description: Options controlling the form of the returned graph.
       in: query
-      schema:
-        $ref: '#/components/schemas/GraphOptions'
       style: form
       explode: true
-    Verbose:
-      name: verbose
-      in: query
-      description: Verbose setting for logging.
       schema:
-        type: integer
-        minimum: 0
-        maximum: 10
-    Query:
-      name: query
-      in: query
-      description: Query string.
-      required: true
-      schema:
-        $ref: '#/components/schemas/Query'
+        type: object
+        properties:
+          rules:
+            description: If true include rule names in graph edges.
+            type: boolean
+          results:
+            description: If true include full JSON results with each Query.
+            type: boolean
+          errors:
+            description: if true include non-fatal error messages.
+            type: boolean
+

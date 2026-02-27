@@ -13,7 +13,7 @@ require (
 	github.com/go-logr/stdr v1.2.2
 	github.com/go-openapi/runtime v0.28.0
 	github.com/go-openapi/strfmt v0.23.0
-	github.com/modelcontextprotocol/go-sdk v0.2.0
+	github.com/modelcontextprotocol/go-sdk v1.4.0
 	github.com/oapi-codegen/runtime v1.1.2
 	github.com/pkg/profile v1.7.0
 	github.com/prometheus/alertmanager v0.28.1
@@ -32,7 +32,12 @@ require (
 	sigs.k8s.io/yaml v1.5.0
 )
 
-require github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
+require (
+	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
+	github.com/google/jsonschema-go v0.4.2 // indirect
+	github.com/segmentio/asm v1.1.3 // indirect
+	github.com/segmentio/encoding v0.5.3 // indirect
+)
 
 require (
 	dario.cat/mergo v1.0.1 // indirect
@@ -114,9 +119,9 @@ require (
 	golang.org/x/arch v0.16.0 // indirect
 	golang.org/x/crypto v0.45.0 // indirect
 	golang.org/x/net v0.47.0 // indirect
-	golang.org/x/oauth2 v0.30.0 // indirect
+	golang.org/x/oauth2 v0.34.0 // indirect
 	golang.org/x/sync v0.18.0
-	golang.org/x/sys v0.38.0 // indirect
+	golang.org/x/sys v0.40.0 // indirect
 	golang.org/x/term v0.37.0 // indirect
 	golang.org/x/text v0.31.0 // indirect
 	golang.org/x/time v0.12.0 // indirect

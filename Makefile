@@ -8,7 +8,7 @@ help: ## Display this help.
 	@grep -E '^## [A-Z0-9_]+: ' Makefile | sed 's/^## \([A-Z0-9_]*\): \(.*\)/\1#\2/' | column -s'#' -t
 
 ## VERSION: Semantic version for release, use -dev for development pre-release versions.
-VERSION?=0.9.1
+VERSION?=0.10.0-dev
 ## REGISTRY_BASE: Image registry base, for example quay.io/somebody
 REGISTRY_BASE?=$(error REGISTRY_BASE must be set to push images)
 ## IMGTOOL: May be podman or docker.
@@ -144,16 +144,18 @@ _site/man: $(shell find ./cmd)	## Generated man pages.
 	@touch $@
 
 doc: doc/gen/domains.adoc doc/gen/rest_api.adoc doc/gen/cmd
-	touch $@
+	@touch $@
 
 doc/gen/domains.adoc: $(wildcard pkg/domains/*/*.adoc)
 	@mkdir -p $(dir $@)
 	rm -f $@; for D in $^; do { echo; echo "include::../../$$D[]"; echo; } >>$@; done
 
+#  NOTE: --skip-validate-spec required because current openAPI generator
+#  does not understand itemSchema
 doc/gen/rest_api.adoc: $(OPENAPI_SPEC) $(OPENAPI_GEN)
 	@mkdir -p $(dir $@)
 	$(IMGTOOL) run --rm -v $(CURDIR):/app:z docker.io/openapitools/openapi-generator-cli \
-		generate -g asciidoc -c /app/doc/openapi-asciidoc.yaml -i /app/$< -o /app/$@.dir
+		generate -g asciidoc -c /app/doc/openapi-asciidoc.yaml -i /app/$< -o /app/$@.dir --skip-validate-spec
 	@mv -f $@.dir/index.adoc $@
 	@rm -rf $@.dir
 

@@ -264,6 +264,21 @@ See the complete <<_rest_api,REST API Reference>> for all available endpoints.
 
 The {rh-ocp} Console includes a troubleshooting panel that uses Korrel8r to display clickable correlation graphs. When viewing resources in the console, you can navigate between related logs, metrics, alerts, and other observability data.
 
+==== Data Access Client
+
+Korrel8r can be used as a client to directly access data from any of the stores it can connect to.
+There are existing clients for most korrel8r domains, such as promcli (alert, metric), logcli (log), kubectl (k8s) etc.
+
+Korrel8r does not have all the features of every native client, but it can be useful as a simplified _uniform_ client.
+
+- A single tool for all the supported stores.
+- Can run as a command line tool, or deploy as a service with REST and MCP APIs.
+  - As a service it provides token-forwarding to integrates securly with Kubernetes and MCP tools.
+- Uses the same well-known native query languages as native tools (e.g. PromQL or LogQL).
+  - Korrel8r queries just add a prefix to native query strings.
+
+The output format of korrel8r differs slightly from some native tool output.
+
 === Troubleshooting
 
 [TIP]
@@ -483,20 +498,3 @@ include::gen/domains.adoc[leveloffset=+1]
 
 [[_rest_api]]
 include::gen/rest_api.adoc[]
-
-= Use cases FIXME
-Figure out where to put this
-== Data Access Client
-
-Korrel8r can be used as a client to directly access data from any of the stores it can connect to.
-There are existing clients for most korrel8r domains, such as promcli (alert, metric), logcli (log), kubectl (k8s) etc.
-
-Korrel8r does not have all the features of every native client, but it can be useful as a simplified _uniform_ client.
-
-- A single tool for all the supported stores.
-- Can run as a command line tool, or deploy as a service with REST and MCP APIs.
-  - As a service it provides token-forwarding to integrates securly with Kubernetes and MCP tools.
-- Uses the same well-known native query languages as native tools (e.g. PromQL or LogQL).
-  - Korrel8r queries just add a prefix to native query strings.
-
-The output format of korrel8r differs slightly from some native tool output.
