@@ -148,7 +148,11 @@ func (s *Store) LoadData(data []byte) error {
 		return err
 	}
 	for qs, raw := range loaded {
-		domain, _, _ := querySplit(qs)
+		domain, _, _, err := korrel8r.QuerySplit(qs)
+		if err != nil {
+			return err
+		}
+
 		if s.domain.Name() != domain {
 			// Ignore queries for other domains.
 			// Allows a single mock store file to be shared among domains.

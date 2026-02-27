@@ -51,13 +51,16 @@ func (d *Domain) Class(name string) korrel8r.Class {
 func (d *Domain) Classes() []korrel8r.Class { return d.classes }
 
 func (d *Domain) Query(query string) (korrel8r.Query, error) {
-	domainName, className, selector := querySplit(query)
+	domainName, className, selector, err := korrel8r.QuerySplit(query)
+	if err != nil {
+		return nil, err
+	}
 	if domainName != d.Name() {
 		return nil, fmt.Errorf("mock domain %v: query mismatch: %v", d.Name(), query)
 	}
 	class := d.Class(className)
 	if class == nil {
-		return nil, fmt.Errorf("class not found: %v%v%v", domainName, korrel8r.NameSeparator, className)
+		return nil, korrel8r.NewClassNotFoundError(domainName, className)
 
 	}
 	return NewQuery(class, selector), nil
@@ -69,7 +72,7 @@ type Class struct {
 }
 
 func (c Class) Domain() korrel8r.Domain  { return c.domain }
-func (c Class) String() string           { return classString(c) }
+func (c Class) String() string           { return korrel8r.ClassString(c) }
 func (c Class) Name() string             { return c.name }
 func (c Class) ID(o korrel8r.Object) any { return o }
 func (c Class) Unmarshal(b []byte) (korrel8r.Object, error) {
@@ -140,7 +143,7 @@ func NewQueryError(c korrel8r.Class, selector string, err error) korrel8r.Query 
 
 func (q Query) Class() korrel8r.Class { return q.class }
 func (q Query) Data() string          { return q.data }
-func (q Query) String() string        { return queryString(q) }
+func (q Query) String() string        { return korrel8r.QueryString(q) }
 
 // Timestamper interface for objects with a Timestamp() method.
 type Timestamper interface{ Timestamp() time.Time }
@@ -150,28 +153,6 @@ type Result []korrel8r.Object
 
 func (r *Result) Append(objects ...korrel8r.Object) { *r = append(*r, objects...) }
 func (r Result) List() []korrel8r.Object            { return []korrel8r.Object(r) }
-
-// Helper functions to replace impl dependencies
-const sep = korrel8r.NameSeparator
-
-func classString(c korrel8r.Class) string { return c.Domain().Name() + sep + c.Name() }
-
-func queryString(q korrel8r.Query) string { return classString(q.Class()) + sep + q.Data() }
-
-func querySplit(query string) (domain, class, data string) {
-	query = strings.TrimSpace(query)
-	s := strings.SplitN(query, sep, 3)
-	if len(s) > 0 {
-		domain = s[0]
-	}
-	if len(s) > 1 {
-		class = s[1]
-	}
-	if len(s) > 2 {
-		data = s[2]
-	}
-	return domain, class, data
-}
 
 // Builder provides convenience functions for creating mock queries and rules from string values.
 type Builder struct {
@@ -207,7 +188,10 @@ func (b *Builder) Class(v any) korrel8r.Class {
 	case korrel8r.Class:
 		return v
 	case string:
-		d, c, _ := strings.Cut(v, korrel8r.NameSeparator)
+		d, c, err := korrel8r.ClassSplit(v)
+		if err != nil {
+			panic(fmt.Errorf("mock builder: %v", err))
+		}
 		return b.Domain(d).Class(c)
 	default:
 		panic(fmt.Errorf("mock builder: unknown class: (%T)%v", v, v))

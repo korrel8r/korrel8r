@@ -7,9 +7,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"maps"
 	"slices"
-	"strings"
 	"text/template"
 	"time"
 
@@ -34,13 +32,8 @@ type Engine struct {
 	Tuning config.Tuning
 }
 
-func (e *Engine) Domains() []korrel8r.Domain {
-	domains := slices.Collect(maps.Values(e.domains))
-	slices.SortFunc(domains, func(a, b korrel8r.Domain) int { return strings.Compare(a.Name(), b.Name()) })
-	return domains
-}
-
 func (e *Engine) Domain(name string) (korrel8r.Domain, error) { return e.domains.Domain(name) }
+func (e *Engine) Domains() []korrel8r.Domain                  { return e.domains.List() }
 
 // StoreFor returns the aggregated store for a domain, nil if there is none.
 func (e *Engine) StoreFor(d korrel8r.Domain) korrel8r.Store {
@@ -69,7 +62,11 @@ func (e *Engine) StoreConfigsFor(d korrel8r.Domain) []config.Store {
 
 // Class parses a full class name and returns the [korrel8r.Class]
 func (e *Engine) Class(fullname string) (korrel8r.Class, error) {
-	d, c := korrel8r.ClassSplit(fullname)
+	d, c, err := korrel8r.ClassSplit(fullname)
+	if err != nil {
+		return nil, err
+	}
+
 	if c == "" {
 		return nil, fmt.Errorf("invalid class name: %v", fullname)
 	} else {
@@ -96,24 +93,13 @@ func (e *Engine) DomainClass(domain, class string) (korrel8r.Class, error) {
 	}
 	c := d.Class(class)
 	if c == nil {
-		return nil, fmt.Errorf("class not found: %v%v%v", domain, korrel8r.NameSeparator, class)
+		return nil, korrel8r.NewClassNotFoundError(domain, class)
 	}
 	return c, nil
 }
 
 // Query parses a query string to a query object.
-func (e *Engine) Query(query string) (korrel8r.Query, error) {
-	query = strings.TrimSpace(query)
-	d, _, ok := strings.Cut(query, korrel8r.NameSeparator)
-	if !ok {
-		return nil, fmt.Errorf("invalid query string: %v", query)
-	}
-	domain, err := e.Domain(d)
-	if err != nil {
-		return nil, err
-	}
-	return domain.Query(query)
-}
+func (e *Engine) Query(query string) (korrel8r.Query, error) { return e.domains.Query(query) }
 
 // Queries parses a slice of query strings and returns a slice of query objects.
 func (e *Engine) Queries(queryStrings []string) ([]korrel8r.Query, error) {
