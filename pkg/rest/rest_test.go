@@ -50,7 +50,7 @@ func TestAPI_ListDomainClasses(t *testing.T) {
 	assertDo(t, a, "GET", "/api/v1alpha1/domain/foo/classes", nil, http.StatusOK, []string{"a", "b"})
 
 	// Test with invalid domain
-	assertDo(t, a, "GET", "/api/v1alpha1/domain/nonexistent/classes", nil, http.StatusNotFound, Error{Error: "domain not found: nonexistent: unknown domain: nonexistent"})
+	assertDo(t, a, "GET", "/api/v1alpha1/domain/nonexistent/classes", nil, http.StatusNotFound, Error{Error: "domain not found: nonexistent: domain not found: nonexistent"})
 }
 
 func TestAPIListGoals(t *testing.T) {
