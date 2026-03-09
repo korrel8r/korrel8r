@@ -20,8 +20,6 @@ NAMESPACE=korrel8r
 IMG?=$(REGISTRY_BASE)/korrel8r
 IMAGE=$(IMG):$(VERSION)
 
-include .bingo/Variables.mk	# Versioned tools
-
 BIN ?= _bin
 export PATH := $(abspath $(BIN)):$(PATH)
 export GOCOVERDIR := $(abspath _cover)
@@ -55,18 +53,18 @@ $(VERSION_TXT):
 $(BIN):
 	mkdir -p $(BIN)
 
-$(GEN_OPENAPI_GO): $(OPENAPI_SPEC) $(OAPI_CODEGEN)
-	$(OAPI_CODEGEN) -generate types,gin,spec -package rest -o $@ $<
+$(GEN_OPENAPI_GO): $(OPENAPI_SPEC)
+	go tool oapi-codegen -generate types,gin,spec -package rest -o $@ $<
 
 SHELLCHECK:= $(BIN)/shellcheck
 $(SHELLCHECK): $(BIN)
 	./hack/install-shellcheck.sh $(BIN) 0.10.0
 
-lint: $(GENERATED) $(GOLANGCI_LINT) $(SHFMT) $(SHELLCHECK) ## Run the linter to find and fix code style problems.
+lint: $(GENERATED) $(SHELLCHECK) ## Run the linter to find and fix code style problems.
 	hack/copyright.sh
 	go mod tidy
-	$(GOLANGCI_LINT) run --fix
-	$(SHFMT) -l -w ./**/*.sh
+	go tool golangci-lint run --fix
+	go tool shfmt -l -w ./**/*.sh
 	$(SHELLCHECK) -x -S style hack/*.sh
 
 .PHONY: test
@@ -88,8 +86,9 @@ cover:  ## Run tests with accumulated coverage stats in _cover.
 	@echo == Aggregate coverage across all tests.
 	go tool covdata percent -i $(GOCOVERDIR)
 
-bench: $(GENERATED)	$(BENCHSTAT)	## Run all benchmarks.
-	go test -fullpath -bench=. -run=NONE ./... > _bench-$(shell date -I).txt ; $(BENCHSTAT) _bench-*.txt
+bench: $(GENERATED)	## Run all benchmarks.
+	go test -fullpath -bench=. -run=NONE ./... > _bench-$(shell date -I).txt
+	go tool benchstat _bench-*.txt
 
 image-build:  $(GENERATED) ## Build image locally, don't push.
 	$(IMGTOOL) build --tag=$(IMAGE) -f Containerfile .
@@ -103,10 +102,10 @@ image-latest: image ## Build and push image with 'latest' alias
 WAIT_DEPLOYMENT=hack/wait.sh rollout $(NAMESPACE) deployment.apps/korrel8r
 DEPLOY_ROUTE=kubectl apply -k config/route -n $(NAMESPACE) || echo "skipping route" # Non-openshift cluster
 
-kustomize-edit: $(KUSTOMIZE)
-	cd config;								\
-	$(KUSTOMIZE) edit set image "$(REGISTRY_BASE)/korrel8r=$(IMAGE)";	\
-	$(KUSTOMIZE) edit set namespace "$(NAMESPACE)"
+kustomize-edit:
+	cd config; \
+	go tool kustomize edit set image "$(REGISTRY_BASE)/korrel8r=$(IMAGE)"; \
+	go tool kustomize edit set namespace "$(NAMESPACE)"
 
 deploy: image ## Deploy to current cluster using kustomize.
 	kubectl apply -k config
@@ -164,10 +163,10 @@ $(KRAMDOC):
 	@mkdir -p $(dir $@)
 	gem install kramdown-asciidoc --user-install --bindir $(BIN)
 
-doc/gen/cmd: $(GENERATED) $(shell find ./cmd/korrel8r) $(KORREL8RCLI) $(KRAMDOC) ## Generated command documentation
+doc/gen/cmd: $(GENERATED) $(shell find ./cmd/korrel8r) $(KRAMDOC) ## Generated command documentation
 	@mkdir -p $@
 	unset KORREL8R_CONFIG; go run ./cmd/korrel8r doc markdown $@
-	$(KORREL8RCLI) doc markdown $@
+	go tool korrel8rcli doc markdown $@
 	hack/md-to-adoc.sh $(KRAMDOC) $@/*.md
 	@touch $@
 
@@ -184,13 +183,8 @@ release:
 	$(MAKE) image-latest
 	@echo Released $(VERSION) to $(REGISTRY_BASE)
 
-BINGO=$(GOBIN)/bingo
-$(BINGO): # Bootstrap bingo
-	go install github.com/bwplotka/bingo@v0.9.0
-
 # Force download of all tools needed for development
-tools: $(BINGO) $(ASCIIDOCTOR) $(KRAMDOC) $(SHELLCHECK)
-	$(BINGO) get
+tools: $(ASCIIDOCTOR) $(KRAMDOC) $(SHELLCHECK)
 
 DEVSPACE_IMAGE?="$(REGISTRY_BASE)/korrel8r:devspace"
 devspace-image:									## Rebuild the devspace base image

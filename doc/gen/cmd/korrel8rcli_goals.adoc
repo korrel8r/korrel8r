@@ -1,27 +1,33 @@
 = korrel8rcli goals
 
-Get graph of nearest goals
+Get graph of goal classes reachable from start
 
 ----
-korrel8rcli goals [FLAGS] [flags]
+korrel8rcli goals CLASS... [flags]
 ----
 
 == Options
 
 ----
-      --class string         Class for serialized start objects
-      --goal stringArray     Goal class, can be multiple.
+  -c, --class string         Class for serialized start objects
   -h, --help                 help for goals
-      --object stringArray   Serialized start object, can be multiple.
-      --query stringArray    Query string for start objects, can be multiple.
-      --rules                Include per-rule information in returned graph.
+      --limit int            Limit total number of results.
+  -O, --object stringArray   Serialized start object, can be multiple.
+  -q, --query stringArray    Query string for start objects, can be multiple.
+      --rules                Include rule information in returned graph.
+      --since duration       Only get results since this long ago.
+      --timeout duration     Timeout for store requests.
+      --until duration       Only get results until this long ago.
 ----
 
 == Options inherited from parent commands
 
 ----
-  -o, --output enum(yaml,json-pretty,json)   Output format (default yaml)
-  -u, --url string                           URL of remote korrel8r service (you can also set the KORREL8R_URL environment variable)
+  -t, --bearer-token string                         Authhorization token, default from env KORREL8RCLI_BEARER_TOKEN or kube config.
+      --debug                                       Enable debug output.
+  -k, --insecure                                    Insecure connection, skip TLS verification.
+  -o, --output enum(yaml,json-pretty,json,ndjson)   Output format (default yaml)
+  -u, --url string                                  URL of remote korrel8r, default from env KORREL8RCLI_URL (default "https://korrel8r-openshift-cluster-observability-operator.apps.snoflake.home")
 ----
 
 == SEE ALSO

@@ -1,23 +1,26 @@
 = korrel8rcli web
 
-Connect to REMOTE-URL and run an HTTP server listening on LISTEN-ADDR (default :8080)
+Connect to remote korrel8r, show graphs in local HTTP server.
 
 ----
-korrel8rcli web REMOTE-URL [LISTEN-ADDR] [flags]
+korrel8rcli web [flags]
 ----
 
 == Options
 
 ----
-  -a, --addr string   Listeing address for web server (default ":8080")
+  -a, --addr string   Listening address for web server (default ":8081")
   -h, --help          help for web
 ----
 
 == Options inherited from parent commands
 
 ----
-  -o, --output enum(yaml,json-pretty,json)   Output format (default yaml)
-  -u, --url string                           URL of remote korrel8r service (you can also set the KORREL8R_URL environment variable)
+  -t, --bearer-token string                         Authhorization token, default from env KORREL8RCLI_BEARER_TOKEN or kube config.
+      --debug                                       Enable debug output.
+  -k, --insecure                                    Insecure connection, skip TLS verification.
+  -o, --output enum(yaml,json-pretty,json,ndjson)   Output format (default yaml)
+  -u, --url string                                  URL of remote korrel8r, default from env KORREL8RCLI_URL (default "https://korrel8r-openshift-cluster-observability-operator.apps.snoflake.home")
 ----
 
 == SEE ALSO
