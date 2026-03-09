@@ -1,15 +1,16 @@
-= korrel8rcli domains
+= korrel8rcli config
 
-Get a list of domains and store configuration
+Change configuration settings on the server
 
 ----
-korrel8rcli domains [flags]
+korrel8rcli config [flags]
 ----
 
 == Options
 
 ----
-  -h, --help   help for domains
+  -h, --help              help for config
+      --set-verbose int   Set verbose level for logging
 ----
 
 == Options inherited from parent commands
