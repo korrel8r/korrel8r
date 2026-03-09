@@ -168,10 +168,8 @@ func (s *Store) Get(ctx context.Context, kquery korrel8r.Query, c *korrel8r.Cons
 	q := url.Values{}
 	selectors, err := query.Selectors()
 	if err != nil {
-		log.V(1).Info("failed to parse query selectors", "error", err, "query", string(query))
 		return err
 	}
-	log.V(2).Info("extracted metric selectors from query", "query", string(query), "selectors", selectors)
 
 	// Extract namespace from selectors for port 9092 requirement
 	// Port 9092 (tenancy port) requires namespace query parameter
@@ -198,11 +196,10 @@ func (s *Store) Get(ctx context.Context, kquery korrel8r.Query, c *korrel8r.Cons
 	}
 	u := baseURL.JoinPath("series")
 	u.RawQuery = q.Encode()
-	log.V(2).Info("querying metric series endpoint", "url", u.String(), "namespaces", namespaces)
+	log.V(5).Info("querying tenancy metric", "query", query, "namespaces", namespaces, "url", u.String())
 	var r response
 	if err := impl.Get(ctx, u, s.Client, &r); err != nil {
-		log.V(1).Info("failed to query metric series", "error", err, "url", u.String())
-		return err
+		return fmt.Errorf("metric tenancy query error: %w", err)
 	}
 	if r.Status != "success" {
 		return fmt.Errorf("GET %v: unexpected status: %v", u, r.Status)

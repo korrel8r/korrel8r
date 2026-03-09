@@ -28,7 +28,7 @@ var (
 	}
 
 	// Global Flags
-	verboseFlag = rootCmd.PersistentFlags().IntP("verbose", "v", 0, "Verbosity for logging (0: notice/error/warn, 1: info, 2: debug, 3: trace-per-request, 4: trace-per-rule, 5: trace-per-query+)")
+	verboseFlag = rootCmd.PersistentFlags().IntP("verbose", "v", 0, "Verbosity for logging (0: notice/error/warn, 1: info/warn, 2: debug, 3: per-request, 4: per-rule, 5: per-query")
 	configFlag  = rootCmd.PersistentFlags().StringP("config", "c", getConfig(), "Configuration file")
 	panicFlag   = rootCmd.PersistentFlags().Bool("panic", false, "Panic on error")
 	// see profile.go for profile flag

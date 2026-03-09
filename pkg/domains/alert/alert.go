@@ -296,11 +296,10 @@ func (s *Store) getRulesWithNamespaceFilter(ctx context.Context, promAPI v1.API,
 	// If no namespaces found in query, return empty result
 	// Port 9093 requires namespace filtering
 	if len(namespaces) == 0 {
-		log.V(2).Info("no namespaces found in alert query, returning empty result")
+		log.V(5).Info("no namespaces found in alert query, returning empty result")
 		return v1.RulesResult{}, nil
 	}
-
-	log.V(2).Info("querying rules API with namespace filter", "namespaces", namespaces)
+	log.V(5).Info("querying rules API with namespace filter", "namespaces", namespaces)
 
 	// Build URL with namespace query parameters
 	// Port 9093 expects: /api/v1/rules?namespace=ns1&namespace=ns2
@@ -320,20 +319,13 @@ func (s *Store) getRulesWithNamespaceFilter(ctx context.Context, promAPI v1.API,
 	// Make HTTP request
 	req, err := http.NewRequestWithContext(ctx, "GET", rulesURL.String(), nil)
 	if err != nil {
-		return v1.RulesResult{}, fmt.Errorf("failed to create rules request: %w", err)
+		return v1.RulesResult{}, fmt.Errorf("alert: GET rules failed: %w: %v", err, rulesURL)
 	}
-
-	log.V(3).Info("executing rules API request", "url", rulesURL.String())
 	resp, err := s.httpClient.Do(req)
 	if err != nil {
-		log.V(1).Info("failed to execute rules request", "error", err, "url", rulesURL.String())
-		return v1.RulesResult{}, fmt.Errorf("failed to execute rules request: %w", err)
+		return v1.RulesResult{}, fmt.Errorf("alert: GET rules failed: %w: %v", err, rulesURL)
 	}
-	defer func() {
-		if closeErr := resp.Body.Close(); closeErr != nil {
-			log.V(1).Info("failed to close response body", "error", closeErr)
-		}
-	}()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		log.V(1).Info("rules request returned non-OK status", "status", resp.StatusCode, "url", rulesURL.String())

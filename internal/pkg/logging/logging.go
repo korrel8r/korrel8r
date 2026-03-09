@@ -1,6 +1,18 @@
 // Copyright: This file is part of korrel8r, released under https://github.com/korrel8r/korrel8r/blob/main/LICENSE
 
 // package logging initializes the root logger and provides some helpers.
+//
+// Log statements should be logged at the correct level to make logs readable for non-developers
+// but also useful for debugging.
+//
+// - 0: Cannot be hidden, only for events that should *always* be seen by a service operator or command line user.
+//   Examples: service startup notice, fatal errors, events requiring human intervention.
+// - 1: Low volume info/warn messages useful to service operator. Don't assume the reader understands the code.
+// - 2: Low-volume debugging - setup, shutdown, occasional state changes.
+// - 3: Per-request debugging - events that occur on every incoming service request.
+// - 4: Per-rule-evaluation debugging - many per request.
+// - 5: Per-query-execution debugging - many per rule evaluation.
+
 package logging
 
 import (
