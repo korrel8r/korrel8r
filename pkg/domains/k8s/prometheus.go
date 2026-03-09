@@ -72,10 +72,10 @@ func GetEffectivePrometheusURL(ctx context.Context, baseURL *url.URL, configured
 	if !hasClusterAccess {
 		// Non-admin user: change port to tenancy port for namespace-scoped access
 		u.Host = ReplacePort(u.Host, tenancyPort)
-		prometheusLog.V(2).Info("using tenancy port for query", "domain", domain, "port", tenancyPort)
+		prometheusLog.V(5).Info("using tenancy port for query", "domain", domain, "port", tenancyPort)
 	} else {
 		// Admin user: keep the configured port (typically 9091)
-		prometheusLog.V(2).Info("using configured port for query", "domain", domain, "port", configuredPort)
+		prometheusLog.V(5).Info("using configured port for query", "domain", domain, "port", configuredPort)
 	}
 
 	return u, nil
