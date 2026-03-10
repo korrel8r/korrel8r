@@ -11,222 +11,283 @@ aliases:
       - Job.batch
       - PodDisruptionBudget.policy
 rules:
-   - name: PodToAlert
-     start:
-       domain: k8s
-       classes: [Pod]
-     goal:
-       domain: alert
-     result:
-       query: |-
-         alert:alert:{"namespace":"{{.metadata.namespace}}","pod":"{{.metadata.name}}"}
+  - name: PodToAlert
+    start:
+      domain: k8s
+      classes: [Pod]
+    goal:
+      domain: alert
+    result:
+      query: |-
+        alert:alert:{"namespace":"{{.metadata.namespace}}","pod":"{{.metadata.name}}"}
 
-   - name: DeploymentToAlert
-     start:
-       domain: k8s
-       classes: [Deployment.apps]
-     goal:
-       domain: alert
-     result:
-       query: |-
-         alert:alert:{"namespace":"{{.metadata.namespace}}","deployment":"{{.metadata.name}}"}
+  - name: DeploymentToAlert
+    start:
+      domain: k8s
+      classes: [Deployment.apps]
+    goal:
+      domain: alert
+    result:
+      query: |-
+        alert:alert:{"namespace":"{{.metadata.namespace}}","deployment":"{{.metadata.name}}"}
 
-   - name: SelectorToPods
-     start:
-       domain: k8s
-       classes: [selectors]
-     goal:
-       domain: k8s
-       classes: [Pod]
-     result:
-       query: |-
-         k8s:Pod:{"namespace": "{{.metadata.namespace}}"
-         {{- with .spec.selector.matchLabels}}, "labels": {{mustToJson . -}}{{end -}} }
+  - name: SelectorToPods
+    start:
+      domain: k8s
+      classes: [selectors]
+    goal:
+      domain: k8s
+      classes: [Pod]
+    result:
+      query: |-
+        k8s:Pod:{"namespace": "{{.metadata.namespace}}"
+        {{- with .spec.selector.matchLabels}}, "labels": {{mustToJson . -}}{{end -}} }
 
-   - name: EventToAll
-     start:
-       domain: k8s
-       classes: [Event.v1]
-     goal:
-       domain: k8s
-     result:
-       query: |-
-         {{- with .involvedObject -}}
-         {{k8sClass .apiVersion .kind}}:{namespace: {{.namespace}}, name: {{.name}}}
-         {{- end -}}
+  - name: EventToAll
+    start:
+      domain: k8s
+      classes: [Event.v1]
+    goal:
+      domain: k8s
+    result:
+      query: |-
+        {{- with .involvedObject -}}
+        {{k8sClass .apiVersion .kind}}:{namespace: {{.namespace}}, name: {{.name}}}
+        {{- end -}}
 
-   - name: Event2ToAll
-     start:
-       domain: k8s
-       classes: [Event.v1.events.k8s.io]
-     goal:
-       domain: k8s
-     result:
-       query: |-
-         {{- with .regarding -}}
-         {{k8sClass .apiVersion .kind}}:{namespace: {{.namespace}}, name: {{.name}}}
-         {{- end -}}
+  - name: Event2ToAll
+    start:
+      domain: k8s
+      classes: [Event.v1.events.k8s.io]
+    goal:
+      domain: k8s
+    result:
+      query: |-
+        {{- with .regarding -}}
+        {{k8sClass .apiVersion .kind}}:{namespace: {{.namespace}}, name: {{.name}}}
+        {{- end -}}
 
-   - name: AllToEvent
-     start:
-       domain: k8s
-     goal:
-       domain: k8s
-       classes: [Event.]
-     result:
-       query: >
-         k8s:Event:{"fields":{
-         "involvedObject.namespace":"{{.metadata.namespace}}",
-         "involvedObject.name": "{{.metadata.name}}",
-         "involvedObject.kind": "{{.kind}}",
-         "involvedObject.apiVersion": "{{.apiVersion}}"
-         } }
+  - name: AllToEvent
+    start:
+      domain: k8s
+    goal:
+      domain: k8s
+      classes: [Event.]
+    result:
+      query: >
+        k8s:Event:{"fields":{
+        "involvedObject.namespace":"{{.metadata.namespace}}",
+        "involvedObject.name": "{{.metadata.name}}",
+        "involvedObject.kind": "{{.kind}}",
+        "involvedObject.apiVersion": "{{.apiVersion}}"
+        } }
 
-   - name: AllToMetric
-     start:
-       domain: k8s
-     goal:
-       domain: metric
-     result:
-       query: |-
-         metric:metric:{namespace="{{.metadata.namespace}}",{{lower .kind}}="{{.metadata.name}}"}
+  - name: AllToMetric
+    start:
+      domain: k8s
+    goal:
+      domain: metric
+    result:
+      query: |-
+        metric:metric:{namespace="{{.metadata.namespace}}",{{lower .kind}}="{{.metadata.name}}"}
 
-   - name: DependentToOwner
-     start:
-       domain: k8s
-     goal:
-       domain: k8s
-     result:
-       query: |-
-         {{- with index .metadata "ownerReferences"}}
-           {{- with first . -}}
-             {{$class := k8sClass .apiVersion .kind -}}
-             {{$class}}:{
-               {{- if k8sIsNamespaced $class}}"namespace":"{{$.metadata.namespace}}",{{- end -}}
-             "name":"{{.name}}"}
-           {{- end}}
-         {{end -}}
+  - name: DependentToOwner
+    start:
+      domain: k8s
+    goal:
+      domain: k8s
+    result:
+      query: |-
+        {{- with index .metadata "ownerReferences"}}
+          {{- with first . -}}
+            {{$class := k8sClass .apiVersion .kind -}}
+            {{$class}}:{
+              {{- if k8sIsNamespaced $class}}"namespace":"{{$.metadata.namespace}}",{{- end -}}
+            "name":"{{.name}}"}
+          {{- end}}
+        {{end -}}
 
-   - name: PodToNode
-     start:
-       domain: k8s
-       classes: [Pod]
-     goal:
-       domain: k8s
-       classes: [Node]
-     result:
-       query: |-
-         k8s:Node:{"name":"{{.spec.nodeName}}"}
+  - name: NodeToPod
+    start:
+      domain: k8s
+      classes: [Node]
+    goal:
+      domain: k8s
+      classes: [Pod]
+    result:
+      query: |-
+        k8s:Pod:{"fields":{"spec.nodeName":"{{.metadata.name}}"}}
 
-   - name: VmiToNode
-     start:
-       domain: k8s
-       classes: [VirtualMachineInstance.kubevirt.io]
-     goal:
-       domain: k8s
-       classes: [Node]
-     result:
-       query: |-
-         k8s:Node:{"name":"{{.status.nodeName}}"}
+  - name: NodeToResourceSlice
+    start:
+      domain: k8s
+      classes: [Node]
+    goal:
+      domain: k8s
+      classes: [ResourceSlice.resource.k8s.io]
+    result:
+      query: |-
+        k8s:ResourceSlice.resource.k8s.io:{"fields":{"spec.nodeName":"{{.metadata.name}}"}}
 
-   - name: VmToPVC
-     start:
-       domain: k8s
-       classes: [VirtualMachine.kubevirt.io]
-     goal:
-       domain: k8s
-       classes: [PersistentVolumeClaim]
-     result:
-       query: |-
-         {{- range .spec.dataVolumeTemplates }}
-         k8s:PersistentVolumeClaim:{"namespace":"{{$.metadata.namespace}}","name":"{{.metadata.name}}"}
-         {{- end }}
+  - name: PodToNode
+    start:
+      domain: k8s
+      classes: [Pod]
+    goal:
+      domain: k8s
+      classes: [Node]
+    result:
+      query: |-
+        k8s:Node:{"name":"{{.spec.nodeName}}"}
 
-   - name: PVCToPV
-     start:
-       domain: k8s
-       classes: [PersistentVolumeClaim]
-     goal:
-       domain: k8s
-       classes: [PersistentVolume]
-     result:
-       query: |-
-         k8s:PersistentVolume:{"name":"{{.spec.volumeName}}"}
+  - name: VmiToNode
+    start:
+      domain: k8s
+      classes: [VirtualMachineInstance.kubevirt.io]
+    goal:
+      domain: k8s
+      classes: [Node]
+    result:
+      query: |-
+        k8s:Node:{"name":"{{.status.nodeName}}"}
 
-   - name: PVToStorageClass
-     start:
-       domain: k8s
-       classes: [PersistentVolume]
-     goal:
-       domain: k8s
-       classes: [StorageClass.storage.k8s.io]
-     result:
-       query: |-
-         k8s:StorageClass.storage.k8s.io:{"name":"{{.spec.storageClassName}}"}
+  - name: VolumeAttachmentToNode
+    start:
+      domain: k8s
+      classes: [VolumeAttachment.storage.k8s.io]
+    goal:
+      domain: k8s
+      classes: [Node]
+    result:
+      query: |-
+        k8s:Node:{"name":"{{.spec.nodeName}}"}
 
-   - name: PVCToStorageClass
-     start:
-       domain: k8s
-       classes: [PersistentVolumeClaim]
-     goal:
-       domain: k8s
-       classes: [StorageClass.storage.k8s.io]
-     result:
-       query: |-
-         k8s:StorageClass.storage.k8s.io:{"name":"{{.spec.storageClassName}}"}
+  - name: EndpointSliceToNode
+    start:
+      domain: k8s
+      classes: [EndpointSlice.discovery.k8s.io]
+    goal:
+      domain: k8s
+      classes: [Node]
+    result:
+      query: |-
+        {{- range .endpoints}}
+        {{- with .nodeName}}
+        k8s:Node:{"name":"{{.}}"}
+        {{- end}}
+        {{- end}}
 
-   - name: VmToVmi
-     start:
-       domain: k8s
-       classes: [VirtualMachine.kubevirt.io]
-     goal:
-       domain: k8s
-       classes: [VirtualMachineInstance.kubevirt.io]
-     result:
-       query: |-
-         k8s:VirtualMachineInstance.kubevirt.io:{"namespace":"{{.metadata.namespace}}","name":"{{.metadata.name}}"}
+  - name: ResourceSliceToNode
+    start:
+      domain: k8s
+      classes: [ResourceSlice.resource.k8s.io]
+    goal:
+      domain: k8s
+      classes: [Node]
+    result:
+      query: |-
+        {{- with .spec.nodeName}}
+        k8s:Node:{"name":"{{.}}"}
+        {{- end}}
 
-   - name: VmiToPod
-     start:
-       domain: k8s
-       classes: [VirtualMachineInstance.kubevirt.io]
-     goal:
-       domain: k8s
-       classes: [Pod]
-     result:
-       query: |-
-         k8s:Pod:{"namespace":"{{.metadata.namespace}}","labels":{"vm.kubevirt.io/name":"{{.metadata.name}}","kubevirt.io":"virt-launcher"}}
+  - name: VmToPVC
+    start:
+      domain: k8s
+      classes: [VirtualMachine.kubevirt.io]
+    goal:
+      domain: k8s
+      classes: [PersistentVolumeClaim]
+    result:
+      query: |-
+        {{- range .spec.dataVolumeTemplates }}
+        k8s:PersistentVolumeClaim:{"namespace":"{{$.metadata.namespace}}","name":"{{.metadata.name}}"}
+        {{- end }}
 
-   - name: SubscriptionToCSV
-     start:
-       domain: k8s
-       classes: [Subscription.v1alpha1.operators.coreos.com]
-     goal:
-       domain: k8s
-       classes: [ClusterServiceVersion.v1alpha1.operators.coreos.com]
-     result:
-       query: |-
-         k8s:ClusterServiceVersion.v1alpha1.operators.coreos.com:{"name":"{{index .status "currentCSV"}}"}
+  - name: PVCToPV
+    start:
+      domain: k8s
+      classes: [PersistentVolumeClaim]
+    goal:
+      domain: k8s
+      classes: [PersistentVolume]
+    result:
+      query: |-
+        k8s:PersistentVolume:{"name":"{{.spec.volumeName}}"}
 
-   - name: CSVToCRD
-     start:
-       domain: k8s
-       classes: [ClusterServiceVersion.v1alpha1.operators.coreos.com]
-     goal:
-       domain: k8s
-       classes: [CustomResourceDefinition.v1.apiextensions.k8s.io]
-     result:
-       query: |-
-         {{- range .spec.customresourcedefinitions.owned }}
-         k8s:CustomResourceDefinition.apiextensions.k8s.io:{"name":"{{ .name }}"}
-         {{- end }}
+  - name: PVToStorageClass
+    start:
+      domain: k8s
+      classes: [PersistentVolume]
+    goal:
+      domain: k8s
+      classes: [StorageClass.storage.k8s.io]
+    result:
+      query: |-
+        k8s:StorageClass.storage.k8s.io:{"name":"{{.spec.storageClassName}}"}
 
-   - name: CRDToInstances
-     start:
-       domain: k8s
-       classes: [CustomResourceDefinition.apiextensions.k8s.io]
-     goal:
-       domain: k8s
-     result:
-       query: |-
-         k8s:{{.spec.names.kind}}.{{(index .spec.versions 0).name}}.{{.spec.group}}:{}
+  - name: PVCToStorageClass
+    start:
+      domain: k8s
+      classes: [PersistentVolumeClaim]
+    goal:
+      domain: k8s
+      classes: [StorageClass.storage.k8s.io]
+    result:
+      query: |-
+        k8s:StorageClass.storage.k8s.io:{"name":"{{.spec.storageClassName}}"}
+
+  - name: VmToVmi
+    start:
+      domain: k8s
+      classes: [VirtualMachine.kubevirt.io]
+    goal:
+      domain: k8s
+      classes: [VirtualMachineInstance.kubevirt.io]
+    result:
+      query: |-
+        k8s:VirtualMachineInstance.kubevirt.io:{"namespace":"{{.metadata.namespace}}","name":"{{.metadata.name}}"}
+
+  - name: VmiToPod
+    start:
+      domain: k8s
+      classes: [VirtualMachineInstance.kubevirt.io]
+    goal:
+      domain: k8s
+      classes: [Pod]
+    result:
+      query: |-
+        k8s:Pod:{"namespace":"{{.metadata.namespace}}","labels":{"vm.kubevirt.io/name":"{{.metadata.name}}","kubevirt.io":"virt-launcher"}}
+
+  - name: SubscriptionToCSV
+    start:
+      domain: k8s
+      classes: [Subscription.v1alpha1.operators.coreos.com]
+    goal:
+      domain: k8s
+      classes: [ClusterServiceVersion.v1alpha1.operators.coreos.com]
+    result:
+      query: |-
+        k8s:ClusterServiceVersion.v1alpha1.operators.coreos.com:{"name":"{{index .status "currentCSV"}}"}
+
+  - name: CSVToCRD
+    start:
+      domain: k8s
+      classes: [ClusterServiceVersion.v1alpha1.operators.coreos.com]
+    goal:
+      domain: k8s
+      classes: [CustomResourceDefinition.v1.apiextensions.k8s.io]
+    result:
+      query: |-
+        {{- range .spec.customresourcedefinitions.owned }}
+        k8s:CustomResourceDefinition.apiextensions.k8s.io:{"name":"{{ .name }}"}
+        {{- end }}
+
+  - name: CRDToInstances
+    start:
+      domain: k8s
+      classes: [CustomResourceDefinition.apiextensions.k8s.io]
+    goal:
+      domain: k8s
+    result:
+      query: |-
+        k8s:{{.spec.names.kind}}.{{(index .spec.versions 0).name}}.{{.spec.group}}:{}
