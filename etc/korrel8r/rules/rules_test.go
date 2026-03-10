@@ -58,6 +58,18 @@ var customResourcesForTests = []*metav1.APIResourceList{
 			{Kind: "Node", Namespaced: false},
 		},
 	},
+	{
+		GroupVersion: "discovery.k8s.io/v1",
+		APIResources: []metav1.APIResource{
+			{Kind: "EndpointSlice", Namespaced: true},
+		},
+	},
+	{
+		GroupVersion: "resource.k8s.io/v1",
+		APIResources: []metav1.APIResource{
+			{Kind: "ResourceSlice", Namespaced: false},
+		},
+	},
 }
 
 // setup an engine, add customResources to the k8s domain.

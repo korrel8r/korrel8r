@@ -76,3 +76,4 @@ Available in rule queries:
 - [User Guide - Configuration](https://korrel8r.github.io/korrel8r/#_configuration) - Full rule documentation
 - [AGENTS.md](../../../AGENTS.md) - Developer guide
 - [.claude/commands/](../../../.claude/commands/) - Custom Claude Code commands for rule generation
+- [K8s field selector support](../../../doc/field-selectors.adoc)

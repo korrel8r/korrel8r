@@ -157,6 +157,47 @@ func TestK8sRules(t *testing.T) {
 			want:  []string{`k8s:Pod.v1:{"namespace":"vm-ns","labels":{"kubevirt.io":"virt-launcher","vm.kubevirt.io/name":"vm-name"}}`},
 		},
 		{
+			rule:  "NodeToPod",
+			start: newK8s("Node", "", "worker-1", nil),
+			want:  []string{`k8s:Pod.v1:{"fields":{"spec.nodeName":"worker-1"}}`},
+		},
+		{
+			rule: "VolumeAttachmentToNode",
+			start: newK8s("VolumeAttachment.storage.k8s.io", "", "va-1", k8s.Object{
+				"spec": k8s.Object{
+					"nodeName": "worker-1",
+				},
+			}),
+			want: []string{`k8s:Node.v1:{"name":"worker-1"}`},
+		},
+		{
+			rule:  "NodeToResourceSlice",
+			start: newK8s("Node", "", "worker-1", nil),
+			want:  []string{`k8s:ResourceSlice.v1.resource.k8s.io:{"fields":{"spec.nodeName":"worker-1"}}`},
+		},
+		{
+			rule: "EndpointSliceToNode",
+			start: newK8s("EndpointSlice.discovery.k8s.io", "ns", "eps-1", k8s.Object{
+				"endpoints": []k8s.Object{
+					{"nodeName": "worker-1"},
+					{"nodeName": "worker-2"},
+				},
+			}),
+			want: []string{
+				`k8s:Node.v1:{"name":"worker-1"}`,
+				`k8s:Node.v1:{"name":"worker-2"}`,
+			},
+		},
+		{
+			rule: "ResourceSliceToNode",
+			start: newK8s("ResourceSlice.resource.k8s.io", "", "rs-1", k8s.Object{
+				"spec": k8s.Object{
+					"nodeName": "worker-1",
+				},
+			}),
+			want: []string{`k8s:Node.v1:{"name":"worker-1"}`},
+		},
+		{
 			rule: "CSVToCRD",
 			start: newK8s("ClusterServiceVersion.operators.coreos.com", "operators", "test-operator.v0.1.0", k8s.Object{
 				"spec": k8s.Object{
