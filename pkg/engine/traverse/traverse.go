@@ -21,7 +21,9 @@ func Goals(ctx context.Context, e *engine.Engine, start Start, goals []korrel8r.
 	if err != nil {
 		return nil, err
 	}
-	return newTraverser(e, g, start.Constraint).run(ctx, start, -1)
+	g, err = newTraverser(e, g, start.Constraint).run(ctx, start, -1)
+	g.RemoveEmptyGoalPaths(goals)
+	return g, err
 }
 
 // Neighbors traverses to all neighbors of the start objects, traversing links up to the given depth.
