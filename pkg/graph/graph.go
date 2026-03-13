@@ -156,7 +156,7 @@ func (g *Graph) DOTAttributers() (graph, node, edge encoding.Attributer) {
 	return g.GraphAttrs, g.NodeAttrs, g.EdgeAttrs
 }
 
-// GoalPaths returns a new sub-graph containing only nodes on a path to the goal class.
+// GoalPaths returns a new rules sub-graph of nodes on a path to the goal class.
 // Includes k-shortest paths with cost <= shortest+1.
 func (g *Graph) GoalPaths(start korrel8r.Class, goals []korrel8r.Class) (*Graph, error) {
 	u, err := g.NodeForErr(start)
@@ -230,6 +230,30 @@ func (g *Graph) RemoveEmpty() {
 	})
 	g.EachNode(func(n *Node) {
 		if len(n.Result.List()) == 0 {
+			g.RemoveNode(n.ID())
+		}
+	})
+}
+
+// RemoveEmptyGoalPaths removes nodes not connected to a non-empty goal.
+func (g *Graph) RemoveEmptyGoalPaths(goals []korrel8r.Class) {
+	// Get non-empty goal node IDs
+	var goalIDs []int64
+	for _, c := range goals {
+		n := g.NodeFor(c)
+		if n != nil && !n.Empty() {
+			goalIDs = append(goalIDs, n.ID())
+		}
+	}
+	// Remove  nodes not connected to one of goalIDs
+	paths := path.DijkstraAllPaths(g)
+	g.EachNode(func(n *Node) {
+		var connected bool
+		for _, goalID := range goalIDs {
+			p, _, _ := paths.Between(n.ID(), goalID)
+			connected = connected || p != nil
+		}
+		if !connected {
 			g.RemoveNode(n.ID())
 		}
 	})
