@@ -43,6 +43,45 @@ paths:
         "200":
           description: OK
 
+  /stores/{domain}:
+    put:
+      summary: Replace store configuration for a domain at runtime.
+      description: >
+        Replaces all existing stores for the specified domain with a new store configuration.
+        This allows dynamic switching between different store instances (e.g., different trace tenants).
+      operationId: replaceStore
+      tags: [configure]
+      parameters:
+        - name: domain
+          in: path
+          required: true
+          description: Name of the domain to replace stores for
+          schema:
+            type: string
+          example: trace
+      requestBody:
+        description: New store configuration
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Store'
+      responses:
+        "200":
+          description: Store replaced successfully
+        "400":
+          description: Invalid store configuration
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        "404":
+          description: Domain not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
   /domains:
     get:
       summary: Get the list of correlation domains.

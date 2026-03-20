@@ -151,6 +151,23 @@ func (a *API) SetConfig(c *gin.Context, params SetConfigParams) {
 	c.JSON(http.StatusOK, params)
 }
 
+func (a *API) ReplaceStore(c *gin.Context, domain string) {
+	var store Store
+	if !check(c, http.StatusBadRequest, c.BindJSON(&store)) {
+		return
+	}
+
+	// Ensure domain matches the path parameter
+	store[config.StoreKeyDomain] = domain
+
+	if !check(c, http.StatusBadRequest, a.Engine.ReplaceStore(config.Store(store))) {
+		return
+	}
+
+	log.V(1).Info("Store replaced", "domain", domain, "config", store)
+	c.JSON(http.StatusOK, gin.H{"status": "store replaced", "domain": domain})
+}
+
 // goals is shared between GraphGoals and ListGoals
 func (a *API) goals(c *gin.Context) (*graph.Graph, []korrel8r.Class) {
 	e := a.Engine
