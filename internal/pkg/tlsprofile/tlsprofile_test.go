@@ -49,6 +49,30 @@ func TestParseCipherSuites(t *testing.T) {
 		}, got)
 	})
 
+	t.Run("openssl_names", func(t *testing.T) {
+		got, err := ParseCipherSuites([]string{
+			"ECDHE-RSA-AES128-GCM-SHA256",
+			"ECDHE-RSA-AES256-GCM-SHA384",
+		})
+		require.NoError(t, err)
+		assert.Equal(t, []uint16{
+			tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
+			tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
+		}, got)
+	})
+
+	t.Run("mixed_names", func(t *testing.T) {
+		got, err := ParseCipherSuites([]string{
+			"TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256",
+			"ECDHE-RSA-AES256-GCM-SHA384",
+		})
+		require.NoError(t, err)
+		assert.Equal(t, []uint16{
+			tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
+			tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
+		}, got)
+	})
+
 	t.Run("empty", func(t *testing.T) {
 		got, err := ParseCipherSuites(nil)
 		require.NoError(t, err)
@@ -66,6 +90,18 @@ func TestParseCurves(t *testing.T) {
 		got, err := ParseCurves([]string{"CurveP256", "X25519"})
 		require.NoError(t, err)
 		assert.Equal(t, []tls.CurveID{tls.CurveP256, tls.X25519}, got)
+	})
+
+	t.Run("openssl_names", func(t *testing.T) {
+		got, err := ParseCurves([]string{"prime256v1", "secp384r1", "secp521r1"})
+		require.NoError(t, err)
+		assert.Equal(t, []tls.CurveID{tls.CurveP256, tls.CurveP384, tls.CurveP521}, got)
+	})
+
+	t.Run("mixed_names", func(t *testing.T) {
+		got, err := ParseCurves([]string{"CurveP256", "secp384r1", "X25519"})
+		require.NoError(t, err)
+		assert.Equal(t, []tls.CurveID{tls.CurveP256, tls.CurveP384, tls.X25519}, got)
 	})
 
 	t.Run("all", func(t *testing.T) {
