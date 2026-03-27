@@ -7,6 +7,7 @@ stores:
   - domain: alert
     metrics: https://thanos-querier.openshift-monitoring.svc:9091
     alertmanager: https://alertmanager-main.openshift-monitoring.svc:9094
+    lokiRuler: https://logging-loki-gateway-http.openshift-logging.svc:8080
     certificateAuthority: /var/run/secrets/kubernetes.io/serviceaccount/service-ca.crt
 
   - domain: log
