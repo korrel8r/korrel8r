@@ -7,6 +7,7 @@ stores:
   - domain: alert
     metrics: 'https://{{k8sRouteHost "openshift-monitoring" "thanos-querier"}}'
     alertmanager: 'https://{{k8sRouteHost "openshift-monitoring" "alertmanager-main"}}'
+    lokiRuler: 'https://{{k8sRouteHost "openshift-logging" "logging-loki"}}'
 
   - domain: log
     lokiStack: 'https://{{k8sRouteHost "openshift-logging" "logging-loki"}}'
