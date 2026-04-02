@@ -18,8 +18,8 @@ korrel8r web [flags]
       --mcpSSE                      Enable MCP Server-Sent Events protocol server on /mcp/sse (default true)
       --rest                        Enable HTTP REST server on /api/v1alpha1 (default true)
       --spec string                 Write OpenAPI specification to a file, '-' for stdout.
-      --tls-cipher-suites strings   Comma-separated list of TLS cipher suites for https (IANA names)
-      --tls-curves strings          Comma-separated list of TLS curves for https (e.g. CurveP256, CurveP384, CurveP521, X25519)
+      --tls-cipher-suites strings   Comma-separated list of TLS cipher suites for https (IANA or OpenSSL names)
+      --tls-curves strings          Comma-separated list of TLS curves for https (Go or OpenSSL names, e.g. CurveP256/prime256v1, X25519)
       --tls-min-version string      Minimum TLS version for https (e.g. VersionTLS12, VersionTLS13)
 ----
 
