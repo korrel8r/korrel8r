@@ -18,7 +18,7 @@ tags:
   - name: console
     description: >
       Korrel8r can act as a bridge between a GUI console and an AI agent.
-      The agent uses Korrel8r's MCP API to discover what is displayed in the conosle,
+      The agent uses Korrel8r's MCP API to discover what is displayed in the console,
       and to send new data to update what is displayed.
       The console uses the /console REST APIs to provide information about the current display,
       and to accept updates from the agent to change the display.
@@ -621,4 +621,3 @@ components:
           errors:
             description: if true include non-fatal error messages.
             type: boolean
-
