@@ -139,6 +139,7 @@ func (s *storeHolder) ensure() (korrel8r.Store, error) {
 
 // storeHolders contains multiple store wrappers storeHolders and iterates over them in Get.
 type storeHolders struct {
+	sync.RWMutex
 	domain korrel8r.Domain
 	stores []*storeHolder
 }
@@ -153,6 +154,8 @@ func newStoreHolders(d korrel8r.Domain) *storeHolders {
 func (ss *storeHolders) Domain() korrel8r.Domain { return ss.domain }
 
 func (ss *storeHolders) Add(newStore *storeHolder) {
+	ss.Lock()
+	defer ss.Unlock()
 	// Check for duplicate configuration
 	if newStore.Original != nil && slices.ContainsFunc(ss.stores,
 		func(s *storeHolder) bool { return reflect.DeepEqual(s.Original, newStore.Original) }) {
@@ -161,10 +164,30 @@ func (ss *storeHolders) Add(newStore *storeHolder) {
 	ss.stores = append(ss.stores, newStore)
 }
 
+// Replace removes all existing stores for this domain and adds the new one.
+func (ss *storeHolders) Replace(newStore *storeHolder) {
+	ss.Lock()
+	defer ss.Unlock()
+
+	// Close all existing stores if they implement io.Closer
+	for _, s := range ss.stores {
+		if c, ok := s.Store.(io.Closer); ok && s.Store != nil {
+			_ = c.Close()
+		}
+	}
+
+	// Replace with new store
+	ss.stores = []*storeHolder{newStore}
+}
+
 func (ss *storeHolders) Get(ctx context.Context, q korrel8r.Query, constraint *korrel8r.Constraint, result korrel8r.Appender) error {
+	ss.RLock()
+	stores := slices.Clone(ss.stores) // Get snapshot under read lock
+	ss.RUnlock()
+
 	errs := unique.NewList[string]()
 	ok := false
-	for _, s := range ss.stores {
+	for _, s := range stores {
 		// Iterate over stores and accumulate all results.
 		err := s.Get(ctx, q, constraint, result)
 		if err != nil {
