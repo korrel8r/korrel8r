@@ -2,35 +2,7 @@
 
 // Package alert provides Prometheus alerts, queries and access to Thanos and AlertManager stores.
 //
-// # Class
-//
-// There is a single class `alert:alert`.
-//
-// # Object
-//
-// An alert object is represented by this Go type.
-// Rules starting from an alert should use the capitalized Go field names rather than the lowercase JSON names.
-// [Object]
-//
-// # Query
-//
-// A JSON map of string names to string values, matched against alert labels, for example:
-//
-//	alert:alert:{"alertname":"KubeStatefulSetReplicasMismatch","container":"kube-rbac-proxy-main","namespace":"openshift-logging"}
-//
-// To query mutiple alerts at the same time, it's possible to provide an array of maps:
-//
-//	alert:alert:[{"alertname":"alert1"},{"alertname":"alert2"}]
-//
-// # Store
-//
-// A client of Prometheus and/or AlertManager. Store configuration:
-//
-//	domain: alert
-//	metrics: PROMETHEUS_URL
-//	alertmanager: ALERTMANAGER_URL
-//
-// Either or both of `metrics` or `alertmanager` may be present.
+// See [Description] for details.
 package alert
 
 import (
@@ -67,7 +39,9 @@ var (
 	_ korrel8r.Object = &Object{}
 )
 
-var Domain = domain{Domain: impl.NewDomain("alert", "Alerts that metric values are out of bounds.", Class{})}
+const summary = "Alerts that metric values are out of bounds."
+
+var Domain = domain{Domain: impl.NewDomain("alert", summary, Description, Class{})}
 
 type domain struct{ *impl.Domain }
 

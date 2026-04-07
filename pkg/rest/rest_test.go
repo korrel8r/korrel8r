@@ -310,5 +310,5 @@ func TestTraverseStart_errors(t *testing.T) {
 
 	// Mismatched query classes
 	_, err = TraverseStart(e, Start{Queries: []string{"mock:a:x", "mock:b:y"}})
-	assert.ErrorContains(t, err, "mismatch")
+	assert.ErrorContains(t, err, "expected class mock:a in query mock:b:y")
 }

@@ -36,12 +36,14 @@ func TestListTools(t *testing.T) {
 		names = append(names, tool.Name)
 	}
 	assert.ElementsMatch(t, names,
-		[]string{CreateNeighborsGraph,
-			CreateGoalsGraph,
-			ListDomainClasses,
-			ListDomains,
+		[]string{
 			GetConsole,
-			ShowInConsole})
+			ShowInConsole,
+			CreateNeighborsGraph,
+			CreateGoalsGraph,
+			GetDomainDoc,
+			ListDomainClasses,
+			ListDomains})
 }
 
 func TestListDomains(t *testing.T) {
@@ -189,6 +191,24 @@ func newAPIAndClient(t *testing.T, e *engine.Engine) (*rest.API, *gin.Engine, *m
 	return api, router, cs
 }
 
+func TestListToolsWithAPI(t *testing.T) {
+	_, _, cs := newAPIAndClient(t, newEngine(t))
+	tools, err := cs.ListTools(context.Background(), &mcp.ListToolsParams{})
+	require.NoError(t, err)
+	var names []string
+	for _, tool := range tools.Tools {
+		names = append(names, tool.Name)
+	}
+	assert.ElementsMatch(t, names,
+		[]string{CreateNeighborsGraph,
+			CreateGoalsGraph,
+			GetDomainDoc,
+			ListDomainClasses,
+			ListDomains,
+			GetConsole,
+			ShowInConsole})
+}
+
 func TestSetConsoleToGetConsole(t *testing.T) {
 	_, router, cs := newAPIAndClient(t, newEngine(t))
 
@@ -209,14 +229,14 @@ func TestSetConsoleToGetConsole(t *testing.T) {
 	assert.Equal(t, "mock:a:x", got["view"])
 }
 
-func TestConsoleShowInConsoleToSSE(t *testing.T) {
+func TestShowInConsoleToSSE(t *testing.T) {
 	_, router, cs := newAPIAndClient(t, newEngine(t))
 	srv := httptest.NewServer(router)
 
 	// Connect to SSE endpoint
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
-	req, err := http.NewRequestWithContext(ctx, "GET", srv.URL+"/api/v1alpha1/console/updates", nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", srv.URL+"/api/v1alpha1/console/events", nil)
 	require.NoError(t, err)
 	resp, err := http.DefaultClient.Do(req)
 	require.NoError(t, err)
@@ -450,7 +470,7 @@ func TestMultiSession_SSEIsolation(t *testing.T) {
 	// Connect two SSE clients with different auth tokens.
 	connectSSE := func(token string) (<-chan string, context.CancelFunc) {
 		ctx, cancel := context.WithCancel(t.Context())
-		req, err := http.NewRequestWithContext(ctx, "GET", srv.URL+"/api/v1alpha1/console/updates", nil)
+		req, err := http.NewRequestWithContext(ctx, "GET", srv.URL+"/api/v1alpha1/console/events", nil)
 		require.NoError(t, err)
 		req.Header.Set("Authorization", token)
 		resp, err := http.DefaultClient.Do(req)
@@ -487,7 +507,7 @@ func TestMultiSession_SSEIsolation(t *testing.T) {
 	select {
 	case data := <-eventsA:
 		var c rest.Console
-		require.NoError(t, json.Unmarshal([]byte(data), &c))
+		require.NoError(t, json.Unmarshal([]byte(data), &c), "data: %v", data)
 		assert.Equal(t, "update-for-A", c.View)
 	case <-time.After(2 * time.Second):
 		t.Fatal("timed out waiting for SSE update on session A")

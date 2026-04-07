@@ -25,8 +25,8 @@ import (
 type Domain interface {
 	// Name of the domain. Domain names must not contain the character ':'.
 	Name() string
-	// Description for human-readable documentation.
-	Description() string
+	// Description returns a short summary and detailed documentation for the domain.
+	Description() (summary, detail string)
 	// Class finds a class by name, returns nil if there is no such class.
 	Class(string) Class
 	// Classes returns all known classes.

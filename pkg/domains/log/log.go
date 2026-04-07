@@ -1,6 +1,8 @@
 // Copyright: This file is part of korrel8r, released under https://github.com/korrel8r/korrel8r/blob/main/LICENSE
 
-// Package log is a korrel8r domain for logs.
+// Package log is a korrel8r domain for logs stored in LokiStack, Loki, or retrieved from the Kubernetes API server.
+//
+// See [Description] for details.
 package log
 
 import (
@@ -27,7 +29,7 @@ var (
 )
 
 var Domain = &domain{
-	impl.NewDomain("log", "Records from container and node logs.", Application, Infrastructure, Audit),
+	impl.NewDomain("log", "Records from container and node logs.", Description, Application, Infrastructure, Audit),
 }
 
 type domain struct{ *impl.Domain }
@@ -124,7 +126,7 @@ func (o Object) SortTime() (time.Time, error) {
 	return ts, err
 }
 
-// ParseTime parses a timestamp in RFC3999 or Unix nanosecond format.
+// ParseTime parses a timestamp in RFC3339 or Unix nanosecond format.
 func ParseTime(ts string) (time.Time, error) {
 	tt, err := time.Parse(time.RFC3339Nano, ts)
 	if err == nil {

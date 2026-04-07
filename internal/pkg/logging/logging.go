@@ -16,6 +16,8 @@
 package logging
 
 import (
+	"encoding/json"
+	"fmt"
 	"io"
 	"log"
 	"os"
@@ -67,6 +69,26 @@ func Init(verbosity *int) {
 		*verbosity, _ = strconv.Atoi(os.Getenv(verboseEnv))
 	}
 	SetVerbose(*verbosity)
+}
+
+// JSON wraps a value so it is logged as plain JSON rather than Go's default formatting.
+// Implements logr.Marshaler: marshalling is deferred until the log line is actually emitted.
+// The value is marshalled to JSON then unmarshalled to generic types (map/slice/string/number),
+// which funcr (used by stdr) formats as unquoted JSON-structured output with correct field names.
+func JSON(v any) logr.Marshaler { return jsonValue{v} }
+
+type jsonValue struct{ v any }
+
+func (j jsonValue) MarshalLog() any {
+	b, err := json.Marshal(j.v)
+	if err != nil {
+		return fmt.Sprintf(`{"error":%q}`, err)
+	}
+	var generic any
+	if err := json.Unmarshal(b, &generic); err != nil {
+		return string(b)
+	}
+	return generic
 }
 
 // SetVerbose sets the logging verbosity for the entire process.

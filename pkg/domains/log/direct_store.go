@@ -144,7 +144,7 @@ func (s *directStore) readPodLogs(ctx context.Context, stream io.ReadCloser, out
 		if msg != "" {
 			if timestamp, terr := time.Parse(time.RFC3339Nano, ts); terr == nil {
 				o[AttrBody] = msg
-				o[AttrObservedTimestamp] = ts // Already in RFC3999 format
+				o[AttrObservedTimestamp] = ts // Already in RFC3339 format
 				n := constraint.CompareTime(timestamp)
 				if n < 0 { // Before time range, ignore this line
 					continue

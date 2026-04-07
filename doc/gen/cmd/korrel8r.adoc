@@ -15,6 +15,7 @@ REST service to correlate observability data
 
 == SEE ALSO
 
+* xref:korrel8r_describe.adoc[korrel8r describe]	 - Documentation for DOMAIN or for all domains.
 * xref:korrel8r_goals.adoc[korrel8r goals]	 - Execute QUERY, find all paths to GOAL classes.
 * xref:korrel8r_list.adoc[korrel8r list]	 - List domains or classes in DOMAIN.
 * xref:korrel8r_mcp.adoc[korrel8r mcp]	 - MCP stdio server

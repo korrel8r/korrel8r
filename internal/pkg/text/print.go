@@ -27,7 +27,8 @@ func (e *Printer) ListDomains(w io.Writer) {
 	tw := tabwriter.NewWriter(w, 0, 0, 2, ' ', 0)
 	defer func() { _ = tw.Flush() }()
 	for _, d := range e.Domains() {
-		fmt.Fprintf(tw, "%v\t%v", d.Name(), d.Description())
+		summary, _ := d.Description()
+		fmt.Fprintf(tw, "%v\t%v", d.Name(), summary)
 		fmt.Fprintln(tw)
 	}
 }
@@ -37,6 +38,18 @@ func (p *Printer) ListClasses(w io.Writer, d korrel8r.Domain) {
 	for _, c := range classes {
 		fmt.Fprintln(w, c.Name())
 	}
+}
+
+func (e *Printer) DescribeDomains(w io.Writer) {
+	for _, d := range e.Domains() {
+		e.DescribeDomain(w, d)
+	}
+}
+
+func (e *Printer) DescribeDomain(w io.Writer, d korrel8r.Domain) {
+	_, detail := d.Description()
+	fmt.Fprintln(w, detail)
+	fmt.Fprintln(w)
 }
 
 func (p *Printer) Error(w io.Writer, err error) {

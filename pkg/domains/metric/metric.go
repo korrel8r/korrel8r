@@ -1,30 +1,9 @@
 // Copyright: This file is part of korrel8r, released under https://github.com/korrel8r/korrel8r/blob/main/LICENSE
 
-// package metric represents Prometheus metric time-series as objects.
+// Package metric represents Prometheus metric time-series as objects.
 //
-// # Class
-//
-// There is only one class: `metric:metric`
-//
-// # Object
-//
-// A [Metric] is a time series identified by a label set. Korrel8r does not consider load the sample
-// data for a time series, or use it in rules. If a korrel8r search time constraints, then metrics
-// that have no values that meet the constraint are ignored.
-//
-// # Store
-//
-// Prometheus is the store, store configuration:
-//
-//	domain: metric
-//	metric: URL_OF_PROMETHEUS
-//
-// [Metric]: https://pkg.go.dev/github.com/prometheus/common@v0.45.0/model#Metric
-//
-// [instant vector selector]: https://prometheus.io/docs/prometheus/latest/querying/basics/#instant-vector-selectors
+// See [Description] for details.
 package metric
-
-// TODO: doc comment needs to show model.Metric structure or link to it properly.
 
 import (
 	"context"
@@ -45,12 +24,11 @@ import (
 )
 
 const (
-	name        = "metric"
-	description = "Time-series of measured values"
+	name = "metric"
 )
 
 var (
-	Domain = &domain{Domain: impl.NewDomain(name, description, Class{})}
+	Domain = &domain{Domain: impl.NewDomain(name, "Time-series of measured values.", Description, Class{})}
 
 	log = logging.Log()
 
