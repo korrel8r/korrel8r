@@ -22,8 +22,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-const maxDuration time.Duration = 1<<63 - 1
-
 var webCmd = &cobra.Command{
 	Use:   "web [flags]",
 	Short: "Start REST server. Listening address must be  provided via --http or --https.",
@@ -65,23 +63,29 @@ var webCmd = &cobra.Command{
 		}
 
 		configs := must.Must1(config.Load(*configFlag))
-		newEngine := func() (*engine.Engine, error) { return newEngineWithConfigs(configs) }
-		defaultEngine := must.Must1(newEngine()) // Default engine
-		var sessions session.Manager
-		switch {
-		case defaultEngine.Tuning.SessionTimeout == nil: // No timeout
-			sessions = session.NewPool(maxDuration, newEngine)
-		case defaultEngine.Tuning.SessionTimeout.Duration > 0:
-			sessions = session.NewPool(defaultEngine.Tuning.SessionTimeout.Duration, newEngine)
-		default: // Sessions are disabled, use a single session.
-			sessions = session.NewSingle(defaultEngine, configs)
+		newEngine := func() (*engine.Engine, config.Configs, error) {
+			e, err := newEngineWithConfigs(configs)
+			return e, configs, err
 		}
+
+		// Use session timeout from initial configuration.
+		var timeout time.Duration
+		if len(configs) > 0 && configs[0].Tuning != nil {
+			timeout = time.Duration(configs[0].Tuning.SessionTimeout)
+		}
+		sessions := session.NewPool(timeout, newEngine)
+
 		gin.SetMode(gin.ReleaseMode)
 		router := gin.New()
 		router.Use(gin.Recovery())
 		// Middleware to add authentication and timeout to the request context.
 		router.Use(func(c *gin.Context) {
-			ctx, cancel := defaultEngine.WithTimeout(auth.Context(c.Request), 0)
+			ss, err := session.FromContext(c.Request.Context(), sessions)
+			if err != nil {
+				c.AbortWithStatusJSON(http.StatusInternalServerError, c.Error(err).JSON())
+				return
+			}
+			ctx, cancel := ss.Engine.WithTimeout(auth.Context(c.Request), 0)
 			defer cancel()
 			c.Request = c.Request.WithContext(ctx)
 			c.Next()

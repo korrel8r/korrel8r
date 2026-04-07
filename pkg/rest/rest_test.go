@@ -244,20 +244,6 @@ func TestConsoleState(t *testing.T) {
 	assert.Equal(t, "test", got2.View)
 }
 
-func TestConsoleUpdatesSend(t *testing.T) {
-	cs := session.NewConsoleState()
-
-	// Send with no receiver times out
-	view := "test"
-	err := cs.Send(&Console{View: view})
-	assert.Error(t, err)
-
-	// Send with receiver succeeds
-	go func() { <-cs.Updates }()
-	err = cs.Send(&Console{View: view})
-	assert.NoError(t, err)
-}
-
 func TestDeepCopy(t *testing.T) {
 	view := "hello"
 	src := Console{View: view}
@@ -274,12 +260,13 @@ func TestMultiSession_QueryIsolation(t *testing.T) {
 	// Each session gets a separate engine with different store data.
 	// Verify that REST requests with different auth tokens get different results.
 	var callCount atomic.Int32
-	factory := func() (*engine.Engine, error) {
+	factory := func() (*engine.Engine, config.Configs, error) {
 		n := callCount.Add(1)
 		d := mock.NewDomain("mock", "a")
 		s := mock.NewStore(d)
 		s.AddQuery("mock:a:q", fmt.Sprintf("result-%d", n))
-		return engine.Build().Domains(d).Stores(s).Engine()
+		e, err := engine.Build().Domains(d).Stores(s).Engine()
+		return e, nil, err
 	}
 	sessions := session.NewPool(time.Hour, factory)
 	defer sessions.Close()

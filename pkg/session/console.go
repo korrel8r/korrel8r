@@ -6,28 +6,35 @@ import (
 	"encoding/json"
 	"errors"
 	"sync"
-	"time"
 )
 
-// ConsoleState shared by REST and MCP operations.
-// Holds console state reported via REST, makes available to agents via MCP.
-// Receives console updates from MCP and makes the available to REST.
+// Console connection between REST and MCP operations.
 //
-// State is stored as JSON internally, so Get/Set/Send perform
-// automatic deep copies via JSON marshal/unmarshal.
-type ConsoleState struct {
+// Holds console state put via REST, makes it available to get_console MCP tool.
+// Receives console updates from show_in_console MCP tool, and makes available as SSE events in REST.
+//
+// State values are JSON-encoded any, so the types can change without updating this code.
+type Console struct {
 	data    json.RawMessage
 	Updates chan json.RawMessage
-	m       sync.Mutex
+
+	closeOnce sync.Once
+	m         sync.Mutex
 }
 
-func NewConsoleState() *ConsoleState {
-	return &ConsoleState{Updates: make(chan json.RawMessage)}
+func NewConsoleState() *Console {
+	return &Console{Updates: make(chan json.RawMessage, 1)}
+}
+
+func (c *Console) Close() {
+	c.closeOnce.Do(func() {
+		close(c.Updates)
+	})
 }
 
 // Get unmarshals the current console state into dst, which should be a pointer.
 // If no state has been set, dst is not modified and nil is returned.
-func (c *ConsoleState) Get(dst any) error {
+func (c *Console) Get(dst any) error {
 	c.m.Lock()
 	defer c.m.Unlock()
 	if c.data == nil {
@@ -37,7 +44,7 @@ func (c *ConsoleState) Get(dst any) error {
 }
 
 // Set the console state by marshaling src to JSON.
-func (c *ConsoleState) Set(state any) error {
+func (c *Console) Set(state any) error {
 	b, err := json.Marshal(state)
 	if err != nil {
 		return err
@@ -49,8 +56,8 @@ func (c *ConsoleState) Set(state any) error {
 }
 
 // Send an update to the console.
-// Updates are dropped if they are not handled promptly.
-func (c *ConsoleState) Send(update any) error {
+// Returns error if there is already an update being sent.
+func (c *Console) Send(update any) error {
 	b, err := json.Marshal(update)
 	if err != nil {
 		return err
@@ -58,7 +65,7 @@ func (c *ConsoleState) Send(update any) error {
 	select {
 	case c.Updates <- b:
 		return nil
-	case <-time.After(time.Second):
-		return errors.New("no console connected, update not sent")
+	default:
+		return errors.New("console connection is busy, try again")
 	}
 }

@@ -17,6 +17,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/korrel8r/korrel8r/internal/pkg/test"
 	"github.com/korrel8r/korrel8r/internal/pkg/test/mock"
+	"github.com/korrel8r/korrel8r/pkg/config"
 	"github.com/korrel8r/korrel8r/pkg/engine"
 	"github.com/korrel8r/korrel8r/pkg/rest"
 	"github.com/korrel8r/korrel8r/pkg/rest/auth"
@@ -266,8 +267,8 @@ func TestMultiSessionConsole(t *testing.T) {
 	if os.Getenv(gin.EnvGinMode) == "" {
 		gin.SetMode(gin.TestMode)
 	}
-	sessions := session.NewPool(time.Hour, func() (*engine.Engine, error) {
-		return newEngine(t), nil
+	sessions := session.NewPool(time.Hour, func() (*engine.Engine, config.Configs, error) {
+		return newEngine(t), nil, nil
 	})
 	defer sessions.Close()
 
@@ -291,12 +292,18 @@ func TestMultiSessionConsole(t *testing.T) {
 		require.Equal(t, http.StatusOK, w.Code)
 	}
 
+	getSession := func(token string) *session.Session {
+		t.Helper()
+		ctx := auth.WithToken(context.Background(), token)
+		s, err := session.FromContext(ctx, sessions)
+		require.NoError(t, err)
+		return s
+	}
+
 	getConsoleState := func(token string) rest.Console {
 		t.Helper()
-		s, err := sessions.Get(token)
-		require.NoError(t, err)
 		var c rest.Console
-		require.NoError(t, s.Console.Get(&c))
+		require.NoError(t, getSession(token).Console.Get(&c))
 		return c
 	}
 
@@ -309,10 +316,8 @@ func TestMultiSessionConsole(t *testing.T) {
 	assert.Equal(t, "mock:a:x", getConsoleState("token-A").View)
 
 	// Verify send delivers to the matching session's Updates channel.
-	sA, err := sessions.Get("token-A")
-	require.NoError(t, err)
-	sB, err := sessions.Get("token-B")
-	require.NoError(t, err)
+	sA := getSession("token-A")
+	sB := getSession("token-B")
 
 	// Send update to session A.
 	go func() { _ = sA.Console.Send(&rest.Console{View: "update-A"}) }()
@@ -341,8 +346,8 @@ func newMultiSessionRouter(t *testing.T) (*gin.Engine, session.Manager) {
 	if os.Getenv(gin.EnvGinMode) == "" {
 		gin.SetMode(gin.TestMode)
 	}
-	sessions := session.NewPool(time.Hour, func() (*engine.Engine, error) {
-		return newEngine(t), nil
+	sessions := session.NewPool(time.Hour, func() (*engine.Engine, config.Configs, error) {
+		return newEngine(t), nil, nil
 	})
 	t.Cleanup(func() { sessions.Close() })
 
@@ -473,7 +478,8 @@ func TestMultiSession_SSEIsolation(t *testing.T) {
 	time.Sleep(100 * time.Millisecond)
 
 	// Send update to session A only.
-	sA, err := sessions.Get("token-A")
+	ctx := auth.WithToken(context.Background(), "token-A")
+	sA, err := session.FromContext(ctx, sessions)
 	require.NoError(t, err)
 	go func() { _ = sA.Console.Send(&rest.Console{View: "update-for-A"}) }()
 
