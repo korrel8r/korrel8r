@@ -60,10 +60,8 @@ We welcome contributions! See the [Developer Guide](AGENTS.md) for setup instruc
 ### AI-Assisted Development
 
 Korrel8r includes custom commands for Claude Code to streamline development:
-- `/generate-rule` - Interactive assistant for creating correlation rules
-- See [.claude/commands/](/.claude/commands/) for all available commands
-
-The [Developer Guide](AGENTS.md) includes specific tips for AI agents working with the codebase.
+- `/generate-rule` - Interactive assistant for creating correlation rules.
+- See [.claude/commands/](/.claude/commands/) for available commands.
 
 ## License
 

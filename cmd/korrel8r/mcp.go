@@ -6,7 +6,9 @@ import (
 	"context"
 
 	"github.com/korrel8r/korrel8r/internal/pkg/must"
+	"github.com/korrel8r/korrel8r/pkg/config"
 	"github.com/korrel8r/korrel8r/pkg/mcp"
+	"github.com/korrel8r/korrel8r/pkg/session"
 	"github.com/spf13/cobra"
 )
 
@@ -19,8 +21,9 @@ Allows korrel8r to be run as a sub-process by an MCP tool.
 For a HTTP streaming server use the 'web' command with the '--mcp' flag.
 `,
 	Run: func(cmd *cobra.Command, args []string) {
-		engine, _ := newEngine()
-		server := mcp.NewServer(engine, nil) // No REST API for standalone MCP server
+		configs := must.Must1(config.Load(*configFlag))
+		e := must.Must1(newEngineWithConfigs(configs))
+		server := mcp.NewServer(session.NewSingle(e, configs))
 		log.Info("MCP server starting on stdio.")
 		must.Must(server.ServeStdio(context.Background()))
 	},

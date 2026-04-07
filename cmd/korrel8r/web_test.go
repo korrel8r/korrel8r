@@ -170,9 +170,7 @@ func TestMain_concurrent_requests(t *testing.T) {
 	workers := sync.WaitGroup{}
 	failed := atomic.Uint32{}
 	for range 10 {
-		workers.Add(1)
-		go func() {
-			defer workers.Done()
+		workers.Go(func() {
 			resp, err := request(t, http.DefaultClient, "POST", u+"/graphs/neighbors", testRequest)
 			var got rest.Graph
 			ok := assert.NoError(t, err) &&
@@ -181,7 +179,7 @@ func TestMain_concurrent_requests(t *testing.T) {
 			if !ok {
 				failed.Add(1)
 			}
-		}()
+		})
 	}
 	workers.Wait()
 	assert.Zero(t, failed.Load())
