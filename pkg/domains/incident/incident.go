@@ -1,36 +1,9 @@
 // Copyright: This file is part of korrel8r, released under https://github.com/korrel8r/korrel8r/blob/main/LICENSE
 
-// Package incident provides mapping to https://github.com/openshift/cluster-health-analyzer
-// incidents.
+// Package incident provides mapping to [cluster-health-analyzer] incidents.
 //
-// # Class
-//
-// There is a single class `incident:incident`.
-//
-// # Object
-//
-// An incident object contains id and mapping to the sources (alert is the only
-// supported source type at the moment).
-//
-// # Query
-//
-// One can query the incident by its id.
-//
-//	incident:incident:{"id":"id-of-the-incident"}
-//
-// It's also possible to provide labels from
-// an alert to get a corresponding incident.
-//
-//	incident:incident:{"alertLabels":{
-//	 "alertname":"AlertmanagerReceiversNotConfigured",
-//	 "namespace":"openshift-monitoring"}}
-//
-// # Store
-//
-// A client of Prometheus. Store configuration:
-//
-//	domain: incident
-//	metrics: PROMETHEUS_URL
+// See [Description] for details.
+// [cluster-health-analyzer]: https://github.com/openshift/cluster-health-analyzer
 package incident
 
 import (
@@ -60,16 +33,15 @@ var (
 	_ korrel8r.Object = &Object{}
 )
 
-var Domain = &domain{impl.NewDomain(name, description, Class{})}
-
-type domain struct{ *impl.Domain }
-
 const (
-	name        = "incident"
-	description = "Incidents group alerts into higher-level groups."
-
+	name           = "incident"
+	summary        = "Incidents group alerts into higher-level groups."
 	srcLabelPrefix = "src_"
 )
+
+var Domain = &domain{impl.NewDomain(name, summary, Description, Class{})}
+
+type domain struct{ *impl.Domain }
 
 func (d *domain) Query(s string) (korrel8r.Query, error) {
 	_, query, err := impl.UnmarshalQueryString[Query](d, s)
@@ -100,12 +72,10 @@ func (*domain) Store(s any) (korrel8r.Store, error) {
 // Class represents any Incident. There is only a single class, named "incident".
 type Class struct{}
 
-func (c Class) Domain() korrel8r.Domain { return Domain }
-func (c Class) Name() string            { return name }
-func (c Class) String() string          { return korrel8r.ClassString(c) }
-func (c Class) Description() string {
-	return description
-}
+func (c Class) Domain() korrel8r.Domain                     { return Domain }
+func (c Class) Name() string                                { return name }
+func (c Class) String() string                              { return korrel8r.ClassString(c) }
+func (c Class) Description() string                         { return summary }
 func (c Class) Unmarshal(b []byte) (korrel8r.Object, error) { return impl.UnmarshalAs[*Object](b) }
 func (c Class) ID(o korrel8r.Object) any {
 	if o, ok := o.(*Object); ok {

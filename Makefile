@@ -31,14 +31,15 @@ OPENAPI_SPEC=doc/korrel8r-openapi.yaml
 GEN_OPENAPI_GO=pkg/rest/gen-openapi.go
 GENERATED=$(VERSION_TXT) $(GEN_OPENAPI_GO)
 
-generate:  $(GENERATED) kustomize-edit
+generate:  $(GENERATED)
+	$(MAKE) kustomize-edit
 
-all: lint test _site image-build ## Build and test everything locally. Recommended before commit.
+all: test _site image-build ## Build and test everything locally. Recommended before commit.
 
-build: $(GENERATED) $(BIN)				## Build korrel8r executable.
+build: lint $(BIN)				## Build korrel8r executable.
 	go build -o $(BIN)/korrel8r ./cmd/korrel8r
 
-install: $(GENERATED)							## Build and install korrel8r with go install.
+install: lint							## Build and install korrel8r with go install.
 	go install ./cmd/korrel8r
 
 clean: ## Remove generated files, including checked-in files.
@@ -68,10 +69,10 @@ lint: $(GENERATED) $(SHELLCHECK) ## Run the linter to find and fix code style pr
 	$(SHELLCHECK) -x -S style hack/*.sh
 
 .PHONY: test
-test: $(GENERATED)		## Run all tests, no cache. Requires an openshift cluster.
+test: lint											## Run all tests, no cache. Requires an openshift cluster.
 	go test -fullpath -race ./...
 
-test-no-cluster: $(GENERATED)	## Run all tests that don't require an openshift cluster.
+test-no-cluster: lint	## Run all tests that don't require an openshift cluster.
 	go test -fullpath -race  -skip='Cluster|/Cluster' ./...
 
 test-clean: ## Remove test namespaces from the cluster
@@ -90,7 +91,7 @@ bench: $(GENERATED)	## Run all benchmarks.
 	go test -fullpath -bench=. -run=NONE ./... > _bench-$(shell date -I).txt
 	go tool benchstat _bench-*.txt
 
-image-build:  $(GENERATED) ## Build image locally, don't push.
+image-build: lint ## Build image locally, don't push.
 	$(IMGTOOL) build --tag=$(IMAGE) -f Containerfile .
 
 image: image-build ## Build and push image.
@@ -145,25 +146,23 @@ _site/man: $(shell find ./cmd)	## Generated man pages.
 doc: doc/gen/domains.adoc doc/gen/rest_api.adoc doc/gen/cmd
 	@touch $@
 
-doc/gen/domains.adoc: $(wildcard pkg/domains/*/*.adoc)
-	@mkdir -p $(dir $@)
-	rm -f $@; for D in $^; do { echo; echo "include::../../$$D[]"; echo; } >>$@; done
-
-#  NOTE: --skip-validate-spec required because current openAPI generator
-#  does not understand itemSchema
-doc/gen/rest_api.adoc: $(OPENAPI_SPEC) $(OPENAPI_GEN)
-	@mkdir -p $(dir $@)
-	$(IMGTOOL) run --rm -v $(CURDIR):/app:z docker.io/openapitools/openapi-generator-cli \
-		generate -g asciidoc -c /app/doc/openapi-asciidoc.yaml -i /app/$< -o /app/$@.dir --skip-validate-spec
-	@mv -f $@.dir/index.adoc $@
-	@rm -rf $@.dir
-
-KRAMDOC:=$(BIN)/kramdoc
+KRAMDOC=$(BIN)/kramdoc
 $(KRAMDOC):
 	@mkdir -p $(dir $@)
 	gem install kramdown-asciidoc --user-install --bindir $(BIN)
 
-doc/gen/cmd: $(GENERATED) $(shell find ./cmd/korrel8r) $(KRAMDOC) ## Generated command documentation
+doc/gen/domains.adoc: $(GENERATED) $(KRAMDOC) $(shell find pkg/domains -name "*.go")
+	@mkdir -p $(dir $@)
+	go run ./cmd/korrel8r describe | $(KRAMDOC) -o $@ --heading-offset=1 -
+
+doc/gen/rest_api.adoc: $(OPENAPI_SPEC) $(OPENAPI_GEN)
+	@mkdir -p $(dir $@)
+	$(IMGTOOL) run --rm -v $(CURDIR):/app:z docker.io/openapitools/openapi-generator-cli \
+		generate -g asciidoc -c /app/doc/openapi-asciidoc.yaml -i /app/$< -o /app/$@.dir
+	@mv -f $@.dir/index.adoc $@
+	@rm -rf $@.dir
+
+doc/gen/cmd: $(KRAMDOC) $(GENERATED) $(shell find ./cmd/korrel8r)
 	@mkdir -p $@
 	unset KORREL8R_CONFIG; go run ./cmd/korrel8r doc markdown $@
 	go tool korrel8rcli doc markdown $@

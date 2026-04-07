@@ -1,38 +1,8 @@
 // Copyright: This file is part of korrel8r, released under https://github.com/korrel8r/korrel8r/blob/main/LICENSE
 
-// Package k8s implements [Kubernetes] resources stored in a Kube API server.
+// Package k8s implements Kubernetes resources stored in a Kube API server.
 //
-// # Class
-//
-// Class represents a kind of kubernetes resource.
-// The format of a class name is: "k8s:KIND[.VERSION][.GROUP]".
-//
-// Missing VERSION implies "v1", if present VERSION must follow the [Kubernetes version patterns].
-// Missing GROUP implies the core group.
-//
-// Examples: `k8s:Pod`, `ks8:Pod/v1`, `k8s:Deployment.apps`, `k8s:Deployment.apps/v1`, `k8s:Route.route.openshift.io/v1`
-//
-// # Object
-//
-// Object represents a kubernetes resource as a map, map keys are serialized field names.
-// Rule templates should use the JSON (lowerCase) field names, NOT the UpperCase Go struct field names.
-//
-// # Query
-//
-// Example:
-//
-//	k8s:Pod.v1:{"namespace":"openshift-cluster-version","name":"cluster-version-operator-8d86bcb65-btlgn"}
-//
-// # Store
-//
-// The k8s domain automatically connects to the current cluster (as determined by kubectl),
-// no additional configuration is needed.
-//
-//	 stores:
-//		  domain: k8s
-//
-// [Kubernetes]: https://kubernetes.io/docs/concepts/overview/
-// [Kubernetes version patterns]: https://kubernetes.io/docs/tasks/extend-kubernetes/custom-resources/custom-resource-definition-versioning/#version-priority
+// See [Description] for details.
 package k8s
 
 import (
@@ -127,9 +97,11 @@ func newDomain() *domain {
 	return d
 }
 
-func (d *domain) Name() string              { return "k8s" }
-func (d *domain) String() string            { return d.Name() }
-func (d *domain) Description() string       { return "Resource objects in a Kubernetes API server" }
+func (d *domain) Name() string   { return "k8s" }
+func (d *domain) String() string { return d.Name() }
+func (d *domain) Description() (string, string) {
+	return impl.DomainDescription(d.Name(), "Kubernetes resources.", Description)
+}
 func (d *domain) Classes() []korrel8r.Class { d.m.Lock(); defer d.m.Unlock(); return d.classes }
 
 func nonBlank(v1, v2 string) string {

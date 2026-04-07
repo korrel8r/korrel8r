@@ -91,7 +91,8 @@ func TestNewDomain(t *testing.T) {
 
 	assert.Equal(t, "testdomain", d.Name())
 	assert.Equal(t, "testdomain", d.String())
-	assert.Equal(t, "Mock domain.", d.Description())
+	summary, _ := d.Description()
+	assert.Equal(t, "Mock domain.", summary)
 
 	classes := d.Classes()
 	assert.Len(t, classes, 3)

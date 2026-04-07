@@ -82,12 +82,12 @@ func assertDo(t *testing.T, h *http.Client, want, method, url, body string) {
 const domains = `[
 {"name":"alert", "description": "Alerts that metric values are out of bounds."},
 {"name":"incident", "description": "Incidents group alerts into higher-level groups."},
-{"name":"k8s", "description": "Resource objects in a Kubernetes API server"},
+{"name":"k8s", "description": "Kubernetes resources."},
 {"name":"log", "description": "Records from container and node logs."},
-{"name":"metric", "description": "Time-series of measured values"},
+{"name":"metric", "description": "Time-series of measured values."},
 {"name":"mock","description": "Mock domain.", "stores":[{"domain":"mock", "mockData":"testdata/mock_store.yaml"}]},
 {"name":"netflow","description": "Network flows from source nodes to destination nodes."},
-{"name":"trace","description": "Traces from Pods and Nodes."}
+{"name":"trace","description": "Follow the path of a request through your application."}
 ]`
 
 func TestMain_server_insecure(t *testing.T) {

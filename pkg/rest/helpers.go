@@ -194,6 +194,7 @@ func TraverseStart(e *engine.Engine, start Start) (traverse.Start, error) {
 			return traverse.Start{}, err
 		}
 	}
+
 	for _, q := range start.Queries {
 		query, err := e.Query(q)
 		if err != nil {
@@ -203,7 +204,7 @@ func TraverseStart(e *engine.Engine, start Start) (traverse.Start, error) {
 			class = query.Class() // Use class of first query
 		}
 		if query.Class() != class {
-			return traverse.Start{}, fmt.Errorf("query class mismatch: expected class %v in query %v", class, q)
+			return traverse.Start{}, fmt.Errorf("expected class %v in query %v", class, q)
 		}
 		queries = append(queries, query)
 	}
@@ -236,9 +237,10 @@ func ListDomains(e *engine.Engine) []Domain {
 				stores = append(stores, (Store)(sc))
 			}
 		}
+		summary, _ := d.Description()
 		domains = append(domains, Domain{
 			Name:        d.Name(),
-			Description: d.Description(),
+			Description: summary,
 			Stores:      stores,
 		})
 	}

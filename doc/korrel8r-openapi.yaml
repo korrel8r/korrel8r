@@ -1,7 +1,15 @@
 openapi: 3.0.1
 info:
   title: Korrel8r REST API
-  description: Generate graphs showing correlations between resources and observability signals in a cluster.
+  description: >
+    Korrel8r correlates observability signals and resources in a Kubernetes cluster.
+    It connects data from different domains (logs, metrics, alerts, traces, Kubernetes resources)
+    by following correlation rules to build a graph of related objects.
+
+    Korrel8r creates a separate session for each user with a unique HTTP Authorization header.
+    Configuration changes, console state, and store connections are isolated per session.
+    Requests without an Authorization header share a single default session.
+
   contact:
     name: Project Korrel8r
     url: https://github.com/korrel8r/korrel8r
@@ -15,13 +23,14 @@ externalDocs:
 servers:
   - url: /api/v1alpha1
 tags:
+  - name: configure
+    description: Modify engine configuration (e.g. log verbosity).
+  - name: query
+    description: Query directly for data objects.
+  - name: correlate
+    description: Generate correlation graphs.
   - name: console
-    description: >
-      Korrel8r can act as a bridge between a GUI console and an AI agent.
-      The agent uses Korrel8r's MCP API to discover what is displayed in the console,
-      and to send new data to update what is displayed.
-      The console uses the /console REST APIs to provide information about the current display,
-      and to accept updates from the agent to change the display.
+    description: Bridge between a GUI console (REST) and an AI agent (MCP)
 
 paths:
   /config:
@@ -42,6 +51,10 @@ paths:
       responses:
         "200":
           description: OK
+          content:
+            application/json:
+              schema:
+                type: object
 
   /domains:
     get:
@@ -190,6 +203,7 @@ paths:
   # DEPRECATED - alternate spelling.
   /graphs/neighbours:
     post:
+      deprecated: true
       summary: Create a neighborhood graph around a start object to a given depth.
       description: >
         Specify a set of start objects, as queries or serialized objects,
@@ -236,7 +250,7 @@ paths:
       operationId: listGoals
       tags: [correlate]
       requestBody:
-        description: search from start to goal classes
+        description: Search from start to goal classes.
         content:
           application/json:
             schema:
@@ -308,19 +322,24 @@ paths:
     put:
       summary: Make console state available to an agent.
       description: >
-        Put the current state of the console so it can be retrieved by an agent via the MCP API.
+        Store console state so an agent can read it via MCP tool get_console.
+        The MCP client must have the same session (Authorization header) as the REST client.
       tags: [console]
       operationId: setConsole
       requestBody:
         description: Parameters for the updated console display.
         content:
-          text/json:
+          application/json:
             schema:
               $ref: "#/components/schemas/Console"
         required: true
       responses:
         "200":
           description: Console display updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
         "400":
           description: invalid parameters
           content:
@@ -329,46 +348,52 @@ paths:
                 $ref: "#/components/schemas/Error"
       x-codegen-request-body-name: request
 
-  /console/updates:
+  /console/events:
     get:
-      summary: Updates for the console display from an agent.
+      summary: SSE event stream of console display updates from an agent.
       description: >
-        Use SSE (server-sent events) to send updates for the console display.
-        The updates come from an agent using the MCP API.
+        Updates are triggered by update requests from MCP tool show_in_console.
+        The MCP client must have the same session (Authorization header) as the REST client.
       tags: [console]
-      operationId: consoleUpdates
+      operationId: consoleEvents
       responses:
         "200":
-          description: Stream of console display updates.
+          description: >
+            SSE stream where each event's data field contains a JSON-encoded Console object.
           content:
             text/event-stream:
-              itemSchema:
-                # Reference a schema that defines the structure of each individual event
+              schema:
                 $ref: "#/components/schemas/Console"
 
 components:
   schemas:
+    # NOTE: Schema descriptions are duplicated in x-oapi-codegen-extra-tags: jsonschema
+    # so that they are preserved in generated Go types for packages that use the jsonschema tag.
     Query:
       type: string
       pattern: "[^:]+:[^:]+:[^:]+"
       description: >
-        Represents a request to retrieve data for a particular Class.
-        It has 3 parts DOMAIN:CLASS:SELECTOR
-        DOMAIN: name of a domain.
-        CLASS: name of a class in the domain.
-        SELECTOR: domain-specific query string to retrieve selected objects.
-      example: "k8s:Pod:{namespace: foo, name: bar, labels: { a: b }, fields: { c: d }}"
+        Query for data objects, format is DOMAIN:CLASS:SELECTOR.
+        DOMAIN: name of a domain (e.g. k8s, log, metric, alert, trace, netflow).
+        CLASS: name of a class in the domain (e.g. Pod, application, metric, alert, span, network).
+        SELECTOR: domain-specific query string.
+
       x-go-type-skip-optional-pointer: true
 
     Class:
       type: string
       pattern: "[^:]+:[^:]+"
       description: >
-        Names a class of objects with the same schema or structure.
-        It has 2 parts DOMAIN:CLASS
-        DOMAIN: name of a domain.
-        CLASS: name of a class in the domain.
-      example: "trace:span"
+        Full name of a class of data, format is DOMAIN:CLASS.
+        DOMAIN: name of a domain (e.g. k8s, log, metric, alert, trace, netflow).
+        CLASS: name within the domain.
+      example:
+        - k8s:Pod
+        - k8s:Deployment.apps
+        - log:application
+        - metric:metric
+        - alert:alert
+        - netflow:network
       x-go-type-skip-optional-pointer: true
 
     Constraint:
@@ -380,27 +405,20 @@ components:
           type: string
           description: Ignore objects with timestamps before this start time.
           format: date-time
+          x-oapi-codegen-extra-tags:
+            jsonschema: "Ignore objects with timestamps before this start time."
         end:
           type: string
           description: Ignore objects with timestamps after this end time.
           format: date-time
           example: "2017-07-21T17:32:28.1341231Z"
+          x-oapi-codegen-extra-tags:
+            jsonschema: "Ignore objects with timestamps after this end time."
         limit:
           type: integer
           description: Limit total number of objects per query.
-        timeout:
-          description: DEPRECATED store calls are cancelled with the request.
-          allOf:
-            - $ref: "#/components/schemas/Duration"
-
-    Duration:
-      type: string
-      description: >
-        The duration string is a sequence of decimal numbers, each with optional
-        fraction and a unit suffix. Valid time units are: ns, us (or µs), ms, s, m, h.
-      format: duration
-      example: 2h45m
-      x-go-type: time.Duration
+          x-oapi-codegen-extra-tags:
+            jsonschema: "Limit total number of objects per query."
 
     Domain:
       type: object
@@ -429,10 +447,14 @@ components:
           description: Class name of the start node.
           allOf:
             - $ref: "#/components/schemas/Class"
+          x-oapi-codegen-extra-tags:
+            jsonschema: "Class name of the start node, in DOMAIN:CLASS format."
         goal:
           description: Class name of the goal node.
           allOf:
             - $ref: "#/components/schemas/Class"
+          x-oapi-codegen-extra-tags:
+            jsonschema: "Class name of the goal node, in DOMAIN:CLASS format."
         rules:
           type: array
           x-go-type-skip-optional-pointer: true
@@ -440,6 +462,8 @@ components:
           description: Set of rules followed along this edge.
           items:
             $ref: "#/components/schemas/Rule"
+          x-oapi-codegen-extra-tags:
+            jsonschema: "Set of rules followed along this edge."
       description: Directed edge in the result graph, from Start to Goal classes.
 
     Error:
@@ -452,19 +476,28 @@ components:
           description: Error message.
 
     Goals:
+      description: >
+        Parameters for a goal-directed correlation search.
+        Finds paths from start objects to goal classes.
       type: object
       required: [goals, start]
       properties:
         goals:
           type: array
           x-go-type-skip-optional-pointer: true
-          description: Goal classes for correlation.
-          example: ["k8s:Pod"]
+          description: >
+            Goal classes in DOMAIN:CLASS format, e.g. log:application, alert:alert
+          example: ["k8s:Pod", "metric:metric"]
           items:
             $ref: "#/components/schemas/Class"
+          x-oapi-codegen-extra-tags:
+            jsonschema: "Goal classes in DOMAIN:CLASS format, e.g. log:application, alert:alert."
         start:
-          $ref: "#/components/schemas/Start"
-      description: Starting point for a goals search.
+          description: Starting point for the search.
+          allOf:
+            - $ref: "#/components/schemas/Start"
+          x-oapi-codegen-extra-tags:
+            jsonschema: "Starting point for the search."
 
     Graph:
       type: object
@@ -475,24 +508,39 @@ components:
           x-go-type-skip-optional-pointer: true
           items:
             $ref: "#/components/schemas/Edge"
+          x-oapi-codegen-extra-tags:
+            jsonschema: "List of graph edges."
         nodes:
           description: List of graph nodes.
           type: array
           x-go-type-skip-optional-pointer: true
           items:
             $ref: "#/components/schemas/Node"
+          x-oapi-codegen-extra-tags:
+            jsonschema: "List of graph nodes."
       description: Graph resulting from a correlation search.
 
     Neighbors:
+      description: >
+        Parameters for a neighborhood correlation search.
+        Finds all objects reachable from the start by following correlation rules
+        up to the maximum depth.
       type: object
       required: [depth, start]
       properties:
         depth:
           type: integer
-          description: Max depth of neighbors graph.
+          description: >
+            Maximum number of correlation steps to follow from the start.
+            Depth 1 returns direct correlations only.
+          x-oapi-codegen-extra-tags:
+            jsonschema: "Maximum number of correlation steps to follow from the start. Depth 1 returns direct correlations only."
         start:
-          $ref: "#/components/schemas/Start"
-      description: Starting point for a neighbors search.
+          description: Starting point for the search.
+          allOf:
+            - $ref: "#/components/schemas/Start"
+          x-oapi-codegen-extra-tags:
+            jsonschema: "Starting point for the search."
 
     Node:
       description: Node in the result graph, contains results for a single class.
@@ -501,22 +549,30 @@ components:
       properties:
         class:
           type: string
-          description: Full class name
+          description: Full class name.
+          x-oapi-codegen-extra-tags:
+            jsonschema: "Full class name in DOMAIN:CLASS format."
         queries:
           type: array
           x-go-type-skip-optional-pointer: true
           description: Queries yielding results for this class.
           items:
             $ref: "#/components/schemas/QueryCount"
+          x-oapi-codegen-extra-tags:
+            jsonschema: "Queries yielding results for this class."
         count:
           type: integer
           description: Number of results for this class, after de-duplication.
+          x-oapi-codegen-extra-tags:
+            jsonschema: "Number of results for this class, after de-duplication."
         result:
           description: Serialized result contents, may be large.
           type: array
           x-go-type-skip-optional-pointer: true
           items:
             $ref: "#/components/schemas/Object"
+          x-oapi-codegen-extra-tags:
+            jsonschema: "Serialized result contents, may be large."
 
     QueryCount:
       description: Query with number of results.
@@ -526,10 +582,14 @@ components:
         count:
           description: Number of results, omitted if the query was not executed.
           type: integer
+          x-oapi-codegen-extra-tags:
+            jsonschema: "Number of results, omitted if the query was not executed."
         query:
           description: Query for correlation data.
           allOf:
             - $ref: "#/components/schemas/Query"
+          x-oapi-codegen-extra-tags:
+            jsonschema: "Query for correlation data in DOMAIN:CLASS:SELECTOR format."
 
     Rule:
       type: object
@@ -538,12 +598,16 @@ components:
         name:
           type: string
           description: Name is an optional descriptive name.
+          x-oapi-codegen-extra-tags:
+            jsonschema: "Name is an optional descriptive name."
         queries:
           type: array
           x-go-type-skip-optional-pointer: true
           description: Queries generated while following this rule.
           items:
             $ref: "#/components/schemas/QueryCount"
+          x-oapi-codegen-extra-tags:
+            jsonschema: "Queries generated while following this rule."
       description: Rule is a correlation rule with a list of queries and results counts found during navigation.
 
     Object:
@@ -553,30 +617,49 @@ components:
       x-go-type: json.RawMessage
 
     Start:
+      description: >
+        Starting point for a correlation search.
+        It usually specifies queries to get the starting objects,
+        but can include serialized objects as well as/instead of queries.
       type: object
       properties:
         class:
-          description: Class of starting objects and queries.
+          description: >
+            Class of starting objects.
+            Required when using 'objects' to provide serialized objects.
+            If queries are included, they must all be of this class.
           allOf:
             - $ref: "#/components/schemas/Class"
           x-go-type-skip-optional-pointer: true
+          x-oapi-codegen-extra-tags:
+            jsonschema: "Class of starting objects in DOMAIN:CLASS format. Required when using objects. If queries are included, they must all be of this class."
         constraint:
+          description: Constrains the objects that will be included in search results.
           allOf:
             - $ref: "#/components/schemas/Constraint"
-          description: Constrain the objects that will be returned.
+          x-oapi-codegen-extra-tags:
+            jsonschema: "Constrains the objects that will be included in search results."
         objects:
-          description: Start objects serialized as JSON.
+          description: >
+            Start objects serialized as JSON. Requires 'class' to identify the object type.
+            Alternative to 'queries' when you already have the objects.
           type: array
           x-go-type-skip-optional-pointer: true
           items:
             $ref: "#/components/schemas/Object"
+          x-oapi-codegen-extra-tags:
+            jsonschema: "Start objects serialized as JSON. Requires class to identify the object type."
         queries:
           type: array
           x-go-type-skip-optional-pointer: true
-          description: Queries for starting objects
+          description: >
+            Queries for starting objects in "domain:class:selector" format.
+            This is the most common way to specify a starting point.
+          example: ['k8s:Pod:{"namespace":"default","name":"my-pod"}']
           items:
             $ref: "#/components/schemas/Query"
-      description: Start identifies a set of starting objects for correlation.
+          x-oapi-codegen-extra-tags:
+            jsonschema: "Queries for starting objects in DOMAIN:CLASS:SELECTOR format."
 
     Store:
       type: object
@@ -585,22 +668,42 @@ components:
       description: Store is a map string keys and values used to connect to a store.
 
     Console:
-      description: Describes the data displayed in the users console.
+      description: >
+        State of the user's graphical console display (e.g. OpenShift web console).
       type: object
       properties:
         view:
-          $ref: "#/components/schemas/Query"
+          description: The main console view displays the results of this query.
+          allOf:
+            - $ref: "#/components/schemas/Query"
+          x-oapi-codegen-extra-tags:
+            jsonschema: "Query for the main console view, in DOMAIN:CLASS:SELECTOR format."
         search:
-          $ref: "#/components/schemas/Search"
+          description: The troubleshooting panel displays the results of this correlation search.
+          allOf:
+            - $ref: "#/components/schemas/Search"
+          x-oapi-codegen-extra-tags:
+            jsonschema: "The troubleshooting panel displays the results of this correlation search."
 
     Search:
-      description: Search parameters for the correlation search displayed in the console troubleshooting panel. Exactly one of goals, neighbors should be set.
+      description: >
+        Correlation search parameters.
+        Set exactly one of 'goals' (targeted search to specific classes)
+        or 'neighbors' (open-ended exploration to a depth).
       type: object
       properties:
         goals:
-          $ref: "#/components/schemas/Goals"
+          description: Parameters for a goal-directed correlation search.
+          allOf:
+            - $ref: "#/components/schemas/Goals"
+          x-oapi-codegen-extra-tags:
+            jsonschema: "Parameters for a goal-directed correlation search."
         neighbors:
-          $ref: "#/components/schemas/Neighbors"
+          description: Parameters for a neighborhood correlation search.
+          allOf:
+            - $ref: "#/components/schemas/Neighbors"
+          x-oapi-codegen-extra-tags:
+            jsonschema: "Parameters for a neighborhood correlation search."
 
   parameters:
     GraphOptions:
@@ -611,13 +714,20 @@ components:
       explode: true
       schema:
         type: object
+        description: Options controlling the form of the returned graph.
         properties:
           rules:
             description: If true include rule names in graph edges.
             type: boolean
+            x-oapi-codegen-extra-tags:
+              jsonschema: "If true include rule names in graph edges."
           results:
             description: If true include full JSON results with each Query.
             type: boolean
+            x-oapi-codegen-extra-tags:
+              jsonschema: "If true include full JSON results with each Query."
           errors:
-            description: if true include non-fatal error messages.
+            description: If true include non-fatal error messages.
             type: boolean
+            x-oapi-codegen-extra-tags:
+              jsonschema: "If true include non-fatal error messages."

@@ -30,9 +30,7 @@ type API struct {
 
 // getSession returns the per-request Session from the context.
 func (a *API) getSession(c *gin.Context) (*session.Session, error) {
-	session, err := session.FromContext(c.Request.Context(), a.Sessions)
-	check(c, http.StatusInternalServerError, err)
-	return session, err
+	return session.FromContext(c.Request.Context(), a.Sessions)
 }
 
 var _ ServerInterface = &API{}
@@ -229,9 +227,9 @@ func (a *API) SetConsole(c *gin.Context) {
 	}
 }
 
-// Notification of console updates.
-// (GET /console/updates)
-func (a *API) ConsoleUpdates(c *gin.Context) {
+// SSE notification of console updates.
+// (GET /console/events)
+func (a *API) ConsoleEvents(c *gin.Context) {
 	// Set SSE headers
 	w := c.Writer
 	w.Header().Set("Content-Type", "text/event-stream")
@@ -248,6 +246,7 @@ func (a *API) ConsoleUpdates(c *gin.Context) {
 	cs := session.Console
 	keepAliveTicker := time.NewTicker(time.Minute)
 	defer keepAliveTicker.Stop()
+	log.V(3).Info("Console update event stream started")
 	for {
 		select {
 		case update, ok := <-cs.Updates: // Wait for an update

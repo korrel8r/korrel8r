@@ -140,7 +140,7 @@ func init() {
 	httpsFlag = webCmd.Flags().String("https", "", "host:port address for secure https listener")
 	keyFlag = webCmd.Flags().String("key", "", "Private key (PEM format) for https")
 	mcpFlag = webCmd.Flags().Bool("mcp", true, "Enable MCP streamable HTTP protocol on "+mcp.StreamablePath)
-	mcpSSEFlag = webCmd.Flags().Bool("mcpSSE", true, "Enable MCP Server-Sent Events protocol server on "+mcp.SSEPath)
+	mcpSSEFlag = webCmd.Flags().Bool("mcp-sse", true, "Enable MCP Server-Sent Events protocol server on "+mcp.SSEPath)
 	restFlag = webCmd.Flags().Bool("rest", true, "Enable HTTP REST server on "+rest.BasePath)
 	specFlag = webCmd.Flags().String("spec", "", "Write OpenAPI specification to a file, '-' for stdout.")
 	tlsCipherSuitesFlag = webCmd.Flags().StringSlice("tls-cipher-suites", nil, "Comma-separated list of TLS cipher suites for https (IANA or OpenSSL names)")
