@@ -26,7 +26,6 @@ var log = logging.Log()
 type API struct {
 	Sessions session.Manager
 	Router   *gin.Engine
-	BasePath string
 }
 
 // getSession returns the per-request Session from the context.
@@ -43,13 +42,12 @@ func New(sessions session.Manager, r *gin.Engine) (*API, error) {
 	api := &API{
 		Sessions: sessions,
 		Router:   r,
-		BasePath: BasePath,
 	}
-	rg := r.Group(api.BasePath)
+	rg := r.Group(BasePath)
 	rg.Use(api.logger) // Apply logger only to API endpoints
 	RegisterHandlers(rg, api)
 	// Helpful endpoints showing routes.
-	r.GET(api.BasePath, func(c *gin.Context) { spec, _ := GetSwagger(); c.JSON(http.StatusOK, spec) })
+	r.GET(BasePath, func(c *gin.Context) { spec, _ := GetSwagger(); c.JSON(http.StatusOK, spec) })
 	r.GET("/", api.homePage)
 	return api, nil
 }
@@ -241,7 +239,6 @@ func (a *API) ConsoleUpdates(c *gin.Context) {
 	w.Header().Set("Connection", "keep-alive")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Headers", "Cache-Control")
-
 	w.Flush() // Send headers to start the SSE stream.
 
 	session, err := a.getSession(c)
@@ -252,10 +249,6 @@ func (a *API) ConsoleUpdates(c *gin.Context) {
 	keepAliveTicker := time.NewTicker(time.Minute)
 	defer keepAliveTicker.Stop()
 	for {
-		if !check(c, http.StatusInternalServerError, err) {
-			log.V(3).Info("Console update write failed", "error", err)
-			return
-		}
 		select {
 		case update, ok := <-cs.Updates: // Wait for an update
 			if !ok {
@@ -263,12 +256,18 @@ func (a *API) ConsoleUpdates(c *gin.Context) {
 				return // Shut down
 			}
 			_, err = fmt.Fprintf(w, "event: console-update\ndata: %v\n\n", string(update))
+			if !check(c, http.StatusInternalServerError, err) {
+				return
+			}
 			w.Flush()
 			log.V(3).Info("Console update sent", "event", string(update))
 
 		case <-keepAliveTicker.C:
 			// Send a keep-alive comment
 			_, err = fmt.Fprint(w, ":keepalive\n\n")
+			if !check(c, http.StatusInternalServerError, err) {
+				return
+			}
 			w.Flush()
 
 		case <-c.Request.Context().Done(): // Client disconnect

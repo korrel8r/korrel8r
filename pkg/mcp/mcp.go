@@ -5,7 +5,6 @@ package mcp
 
 import (
 	"context"
-	"errors"
 	"net/http"
 	"time"
 
@@ -177,9 +176,6 @@ Returns the current state of the console display, representing what the user is 
 			if err != nil {
 				return nil, nil, err
 			}
-			if err := consoleCheck(s); err != nil {
-				return nil, nil, err
-			}
 			c := &rest.Console{}
 			if err := s.Console.Get(c); err != nil {
 				return nil, nil, err
@@ -197,9 +193,6 @@ a rich graphical environment.
 		func(ctx context.Context, req *mcp.CallToolRequest, input ShowInConsoleParams) (*mcp.CallToolResult, any, error) {
 			s, err := session.FromContext(ctx, sessions)
 			if err != nil {
-				return nil, nil, err
-			}
-			if err := consoleCheck(s); err != nil {
 				return nil, nil, err
 			}
 			if err := rest.ConsoleOK(s.Engine, &input); err != nil {
@@ -231,13 +224,6 @@ func (s *Server) SSEHandler() http.Handler {
 // Per-session state is resolved per-request by tool handlers via session.FromContext.
 func (s *Server) handler(*http.Request) *mcp.Server {
 	return s.Server
-}
-
-func consoleCheck(s *session.Session) error {
-	if s.Console == nil {
-		return errors.New("not connected to console")
-	}
-	return nil
 }
 
 // logger is middleware to do debug logging of MCP methods

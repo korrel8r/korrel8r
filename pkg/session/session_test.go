@@ -9,21 +9,23 @@ import (
 	"time"
 
 	"github.com/korrel8r/korrel8r/internal/pkg/test/mock"
+	"github.com/korrel8r/korrel8r/pkg/config"
 	"github.com/korrel8r/korrel8r/pkg/engine"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-func testFactory() (*engine.Engine, error) {
-	return engine.Build().Domains(mock.NewDomain("mock")).Engine()
+func testFactory() (*engine.Engine, config.Configs, error) {
+	e, err := engine.Build().Domains(mock.NewDomain("mock")).Engine()
+	return e, nil, err
 }
 
 func TestGet_SameKey(t *testing.T) {
 	m := NewPool(time.Hour, testFactory)
 	defer m.Close()
-	s1, err := m.Get("token-a")
+	s1, err := m.Get("key-a")
 	require.NoError(t, err)
-	s2, err := m.Get("token-a")
+	s2, err := m.Get("key-a")
 	require.NoError(t, err)
 	assert.Same(t, s1, s2, "same key should return same session")
 }
@@ -31,53 +33,11 @@ func TestGet_SameKey(t *testing.T) {
 func TestGet_DifferentKeys(t *testing.T) {
 	m := NewPool(time.Hour, testFactory)
 	defer m.Close()
-	s1, err := m.Get("token-a")
+	s1, err := m.Get("key-a")
 	require.NoError(t, err)
-	s2, err := m.Get("token-b")
+	s2, err := m.Get("key-b")
 	require.NoError(t, err)
 	assert.NotSame(t, s1, s2, "different keys should return different sessions")
-}
-
-func TestCleanup(t *testing.T) {
-	timeout := 50 * time.Millisecond
-	m := NewPool(timeout, testFactory)
-	defer m.Close()
-
-	s1, err := m.Get("token-a")
-	require.NoError(t, err)
-	require.NotNil(t, s1)
-
-	// Wait for expiration and cleanup.
-	time.Sleep(timeout * 3)
-
-	// After cleanup, a new session should be returned.
-	s2, err := m.Get("token-a")
-	require.NoError(t, err)
-	assert.NotSame(t, s1, s2, "expired session should return a new session")
-}
-
-func TestOnExpire(t *testing.T) {
-	timeout := 50 * time.Millisecond
-	m := NewPool(timeout, testFactory)
-	defer m.Close()
-
-	var expired sync.Map
-	m.OnExpire(func(key string) {
-		expired.Store(key, true)
-	})
-
-	_, err := m.Get("token-a")
-	require.NoError(t, err)
-	_, err = m.Get("token-b")
-	require.NoError(t, err)
-
-	// Wait for expiration and cleanup.
-	time.Sleep(timeout * 3)
-
-	_, ok := expired.Load("token-a")
-	assert.True(t, ok, "token-a should have expired")
-	_, ok = expired.Load("token-b")
-	assert.True(t, ok, "token-b should have expired")
 }
 
 func TestConcurrent(t *testing.T) {

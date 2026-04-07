@@ -7,7 +7,10 @@ package session
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/korrel8r/korrel8r/internal/pkg/logging"
@@ -22,25 +25,36 @@ var log = logging.Log()
 type Manager interface {
 	// Get returns the Session for the given key, creating a new session if needed.
 	Get(key string) (*Session, error)
-	// OnExpire registers a callback that is called when a session expires.
-	OnExpire(f func(key string))
 	// Close releases resources associated with the manager.
 	Close()
 }
 
-// FromContext get the session key from the auth token in a context.
+// FromContext gets the session for the auth token in a context.
+//
+// The token is hashed before use as a session key to avoid storing raw credentials in memory.
+// If no auth token is present, all unauthenticated requests share a single session keyed by "".
 func FromContext(ctx context.Context, mgr Manager) (*Session, error) {
 	token, _ := auth.Token(ctx)
-	return mgr.Get(token)
+	return mgr.Get(hashKey(token))
 }
 
-// Session holds per-user state including engine, console, and configuration.
+// hashKey returns a hex-encoded SHA-256 hash of the key, or "" for an empty key.
+// Used to avoid storing security-sensitive tokens in memory or logs.
+func hashKey(key string) string {
+	if key == "" {
+		return ""
+	}
+	h := sha256.Sum256([]byte(key))
+	return hex.EncodeToString(h[:])
+}
+
+// Session holds per-user state including engine, console state, and configuration.
 type Session struct {
 	Engine  *engine.Engine
 	Configs config.Configs
-	Console *ConsoleState // nil if no console is connected.
+	Console *Console // nil if no console is connected.
 
-	lastUsed time.Time
+	lastUsed atomic.Int64 // UnixNano timestamp, atomic for lock-free access.
 }
 
 // singleManager always returns the same session, ignoring the key.
@@ -54,117 +68,91 @@ func NewSingle(e *engine.Engine, configs config.Configs) Manager {
 }
 
 func (m *singleManager) Get(string) (*Session, error) { return m.session, nil }
-func (m *singleManager) OnExpire(func(string))        {}
-func (m *singleManager) Close()                       {}
+func (m *singleManager) Close()                       { m.session.Console.Close() }
+
+// entry holds a session that is initialized exactly once.
+// Concurrent callers block on once.Do until the session is ready.
+type entry struct {
+	once    sync.Once
+	session *Session
+	err     error
+}
 
 // poolManager maps session keys to Sessions, with timeout-based cleanup.
 type poolManager struct {
-	mu       sync.Mutex
-	sessions map[string]*Session
-	timeout  time.Duration
-	factory  func() (*engine.Engine, error)
-	done     chan struct{}
-	onExpire []func(key string) // called when a session expires
+	sessions    sync.Map // map[string]*entry
+	factory     func() (*engine.Engine, config.Configs, error)
+	timeout     time.Duration
+	lastCleanup atomic.Int64
 }
 
 // NewPool creates a Manager that creates a new Session per key using factory
 // and expires sessions after timeout of inactivity.
-func NewPool(timeout time.Duration, factory func() (*engine.Engine, error)) Manager {
-	m := &poolManager{
-		sessions: make(map[string]*Session),
-		timeout:  timeout,
-		factory:  factory,
-		done:     make(chan struct{}),
+// timeout == 0 means never time out.
+func NewPool(timeout time.Duration, factory func() (*engine.Engine, config.Configs, error)) Manager {
+	return &poolManager{
+		timeout: timeout,
+		factory: factory,
 	}
-	tick := min(timeout/2, time.Minute)
-	go m.cleanupLoop(tick)
-	return m
 }
 
 // Get returns the Session for the given session key, creating a new session if needed.
 func (m *poolManager) Get(key string) (*Session, error) {
-	// Already in cache?
-	if s := m.get(key); s != nil {
-		return s, nil
+	v, _ := m.sessions.LoadOrStore(key, &entry{})
+	e := v.(*entry)
+	e.once.Do(func() {
+		var eng *engine.Engine
+		var configs config.Configs
+		eng, configs, e.err = m.factory()
+		if e.err == nil {
+			e.session = &Session{Engine: eng, Configs: configs, Console: NewConsoleState()}
+			log.V(1).Info("Session created", "key", key)
+		}
+	})
+	if e.err != nil {
+		log.Error(e.err, "Session create failed", "key", key)
+		m.sessions.CompareAndSwap(key, e, &entry{}) // Allow retry with a fresh entry.
+		return nil, e.err
 	}
-	// Create engine outside of the lock.
-	e, err := m.factory()
-	if err != nil {
-		log.Error(err, "Session create failed", "key", key)
-		return nil, err
-	}
-	// Lock to write a new session.
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	// Double check, session created by another goroutine.
-	if existing := m.getLH(key); existing != nil {
-		// Forget the engine we created, garbage collector will clean it up.
-		return existing, nil
-	}
-	s := &Session{Engine: e, Console: NewConsoleState(), lastUsed: time.Now()}
-	m.sessions[key] = s
-	log.V(1).Info("Session created", "key", key)
-	return s, nil
+	now := time.Now().UnixNano()
+	e.session.lastUsed.Store(now)
+	m.maybeCleanup(now)
+	return e.session, nil
 }
 
-// OnExpire registers a callback that is called when a session expires.
-// The callback receives the session key. It is called without the Manager lock held.
-func (m *poolManager) OnExpire(f func(key string)) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	m.onExpire = append(m.onExpire, f)
-}
-
-// get returns session for key or nil. Takes lock.
-func (m *poolManager) get(key string) *Session {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	return m.getLH(key)
-}
-
-// getLH returns session for key or nil. Must be called with the lock held.
-func (m *poolManager) getLH(key string) *Session {
-	if s := m.sessions[key]; s != nil {
-		s.lastUsed = time.Now()
-		return s
-	}
-	return nil
-}
-
-// Close stops the cleanup goroutine.
+// Close closes all sessions.
 func (m *poolManager) Close() {
-	close(m.done)
+	m.sessions.Range(func(key, value any) bool {
+		if ent := value.(*entry); ent.session != nil {
+			ent.session.Console.Close()
+		}
+		m.sessions.Delete(key)
+		return true
+	})
 }
 
-func (m *poolManager) cleanupLoop(tick time.Duration) {
-	ticker := time.NewTicker(tick)
-	defer ticker.Stop()
-	for {
-		select {
-		case <-ticker.C:
-			m.cleanup()
-		case <-m.done:
-			return
-		}
+// maybeCleanup runs cleanup if timeout is enabled and enough time has passed since the last cleanup.
+//
+// Note this allows sessions to hang around longer if there is no activity, but in that case the
+// server is not under pressure and the number of sessions is not growing.
+func (m *poolManager) maybeCleanup(now int64) {
+	if m.timeout <= 0 {
+		return
 	}
-}
-
-func (m *poolManager) cleanup() {
-	m.mu.Lock()
-	var expired []string
-	now := time.Now()
-	for key, s := range m.sessions {
-		if now.Sub(s.lastUsed) > m.timeout {
-			delete(m.sessions, key)
-			expired = append(expired, key)
-		}
+	last := m.lastCleanup.Load()
+	if now-last < int64(m.timeout) {
+		return
 	}
-	callbacks := m.onExpire
-	m.mu.Unlock()
-	for _, key := range expired {
-		for _, f := range callbacks {
-			f(key)
-		}
-		log.V(1).Info("Session expired", "key", key)
+	if !m.lastCleanup.CompareAndSwap(last, now) {
+		return // Another goroutine is already cleaning up.
 	}
+	m.sessions.Range(func(key, value any) bool {
+		ent := value.(*entry)
+		if ent.session != nil && now-ent.session.lastUsed.Load() > int64(m.timeout) {
+			log.V(1).Info("Session expired", "key", key)
+			m.sessions.Delete(key)
+			ent.session.Console.Close()
+		}
+		return true
+	})
 }
