@@ -15,7 +15,7 @@ var listCmd = &cobra.Command{
 	Short: "List domains or classes in DOMAIN.",
 	Args:  cobra.RangeArgs(0, 1),
 	Run: func(cmd *cobra.Command, args []string) {
-		e, _ := newEngine()
+		e := newEngine()
 		w := text.NewPrinter(e)
 		switch len(args) {
 		case 0:

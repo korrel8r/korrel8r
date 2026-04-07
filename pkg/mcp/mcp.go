@@ -11,9 +11,9 @@ import (
 
 	"github.com/korrel8r/korrel8r/internal/pkg/build"
 	"github.com/korrel8r/korrel8r/internal/pkg/logging"
-	"github.com/korrel8r/korrel8r/pkg/engine"
 	"github.com/korrel8r/korrel8r/pkg/engine/traverse"
 	"github.com/korrel8r/korrel8r/pkg/rest"
+	"github.com/korrel8r/korrel8r/pkg/session"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
@@ -50,33 +50,35 @@ const (
 
 type Server struct {
 	*mcp.Server
-	Engine *engine.Engine
-	API    *rest.API
+	sessions session.Manager
 }
 
 // NewServer creates a new MCP server.
-// If api is not nil, session operations are enabled in conjunction with the REST API.
-func NewServer(e *engine.Engine, api *rest.API) *Server {
+// Tool handlers resolve the session per-request using the auth token from the context.
+func NewServer(sessions session.Manager) *Server {
+	srv := &Server{
+		Server:   mcp.NewServer(&mcp.Implementation{Name: "korrel8r", Title: "Korrel8r MCP Server", Version: build.Version}, nil),
+		sessions: sessions,
+	}
+	addToolsTo(srv.Server, sessions)
 	timeout := func(handler mcp.MethodHandler) mcp.MethodHandler {
 		return func(ctx context.Context, method string, req mcp.Request) (mcp.Result, error) {
-			ctx, cancel := e.WithTimeout(ctx, 0)
+			s, err := session.FromContext(ctx, sessions)
+			if err != nil {
+				return nil, err
+			}
+			ctx, cancel := s.Engine.WithTimeout(ctx, 0)
 			defer cancel()
 			return handler(ctx, method, req)
 		}
 	}
-	s := &Server{
-		Server: mcp.NewServer(&mcp.Implementation{Name: "korrel8r", Title: "Korrel8r MCP Server", Version: build.Version}, nil),
-		Engine: e,
-		API:    api,
-	}
-	s.addTools(e, api)
-	s.AddReceivingMiddleware(logger, timeout)
-	return s
+	srv.AddReceivingMiddleware(logger, timeout)
+	return srv
 }
 
-func (s *Server) addTools(e *engine.Engine, api *rest.API) {
+func addToolsTo(srv *mcp.Server, sessions session.Manager) {
 
-	mcp.AddTool(s.Server, &mcp.Tool{
+	mcp.AddTool(srv, &mcp.Tool{
 		Name: ListDomains,
 		Description: `
 Returns a list of Korrel8r domains with descriptions.
@@ -85,10 +87,14 @@ storage technology, and query syntax.
 `,
 	},
 		func(ctx context.Context, req *mcp.CallToolRequest, input struct{}) (_ *mcp.CallToolResult, out ListDomainsResult, err error) {
-			return nil, ListDomainsResult{Domains: rest.ListDomains(e)}, nil
+			s, err := session.FromContext(ctx, sessions)
+			if err != nil {
+				return nil, ListDomainsResult{}, err
+			}
+			return nil, ListDomainsResult{Domains: rest.ListDomains(s.Engine)}, nil
 		})
 
-	mcp.AddTool(s.Server, &mcp.Tool{
+	mcp.AddTool(srv, &mcp.Tool{
 		Name: ListDomainClasses,
 		Description: `
 List the classes in a domain.
@@ -97,7 +103,11 @@ Some domains have only a single class, others (like the 'k8s' domain) have many.
 `,
 	},
 		func(ctx context.Context, req *mcp.CallToolRequest, input DomainParams) (*mcp.CallToolResult, *ListDomainClassesResult, error) {
-			d, err := e.Domain(input.Domain)
+			s, err := session.FromContext(ctx, sessions)
+			if err != nil {
+				return nil, nil, err
+			}
+			d, err := s.Engine.Domain(input.Domain)
 			if err != nil {
 				return nil, nil, err
 			}
@@ -108,60 +118,76 @@ Some domains have only a single class, others (like the 'k8s' domain) have many.
 			return nil, out, nil
 		})
 
-	mcp.AddTool(s.Server, &mcp.Tool{
+	mcp.AddTool(srv, &mcp.Tool{
 		Name: CreateNeighborsGraph,
 		Description: `
 Returns a JSON graph of correlated objects.
 From a set of start objects, follow correlation rules to find related objects up to the specified depth.`,
 	},
 		func(ctx context.Context, req *mcp.CallToolRequest, input NeighborParams) (*mcp.CallToolResult, *rest.Graph, error) {
-			start, err := rest.TraverseStart(e, input.Start)
+			s, err := session.FromContext(ctx, sessions)
 			if err != nil {
 				return nil, nil, err
 			}
-			g, err := traverse.Neighbors(ctx, e, start, input.Depth)
+			start, err := rest.TraverseStart(s.Engine, input.Start)
+			if err != nil {
+				return nil, nil, err
+			}
+			g, err := traverse.Neighbors(ctx, s.Engine, start, input.Depth)
 			if err != nil {
 				return nil, nil, err
 			}
 			return nil, rest.NewGraph(g, nil), nil
 		})
 
-	mcp.AddTool(s.Server, &mcp.Tool{
+	mcp.AddTool(srv, &mcp.Tool{
 		Name: CreateGoalsGraph,
 		Description: `
 Returns a JSON graph of correlated objects.
 From a set of start objects, follow all paths leading to one of the goal classes.`,
 	},
 		func(ctx context.Context, req *mcp.CallToolRequest, input GoalParams) (*mcp.CallToolResult, *rest.Graph, error) {
-			start, err := rest.TraverseStart(e, input.Start)
+			s, err := session.FromContext(ctx, sessions)
 			if err != nil {
 				return nil, nil, err
 			}
-			goals, err := e.Classes(input.Goals)
+			start, err := rest.TraverseStart(s.Engine, input.Start)
 			if err != nil {
 				return nil, nil, err
 			}
-			g, err := traverse.Goals(ctx, e, start, goals)
+			goals, err := s.Engine.Classes(input.Goals)
+			if err != nil {
+				return nil, nil, err
+			}
+			g, err := traverse.Goals(ctx, s.Engine, start, goals)
 			if err != nil {
 				return nil, nil, err
 			}
 			return nil, rest.NewGraph(g, nil), nil
 		})
 
-	mcp.AddTool(s.Server, &mcp.Tool{
+	mcp.AddTool(srv, &mcp.Tool{
 		Name: GetConsole,
 		Description: `
 Returns the current state of the console display, representing what the user is currently looking at.
 `,
 	},
 		func(ctx context.Context, req *mcp.CallToolRequest, input struct{}) (*mcp.CallToolResult, *rest.Console, error) {
-			if err := s.apiCheck(); err != nil {
+			s, err := session.FromContext(ctx, sessions)
+			if err != nil {
 				return nil, nil, err
 			}
-			return nil, api.ConsoleState.Get(), nil
+			if err := consoleCheck(s); err != nil {
+				return nil, nil, err
+			}
+			c := &rest.Console{}
+			if err := s.Console.Get(c); err != nil {
+				return nil, nil, err
+			}
+			return nil, c, nil
 		})
 
-	mcp.AddTool(s.Server, &mcp.Tool{
+	mcp.AddTool(srv, &mcp.Tool{
 		Name: ShowInConsole,
 		Description: `
 Send updated display parameters to the user's console, to allow the user to visualize the data in
@@ -169,13 +195,17 @@ a rich graphical environment.
 `,
 	},
 		func(ctx context.Context, req *mcp.CallToolRequest, input ShowInConsoleParams) (*mcp.CallToolResult, any, error) {
-			if err := s.apiCheck(); err != nil {
+			s, err := session.FromContext(ctx, sessions)
+			if err != nil {
 				return nil, nil, err
 			}
-			if err := rest.ConsoleOK(e, &input); err != nil {
+			if err := consoleCheck(s); err != nil {
 				return nil, nil, err
 			}
-			if err := api.ConsoleState.Send(&input); err != nil {
+			if err := rest.ConsoleOK(s.Engine, &input); err != nil {
+				return nil, nil, err
+			}
+			if err := s.Console.Send(&input); err != nil {
 				return nil, nil, err
 			}
 			return nil, nil, nil
@@ -197,11 +227,14 @@ func (s *Server) SSEHandler() http.Handler {
 	return mcp.NewSSEHandler(s.handler, &mcp.SSEOptions{})
 }
 
-// handler returns the same server for all requests. Server and Engine are concurrent-safe.
-func (s *Server) handler(*http.Request) *mcp.Server { return s.Server }
+// handler returns the shared server for all requests.
+// Per-session state is resolved per-request by tool handlers via session.FromContext.
+func (s *Server) handler(*http.Request) *mcp.Server {
+	return s.Server
+}
 
-func (s *Server) apiCheck() error {
-	if s.API == nil {
+func consoleCheck(s *session.Session) error {
+	if s.Console == nil {
 		return errors.New("not connected to console")
 	}
 	return nil

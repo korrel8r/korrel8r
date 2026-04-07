@@ -4,7 +4,6 @@
 package rest
 
 import (
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"slices"
@@ -14,35 +13,37 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/korrel8r/korrel8r/internal/pkg/build"
 	"github.com/korrel8r/korrel8r/internal/pkg/logging"
-	"github.com/korrel8r/korrel8r/pkg/config"
-	"github.com/korrel8r/korrel8r/pkg/engine"
 	"github.com/korrel8r/korrel8r/pkg/engine/traverse"
 	"github.com/korrel8r/korrel8r/pkg/graph"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"github.com/korrel8r/korrel8r/pkg/result"
+	"github.com/korrel8r/korrel8r/pkg/session"
 	"github.com/korrel8r/korrel8r/pkg/unique"
 )
 
 var log = logging.Log()
 
 type API struct {
-	Engine       *engine.Engine
-	Configs      config.Configs
-	Router       *gin.Engine
-	BasePath     string
-	ConsoleState *ConsoleState
+	Sessions session.Manager
+	Router   *gin.Engine
+	BasePath string
+}
+
+// getSession returns the per-request Session from the context.
+func (a *API) getSession(c *gin.Context) (*session.Session, error) {
+	session, err := session.FromContext(c.Request.Context(), a.Sessions)
+	check(c, http.StatusInternalServerError, err)
+	return session, err
 }
 
 var _ ServerInterface = &API{}
 
 // New API instance, registers handlers with a gin Engine.
-func New(e *engine.Engine, c config.Configs, r *gin.Engine) (*API, error) {
+func New(sessions session.Manager, r *gin.Engine) (*API, error) {
 	api := &API{
-		Engine:       e,
-		Configs:      c,
-		Router:       r,
-		BasePath:     BasePath,
-		ConsoleState: NewConsoleState(),
+		Sessions: sessions,
+		Router:   r,
+		BasePath: BasePath,
 	}
 	rg := r.Group(api.BasePath)
 	rg.Use(api.logger) // Apply logger only to API endpoints
@@ -63,11 +64,19 @@ func (a *API) homePage(c *gin.Context) {
 }
 
 func (a *API) ListDomains(c *gin.Context) {
-	c.JSON(http.StatusOK, ListDomains(a.Engine))
+	session, err := a.getSession(c)
+	if !check(c, http.StatusInternalServerError, err) {
+		return
+	}
+	c.JSON(http.StatusOK, ListDomains(session.Engine))
 }
 
 func (a *API) ListDomainClasses(c *gin.Context, domain string) {
-	d, err := a.Engine.Domain(domain)
+	session, err := a.getSession(c)
+	if !check(c, http.StatusInternalServerError, err) {
+		return
+	}
+	d, err := session.Engine.Domain(domain)
 	if !check(c, http.StatusNotFound, err, "domain not found: %s", domain) {
 		return
 	}
@@ -101,7 +110,11 @@ func (a *API) ListGoals(c *gin.Context) {
 }
 
 func (a *API) GraphNeighbors(c *gin.Context, params GraphNeighborsParams) {
-	e := a.Engine
+	session, err := a.getSession(c)
+	if !check(c, http.StatusInternalServerError, err) {
+		return
+	}
+	e := session.Engine
 	r := Neighbors{}
 	if !check(c, http.StatusBadRequest, c.BindJSON(&r)) {
 		return
@@ -126,13 +139,18 @@ func (a *API) GraphNeighbours(c *gin.Context, params GraphNeighboursParams) {
 }
 
 func (a *API) Objects(c *gin.Context, params ObjectsParams) {
-	query, err := a.Engine.Query(params.Query)
+	session, err := a.getSession(c)
+	if !check(c, http.StatusInternalServerError, err) {
+		return
+	}
+	e := session.Engine
+	query, err := e.Query(params.Query)
 	if !check(c, http.StatusBadRequest, err) {
 		return
 	}
 	constraint := (*korrel8r.Constraint)(nil) // TODO can't pass constraints
 	result := result.New(query.Class())
-	if !check(c, http.StatusNotFound, a.Engine.Get(c.Request.Context(), query, constraint, result)) {
+	if !check(c, http.StatusNotFound, e.Get(c.Request.Context(), query, constraint, result)) {
 		return
 	}
 	log.V(3).Info("Response OK", "objects", len(result.List()))
@@ -153,7 +171,11 @@ func (a *API) SetConfig(c *gin.Context, params SetConfigParams) {
 
 // goals is shared between GraphGoals and ListGoals
 func (a *API) goals(c *gin.Context) (*graph.Graph, []korrel8r.Class) {
-	e := a.Engine
+	session, err := a.getSession(c)
+	if !check(c, http.StatusInternalServerError, err) {
+		return nil, nil
+	}
+	e := session.Engine
 	r := Goals{}
 	if !check(c, http.StatusBadRequest, c.BindJSON(&r)) {
 		return nil, nil
@@ -166,7 +188,7 @@ func (a *API) goals(c *gin.Context) (*graph.Graph, []korrel8r.Class) {
 	if !check(c, http.StatusBadRequest, err) {
 		return nil, nil
 	}
-	g, err := traverse.Goals(c.Request.Context(), a.Engine, start, goals)
+	g, err := traverse.Goals(c.Request.Context(), e, start, goals)
 	check(c, http.StatusNotFound, err)
 	return g, goals
 }
@@ -199,7 +221,14 @@ func (a *API) SetConsole(c *gin.Context) {
 	if !check(c, http.StatusBadRequest, c.BindJSON(r)) {
 		return
 	}
-	a.ConsoleState.Set(r)
+	session, err := a.getSession(c)
+	if !check(c, http.StatusInternalServerError, err) {
+		return
+	}
+	cs := session.Console
+	if !check(c, http.StatusInternalServerError, cs.Set(r)) {
+		return
+	}
 }
 
 // Notification of console updates.
@@ -215,25 +244,27 @@ func (a *API) ConsoleUpdates(c *gin.Context) {
 
 	w.Flush() // Send headers to start the SSE stream.
 
+	session, err := a.getSession(c)
+	if !check(c, http.StatusInternalServerError, err) {
+		return
+	}
+	cs := session.Console
 	keepAliveTicker := time.NewTicker(time.Minute)
 	defer keepAliveTicker.Stop()
-
-	var err error
 	for {
 		if !check(c, http.StatusInternalServerError, err) {
 			log.V(3).Info("Console update write failed", "error", err)
 			return
 		}
 		select {
-		case update, ok := <-a.ConsoleState.Updates: // Wait for an update
+		case update, ok := <-cs.Updates: // Wait for an update
 			if !ok {
 				log.V(3).Info("Console update internal shutdown")
 				return // Shut down
 			}
-			b, _ := json.Marshal(update)
-			_, err = fmt.Fprintf(w, "event: console-update\ndata: %v\n\n", string(b))
+			_, err = fmt.Fprintf(w, "event: console-update\ndata: %v\n\n", string(update))
 			w.Flush()
-			log.V(3).Info("Console update sent", "event", update)
+			log.V(3).Info("Console update sent", "event", string(update))
 
 		case <-keepAliveTicker.C:
 			// Send a keep-alive comment

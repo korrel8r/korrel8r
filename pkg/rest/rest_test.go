@@ -11,13 +11,17 @@ import (
 	"net/http/httptest"
 	"os"
 	"strings"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/korrel8r/korrel8r/internal/pkg/test/mock"
 	"github.com/korrel8r/korrel8r/pkg/config"
 	"github.com/korrel8r/korrel8r/pkg/engine"
 	"github.com/korrel8r/korrel8r/pkg/ptr"
+	"github.com/korrel8r/korrel8r/pkg/rest/auth"
+	"github.com/korrel8r/korrel8r/pkg/session"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -134,7 +138,7 @@ type testAPI struct {
 
 func newTestAPI(t *testing.T, e *engine.Engine) *testAPI {
 	r := ginEngine()
-	a, err := New(e, nil, r)
+	a, err := New(session.NewSingle(e, nil), r)
 	require.NoError(t, err)
 	return &testAPI{API: a, Router: r}
 }
@@ -219,24 +223,29 @@ func TestAPIGraphNeighbors_badRequest(t *testing.T) {
 }
 
 func TestConsoleState(t *testing.T) {
-	cs := NewConsoleState()
+	cs := session.NewConsoleState()
 	// Initial state is empty
-	assert.Empty(t, cs.Get().View)
+	got := &Console{}
+	require.NoError(t, cs.Get(got))
+	assert.Empty(t, got.View)
 
 	// Set and get
 	view := "test"
-	cs.Set(&Console{View: view})
-	got := cs.Get()
+	require.NoError(t, cs.Set(&Console{View: view}))
+	got = &Console{}
+	require.NoError(t, cs.Get(got))
 	require.NotNil(t, got.View)
 	assert.Equal(t, "test", got.View)
 
 	// Get returns a deep copy - mutating it doesn't affect state
 	got.View = "mutated"
-	assert.Equal(t, "test", cs.Get().View)
+	got2 := &Console{}
+	require.NoError(t, cs.Get(got2))
+	assert.Equal(t, "test", got2.View)
 }
 
 func TestConsoleUpdatesSend(t *testing.T) {
-	cs := NewConsoleState()
+	cs := session.NewConsoleState()
 
 	// Send with no receiver times out
 	view := "test"
@@ -259,6 +268,47 @@ func TestDeepCopy(t *testing.T) {
 	// Verify it's a deep copy
 	dst.View = "modified"
 	assert.Equal(t, "hello", src.View)
+}
+
+func TestMultiSession_QueryIsolation(t *testing.T) {
+	// Each session gets a separate engine with different store data.
+	// Verify that REST requests with different auth tokens get different results.
+	var callCount atomic.Int32
+	factory := func() (*engine.Engine, error) {
+		n := callCount.Add(1)
+		d := mock.NewDomain("mock", "a")
+		s := mock.NewStore(d)
+		s.AddQuery("mock:a:q", fmt.Sprintf("result-%d", n))
+		return engine.Build().Domains(d).Stores(s).Engine()
+	}
+	sessions := session.NewPool(time.Hour, factory)
+	defer sessions.Close()
+
+	r := ginEngine()
+	r.Use(func(c *gin.Context) {
+		c.Request = c.Request.WithContext(auth.Context(c.Request))
+		c.Next()
+	})
+	_, err := New(sessions, r)
+	require.NoError(t, err)
+
+	getObjects := func(token string) string {
+		t.Helper()
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest("GET", "/api/v1alpha1/objects?query=mock:a:q", nil)
+		req.Header.Set("Authorization", token)
+		r.ServeHTTP(w, req)
+		require.Equal(t, http.StatusOK, w.Code)
+		return w.Body.String()
+	}
+
+	resultA := getObjects("token-A")
+	resultB := getObjects("token-B")
+	assert.NotEqual(t, resultA, resultB, "different tokens should get results from different engines")
+
+	// Same token should get the same result (same session reused).
+	resultA2 := getObjects("token-A")
+	assert.Equal(t, resultA, resultA2, "same token should reuse session")
 }
 
 func TestTraverseStart_errors(t *testing.T) {

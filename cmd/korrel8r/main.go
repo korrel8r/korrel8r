@@ -84,12 +84,13 @@ func main() {
 	must.Must(rootCmd.Execute())
 }
 
-func newEngine() (*engine.Engine, config.Configs) {
-	c := must.Must1(config.Load(*configFlag))
-	e := must.Must1(engine.Build().
+func newEngineWithConfigs(c config.Configs) (*engine.Engine, error) {
+	return engine.Build().
 		Domains(append(domains.All, mock.NewDomain("mock"))...).
 		Config(c).
-		Engine())
-	log.V(2).Info("Configuration loaded", "source", *configFlag)
-	return e, c
+		Engine()
+}
+
+func newEngine() *engine.Engine {
+	return must.Must1(newEngineWithConfigs(must.Must1(config.Load(*configFlag))))
 }

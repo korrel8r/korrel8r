@@ -2,7 +2,9 @@
 
 package config
 
-import "github.com/korrel8r/korrel8r/pkg/ptr"
+import (
+	"github.com/korrel8r/korrel8r/pkg/ptr"
+)
 
 // Config defines the configuration for an instance of korrel8r.
 // Configuration files may be JSON or YAML.
@@ -100,6 +102,13 @@ type Class struct {
 type Tuning struct {
 	// RequestTimeout cancels requests if they last longer than this timeout.
 	RequestTimeout *Duration `json:"requestTimeout,omitempty"`
+
+	// SessionTimeout sets the idle timeout for sessions, no timeout if not set.
+	//
+	// Each unique Authorization header maps to a session with its own Engine.
+	// Sessions are removed after this duration of inactivity.
+	// A value of 0 means sessions are disabled and a single shared Engine is used.
+	SessionTimeout *Duration `json:"sessionTimeout,omitempty"`
 }
 
 // Copy all non-nil fields of x to t.
@@ -109,5 +118,8 @@ func (t *Tuning) Copy(x *Tuning) {
 	}
 	if x.RequestTimeout != nil {
 		t.RequestTimeout = ptr.To(*x.RequestTimeout)
+	}
+	if x.SessionTimeout != nil {
+		t.SessionTimeout = ptr.To(*x.SessionTimeout)
 	}
 }
