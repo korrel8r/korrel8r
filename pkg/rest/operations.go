@@ -14,6 +14,7 @@ import (
 	"github.com/korrel8r/korrel8r/internal/pkg/build"
 	"github.com/korrel8r/korrel8r/internal/pkg/logging"
 	"github.com/korrel8r/korrel8r/pkg/engine/traverse"
+	"github.com/korrel8r/korrel8r/pkg/auth"
 	"github.com/korrel8r/korrel8r/pkg/graph"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"github.com/korrel8r/korrel8r/pkg/result"
@@ -30,7 +31,7 @@ type API struct {
 
 // getSession returns the per-request Session from the context.
 func (a *API) getSession(c *gin.Context) (*session.Session, error) {
-	return session.FromContext(c.Request.Context(), a.Sessions)
+	return a.Sessions.Get(a.Sessions.Key(auth.Context(c.Request)))
 }
 
 var _ ServerInterface = &API{}

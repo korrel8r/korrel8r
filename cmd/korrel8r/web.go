@@ -17,7 +17,7 @@ import (
 	"github.com/korrel8r/korrel8r/pkg/engine"
 	"github.com/korrel8r/korrel8r/pkg/mcp"
 	"github.com/korrel8r/korrel8r/pkg/rest"
-	"github.com/korrel8r/korrel8r/pkg/rest/auth"
+	"github.com/korrel8r/korrel8r/pkg/auth"
 	"github.com/korrel8r/korrel8r/pkg/session"
 	"github.com/spf13/cobra"
 )
@@ -80,12 +80,13 @@ var webCmd = &cobra.Command{
 		router.Use(gin.Recovery())
 		// Middleware to add authentication and timeout to the request context.
 		router.Use(func(c *gin.Context) {
-			ss, err := session.FromContext(c.Request.Context(), sessions)
+			ctx := auth.Context(c.Request)
+			ss, err := sessions.Get(sessions.Key(ctx))
 			if err != nil {
 				c.AbortWithStatusJSON(http.StatusInternalServerError, c.Error(err).JSON())
 				return
 			}
-			ctx, cancel := ss.Engine.WithTimeout(auth.Context(c.Request), 0)
+			ctx, cancel := ss.Engine.WithTimeout(ctx, 0)
 			defer cancel()
 			c.Request = c.Request.WithContext(ctx)
 			c.Next()
