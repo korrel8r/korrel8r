@@ -16,6 +16,7 @@ import (
 	"github.com/korrel8r/korrel8r/pkg/engine/traverse"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"github.com/korrel8r/korrel8r/pkg/rest"
+	"github.com/korrel8r/korrel8r/pkg/auth"
 	"github.com/korrel8r/korrel8r/pkg/session"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
@@ -114,7 +115,7 @@ func NewServer(sessions session.Manager) *Server {
 			return handler(ctx, method, req)
 		}
 	}
-	s.AddReceivingMiddleware(logger, timeout)
+	s.AddReceivingMiddleware(s.logger, timeout)
 	return s
 }
 
@@ -335,42 +336,51 @@ func (s *Server) ServeStdio(ctx context.Context) error {
 
 // HTTPHandler  a handler for the HTTP Streamable MCP protocol.
 func (s *Server) HTTPHandler() http.Handler {
-	return mcp.NewStreamableHTTPHandler(s.handler, &mcp.StreamableHTTPOptions{})
+	return withAuthContext(mcp.NewStreamableHTTPHandler(s.handler, &mcp.StreamableHTTPOptions{}))
 }
 
 // SSEHandler returns a handler for the SSE MCP protocol.
 func (s *Server) SSEHandler() http.Handler {
-	return mcp.NewSSEHandler(s.handler, &mcp.SSEOptions{})
+	return withAuthContext(mcp.NewSSEHandler(s.handler, &mcp.SSEOptions{}))
+}
+
+// withAuthContext wraps an HTTP handler to extract the Authorization header into the request context.
+func withAuthContext(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		next.ServeHTTP(w, r.WithContext(auth.Context(r)))
+	})
 }
 
 func (s *Server) session(ctx context.Context) (*session.Session, error) {
-	return session.FromContext(ctx, s.sessions)
+	return s.sessions.Get(s.sessions.Key(ctx))
 }
 
 // handler returns the shared server for all requests.
-// Per-session state is resolved per-request by tool handlers via session.FromContext.
+// Per-session state is resolved per-request by tool handlers via sessions.Get.
 func (s *Server) handler(*http.Request) *mcp.Server {
 	return s.Server
 }
 
 // logger is middleware to do debug logging of MCP methods
-func logger(handler mcp.MethodHandler) mcp.MethodHandler {
+func (s *Server) logger(handler mcp.MethodHandler) mcp.MethodHandler {
 	return func(ctx context.Context, tool string, req mcp.Request) (result mcp.Result, err error) {
+		start := time.Now()
 		log := logging.Log()
 		if log.V(3).Enabled() {
-			start := time.Now()
 			defer func() {
 				latency := time.Since(start)
 				log = log.WithValues(
 					"tool", tool,
 					"latency", latency,
 					"parameters", logging.JSON(req.GetParams()))
-				if err != nil {
-					log = log.WithValues("error", err)
-				} else {
-					log = log.WithValues("result", logging.JSON(result))
+				if ss, err := s.session(ctx); err == nil {
+					log = log.WithValues("session", ss.ID)
 				}
-				log.V(3).Info("MCP return")
+				if err != nil {
+					log.V(3).Info("MCP call failed", "error", err)
+				} else {
+					log.V(3).Info("MCP call OK", "result", logging.JSON(result))
+				}
 			}()
 		}
 		return handler(ctx, tool, req)

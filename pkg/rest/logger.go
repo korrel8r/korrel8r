@@ -20,7 +20,9 @@ func (a *API) logger(c *gin.Context) {
 		"url", c.Request.URL,
 		"from", c.Request.RemoteAddr,
 	)
-	log.V(4).Info("Request received", "body", copyBody(c.Request))
+	if log.V(4).Enabled() {
+		log.V(4).Info("Request received", "body", copyBody(c.Request))
+	}
 	// Wrap the ResponseWriter to capture the response
 	rw := newResponseWriter(c.Writer)
 	c.Writer = rw
@@ -33,8 +35,8 @@ func (a *API) logger(c *gin.Context) {
 		if len(c.Errors.Errors()) > 0 {
 			log = log.WithValues("errors", c.Errors.Errors())
 		}
-		if log.V(5).Enabled() { // Response is big, trace at per-object level.
-			log = log.WithValues("response", rw.String())
+		if log.V(4).Enabled() {
+			log = log.WithValues("request", copyBody(c.Request), "response", rw.String())
 		}
 		if c.IsAborted() || c.Writer.Status()/100 != 2 {
 			log.V(2).Info("Request failed")

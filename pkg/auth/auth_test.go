@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/korrel8r/korrel8r/pkg/rest/auth"
+	"github.com/korrel8r/korrel8r/pkg/auth"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -27,7 +27,7 @@ func Test_Context_RoundTrip(t *testing.T) {
 		{in: "Bearer my-token", out: "", want: "Bearer my-token"},
 		{in: "", out: "", want: ""},
 		{in: "Bearer my-token", out: "Basic bad:stuff", want: "Bearer my-token"},
-		{in: "", out: "Basic bad:stuff", want: ""},
+		{in: "", out: "Basic bad:stuff", want: "Basic bad:stuff"},
 	} {
 		t.Run(fmt.Sprintf("%v", x), func(t *testing.T) {
 			ctx := auth.Context(&http.Request{Header: http.Header{"Authorization": []string{x.in}}})

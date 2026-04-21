@@ -20,7 +20,6 @@ import (
 	"github.com/korrel8r/korrel8r/pkg/config"
 	"github.com/korrel8r/korrel8r/pkg/engine"
 	"github.com/korrel8r/korrel8r/pkg/ptr"
-	"github.com/korrel8r/korrel8r/pkg/rest/auth"
 	"github.com/korrel8r/korrel8r/pkg/session"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -272,10 +271,6 @@ func TestMultiSession_QueryIsolation(t *testing.T) {
 	defer sessions.Close()
 
 	r := ginEngine()
-	r.Use(func(c *gin.Context) {
-		c.Request = c.Request.WithContext(auth.Context(c.Request))
-		c.Next()
-	})
 	_, err := New(sessions, r)
 	require.NoError(t, err)
 
@@ -289,12 +284,12 @@ func TestMultiSession_QueryIsolation(t *testing.T) {
 		return w.Body.String()
 	}
 
-	resultA := getObjects("token-A")
-	resultB := getObjects("token-B")
+	resultA := getObjects("Bearer token-A")
+	resultB := getObjects("Bearer token-B")
 	assert.NotEqual(t, resultA, resultB, "different tokens should get results from different engines")
 
 	// Same token should get the same result (same session reused).
-	resultA2 := getObjects("token-A")
+	resultA2 := getObjects("Bearer token-A")
 	assert.Equal(t, resultA, resultA2, "same token should reuse session")
 }
 
