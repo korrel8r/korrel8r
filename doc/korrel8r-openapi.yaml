@@ -399,7 +399,6 @@ components:
     Constraint:
       description: Constrains the objects that will be included in search results.
       type: object
-      x-go-type: korrel8r.Constraint
       properties:
         start:
           type: string

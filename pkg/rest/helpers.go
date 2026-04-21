@@ -224,8 +224,15 @@ func TraverseStart(e *engine.Engine, start Start) (traverse.Start, error) {
 		Class:      class,
 		Objects:    objects,
 		Queries:    queries,
-		Constraint: start.Constraint,
+		Constraint: constraintTo(start.Constraint),
 	}, nil
+}
+
+func constraintTo(c *Constraint) *korrel8r.Constraint {
+	if c == nil {
+		return nil
+	}
+	return &korrel8r.Constraint{Limit: c.Limit, Start: c.Start, End: c.End}
 }
 
 func ListDomains(e *engine.Engine) []Domain {
