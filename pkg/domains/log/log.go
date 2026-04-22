@@ -29,7 +29,7 @@ var (
 )
 
 var Domain = &domain{
-	impl.NewDomain("log", "Records from container and node logs.", Description, Application, Infrastructure, Audit),
+	impl.NewDomain("log", Description, Application, Infrastructure, Audit),
 }
 
 type domain struct{ *impl.Domain }

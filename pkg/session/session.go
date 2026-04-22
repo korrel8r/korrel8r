@@ -13,42 +13,52 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/base64"
+	"net/http"
 	"sync"
 	"sync/atomic"
 	"time"
 
+	"github.com/gin-gonic/gin"
 	"github.com/korrel8r/korrel8r/internal/pkg/logging"
+	"github.com/korrel8r/korrel8r/pkg/api"
 	"github.com/korrel8r/korrel8r/pkg/auth"
-	"github.com/korrel8r/korrel8r/pkg/config"
 	"github.com/korrel8r/korrel8r/pkg/engine"
+	"github.com/korrel8r/korrel8r/pkg/waitable"
 )
 
 var log = logging.Log()
 
-// Manager returns sessions by key.
-type Manager interface {
-	// Key returns the session key for a context.
-	Key(ctx context.Context) string
-	// Get returns the Session for a key, creating a new session if needed.
-	Get(key string) (*Session, error)
-	// Close releases resources associated with the manager.
-	Close()
-}
-
-func hashToken(token string) string {
-	h := sha256.Sum256([]byte(token))
-	return base64.RawURLEncoding.EncodeToString(h[:])
+// Console state, passes values between REST and MCP operations.
+type Console struct {
 }
 
 // Session holds per-user state including engine, console state, and configuration.
 type Session struct {
-	Engine  *engine.Engine
-	Configs config.Configs
-	Console *Console // nil if no console is connected.
-	ID      int      // Numeric session ID for logging.
-	Key     string   // Session key for map lookup (username or hashed auth header).
+	ID             string // Session ID - a username or hashed authorization token.
+	Engine         *engine.Engine
+	ConsoleState   *waitable.Value[*api.Console] // Actual console state
+	ConsoleRequest *waitable.Value[*api.Console] // Requested by agent.
 
-	lastUsed atomic.Int64 // UnixNano timestamp, atomic for lock-free access.
+	lastUsed atomic.Int64 // UnixNano timestamp for expiration, atomic for lock-free access.
+}
+
+func (s *Session) String() string { return s.ID }
+
+// FromContext returns the session from ctx. See [WithSession].
+func FromContext(ctx context.Context) *Session {
+	s, _ := ctx.Value(sessionKey{}).(*Session)
+	return s
+}
+
+// WithSession returns a context with a session. See [FromContext].
+func WithSession(ctx context.Context, s *Session) context.Context {
+	return context.WithValue(ctx, sessionKey{}, s)
+}
+
+// Manager returns sessions by key.
+type Manager interface {
+	// Get the session for a context.
+	Get(ctx context.Context) (*Session, error)
 }
 
 // singleManager always returns the same session, ignoring the context.
@@ -56,14 +66,24 @@ type singleManager struct {
 	session *Session
 }
 
-// NewSingle returns a Manager that always returns the same session.
-func NewSingle(e *engine.Engine, configs config.Configs) Manager {
-	return &singleManager{&Session{Engine: e, Configs: configs, Console: NewConsoleState()}}
+func newSession(e *engine.Engine, id string) *Session {
+	return &Session{
+		ID:             id,
+		Engine:         e,
+		ConsoleState:   waitable.NewValue[*api.Console](nil),
+		ConsoleRequest: waitable.NewValue[*api.Console](nil),
+	}
 }
 
-func (m *singleManager) Key(context.Context) string   { return "" }
-func (m *singleManager) Get(string) (*Session, error) { return m.session, nil }
-func (m *singleManager) Close()                       { m.session.Console.Close() }
+// NewSingle returns a Manager that always returns the same session.
+func NewSingle(e *engine.Engine) Manager {
+	return &singleManager{session: newSession(e, "")}
+}
+
+func (m *singleManager) Get(ctx context.Context) (*Session, error) {
+	return m.session, nil
+}
+func (m *singleManager) Close() {}
 
 // entry holds a session that is initialized exactly once.
 // Concurrent callers block on once.Do until the session is ready.
@@ -77,17 +97,16 @@ type entry struct {
 type poolManager struct {
 	sessions    sync.Map // map[string]*entry
 	tokenReview *auth.TokenReview
-	factory     func() (*engine.Engine, config.Configs, error)
+	factory     func() (*engine.Engine, error)
 	timeout     time.Duration
 	lastCleanup atomic.Int64
-	nextID      atomic.Int64
 }
 
 // NewPool creates a Manager that creates a new Session per key using factory
 // and expires sessions after timeout of inactivity.
 // timeout == 0 means never time out.
 // Automatically attempts to use k8s TokenReview for bearer token resolution.
-func NewPool(timeout time.Duration, factory func() (*engine.Engine, config.Configs, error)) Manager {
+func NewPool(timeout time.Duration, factory func() (*engine.Engine, error)) Manager {
 	tokenReview, err := auth.NewTokenReview()
 	if err != nil {
 		log.V(1).Info("TokenReview not available, using hashed token as session ID", "error", err)
@@ -97,7 +116,7 @@ func NewPool(timeout time.Duration, factory func() (*engine.Engine, config.Confi
 
 // NewPoolWithTokenReview is like NewPool but uses the provided TokenReview
 // instead of creating one automatically. Pass nil to disable token resolution.
-func NewPoolWithTokenReview(timeout time.Duration, factory func() (*engine.Engine, config.Configs, error), tr *auth.TokenReview) Manager {
+func NewPoolWithTokenReview(timeout time.Duration, factory func() (*engine.Engine, error), tr *auth.TokenReview) Manager {
 	return &poolManager{
 		timeout:     timeout,
 		tokenReview: tr,
@@ -105,53 +124,46 @@ func NewPoolWithTokenReview(timeout time.Duration, factory func() (*engine.Engin
 	}
 }
 
-// Key determines the session key from request context.
-func (m *poolManager) Key(ctx context.Context) string {
-	if token, _ := auth.Token(ctx); token != "" {
-		if m.tokenReview != nil {
-			if userName, err := m.tokenReview.User(token); err == nil {
-				return userName
-			}
-		}
-		return hashToken(token)
+// id returns session ID for context
+func (m *poolManager) id(ctx context.Context) string {
+	token := auth.ContextToken(ctx)
+	if token == "" {
+		log.V(4).Info("No bearer token found, using generic session")
+		return ""
 	}
-	return ""
+	if m.tokenReview != nil {
+		userName, err := m.tokenReview.User(token)
+		if err == nil {
+			return userName
+		}
+		log.V(4).Info("Token review error", "error", err, "FIXME", token)
+	}
+	log.V(4).Info("Cannot determine username, session ID is hashed token")
+	return hashToken(token)
 }
 
 // Get returns the Session for the given context, creating a new session if needed.
-func (m *poolManager) Get(key string) (*Session, error) {
-	v, _ := m.sessions.LoadOrStore(key, &entry{})
+func (m *poolManager) Get(ctx context.Context) (*Session, error) {
+	id := m.id(ctx)
+	v, _ := m.sessions.LoadOrStore(id, &entry{})
 	e := v.(*entry)
 	e.once.Do(func() {
 		var eng *engine.Engine
-		var configs config.Configs
-		eng, configs, e.err = m.factory()
+		eng, e.err = m.factory()
 		if e.err == nil {
-			id := int(m.nextID.Add(1))
-			e.session = &Session{Engine: eng, Configs: configs, Console: NewConsoleState(), ID: id, Key: key}
-			log.V(1).Info("Session created", "id", id, "key", key)
+			e.session = newSession(eng, id)
+			log.V(1).Info("Session created", "session", id)
 		}
 	})
 	if e.err != nil {
 		log.Error(e.err, "Session create failed")
-		m.sessions.CompareAndSwap(key, e, &entry{}) // Allow retry with a fresh entry.
+		m.sessions.CompareAndSwap(id, e, &entry{}) // Allow retry with a fresh entry.
 		return nil, e.err
 	}
 	now := time.Now().UnixNano()
 	e.session.lastUsed.Store(now)
 	m.maybeCleanup(now)
 	return e.session, nil
-}
-
-// Close closes all sessions.
-func (m *poolManager) Close() {
-	m.sessions.Range(func(key, value any) bool {
-		if ent := value.(*entry); ent.session != nil {
-			ent.session.Console.Close()
-		}
-		m.sessions.Delete(key)
-		return true
-	})
 }
 
 // maybeCleanup runs cleanup if timeout is enabled and enough time has passed since the last cleanup.
@@ -172,10 +184,46 @@ func (m *poolManager) maybeCleanup(now int64) {
 	m.sessions.Range(func(key, value any) bool {
 		ent := value.(*entry)
 		if ent.session != nil && now-ent.session.lastUsed.Load() > int64(m.timeout) {
-			log.V(2).Info("Session expired", "id", ent.session.ID)
+			log.V(2).Info("Session expired", "session", ent.session.ID)
 			m.sessions.Delete(key)
-			ent.session.Console.Close()
 		}
 		return true
 	})
+}
+
+func hashToken(token string) string {
+	h := sha256.Sum256([]byte(token))
+	return base64.RawURLEncoding.EncodeToString(h[:])
+}
+
+type sessionKey struct{}
+
+// UpdateRequest adds session and timeout to request context.
+// Returns the request and cancel function for the timeout
+func UpdateRequest(req *http.Request, sessions Manager) (*http.Request, func(), error) {
+	ctx := req.Context()
+	ctx = auth.WithToken(ctx, auth.HeaderToken(req.Header))
+	ss, err := sessions.Get(ctx)
+	if err != nil {
+		return nil, func() {}, err
+	}
+	ctx = WithSession(ctx, ss)
+	ctx, cancel := ss.Engine.WithTimeout(ctx, 0)
+	req = req.WithContext(ctx)
+	return req, cancel, nil
+}
+
+// Middleware to enable auth, session and timeout.
+func Middleware(sessions Manager) func(*gin.Context) {
+	return func(c *gin.Context) {
+		c.Request = auth.UpdateRequest(c.Request)
+		req, cancel, err := UpdateRequest(c.Request, sessions)
+		if err != nil {
+			c.AbortWithStatusJSON(http.StatusInternalServerError, c.Error(err).JSON())
+			return
+		}
+		defer cancel()
+		c.Request = req
+		c.Next()
+	}
 }

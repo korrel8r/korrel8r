@@ -20,7 +20,7 @@ func (testStore) Get(context.Context, korrel8r.Query, *korrel8r.Constraint, korr
 var _ korrel8r.Store = testStore{}
 
 func TestStore(t *testing.T) {
-	d := testDomain{NewDomain("foo", "mystery domain", "", testClass("a"), testClass("b"))}
+	d := testDomain{NewDomain("foo", "mystery domain", testClass("a"), testClass("b"))}
 	testDomainSingleton = d
 	s := testStore{NewStore(d)}
 	assert.Equal(t, d, s.Domain())

@@ -4,6 +4,8 @@ package netflow
 
 const Description = `
 
+Network flows from source nodes to destination nodes.
+
 ## Classes
 
     netflow:network
@@ -15,6 +17,11 @@ JSON object in [NetFlow](https://docs.openshift.com/container-platform/latest/ob
 ## Query
 
 Selector is a [LogQL](https://grafana.com/docs/loki/latest/query/) query string.
+
+An empty selector matches all network flows:
+
+    netflow:network:{}
+
 Examples:
 
     netflow:network:{SrcK8S_Type="Pod", SrcK8S_Namespace="myNamespace"}

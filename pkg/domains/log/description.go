@@ -4,6 +4,8 @@ package log
 
 const Description = `
 
+Log records from container and node logs.
+
 Logs can be stored on the cluster in LokiStack or in an external Loki server.
 They can also be retrieved directly from the Kubernetes API server.
 Direct API server access does not provide long-term log storage,
@@ -11,9 +13,9 @@ but it gives short-term access when there is no long term log store available.
 
 ## Classes
 
-		log:application
-		log:infrastructure
-		log:audit
+    log:application
+    log:infrastructure
+    log:audit
 
 ## Object
 
@@ -63,6 +65,10 @@ Container selector fields (see k8s domain for more detail), all fields are optio
 
 If stored logs are available, the container selector is automatically translated into
 an equivalent LogQL expression.
+
+An empty selector matches all logs of the class:
+
+    log:application:{}
 
 Examples:
 

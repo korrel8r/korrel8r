@@ -14,6 +14,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/korrel8r/korrel8r/internal/pkg/must"
+	"github.com/korrel8r/korrel8r/internal/pkg/text"
+	"github.com/korrel8r/korrel8r/pkg/api"
 	"github.com/korrel8r/korrel8r/pkg/engine"
 	"github.com/korrel8r/korrel8r/pkg/engine/traverse"
 	"github.com/korrel8r/korrel8r/pkg/graph"
@@ -22,19 +24,19 @@ import (
 )
 
 var (
-	Spec     = must.Must1(GetSwagger())
+	Spec     = must.Must1(api.GetSwagger())
 	BasePath = must.Must1(Spec.Servers.BasePath())
 )
 
-func queryCounts(gq graph.Queries, _ GraphOptions) []QueryCount {
-	qcs := make([]QueryCount, 0, len(gq))
+func queryCounts(gq graph.Queries, _ api.GraphOptions) []api.QueryCount {
+	qcs := make([]api.QueryCount, 0, len(gq))
 	for _, qc := range gq {
 		if qc.Count <= 0 {
 			continue // Omit query counts with no results
 		}
-		qcs = append(qcs, QueryCount{Query: qc.Query.String(), Count: &qc.Count})
+		qcs = append(qcs, api.QueryCount{Query: qc.Query.String(), Count: &qc.Count})
 	}
-	slices.SortFunc(qcs, func(a, b QueryCount) int {
+	slices.SortFunc(qcs, func(a, b api.QueryCount) int {
 		if n := cmp.Compare(ptr.Deref(a.Count), ptr.Deref(b.Count)); n != 0 {
 			return -n
 		}
@@ -43,14 +45,14 @@ func queryCounts(gq graph.Queries, _ GraphOptions) []QueryCount {
 	return qcs
 }
 
-func rule(l *graph.Line, opts GraphOptions) (r Rule) {
+func rule(l *graph.Line, opts api.GraphOptions) (r api.Rule) {
 	r.Name = l.Rule.Name()
 	r.Queries = queryCounts(l.Queries, opts)
 	return r
 }
 
-func node(n *graph.Node, opts GraphOptions) Node {
-	node := Node{
+func node(n *graph.Node, opts api.GraphOptions) api.Node {
+	node := api.Node{
 		Class:   n.Class.String(),
 		Queries: queryCounts(n.Queries, opts),
 		Count:   ptr.To(len(n.Result.List())),
@@ -64,11 +66,11 @@ func node(n *graph.Node, opts GraphOptions) Node {
 	return node
 }
 
-func nodes(g *graph.Graph, opts GraphOptions) []Node {
+func nodes(g *graph.Graph, opts api.GraphOptions) []api.Node {
 	if g == nil {
 		return nil
 	}
-	nodes := []Node{} // Want [] not null for empty in JSON.
+	nodes := []api.Node{} // Want [] not null for empty in JSON.
 	g.EachNode(func(n *graph.Node) {
 		if !n.Empty() { // Skip empty nodes
 			nodes = append(nodes, node(n, opts))
@@ -77,8 +79,8 @@ func nodes(g *graph.Graph, opts GraphOptions) []Node {
 	return nodes
 }
 
-func edge(e *graph.Edge, opts GraphOptions) Edge {
-	edge := Edge{
+func edge(e *graph.Edge, opts api.GraphOptions) api.Edge {
+	edge := api.Edge{
 		Start: e.Start().Class.String(),
 		Goal:  e.Goal().Class.String(),
 	}
@@ -92,8 +94,8 @@ func edge(e *graph.Edge, opts GraphOptions) Edge {
 	return edge
 }
 
-func edges(g *graph.Graph, opts GraphOptions) []Edge {
-	var edges []Edge
+func edges(g *graph.Graph, opts api.GraphOptions) []api.Edge {
+	var edges []api.Edge
 	if g == nil {
 		return nil
 	}
@@ -109,18 +111,18 @@ func edges(g *graph.Graph, opts GraphOptions) []Edge {
 // Useful for tests that need to compare actual and expected results.
 func Normalize(v any) any {
 	switch v := v.(type) {
-	case *Graph:
+	case *api.Graph:
 		Normalize(v.Nodes)
 		Normalize(v.Edges)
-	case Graph:
+	case api.Graph:
 		Normalize(&v)
-	case []Node:
-		slices.SortFunc(v, func(a, b Node) int { return strings.Compare(a.Class, b.Class) })
+	case []api.Node:
+		slices.SortFunc(v, func(a, b api.Node) int { return strings.Compare(a.Class, b.Class) })
 		for _, n := range v {
 			Normalize(n)
 		}
-	case []Edge:
-		slices.SortFunc(v, func(a, b Edge) int {
+	case []api.Edge:
+		slices.SortFunc(v, func(a, b api.Edge) int {
 			if n := strings.Compare(a.Start, b.Start); n != 0 {
 				return n
 			} else {
@@ -130,25 +132,25 @@ func Normalize(v any) any {
 		for _, e := range v {
 			Normalize(e)
 		}
-	case Node:
+	case api.Node:
 		Normalize(v.Queries)
-	case Edge:
+	case api.Edge:
 		for _, r := range v.Rules {
 			Normalize(r.Queries)
 		}
-	case []QueryCount:
-		slices.SortFunc(v, func(a, b QueryCount) int { return strings.Compare(a.Query, b.Query) })
+	case []api.QueryCount:
+		slices.SortFunc(v, func(a, b api.QueryCount) int { return strings.Compare(a.Query, b.Query) })
 	}
 	return v
 }
 
 // NewGraph returns a new rest.Graph corresponding to the internal graph.Graph.
-func NewGraph(g *graph.Graph, optsPtr *GraphOptions) *Graph {
+func NewGraph(g *graph.Graph, optsPtr *api.GraphOptions) *api.Graph {
 	if g == nil {
-		return &Graph{}
+		return &api.Graph{}
 	}
 	opts := ptr.Deref(optsPtr)
-	return &Graph{Nodes: nodes(g, opts), Edges: edges(g, opts)}
+	return &api.Graph{Nodes: nodes(g, opts), Edges: edges(g, opts)}
 }
 
 func copyBody(r *http.Request) string {
@@ -182,7 +184,7 @@ func (w responseWriter) WriteString(s string) (int, error) {
 }
 
 // TraverseStart constructs a traverse.Start from a rest.Start parameter.
-func TraverseStart(e *engine.Engine, start Start) (traverse.Start, error) {
+func TraverseStart(e *engine.Engine, start api.Start) (traverse.Start, error) {
 	var (
 		class   korrel8r.Class
 		queries []korrel8r.Query
@@ -228,24 +230,24 @@ func TraverseStart(e *engine.Engine, start Start) (traverse.Start, error) {
 	}, nil
 }
 
-func constraintTo(c *Constraint) *korrel8r.Constraint {
+func constraintTo(c *api.Constraint) *korrel8r.Constraint {
 	if c == nil {
 		return nil
 	}
 	return &korrel8r.Constraint{Limit: c.Limit, Start: c.Start, End: c.End}
 }
 
-func ListDomains(e *engine.Engine) []Domain {
-	var domains []Domain
+func ListDomains(e *engine.Engine) []api.Domain {
+	var domains []api.Domain
 	for _, d := range e.Domains() {
-		var stores []Store
+		var stores []api.Store
 		for _, sc := range e.StoreConfigsFor(d) {
 			if len(sc) > 0 {
-				stores = append(stores, (Store)(sc))
+				stores = append(stores, (api.Store)(sc))
 			}
 		}
-		summary, _ := d.Description()
-		domains = append(domains, Domain{
+		summary := text.Summary(d.Description())
+		domains = append(domains, api.Domain{
 			Name:        d.Name(),
 			Description: summary,
 			Stores:      stores,

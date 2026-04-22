@@ -4,6 +4,7 @@
 package rest
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"slices"
@@ -13,8 +14,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/korrel8r/korrel8r/internal/pkg/build"
 	"github.com/korrel8r/korrel8r/internal/pkg/logging"
+	"github.com/korrel8r/korrel8r/pkg/api"
 	"github.com/korrel8r/korrel8r/pkg/engine/traverse"
-	"github.com/korrel8r/korrel8r/pkg/auth"
 	"github.com/korrel8r/korrel8r/pkg/graph"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"github.com/korrel8r/korrel8r/pkg/result"
@@ -29,26 +30,32 @@ type API struct {
 	Router   *gin.Engine
 }
 
-// getSession returns the per-request Session from the context.
-func (a *API) getSession(c *gin.Context) (*session.Session, error) {
-	return a.Sessions.Get(a.Sessions.Key(auth.Context(c.Request)))
+// session returns the per-request Session from the context.
+func (a *API) session(c *gin.Context) (*session.Session, error) {
+	ctx := c.Request.Context()
+	// First check for session already set on context by transport.
+	if s := session.FromContext(ctx); s != nil {
+		return s, nil
+	}
+	return a.Sessions.Get(ctx)
 }
 
 var _ ServerInterface = &API{}
 
 // New API instance, registers handlers with a gin Engine.
 func New(sessions session.Manager, r *gin.Engine) (*API, error) {
-	api := &API{
+	a := &API{
 		Sessions: sessions,
 		Router:   r,
 	}
+	r.Use(session.Middleware(sessions))
 	rg := r.Group(BasePath)
-	rg.Use(api.logger) // Apply logger only to API endpoints
-	RegisterHandlers(rg, api)
+	rg.Use(a.logger) // Apply logger only to API endpoints
+	RegisterHandlers(rg, a)
 	// Helpful endpoints showing routes.
-	r.GET(BasePath, func(c *gin.Context) { spec, _ := GetSwagger(); c.JSON(http.StatusOK, spec) })
-	r.GET("/", api.homePage)
-	return api, nil
+	r.GET(BasePath, func(c *gin.Context) { spec, _ := api.GetSwagger(); c.JSON(http.StatusOK, spec) })
+	r.GET("/", a.homePage)
+	return a, nil
 }
 
 func (a *API) homePage(c *gin.Context) {
@@ -61,7 +68,7 @@ func (a *API) homePage(c *gin.Context) {
 }
 
 func (a *API) ListDomains(c *gin.Context) {
-	session, err := a.getSession(c)
+	session, err := a.session(c)
 	if !check(c, http.StatusInternalServerError, err) {
 		return
 	}
@@ -69,7 +76,7 @@ func (a *API) ListDomains(c *gin.Context) {
 }
 
 func (a *API) ListDomainClasses(c *gin.Context, domain string) {
-	session, err := a.getSession(c)
+	session, err := a.session(c)
 	if !check(c, http.StatusInternalServerError, err) {
 		return
 	}
@@ -92,7 +99,7 @@ func (a *API) GraphGoals(c *gin.Context, params GraphGoalsParams) {
 }
 
 func (a *API) ListGoals(c *gin.Context) {
-	nodes := []Node{} // return [] not null for empty
+	nodes := []api.Node{} // return [] not null for empty
 	g, goals := a.goals(c)
 	if c.IsAborted() {
 		return
@@ -100,19 +107,19 @@ func (a *API) ListGoals(c *gin.Context) {
 	set := unique.NewSet(goals...)
 	g.EachNode(func(n *graph.Node) {
 		if set.Has(n.Class) {
-			nodes = append(nodes, node(n, GraphOptions{}))
+			nodes = append(nodes, node(n, api.GraphOptions{}))
 		}
 	})
 	okResponse(c, nodes)
 }
 
 func (a *API) GraphNeighbors(c *gin.Context, params GraphNeighborsParams) {
-	session, err := a.getSession(c)
+	session, err := a.session(c)
 	if !check(c, http.StatusInternalServerError, err) {
 		return
 	}
 	e := session.Engine
-	r := Neighbors{}
+	r := api.Neighbors{}
 	if !check(c, http.StatusBadRequest, c.BindJSON(&r)) {
 		return
 	}
@@ -136,7 +143,7 @@ func (a *API) GraphNeighbours(c *gin.Context, params GraphNeighboursParams) {
 }
 
 func (a *API) Objects(c *gin.Context, params ObjectsParams) {
-	session, err := a.getSession(c)
+	session, err := a.session(c)
 	if !check(c, http.StatusInternalServerError, err) {
 		return
 	}
@@ -150,7 +157,6 @@ func (a *API) Objects(c *gin.Context, params ObjectsParams) {
 	if !check(c, http.StatusNotFound, e.Get(c.Request.Context(), query, constraint, result)) {
 		return
 	}
-	log.V(3).Info("Response OK", "objects", len(result.List()))
 	body := []any(result.List())
 	if body == nil {
 		body = []any{} // Return [] on empty, not null.
@@ -168,12 +174,12 @@ func (a *API) SetConfig(c *gin.Context, params SetConfigParams) {
 
 // goals is shared between GraphGoals and ListGoals
 func (a *API) goals(c *gin.Context) (*graph.Graph, []korrel8r.Class) {
-	session, err := a.getSession(c)
+	session, err := a.session(c)
 	if !check(c, http.StatusInternalServerError, err) {
 		return nil, nil
 	}
 	e := session.Engine
-	r := Goals{}
+	r := api.Goals{}
 	if !check(c, http.StatusBadRequest, c.BindJSON(&r)) {
 		return nil, nil
 	}
@@ -211,21 +217,22 @@ func okResponse(c *gin.Context, body any) {
 	}
 }
 
-// Set the console display.
+// Set the actual console display, called by the console itself.
 // (POST /console)
 func (a *API) SetConsole(c *gin.Context) {
-	r := &Console{}
-	if !check(c, http.StatusBadRequest, c.BindJSON(r)) {
+	state := &api.Console{}
+	if !check(c, http.StatusBadRequest, c.BindJSON(state)) {
 		return
 	}
-	session, err := a.getSession(c)
+	s, err := a.session(c)
 	if !check(c, http.StatusInternalServerError, err) {
 		return
 	}
-	cs := session.Console
-	if !check(c, http.StatusInternalServerError, cs.Set(r)) {
+	if !check(c, http.StatusBadRequest, ConsoleOK(s.Engine, state)) {
 		return
 	}
+	s.ConsoleState.Set(state)
+	c.JSON(http.StatusOK, state)
 }
 
 // SSE notification of console updates.
@@ -240,28 +247,30 @@ func (a *API) ConsoleEvents(c *gin.Context) {
 	w.Header().Set("Access-Control-Allow-Headers", "Cache-Control")
 	w.Flush() // Send headers to start the SSE stream.
 
-	session, err := a.getSession(c)
+	s, err := a.session(c)
 	if !check(c, http.StatusInternalServerError, err) {
 		return
 	}
-	cs := session.Console
+	log := log // Don't modify main logger
+	if s.ID != "" {
+		log = log.WithValues("session", s)
+	}
 	keepAliveTicker := time.NewTicker(time.Minute)
 	defer keepAliveTicker.Stop()
-	log.V(3).Info("Console update event stream started")
+	log.V(3).Info("Console events started")
+	defer log.V(3).Info("Console events stopped")
+
+	state, next := s.ConsoleRequest.GetChan()
+	if !check(c, http.StatusInternalServerError, a.sendEvent(w, state)) {
+		return
+	}
 	for {
 		select {
-		case update, ok := <-cs.Updates: // Wait for an update
-			if !ok {
-				log.V(3).Info("Console update internal shutdown")
-				return // Shut down
-			}
-			_, err = fmt.Fprintf(w, "event: console-update\ndata: %v\n\n", string(update))
-			if !check(c, http.StatusInternalServerError, err) {
+		case <-next: // Wait for an new value
+			state, next = s.ConsoleRequest.GetChan()
+			if !check(c, http.StatusInternalServerError, a.sendEvent(w, state)) {
 				return
 			}
-			w.Flush()
-			log.V(3).Info("Console update sent", "event", string(update))
-
 		case <-keepAliveTicker.C:
 			// Send a keep-alive comment
 			_, err = fmt.Fprint(w, ":keepalive\n\n")
@@ -270,9 +279,21 @@ func (a *API) ConsoleEvents(c *gin.Context) {
 			}
 			w.Flush()
 
-		case <-c.Request.Context().Done(): // Client disconnect
-			log.V(3).Info("Console update disconnected")
+		case <-c.Request.Context().Done():
 			return
 		}
 	}
+}
+
+func (a *API) sendEvent(w gin.ResponseWriter, update *api.Console) error {
+	if update != nil {
+		b, _ := json.Marshal(update)
+		_, err := fmt.Fprintf(w, "event: console-update\ndata: %v\n\n", string(b))
+		if err != nil {
+			return err
+		}
+		w.Flush()
+		log.V(3).Info("Console event sent", "event", string(b))
+	}
+	return nil
 }

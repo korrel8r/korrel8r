@@ -23,7 +23,7 @@ For a HTTP streaming server use the 'web' command with the '--mcp' flag.
 	Run: func(cmd *cobra.Command, args []string) {
 		configs := must.Must1(config.Load(*configFlag))
 		e := must.Must1(newEngineWithConfigs(configs))
-		server := mcp.NewServer(session.NewSingle(e, configs))
+		server := mcp.NewServer(session.NewSingle(e))
 		log.Info("MCP server starting on stdio.")
 		must.Must(server.ServeStdio(context.Background()))
 	},

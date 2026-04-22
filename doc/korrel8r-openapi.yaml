@@ -17,7 +17,7 @@ info:
     name: Apache 2.0
     url: https://github.com/korrel8r/korrel8r/blob/main/LICENSE
   version: v1alpha1
-  x-korrel8r-version: "0.10.0"
+  x-korrel8r-version: "0.10.1-dev"
 externalDocs:
   url: https://korrel8r.github.io/korrel8r/
   description: Korrel8r User Guide

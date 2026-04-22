@@ -15,20 +15,15 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/korrel8r/korrel8r/internal/pkg/test"
 	"github.com/korrel8r/korrel8r/internal/pkg/test/mock"
-	"github.com/korrel8r/korrel8r/pkg/config"
+	"github.com/korrel8r/korrel8r/pkg/api"
+	"github.com/korrel8r/korrel8r/pkg/auth"
 	"github.com/korrel8r/korrel8r/pkg/engine"
 	"github.com/korrel8r/korrel8r/pkg/rest"
-	"github.com/korrel8r/korrel8r/pkg/auth"
 	"github.com/korrel8r/korrel8r/pkg/session"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	authenticationv1 "k8s.io/api/authentication/v1"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/kubernetes/fake"
-	ktesting "k8s.io/client-go/testing"
 )
 
 func TestListTools(t *testing.T) {
@@ -45,7 +40,7 @@ func TestListTools(t *testing.T) {
 			ShowInConsole,
 			CreateNeighborsGraph,
 			CreateGoalsGraph,
-			GetDomainDoc,
+			Help,
 			ListDomainClasses,
 			ListDomains})
 }
@@ -84,7 +79,7 @@ func TestCreateNeighborsGraph(t *testing.T) {
 	client := newClient(t, newEngine(t))
 	r, err := client.CallTool(context.Background(), &mcp.CallToolParams{
 		Name:      CreateNeighborsGraph,
-		Arguments: NeighborParams{Depth: 5, Start: rest.Start{Queries: []string{"mock:a:x"}}},
+		Arguments: NeighborParams{Depth: 5, Start: api.Start{Queries: []string{"mock:a:x"}}},
 	})
 	require.NoError(t, err)
 	got := graphContent(t, r)
@@ -98,7 +93,7 @@ func TestCreateGoalsGraph(t *testing.T) {
 		Name: CreateGoalsGraph,
 		Arguments: GoalParams{
 			Goals: []string{"mock:b"},
-			Start: rest.Start{Queries: []string{"mock:a:x"}},
+			Start: api.Start{Queries: []string{"mock:a:x"}},
 		},
 	})
 	require.NoError(t, err)
@@ -123,16 +118,13 @@ func newEngine(t *testing.T) *engine.Engine {
 func newClient(t *testing.T, e *engine.Engine) *mcp.ClientSession {
 	t.Helper()
 	ctx := context.Background()
-	s := NewServer(session.NewSingle(e, nil))
+	s := NewServer(session.NewSingle(e))
 	ct, st := mcp.NewInMemoryTransports()
-
 	ss, err := s.Connect(ctx, st, nil)
 	require.NoError(t, err)
-
 	c := mcp.NewClient(&mcp.Implementation{Name: "client"}, nil)
 	cs, err := c.Connect(ctx, ct, nil)
 	require.NoError(t, err)
-
 	t.Cleanup(func() { _ = cs.Close(); _ = ss.Wait() })
 	return cs
 }
@@ -153,7 +145,7 @@ func TestCreateNeighborsGraph_invalidQuery(t *testing.T) {
 	client := newClient(t, newEngine(t))
 	r, err := client.CallTool(context.Background(), &mcp.CallToolParams{
 		Name:      CreateNeighborsGraph,
-		Arguments: NeighborParams{Depth: 1, Start: rest.Start{Queries: []string{"bad:query"}}},
+		Arguments: NeighborParams{Depth: 1, Start: api.Start{Queries: []string{"bad:query"}}},
 	})
 	require.NoError(t, err)
 	assert.True(t, r.IsError)
@@ -165,342 +157,401 @@ func TestCreateGoalsGraph_invalidGoal(t *testing.T) {
 		Name: CreateGoalsGraph,
 		Arguments: GoalParams{
 			Goals: []string{"bad:class"},
-			Start: rest.Start{Queries: []string{"mock:a:x"}},
+			Start: api.Start{Queries: []string{"mock:a:x"}},
 		},
 	})
 	require.NoError(t, err)
 	assert.True(t, r.IsError)
 }
 
-// newAPIAndClient creates REST and MCP API and an MCP client.
-func newAPIAndClient(t *testing.T, e *engine.Engine) (*rest.API, *gin.Engine, *mcp.ClientSession) {
+// --- REST ↔ MCP interop tests over HTTP ---
+
+// interopFixture holds a REST router and an MCP client that share the same session manager.
+type interopFixture struct {
+	router *gin.Engine
+	mcp    *mcp.ClientSession
+}
+
+func newInteropFixture(t *testing.T, e *engine.Engine) *interopFixture {
 	t.Helper()
 	if os.Getenv(gin.EnvGinMode) == "" {
 		gin.SetMode(gin.TestMode)
 	}
+	sessions := session.NewSingle(e)
 	router := gin.New()
-	sessions := session.NewSingle(e, nil)
-	api, err := rest.New(sessions, router)
+	_, err := rest.New(sessions, router)
 	require.NoError(t, err)
 
-	ctx := context.Background()
 	mcpSrv := NewServer(sessions)
-	ct, st := mcp.NewInMemoryTransports()
-	ss, err := mcpSrv.Connect(ctx, st, nil)
-	require.NoError(t, err)
-	c := mcp.NewClient(&mcp.Implementation{Name: "client"}, nil)
-	cs, err := c.Connect(ctx, ct, nil)
-	require.NoError(t, err)
-	t.Cleanup(func() { _ = cs.Close(); _ = ss.Wait() })
-	return api, router, cs
-}
+	srv := httptest.NewServer(mcpSrv.HTTPHandler())
+	t.Cleanup(srv.Close)
 
-func TestListToolsWithAPI(t *testing.T) {
-	_, _, cs := newAPIAndClient(t, newEngine(t))
-	tools, err := cs.ListTools(context.Background(), &mcp.ListToolsParams{})
-	require.NoError(t, err)
-	var names []string
-	for _, tool := range tools.Tools {
-		names = append(names, tool.Name)
+	transport := &mcp.StreamableClientTransport{
+		Endpoint:             srv.URL,
+		DisableStandaloneSSE: true,
 	}
-	assert.ElementsMatch(t, names,
-		[]string{CreateNeighborsGraph,
-			CreateGoalsGraph,
-			GetDomainDoc,
-			ListDomainClasses,
-			ListDomains,
-			GetConsole,
-			ShowInConsole})
+	c := mcp.NewClient(&mcp.Implementation{Name: "test-client"}, nil)
+	cs, err := c.Connect(context.Background(), transport, nil)
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = cs.Close() })
+
+	return &interopFixture{router: router, mcp: cs}
 }
 
-func TestSetConsoleToGetConsole(t *testing.T) {
-	_, router, cs := newAPIAndClient(t, newEngine(t))
-
-	// Set console state via REST SetConsole (POST /api/v1alpha1/console)
-	view := "mock:a:x"
-	body, _ := json.Marshal(rest.Console{View: view})
+// restDo performs an HTTP request against the REST router and returns the response.
+func (f *interopFixture) restDo(t *testing.T, method, url string, body any) *httptest.ResponseRecorder {
+	t.Helper()
+	var bodyBytes []byte
+	if body != nil {
+		var err error
+		bodyBytes, err = json.Marshal(body)
+		require.NoError(t, err)
+	}
 	w := httptest.NewRecorder()
-	req := httptest.NewRequest("PUT", "/api/v1alpha1/console", bytes.NewReader(body))
+	req := httptest.NewRequest(method, url, bytes.NewReader(bodyBytes))
 	req.Header.Set("Content-Type", "application/json")
-	router.ServeHTTP(w, req)
+	f.router.ServeHTTP(w, req)
+	return w
+}
+
+func graphContent(t *testing.T, r *mcp.CallToolResult) string {
+	t.Helper()
+	b, err := json.Marshal(r.StructuredContent)
+	require.NoError(t, err)
+	g := &api.Graph{}
+	require.NoError(t, json.Unmarshal(b, g))
+	rest.Normalize(g)
+	out, _ := json.Marshal(g)
+	return string(out)
+}
+
+func TestInterop_ListDomains(t *testing.T) {
+	f := newInteropFixture(t, newEngine(t))
+
+	// REST: GET /api/v1alpha1/domains
+	w := f.restDo(t, "GET", "/api/v1alpha1/domains", nil)
+	require.Equal(t, http.StatusOK, w.Code)
+	var restDomains []api.Domain
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &restDomains))
+
+	// MCP: list_domains
+	r, err := f.mcp.CallTool(context.Background(), &mcp.CallToolParams{Name: ListDomains})
+	require.NoError(t, err)
+	mcpResult := r.StructuredContent.(map[string]any)
+	mcpDomains := mcpResult["domains"].([]any)
+
+	assert.Equal(t, len(restDomains), len(mcpDomains))
+	assert.Equal(t, restDomains[0].Name, mcpDomains[0].(map[string]any)["name"])
+	assert.Equal(t, restDomains[0].Description, mcpDomains[0].(map[string]any)["description"])
+}
+
+func TestInterop_NeighborsGraph(t *testing.T) {
+	f := newInteropFixture(t, newEngine(t))
+
+	params := api.Neighbors{
+		Start: api.Start{Queries: []string{"mock:a:x"}},
+		Depth: 5,
+	}
+
+	// REST: POST /api/v1alpha1/graphs/neighbors
+	w := f.restDo(t, "POST", "/api/v1alpha1/graphs/neighbors", params)
+	require.Equal(t, http.StatusOK, w.Code)
+	restGraph := &api.Graph{}
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), restGraph))
+	rest.Normalize(restGraph)
+
+	// MCP: create_neighbors_graph
+	r, err := f.mcp.CallTool(context.Background(), &mcp.CallToolParams{
+		Name:      CreateNeighborsGraph,
+		Arguments: NeighborParams(params),
+	})
+	require.NoError(t, err)
+	mcpGraphJSON := graphContent(t, r)
+
+	restGraphJSON, _ := json.Marshal(restGraph)
+	assert.JSONEq(t, string(restGraphJSON), mcpGraphJSON)
+}
+
+func TestInterop_GoalsGraph(t *testing.T) {
+	f := newInteropFixture(t, newEngine(t))
+
+	params := api.Goals{
+		Start: api.Start{Queries: []string{"mock:a:x"}},
+		Goals: []string{"mock:b"},
+	}
+
+	// REST: POST /api/v1alpha1/graphs/goals
+	w := f.restDo(t, "POST", "/api/v1alpha1/graphs/goals", params)
+	require.Equal(t, http.StatusOK, w.Code)
+	restGraph := &api.Graph{}
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), restGraph))
+	rest.Normalize(restGraph)
+
+	// MCP: create_goals_graph
+	r, err := f.mcp.CallTool(context.Background(), &mcp.CallToolParams{
+		Name:      CreateGoalsGraph,
+		Arguments: GoalParams(params),
+	})
+	require.NoError(t, err)
+	mcpGraphJSON := graphContent(t, r)
+
+	restGraphJSON, _ := json.Marshal(restGraph)
+	assert.JSONEq(t, string(restGraphJSON), mcpGraphJSON)
+}
+
+func TestInterop_SetConsoleViaREST_GetViaMCP(t *testing.T) {
+	f := newInteropFixture(t, newEngine(t))
+
+	// Set console state via REST
+	w := f.restDo(t, "PUT", "/api/v1alpha1/console", api.Console{View: "mock:a:x"})
 	require.Equal(t, http.StatusOK, w.Code)
 
-	// Read via MCP GetConsole — should see the state set by REST
-	r, err := cs.CallTool(context.Background(), &mcp.CallToolParams{Name: GetConsole})
+	// Read via MCP get_console
+	r, err := f.mcp.CallTool(context.Background(), &mcp.CallToolParams{Name: GetConsole})
 	require.NoError(t, err)
-	assert.False(t, r.IsError)
+	require.False(t, r.IsError, "get_console should succeed")
 	got := r.StructuredContent.(map[string]any)
 	assert.Equal(t, "mock:a:x", got["view"])
 }
 
-func TestShowInConsoleToSSE(t *testing.T) {
-	_, router, cs := newAPIAndClient(t, newEngine(t))
-	srv := httptest.NewServer(router)
+func TestInterop_ListDomainClasses(t *testing.T) {
+	f := newInteropFixture(t, newEngine(t))
 
-	// Connect to SSE endpoint
-	ctx, cancel := context.WithCancel(t.Context())
-	defer cancel()
-	req, err := http.NewRequestWithContext(ctx, "GET", srv.URL+"/api/v1alpha1/console/events", nil)
+	// REST: GET /api/v1alpha1/domain/mock/classes
+	w := f.restDo(t, "GET", "/api/v1alpha1/domain/mock/classes", nil)
+	require.Equal(t, http.StatusOK, w.Code)
+	var restClasses []string
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &restClasses))
+
+	// MCP: list_domain_classes
+	r, err := f.mcp.CallTool(context.Background(), &mcp.CallToolParams{
+		Name:      ListDomainClasses,
+		Arguments: DomainParams{Domain: "mock"},
+	})
+	require.NoError(t, err)
+	mcpResult := r.StructuredContent.(map[string]any)
+	mcpClasses := mcpResult["classes"].([]any)
+
+	require.Equal(t, len(restClasses), len(mcpClasses))
+	for i, name := range restClasses {
+		assert.Equal(t, name, mcpClasses[i])
+	}
+}
+
+func TestInterop_ShowInConsoleToSSE(t *testing.T) {
+	f := newInteropFixture(t, newEngine(t))
+
+	// Start a real HTTP server for the REST router so we can stream SSE.
+	restSrv := httptest.NewServer(f.router)
+	t.Cleanup(restSrv.Close)
+
+	// Connect to the SSE endpoint.
+	ctx, cancel := context.WithCancel(context.Background())
+	t.Cleanup(cancel)
+	req, err := http.NewRequestWithContext(ctx, "GET", restSrv.URL+"/api/v1alpha1/console/events", nil)
 	require.NoError(t, err)
 	resp, err := http.DefaultClient.Do(req)
 	require.NoError(t, err)
-	defer func() { _ = resp.Body.Close() }()
+	t.Cleanup(func() { _ = resp.Body.Close() })
 
-	// Receive events in background
-	events := make(chan string)
+	// Read SSE data events in background.
+	events := make(chan string, 1)
 	go func() {
-		defer func() { close(events) }()
+		defer close(events)
 		s := bufio.NewScanner(resp.Body)
 		for s.Scan() {
-			if data, ok := strings.CutPrefix(s.Text(), "data:"); ok {
+			if data, ok := strings.CutPrefix(s.Text(), "data: "); ok {
 				events <- data
 			}
 		}
 	}()
-	// Give SSE handler time to start reading from channel
-	time.Sleep(100 * time.Millisecond)
+	time.Sleep(100 * time.Millisecond) // let SSE handler start
 
-	// send/receive helper functions
-	send := func(c rest.Console) {
-		t.Helper()
-		r, err := cs.CallTool(t.Context(), &mcp.CallToolParams{Name: ShowInConsole, Arguments: c})
-		require.NoError(t, err)
-		require.False(t, r.IsError, test.JSONString(r))
-	}
-	recv := func() (c rest.Console) {
-		t.Helper()
-		data, ok := <-events
-		require.True(t, ok)
-		require.NoError(t, json.Unmarshal([]byte(data), &c))
-		return c
-	}
-
-	// Send update via MCP ShowInConsole
-	want := rest.Console{
-		View: "mock:a:x",
-		Search: &rest.Search{
-			Goals: &rest.Goals{Start: rest.Start{Class: "mock:b"}},
-		},
-	}
-	send(want)
-	got := recv()
-	assert.Equal(t, want, got)
-}
-
-func TestMultiSessionConsole(t *testing.T) {
-	if os.Getenv(gin.EnvGinMode) == "" {
-		gin.SetMode(gin.TestMode)
-	}
-	sessions := session.NewPool(time.Hour, func() (*engine.Engine, config.Configs, error) {
-		return newEngine(t), nil, nil
+	// Send console update via MCP show_in_console.
+	want := api.Console{View: "mock:a:x"}
+	r, err := f.mcp.CallTool(context.Background(), &mcp.CallToolParams{
+		Name:      ShowInConsole,
+		Arguments: ShowInConsoleParams(want),
 	})
-	defer sessions.Close()
-
-	router := gin.New()
-	_, err := rest.New(sessions, router)
 	require.NoError(t, err)
+	require.False(t, r.IsError, "show_in_console should succeed")
 
-	setConsole := func(token, view string) {
-		t.Helper()
-		body, _ := json.Marshal(rest.Console{View: view})
-		w := httptest.NewRecorder()
-		req := httptest.NewRequest("PUT", "/api/v1alpha1/console", bytes.NewReader(body))
-		req.Header.Set("Content-Type", "application/json")
-		req.Header.Set("Authorization", token)
-		router.ServeHTTP(w, req)
-		require.Equal(t, http.StatusOK, w.Code)
-	}
-
-	getSession := func(token string) *session.Session {
-		t.Helper()
-		ctx := auth.WithToken(context.Background(), token)
-		s, err := sessions.Get(sessions.Key(ctx))
-		require.NoError(t, err)
-		return s
-	}
-
-	getConsoleState := func(token string) rest.Console {
-		t.Helper()
-		var c rest.Console
-		require.NoError(t, getSession(token).Console.Get(&c))
-		return c
-	}
-
-	// Set different console views for different auth tokens.
-	setConsole("Bearer token-A", "mock:a:x")
-	setConsole("Bearer token-B", "mock:b:y")
-
-	// Verify each token's session has its own console state.
-	assert.Equal(t, "mock:b:y", getConsoleState("token-B").View) // WithToken takes bare token
-	assert.Equal(t, "mock:a:x", getConsoleState("token-A").View)
-
-	// Verify send delivers to the matching session's Updates channel.
-	sA := getSession("token-A")
-	sB := getSession("token-B")
-
-	// Send update to session A.
-	go func() { _ = sA.Console.Send(&rest.Console{View: "update-A"}) }()
-
+	// Verify the SSE event matches.
 	select {
-	case msg := <-sA.Console.Updates:
-		var c rest.Console
-		require.NoError(t, json.Unmarshal(msg, &c))
-		assert.Equal(t, "update-A", c.View, "update should arrive on session A")
+	case data := <-events:
+		var got api.Console
+		require.NoError(t, json.Unmarshal([]byte(data), &got))
+		assert.Equal(t, want, got)
 	case <-time.After(2 * time.Second):
-		t.Fatal("timed out waiting for update on session A")
-	}
-
-	// Session B's channel should be empty.
-	select {
-	case msg := <-sB.Console.Updates:
-		t.Fatalf("session B should not receive session A's update, got: %s", msg)
-	default:
-		// expected — nothing on B's channel
+		t.Fatal("timed out waiting for SSE event")
 	}
 }
 
-// newMultiSessionRouter creates a gin router with auth middleware and a pool-based session manager.
-func newMultiSessionRouter(t *testing.T) (*gin.Engine, session.Manager) {
+// --- Multi-session tests ---
+
+// multiSessionFixture provides REST and MCP servers sharing a pool session manager.
+// Each MCP client and REST request carries a bearer token to select its session.
+type multiSessionFixture struct {
+	restRouter *gin.Engine
+	sessions   session.Manager
+	mcpSrvURL  string
+}
+
+func newMultiSessionFixture(t *testing.T) *multiSessionFixture {
 	t.Helper()
 	if os.Getenv(gin.EnvGinMode) == "" {
 		gin.SetMode(gin.TestMode)
 	}
-	sessions := session.NewPool(time.Hour, func() (*engine.Engine, config.Configs, error) {
-		return newEngine(t), nil, nil
+	sessions := session.NewPool(time.Hour, func() (*engine.Engine, error) {
+		return newEngine(t), nil
 	})
-	t.Cleanup(func() { sessions.Close() })
 
 	router := gin.New()
 	_, err := rest.New(sessions, router)
 	require.NoError(t, err)
-	return router, sessions
-}
-
-// authRoundTripper injects an Authorization header into every request.
-type authRoundTripper struct {
-	token string
-	next  http.RoundTripper
-}
-
-func (rt *authRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
-	req = req.Clone(req.Context())
-	req.Header.Set("Authorization", rt.token)
-	return rt.next.RoundTrip(req)
-}
-
-// newMCPClientHTTP creates an MCP client that connects over HTTP with the given auth token.
-func newMCPClientHTTP(t *testing.T, token string, sessions session.Manager) *mcp.ClientSession {
-	t.Helper()
-	ctx := context.Background()
 
 	mcpSrv := NewServer(sessions)
-	// Register MCP handler on a separate mux for this test.
-	mux := http.NewServeMux()
-	mux.Handle(StreamablePath, mcpSrv.HTTPHandler())
-	srv := httptest.NewServer(http.HandlerFunc(mux.ServeHTTP))
+	mcpHandler := mcpSrv.HTTPHandler()
+	// Wrap the MCP HTTP handler with auth middleware so sessions.Get resolves
+	// the bearer token from the Authorization header.
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mcpHandler.ServeHTTP(w, auth.UpdateRequest(r))
+	})
+	srv := httptest.NewServer(handler)
 	t.Cleanup(srv.Close)
 
+	return &multiSessionFixture{restRouter: router, sessions: sessions, mcpSrvURL: srv.URL}
+}
+
+// restSetConsole sets console state via REST PUT /console with the given bearer token.
+func (f *multiSessionFixture) restSetConsole(t *testing.T, token string, console api.Console) {
+	t.Helper()
+	body, err := json.Marshal(console)
+	require.NoError(t, err)
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest("PUT", "/api/v1alpha1/console", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+token)
+	f.restRouter.ServeHTTP(w, req)
+	require.Equal(t, http.StatusOK, w.Code)
+}
+
+// mcpClient creates an MCP client that authenticates with the given bearer token.
+func (f *multiSessionFixture) mcpClient(t *testing.T, token string) *mcp.ClientSession {
+	t.Helper()
 	transport := &mcp.StreamableClientTransport{
-		Endpoint:             srv.URL + StreamablePath,
+		Endpoint:             f.mcpSrvURL,
 		DisableStandaloneSSE: true,
 		HTTPClient: &http.Client{
-			Transport: &authRoundTripper{token: token, next: http.DefaultTransport},
+			Transport: &tokenRoundTripper{token: "Bearer " + token, next: http.DefaultTransport},
 		},
 	}
 	c := mcp.NewClient(&mcp.Implementation{Name: "test-client"}, nil)
-	cs, err := c.Connect(ctx, transport, nil)
+	cs, err := c.Connect(context.Background(), transport, nil)
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = cs.Close() })
 	return cs
 }
 
-func TestMultiSession_CrossProtocol(t *testing.T) {
-	router, sessions := newMultiSessionRouter(t)
-
-	// Set console state via REST with token-A.
-	body, _ := json.Marshal(rest.Console{View: "view-A"})
-	w := httptest.NewRecorder()
-	req := httptest.NewRequest("PUT", "/api/v1alpha1/console", bytes.NewReader(body))
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer token-A")
-	router.ServeHTTP(w, req)
-	require.Equal(t, http.StatusOK, w.Code)
-
-	// Set different console state via REST with token-B.
-	body, _ = json.Marshal(rest.Console{View: "view-B"})
-	w = httptest.NewRecorder()
-	req = httptest.NewRequest("PUT", "/api/v1alpha1/console", bytes.NewReader(body))
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer token-B")
-	router.ServeHTTP(w, req)
-	require.Equal(t, http.StatusOK, w.Code)
-
-	// MCP client with token-A should see view-A.
-	csA := newMCPClientHTTP(t, "Bearer token-A", sessions)
-	r, err := csA.CallTool(context.Background(), &mcp.CallToolParams{Name: GetConsole})
+// mcpGetConsoleView calls MCP get_console and returns the view field.
+func mcpGetConsoleView(t *testing.T, cs *mcp.ClientSession) string {
+	t.Helper()
+	r, err := cs.CallTool(context.Background(), &mcp.CallToolParams{Name: GetConsole})
 	require.NoError(t, err)
-	require.False(t, r.IsError, "MCP call should succeed")
-	got := r.StructuredContent.(map[string]any)
-	assert.Equal(t, "view-A", got["view"], "MCP client A should see view-A set by REST")
+	require.False(t, r.IsError, "get_console should succeed")
+	return r.StructuredContent.(map[string]any)["view"].(string)
+}
 
-	// MCP client with token-B should see view-B.
-	csB := newMCPClientHTTP(t, "Bearer token-B", sessions)
-	r, err = csB.CallTool(context.Background(), &mcp.CallToolParams{Name: GetConsole})
-	require.NoError(t, err)
-	require.False(t, r.IsError, "MCP call should succeed")
-	got = r.StructuredContent.(map[string]any)
-	assert.Equal(t, "view-B", got["view"], "MCP client B should see view-B set by REST")
+type tokenRoundTripper struct {
+	token string
+	next  http.RoundTripper
+}
+
+func (rt *tokenRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
+	req = req.Clone(req.Context())
+	req.Header.Set("Authorization", rt.token)
+	return rt.next.RoundTrip(req)
+}
+
+func TestMultiSession_ConsoleIsolation(t *testing.T) {
+	f := newMultiSessionFixture(t)
+
+	// Set different console views via REST for two different tokens.
+	f.restSetConsole(t, "token-A", api.Console{View: "mock:a:x"})
+	f.restSetConsole(t, "token-B", api.Console{View: "mock:b:y"})
+
+	// Each MCP client should see only its own session's console state.
+	csA := f.mcpClient(t, "token-A")
+	csB := f.mcpClient(t, "token-B")
+
+	assert.Equal(t, "mock:a:x", mcpGetConsoleView(t, csA), "token-A should see view set for A")
+	assert.Equal(t, "mock:b:y", mcpGetConsoleView(t, csB), "token-B should see view set for B")
+}
+
+func TestMultiSession_ConsoleUpdate(t *testing.T) {
+	f := newMultiSessionFixture(t)
+
+	// Set initial view for token-A.
+	f.restSetConsole(t, "token-A", api.Console{View: "mock:a:x"})
+	csA := f.mcpClient(t, "token-A")
+	assert.Equal(t, "mock:a:x", mcpGetConsoleView(t, csA))
+
+	// Update the view for the same token.
+	f.restSetConsole(t, "token-A", api.Console{View: "mock:b:y"})
+	assert.Equal(t, "mock:b:y", mcpGetConsoleView(t, csA), "should reflect updated view")
 }
 
 func TestMultiSession_SSEIsolation(t *testing.T) {
-	router, sessions := newMultiSessionRouter(t)
-	srv := httptest.NewServer(router)
-	defer srv.Close()
+	f := newMultiSessionFixture(t)
+
+	restSrv := httptest.NewServer(f.restRouter)
+	t.Cleanup(restSrv.Close)
 
 	// Connect two SSE clients with different auth tokens.
-	connectSSE := func(token string) (<-chan string, context.CancelFunc) {
-		ctx, cancel := context.WithCancel(t.Context())
-		req, err := http.NewRequestWithContext(ctx, "GET", srv.URL+"/api/v1alpha1/console/events", nil)
+	connectSSE := func(token string) <-chan string {
+		ctx, cancel := context.WithCancel(context.Background())
+		t.Cleanup(cancel)
+		req, err := http.NewRequestWithContext(ctx, "GET", restSrv.URL+"/api/v1alpha1/console/events", nil)
 		require.NoError(t, err)
-		req.Header.Set("Authorization", token)
+		req.Header.Set("Authorization", "Bearer "+token)
 		resp, err := http.DefaultClient.Do(req)
 		require.NoError(t, err)
+		t.Cleanup(func() { _ = resp.Body.Close() })
 
 		events := make(chan string, 10)
 		go func() {
-			defer func() { close(events); _ = resp.Body.Close() }()
+			defer close(events)
 			s := bufio.NewScanner(resp.Body)
 			for s.Scan() {
-				if data, ok := strings.CutPrefix(s.Text(), "data:"); ok {
+				if data, ok := strings.CutPrefix(s.Text(), "data: "); ok {
 					events <- data
 				}
 			}
 		}()
-		return events, cancel
+		return events
 	}
 
-	eventsA, cancelA := connectSSE("Bearer token-A")
-	defer cancelA()
-	eventsB, cancelB := connectSSE("Bearer token-B")
-	defer cancelB()
+	eventsA := connectSSE("token-A")
+	eventsB := connectSSE("token-B")
+	time.Sleep(100 * time.Millisecond) // let SSE handlers start
 
-	// Give SSE handlers time to start reading.
-	time.Sleep(100 * time.Millisecond)
-
-	// Send update to session A only.
-	ctx := auth.WithToken(context.Background(), "token-A")
-	sA, err := sessions.Get(sessions.Key(ctx))
+	// MCP client for token-A sends a console update.
+	csA := f.mcpClient(t, "token-A")
+	r, err := csA.CallTool(context.Background(), &mcp.CallToolParams{
+		Name:      ShowInConsole,
+		Arguments: ShowInConsoleParams{View: "mock:a:x"},
+	})
 	require.NoError(t, err)
-	go func() { _ = sA.Console.Send(&rest.Console{View: "update-for-A"}) }()
+	require.False(t, r.IsError)
 
 	// Session A's SSE client should receive the update.
 	select {
 	case data := <-eventsA:
-		var c rest.Console
-		require.NoError(t, json.Unmarshal([]byte(data), &c), "data: %v", data)
-		assert.Equal(t, "update-for-A", c.View)
+		var got api.Console
+		require.NoError(t, json.Unmarshal([]byte(data), &got))
+		assert.Equal(t, "mock:a:x", got.View)
 	case <-time.After(2 * time.Second):
-		t.Fatal("timed out waiting for SSE update on session A")
+		t.Fatal("timed out waiting for SSE event on session A")
 	}
 
 	// Session B's SSE client should NOT receive anything.
@@ -508,123 +559,6 @@ func TestMultiSession_SSEIsolation(t *testing.T) {
 	case data := <-eventsB:
 		t.Fatalf("session B should not receive session A's update, got: %s", data)
 	case <-time.After(200 * time.Millisecond):
-		// expected — nothing on B's channel
+		// expected
 	}
-}
-
-// fakeTokenReview returns a session.TokenReview backed by a fake k8s clientset
-// where all bearer tokens authenticate as the given username.
-func fakeTokenReview(username string) *auth.TokenReview {
-	cs := fake.NewSimpleClientset()
-	cs.PrependReactor("create", "tokenreviews",
-		func(action ktesting.Action) (bool, runtime.Object, error) {
-			tr := action.(ktesting.CreateAction).GetObject().(*authenticationv1.TokenReview)
-			tr.Status = authenticationv1.TokenReviewStatus{
-				Authenticated: true,
-				User:          authenticationv1.UserInfo{Username: username},
-			}
-			return true, tr, nil
-		})
-	return auth.NewTokenReviewFromClientset(cs)
-}
-
-func TestMultiSession_SameUser_DifferentBearerTokens(t *testing.T) {
-	if os.Getenv(gin.EnvGinMode) == "" {
-		gin.SetMode(gin.TestMode)
-	}
-	tr := fakeTokenReview("testuser")
-	sessions := session.NewPoolWithTokenReview(time.Hour, func() (*engine.Engine, config.Configs, error) {
-		return newEngine(t), nil, nil
-	}, tr)
-	defer sessions.Close()
-
-	router := gin.New()
-	_, err := rest.New(sessions, router)
-	require.NoError(t, err)
-
-	// Set console state via REST with Bearer token-1.
-	body, _ := json.Marshal(rest.Console{View: "shared-view"})
-	w := httptest.NewRecorder()
-	req := httptest.NewRequest("PUT", "/api/v1alpha1/console", bytes.NewReader(body))
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer token-1")
-	router.ServeHTTP(w, req)
-	require.Equal(t, http.StatusOK, w.Code)
-
-	// MCP client with Bearer token-2 (same user via TokenReview) should see the same console state.
-	csB := newMCPClientHTTP(t, "Bearer token-2", sessions)
-	r, err := csB.CallTool(context.Background(), &mcp.CallToolParams{Name: GetConsole})
-	require.NoError(t, err)
-	require.False(t, r.IsError, "MCP call should succeed")
-	got := r.StructuredContent.(map[string]any)
-	assert.Equal(t, "shared-view", got["view"], "different bearer token, same user should share session")
-}
-
-func TestMultiSession_DifferentUsers_DifferentSessions(t *testing.T) {
-	if os.Getenv(gin.EnvGinMode) == "" {
-		gin.SetMode(gin.TestMode)
-	}
-	// TokenReview returns the raw token as the username, so different tokens → different users.
-	cs := fake.NewSimpleClientset()
-	cs.PrependReactor("create", "tokenreviews",
-		func(action ktesting.Action) (bool, runtime.Object, error) {
-			tr := action.(ktesting.CreateAction).GetObject().(*authenticationv1.TokenReview)
-			tr.Status = authenticationv1.TokenReviewStatus{
-				Authenticated: true,
-				User:          authenticationv1.UserInfo{Username: tr.Spec.Token},
-			}
-			return true, tr, nil
-		})
-	tr := auth.NewTokenReviewFromClientset(cs)
-	sessions := session.NewPoolWithTokenReview(time.Hour, func() (*engine.Engine, config.Configs, error) {
-		return newEngine(t), nil, nil
-	}, tr)
-	defer sessions.Close()
-
-	router := gin.New()
-	_, err := rest.New(sessions, router)
-	require.NoError(t, err)
-
-	// Set console state via REST for user-A.
-	body, _ := json.Marshal(rest.Console{View: "view-A"})
-	w := httptest.NewRecorder()
-	req := httptest.NewRequest("PUT", "/api/v1alpha1/console", bytes.NewReader(body))
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer user-A")
-	router.ServeHTTP(w, req)
-	require.Equal(t, http.StatusOK, w.Code)
-
-	// Set different console state via REST for user-B.
-	body, _ = json.Marshal(rest.Console{View: "view-B"})
-	w = httptest.NewRecorder()
-	req = httptest.NewRequest("PUT", "/api/v1alpha1/console", bytes.NewReader(body))
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer user-B")
-	router.ServeHTTP(w, req)
-	require.Equal(t, http.StatusOK, w.Code)
-
-	// MCP client as user-A should see view-A.
-	csA := newMCPClientHTTP(t, "Bearer user-A", sessions)
-	r, err := csA.CallTool(context.Background(), &mcp.CallToolParams{Name: GetConsole})
-	require.NoError(t, err)
-	require.False(t, r.IsError)
-	got := r.StructuredContent.(map[string]any)
-	assert.Equal(t, "view-A", got["view"], "user-A should see view-A")
-
-	// MCP client as user-B should see view-B.
-	csB := newMCPClientHTTP(t, "Bearer user-B", sessions)
-	r, err = csB.CallTool(context.Background(), &mcp.CallToolParams{Name: GetConsole})
-	require.NoError(t, err)
-	require.False(t, r.IsError)
-	got = r.StructuredContent.(map[string]any)
-	assert.Equal(t, "view-B", got["view"], "user-B should see view-B")
-}
-
-func graphContent(t *testing.T, r *mcp.CallToolResult) string {
-	t.Helper()
-	g := &rest.Graph{}
-	require.NoError(t, json.Unmarshal([]byte(test.JSONString(r.StructuredContent)), g))
-	rest.Normalize(g)
-	b, _ := json.Marshal(g)
-	return string(b)
 }

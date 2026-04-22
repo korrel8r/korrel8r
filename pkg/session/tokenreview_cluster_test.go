@@ -16,21 +16,19 @@ func TestTokenReviewCluster_SessionID(t *testing.T) {
 	require.NotEmpty(t, cfg.BearerToken, "cluster config must have a bearer token")
 
 	m := NewPool(0, testFactory)
-	defer m.Close()
 
 	// Use the real bearer token to get a session.
 	ctx := tokenCtx(cfg.BearerToken)
-	key := m.Key(ctx)
-	s, err := m.Get(key)
+	s, err := m.Get(ctx)
 	require.NoError(t, err)
 
 	// Session ID should be the username, not a hash.
-	assert.NotEqual(t, hashToken(cfg.BearerToken), s.Key,
-		"with TokenReview available, session key should be username, not hashed token")
-	t.Logf("Session key (username): %s, ID: %d", s.Key, s.ID)
+	assert.NotEqual(t, hashToken(cfg.BearerToken), s.ID,
+		"with TokenReview available, session ID should be username, not hashed token")
+	t.Logf("Session ID (username): %s", s.ID)
 
 	// Same token should return the same session.
-	s2, err := m.Get(key)
+	s2, err := m.Get(tokenCtx(cfg.BearerToken))
 	require.NoError(t, err)
 	assert.Same(t, s, s2, "same token should return same session")
 }
