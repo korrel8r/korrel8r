@@ -35,11 +35,10 @@ var (
 
 const (
 	name           = "incident"
-	summary        = "Incidents group alerts into higher-level groups."
 	srcLabelPrefix = "src_"
 )
 
-var Domain = &domain{impl.NewDomain(name, summary, Description, Class{})}
+var Domain = &domain{impl.NewDomain(name, Description, Class{})}
 
 type domain struct{ *impl.Domain }
 
@@ -75,7 +74,7 @@ type Class struct{}
 func (c Class) Domain() korrel8r.Domain                     { return Domain }
 func (c Class) Name() string                                { return name }
 func (c Class) String() string                              { return korrel8r.ClassString(c) }
-func (c Class) Description() string                         { return summary }
+func (c Class) Description() string                         { return Description }
 func (c Class) Unmarshal(b []byte) (korrel8r.Object, error) { return impl.UnmarshalAs[*Object](b) }
 func (c Class) ID(o korrel8r.Object) any {
 	if o, ok := o.(*Object); ok {

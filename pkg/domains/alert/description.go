@@ -3,6 +3,9 @@
 package alert
 
 const Description = `
+
+Alerts that metric values are out of bounds.
+
 ## Classes
 
     alert:alert
@@ -17,6 +20,10 @@ Use capitalized Go field name in templates, not lowercase JSON names.
 Selector is one of the following
 - JSON object with alert label field names and matching label values.
 - Array of objects as above, gets alerts that match any object in the array
+
+An empty selector matches all alerts:
+
+    alert:alert:{}
 
 Examples:
     alert:alert:{"container":"kube-rbac-proxy-main","namespace":"openshift-logging"}

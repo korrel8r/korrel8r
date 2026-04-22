@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/korrel8r/korrel8r/internal/pkg/loki"
+	"github.com/korrel8r/korrel8r/internal/pkg/text"
 	"github.com/korrel8r/korrel8r/pkg/domains/k8s"
 	"github.com/stretchr/testify/assert"
 )
@@ -18,9 +19,9 @@ func TestDomain(t *testing.T) {
 	})
 
 	t.Run("Domain description", func(t *testing.T) {
-		summary, detail := Domain.Description()
-		assert.Equal(t, "Records from container and node logs.", summary)
-		assert.Contains(t, detail, "Records from container and node logs.")
+		description := Domain.Description()
+		assert.Equal(t, "Log records from container and node logs.", text.Summary(Description))
+		assert.Contains(t, description, "Log records from container and node logs.")
 	})
 
 	t.Run("Domain classes", func(t *testing.T) {

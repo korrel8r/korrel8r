@@ -9,25 +9,34 @@ import (
 	"strings"
 )
 
-// Token extracts a bearer token from a context, if there is one.
-func Token(ctx context.Context) (string, bool) {
-	token, ok := ctx.Value(authKey{}).(string)
-	return token, ok
+// ContextToken returns a bearer token from a context, or "" if there is none.
+func ContextToken(ctx context.Context) string {
+	token, _ := ctx.Value(authKey{}).(string)
+	return token
 }
 
-// WithToken adds a bearer token to a context.
+// WithToken adds a bearer token to the context. No-op if token == ""
 func WithToken(ctx context.Context, token string) context.Context {
+	if token == "" {
+		return ctx
+	}
 	return context.WithValue(ctx, authKey{}, token)
 }
 
-// Context returns a context carrying the bearer token from an HTTP request's Authorization header.
-// If the header is not a Bearer token, the returned context has no token.
-func Context(req *http.Request) context.Context {
-	header := req.Header.Get(headerKey)
-	if token, ok := strings.CutPrefix(header, "Bearer "); ok {
-		return WithToken(req.Context(), token)
+// HeaderToken returns the bearer token from an HTTP Authorization header, or "" if none.
+func HeaderToken(h http.Header) string {
+	if token, ok := strings.CutPrefix(h.Get(headerKey), "Bearer "); ok {
+		return token
 	}
-	return req.Context()
+	return ""
+}
+
+// UpdateRequest adds a token to the request context, returns a new request.
+func UpdateRequest(req *http.Request) *http.Request {
+	if token := HeaderToken(req.Header); token != "" {
+		return req.WithContext(WithToken(req.Context(), token))
+	}
+	return req
 }
 
 // Wrap adds bearer token forwarding to outgoing HTTP requests.
@@ -39,7 +48,7 @@ func Wrap(next http.RoundTripper) http.RoundTripper {
 type roundTripper struct{ next http.RoundTripper }
 
 func (rt *roundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
-	if token, ok := Token(req.Context()); ok {
+	if token := ContextToken(req.Context()); token != "" {
 		req.Header.Set(headerKey, "Bearer "+token)
 	}
 	return rt.next.RoundTrip(req)

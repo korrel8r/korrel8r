@@ -15,12 +15,16 @@ REST client for a remote korrel8r server.
 
 == SEE ALSO
 
+* xref:korrel8rcli_classes.adoc[korrel8rcli classes]	 - Get the list of classes for a domain
 * xref:korrel8rcli_completion.adoc[korrel8rcli completion]	 - Generate the autocompletion script for the specified shell
 * xref:korrel8rcli_config.adoc[korrel8rcli config]	 - Change configuration settings on the server
+* xref:korrel8rcli_console-events.adoc[korrel8rcli console-events]	 - Stream console events from an agent to stdout
 * xref:korrel8rcli_doc.adoc[korrel8rcli doc]	 - Generate documentation
 * xref:korrel8rcli_domains.adoc[korrel8rcli domains]	 - Get a list of domains and store configuration
 * xref:korrel8rcli_goals.adoc[korrel8rcli goals]	 - Get graph of goal classes reachable from start
+* xref:korrel8rcli_list-goals.adoc[korrel8rcli list-goals]	 - List goal nodes related to a starting point
 * xref:korrel8rcli_neighbours.adoc[korrel8rcli neighbours]	 - Get graph of nearest neighbours
 * xref:korrel8rcli_objects.adoc[korrel8rcli objects]	 - Return the list of objects for a query.
+* xref:korrel8rcli_set-console.adoc[korrel8rcli set-console]	 - Set console state for an agent
 * xref:korrel8rcli_version.adoc[korrel8rcli version]	 - Print version.
 * xref:korrel8rcli_web.adoc[korrel8rcli web]	 - Connect to remote korrel8r, show graphs in local HTTP server.

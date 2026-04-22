@@ -37,7 +37,7 @@ var (
 // - Default LokiStack store on current Openshift cluster: `{}`
 // - Remote LokiStack: `{ "lokiStack": "https://url-of-lokistack"}`
 // - Plain Loki store: `{ "loki": "https://url-of-loki"}`
-var Domain = domain{Domain: impl.NewDomain("netflow", "Network flows from source nodes to destination nodes.", Description, Class{})}
+var Domain = domain{Domain: impl.NewDomain("netflow", Description, Class{})}
 
 type domain struct{ *impl.Domain }
 

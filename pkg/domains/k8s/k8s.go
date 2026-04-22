@@ -97,11 +97,10 @@ func newDomain() *domain {
 	return d
 }
 
-func (d *domain) Name() string   { return "k8s" }
-func (d *domain) String() string { return d.Name() }
-func (d *domain) Description() (string, string) {
-	return impl.DomainDescription(d.Name(), "Kubernetes resources.", Description)
-}
+func (d *domain) Name() string        { return "k8s" }
+func (d *domain) String() string      { return d.Name() }
+func (d *domain) Description() string { return Description }
+
 func (d *domain) Classes() []korrel8r.Class { d.m.Lock(); defer d.m.Unlock(); return d.classes }
 
 func nonBlank(v1, v2 string) string {

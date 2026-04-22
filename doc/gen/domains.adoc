@@ -18,6 +18,10 @@ Selector is one of the following
 * JSON object with alert label field names and matching label values.
 * Array of objects as above, gets alerts that match any object in the array
 
+An empty selector matches all alerts:
+
+ alert:alert:{}
+
 Examples:
     alert:alert:{"container":"kube-rbac-proxy-main","namespace":"openshift-logging"}
     alert:alert:[{"alertname":"alert1"},{"alertname":"alert2"}]
@@ -36,8 +40,7 @@ At least one of the fields "metrics" or "alertmanager" must be present.
 
 Incidents group alerts into higher-level groups.
 
-For more about incidents see the
-https://github.com/openshift/cluster-health-analyzer[cluster-health-analyzer].
+For more about incidents see the https://github.com/openshift/cluster-health-analyzer[cluster-health-analyzer].
 
 === Classes
 
@@ -51,6 +54,10 @@ Alert is the only supported source type at present.
 === Query
 
 Query selectors are JSON objects.
+
+An empty selector matches all incidents:
+
+ incident:incident:{}
 
 Getting an incident by ID:
 
@@ -101,6 +108,10 @@ JSON selector with the following fields
 * *labels*: label selector object for metadata labels - { "label": "value", ... }
 * *fields*: https://kubernetes.io/docs/concepts/overview/working-with-objects/field-selectors/[field selector object] - { "field": "value", ... }
 
+An empty selector matches all resources of the class:
+
+ k8s:Pod:{}
+
 Examples:
 
  k8s:Pod.v1:{"namespace":"some-namespace", "name":"some-name"}
@@ -124,7 +135,7 @@ Returns the korrel8r.Class implied by the arguments, or an error.
 
 == log
 
-Records from container and node logs.
+Log records from container and node logs.
 
 Logs can be stored on the cluster in LokiStack or in an external Loki server.
 They can also be retrieved directly from the Kubernetes API server.
@@ -133,9 +144,9 @@ but it gives short-term access when there is no long term log store available.
 
 === Classes
 
- 	log:application
- 	log:infrastructure
- 	log:audit
+ log:application
+ log:infrastructure
+ log:audit
 
 === Object
 
@@ -187,6 +198,10 @@ Container selector fields (see k8s domain for more detail), all fields are optio
 
 If stored logs are available, the container selector is automatically translated into
 an equivalent LogQL expression.
+
+An empty selector matches all logs of the class:
+
+ log:application:{}
 
 Examples:
 
@@ -248,6 +263,10 @@ Selector is a https://prometheus.io/docs/prometheus/latest/querying/basics/[Prom
 Korrel8r uses metric labels for correlation, it does not use time-series data values.
 The PromQL expression is parsed to extract the label matchers for the series it refers to.
 
+An empty selector matches all metrics:
+
+ metric:metric:{}
+
 Examples:
 
  metric:metric:kube_pod_info{namespace="default"}
@@ -259,6 +278,10 @@ Prometheus is the store, store configuration:
 
  domain: metric
  metric: URL_OF_PROMETHEUS
+
+== mock
+
+Mock domain.
 
 == netflow
 
@@ -275,6 +298,11 @@ JSON object in https://docs.openshift.com/container-platform/latest/observabilit
 === Query
 
 Selector is a https://grafana.com/docs/loki/latest/query/[LogQL] query string.
+
+An empty selector matches all network flows:
+
+ netflow:network:{}
+
 Examples:
 
  netflow:network:{SrcK8S_Type="Pod", SrcK8S_Namespace="myNamespace"}
@@ -314,13 +342,19 @@ Selector has two forms:
 * https://grafana.com/docs/tempo/latest/traceql/[TraceQL] query string
 * A list of trace IDs.
 
+An empty selector matches all spans:
+
+ trace:span:{}
+
 A https://grafana.com/docs/tempo/latest/traceql/[TraceQL] query can select spans from many traces.
+
 Example:
 
  trace:span:{resource.k8s.namespace.name="korrel8r"}
 
 A trace-id query is a list of hexadecimal trace IDs.
 It returns all the spans included by each trace.
+
 Example:
 
  trace:span:a7880cc221e84e0d07b15993358811b7,b7880cc221e84e0d07b15993358811b7

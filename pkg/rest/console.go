@@ -3,24 +3,14 @@
 package rest
 
 import (
-	"encoding/json"
 	"fmt"
 
+	"github.com/korrel8r/korrel8r/pkg/api"
 	"github.com/korrel8r/korrel8r/pkg/engine"
 )
 
-// DeepCopy does a deep copy via JSON marshal.
-func DeepCopy(dst, src any) error {
-	bytes, err := json.Marshal(src)
-	if err != nil {
-		return err
-	}
-	err = json.Unmarshal(bytes, dst)
-	return err
-}
-
 // ConsoleOK validates and normalizes received console state.
-func ConsoleOK(e *engine.Engine, c *Console) error {
+func ConsoleOK(e *engine.Engine, c *api.Console) error {
 	if c.View != "" {
 		q, err := e.Query(c.View)
 		if err != nil {
@@ -30,7 +20,7 @@ func ConsoleOK(e *engine.Engine, c *Console) error {
 		c.View = q.String()
 	}
 	if c.Search != nil {
-		var start *Start
+		var start *api.Start
 		switch {
 		case c.Search.Goals != nil && c.Search.Neighbors == nil:
 			start = &c.Search.Goals.Start

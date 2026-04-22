@@ -11,15 +11,13 @@ import (
 
 	"github.com/korrel8r/korrel8r/internal/pkg/test/mock"
 	"github.com/korrel8r/korrel8r/pkg/auth"
-	"github.com/korrel8r/korrel8r/pkg/config"
 	"github.com/korrel8r/korrel8r/pkg/engine"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-func testFactory() (*engine.Engine, config.Configs, error) {
-	e, err := engine.Build().Domains(mock.NewDomain("mock")).Engine()
-	return e, nil, err
+func testFactory() (*engine.Engine, error) {
+	return engine.Build().Domains(mock.NewDomain("mock")).Engine()
 }
 
 func tokenCtx(token string) context.Context {
@@ -28,14 +26,13 @@ func tokenCtx(token string) context.Context {
 
 func getSession(t *testing.T, m Manager, token string) *Session {
 	t.Helper()
-	s, err := m.Get(m.Key(tokenCtx(token)))
+	s, err := m.Get(tokenCtx(token))
 	require.NoError(t, err)
 	return s
 }
 
 func TestGet_SameKey(t *testing.T) {
 	m := NewPool(time.Hour, testFactory)
-	defer m.Close()
 	s1 := getSession(t, m, "key-a")
 	s2 := getSession(t, m, "key-a")
 	assert.Same(t, s1, s2, "same key should return same session")
@@ -43,7 +40,6 @@ func TestGet_SameKey(t *testing.T) {
 
 func TestGet_DifferentKeys(t *testing.T) {
 	m := NewPool(time.Hour, testFactory)
-	defer m.Close()
 	s1 := getSession(t, m, "key-a")
 	s2 := getSession(t, m, "key-b")
 	assert.NotSame(t, s1, s2, "different keys should return different sessions")
@@ -51,23 +47,18 @@ func TestGet_DifferentKeys(t *testing.T) {
 
 func TestGet_HashedKey(t *testing.T) {
 	m := NewPool(time.Hour, testFactory)
-	defer m.Close()
 	s := getSession(t, m, "some-token")
-	assert.Equal(t, hashToken("some-token"), s.Key, "should use hashed token as key")
-	assert.Greater(t, s.ID, 0, "should have a positive numeric ID")
+	assert.Equal(t, hashToken("some-token"), s.ID, "should use hashed token as key")
 }
 
 func TestConcurrent(t *testing.T) {
 	m := NewPool(time.Hour, testFactory)
-	defer m.Close()
-
-	key := m.Key(tokenCtx("shared-token"))
 	var wg sync.WaitGroup
 	var count atomic.Int32
 	for range 100 {
 		wg.Go(func() {
-			e, err := m.Get(key)
-			if err == nil && e != nil {
+			s, err := m.Get(tokenCtx("shared-token"))
+			if err == nil && s != nil {
 				count.Add(1)
 			}
 		})
@@ -78,17 +69,15 @@ func TestConcurrent(t *testing.T) {
 
 func TestConcurrent_NewKey(t *testing.T) {
 	m := NewPool(time.Hour, testFactory)
-	defer m.Close()
 
 	// All goroutines race to create the same new key.
 	// They should all get the same session.
-	key := m.Key(tokenCtx("new-key"))
 	sessions := make([]*Session, 100)
 	errs := make([]error, 100)
 	var wg sync.WaitGroup
 	for i := range 100 {
 		wg.Go(func() {
-			sessions[i], errs[i] = m.Get(key)
+			sessions[i], errs[i] = m.Get(tokenCtx("new-key"))
 		})
 	}
 	wg.Wait()
@@ -104,7 +93,6 @@ func TestConcurrent_NewKey(t *testing.T) {
 func TestCleanup_OneExpiredOneActive(t *testing.T) {
 	timeout := 50 * time.Millisecond
 	m := NewPool(timeout, testFactory)
-	defer m.Close()
 
 	sOld := getSession(t, m, "old-token")
 

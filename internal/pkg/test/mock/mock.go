@@ -39,7 +39,7 @@ func NewDomain(name string, classes ...string) *Domain {
 }
 func (d *Domain) Name() string                          { return d.name }
 func (d *Domain) String() string                        { return d.Name() }
-func (d *Domain) Description() (string, string)          { return "Mock domain.", "" }
+func (d *Domain) Description() string                   { return "Mock domain." }
 func (d *Domain) Store(cfg any) (korrel8r.Store, error) { return NewStoreConfig(d, cfg) }
 func (d *Domain) Class(name string) korrel8r.Class {
 	c := korrel8r.Class(Class{name: name, domain: d})
