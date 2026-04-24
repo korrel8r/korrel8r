@@ -18,11 +18,10 @@ func (testDomain) Query(string) (korrel8r.Query, error) { panic("Not Implemented
 func (testDomain) Store(any) (korrel8r.Store, error)    { panic("Not Implemented") }
 
 func TestDomain(t *testing.T) {
-	d := NewDomain("x", "mystery domain", "detailed mystery", testClass("a"), testClass("b"))
+	d := NewDomain("x", "Its a mystery\n\na big mystery", testClass("a"), testClass("b"))
 	assert.Equal(t, "x", d.Name())
-	summary, detail := d.Description()
-	assert.Equal(t, "mystery domain", summary)
-	assert.Equal(t, "# x\n\nmystery domain\n\ndetailed mystery", detail)
+	desc := d.Description()
+	assert.Equal(t, "Its a mystery\n\na big mystery", desc)
 	assert.Equal(t, []korrel8r.Class{testClass("a"), testClass("b")}, d.Classes())
 	assert.Equal(t, testClass("a"), d.Class("a"))
 	assert.Nil(t, d.Class("x"))

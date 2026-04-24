@@ -4,6 +4,8 @@ package k8s
 
 const Description = `
 
+Kubernetes resources.
+
 ## Classes
 
 Each Kind of kubernetes resource is a class. Class names have the format:
@@ -33,6 +35,10 @@ JSON selector with the following fields
 - **name**: name of resource
 - **labels**: label selector object for metadata labels - { "label": "value", ... }
 - **fields**: [field selector object](https://kubernetes.io/docs/concepts/overview/working-with-objects/field-selectors/) - { "field": "value", ... }
+
+An empty selector matches all resources of the class:
+
+    k8s:Pod:{}
 
 Examples:
 

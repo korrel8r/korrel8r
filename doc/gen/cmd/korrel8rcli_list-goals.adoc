@@ -1,23 +1,19 @@
-= korrel8rcli neighbours
+= korrel8rcli list-goals
 
-Get graph of nearest neighbours
+List goal nodes related to a starting point
 
 ----
-korrel8rcli neighbours [flags]
+korrel8rcli list-goals CLASS... [flags]
 ----
 
 == Options
 
 ----
   -c, --class string         Class for serialized start objects
-  -d, --depth int            Depth of neighbourhood search. (default 2)
-      --errors               Include non-fatal error messages.
-  -h, --help                 help for neighbours
+  -h, --help                 help for list-goals
       --limit int            Limit total number of results.
   -O, --object stringArray   Serialized start object, can be multiple.
   -q, --query stringArray    Query string for start objects, can be multiple.
-      --results              Include full JSON results with each query.
-      --rules                Include rule information in returned graph.
       --since duration       Only get results since this long ago.
       --until duration       Only get results until this long ago.
 ----

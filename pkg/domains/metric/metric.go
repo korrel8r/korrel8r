@@ -28,7 +28,7 @@ const (
 )
 
 var (
-	Domain = &domain{Domain: impl.NewDomain(name, "Time-series of measured values.", Description, Class{})}
+	Domain = &domain{Domain: impl.NewDomain(name, Description, Class{})}
 
 	log = logging.Log()
 

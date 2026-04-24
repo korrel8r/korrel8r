@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/korrel8r/korrel8r/internal/pkg/test/mock"
+	"github.com/korrel8r/korrel8r/internal/pkg/text"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"github.com/korrel8r/korrel8r/pkg/result"
 	"github.com/stretchr/testify/assert"
@@ -91,8 +92,9 @@ func TestNewDomain(t *testing.T) {
 
 	assert.Equal(t, "testdomain", d.Name())
 	assert.Equal(t, "testdomain", d.String())
-	summary, _ := d.Description()
-	assert.Equal(t, "Mock domain.", summary)
+	desc := d.Description()
+	assert.Equal(t, "Mock domain.", desc)
+	assert.Equal(t, "Mock domain.", text.Summary(desc))
 
 	classes := d.Classes()
 	assert.Len(t, classes, 3)

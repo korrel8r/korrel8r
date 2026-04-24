@@ -4,6 +4,8 @@ package metric
 
 const Description = `
 
+Time-series of measured values.
+
 ## Classes
 
     metric:metric
@@ -18,6 +20,10 @@ Selector is a [PromQL](https://prometheus.io/docs/prometheus/latest/querying/bas
 
 Korrel8r uses metric labels for correlation, it does not use time-series data values.
 The PromQL expression is parsed to extract the label matchers for the series it refers to.
+
+An empty selector matches all metrics:
+
+    metric:metric:{}
 
 Examples:
 

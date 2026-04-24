@@ -1,24 +1,19 @@
-= korrel8rcli goals
+= korrel8rcli console-events
 
-Get graph of goal classes reachable from start
+Stream console events from an agent to stdout
+
+== Synopsis
+
+Subscribe to SSE event stream of console display updates from an agent.
 
 ----
-korrel8rcli goals CLASS... [flags]
+korrel8rcli console-events [flags]
 ----
 
 == Options
 
 ----
-  -c, --class string         Class for serialized start objects
-      --errors               Include non-fatal error messages.
-  -h, --help                 help for goals
-      --limit int            Limit total number of results.
-  -O, --object stringArray   Serialized start object, can be multiple.
-  -q, --query stringArray    Query string for start objects, can be multiple.
-      --results              Include full JSON results with each query.
-      --rules                Include rule information in returned graph.
-      --since duration       Only get results since this long ago.
-      --until duration       Only get results until this long ago.
+  -h, --help   help for console-events
 ----
 
 == Options inherited from parent commands

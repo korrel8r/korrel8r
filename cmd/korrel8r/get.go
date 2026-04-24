@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/korrel8r/korrel8r/internal/pkg/must"
+	"github.com/korrel8r/korrel8r/pkg/api"
 	"github.com/korrel8r/korrel8r/pkg/engine"
 	"github.com/korrel8r/korrel8r/pkg/engine/traverse"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
@@ -23,7 +24,7 @@ var (
 	queries      []string
 	objects      []string
 	limit        int
-	graphOptions = rest.GraphOptions{
+	graphOptions = api.GraphOptions{
 		Rules:   ptr.To(false),
 		Errors:  ptr.To(false),
 		Results: ptr.To(false),

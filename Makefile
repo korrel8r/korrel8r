@@ -8,7 +8,7 @@ help: ## Display this help.
 	@grep -E '^## [A-Z0-9_]+: ' Makefile | sed 's/^## \([A-Z0-9_]*\): \(.*\)/\1#\2/' | column -s'#' -t
 
 ## VERSION: Semantic version for release, use -dev for development pre-release versions.
-VERSION?=0.10.0
+VERSION?=0.10.1-dev
 ## REGISTRY_BASE: Image registry base, for example quay.io/somebody
 REGISTRY_BASE?=$(error REGISTRY_BASE must be set to push images)
 ## IMGTOOL: May be podman or docker.
@@ -28,8 +28,9 @@ $(shell mkdir -p $(GOCOVERDIR))
 # Generated files
 VERSION_TXT=internal/pkg/build/version.txt
 OPENAPI_SPEC=doc/korrel8r-openapi.yaml
-GEN_OPENAPI_GO=pkg/rest/gen-openapi.go
-GENERATED=$(VERSION_TXT) $(GEN_OPENAPI_GO)
+GEN_OPENAPI_API=pkg/api/gen-openapi.go
+GEN_OPENAPI_IMPL=pkg/rest/gen-openapi.go
+GENERATED=$(VERSION_TXT) $(GEN_OPENAPI_IMPL) $(GEN_OPENAPI_API)
 
 generate:  $(GENERATED)
 	$(MAKE) kustomize-edit
@@ -46,7 +47,7 @@ install: lint							## Build and install korrel8r with go install.
 	go install ./cmd/korrel8r
 
 clean: ## Remove generated files, including checked-in files.
-	rm -rf _site $(GENERATED) doc/gen tmp $(GEN_OPENAPI_GO) $(BIN) $(GOCOVERDIR)
+	rm -rf _site $(GENERATED) doc/gen tmp $(GEN_OPENAPI_API) $(GEN_OPENAPI_IMPL) $(BIN) $(GOCOVERDIR)
 
 ifneq ($(VERSION),$(file <$(VERSION_TXT)))
 .PHONY: $(VERSION_TXT) # Force update if VERSION_TXT does not match $(VERSION)
@@ -57,8 +58,12 @@ $(VERSION_TXT):
 $(BIN):
 	mkdir -p $(BIN)
 
-$(GEN_OPENAPI_GO): $(OPENAPI_SPEC)
-	go tool oapi-codegen -generate types,gin,spec -package rest -o $@ $<
+
+$(GEN_OPENAPI_API): $(OPENAPI_SPEC)
+	go tool oapi-codegen -generate types,spec -package api -o $@ $<
+
+$(GEN_OPENAPI_IMPL): $(OPENAPI_SPEC)
+	go tool oapi-codegen -generate gin -package rest -import-mapping "$<:github.com/korrel8r/korrel8r/pkg/api" -alias-types -o $@ $<
 
 SHELLCHECK:= $(BIN)/shellcheck
 $(SHELLCHECK): $(BIN)
@@ -158,7 +163,7 @@ doc/gen/domains.adoc: $(GENERATED) $(KRAMDOC) $(shell find pkg/domains -name "*.
 	@mkdir -p $(dir $@)
 	go run ./cmd/korrel8r describe | $(KRAMDOC) -o $@ --heading-offset=1 -
 
-doc/gen/rest_api.adoc: $(OPENAPI_SPEC) $(OPENAPI_GEN)
+doc/gen/rest_api.adoc: $(OPENAPI_SPEC)
 	@mkdir -p $(dir $@)
 	$(IMGTOOL) run --rm -v $(CURDIR):/app:z docker.io/openapitools/openapi-generator-cli \
 		generate -g asciidoc -c /app/doc/openapi-asciidoc.yaml -i /app/$< -o /app/$@.dir

@@ -27,7 +27,7 @@ var (
 	_ korrel8r.Class  = Class{}
 )
 
-var Domain = domain{Domain: impl.NewDomain("trace", "Follow the path of a request through your application.", Description, Class{})}
+var Domain = domain{Domain: impl.NewDomain("trace", Description, Class{})}
 
 type domain struct{ *impl.Domain }
 

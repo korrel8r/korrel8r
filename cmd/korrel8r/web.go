@@ -17,7 +17,6 @@ import (
 	"github.com/korrel8r/korrel8r/pkg/engine"
 	"github.com/korrel8r/korrel8r/pkg/mcp"
 	"github.com/korrel8r/korrel8r/pkg/rest"
-	"github.com/korrel8r/korrel8r/pkg/rest/auth"
 	"github.com/korrel8r/korrel8r/pkg/session"
 	"github.com/spf13/cobra"
 )
@@ -62,34 +61,20 @@ var webCmd = &cobra.Command{
 			panic(fmt.Errorf("--tls-min-version, --tls-cipher-suites, and --tls-curves are not allowed with --http"))
 		}
 
-		configs := must.Must1(config.Load(*configFlag))
-		newEngine := func() (*engine.Engine, config.Configs, error) {
-			e, err := newEngineWithConfigs(configs)
-			return e, configs, err
-		}
-
 		// Use session timeout from initial configuration.
 		var timeout time.Duration
+		configs := must.Must1(config.Load(*configFlag))
 		if len(configs) > 0 && configs[0].Tuning != nil {
 			timeout = time.Duration(configs[0].Tuning.SessionTimeout)
 		}
-		sessions := session.NewPool(timeout, newEngine)
+		sessions := session.NewPool(
+			timeout,
+			func() (*engine.Engine, error) { return newEngineWithConfigs(configs) },
+		)
 
 		gin.SetMode(gin.ReleaseMode)
 		router := gin.New()
-		router.Use(gin.Recovery())
-		// Middleware to add authentication and timeout to the request context.
-		router.Use(func(c *gin.Context) {
-			ss, err := session.FromContext(c.Request.Context(), sessions)
-			if err != nil {
-				c.AbortWithStatusJSON(http.StatusInternalServerError, c.Error(err).JSON())
-				return
-			}
-			ctx, cancel := ss.Engine.WithTimeout(auth.Context(c.Request), 0)
-			defer cancel()
-			c.Request = c.Request.WithContext(ctx)
-			c.Next()
-		})
+		router.Use(gin.Recovery(), session.Middleware(sessions))
 
 		if *restFlag {
 			must.Must1(rest.New(sessions, router))
@@ -99,11 +84,6 @@ var webCmd = &cobra.Command{
 			mcpSrv := mcp.NewServer(sessions)
 			router.Any(mcp.StreamablePath, gin.WrapH(mcpSrv.HTTPHandler()))
 			log.V(0).Info("MCP Streamable endpoint", "path", mcp.StreamablePath)
-		}
-		if *mcpSSEFlag {
-			mcpSrv := mcp.NewServer(sessions)
-			router.Any(mcp.SSEPath, gin.WrapH(mcpSrv.SSEHandler()))
-			log.V(0).Info("MCP SSE endpoint", "path", mcp.SSEPath)
 		}
 		s.Handler = router
 		if profileTypeFlag.String() == "http" {
@@ -125,7 +105,6 @@ var (
 	certFlag, keyFlag   *string
 	specFlag            *string
 	mcpFlag             *bool
-	mcpSSEFlag          *bool
 	restFlag            *bool
 	tlsMinVersionFlag   *string
 	tlsCipherSuitesFlag *[]string
@@ -140,7 +119,6 @@ func init() {
 	httpsFlag = webCmd.Flags().String("https", "", "host:port address for secure https listener")
 	keyFlag = webCmd.Flags().String("key", "", "Private key (PEM format) for https")
 	mcpFlag = webCmd.Flags().Bool("mcp", true, "Enable MCP streamable HTTP protocol on "+mcp.StreamablePath)
-	mcpSSEFlag = webCmd.Flags().Bool("mcp-sse", true, "Enable MCP Server-Sent Events protocol server on "+mcp.SSEPath)
 	restFlag = webCmd.Flags().Bool("rest", true, "Enable HTTP REST server on "+rest.BasePath)
 	specFlag = webCmd.Flags().String("spec", "", "Write OpenAPI specification to a file, '-' for stdout.")
 	tlsCipherSuitesFlag = webCmd.Flags().StringSlice("tls-cipher-suites", nil, "Comma-separated list of TLS cipher suites for https (IANA or OpenSSL names)")

@@ -39,9 +39,7 @@ var (
 	_ korrel8r.Object = &Object{}
 )
 
-const summary = "Alerts that metric values are out of bounds."
-
-var Domain = domain{Domain: impl.NewDomain("alert", summary, Description, Class{})}
+var Domain = domain{Domain: impl.NewDomain("alert", Description, Class{})}
 
 type domain struct{ *impl.Domain }
 

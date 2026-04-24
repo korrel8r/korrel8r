@@ -4,8 +4,9 @@ package incident
 
 const Description = `
 
-For more about incidents see the
-[cluster-health-analyzer](https://github.com/openshift/cluster-health-analyzer).
+Incidents group alerts into higher-level groups.
+
+For more about incidents see the [cluster-health-analyzer](https://github.com/openshift/cluster-health-analyzer).
 
 ## Classes
 
@@ -19,6 +20,10 @@ Alert is the only supported source type at present.
 ## Query
 
 Query selectors are JSON objects.
+
+An empty selector matches all incidents:
+
+    incident:incident:{}
 
 Getting an incident by ID:
 
