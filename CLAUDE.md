@@ -1,1 +1,1 @@
-/home/aconway/src/korrel8r/korrel8r/DEVELOPER.md
+DEVELOPER.md

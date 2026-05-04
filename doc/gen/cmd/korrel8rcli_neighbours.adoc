@@ -11,13 +11,14 @@ korrel8rcli neighbours [flags]
 ----
   -c, --class string         Class for serialized start objects
   -d, --depth int            Depth of neighbourhood search. (default 2)
+      --errors               Include non-fatal error messages.
   -h, --help                 help for neighbours
       --limit int            Limit total number of results.
   -O, --object stringArray   Serialized start object, can be multiple.
   -q, --query stringArray    Query string for start objects, can be multiple.
+      --results              Include full JSON results with each query.
       --rules                Include rule information in returned graph.
       --since duration       Only get results since this long ago.
-      --timeout duration     Timeout for store requests.
       --until duration       Only get results until this long ago.
 ----
 

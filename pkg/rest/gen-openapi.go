@@ -4,20 +4,10 @@
 package rest
 
 import (
-	"bytes"
-	"compress/gzip"
-	"encoding/base64"
-	"encoding/json"
 	"fmt"
 	"net/http"
-	"net/url"
-	"path"
-	"strings"
-	"time"
 
-	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/gin-gonic/gin"
-	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"github.com/oapi-codegen/runtime"
 )
 
@@ -227,9 +217,9 @@ type ServerInterface interface {
 	// Make console state available to an agent.
 	// (PUT /console)
 	SetConsole(c *gin.Context)
-	// Updates for the console display from an agent.
-	// (GET /console/updates)
-	ConsoleUpdates(c *gin.Context)
+	// SSE event stream of console display updates from an agent.
+	// (GET /console/events)
+	ConsoleEvents(c *gin.Context)
 	// Get the list of classes for a domain.
 	// (GET /domain/{domain}/classes)
 	ListDomainClasses(c *gin.Context, domain string)
@@ -304,8 +294,8 @@ func (siw *ServerInterfaceWrapper) SetConsole(c *gin.Context) {
 	siw.Handler.SetConsole(c)
 }
 
-// ConsoleUpdates operation middleware
-func (siw *ServerInterfaceWrapper) ConsoleUpdates(c *gin.Context) {
+// ConsoleEvents operation middleware
+func (siw *ServerInterfaceWrapper) ConsoleEvents(c *gin.Context) {
 
 	for _, middleware := range siw.HandlerMiddlewares {
 		middleware(c)
@@ -314,7 +304,7 @@ func (siw *ServerInterfaceWrapper) ConsoleUpdates(c *gin.Context) {
 		}
 	}
 
-	siw.Handler.ConsoleUpdates(c)
+	siw.Handler.ConsoleEvents(c)
 }
 
 // ListDomainClasses operation middleware
@@ -531,7 +521,7 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 
 	router.PUT(options.BaseURL+"/config", wrapper.SetConfig)
 	router.PUT(options.BaseURL+"/console", wrapper.SetConsole)
-	router.GET(options.BaseURL+"/console/updates", wrapper.ConsoleUpdates)
+	router.GET(options.BaseURL+"/console/events", wrapper.ConsoleEvents)
 	router.GET(options.BaseURL+"/domain/:domain/classes", wrapper.ListDomainClasses)
 	router.GET(options.BaseURL+"/domains", wrapper.ListDomains)
 	router.POST(options.BaseURL+"/graphs/goals", wrapper.GraphGoals)

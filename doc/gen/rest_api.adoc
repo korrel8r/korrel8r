@@ -1,7 +1,7 @@
 = Korrel8r REST API
 
 == Introduction
-Generate graphs showing correlations between resources and observability signals in a cluster.
+Korrel8r correlates observability signals and resources in a Kubernetes cluster. It connects data from different domains (logs, metrics, alerts, traces, Kubernetes resources) by following correlation rules to build a graph of related objects. Korrel8r creates a separate session for each user with a unique HTTP Authorization header. Configuration changes, console state, and store connections are isolated per session. Requests without an Authorization header share a single default session. 
 
 
 // markup not found, no include::{specDir}intro.adoc[opts=optional]
@@ -55,9 +55,12 @@ Modify selected configuration settings (e.g. log verbosity) on a running service
 ===== Return Type
 
 
+<<Object>>
 
--
 
+===== Content Type
+
+* application/json
 
 ===== Responses
 
@@ -69,7 +72,7 @@ Modify selected configuration settings (e.g. log verbosity) on a running service
 
 | 200
 | OK
-|  <<>>
+|  <<Object>>
 
 |===
 
@@ -99,19 +102,19 @@ endif::internal-generation[]
 === Console
 
 
-[.consoleUpdates]
-==== consoleUpdates
+[.consoleEvents]
+==== consoleEvents
 
-`GET /console/updates`
+`GET /console/events`
 
-Updates for the console display from an agent.
+SSE event stream of console display updates from an agent.
 
 ===== Description
 
-Use SSE (server-sent events) to send updates for the console display. The updates come from an agent using the MCP API. 
+Updates are triggered by update requests from MCP tool show_in_console. The MCP client must have the same session (Authorization header) as the REST client. 
 
 
-// markup not found, no include::{specDir}console/updates/GET/spec.adoc[opts=optional]
+// markup not found, no include::{specDir}console/events/GET/spec.adoc[opts=optional]
 
 
 
@@ -125,9 +128,8 @@ Use SSE (server-sent events) to send updates for the console display. The update
 
 ===== Return Type
 
+<<Console>>
 
-
--
 
 ===== Content Type
 
@@ -142,28 +144,28 @@ Use SSE (server-sent events) to send updates for the console display. The update
 
 
 | 200
-| Stream of console display updates.
-|  <<>>
+| SSE stream where each event&#39;s data field contains a JSON-encoded Console object. 
+|  <<Console>>
 
 |===
 
 ===== Samples
 
 
-// markup not found, no include::{snippetDir}console/updates/GET/http-request.adoc[opts=optional]
+// markup not found, no include::{snippetDir}console/events/GET/http-request.adoc[opts=optional]
 
 
-// markup not found, no include::{snippetDir}console/updates/GET/http-response.adoc[opts=optional]
+// markup not found, no include::{snippetDir}console/events/GET/http-response.adoc[opts=optional]
 
 
 
-// file not found, no * wiremock data link :console/updates/GET/GET.json[]
+// file not found, no * wiremock data link :console/events/GET/GET.json[]
 
 
 ifdef::internal-generation[]
 ===== Implementation
 
-// markup not found, no include::{specDir}console/updates/GET/implementation.adoc[opts=optional]
+// markup not found, no include::{specDir}console/events/GET/implementation.adoc[opts=optional]
 
 
 endif::internal-generation[]
@@ -178,7 +180,7 @@ Make console state available to an agent.
 
 ===== Description
 
-Put the current state of the console so it can be retrieved by an agent via the MCP API. 
+Store console state so an agent can read it via MCP tool get_console. The MCP client must have the same session (Authorization header) as the REST client. 
 
 
 // markup not found, no include::{specDir}console/PUT/spec.adoc[opts=optional]
@@ -209,8 +211,8 @@ Put the current state of the console so it can be retrieved by an agent via the 
 ===== Return Type
 
 
+<<Object>>
 
--
 
 ===== Content Type
 
@@ -226,7 +228,7 @@ Put the current state of the console so it can be retrieved by an agent via the 
 
 | 200
 | Console display updated successfully
-|  <<>>
+|  <<Object>>
 
 
 | 400
@@ -602,7 +604,7 @@ Specify a set of start objects, as queries or serialized objects, and a goal cla
 |Name| Description| Required| Default| Pattern
 
 | request
-| search from start to goal classes <<Goals>>
+| Search from start to goal classes. <<Goals>>
 | X
 | 
 | 
@@ -944,7 +946,8 @@ endif::internal-generation[]
 [#Console]
 === _Console_ 
 
-Describes the data displayed in the users console.
+State of the user&#39;s graphical console display (e.g. OpenShift web console).
+
 
 
 [.fields-Console]
@@ -956,14 +959,14 @@ Describes the data displayed in the users console.
 | 
 | 
 |   String  
-| Represents a request to retrieve data for a particular Class. It has 3 parts DOMAIN:CLASS:SELECTOR DOMAIN: name of a domain. CLASS: name of a class in the domain. SELECTOR: domain-specific query string to retrieve selected objects. 
+| The main console view displays the results of this query.
 |     
 
 | search
 | 
 | 
 | <<Search>>    
-| 
+| The troubleshooting panel displays the results of this correlation search.
 |     
 
 |===
@@ -1001,13 +1004,6 @@ Constrains the objects that will be included in search results.
 |   Integer  
 | Limit total number of objects per query.
 |     
-
-| timeout
-| 
-| 
-|   String  
-| DEPRECATED store calls are cancelled with the request.
-| duration    
 
 |===
 
@@ -1110,7 +1106,8 @@ Error result containing an error message.
 [#Goals]
 === _Goals_ 
 
-Starting point for a goals search.
+Parameters for a goal-directed correlation search. Finds paths from start objects to goal classes.
+
 
 
 [.fields-Goals]
@@ -1122,14 +1119,14 @@ Starting point for a goals search.
 | X
 | 
 |   List   of <<string>>
-| Goal classes for correlation.
+| Goal classes in DOMAIN:CLASS format, e.g. log:application, alert:alert 
 |     
 
 | start
 | X
 | 
 | <<Start>>    
-| 
+| Starting point for the search.
 |     
 
 |===
@@ -1168,7 +1165,7 @@ Graph resulting from a correlation search.
 [#GraphGoalsOptionsParameter]
 === _GraphGoalsOptionsParameter_ 
 
-
+Options controlling the form of the returned graph.
 
 
 [.fields-GraphGoalsOptionsParameter]
@@ -1194,7 +1191,7 @@ Graph resulting from a correlation search.
 | 
 | 
 |   Boolean  
-| if true include non-fatal error messages.
+| If true include non-fatal error messages.
 |     
 
 |===
@@ -1204,7 +1201,8 @@ Graph resulting from a correlation search.
 [#Neighbors]
 === _Neighbors_ 
 
-Starting point for a neighbors search.
+Parameters for a neighborhood correlation search. Finds all objects reachable from the start by following correlation rules up to the maximum depth.
+
 
 
 [.fields-Neighbors]
@@ -1216,14 +1214,14 @@ Starting point for a neighbors search.
 | X
 | 
 |   Integer  
-| Max depth of neighbors graph.
+| Maximum number of correlation steps to follow from the start. Depth 1 returns direct correlations only. 
 |     
 
 | start
 | X
 | 
 | <<Start>>    
-| 
+| Starting point for the search.
 |     
 
 |===
@@ -1245,7 +1243,7 @@ Node in the result graph, contains results for a single class.
 | X
 | 
 |   String  
-| Full class name
+| Full class name.
 |     
 
 | queries
@@ -1349,7 +1347,8 @@ Rule is a correlation rule with a list of queries and results counts found durin
 [#Search]
 === _Search_ 
 
-Search parameters for the correlation search displayed in the console troubleshooting panel. Exactly one of goals, neighbors should be set.
+Correlation search parameters. Set exactly one of &#39;goals&#39; (targeted search to specific classes) or &#39;neighbors&#39; (open-ended exploration to a depth).
+
 
 
 [.fields-Search]
@@ -1361,14 +1360,14 @@ Search parameters for the correlation search displayed in the console troublesho
 | 
 | 
 | <<Goals>>    
-| 
+| Parameters for a goal-directed correlation search.
 |     
 
 | neighbors
 | 
 | 
 | <<Neighbors>>    
-| 
+| Parameters for a neighborhood correlation search.
 |     
 
 |===
@@ -1378,7 +1377,8 @@ Search parameters for the correlation search displayed in the console troublesho
 [#Start]
 === _Start_ 
 
-Start identifies a set of starting objects for correlation.
+Starting point for a correlation search. It usually specifies queries to get the starting objects, but can include serialized objects as well as/instead of queries.
+
 
 
 [.fields-Start]
@@ -1390,28 +1390,28 @@ Start identifies a set of starting objects for correlation.
 | 
 | 
 |   String  
-| Class of starting objects and queries.
+| Class of starting objects. Required when using &#39;objects&#39; to provide serialized objects. If queries are included, they must all be of this class. 
 |     
 
 | constraint
 | 
 | 
 | <<Constraint>>    
-| Constrain the objects that will be returned.
+| Constrains the objects that will be included in search results.
 |     
 
 | objects
 | 
 | 
 |   List   of <<Object>>
-| Start objects serialized as JSON.
+| Start objects serialized as JSON. Requires &#39;class&#39; to identify the object type. Alternative to &#39;queries&#39; when you already have the objects. 
 |     
 
 | queries
 | 
 | 
 |   List   of <<string>>
-| Queries for starting objects
+| Queries for starting objects in \&quot;domain:class:selector\&quot; format. This is the most common way to specify a starting point. 
 |     
 
 |===

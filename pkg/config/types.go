@@ -2,8 +2,6 @@
 
 package config
 
-import "github.com/korrel8r/korrel8r/pkg/ptr"
-
 // Config defines the configuration for an instance of korrel8r.
 // Configuration files may be JSON or YAML.
 type Config struct {
@@ -20,6 +18,8 @@ type Config struct {
 	Include []string `json:"include,omitempty"`
 
 	// Tuning section has limits and optimizations.
+	// NOTE: This section is only allowed in the top-level configuration.
+	// It is not allowed in included configuration files.
 	Tuning *Tuning `json:"tuning,omitempty"`
 
 	// Soure of configuration, file or URL.
@@ -99,15 +99,13 @@ type Class struct {
 // Tuning section for limits and optimizations.
 type Tuning struct {
 	// RequestTimeout cancels requests if they last longer than this timeout.
-	RequestTimeout *Duration `json:"requestTimeout,omitempty"`
-}
+	// If omitted or 0, requests never time out.
+	RequestTimeout Duration `json:"requestTimeout,omitempty"`
 
-// Copy all non-nil fields of x to t.
-func (t *Tuning) Copy(x *Tuning) {
-	if x == nil {
-		return
-	}
-	if x.RequestTimeout != nil {
-		t.RequestTimeout = ptr.To(*x.RequestTimeout)
-	}
+	// SessionTimeout sets the idle timeout for sessions.
+	// If omitted or 0, sessions never time out.
+	//
+	// In server mode, the Authorization header of incoming REST or MCP requests identifies a session.
+	// Each session has a separate search engine, configuration and state.
+	SessionTimeout Duration `json:"sessionTimeout,omitempty"`
 }

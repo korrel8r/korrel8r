@@ -24,12 +24,12 @@ func TestMain_list(t *testing.T) {
 	want := `
 alert     Alerts that metric values are out of bounds.
 incident  Incidents group alerts into higher-level groups.
-k8s       Resource objects in a Kubernetes API server
-log       Records from container and node logs.
-metric    Time-series of measured values
+k8s       Kubernetes resources.
+log       Log records from container and node logs.
+metric    Time-series of measured values.
 mock      Mock domain.
 netflow   Network flows from source nodes to destination nodes.
-trace     Traces from Pods and Nodes.
+trace     Follow the path of a request through your application.
 `
 	assert.Equal(t, strings.TrimSpace(want), strings.TrimSpace(string(out)))
 }

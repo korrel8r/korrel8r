@@ -1,48 +1,8 @@
 // Copyright: This file is part of korrel8r, released under https://github.com/korrel8r/korrel8r/blob/main/LICENSE
 
-// Package trace implements OpenTelemetry [traces] stored in the Grafana [Tempo] data store.
+// Package trace implements OpenTelemetry traces stored in the Grafana Tempo data store.
 //
-// # Class
-//
-// Class singleton `trace:span` representing an OpenTelemetry [span]
-//
-// A trace is simply a set of spans with the same trace-id.
-// There is no explicit class or object representing a trace.
-//
-// # Object
-//
-// Object represents an OpenTelemetry [span]
-//
-// A trace is simply a set of spans with the same trace-id.
-// There is no explicit class or object representing a trace.
-//
-// # Query
-//
-// Query selector has two forms: a [TraceQL] query string, or a list of trace IDs.
-//
-// A [TraceQL] query selects spans from many traces that match the query criteria.
-// Example:
-//
-//	`trace:span:{resource.k8s.namespace.name="korrel8r"}`
-//
-// A trace-id query is a list of hexadecimal trace IDs. It returns all the
-// spans included by each trace. Example:
-//
-//	`trace:span:a7880cc221e84e0d07b15993358811b7,b7880cc221e84e0d07b15993358811b7
-//
-// # Store
-//
-// The trace domain accepts an optional "tempostack" field with a URL for tempostack.
-// If absent, connect to the default location for the trace store on an Openshift cluster.
-//
-//	stores:
-//	  domain: trace
-//	  tempostack: "https://url-of-tempostack"
-//
-// [Tempo]: https://grafana.com/docs/tempo/latest/
-// [traces]: https://opentelemetry.io/docs/concepts/signals/traces
-// [TraceQL]: https://grafana.com/docs/tempo/latest/traceql/
-// [span]: https://opentelemetry.io/docs/concepts/signals/traces/#spans
+// See [Description] for details.
 package trace
 
 import (
@@ -67,7 +27,7 @@ var (
 	_ korrel8r.Class  = Class{}
 )
 
-var Domain = domain{Domain: impl.NewDomain("trace", "Traces from Pods and Nodes.", Class{})}
+var Domain = domain{Domain: impl.NewDomain("trace", Description, Class{})}
 
 type domain struct{ *impl.Domain }
 

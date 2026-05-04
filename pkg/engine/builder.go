@@ -153,7 +153,9 @@ func (b *Builder) Config(configs config.Configs) *Builder {
 }
 
 func (b *Builder) Tuning(t *config.Tuning) *Builder {
-	b.e.Tuning.Copy(t)
+	if t != nil {
+		b.e.Tuning = *t
+	}
 	return b
 }
 

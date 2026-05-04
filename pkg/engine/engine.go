@@ -166,8 +166,8 @@ func (e *Engine) execTemplate(name, tmplString string, data any) (string, error)
 // WithTimeout sets timeout on ctx, using configured default value if timeout == 0.
 // If timeout == 0 and there is no default value, the returned context has no timeout.
 func (e *Engine) WithTimeout(ctx context.Context, timeout time.Duration) (context.Context, func()) {
-	if timeout == 0 && e.Tuning.RequestTimeout != nil {
-		timeout = (*e.Tuning.RequestTimeout).Duration
+	if timeout == 0 {
+		timeout = time.Duration(e.Tuning.RequestTimeout)
 	}
 	if timeout == 0 {
 		return ctx, func() {}

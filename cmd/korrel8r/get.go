@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/korrel8r/korrel8r/internal/pkg/must"
+	"github.com/korrel8r/korrel8r/pkg/api"
 	"github.com/korrel8r/korrel8r/pkg/engine"
 	"github.com/korrel8r/korrel8r/pkg/engine/traverse"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
@@ -23,7 +24,7 @@ var (
 	queries      []string
 	objects      []string
 	limit        int
-	graphOptions = rest.GraphOptions{
+	graphOptions = api.GraphOptions{
 		Rules:   ptr.To(false),
 		Errors:  ptr.To(false),
 		Results: ptr.To(false),
@@ -55,7 +56,7 @@ var (
 		Aliases: []string{"get"},
 		Args:    cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
-			e, _ := newEngine()
+			e := newEngine()
 			q := must.Must1(e.Query(args[0]))
 			p := newPrinter(os.Stdout)
 			defer p.Close()
@@ -77,7 +78,7 @@ var (
 		Short: "Get graph of nearest neighbors",
 		Args:  cobra.NoArgs,
 		Run: func(cmd *cobra.Command, args []string) {
-			e, _ := newEngine()
+			e := newEngine()
 			ctx, cancel := e.WithTimeout(context.Background(), timeout)
 			defer cancel()
 			g, err := traverse.Neighbors(ctx, e, start(e), depth)
@@ -101,7 +102,7 @@ var (
 		Short: "Execute QUERY, find all paths to GOAL classes.",
 		Args:  cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
-			e, _ := newEngine()
+			e := newEngine()
 			var goals []korrel8r.Class
 			for _, g := range args {
 				goals = append(goals, must.Must1(e.Class(g)))

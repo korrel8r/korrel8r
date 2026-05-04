@@ -7,7 +7,7 @@ import (
 
 	"github.com/go-logr/logr"
 	kconfig "github.com/korrel8r/korrel8r/pkg/config"
-	"github.com/korrel8r/korrel8r/pkg/rest/auth"
+	"github.com/korrel8r/korrel8r/pkg/auth"
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"

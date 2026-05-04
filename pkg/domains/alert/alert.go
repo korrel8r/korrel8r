@@ -1,36 +1,8 @@
 // Copyright: This file is part of korrel8r, released under https://github.com/korrel8r/korrel8r/blob/main/LICENSE
 
-// Package alert provides Prometheus alerts, queries and access to Thanos and AlertManager stores.
+// Package alert provides Prometheus and Loki alerts, queries and access to Thanos, AlertManager, and Loki Ruler stores.
 //
-// # Class
-//
-// There is a single class `alert:alert`.
-//
-// # Object
-//
-// An alert object is represented by this Go type.
-// Rules starting from an alert should use the capitalized Go field names rather than the lowercase JSON names.
-// [Object]
-//
-// # Query
-//
-// A JSON map of string names to string values, matched against alert labels, for example:
-//
-//	alert:alert:{"alertname":"KubeStatefulSetReplicasMismatch","container":"kube-rbac-proxy-main","namespace":"openshift-logging"}
-//
-// To query mutiple alerts at the same time, it's possible to provide an array of maps:
-//
-//	alert:alert:[{"alertname":"alert1"},{"alertname":"alert2"}]
-//
-// # Store
-//
-// A client of Prometheus and/or AlertManager. Store configuration:
-//
-//	domain: alert
-//	metrics: PROMETHEUS_URL
-//	alertmanager: ALERTMANAGER_URL
-//
-// Either or both of `metrics` or `alertmanager` may be present.
+// See [Description] for details.
 package alert
 
 import (
@@ -67,7 +39,7 @@ var (
 	_ korrel8r.Object = &Object{}
 )
 
-var Domain = domain{Domain: impl.NewDomain("alert", "Alerts that metric values are out of bounds.", Class{})}
+var Domain = domain{Domain: impl.NewDomain("alert", Description, Class{})}
 
 type domain struct{ *impl.Domain }
 
@@ -96,6 +68,7 @@ func (d domain) Query(s string) (korrel8r.Query, error) {
 const (
 	StoreKeyMetrics      = "metrics"
 	StoreKeyAlertmanager = "alertmanager"
+	StoreKeyLokiRuler    = "lokiRuler"
 )
 
 func (domain) Store(s any) (korrel8r.Store, error) {
@@ -103,7 +76,7 @@ func (domain) Store(s any) (korrel8r.Store, error) {
 	if err != nil {
 		return nil, err
 	}
-	metrics, alertmanager := cs[StoreKeyMetrics], cs[StoreKeyAlertmanager]
+	metrics, alertmanager, lokiRuler := cs[StoreKeyMetrics], cs[StoreKeyAlertmanager], cs[StoreKeyLokiRuler]
 	metricsURL, err := url.Parse(metrics)
 	if err != nil {
 		return nil, err
@@ -112,11 +85,15 @@ func (domain) Store(s any) (korrel8r.Store, error) {
 	if err != nil {
 		return nil, err
 	}
+	lokiRulerURL, err := url.Parse(lokiRuler)
+	if err != nil {
+		return nil, err
+	}
 	hc, err := k8s.NewHTTPClient(cs)
 	if err != nil {
 		return nil, err
 	}
-	return NewStore(alertmanagerURL, metricsURL, hc)
+	return NewStore(alertmanagerURL, metricsURL, lokiRulerURL, hc)
 }
 
 // Class is represents any Prometheus alert. There is only a single class, named "alert".
@@ -177,19 +154,20 @@ func (q Query) Class() korrel8r.Class { return Class{} }
 func (q Query) Data() string          { return q.Qs }
 func (q Query) String() string        { return korrel8r.QueryString(q) }
 
-// Store is a client of Prometheus and AlertManager.
+// Store is a client of Prometheus, AlertManager, and Loki Ruler.
 type Store struct {
 	alertmanagerAPI      *client.AlertmanagerAPI
 	prometheusAPI        v1.API
 	prometheusURL        *url.URL         // Original URL from configuration
 	prometheusConfigPort string           // Port from configuration (e.g., "9091")
+	lokiRulerURL         *url.URL         // Loki Ruler URL from configuration
 	httpClient           *http.Client     // HTTP client for recreating prometheus client
 	k8sClient            k8sclient.Client // For RBAC permission checks
 	*impl.Store
 }
 
-// NewStore creates a new store client for a Prometheus URL.
-func NewStore(alertmanagerURL *url.URL, prometheusURL *url.URL, hc *http.Client) (*Store, error) {
+// NewStore creates a new store client for Prometheus, Alertmanager, and Loki Ruler.
+func NewStore(alertmanagerURL *url.URL, prometheusURL *url.URL, lokiRulerURL *url.URL, hc *http.Client) (*Store, error) {
 	alertmanagerAPI, err := newAlertmanagerClient(alertmanagerURL, hc)
 	if err != nil {
 		return nil, err
@@ -211,6 +189,7 @@ func NewStore(alertmanagerURL *url.URL, prometheusURL *url.URL, hc *http.Client)
 		prometheusAPI:        prometheusAPI,
 		prometheusURL:        prometheusURL,
 		prometheusConfigPort: prometheusURL.Port(),
+		lokiRulerURL:         lokiRulerURL,
 		httpClient:           hc,
 		k8sClient:            k8sClient,
 		Store:                impl.NewStore(Domain),
@@ -243,6 +222,79 @@ func newPrometheusClient(u *url.URL, hc *http.Client) (v1.API, error) {
 }
 
 func (*Store) Domain() korrel8r.Domain { return Domain }
+
+// getLokiRulesForTenant queries the Loki Ruler API for a specific tenant.
+func (s *Store) getLokiRulesForTenant(ctx context.Context, tenant string, namespaces map[string]bool) (v1.RulesResult, error) {
+	// Build Loki Ruler URL with tenant
+	// LokiStack multi-tenant pattern: /api/logs/v1/{tenant}/loki/api/v1/rules
+	rulesURL := s.lokiRulerURL.JoinPath("/api/logs/v1", tenant, "/loki/api/v1/rules")
+
+	// Add namespace query parameters if we have any
+	if len(namespaces) > 0 {
+		queryParams := rulesURL.Query()
+		k8s.AddNamespaceParams(queryParams, namespaces)
+		rulesURL.RawQuery = queryParams.Encode()
+	}
+
+	log.V(5).Info("querying Loki Ruler API", "url", rulesURL.String(), "tenant", tenant)
+
+	// Make HTTP request
+	req, err := http.NewRequestWithContext(ctx, "GET", rulesURL.String(), nil)
+	if err != nil {
+		return v1.RulesResult{}, fmt.Errorf("alert: GET Loki rules failed: %w: %v", err, rulesURL)
+	}
+	resp, err := s.httpClient.Do(req)
+	if err != nil {
+		return v1.RulesResult{}, fmt.Errorf("alert: GET Loki rules failed: %w: %v", err, rulesURL)
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode != http.StatusOK {
+		log.V(1).Info("Loki ruler request returned non-OK status", "status", resp.StatusCode, "url", rulesURL.String())
+		return v1.RulesResult{}, fmt.Errorf("loki ruler request returned status %d", resp.StatusCode)
+	}
+
+	// Parse response - Loki Ruler uses the same format as Prometheus
+	var apiResp struct {
+		Status string         `json:"status"`
+		Data   v1.RulesResult `json:"data"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&apiResp); err != nil {
+		return v1.RulesResult{}, fmt.Errorf("failed to decode Loki rules response: %w", err)
+	}
+
+	if apiResp.Status != "success" {
+		return v1.RulesResult{}, fmt.Errorf("loki ruler API returned status: %s", apiResp.Status)
+	}
+
+	return apiResp.Data, nil
+}
+
+// getLokiRules queries the Loki Ruler API for alerting rules across all tenants.
+// If lokiRulerURL is empty, returns an empty result without error.
+func (s *Store) getLokiRules(ctx context.Context, namespaces map[string]bool) (v1.RulesResult, error) {
+	// If no Loki Ruler URL configured, return empty result
+	if s.lokiRulerURL == nil || s.lokiRulerURL.String() == "" {
+		return v1.RulesResult{}, nil
+	}
+
+	// Query all standard Loki tenants: application, infrastructure, audit
+	tenants := []string{"application", "infrastructure", "audit"}
+	var combinedResult v1.RulesResult
+
+	for _, tenant := range tenants {
+		result, err := s.getLokiRulesForTenant(ctx, tenant, namespaces)
+		if err != nil {
+			// Log error but continue with other tenants
+			log.V(3).Info("failed to query Loki ruler for tenant", "tenant", tenant, "error", err)
+			continue
+		}
+		// Merge results
+		combinedResult.Groups = append(combinedResult.Groups, result.Groups...)
+	}
+
+	return combinedResult, nil
+}
 
 // getEffectivePrometheusAPI returns a Prometheus API client with the appropriate port based on user permissions.
 // Admin users (with cluster-monitoring-view) use the configured port (typically 9091).
@@ -366,6 +418,10 @@ func (s *Store) Get(ctx context.Context, query korrel8r.Query, c *korrel8r.Const
 		hasClusterAccess = false
 	}
 
+	// Extract namespaces from query for filtering
+	namespaces := extractNamespacesFromQuery(q)
+
+	// Query Prometheus Rules
 	var prometheusRules v1.RulesResult
 	if hasClusterAccess {
 		// Admin users: use the Rules API without namespace filtering (port 9091)
@@ -381,8 +437,20 @@ func (s *Store) Get(ctx context.Context, query korrel8r.Query, c *korrel8r.Const
 		}
 	}
 
+	// Query Loki Ruler (if configured)
+	lokiRules, err := s.getLokiRules(ctx, namespaces)
+	if err != nil {
+		// Log error but don't fail - Loki Ruler is optional
+		log.V(3).Info("failed to query Loki ruler", "error", err)
+	}
+
+	// Merge Prometheus and Loki rules
+	allRules := v1.RulesResult{
+		Groups: append(prometheusRules.Groups, lokiRules.Groups...),
+	}
+
 	for _, subquery := range q.Parsed {
-		alerts, err := s.getSubquery(ctx, prometheusRules, subquery)
+		alerts, err := s.getSubquery(ctx, allRules, subquery)
 		if err != nil {
 			return err
 		}

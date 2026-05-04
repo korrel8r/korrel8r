@@ -11,13 +11,18 @@ import (
 	"net/http/httptest"
 	"os"
 	"strings"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/korrel8r/korrel8r/internal/pkg/test/mock"
+	"github.com/korrel8r/korrel8r/pkg/api"
+	"github.com/korrel8r/korrel8r/pkg/auth"
 	"github.com/korrel8r/korrel8r/pkg/config"
 	"github.com/korrel8r/korrel8r/pkg/engine"
 	"github.com/korrel8r/korrel8r/pkg/ptr"
+	"github.com/korrel8r/korrel8r/pkg/session"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -32,9 +37,9 @@ func TestAPI_GetDomains(t *testing.T) {
 		).Engine()
 	require.NoError(t, err)
 	a := newTestAPI(t, e)
-	assertDo(t, a, "GET", "/api/v1alpha1/domains", nil, http.StatusOK, []Domain{
-		{Name: "bar", Description: "Mock domain.", Stores: []Store{{"domain": "bar", "x": "y"}}},
-		{Name: "foo", Description: "Mock domain.", Stores: []Store{{"domain": "foo", "a": "1"}, {"domain": "foo", "b": "2"}}},
+	assertDo(t, a, "GET", "/api/v1alpha1/domains", nil, http.StatusOK, []api.Domain{
+		{Name: "bar", Description: "Mock domain.", Stores: []api.Store{{"domain": "bar", "x": "y"}}},
+		{Name: "foo", Description: "Mock domain.", Stores: []api.Store{{"domain": "foo", "a": "1"}, {"domain": "foo", "b": "2"}}},
 	})
 }
 
@@ -47,24 +52,24 @@ func TestAPI_ListDomainClasses(t *testing.T) {
 	assertDo(t, a, "GET", "/api/v1alpha1/domain/foo/classes", nil, http.StatusOK, []string{"a", "b"})
 
 	// Test with invalid domain
-	assertDo(t, a, "GET", "/api/v1alpha1/domain/nonexistent/classes", nil, http.StatusNotFound, Error{Error: "domain not found: nonexistent: domain not found: nonexistent"})
+	assertDo(t, a, "GET", "/api/v1alpha1/domain/nonexistent/classes", nil, http.StatusNotFound, api.Error{Error: "domain not found: nonexistent: domain not found: nonexistent"})
 }
 
 func TestAPIListGoals(t *testing.T) {
 	e := testEngine(t)
 	assertDo(t, newTestAPI(t, e), "POST", "/api/v1alpha1/lists/goals",
-		Goals{
-			Start: Start{
+		api.Goals{
+			Start: api.Start{
 				Class:   "mock:a",
 				Objects: []json.RawMessage{[]byte(`"x"`)},
 			},
 			Goals: []string{"mock:b"},
 		},
-		http.StatusOK, []Node{
+		http.StatusOK, []api.Node{
 			{
 				Class:   "mock:b",
 				Count:   ptr.To(1),
-				Queries: []QueryCount{{Query: "mock:b:y", Count: ptr.To(1)}},
+				Queries: []api.QueryCount{{Query: "mock:b:y", Count: ptr.To(1)}},
 			},
 		})
 }
@@ -72,16 +77,16 @@ func TestAPIListGoals(t *testing.T) {
 func TestAPIGraphGoals_rules(t *testing.T) {
 	e := testEngine(t)
 	assertDo(t, newTestAPI(t, e), "POST", "/api/v1alpha1/graphs/goals?rules=true",
-		Goals{
-			Start: Start{
+		api.Goals{
+			Start: api.Start{
 				Class:   "mock:a",
 				Objects: []json.RawMessage{[]byte(`"x"`)},
 			},
 			Goals: []string{"mock:b"},
 		},
 		http.StatusOK,
-		Graph{
-			Nodes: []Node{
+		api.Graph{
+			Nodes: []api.Node{
 				{
 					Class: "mock:a",
 					Count: ptr.To(1),
@@ -89,14 +94,14 @@ func TestAPIGraphGoals_rules(t *testing.T) {
 				{
 					Class:   "mock:b",
 					Count:   ptr.To(1),
-					Queries: []QueryCount{{Query: "mock:b:y", Count: ptr.To(1)}},
+					Queries: []api.QueryCount{{Query: "mock:b:y", Count: ptr.To(1)}},
 				}},
-			Edges: []Edge{{
+			Edges: []api.Edge{{
 				Start: "mock:a",
 				Goal:  "mock:b",
-				Rules: []Rule{{
+				Rules: []api.Rule{{
 					Name:    "a-b",
-					Queries: []QueryCount{{Query: "mock:b:y", Count: ptr.To(1)}},
+					Queries: []api.QueryCount{{Query: "mock:b:y", Count: ptr.To(1)}},
 				}},
 			}},
 		})
@@ -134,7 +139,7 @@ type testAPI struct {
 
 func newTestAPI(t *testing.T, e *engine.Engine) *testAPI {
 	r := ginEngine()
-	a, err := New(e, nil, r)
+	a, err := New(session.NewSingle(e), r)
 	require.NoError(t, err)
 	return &testAPI{API: a, Router: r}
 }
@@ -198,17 +203,17 @@ func list[T any](x ...T) []T { return x }
 func TestAPIGraphNeighbors(t *testing.T) {
 	e := testEngine(t)
 	assertDo(t, newTestAPI(t, e), "POST", "/api/v1alpha1/graphs/neighbors",
-		Neighbors{
-			Start: Start{Queries: []string{"mock:a:x"}},
+		api.Neighbors{
+			Start: api.Start{Queries: []string{"mock:a:x"}},
 			Depth: 5,
 		},
 		http.StatusOK,
-		Graph{
-			Nodes: []Node{
-				{Class: "mock:a", Count: ptr.To(1), Queries: []QueryCount{{Query: "mock:a:x", Count: ptr.To(1)}}},
-				{Class: "mock:b", Count: ptr.To(1), Queries: []QueryCount{{Query: "mock:b:y", Count: ptr.To(1)}}},
+		api.Graph{
+			Nodes: []api.Node{
+				{Class: "mock:a", Count: ptr.To(1), Queries: []api.QueryCount{{Query: "mock:a:x", Count: ptr.To(1)}}},
+				{Class: "mock:b", Count: ptr.To(1), Queries: []api.QueryCount{{Query: "mock:b:y", Count: ptr.To(1)}}},
 			},
-			Edges: []Edge{{Start: "mock:a", Goal: "mock:b"}},
+			Edges: []api.Edge{{Start: "mock:a", Goal: "mock:b"}},
 		})
 }
 
@@ -218,60 +223,58 @@ func TestAPIGraphNeighbors_badRequest(t *testing.T) {
 	assert.Equal(t, http.StatusBadRequest, w.Code)
 }
 
-func TestConsoleState(t *testing.T) {
-	cs := NewConsoleState()
-	// Initial state is empty
-	assert.Empty(t, cs.Get().View)
+func TestMultiSession_QueryIsolation(t *testing.T) {
+	// Each session gets a separate engine with different store data.
+	// Verify that REST requests with different auth tokens get different results.
+	var callCount atomic.Int32
+	factory := func() (*engine.Engine, error) {
+		n := callCount.Add(1)
+		d := mock.NewDomain("mock", "a")
+		s := mock.NewStore(d)
+		s.AddQuery("mock:a:q", fmt.Sprintf("result-%d", n))
+		return engine.Build().Domains(d).Stores(s).Engine()
+	}
+	sessions := session.NewPool(time.Hour, factory)
 
-	// Set and get
-	view := "test"
-	cs.Set(&Console{View: view})
-	got := cs.Get()
-	require.NotNil(t, got.View)
-	assert.Equal(t, "test", got.View)
+	r := ginEngine()
+	r.Use(func(c *gin.Context) {
+		ctx := auth.WithToken(c.Request.Context(), auth.HeaderToken(c.Request.Header))
+		c.Request = c.Request.WithContext(ctx)
+		c.Next()
+	})
+	_, err := New(sessions, r)
+	require.NoError(t, err)
 
-	// Get returns a deep copy - mutating it doesn't affect state
-	got.View = "mutated"
-	assert.Equal(t, "test", cs.Get().View)
-}
+	getObjects := func(token string) string {
+		t.Helper()
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest("GET", "/api/v1alpha1/objects?query=mock:a:q", nil)
+		req.Header.Set("Authorization", token)
+		r.ServeHTTP(w, req)
+		require.Equal(t, http.StatusOK, w.Code)
+		return w.Body.String()
+	}
 
-func TestConsoleUpdatesSend(t *testing.T) {
-	cs := NewConsoleState()
+	resultA := getObjects("Bearer token-A")
+	resultB := getObjects("Bearer token-B")
+	assert.NotEqual(t, resultA, resultB, "different tokens should get results from different engines")
 
-	// Send with no receiver times out
-	view := "test"
-	err := cs.Send(&Console{View: view})
-	assert.Error(t, err)
-
-	// Send with receiver succeeds
-	go func() { <-cs.Updates }()
-	err = cs.Send(&Console{View: view})
-	assert.NoError(t, err)
-}
-
-func TestDeepCopy(t *testing.T) {
-	view := "hello"
-	src := Console{View: view}
-	var dst Console
-	require.NoError(t, DeepCopy(&dst, src))
-	require.NotNil(t, dst.View)
-	assert.Equal(t, "hello", dst.View)
-	// Verify it's a deep copy
-	dst.View = "modified"
-	assert.Equal(t, "hello", src.View)
+	// Same token should get the same result (same session reused).
+	resultA2 := getObjects("Bearer token-A")
+	assert.Equal(t, resultA, resultA2, "same token should reuse session")
 }
 
 func TestTraverseStart_errors(t *testing.T) {
 	e := testEngine(t)
 	// No class or queries
-	_, err := TraverseStart(e, Start{})
+	_, err := TraverseStart(e, api.Start{})
 	assert.ErrorContains(t, err, "no class")
 
 	// Invalid class
-	_, err = TraverseStart(e, Start{Class: "bad:class"})
+	_, err = TraverseStart(e, api.Start{Class: "bad:class"})
 	assert.Error(t, err)
 
 	// Mismatched query classes
-	_, err = TraverseStart(e, Start{Queries: []string{"mock:a:x", "mock:b:y"}})
-	assert.ErrorContains(t, err, "mismatch")
+	_, err = TraverseStart(e, api.Start{Queries: []string{"mock:a:x", "mock:b:y"}})
+	assert.ErrorContains(t, err, "expected class mock:a in query mock:b:y")
 }

@@ -1,33 +1,42 @@
 // Copyright: This file is part of korrel8r, released under https://github.com/korrel8r/korrel8r/blob/main/LICENSE
 
-// package mcp Provides an MCP server and argument structures for MCP client calls.
+// Package mcp provides an MCP server and argument structures for MCP client calls.
 package mcp
 
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/korrel8r/korrel8r/internal/pkg/build"
 	"github.com/korrel8r/korrel8r/internal/pkg/logging"
-	"github.com/korrel8r/korrel8r/pkg/engine"
+	"github.com/korrel8r/korrel8r/pkg/api"
 	"github.com/korrel8r/korrel8r/pkg/engine/traverse"
+	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"github.com/korrel8r/korrel8r/pkg/rest"
+	"github.com/korrel8r/korrel8r/pkg/session"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
-const (
-	StreamablePath = "/mcp"
-	SSEPath        = "/mcp/sse"
-)
+const StreamablePath = "/mcp"
 
 type ListDomainsResult struct {
-	Domains []rest.Domain `json:"domains" jsonschema:"List of domains"`
+	Domains []api.Domain `json:"domains" jsonschema:"List of domains"`
 }
 
 type DomainParams struct {
 	Domain string `json:"domain" jsonschema:"Name of the domain to list"`
+}
+
+type HelpParams struct {
+	Domain string `json:"domain,omitempty" jsonschema:"If specified, get help for this domain only."`
+}
+
+type HelpResult struct {
+	Documentation string `json:"documentation" jsonschema:"Domain documentation including query syntax and examples"`
 }
 
 type ListDomainClassesResult struct {
@@ -35,69 +44,99 @@ type ListDomainClassesResult struct {
 	Classes []string `json:"classes" jsonschema:"List of classes in the domain"`
 }
 
-type NeighborParams = rest.Neighbors
-type GoalParams = rest.Goals
-type ShowInConsoleParams = rest.Console
+type NeighborParams = api.Neighbors
+type GoalParams = api.Goals
+type ShowInConsoleParams = api.Console
+
+const instructions = `
+Korrel8r finds correlations between observability signals and resources in a Kubernetes cluster.
+It connects data from different domains (logs, metrics, alerts, traces, Kubernetes resources, etc.)
+by following correlation rules to build a graph of related objects.
+
+## Search tools
+
+1. Use list_domains to discover available domains.
+2. Use 'help' to get examples of classes and query syntax for a domain, or for all domains.
+3. Search for correlated data:
+   - Use create_goals_graph when the user asks about a specific signal type
+     (e.g. "find logs for this pod", "what alerts fired for this deployment?").
+   - Use create_neighbors_graph for open-ended exploration
+     (e.g. "what is related to this pod?", "show me everything connected to these traces").
+
+## Console tools
+
+The user may have a graphical console that displays cluster data.
+If the user refers to a console:
+- Use get_console to find out what data the user is looking at, in the form of a korrel8r query.
+- Use show_in_console to display results in the console. Express the results as a korrel8r query.
+
+Console tools return an error if no console is connected, you can still use search tools.
+`
 
 const (
+	Help                 = "help"
 	ListDomains          = "list_domains"
 	ListDomainClasses    = "list_domain_classes"
 	CreateGoalsGraph     = "create_goals_graph"
 	CreateNeighborsGraph = "create_neighbors_graph"
-	GetConsole           = "get_console"
-	ShowInConsole        = "show_in_console"
+	// Console tools, only work in sessions with a connected console.
+	GetConsole    = "get_console"
+	ShowInConsole = "show_in_console"
 )
 
 type Server struct {
 	*mcp.Server
-	Engine *engine.Engine
-	API    *rest.API
+	sessions session.Manager
 }
 
 // NewServer creates a new MCP server.
-// If api is not nil, session operations are enabled in conjunction with the REST API.
-func NewServer(e *engine.Engine, api *rest.API) *Server {
-	timeout := func(handler mcp.MethodHandler) mcp.MethodHandler {
-		return func(ctx context.Context, method string, req mcp.Request) (mcp.Result, error) {
-			ctx, cancel := e.WithTimeout(ctx, 0)
-			defer cancel()
-			return handler(ctx, method, req)
-		}
-	}
+// Tool handlers resolve the session per-request using the auth token from the context.
+func NewServer(sessions session.Manager) *Server {
 	s := &Server{
-		Server: mcp.NewServer(&mcp.Implementation{Name: "korrel8r", Title: "Korrel8r MCP Server", Version: build.Version}, nil),
-		Engine: e,
-		API:    api,
+		Server: mcp.NewServer(
+			&mcp.Implementation{Name: "korrel8r", Title: "Korrel8r MCP Server", Version: build.Version},
+			&mcp.ServerOptions{Instructions: instructions}),
+		sessions: sessions,
 	}
-	s.addTools(e, api)
-	s.AddReceivingMiddleware(logger, timeout)
+	s.addTools()
+	s.AddReceivingMiddleware(s.logger)
 	return s
 }
 
-func (s *Server) addTools(e *engine.Engine, api *rest.API) {
-
+func (s *Server) addTools() {
 	mcp.AddTool(s.Server, &mcp.Tool{
 		Name: ListDomains,
 		Description: `
 Returns a list of Korrel8r domains with descriptions.
-A domain contains observable signals or resources that use the same data model,
-storage technology, and query syntax.
+A domain contains observable signals or resources that use the same query syntax and data store.
+Use this first to discover available domains, then use list_domain_classes to explore a domain.
 `,
 	},
 		func(ctx context.Context, req *mcp.CallToolRequest, input struct{}) (_ *mcp.CallToolResult, out ListDomainsResult, err error) {
-			return nil, ListDomainsResult{Domains: rest.ListDomains(e)}, nil
+			ss, err := s.session(ctx)
+			if err != nil {
+				return nil, ListDomainsResult{}, err
+			}
+			return nil, ListDomainsResult{Domains: rest.ListDomains(ss.Engine)}, nil
 		})
 
 	mcp.AddTool(s.Server, &mcp.Tool{
 		Name: ListDomainClasses,
 		Description: `
 List the classes in a domain.
-A domain contains one or more classes, representing objects with different structures.
-Some domains have only a single class, others (like the 'k8s' domain) have many.
+A class represents objects with a specific structure within a domain.
+Some domains have a single class (e.g. metric:metric), others like k8s have many classes.
+Use 'help' to get more details about a domain and its classes and queries.
+
+Class names are used in queries and as goal parameters. The full class name is "domain:class".
 `,
 	},
 		func(ctx context.Context, req *mcp.CallToolRequest, input DomainParams) (*mcp.CallToolResult, *ListDomainClassesResult, error) {
-			d, err := e.Domain(input.Domain)
+			ss, err := s.session(ctx)
+			if err != nil {
+				return nil, nil, err
+			}
+			d, err := ss.Engine.Domain(input.Domain)
 			if err != nil {
 				return nil, nil, err
 			}
@@ -109,17 +148,71 @@ Some domains have only a single class, others (like the 'k8s' domain) have many.
 		})
 
 	mcp.AddTool(s.Server, &mcp.Tool{
-		Name: CreateNeighborsGraph,
+		Name: Help,
 		Description: `
-Returns a JSON graph of correlated objects.
-From a set of start objects, follow correlation rules to find related objects up to the specified depth.`,
+Get help about korrel8r domains, classes, and query syntax.
+Omitting the domain parameter returns help about all domains.
+
+Class strings have the form "domain:class", where the legal values of "class" depend on the domain.
+
+Query strings have the form "domain:class:selector".
+The "domain:class" part indicates the class of data returned by the query.
+The "selector" part is a domain-specific query string.
+
+Use this tool to learn how to construct valid class names and queries for a domain before using tools that have class or query parameters.
+For example: create_neighbors_graph, create_goals_graph, get_console or show_in_console.
+`,
 	},
-		func(ctx context.Context, req *mcp.CallToolRequest, input NeighborParams) (*mcp.CallToolResult, *rest.Graph, error) {
-			start, err := rest.TraverseStart(e, input.Start)
+		func(ctx context.Context, req *mcp.CallToolRequest, input HelpParams) (*mcp.CallToolResult, *HelpResult, error) {
+			ss, err := s.session(ctx)
 			if err != nil {
 				return nil, nil, err
 			}
-			g, err := traverse.Neighbors(ctx, e, start, input.Depth)
+			var b strings.Builder
+			var domains []korrel8r.Domain
+			if input.Domain != "" {
+				d, err := ss.Engine.Domain(input.Domain)
+				if err != nil {
+					return nil, nil, err
+				}
+				domains = []korrel8r.Domain{d}
+			} else {
+				domains = ss.Engine.Domains()
+			}
+			for _, d := range domains {
+				fmt.Fprintf(&b, "%s\n\n", d.Description())
+			}
+			return nil, &HelpResult{Documentation: b.String()}, nil
+		})
+
+	mcp.AddTool(s.Server, &mcp.Tool{
+		Name: CreateNeighborsGraph,
+		Description: `
+Search for correlated observability signals and resources starting from known objects.
+Follows correlation rules outward from the start objects up to the specified depth.
+
+Returns a graph where nodes represent classes (each with queries and result counts)
+and edges represent correlation rules that were applied.
+
+Use this for open-ended exploration: "what is related to this pod?" or "what resources are related to these traces?"
+
+The start parameter requires queries in the format "domain:class:selector".
+Use 'help' to learn the class and query syntax for each domain.
+Depth controls how many correlation steps to follow (1 = direct correlations only).
+Higher depths cast a wider net: depth 1 finds directly correlated objects,
+depth 2-3 typically reaches related signals like logs, metrics, and alerts.
+`,
+	},
+		func(ctx context.Context, req *mcp.CallToolRequest, input NeighborParams) (*mcp.CallToolResult, *api.Graph, error) {
+			ss, err := s.session(ctx)
+			if err != nil {
+				return nil, nil, err
+			}
+			start, err := rest.TraverseStart(ss.Engine, input.Start)
+			if err != nil {
+				return nil, nil, err
+			}
+			g, err := traverse.Neighbors(ctx, ss.Engine, start, input.Depth)
 			if err != nil {
 				return nil, nil, err
 			}
@@ -129,19 +222,37 @@ From a set of start objects, follow correlation rules to find related objects up
 	mcp.AddTool(s.Server, &mcp.Tool{
 		Name: CreateGoalsGraph,
 		Description: `
-Returns a JSON graph of correlated objects.
-From a set of start objects, follow all paths leading to one of the goal classes.`,
+Search for correlations between start objects and specific goal classes.
+Only follows paths from the start objects that lead to one of the specified goal classes.
+
+Returns a graph where nodes represent classes (each with queries and result counts)
+and edges represent correlation rules that were applied.
+
+Use this for targeted investigation: "find logs related to this pod" or "what alerts fired for this deployment?"
+
+The start parameter uses queries in "domain:class:selector" format.
+Use 'help' to learn the class and query syntax for each domain.
+Goals are full class names, e.g. ["log:application"], ["alert:alert", "metric:metric"].
+
+Example: to find logs for a crashing pod, use:
+  start: {"queries": ["k8s:Pod:{\"namespace\":\"myapp\",\"name\":\"web-0\"}"]}
+  goals: ["log:application"]
+`,
 	},
-		func(ctx context.Context, req *mcp.CallToolRequest, input GoalParams) (*mcp.CallToolResult, *rest.Graph, error) {
-			start, err := rest.TraverseStart(e, input.Start)
+		func(ctx context.Context, req *mcp.CallToolRequest, input GoalParams) (*mcp.CallToolResult, *api.Graph, error) {
+			ss, err := s.session(ctx)
 			if err != nil {
 				return nil, nil, err
 			}
-			goals, err := e.Classes(input.Goals)
+			start, err := rest.TraverseStart(ss.Engine, input.Start)
 			if err != nil {
 				return nil, nil, err
 			}
-			g, err := traverse.Goals(ctx, e, start, goals)
+			goals, err := ss.Engine.Classes(input.Goals)
+			if err != nil {
+				return nil, nil, err
+			}
+			g, err := traverse.Goals(ctx, ss.Engine, start, goals)
 			if err != nil {
 				return nil, nil, err
 			}
@@ -151,33 +262,47 @@ From a set of start objects, follow all paths leading to one of the goal classes
 	mcp.AddTool(s.Server, &mcp.Tool{
 		Name: GetConsole,
 		Description: `
-Returns the current state of the console display, representing what the user is currently looking at.
+Returns the current state of the user's graphical console (e.g. OpenShift web console).
+The result includes:
+- view: a query that selects the data displayed in the main console view. Not set if the console is displaying a view that does not support queries.
+- search: parameters for the correlation search displayed in the troubleshooting panel. Not set if the troubleshooting panel is not open.
+
+Use view and search to understand what the user is looking at,
+and include it as context for further planning or actions.
 `,
 	},
-		func(ctx context.Context, req *mcp.CallToolRequest, input struct{}) (*mcp.CallToolResult, *rest.Console, error) {
-			if err := s.apiCheck(); err != nil {
+		func(ctx context.Context, req *mcp.CallToolRequest, input struct{}) (*mcp.CallToolResult, *api.Console, error) {
+			ss, err := s.session(ctx)
+			if err != nil {
 				return nil, nil, err
 			}
-			return nil, api.ConsoleState.Get(), nil
+			state := ss.ConsoleState.Get()
+			if state == nil {
+				return nil, nil, errors.New("not connected to console")
+			}
+			return nil, state, nil
 		})
 
 	mcp.AddTool(s.Server, &mcp.Tool{
 		Name: ShowInConsole,
 		Description: `
-Send updated display parameters to the user's console, to allow the user to visualize the data in
-a rich graphical environment.
+Update the user's graphical console to display new data to the user.
+
+- view: setting this field to a query updates the main view of the console to display the results of the query.
+- search: setting this field displays a correlation graph in the console troubleshooting panel.
+
+Use 'help' to learn the class and query syntax for each domain.
 `,
 	},
 		func(ctx context.Context, req *mcp.CallToolRequest, input ShowInConsoleParams) (*mcp.CallToolResult, any, error) {
-			if err := s.apiCheck(); err != nil {
-				return nil, nil, err
+			ss, err := s.session(ctx)
+			if err != nil {
+				return nil, nil, err // This is an internal error
 			}
-			if err := rest.ConsoleOK(e, &input); err != nil {
-				return nil, nil, err
+			if err := rest.ConsoleOK(ss.Engine, &input); err != nil {
+				return errorResult(err), nil, err
 			}
-			if err := api.ConsoleState.Send(&input); err != nil {
-				return nil, nil, err
-			}
+			ss.ConsoleRequest.Set(&input)
 			return nil, nil, nil
 		})
 }
@@ -187,46 +312,54 @@ func (s *Server) ServeStdio(ctx context.Context) error {
 	return s.Run(ctx, &mcp.StdioTransport{})
 }
 
-// HTTPHandler  a handler for the HTTP Streamable MCP protocol.
+// HTTPHandler returns a handler for the HTTP Streamable MCP protocol.
 func (s *Server) HTTPHandler() http.Handler {
 	return mcp.NewStreamableHTTPHandler(s.handler, &mcp.StreamableHTTPOptions{})
 }
 
-// SSEHandler returns a handler for the SSE MCP protocol.
-func (s *Server) SSEHandler() http.Handler {
-	return mcp.NewSSEHandler(s.handler, &mcp.SSEOptions{})
+func (s *Server) session(ctx context.Context) (*session.Session, error) {
+	// First check for session already set on context by transport.
+	if s := session.FromContext(ctx); s != nil {
+		return s, nil
+	}
+	return s.sessions.Get(ctx)
 }
 
-// handler returns the same server for all requests. Server and Engine are concurrent-safe.
-func (s *Server) handler(*http.Request) *mcp.Server { return s.Server }
-
-func (s *Server) apiCheck() error {
-	if s.API == nil {
-		return errors.New("not connected to console")
-	}
-	return nil
+// handler returns the shared server for all requests.
+// Per-session state is resolved per-request by tool handlers via sessions.Get.
+func (s *Server) handler(*http.Request) *mcp.Server {
+	return s.Server
 }
 
 // logger is middleware to do debug logging of MCP methods
-func logger(handler mcp.MethodHandler) mcp.MethodHandler {
-	return func(ctx context.Context, method string, req mcp.Request) (result mcp.Result, err error) {
+func (s *Server) logger(handler mcp.MethodHandler) mcp.MethodHandler {
+	return func(ctx context.Context, tool string, req mcp.Request) (result mcp.Result, err error) {
+		start := time.Now()
 		log := logging.Log()
 		if log.V(3).Enabled() {
-			start := time.Now()
 			defer func() {
 				latency := time.Since(start)
 				log = log.WithValues(
-					"method", method,
+					"tool", tool,
 					"latency", latency,
-					"params", req.GetParams())
-				if err != nil {
-					log = log.WithValues("error", err)
-				} else {
-					log = log.WithValues("result", result)
+					"parameters", logging.JSON(req.GetParams()))
+				if sn, err := s.session(ctx); err == nil {
+					log = log.WithValues("session", sn.ID)
 				}
-				log.V(3).Info("MCP")
+				if err != nil {
+					log.V(3).Info("MCP call failed", "error", err)
+				} else {
+					log.V(3).Info("MCP call", "result", logging.JSON(result))
+				}
 			}()
 		}
-		return handler(ctx, method, req)
+		return handler(ctx, tool, req)
+	}
+}
+
+func errorResult(err error) *mcp.CallToolResult {
+	return &mcp.CallToolResult{
+		Content: []mcp.Content{&mcp.TextContent{Text: err.Error()}},
+		IsError: true,
 	}
 }

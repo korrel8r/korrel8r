@@ -20,7 +20,7 @@ var rulesCmd = &cobra.Command{
 	Use:   "rules",
 	Short: "List rules by start, goal or name",
 	Run: func(cmd *cobra.Command, args []string) {
-		e, _ := newEngine()
+		e := newEngine()
 		w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
 		defer func() { _ = w.Flush() }()
 		var start, goal korrel8r.Class

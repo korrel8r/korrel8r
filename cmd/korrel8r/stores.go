@@ -17,7 +17,7 @@ var storesCmd = &cobra.Command{
 	Short: "List the stores configured for the listed domains, or for all domains if none are listed.",
 	Args:  cobra.ArbitraryArgs,
 	Run: func(cmd *cobra.Command, args []string) {
-		e, _ := newEngine()
+		e := newEngine()
 		stores := map[string][]config.Store{}
 		var domains []korrel8r.Domain
 		for _, d := range args {

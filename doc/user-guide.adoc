@@ -494,7 +494,7 @@ Korrel8r provides additional _template functions_ to simplify writing rules and 
 
 = Domain Reference
 
-include::gen/domains.adoc[leveloffset=+1]
+include::gen/domains.adoc[]
 
 [[_rest_api]]
 include::gen/rest_api.adoc[]

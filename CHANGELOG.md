@@ -9,6 +9,26 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 _Note unreleased changes on main here pending the next release_
 
+## [0.10.0] - 2026-04-21
+
+### Added
+- Experimental MCP API for agent/console interaction.
+- Improved REST and MCP description, MCP doc tool.
+- New rules to/from k8s:Node.
+- Sessions to separate multi-user state (#325).
+- Allow IANA, Go, or OpenSSL names for cipher suites and curves.
+- Stamp korrel8r version in OpenAPI spec.
+
+### Changed
+- Adjusted log levels, added logging guide.
+- Remove paths to empty goals from results.
+
+### Fixed
+- Lock-free session pool, other cleanup.
+- No go type dependencies in openapi spec.
+- Fix go package dependencies causing oapi-codegen to fail.
+- Display the logging alert in Korrel8r.
+
 ## [0.9.1] - 2026-03-02
 - feat: Add TLS profile (min version, ciphers, curves) to HTTPS server
 

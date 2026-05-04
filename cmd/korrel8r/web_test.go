@@ -20,6 +20,7 @@ import (
 	"sync/atomic"
 
 	"github.com/korrel8r/korrel8r/internal/pkg/test"
+	"github.com/korrel8r/korrel8r/pkg/api"
 	"github.com/korrel8r/korrel8r/pkg/ptr"
 	"github.com/korrel8r/korrel8r/pkg/rest"
 
@@ -82,12 +83,12 @@ func assertDo(t *testing.T, h *http.Client, want, method, url, body string) {
 const domains = `[
 {"name":"alert", "description": "Alerts that metric values are out of bounds."},
 {"name":"incident", "description": "Incidents group alerts into higher-level groups."},
-{"name":"k8s", "description": "Resource objects in a Kubernetes API server"},
-{"name":"log", "description": "Records from container and node logs."},
-{"name":"metric", "description": "Time-series of measured values"},
+{"name":"k8s", "description": "Kubernetes resources."},
+{"name":"log", "description": "Log records from container and node logs."},
+{"name":"metric", "description": "Time-series of measured values."},
 {"name":"mock","description": "Mock domain.", "stores":[{"domain":"mock", "mockData":"testdata/mock_store.yaml"}]},
 {"name":"netflow","description": "Network flows from source nodes to destination nodes."},
-{"name":"trace","description": "Traces from Pods and Nodes."}
+{"name":"trace","description": "Follow the path of a request through your application."}
 ]`
 
 func TestMain_server_insecure(t *testing.T) {
@@ -104,18 +105,18 @@ func TestMain_server_secure(t *testing.T) {
 
 const testRequest = `{  "depth": 1, "start": { "queries": [ "mock:foo:x" ] }}`
 
-var testResponse = rest.Normalize(rest.Graph{
-	Nodes: []rest.Node{
-		{Class: "mock:foo", Queries: []rest.QueryCount{{Query: "mock:foo:x", Count: ptr.To(1)}}, Count: ptr.To(1)},
-		{Class: "mock:bar", Queries: []rest.QueryCount{{Query: "mock:bar:y", Count: ptr.To(1)}}, Count: ptr.To(1)}},
-	Edges: []rest.Edge{{Start: "mock:foo", Goal: "mock:bar", Rules: []rest.Rule(nil)}},
+var testResponse = rest.Normalize(api.Graph{
+	Nodes: []api.Node{
+		{Class: "mock:foo", Queries: []api.QueryCount{{Query: "mock:foo:x", Count: ptr.To(1)}}, Count: ptr.To(1)},
+		{Class: "mock:bar", Queries: []api.QueryCount{{Query: "mock:bar:y", Count: ptr.To(1)}}, Count: ptr.To(1)}},
+	Edges: []api.Edge{{Start: "mock:foo", Goal: "mock:bar", Rules: []api.Rule(nil)}},
 })
 
 func TestMain_server_graph(t *testing.T) {
 	u := startServer(t, http.DefaultClient, "http", "-c", "testdata/korrel8r.yaml").String()
 	resp, err := request(t, http.DefaultClient, "POST", u+"/graphs/neighbors", testRequest)
 	require.NoError(t, err)
-	var got rest.Graph
+	var got api.Graph
 	assert.NoError(t, json.Unmarshal([]byte(resp), &got))
 	require.Equal(t, testResponse, rest.Normalize(got))
 }
@@ -170,18 +171,16 @@ func TestMain_concurrent_requests(t *testing.T) {
 	workers := sync.WaitGroup{}
 	failed := atomic.Uint32{}
 	for range 10 {
-		workers.Add(1)
-		go func() {
-			defer workers.Done()
+		workers.Go(func() {
 			resp, err := request(t, http.DefaultClient, "POST", u+"/graphs/neighbors", testRequest)
-			var got rest.Graph
+			var got api.Graph
 			ok := assert.NoError(t, err) &&
 				assert.NoError(t, json.Unmarshal([]byte(resp), &got)) &&
 				assert.Equal(t, rest.Normalize(testResponse), rest.Normalize(got))
 			if !ok {
 				failed.Add(1)
 			}
-		}()
+		})
 	}
 	workers.Wait()
 	assert.Zero(t, failed.Load())

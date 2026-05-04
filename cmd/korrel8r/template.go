@@ -27,7 +27,7 @@ Useful for testing rule and store templates.`,
 				*templateString = string(must.Must1(os.ReadFile(*templateFile)))
 			}
 		}
-		e, _ := newEngine()
+		e := newEngine()
 		t := template.Must(e.NewTemplate(*templateString).Parse(*templateString))
 		must.Must(t.Execute(os.Stdout, e))
 	},

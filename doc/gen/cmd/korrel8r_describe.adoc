@@ -1,0 +1,27 @@
+= korrel8r describe
+
+Documentation for DOMAIN or for all domains.
+
+----
+korrel8r describe [DOMAIN] [flags]
+----
+
+== Options
+
+----
+  -h, --help   help for describe
+----
+
+== Options inherited from parent commands
+
+----
+  -c, --config string        Configuration file (default "/etc/korrel8r/korrel8r.yaml")
+  -o, --output string        One of [json json-pretty ndjson yaml] (default "yaml")
+      --profile string       Enable profiling: One of [alloc block clock cpu goroutine heap mem mutex trace]
+      --profilePath string   Output path for profile
+  -v, --verbose int          Verbosity for logging (0: notice/error/warn, 1: info/warn, 2: debug, 3: per-request, 4: per-rule, 5: per-query
+----
+
+== SEE ALSO
+
+* xref:korrel8r.adoc[korrel8r]	 - REST service to correlate observability data

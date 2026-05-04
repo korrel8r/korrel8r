@@ -2,34 +2,7 @@
 
 // Package netflow is a domain for network observability flow events stored in Loki or LokiStack.
 //
-// # Class
-//
-// There is a single class `netflow:network`
-//
-// # Object
-//
-// A log object is a JSON `map[string]any` in [NetFlow] format.
-//
-// # Query
-//
-// A query is a [LogQL] query string, prefixed by `netflow:network:`, for example:
-//
-//	netflow:network:{SrcK8S_Type="Pod", SrcK8S_Namespace="myNamespace"}
-//
-// # Store
-//
-// To connect to a netflow lokiStack store use this configuration:
-//
-//	domain: netflow
-//	lokistack: URL_OF_LOKISTACK_PROXY
-//
-// To connect to plain loki store use:
-//
-//	domain: netflow
-//	loki: URL_OF_LOKI
-//
-// [LogQL]: https://grafana.com/docs/loki/latest/query/
-// [NetFlow]: https://docs.openshift.com/container-platform/latest/observability/network_observability/json-flows-format-reference.html
+// See [Description] for details.
 package netflow
 
 import (
@@ -64,7 +37,7 @@ var (
 // - Default LokiStack store on current Openshift cluster: `{}`
 // - Remote LokiStack: `{ "lokiStack": "https://url-of-lokistack"}`
 // - Plain Loki store: `{ "loki": "https://url-of-loki"}`
-var Domain = domain{Domain: impl.NewDomain("netflow", "Network flows from source nodes to destination nodes.", Class{})}
+var Domain = domain{Domain: impl.NewDomain("netflow", Description, Class{})}
 
 type domain struct{ *impl.Domain }
 

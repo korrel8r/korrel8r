@@ -20,15 +20,45 @@ var tlsVersions = map[string]uint16{
 	"VersionTLS13": tls.VersionTLS13,
 }
 
-// cipherSuitesByName maps IANA cipher suite names to Go constants.
+// cipherSuitesByName maps cipher suite names (IANA or OpenSSL format) to Go constants.
 var cipherSuitesByName map[string]uint16
 
-// curvesByName maps curve names to Go constants.
+// curvesByName maps curve names (Go or OpenSSL format) to Go constants.
 var curvesByName = map[string]tls.CurveID{
 	"CurveP256": tls.CurveP256,
 	"CurveP384": tls.CurveP384,
 	"CurveP521": tls.CurveP521,
 	"X25519":    tls.X25519,
+	// OpenSSL curve name aliases
+	"prime256v1": tls.CurveP256,
+	"secp384r1":  tls.CurveP384,
+	"secp521r1":  tls.CurveP521,
+}
+
+// openSSLCipherSuites maps OpenSSL-style cipher suite names to their IANA equivalents.
+var openSSLCipherSuites = map[string]string{
+	"AES128-SHA":                     "TLS_RSA_WITH_AES_128_CBC_SHA",
+	"AES256-SHA":                     "TLS_RSA_WITH_AES_256_CBC_SHA",
+	"AES128-SHA256":                  "TLS_RSA_WITH_AES_128_CBC_SHA256",
+	"AES128-GCM-SHA256":              "TLS_RSA_WITH_AES_128_GCM_SHA256",
+	"AES256-GCM-SHA384":              "TLS_RSA_WITH_AES_256_GCM_SHA384",
+	"DES-CBC3-SHA":                   "TLS_RSA_WITH_3DES_EDE_CBC_SHA",
+	"RC4-SHA":                        "TLS_RSA_WITH_RC4_128_SHA",
+	"ECDHE-RSA-AES128-SHA":           "TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA",
+	"ECDHE-RSA-AES256-SHA":           "TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA",
+	"ECDHE-RSA-AES128-SHA256":        "TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256",
+	"ECDHE-RSA-AES128-GCM-SHA256":    "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256",
+	"ECDHE-RSA-AES256-GCM-SHA384":    "TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384",
+	"ECDHE-RSA-CHACHA20-POLY1305":    "TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256",
+	"ECDHE-RSA-DES-CBC3-SHA":         "TLS_ECDHE_RSA_WITH_3DES_EDE_CBC_SHA",
+	"ECDHE-RSA-RC4-SHA":              "TLS_ECDHE_RSA_WITH_RC4_128_SHA",
+	"ECDHE-ECDSA-AES128-SHA":         "TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA",
+	"ECDHE-ECDSA-AES256-SHA":         "TLS_ECDHE_ECDSA_WITH_AES_256_CBC_SHA",
+	"ECDHE-ECDSA-AES128-SHA256":      "TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256",
+	"ECDHE-ECDSA-AES128-GCM-SHA256":  "TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256",
+	"ECDHE-ECDSA-AES256-GCM-SHA384":  "TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384",
+	"ECDHE-ECDSA-CHACHA20-POLY1305":  "TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256",
+	"ECDHE-ECDSA-RC4-SHA":            "TLS_ECDHE_ECDSA_WITH_RC4_128_SHA",
 }
 
 func init() {
@@ -38,6 +68,12 @@ func init() {
 	}
 	for _, cs := range tls.InsecureCipherSuites() {
 		cipherSuitesByName[cs.Name] = cs.ID
+	}
+	// Add OpenSSL name aliases for cipher suites that exist in Go.
+	for openSSL, iana := range openSSLCipherSuites {
+		if id, ok := cipherSuitesByName[iana]; ok {
+			cipherSuitesByName[openSSL] = id
+		}
 	}
 }
 
@@ -55,8 +91,9 @@ func ParseTLSVersion(name string) (uint16, error) {
 	return v, nil
 }
 
-// ParseCurves converts a list of curve names to Go constants.
-// Valid values: "CurveP256", "CurveP384", "CurveP521", "X25519".
+// ParseCurves converts a list of curve names (Go or OpenSSL format) to Go constants.
+// Valid Go names: "CurveP256", "CurveP384", "CurveP521", "X25519".
+// Valid OpenSSL names: "prime256v1", "secp384r1", "secp521r1".
 func ParseCurves(names []string) ([]tls.CurveID, error) {
 	curves := make([]tls.CurveID, 0, len(names))
 	for _, name := range names {
@@ -73,7 +110,7 @@ func ParseCurves(names []string) ([]tls.CurveID, error) {
 	return curves, nil
 }
 
-// ParseCipherSuites converts a list of IANA cipher suite names to Go constants.
+// ParseCipherSuites converts a list of cipher suite names (IANA or OpenSSL format) to Go constants.
 func ParseCipherSuites(names []string) ([]uint16, error) {
 	suites := make([]uint16, 0, len(names))
 	for _, name := range names {
