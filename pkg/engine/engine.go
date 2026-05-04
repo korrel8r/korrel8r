@@ -174,3 +174,32 @@ func (e *Engine) WithTimeout(ctx context.Context, timeout time.Duration) (contex
 	}
 	return context.WithTimeout(ctx, timeout)
 }
+
+// ReplaceStore replaces all stores for a domain with a new configuration.
+// Returns error if the domain doesn't exist or the store configuration is invalid.
+func (e *Engine) ReplaceStore(sc config.Store) error {
+	domain := sc[config.StoreKeyDomain]
+	d, err := e.Domain(domain)
+	if err != nil {
+		return err
+	}
+
+	wrapper, err := wrap(e, sc, nil)
+	if err != nil {
+		return err
+	}
+
+	ss := e.storeHolders[d]
+	if ss == nil {
+		return fmt.Errorf("no store holder for domain %v", domain)
+	}
+
+	ss.Replace(wrapper)
+
+	// Try to ensure the store connects (non-fatal if it fails)
+	if _, err := wrapper.Ensure(); err != nil {
+		log.Info("cannot connect to new store", "domain", domain, "error", err)
+	}
+
+	return nil
+}
