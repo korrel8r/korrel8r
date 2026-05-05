@@ -259,6 +259,14 @@ func (siw *ServerInterfaceWrapper) Objects(c *gin.Context) {
 		return
 	}
 
+	// ------------- Optional query parameter "constraint" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "constraint", c.Request.URL.Query(), &params.Constraint, runtime.BindQueryParameterOptions{Type: "object", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter constraint: %w", err), http.StatusBadRequest)
+		return
+	}
+
 	for _, middleware := range siw.HandlerMiddlewares {
 		middleware(c)
 		if c.IsAborted() {
