@@ -40,6 +40,7 @@ func TestListTools(t *testing.T) {
 			ShowInConsole,
 			CreateNeighborsGraph,
 			CreateGoalsGraph,
+			GetObjects,
 			Help,
 			ListDomainClasses,
 			ListDomains})
@@ -100,6 +101,40 @@ func TestCreateGoalsGraph(t *testing.T) {
 	got := graphContent(t, r)
 	want := `{"edges":[{"goal":"mock:b","start":"mock:a"}],"nodes":[{"class":"mock:a","count":1,"queries":[{"count":1,"query":"mock:a:x"}]},{"class":"mock:b","count":1,"queries":[{"count":1,"query":"mock:b:y"}]}]}`
 	require.Equal(t, want, got)
+}
+
+func TestGetObjects(t *testing.T) {
+	client := newClient(t, newEngine(t))
+	r, err := client.CallTool(context.Background(), &mcp.CallToolParams{
+		Name:      GetObjects,
+		Arguments: ObjectsParams{Query: "mock:a:x"},
+	})
+	require.NoError(t, err)
+	require.False(t, r.IsError)
+	got := r.StructuredContent.(map[string]any)
+	assert.Equal(t, []any{"ax"}, got["objects"])
+}
+
+func TestGetObjects_empty(t *testing.T) {
+	client := newClient(t, newEngine(t))
+	r, err := client.CallTool(context.Background(), &mcp.CallToolParams{
+		Name:      GetObjects,
+		Arguments: ObjectsParams{Query: "mock:a:none"},
+	})
+	require.NoError(t, err)
+	require.False(t, r.IsError)
+	got := r.StructuredContent.(map[string]any)
+	assert.Equal(t, []any{}, got["objects"])
+}
+
+func TestGetObjects_invalidQuery(t *testing.T) {
+	client := newClient(t, newEngine(t))
+	r, err := client.CallTool(context.Background(), &mcp.CallToolParams{
+		Name:      GetObjects,
+		Arguments: ObjectsParams{Query: "bad:query"},
+	})
+	require.NoError(t, err)
+	assert.True(t, r.IsError)
 }
 
 func newEngine(t *testing.T) *engine.Engine {
@@ -297,6 +332,28 @@ func TestInterop_GoalsGraph(t *testing.T) {
 
 	restGraphJSON, _ := json.Marshal(restGraph)
 	assert.JSONEq(t, string(restGraphJSON), mcpGraphJSON)
+}
+
+func TestInterop_GetObjects(t *testing.T) {
+	f := newInteropFixture(t, newEngine(t))
+
+	// REST: GET /api/v1alpha1/objects?query=mock:a:x
+	w := f.restDo(t, "GET", "/api/v1alpha1/objects?query=mock:a:x", nil)
+	require.Equal(t, http.StatusOK, w.Code)
+	var restObjects []any
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &restObjects))
+
+	// MCP: get_objects
+	r, err := f.mcp.CallTool(context.Background(), &mcp.CallToolParams{
+		Name:      GetObjects,
+		Arguments: ObjectsParams{Query: "mock:a:x"},
+	})
+	require.NoError(t, err)
+	require.False(t, r.IsError)
+	mcpResult := r.StructuredContent.(map[string]any)
+	mcpObjects := mcpResult["objects"].([]any)
+
+	assert.Equal(t, restObjects, mcpObjects)
 }
 
 func TestInterop_SetConsoleViaREST_GetViaMCP(t *testing.T) {

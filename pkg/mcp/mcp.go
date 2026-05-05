@@ -17,6 +17,7 @@ import (
 	"github.com/korrel8r/korrel8r/pkg/engine/traverse"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"github.com/korrel8r/korrel8r/pkg/rest"
+	"github.com/korrel8r/korrel8r/pkg/result"
 	"github.com/korrel8r/korrel8r/pkg/session"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
@@ -47,6 +48,15 @@ type ListDomainClassesResult struct {
 type NeighborParams = api.Neighbors
 type GoalParams = api.Goals
 type ShowInConsoleParams = api.Console
+
+type ObjectsParams struct {
+	Query      string          `json:"query" jsonschema:"Query string in the form 'domain:class:selector'. Use 'help' to learn query syntax for each domain."`
+	Constraint *api.Constraint `json:"constraint,omitempty" jsonschema:"Optional constraint to limit results by time range and/or count."`
+}
+
+type ObjectsResult struct {
+	Objects []any `json:"objects" jsonschema:"List of objects matching the query"`
+}
 
 const instructions = `
 Korrel8r finds correlations between observability signals and resources in a Kubernetes cluster.
@@ -79,6 +89,7 @@ const (
 	ListDomainClasses    = "list_domain_classes"
 	CreateGoalsGraph     = "create_goals_graph"
 	CreateNeighborsGraph = "create_neighbors_graph"
+	GetObjects           = "get_objects"
 	// Console tools, only work in sessions with a connected console.
 	GetConsole    = "get_console"
 	ShowInConsole = "show_in_console"
@@ -257,6 +268,49 @@ Example: to find logs for a crashing pod, use:
 				return nil, nil, err
 			}
 			return nil, rest.NewGraph(g, nil), nil
+		})
+
+	mcp.AddTool(s.Server, &mcp.Tool{
+		Name: GetObjects,
+		Description: `
+Execute a query and return matching objects as complete JSON.
+The query must be in the format "domain:class:selector".
+Use 'help' to learn the query syntax for each domain.
+
+The returned objects are self-contained: all relevant labels and fields are included in each object.
+This differs from direct back-end APIs (e.g. Loki, Tempo) which use a compact "stream" format
+where common labels are sent once per stream. The complete format is more verbose
+but each object can be processed independently.
+
+Use the optional constraint parameter to control result size:
+- limit: maximum number of objects to return.
+- start/end: time range (RFC 3339) to restrict results by timestamp.
+Use constraints to avoid excessively large results, especially for
+high-volume domains like logs, metrics, and traces.
+`,
+	},
+		func(ctx context.Context, req *mcp.CallToolRequest, input ObjectsParams) (*mcp.CallToolResult, *ObjectsResult, error) {
+			ss, err := s.session(ctx)
+			if err != nil {
+				return nil, nil, err
+			}
+			query, err := ss.Engine.Query(input.Query)
+			if err != nil {
+				return nil, nil, err
+			}
+			var constraint *korrel8r.Constraint
+			if c := input.Constraint; c != nil {
+				constraint = &korrel8r.Constraint{Limit: c.Limit, Start: c.Start, End: c.End}
+			}
+			r := result.New(query.Class())
+			if err := ss.Engine.Get(ctx, query, constraint, r); err != nil {
+				return nil, nil, err
+			}
+			objects := []any(r.List())
+			if objects == nil {
+				objects = []any{}
+			}
+			return nil, &ObjectsResult{Objects: objects}, nil
 		})
 
 	mcp.AddTool(s.Server, &mcp.Tool{
