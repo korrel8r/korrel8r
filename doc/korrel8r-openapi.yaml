@@ -295,6 +295,13 @@ paths:
           required: true
           schema:
             $ref: "#/components/schemas/Query"
+        - name: constraint
+          description: Constrains the objects that will be included in results.
+          in: query
+          style: form
+          explode: true
+          schema:
+            $ref: "#/components/schemas/Constraint"
       responses:
         "200":
           description: OK

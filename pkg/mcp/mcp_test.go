@@ -19,6 +19,8 @@ import (
 	"github.com/korrel8r/korrel8r/pkg/api"
 	"github.com/korrel8r/korrel8r/pkg/auth"
 	"github.com/korrel8r/korrel8r/pkg/engine"
+	"github.com/korrel8r/korrel8r/pkg/korrel8r"
+	"github.com/korrel8r/korrel8r/pkg/ptr"
 	"github.com/korrel8r/korrel8r/pkg/rest"
 	"github.com/korrel8r/korrel8r/pkg/session"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -127,6 +129,21 @@ func TestGetObjects_empty(t *testing.T) {
 	assert.Equal(t, []any{}, got["objects"])
 }
 
+func TestGetObjects_withConstraint(t *testing.T) {
+	client := newClient(t, newEngineMany(t))
+	r, err := client.CallTool(context.Background(), &mcp.CallToolParams{
+		Name: GetObjects,
+		Arguments: ObjectsParams{
+			Query:      "mock:a:many",
+			Constraint: &api.Constraint{Limit: ptr.To(1)},
+		},
+	})
+	require.NoError(t, err)
+	require.False(t, r.IsError)
+	got := r.StructuredContent.(map[string]any)
+	assert.Equal(t, []any{"a1"}, got["objects"])
+}
+
 func TestGetObjects_invalidQuery(t *testing.T) {
 	client := newClient(t, newEngine(t))
 	r, err := client.CallTool(context.Background(), &mcp.CallToolParams{
@@ -146,6 +163,16 @@ func newEngine(t *testing.T) *engine.Engine {
 	s.AddQuery("mock:b:y", "by")
 	r := mock.NewRule("a-b", list(a), list(b), mock.NewQuery(b, "y"))
 	e, err := engine.Build().Domains(d).Stores(s).Rules(r).Engine()
+	require.NoError(t, err)
+	return e
+}
+
+func newEngineMany(t *testing.T) *engine.Engine {
+	t.Helper()
+	d := mock.NewDomain("mock", "a")
+	s := mock.NewStore(d)
+	s.AddQuery("mock:a:many", []korrel8r.Object{"a1", "a2", "a3"})
+	e, err := engine.Build().Domains(d).Stores(s).Engine()
 	require.NoError(t, err)
 	return e
 }
@@ -354,6 +381,32 @@ func TestInterop_GetObjects(t *testing.T) {
 	mcpObjects := mcpResult["objects"].([]any)
 
 	assert.Equal(t, restObjects, mcpObjects)
+}
+
+func TestInterop_GetObjects_withConstraint(t *testing.T) {
+	f := newInteropFixture(t, newEngineMany(t))
+
+	// REST: GET /api/v1alpha1/objects?query=mock:a:many&limit=1
+	w := f.restDo(t, "GET", "/api/v1alpha1/objects?query=mock:a:many&limit=1", nil)
+	require.Equal(t, http.StatusOK, w.Code)
+	var restObjects []any
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &restObjects))
+
+	// MCP: get_objects with constraint
+	r, err := f.mcp.CallTool(context.Background(), &mcp.CallToolParams{
+		Name: GetObjects,
+		Arguments: ObjectsParams{
+			Query:      "mock:a:many",
+			Constraint: &api.Constraint{Limit: ptr.To(1)},
+		},
+	})
+	require.NoError(t, err)
+	require.False(t, r.IsError)
+	mcpResult := r.StructuredContent.(map[string]any)
+	mcpObjects := mcpResult["objects"].([]any)
+
+	assert.Equal(t, restObjects, mcpObjects)
+	assert.Len(t, mcpObjects, 1)
 }
 
 func TestInterop_SetConsoleViaREST_GetViaMCP(t *testing.T) {

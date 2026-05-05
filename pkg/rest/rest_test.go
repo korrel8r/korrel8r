@@ -21,6 +21,7 @@ import (
 	"github.com/korrel8r/korrel8r/pkg/auth"
 	"github.com/korrel8r/korrel8r/pkg/config"
 	"github.com/korrel8r/korrel8r/pkg/engine"
+	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"github.com/korrel8r/korrel8r/pkg/ptr"
 	"github.com/korrel8r/korrel8r/pkg/session"
 	"github.com/stretchr/testify/assert"
@@ -122,6 +123,25 @@ func TestAPIGetObjects(t *testing.T) {
 	w = a.do(t, "GET", "/api/v1alpha1/objects?query=x:y:nothing", nil)
 	require.Equal(t, http.StatusOK, w.Code)
 	require.Equal(t, "[]", w.Body.String())
+}
+
+func TestAPIGetObjects_withConstraint(t *testing.T) {
+	d := mock.NewDomain("x")
+	s := mock.NewStore(d)
+	s.AddQuery("x:y:many", []korrel8r.Object{"a1", "a2", "a3"})
+	e, err := engine.Build().Domains(d).Stores(s).Engine()
+	require.NoError(t, err)
+	a := newTestAPI(t, e)
+
+	// Without constraint: all 3 objects
+	w := a.do(t, "GET", "/api/v1alpha1/objects?query=x:y:many", nil)
+	require.Equal(t, http.StatusOK, w.Code)
+	require.Equal(t, `["a1","a2","a3"]`, w.Body.String())
+
+	// With limit=1 constraint: only 1 object
+	w = a.do(t, "GET", "/api/v1alpha1/objects?query=x:y:many&limit=1", nil)
+	require.Equal(t, http.StatusOK, w.Code)
+	require.Equal(t, `["a1"]`, w.Body.String())
 }
 
 func ginEngine() *gin.Engine {

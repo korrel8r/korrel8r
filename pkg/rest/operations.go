@@ -152,7 +152,7 @@ func (a *API) Objects(c *gin.Context, params ObjectsParams) {
 	if !check(c, http.StatusBadRequest, err) {
 		return
 	}
-	constraint := (*korrel8r.Constraint)(nil) // TODO can't pass constraints
+	constraint := constraintTo(params.Constraint)
 	result := result.New(query.Class())
 	if !check(c, http.StatusNotFound, e.Get(c.Request.Context(), query, constraint, result)) {
 		return
