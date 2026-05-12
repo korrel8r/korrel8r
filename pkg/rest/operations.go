@@ -53,7 +53,7 @@ func New(sessions session.Manager, r *gin.Engine) (*API, error) {
 	rg.Use(a.logger) // Apply logger only to API endpoints
 	RegisterHandlers(rg, a)
 	// Helpful endpoints showing routes.
-	r.GET(BasePath, func(c *gin.Context) { spec, _ := api.GetSwagger(); c.JSON(http.StatusOK, spec) })
+	r.GET(BasePath, func(c *gin.Context) { spec, _ := api.GetSpec(); c.JSON(http.StatusOK, spec) })
 	r.GET("/", a.homePage)
 	return a, nil
 }

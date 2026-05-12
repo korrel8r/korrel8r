@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 _Note unreleased changes on main here pending the next release_
 
+## [0.10.1] - 2026-05-12
+
+### Added
+- Made pkg/api package into a separate go module for other projects to import.
+- feat: Use tokenreview to associate a session with a user, rather than a token.
+- feat: add MCP get_objects tool, equivalent to REST /objects endpoint.
+
 ## [0.10.0] - 2026-04-21
 
 ### Added

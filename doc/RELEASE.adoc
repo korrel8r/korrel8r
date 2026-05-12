@@ -31,7 +31,7 @@ Updating the latest version to `X.Y.Z` is done on main to avoid needless branchi
 `make release` does the following:
 
 - `make clean` and re-build, verify nothing changes, working tree is clean.
-- Create and push the git tag 'vX.Y.Z'
+- Create and push git tags 'vX.Y.Z' and 'pkg/api/vX.Y.Z' (the sub-module tag is required for `go get github.com/korrel8r/korrel8r/pkg/api`).
 - Update the 'latest' image tag to point to the new images.
 
 == Release patch to old version

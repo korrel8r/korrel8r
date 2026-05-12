@@ -13,4 +13,5 @@ VERSION=$1
 }
 set -x
 git tag "v$VERSION" -a -m "Release $VERSION"
-git push origin "v$VERSION"
+git tag "pkg/api/v$VERSION" -a -m "Release pkg/api $VERSION"
+git push origin "v$VERSION" "pkg/api/v$VERSION"

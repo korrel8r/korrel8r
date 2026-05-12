@@ -8,7 +8,7 @@ help: ## Display this help.
 	@grep -E '^## [A-Z0-9_]+: ' Makefile | sed 's/^## \([A-Z0-9_]*\): \(.*\)/\1#\2/' | column -s'#' -t
 
 ## VERSION: Semantic version for release, use -dev for development pre-release versions.
-VERSION?=0.10.1-dev
+VERSION?=0.10.1
 ## REGISTRY_BASE: Image registry base, for example quay.io/somebody
 REGISTRY_BASE?=$(error REGISTRY_BASE must be set to push images)
 ## IMGTOOL: May be podman or docker.
@@ -27,7 +27,7 @@ $(shell mkdir -p $(GOCOVERDIR))
 
 # Generated files
 VERSION_TXT=internal/pkg/build/version.txt
-OPENAPI_SPEC=doc/korrel8r-openapi.yaml
+OPENAPI_SPEC=pkg/api/korrel8r-openapi.yaml
 GEN_OPENAPI_API=pkg/api/gen-openapi.go
 GEN_OPENAPI_IMPL=pkg/rest/gen-openapi.go
 GENERATED=$(VERSION_TXT) $(GEN_OPENAPI_IMPL) $(GEN_OPENAPI_API)
@@ -72,6 +72,7 @@ $(SHELLCHECK): $(BIN)
 lint: $(GENERATED) $(SHELLCHECK) ## Run the linter to find and fix code style problems.
 	hack/copyright.sh
 	go mod tidy
+	cd pkg/api && go mod tidy
 	go tool golangci-lint run --fix
 	go tool shfmt -l -w ./**/*.sh
 	$(SHELLCHECK) -x -S style hack/*.sh
