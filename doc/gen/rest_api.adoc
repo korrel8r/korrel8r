@@ -880,6 +880,12 @@ Execute a single Korrel8r 'query' and return the list of serialized objects foun
 | null
 | /[^:]+:[^:]+:[^:]+/
 
+| constraint
+| Constrains the objects that will be included in results. 
+| -
+| null
+| 
+
 |===
 
 
