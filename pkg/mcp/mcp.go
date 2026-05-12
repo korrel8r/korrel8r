@@ -388,22 +388,24 @@ func (s *Server) handler(*http.Request) *mcp.Server {
 // logger is middleware to do debug logging of MCP methods
 func (s *Server) logger(handler mcp.MethodHandler) mcp.MethodHandler {
 	return func(ctx context.Context, tool string, req mcp.Request) (result mcp.Result, err error) {
-		start := time.Now()
-		log := logging.Log()
-		if log.V(3).Enabled() {
+		if log.V(3).Enabled() { // Nothing to do if V < 3
+			start := time.Now()
 			defer func() {
 				latency := time.Since(start)
-				log = log.WithValues(
+				values := []any{
 					"tool", tool,
 					"latency", latency,
-					"parameters", logging.JSON(req.GetParams()))
-				if sn, err := s.session(ctx); err == nil {
-					log = log.WithValues("session", sn.ID)
+					"parameters", logging.JSON(req.GetParams())}
+				if sn, _ := s.session(ctx); s != nil {
+					values = append(values, "session", sn.ID)
 				}
 				if err != nil {
-					log.V(3).Info("MCP call failed", "error", err)
+					log.V(3).Info("MCP error", append([]any{"error", err}, values...))
 				} else {
-					log.V(3).Info("MCP call", "result", logging.JSON(result))
+					if log.V(9).Enabled() { // Result is extra detail
+						values = append(values, "result", logging.JSON(result))
+					}
+					log.V(3).Info("MCP call", values...)
 				}
 			}()
 		}
@@ -417,3 +419,5 @@ func errorResult(err error) *mcp.CallToolResult {
 		IsError: true,
 	}
 }
+
+var log = logging.Log()

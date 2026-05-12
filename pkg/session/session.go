@@ -128,7 +128,7 @@ func NewPoolWithTokenReview(timeout time.Duration, factory func() (*engine.Engin
 func (m *poolManager) id(ctx context.Context) string {
 	token := auth.ContextToken(ctx)
 	if token == "" {
-		log.V(4).Info("No bearer token found, using generic session")
+		log.V(3).Info("No bearer token found, using generic session")
 		return ""
 	}
 	if m.tokenReview != nil {
@@ -136,9 +136,9 @@ func (m *poolManager) id(ctx context.Context) string {
 		if err == nil {
 			return userName
 		}
-		log.V(4).Info("Token review error", "error", err, "FIXME", token)
+		log.V(3).Info("Token review error", "error", err)
 	}
-	log.V(4).Info("Cannot determine username, session ID is hashed token")
+	log.V(3).Info("Cannot determine username, session ID is hashed token")
 	return hashToken(token)
 }
 
