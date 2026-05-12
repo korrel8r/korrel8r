@@ -286,7 +286,7 @@ func (s *Store) getLokiRules(ctx context.Context, namespaces map[string]bool) (v
 		result, err := s.getLokiRulesForTenant(ctx, tenant, namespaces)
 		if err != nil {
 			// Log error but continue with other tenants
-			log.V(3).Info("failed to query Loki ruler for tenant", "tenant", tenant, "error", err)
+			log.V(5).Info("failed to query Loki ruler for tenant", "tenant", tenant, "error", err)
 			continue
 		}
 		// Merge results
