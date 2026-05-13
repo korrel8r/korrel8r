@@ -64,6 +64,119 @@ func TestTraverserGoals(t *testing.T) {
 	}
 }
 
+func TestTraverserTwoPaths(t *testing.T) {
+	b := mock.NewBuilder("d")
+	r := b.Rule
+	e, err := engine.Build().Rules(
+		r("ab", "d:a", "d:b", b.Query("d:b", "ab", 1)),
+		r("bc", "d:b", "d:c", b.Query("d:c", "bc", 2)),
+		r("ac", "d:a", "d:c", b.Query("d:c", "ac", 3)),
+		r("ax", "d:a", "d:x", b.Query("d:x", "ax", 4)),
+	).Stores(b.Store("d", nil)).Engine()
+	require.NoError(t, err)
+
+	t.Run("Neighbours", func(t *testing.T) {
+		start := Start{Class: b.Class("d:a"), Objects: []korrel8r.Object{0}}
+		g, err := Neighbors(context.Background(), e, start, 2)
+		require.NoError(t, err)
+		wantLines := []string{
+			"ab(d:a->d:b)",
+			"bc(d:b->d:c)",
+			"ac(d:a->d:c)",
+			"ax(d:a->d:x)",
+		}
+		wantNodes := []string{
+			"d:a[0]",
+			"d:b[1]",
+			"d:c[2,3]",
+			"d:x[4]",
+		}
+		if assert.NoError(t, err) {
+			assert.ElementsMatch(t, wantLines, g.LineStrings())
+			assert.ElementsMatch(t, wantNodes, g.NodeStrings(true))
+		}
+	})
+
+	t.Run("Goals", func(t *testing.T) {
+		start := Start{Class: b.Class("d:a"), Objects: []korrel8r.Object{0}}
+		g, err := Goals(context.Background(), e, start, []korrel8r.Class{b.Class(("d:c"))})
+		require.NoError(t, err)
+		wantLines := []string{
+			"ab(d:a->d:b)",
+			"bc(d:b->d:c)",
+			"ac(d:a->d:c)",
+		}
+		wantNodes := []string{
+			"d:a[0]",
+			"d:b[1]",
+			"d:c[2,3]",
+		}
+		if assert.NoError(t, err) {
+			assert.ElementsMatch(t, wantLines, g.LineStrings())
+			assert.ElementsMatch(t, wantNodes, g.NodeStrings(true))
+		}
+	})
+}
+
+func TestTraverserCycle(t *testing.T) {
+	t.Run("two_node_cycle", func(t *testing.T) {
+		b := mock.NewBuilder("d")
+		r := b.Rule
+		e, err := engine.Build().Rules(
+			r("ab", "d:a", "d:b", b.Query("d:b", "ab", 1)),
+			r("ba", "d:b", "d:a", b.Query("d:a", "ba", 2)),
+		).Stores(b.Store("d", nil)).Engine()
+		require.NoError(t, err)
+
+		start := Start{Class: b.Class("d:a"), Objects: []korrel8r.Object{0}}
+		g, err := Neighbors(context.Background(), e, start, 2)
+		require.NoError(t, err)
+		assert.ElementsMatch(t, []string{"ab(d:a->d:b)"}, g.LineStrings())
+		assert.ElementsMatch(t, []string{"d:a[0]", "d:b[1]"}, g.NodeStrings(true))
+	})
+
+	t.Run("three_node_cycle", func(t *testing.T) {
+		b := mock.NewBuilder("d")
+		r := b.Rule
+		e, err := engine.Build().Rules(
+			r("ab", "d:a", "d:b", b.Query("d:b", "ab", 1)),
+			r("bc", "d:b", "d:c", b.Query("d:c", "bc", 2)),
+			r("ca", "d:c", "d:a", b.Query("d:a", "ca", 3)),
+		).Stores(b.Store("d", nil)).Engine()
+		require.NoError(t, err)
+
+		start := Start{Class: b.Class("d:a"), Objects: []korrel8r.Object{0}}
+		g, err := Neighbors(context.Background(), e, start, 3)
+		require.NoError(t, err)
+		assert.ElementsMatch(t, []string{"ab(d:a->d:b)", "bc(d:b->d:c)"}, g.LineStrings())
+		assert.ElementsMatch(t, []string{"d:a[0]", "d:b[1]", "d:c[2]"}, g.NodeStrings(true))
+	})
+
+	t.Run("cycle_with_branch", func(t *testing.T) {
+		b := mock.NewBuilder("d")
+		r := b.Rule
+		e, err := engine.Build().Rules(
+			r("ab", "d:a", "d:b", b.Query("d:b", "ab", 1)),
+			r("bc", "d:b", "d:c", b.Query("d:c", "bc", 2)),
+			r("ca", "d:c", "d:a", b.Query("d:a", "ca", 3)),
+			r("ad", "d:a", "d:d", b.Query("d:d", "ad", 4)),
+		).Stores(b.Store("d", nil)).Engine()
+		require.NoError(t, err)
+
+		start := Start{Class: b.Class("d:a"), Objects: []korrel8r.Object{0}}
+		g, err := Neighbors(context.Background(), e, start, 3)
+		require.NoError(t, err)
+		assert.ElementsMatch(t, []string{
+			"ab(d:a->d:b)",
+			"bc(d:b->d:c)",
+			"ad(d:a->d:d)",
+		}, g.LineStrings())
+		assert.ElementsMatch(t, []string{
+			"d:a[0]", "d:b[1]", "d:c[2]", "d:d[4]",
+		}, g.NodeStrings(true))
+	})
+}
+
 func TestTraverserNeighbors(t *testing.T) {
 	b := mock.NewBuilder("d")
 	r := b.Rule

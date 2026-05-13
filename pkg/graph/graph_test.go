@@ -84,6 +84,54 @@ func TestGoalPaths(t *testing.T) {
 	}
 }
 
+func TestTwoPaths(t *testing.T) {
+	b := mock.NewBuilder("d")
+	r := b.Rule
+	// Two independent paths to c:
+	// a->b->c
+	// a->x->c
+	g := NewData(
+		r("ab", "d:a", "d:b", b.Query("d:b", "ab", 1)),
+		r("bc", "d:b", "d:c", b.Query("d:c", "bc", 2)),
+		r("ac", "d:a", "d:c", b.Query("d:x", "ac", 3)),
+		r("ax", "d:a", "d:x", b.Query("d:x", "ax", 4)),
+	).FullGraph()
+
+	t.Run("Neighbors", func(t *testing.T) {
+		sub, err := g.Neighbors(b.Class("d:a"), 2)
+		if assert.NoError(t, err) {
+			assert.ElementsMatch(t, []string{
+				"ab(d:a->d:b)",
+				"bc(d:b->d:c)",
+				"ac(d:a->d:c)",
+				"ax(d:a->d:x)",
+			}, sub.LineStrings())
+			assert.ElementsMatch(t, []string{
+				"d:a",
+				"d:b",
+				"d:c",
+				"d:x",
+			}, sub.NodeStrings(true))
+		}
+	})
+
+	t.Run("Goals", func(t *testing.T) {
+		sub, err := g.GoalPaths(b.Class("d:a"), b.Classes("d:c"))
+		if assert.NoError(t, err) {
+			assert.ElementsMatch(t, []string{
+				"ab(d:a->d:b)",
+				"bc(d:b->d:c)",
+				"ac(d:a->d:c)",
+			}, sub.LineStrings())
+			assert.ElementsMatch(t, []string{
+				"d:a",
+				"d:b",
+				"d:c",
+			}, sub.NodeStrings(true))
+		}
+	})
+}
+
 func TestNeighbors(t *testing.T) {
 	b := mock.NewBuilder("d")
 	r := b.Rule
