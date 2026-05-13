@@ -22,7 +22,7 @@ func (q Query) String() string        { return korrel8r.QueryString(q) }
 
 func (q Query) Selectors() ([]string, error) {
 	var selectors []string
-	expr, err := parser.ParseExpr(string(q))
+	expr, err := parser.NewParser(parser.Options{}).ParseExpr(string(q))
 	if err != nil {
 		return nil, err
 	}

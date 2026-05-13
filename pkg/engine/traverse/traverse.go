@@ -109,12 +109,11 @@ func (t *traverser) run(ctx context.Context, start Start, depth int) (*graph.Gra
 			return nil, ctx.Err()
 		}
 
-		// Collect workers with work, remove from workers to avoid cycles.
+		// Collect workers with work.
 		working := make([]*worker, 0, len(t.workers))
-		for c, w := range t.workers {
+		for _, w := range t.workers {
 			if w.HasWork() {
 				working = append(working, w)
-				delete(t.workers, c)
 			}
 		}
 		if len(working) == 0 {
@@ -124,16 +123,18 @@ func (t *traverser) run(ctx context.Context, start Start, depth int) (*graph.Gra
 		// Process inboxes concurrently, fill outboxes
 		var busy sync.WaitGroup
 		for _, w := range working {
-			busy.Add(1)
-			go func() { defer busy.Done(); w.Run(ctx) }()
+			busy.Go(func() { ; w.Run(ctx) })
 		}
 		busy.Wait() // Wait for worker.Run() goroutines to complete.
 
-		// Redistribute outboxes to inboxes. Not concurrent touches all workers.
+		// Redistribute outboxes to inboxes. Not concurrent, touches all workers.
+		// Skip lines that would create cycles among visited nodes.
 		for _, w := range working {
 			for _, ql := range w.outbox.List {
 				if next := t.workers[ql.Query.Class()]; next != nil {
-					// Ignore goals that don't have workers - outside our search.
+					if t.createsCycle(w.node.ID(), next.node.ID()) {
+						continue
+					}
 					next.inbox.Add(ql)
 				}
 			}
@@ -203,4 +204,34 @@ func (w *worker) Run(ctx context.Context) {
 			}
 		}
 	}
+}
+
+// createsCycle returns true if adding an edge from→to would create a cycle.
+// BFS from 'to' through edges in t.graph, only following edges from nodes
+// that have results (i.e. nodes already visited during traversal).
+func (t *traverser) createsCycle(from, to int64) bool {
+	if from == to {
+		return true
+	}
+	visited := map[int64]bool{to: true}
+	queue := []int64{to}
+	for len(queue) > 0 {
+		curr := queue[0]
+		queue = queue[1:]
+		if t.graph.Node(curr).(*graph.Node).Empty() {
+			continue
+		}
+		succ := t.graph.From(curr)
+		for succ.Next() {
+			id := succ.Node().ID()
+			if id == from {
+				return true
+			}
+			if !visited[id] {
+				visited[id] = true
+				queue = append(queue, id)
+			}
+		}
+	}
+	return false
 }
