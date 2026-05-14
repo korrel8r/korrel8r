@@ -20,6 +20,7 @@ import (
 	"github.com/korrel8r/korrel8r/pkg/domains/k8s"
 	"github.com/korrel8r/korrel8r/pkg/engine"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
+	"github.com/korrel8r/korrel8r/pkg/status"
 	slices2 "github.com/korrel8r/korrel8r/pkg/slices"
 	"github.com/korrel8r/korrel8r/pkg/unique"
 	"github.com/stretchr/testify/assert"
@@ -141,6 +142,44 @@ func (x ruleTest) Run(t *testing.T) {
 			}
 		}
 		tested(x.rule)
+	})
+}
+
+type statusRuleTest struct {
+	rule   string
+	class  string
+	domain korrel8r.Domain
+	start  korrel8r.Object
+	want   []string
+}
+
+func (x statusRuleTest) Run(t *testing.T) {
+	t.Helper()
+	t.Run(fmt.Sprintf("%v(%v)", x.rule, test.JSONString(x.start)), func(t *testing.T) {
+		t.Helper()
+		e := setup()
+		d := x.domain
+		if d == nil {
+			d = k8s.Domain
+		}
+		c := d.Class(x.class)
+		if !assert.NotNil(t, c, "missing class: "+x.class) {
+			return
+		}
+		var m status.Rule
+		for _, mm := range e.StatusRulesFor(c) {
+			if mm.Name() == x.rule {
+				m = mm
+				break
+			}
+		}
+		if !assert.NotNil(t, m, "missing status rule: "+x.rule) {
+			return
+		}
+		got, err := m.Apply(x.start)
+		if assert.NoError(t, err, x.rule) {
+			assert.Equal(t, x.want, got)
+		}
 	})
 }
 

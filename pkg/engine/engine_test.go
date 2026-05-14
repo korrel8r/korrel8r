@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/korrel8r/korrel8r/internal/pkg/test/mock"
+	"github.com/korrel8r/korrel8r/pkg/config"
 	"github.com/korrel8r/korrel8r/pkg/engine"
 	"github.com/korrel8r/korrel8r/pkg/engine/traverse"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
@@ -153,6 +154,46 @@ func TestEngineStoreFor(t *testing.T) {
 	q = mock.NewQuery(d.Class("bar"), "help")
 	require.NoError(t, e.StoreFor(d).Get(context.Background(), q, nil, r))
 	assert.ElementsMatch(t, []korrel8r.Object{"help", "me"}, r.List())
+}
+
+func TestEngine_LabelersFor(t *testing.T) {
+	d := mock.NewDomain("mock", "a", "b")
+	a := d.Class("a")
+	b := d.Class("b")
+	s := mock.NewStore(d, a, b)
+	e, err := engine.Build().Domains(d).Stores(s).
+		Config(config.Configs{
+			{
+				Rules: []config.Rule{{
+					Name:   "ab",
+					Start:  config.ClassSpec{Domain: "mock", Classes: []string{"a"}},
+					Goal:   config.ClassSpec{Domain: "mock", Classes: []string{"b"}},
+					Result: config.ResultSpec{Query: `mock:b:x`},
+				}},
+				StatusRules: []config.StatusRule{
+					{
+						Name:   "label-a",
+						Start:  config.ClassSpec{Domain: "mock", Classes: []string{"a"}},
+						Result: config.LabelResultSpec{Labels: `label-from-a`},
+					},
+					{
+						Name:   "label-a2",
+						Start:  config.ClassSpec{Domain: "mock", Classes: []string{"a"}},
+						Result: config.LabelResultSpec{Labels: `another-label`},
+					},
+				},
+			},
+		}).Engine()
+	require.NoError(t, err)
+
+	// Class a should have 2 labelers
+	statuses := e.StatusRulesFor(a)
+	assert.Len(t, statuses, 2)
+	assert.Equal(t, "label-a", statuses[0].Name())
+	assert.Equal(t, "label-a2", statuses[1].Name())
+
+	// Class b should have no status rules
+	assert.Empty(t, e.StatusRulesFor(b))
 }
 
 // Mock object has a name and a timestamp.

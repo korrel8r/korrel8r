@@ -244,3 +244,48 @@ func TestK8sRules(t *testing.T) {
 		x.Run(t)
 	}
 }
+
+func TestK8sStatusRules(t *testing.T) {
+	for _, x := range []statusRuleTest{
+		{
+			rule:  "HasFinalizer",
+			class: "Pod",
+			start: newK8s("Pod", "ns", "pod1", k8s.Object{
+				"metadata": k8s.Object{
+					"finalizers": []any{"kubernetes.io/pv-protection"},
+				},
+			}),
+			want: []string{"Finalizer"},
+		},
+		{
+			rule:  "HasFinalizer",
+			class: "Pod",
+			start: newK8s("Pod", "ns", "pod2", nil),
+			want:  nil,
+		},
+		{
+			rule:  "EventType",
+			class: "Event.v1",
+			start: newK8s("Event.v1", "ns", "evt1", k8s.Object{
+				"type": "Warning",
+			}),
+			want: []string{"Warning"},
+		},
+		{
+			rule:  "EventType",
+			class: "Event.v1",
+			start: newK8s("Event.v1", "ns", "evt2", k8s.Object{
+				"type": "Normal",
+			}),
+			want: nil,
+		},
+		{
+			rule:  "EventType",
+			class: "Event.v1",
+			start: newK8s("Event.v1", "ns", "evt3", nil),
+			want:  nil,
+		},
+	} {
+		x.Run(t)
+	}
+}

@@ -16,6 +16,7 @@ import (
 	"github.com/Masterminds/sprig/v3"
 	"github.com/korrel8r/korrel8r/pkg/config"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
+	"github.com/korrel8r/korrel8r/pkg/status"
 	"github.com/korrel8r/korrel8r/pkg/rules"
 	"github.com/korrel8r/korrel8r/pkg/unique"
 )
@@ -36,6 +37,7 @@ func Build() *Builder {
 		domains:      korrel8r.Domains{},
 		storeHolders: map[korrel8r.Domain]*storeHolders{},
 		rulesByName:  map[string]korrel8r.Rule{},
+		statuses:     map[string][]status.Rule{},
 	}
 	// Add template functions that are always available.
 	e.templateFuncs = globalTemplateFuncs(e)
@@ -198,6 +200,12 @@ func (b *Builder) config(c *config.Config) {
 		// Defer adding rules until domains and stores are configured.
 		b.finally = append(b.finally, func() { b.configRule(r) })
 	}
+	for _, lr := range c.StatusRules {
+		if b.err != nil {
+			return
+		}
+		b.finally = append(b.finally, func() { b.configStatusRule(lr) })
+	}
 }
 
 func (b *Builder) configRule(r config.Rule) {
@@ -209,8 +217,8 @@ func (b *Builder) configRule(r config.Rule) {
 			b.err = fmt.Errorf("invalid rule %v: %w", r.Name, b.err)
 		}
 	}()
-	start := b.classes(r, &r.Start)
-	goal := b.classes(r, &r.Goal)
+	start := b.classes(r.Name, &r.Start)
+	goal := b.classes(r.Name, &r.Goal)
 	if len(start) == 0 || len(goal) == 0 {
 		return
 	}
@@ -222,7 +230,32 @@ func (b *Builder) configRule(r config.Rule) {
 	b.rules(rules.NewTemplateRule(start, goal, tmpl))
 }
 
-func (b *Builder) classes(r config.Rule, spec *config.ClassSpec) []korrel8r.Class {
+func (b *Builder) configStatusRule(r config.StatusRule) {
+	if b.err != nil {
+		return
+	}
+	defer func() {
+		if b.err != nil {
+			b.err = fmt.Errorf("invalid label rule %v: %w", r.Name, b.err)
+		}
+	}()
+	start := b.classes(r.Name, &r.Start)
+	if len(start) == 0 {
+		return
+	}
+	var tmpl *template.Template
+	tmpl, b.err = b.e.NewTemplate(r.Name).Parse(r.Result.Labels)
+	if b.err != nil {
+		return
+	}
+	lb := status.New(start, tmpl)
+	for _, c := range start {
+		key := c.String()
+		b.e.statuses[key] = append(b.e.statuses[key], lb)
+	}
+}
+
+func (b *Builder) classes(name string, spec *config.ClassSpec) []korrel8r.Class {
 	var d korrel8r.Domain
 	d, b.err = b.e.Domain(spec.Domain)
 	if b.err != nil {
@@ -236,7 +269,7 @@ func (b *Builder) classes(r config.Rule, spec *config.ClassSpec) []korrel8r.Clas
 				// A missing class is not a fatal error, because some domains (k8s)
 				// may have different sets of classes (custom resources) for different clusters
 				// Collect and log a report at end of configuration.
-				b.missingClasses[class] = append(b.missingClasses[class], r.Name)
+				b.missingClasses[class] = append(b.missingClasses[class], name)
 			} else {
 				list.Append(c)
 			}

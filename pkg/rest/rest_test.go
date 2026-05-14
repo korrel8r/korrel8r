@@ -220,6 +220,54 @@ func testEngine(t *testing.T) (e *engine.Engine) {
 
 func list[T any](x ...T) []T { return x }
 
+func TestAPIGraphGoals_labels(t *testing.T) {
+	d := mock.NewDomain("mock", "a", "b")
+	a, b := d.Class("a"), d.Class("b")
+	s := mock.NewStore(d)
+	s.AddQuery("mock:a:x", "ax")
+	s.AddQuery("mock:b:y", "by")
+	e, err := engine.Build().Domains(d).Stores(s).Rules(
+		mock.NewRule("a-b", list(a), list(b), mock.NewQuery(b, "y")),
+	).Config(config.Configs{
+		{
+			StatusRules: []config.StatusRule{
+				{
+					Name:   "label-b",
+					Start:  config.ClassSpec{Domain: "mock", Classes: []string{"b"}},
+					Result: config.LabelResultSpec{Labels: `my-label`},
+				},
+			},
+		},
+	}).Engine()
+	require.NoError(t, err)
+	assertDo(t, newTestAPI(t, e), "POST", "/api/v1alpha1/graphs/goals",
+		api.Goals{
+			Start: api.Start{
+				Class:   "mock:a",
+				Objects: []json.RawMessage{[]byte(`"x"`)},
+			},
+			Goals: []string{"mock:b"},
+		},
+		http.StatusOK,
+		api.Graph{
+			Nodes: []api.Node{
+				{
+					Class: "mock:a",
+					Count: ptr.To(1),
+				},
+				{
+					Class: "mock:b",
+					Count: ptr.To(1),
+					Queries: []api.QueryCount{{
+						Query:    "mock:b:y",
+						Count:    ptr.To(1),
+						Statuses: []api.StatusCount{{Status: "my-label", Count: ptr.To(1)}},
+					}},
+				}},
+			Edges: []api.Edge{{Start: "mock:a", Goal: "mock:b"}},
+		})
+}
+
 func TestAPIGraphNeighbors(t *testing.T) {
 	e := testEngine(t)
 	assertDo(t, newTestAPI(t, e), "POST", "/api/v1alpha1/graphs/neighbors",

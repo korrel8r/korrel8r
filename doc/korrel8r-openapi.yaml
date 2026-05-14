@@ -560,16 +560,16 @@ components:
           x-oapi-codegen-extra-tags:
             jsonschema: "Full class name in DOMAIN:CLASS format."
         queries:
-          type: array
-          x-go-type-skip-optional-pointer: true
           description: Queries yielding results for this class.
+          type: array
           items:
             $ref: "#/components/schemas/QueryCount"
+          x-go-type-skip-optional-pointer: true
           x-oapi-codegen-extra-tags:
             jsonschema: "Queries yielding results for this class."
         count:
-          type: integer
           description: Number of results for this class, after de-duplication.
+          type: integer
           x-oapi-codegen-extra-tags:
             jsonschema: "Number of results for this class, after de-duplication."
         result:
@@ -597,6 +597,24 @@ components:
             - $ref: "#/components/schemas/Query"
           x-oapi-codegen-extra-tags:
             jsonschema: "Query for correlation data in DOMAIN:CLASS:SELECTOR format."
+        statuses:
+          description: Statuses found on data objects for this query.
+          type: array
+          items:
+            $ref: "#/components/schemas/StatusCount"
+          x-go-type-skip-optional-pointer: true
+
+    StatusCount:
+      description: Status with number of instances found.
+      type: object
+      required: [status]
+      properties:
+        status:
+          description: Status for correlation data.
+          type: string
+        count:
+          description: Number of instances found, omitted if none.
+          type: integer
 
     Rule:
       type: object

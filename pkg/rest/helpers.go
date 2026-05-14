@@ -34,7 +34,11 @@ func queryCounts(gq graph.Queries, _ api.GraphOptions) []api.QueryCount {
 		if qc.Count <= 0 {
 			continue // Omit query counts with no results
 		}
-		qcs = append(qcs, api.QueryCount{Query: qc.Query.String(), Count: &qc.Count})
+		aqc := api.QueryCount{Query: qc.Query.String(), Count: &qc.Count}
+		for k, v := range qc.StatusCounts {
+			aqc.Statuses = append(aqc.Statuses, api.StatusCount{Status: k, Count: ptr.To(v)})
+		}
+		qcs = append(qcs, aqc)
 	}
 	slices.SortFunc(qcs, func(a, b api.QueryCount) int {
 		if n := cmp.Compare(ptr.Deref(a.Count), ptr.Deref(b.Count)); n != 0 {
