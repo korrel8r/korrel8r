@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/korrel8r/korrel8r/pkg/domains/k8s"
+	"github.com/korrel8r/korrel8r/pkg/domains/log"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"github.com/korrel8r/korrel8r/pkg/unique"
 	"github.com/stretchr/testify/assert"
@@ -52,6 +53,55 @@ func TestLogRules(t *testing.T) {
 			rule:  "PodToLogs",
 			start: newK8s("Pod", "kube-something", "infrastructure", nil),
 			want:  []string{`log:infrastructure:{"namespace":"kube-something","name":"infrastructure"}`},
+		},
+	} {
+		x.Run(t)
+	}
+}
+
+func TestLogStatusRules(t *testing.T) {
+	for _, x := range []statusRuleTest{
+		{
+			rule:   "LogSeverity",
+			domain: log.Domain,
+			class:  "application",
+			start:  log.Object{"level": "error", "body": "something failed"},
+			want:   []string{"Error"},
+		},
+		{
+			rule:   "LogSeverity",
+			domain: log.Domain,
+			class:  "application",
+			start:  log.Object{"level": "warning", "body": "something suspicious"},
+			want:   []string{"Warning"},
+		},
+		{
+			rule:   "LogSeverity",
+			domain: log.Domain,
+			class:  "infrastructure",
+			start:  log.Object{"severity_text": "ERROR", "body": "infra error"},
+			want:   []string{"Error"},
+		},
+		{
+			rule:   "LogSeverity",
+			domain: log.Domain,
+			class:  "infrastructure",
+			start:  log.Object{"severity_text": "WARN", "body": "infra warning"},
+			want:   []string{"Warning"},
+		},
+		{
+			rule:   "LogSeverity",
+			domain: log.Domain,
+			class:  "application",
+			start:  log.Object{"level": "info", "body": "all is well"},
+			want:   nil,
+		},
+		{
+			rule:   "LogSeverity",
+			domain: log.Domain,
+			class:  "application",
+			start:  log.Object{"body": "no severity field"},
+			want:   nil,
 		},
 	} {
 		x.Run(t)

@@ -59,9 +59,9 @@ func (d *Data) addClass(c korrel8r.Class) *Node {
 	}
 	id := int64(len(d.Nodes))
 	n := &Node{
-		Node:    multi.Node(id),
-		Class:   c,
-		Attrs:   Attrs{},
+		Node:         multi.Node(id),
+		Class:        c,
+		Attrs:        Attrs{},
 		Result:  result.New(c),
 		Queries: Queries{},
 	}
@@ -118,10 +118,10 @@ func (d *Data) Classes() []korrel8r.Class {
 // Node is a graph Node, contains a Class and search results.
 type Node struct {
 	multi.Node
-	Attrs   // GraphViz Attributer
-	Class   korrel8r.Class
+	Attrs        // GraphViz Attributer
+	Class        korrel8r.Class
 	Result  result.Result // Accumulate incoming query results.
-	Queries Queries       // All queries leading to this node.
+	Queries Queries      // All queries leading to this node.
 }
 
 func (n *Node) String(sorted bool) string {
@@ -144,20 +144,36 @@ func (n *Node) Empty() bool   { return len(n.Result.List()) == 0 }
 // QueryCount records count of objects resulting from a query.
 // Count == -1 means the query has not been evaluated.
 type QueryCount struct {
-	Query korrel8r.Query
-	Count int
+	Query        korrel8r.Query
+	Count        int
+	StatusCounts map[string]int
 }
 
 // Queries is a map of QueryCount by Query name.
 type Queries map[string]QueryCount
 
 func (qs Queries) Has(q korrel8r.Query) bool   { _, ok := qs[q.String()]; return ok }
-func (qs Queries) Set(q korrel8r.Query, n int) { qs[q.String()] = QueryCount{q, n} }
+func (qs Queries) Set(q korrel8r.Query, n int) {
+	qs[q.String()] = QueryCount{Query: q, Count: n}
+}
 func (qs Queries) Get(q korrel8r.Query) int {
 	if qc, ok := qs[q.String()]; ok {
 		return qc.Count
 	}
 	return -1
+}
+
+// AddStatuses merges status counts into the QueryCount for q.
+func (qs Queries) AddStatuses(q korrel8r.Query, statuses map[string]int) {
+	key := q.String()
+	qc := qs[key]
+	if qc.StatusCounts == nil {
+		qc.StatusCounts = map[string]int{}
+	}
+	for k, v := range statuses {
+		qc.StatusCounts[k] += v
+	}
+	qs[key] = qc
 }
 
 // Total of the counts

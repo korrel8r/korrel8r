@@ -82,6 +82,29 @@ func TestConfigs_Expand(t *testing.T) {
 	assert.Equal(t, want, c)
 }
 
+func TestLoad_statusRules(t *testing.T) {
+	c, err := Load("testdata/status-rules.yaml")
+	require.NoError(t, err)
+	want := Configs{
+		{
+			Source: "testdata/status-rules.yaml",
+			StatusRules: []StatusRule{
+				{
+					Name:   "HasFinalizer",
+					Start:  ClassSpec{Domain: "k8s"},
+					Result: LabelResultSpec{Labels: "{{- with .metadata.finalizers}}has-finalizer{{end}}"},
+				},
+				{
+					Name:   "PodPhase",
+					Start:  ClassSpec{Domain: "k8s", Classes: []string{"Pod"}},
+					Result: LabelResultSpec{Labels: "phase-{{.status.phase}}"},
+				},
+			},
+		},
+	}
+	assert.Equal(t, want, c)
+}
+
 func TestConfigs_Expand_sameGroupDifferentDomain(t *testing.T) {
 	c := Configs{
 		{

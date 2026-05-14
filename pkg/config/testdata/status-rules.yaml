@@ -1,0 +1,14 @@
+statusRules:
+  - name: HasFinalizer
+    start:
+      domain: k8s
+    result:
+      labels: |-
+        {{- with .metadata.finalizers}}has-finalizer{{end}}
+  - name: PodPhase
+    start:
+      domain: k8s
+      classes: [Pod]
+    result:
+      labels: |-
+        phase-{{.status.phase}}

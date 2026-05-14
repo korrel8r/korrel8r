@@ -15,6 +15,7 @@ import (
 	"github.com/korrel8r/korrel8r/pkg/config"
 	"github.com/korrel8r/korrel8r/pkg/graph"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
+	"github.com/korrel8r/korrel8r/pkg/status"
 )
 
 var log = logging.Log()
@@ -27,6 +28,7 @@ type Engine struct {
 	templateFuncs template.FuncMap
 	rulesByName   map[string]korrel8r.Rule
 	rules         []korrel8r.Rule
+	statuses      map[string][]status.Rule // Keyed by class.String()
 
 	// Tuning parameters
 	Tuning config.Tuning
@@ -117,6 +119,9 @@ func (e *Engine) Queries(queryStrings []string) ([]korrel8r.Query, error) {
 func (e *Engine) Rules() []korrel8r.Rule { return slices.Clone(e.rules) }
 
 func (e *Engine) Rule(name string) korrel8r.Rule { return e.rulesByName[name] }
+
+// StatusRulesFor returns the status rules for the given class.
+func (e *Engine) StatusRulesFor(c korrel8r.Class) []status.Rule { return e.statuses[c.String()] }
 
 // Graph creates a new graph of the engine's rules.
 func (e *Engine) Graph() *graph.Graph { return graph.NewData(e.Rules()...).FullGraph() }

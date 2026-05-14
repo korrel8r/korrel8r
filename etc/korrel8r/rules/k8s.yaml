@@ -291,3 +291,19 @@ rules:
     result:
       query: |-
         k8s:{{.spec.names.kind}}.{{(index .spec.versions 0).name}}.{{.spec.group}}:{}
+
+statusRules:
+  - name: HasFinalizer
+    start:
+      domain: k8s
+    result:
+      labels: |-
+        {{- with index .metadata "finalizers"}}Finalizer{{end}}
+
+  - name: EventType
+    start:
+      domain: k8s
+      classes: [Event.v1, Event.v1.events.k8s.io]
+    result:
+      labels: |-
+        {{- with index . "type"}}{{if ne . "Normal"}}{{.}}{{end}}{{end}}

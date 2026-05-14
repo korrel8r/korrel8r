@@ -1317,6 +1317,13 @@ Query with number of results.
 | Query for correlation data.
 |     
 
+| statuses
+| 
+| 
+|   List   of <<StatusCount>>
+| Statuses found on data objects for this query.
+|     
+
 |===
 
 
@@ -1418,6 +1425,35 @@ Starting point for a correlation search. It usually specifies queries to get the
 | 
 |   List   of <<string>>
 | Queries for starting objects in \&quot;domain:class:selector\&quot; format. This is the most common way to specify a starting point. 
+|     
+
+|===
+
+
+
+[#StatusCount]
+=== _StatusCount_ 
+
+Status with number of instances found.
+
+
+[.fields-StatusCount]
+[cols="2,1,1,2,4,1"]
+|===
+| Field Name| Required| Nullable | Type| Description | Format
+
+| status
+| X
+| 
+|   String  
+| Status for correlation data.
+|     
+
+| count
+| 
+| 
+|   Integer  
+| Number of instances found, omitted if none.
 |     
 
 |===

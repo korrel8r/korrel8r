@@ -17,6 +17,9 @@ type Config struct {
 	// Include lists additional configuration files or URLs to include.
 	Include []string `json:"include,omitempty"`
 
+	// StatusRules generate statuses from Objects to annotate graph nodes.
+	StatusRules []StatusRule `json:"statusRules,omitempty"`
+
 	// Tuning section has limits and optimizations.
 	// NOTE: This section is only allowed in the top-level configuration.
 	// It is not allowed in included configuration files.
@@ -82,7 +85,7 @@ type ClassSpec struct {
 
 // ResultSpec contains templates to generate a result.
 type ResultSpec struct {
-	// Query template generates a query object suitable for the goal store.
+	// Query template generates a query string suitable for the goal store.
 	Query string `json:"query"`
 }
 
@@ -94,6 +97,27 @@ type Class struct {
 	Domain string `json:"domain"`
 	// Classes are the names of classes in this group.
 	Classes []string `json:"classes"`
+}
+
+// StatusRule configures a template that generates statuses for graph nodes.
+//
+// The template is applied to objects of the start class. It should generate newline-separated
+// label strings. Each unique label gets a count of how many times it appeared.
+type StatusRule struct {
+	// Name is a short, descriptive name.
+	Name string `json:"name,omitempty"`
+
+	// Start specifies the set of classes that this rule can apply to.
+	Start ClassSpec `json:"start"`
+
+	// Result contains the template to generate labels.
+	Result LabelResultSpec `json:"result"`
+}
+
+// LabelResultSpec contains a template to generate labels.
+type LabelResultSpec struct {
+	// Labels template generates newline-separated label strings.
+	Labels string `json:"labels"`
 }
 
 // Tuning section for limits and optimizations.

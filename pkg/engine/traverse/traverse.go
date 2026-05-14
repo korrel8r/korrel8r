@@ -170,7 +170,8 @@ func (w *worker) Run(ctx context.Context) {
 		w.inbox.Clear()
 		w.processed = len(w.node.Result.List())
 	}()
-	// Process queries from inbox
+	// Process queries from inbox, apply status rules per query.
+	statusRules := w.engine.StatusRulesFor(w.node.Class)
 	for _, ql := range w.inbox.List {
 		if ctx.Err() != nil {
 			return
@@ -183,23 +184,32 @@ func (w *worker) Run(ctx context.Context) {
 		if ql.Line != nil {
 			ql.Line.Queries.Set(ql.Query, len(result))
 		}
+		statusCounts := map[string]int{}
+		for _, o := range result {
+			for _, r := range statusRules {
+				statuses, _ := r.Apply(o)
+				for _, s := range statuses {
+					statusCounts[s]++
+				}
+			}
+		}
+		if len(statusCounts) > 0 {
+			w.node.Queries.AddStatuses(ql.Query, statusCounts)
+		}
 	}
 
-	// Apply rules to un-processed results, generate queries in outbox.
+	// Apply correlation rules to un-processed results, generate queries in outbox.
 	for _, o := range w.node.Result.List()[w.processed:] {
 		for _, r := range w.rules.List {
 			if ctx.Err() != nil {
 				return
 			}
 			queries, err := r.Apply(o)
-			if err != nil || len(queries) == 0 {
-				log.V(4).Info("Rule did not apply", "rule", r.Name(), "start", w.node.Class, "error", err)
-			} else {
-				for _, q := range queries {
-					if line := w.graph.FindLine(w.node.Class, q.Class(), r); line != nil {
-						log.V(4).Info("Rule applied", "line", line, "query", q)
-						w.outbox.Add(queryLine{Query: q, Line: line})
-					}
+			log.V(4).Info("Rule applied", "name", r.Name(), "start", w.node.Class, "error", err, "queries", len(queries))
+			for _, q := range queries {
+				if line := w.graph.FindLine(w.node.Class, q.Class(), r); line != nil {
+					log.V(5).Info("Add line", "line", line, "query", q)
+					w.outbox.Add(queryLine{Query: q, Line: line})
 				}
 			}
 		}
