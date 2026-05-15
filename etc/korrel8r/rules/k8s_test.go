@@ -63,6 +63,21 @@ func TestK8sRules(t *testing.T) {
 			want:  []string{`alert:alert:{"namespace":"aNamespace","deployment":"foo"}`},
 		},
 		{
+			rule:  "DaemonSetToAlert",
+			start: newK8s("DaemonSet.apps", "aNamespace", "foo", nil),
+			want:  []string{`alert:alert:{"namespace":"aNamespace","daemonset":"foo"}`},
+		},
+		{
+			rule:  "StatefulSetToAlert",
+			start: newK8s("StatefulSet.apps", "aNamespace", "foo", nil),
+			want:  []string{`alert:alert:{"namespace":"aNamespace","statefulset":"foo"}`},
+		},
+		{
+			rule:  "PodDisruptionBudgetToAlert",
+			start: newK8s("PodDisruptionBudget.policy", "aNamespace", "foo", nil),
+			want:  []string{`alert:alert:{"namespace":"aNamespace","poddisruptionbudget":"foo"}`},
+		},
+		{
 			rule: "PodToNode",
 			start: newK8s("Pod", "ns", "pod", k8s.Object{
 				"spec": k8s.Object{
