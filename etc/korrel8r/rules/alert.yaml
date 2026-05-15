@@ -57,3 +57,53 @@ rules:
     result:
       query: |-
         metric:metric:{{.Expression}}
+
+  - name: PodToAlert
+    start:
+      domain: k8s
+      classes: [Pod]
+    goal:
+      domain: alert
+    result:
+      query: |-
+        alert:alert:{"namespace":"{{.metadata.namespace}}","pod":"{{.metadata.name}}"}
+
+  - name: DeploymentToAlert
+    start:
+      domain: k8s
+      classes: [Deployment.apps]
+    goal:
+      domain: alert
+    result:
+      query: |-
+        alert:alert:{"namespace":"{{.metadata.namespace}}","deployment":"{{.metadata.name}}"}
+
+  - name: PodDisruptionBudgetToAlert
+    start:
+      domain: k8s
+      classes: [PodDisruptionBudget.v1.policy]
+    goal:
+      domain: alert
+    result:
+      query: |-
+        alert:alert:{"namespace":"{{.metadata.namespace}}","poddisruptionbudget":"{{.metadata.name}}"}
+
+  - name: DaemonSetToAlert
+    start:
+      domain: k8s
+      classes: [DaemonSet.apps]
+    goal:
+      domain: alert
+    result:
+      query: |-
+        alert:alert:{"namespace":"{{.metadata.namespace}}","daemonset":"{{.metadata.name}}"}
+
+  - name: StatefulSetToAlert
+    start:
+      domain: k8s
+      classes: [StatefulSet.apps]
+    goal:
+      domain: alert
+    result:
+      query: |-
+        alert:alert:{"namespace":"{{.metadata.namespace}}","statefulset":"{{.metadata.name}}"}
