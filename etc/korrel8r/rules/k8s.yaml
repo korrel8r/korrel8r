@@ -272,7 +272,7 @@ rules:
       query: |-
         k8s:{{.spec.names.kind}}.{{(index .spec.versions 0).name}}.{{.spec.group}}:{}
 
-statusRules:
+statusLabelers:
   - name: HasFinalizer
     start:
       domain: k8s

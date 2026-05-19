@@ -200,11 +200,11 @@ func (b *Builder) config(c *config.Config) {
 		// Defer adding rules until domains and stores are configured.
 		b.finally = append(b.finally, func() { b.configRule(r) })
 	}
-	for _, lr := range c.StatusRules {
+	for _, lr := range c.StatusLabelers {
 		if b.err != nil {
 			return
 		}
-		b.finally = append(b.finally, func() { b.configStatusRule(lr) })
+		b.finally = append(b.finally, func() { b.configStatusLabeler(lr) })
 	}
 }
 
@@ -230,13 +230,13 @@ func (b *Builder) configRule(r config.Rule) {
 	b.rules(rules.NewTemplateRule(start, goal, tmpl))
 }
 
-func (b *Builder) configStatusRule(r config.StatusRule) {
+func (b *Builder) configStatusLabeler(r config.StatusLabeler) {
 	if b.err != nil {
 		return
 	}
 	defer func() {
 		if b.err != nil {
-			b.err = fmt.Errorf("invalid label rule %v: %w", r.Name, b.err)
+			b.err = fmt.Errorf("invalid status labeler %v: %w", r.Name, b.err)
 		}
 	}()
 	start := b.classes(r.Name, &r.Start)

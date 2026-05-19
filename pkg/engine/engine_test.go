@@ -170,7 +170,7 @@ func TestEngine_LabelersFor(t *testing.T) {
 					Goal:   config.ClassSpec{Domain: "mock", Classes: []string{"b"}},
 					Result: config.ResultSpec{Query: `mock:b:x`},
 				}},
-				StatusRules: []config.StatusRule{
+				StatusLabelers: []config.StatusLabeler{
 					{
 						Name:   "label-a",
 						Start:  config.ClassSpec{Domain: "mock", Classes: []string{"a"}},
@@ -187,13 +187,63 @@ func TestEngine_LabelersFor(t *testing.T) {
 	require.NoError(t, err)
 
 	// Class a should have 2 labelers
-	statuses := e.StatusRulesFor(a)
+	statuses := e.StatusLabelersFor(a)
 	assert.Len(t, statuses, 2)
 	assert.Equal(t, "label-a", statuses[0].Name())
 	assert.Equal(t, "label-a2", statuses[1].Name())
 
-	// Class b should have no status rules
-	assert.Empty(t, e.StatusRulesFor(b))
+	// Class b should have no status labelers
+	assert.Empty(t, e.StatusLabelersFor(b))
+}
+
+func TestEngine_StatusLabeler_InvalidTemplate(t *testing.T) {
+	d := mock.NewDomain("mock", "a")
+	s := mock.NewStore(d)
+	_, err := engine.Build().Domains(d).Stores(s).
+		Config(config.Configs{
+			{
+				StatusLabelers: []config.StatusLabeler{
+					{
+						Name:   "bad",
+						Start:  config.ClassSpec{Domain: "mock", Classes: []string{"a"}},
+						Result: config.LabelResultSpec{Labels: `{{.bad`},
+					},
+				},
+			},
+		}).Engine()
+	assert.ErrorContains(t, err, "invalid status labeler")
+}
+
+func TestEngine_StatusLabeler_Traversal(t *testing.T) {
+	d := mock.NewDomain("mock", "a", "b")
+	a, b := d.Class("a"), d.Class("b")
+	s := mock.NewStore(d, a, b)
+	s.AddQuery("mock:b:y", []korrel8r.Object{"obj1", "obj2", "obj3"})
+	e, err := engine.Build().Domains(d).Stores(s).Rules(
+		mock.NewRule("a-b", list(a), list(b), mock.NewQuery(b, "y")),
+	).Config(config.Configs{
+		{
+			StatusLabelers: []config.StatusLabeler{
+				{
+					Name:  "labeler",
+					Start: config.ClassSpec{Domain: "mock", Classes: []string{"b"}},
+					Result: config.LabelResultSpec{Labels: `my-status`},
+				},
+			},
+		},
+	}).Engine()
+	require.NoError(t, err)
+
+	start := traverse.Start{Class: a, Objects: []korrel8r.Object{"x"}}
+	g, err := traverse.Goals(context.Background(), e, start, []korrel8r.Class{b})
+	require.NoError(t, err)
+
+	node := g.NodeFor(b)
+	require.NotNil(t, node)
+	assert.Len(t, node.Result.List(), 3)
+
+	qc := node.Queries["mock:b:y"]
+	assert.Equal(t, 3, qc.StatusCounts["my-status"])
 }
 
 // Mock object has a name and a timestamp.

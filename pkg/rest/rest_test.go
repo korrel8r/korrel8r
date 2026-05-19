@@ -230,7 +230,7 @@ func TestAPIGraphGoals_labels(t *testing.T) {
 		mock.NewRule("a-b", list(a), list(b), mock.NewQuery(b, "y")),
 	).Config(config.Configs{
 		{
-			StatusRules: []config.StatusRule{
+			StatusLabelers: []config.StatusLabeler{
 				{
 					Name:   "label-b",
 					Start:  config.ClassSpec{Domain: "mock", Classes: []string{"b"}},

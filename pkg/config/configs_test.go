@@ -82,13 +82,13 @@ func TestConfigs_Expand(t *testing.T) {
 	assert.Equal(t, want, c)
 }
 
-func TestLoad_statusRules(t *testing.T) {
-	c, err := Load("testdata/status-rules.yaml")
+func TestLoad_statusLabelers(t *testing.T) {
+	c, err := Load("testdata/status-labelers.yaml")
 	require.NoError(t, err)
 	want := Configs{
 		{
-			Source: "testdata/status-rules.yaml",
-			StatusRules: []StatusRule{
+			Source: "testdata/status-labelers.yaml",
+			StatusLabelers: []StatusLabeler{
 				{
 					Name:   "HasFinalizer",
 					Start:  ClassSpec{Domain: "k8s"},

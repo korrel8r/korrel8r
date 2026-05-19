@@ -352,6 +352,27 @@ The set of rules forms a graph connecting all the classes of data that korrel8r 
 Korrel8r works by traversing this graph: applying rules to some initial objects, executing the
 resulting queries, retrieving more objects and so on.
 
+[[_status_labelers_annotate_results]]
+=== Status labelers annotate results
+
+_Status labelers_ add summary labels to graph nodes during traversal.
+After each query returns results, labelers are applied to each result object.
+A labeler is a <<_about_templates,template>> that generates zero or more label strings from an object.
+
+For example, a labeler on `k8s:Pod` could label pods that have finalizers,
+and a labeler on `log:application` could label log entries by severity (Error, Warning).
+
+Labels appear as status counts in the result graph.
+Each node's query results include a list of `{status, count}` pairs
+showing how many result objects produced each label.
+This allows clients to display at-a-glance status information on graph nodes
+without needing to inspect every individual object.
+
+A labeler template that produces a blank string for an object simply contributes no labels for that object.
+Multiple labelers can apply to the same class; their labels accumulate independently.
+
+See <<_statuslabelers>> for configuration syntax.
+
 == Configuration
 
 Korrel8r loads configuration from a file or URL specified by the `--config` option:
@@ -453,6 +474,55 @@ The query template should generate a string of the form:
 The _query-details_ part depends on the domain, see <<_domain_reference>>
 
 // TODO: Examples
+
+=== statusLabelers
+
+.Labels to annotate graph nodes with status information.
+[source,yaml]
+----
+statusLabelers:
+  - name: "labeler_name" <1>
+    start: <2>
+      domain: "domain_name"
+      classes:
+        - "class_name"
+    result:
+      labels: "labels_template" <3>
+----
+
+<1> Name identifies the labeler in graphs and for debugging.
+<2> Start objects for this labeler must belong to one of the `classes` in the `domain`. If `classes` is omitted, the labeler applies to all classes in the domain.
+<3> A {go-template} applied to each result object. It should generate newline-separated label strings. Each unique label gets a count of how many times it appeared.
+
+Status labelers are applied during graph traversal to annotate nodes with summary information about the objects they contain.
+See <<_status_labelers_annotate_results>> for details.
+
+.Example: Label Kubernetes resources that have finalizers
+[source,yaml]
+----
+statusLabelers:
+  - name: HasFinalizer
+    start:
+      domain: k8s
+    result:
+      labels: |-
+        {{- with index .metadata "finalizers"}}Finalizer{{end}}
+----
+
+.Example: Label log entries by severity
+[source,yaml]
+----
+statusLabelers:
+  - name: LogSeverity
+    start:
+      domain: log
+    result:
+      labels: |-
+        {{- $s := or (index . "level") (index . "severity_text") ""}}
+        {{- if or (eq $s "error") (eq $s "ERROR")}}Error
+        {{- else if or (eq $s "warning") (eq $s "WARNING")}}Warning
+        {{- end}}
+----
 
 === aliases
 

@@ -145,7 +145,7 @@ func (x ruleTest) Run(t *testing.T) {
 	})
 }
 
-type statusRuleTest struct {
+type statusLabelerTest struct {
 	rule   string
 	class  string
 	domain korrel8r.Domain
@@ -153,7 +153,7 @@ type statusRuleTest struct {
 	want   []string
 }
 
-func (x statusRuleTest) Run(t *testing.T) {
+func (x statusLabelerTest) Run(t *testing.T) {
 	t.Helper()
 	t.Run(fmt.Sprintf("%v(%v)", x.rule, test.JSONString(x.start)), func(t *testing.T) {
 		t.Helper()
@@ -167,13 +167,13 @@ func (x statusRuleTest) Run(t *testing.T) {
 			return
 		}
 		var m status.Rule
-		for _, mm := range e.StatusRulesFor(c) {
+		for _, mm := range e.StatusLabelersFor(c) {
 			if mm.Name() == x.rule {
 				m = mm
 				break
 			}
 		}
-		if !assert.NotNil(t, m, "missing status rule: "+x.rule) {
+		if !assert.NotNil(t, m, "missing status labeler: "+x.rule) {
 			return
 		}
 		got, err := m.Apply(x.start)
