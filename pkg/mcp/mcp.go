@@ -330,7 +330,7 @@ and include it as context for further planning or actions.
 			if err != nil {
 				return nil, nil, err
 			}
-			state := ss.ConsoleState.Get()
+			state := ss.ConsoleState.Load()
 			if state == nil {
 				return nil, nil, errors.New("not connected to console")
 			}
@@ -356,7 +356,12 @@ Use 'help' to learn the class and query syntax for each domain.
 			if err := rest.ConsoleOK(ss.Engine, &input); err != nil {
 				return errorResult(err), nil, err
 			}
-			ss.ConsoleRequest.Set(&input)
+			// Drain any stale request, then send the new one.
+			select {
+			case <-ss.ConsoleRequest:
+			default:
+			}
+			ss.ConsoleRequest <- &input
 			return nil, nil, nil
 		})
 }

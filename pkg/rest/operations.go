@@ -231,7 +231,7 @@ func (a *API) SetConsole(c *gin.Context) {
 	if !check(c, http.StatusBadRequest, ConsoleOK(s.Engine, state)) {
 		return
 	}
-	s.ConsoleState.Set(state)
+	s.ConsoleState.Store(state)
 	c.JSON(http.StatusOK, state)
 }
 
@@ -260,14 +260,9 @@ func (a *API) ConsoleEvents(c *gin.Context) {
 	log.V(3).Info("Console events started")
 	defer log.V(3).Info("Console events stopped")
 
-	state, next := s.ConsoleRequest.GetChan()
-	if !check(c, http.StatusInternalServerError, a.sendEvent(w, state)) {
-		return
-	}
 	for {
 		select {
-		case <-next: // Wait for an new value
-			state, next = s.ConsoleRequest.GetChan()
+		case state := <-s.ConsoleRequest:
 			if !check(c, http.StatusInternalServerError, a.sendEvent(w, state)) {
 				return
 			}
