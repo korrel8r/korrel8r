@@ -23,7 +23,6 @@ import (
 	"github.com/korrel8r/korrel8r/pkg/api"
 	"github.com/korrel8r/korrel8r/pkg/auth"
 	"github.com/korrel8r/korrel8r/pkg/engine"
-	"github.com/korrel8r/korrel8r/pkg/waitable"
 )
 
 var log = logging.Log()
@@ -36,8 +35,8 @@ type Console struct {
 type Session struct {
 	ID             string // Session ID - a username or hashed authorization token.
 	Engine         *engine.Engine
-	ConsoleState   *waitable.Value[*api.Console] // Actual console state
-	ConsoleRequest *waitable.Value[*api.Console] // Requested by agent.
+	ConsoleState   atomic.Pointer[api.Console]   // Current console state
+	ConsoleRequest chan *api.Console // Buffered channel, requested by agent.
 
 	lastUsed atomic.Int64 // UnixNano timestamp for expiration, atomic for lock-free access.
 }
@@ -70,8 +69,7 @@ func newSession(e *engine.Engine, id string) *Session {
 	return &Session{
 		ID:             id,
 		Engine:         e,
-		ConsoleState:   waitable.NewValue[*api.Console](nil),
-		ConsoleRequest: waitable.NewValue[*api.Console](nil),
+		ConsoleRequest: make(chan *api.Console, 1),
 	}
 }
 
