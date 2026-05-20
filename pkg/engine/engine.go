@@ -120,8 +120,8 @@ func (e *Engine) Rules() []korrel8r.Rule { return slices.Clone(e.rules) }
 
 func (e *Engine) Rule(name string) korrel8r.Rule { return e.rulesByName[name] }
 
-// StatusRulesFor returns the status rules for the given class.
-func (e *Engine) StatusRulesFor(c korrel8r.Class) []status.Rule { return e.statuses[c.String()] }
+// StatusLabelersFor returns the status labelers for the given class.
+func (e *Engine) StatusLabelersFor(c korrel8r.Class) []status.Rule { return e.statuses[c.String()] }
 
 // Graph creates a new graph of the engine's rules.
 func (e *Engine) Graph() *graph.Graph { return graph.NewData(e.Rules()...).FullGraph() }

@@ -17,8 +17,8 @@ type Config struct {
 	// Include lists additional configuration files or URLs to include.
 	Include []string `json:"include,omitempty"`
 
-	// StatusRules generate statuses from Objects to annotate graph nodes.
-	StatusRules []StatusRule `json:"statusRules,omitempty"`
+	// StatusLabelers generate statuses from Objects to annotate graph nodes.
+	StatusLabelers []StatusLabeler `json:"statusLabelers,omitempty"`
 
 	// Tuning section has limits and optimizations.
 	// NOTE: This section is only allowed in the top-level configuration.
@@ -99,11 +99,11 @@ type Class struct {
 	Classes []string `json:"classes"`
 }
 
-// StatusRule configures a template that generates statuses for graph nodes.
+// StatusLabeler configures a template that generates statuses for graph nodes.
 //
 // The template is applied to objects of the start class. It should generate newline-separated
 // label strings. Each unique label gets a count of how many times it appeared.
-type StatusRule struct {
+type StatusLabeler struct {
 	// Name is a short, descriptive name.
 	Name string `json:"name,omitempty"`
 

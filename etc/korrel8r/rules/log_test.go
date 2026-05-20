@@ -59,8 +59,8 @@ func TestLogRules(t *testing.T) {
 	}
 }
 
-func TestLogStatusRules(t *testing.T) {
-	for _, x := range []statusRuleTest{
+func TestLogStatusLabelers(t *testing.T) {
+	for _, x := range []statusLabelerTest{
 		{
 			rule:   "LogSeverity",
 			domain: log.Domain,

@@ -1,4 +1,4 @@
-statusRules:
+statusLabelers:
   - name: HasFinalizer
     start:
       domain: k8s

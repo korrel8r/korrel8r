@@ -260,8 +260,8 @@ func TestK8sRules(t *testing.T) {
 	}
 }
 
-func TestK8sStatusRules(t *testing.T) {
-	for _, x := range []statusRuleTest{
+func TestK8sStatusLabelers(t *testing.T) {
+	for _, x := range []statusLabelerTest{
 		{
 			rule:  "HasFinalizer",
 			class: "Pod",

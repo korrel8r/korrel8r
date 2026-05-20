@@ -170,8 +170,8 @@ func (w *worker) Run(ctx context.Context) {
 		w.inbox.Clear()
 		w.processed = len(w.node.Result.List())
 	}()
-	// Process queries from inbox, apply status rules per query.
-	statusRules := w.engine.StatusRulesFor(w.node.Class)
+	// Process queries from inbox, apply status labelers per query.
+	statusLabelers := w.engine.StatusLabelersFor(w.node.Class)
 	for _, ql := range w.inbox.List {
 		if ctx.Err() != nil {
 			return
@@ -186,7 +186,7 @@ func (w *worker) Run(ctx context.Context) {
 		}
 		statusCounts := map[string]int{}
 		for _, o := range result {
-			for _, r := range statusRules {
+			for _, r := range statusLabelers {
 				statuses, _ := r.Apply(o)
 				for _, s := range statuses {
 					statusCounts[s]++
