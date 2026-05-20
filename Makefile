@@ -32,13 +32,13 @@ GEN_OPENAPI_API=pkg/api/gen-openapi.go
 GEN_OPENAPI_IMPL=pkg/rest/gen-openapi.go
 GENERATED=$(VERSION_TXT) $(GEN_OPENAPI_IMPL) $(GEN_OPENAPI_API)
 
+all: _site test image-build			## Build and test everything locally. Recommended before commit.
+
 generate:  $(GENERATED)
 	$(MAKE) kustomize-edit
 
 $(OPENAPI_SPEC): $(VERSION_TXT) # Stamp x-korrel8r-version in the OpenAPI spec.
 	@sed -i -e '/x-korrel8r-version/d' -e '/^  version: /a\  x-korrel8r-version: "$(VERSION)"' $@
-
-all: test _site image-build ## Build and test everything locally. Recommended before commit.
 
 build: lint $(BIN)				## Build korrel8r executable.
 	go build -o $(BIN)/korrel8r ./cmd/korrel8r

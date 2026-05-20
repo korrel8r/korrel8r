@@ -107,3 +107,11 @@ rules:
     result:
       query: |-
         alert:alert:{"namespace":"{{.metadata.namespace}}","statefulset":"{{.metadata.name}}"}
+
+statusRules:
+  - name: AlertSeverity
+    start:
+      domain: alert
+    result:
+      labels: |-
+        {{with .Labels.severity}}{{if ne . "none"}}{{.}}{{end}}{{end}}
