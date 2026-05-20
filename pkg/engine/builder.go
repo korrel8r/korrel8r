@@ -244,7 +244,7 @@ func (b *Builder) configStatusRule(r config.StatusRule) {
 		return
 	}
 	var tmpl *template.Template
-	tmpl, b.err = b.e.NewTemplate(r.Name).Parse(r.Result.Labels)
+	tmpl, b.err = b.e.NewTemplate(r.Name).Parse(r.Status)
 	if b.err != nil {
 		return
 	}

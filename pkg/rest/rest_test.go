@@ -234,7 +234,7 @@ func TestAPIGraphGoals_labels(t *testing.T) {
 				{
 					Name:   "label-b",
 					Start:  config.ClassSpec{Domain: "mock", Classes: []string{"b"}},
-					Result: config.LabelResultSpec{Labels: `my-label`},
+					Status: `my-label`,
 				},
 			},
 		},
