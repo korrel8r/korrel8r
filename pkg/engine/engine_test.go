@@ -174,12 +174,12 @@ func TestEngine_LabelersFor(t *testing.T) {
 					{
 						Name:   "label-a",
 						Start:  config.ClassSpec{Domain: "mock", Classes: []string{"a"}},
-						Result: config.LabelResultSpec{Labels: `label-from-a`},
+						Status: `label-from-a`,
 					},
 					{
 						Name:   "label-a2",
 						Start:  config.ClassSpec{Domain: "mock", Classes: []string{"a"}},
-						Result: config.LabelResultSpec{Labels: `another-label`},
+						Status: `another-label`,
 					},
 				},
 			},

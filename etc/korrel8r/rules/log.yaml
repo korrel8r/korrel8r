@@ -35,9 +35,8 @@ statusRules:
   - name: LogSeverity
     start:
       domain: log
-    result:
-      labels: |-
-        {{- $s := or (index . "level") (index . "severity_text") ""}}
-        {{- if or (eq $s "error") (eq $s "err") (eq $s "ERROR") (eq $s "ERR") (eq $s "Error") (eq $s "critical") (eq $s "fatal") (eq $s "CRITICAL") (eq $s "FATAL")}}Error
-        {{- else if or (eq $s "warning") (eq $s "warn") (eq $s "WARNING") (eq $s "WARN") (eq $s "Warning")}}Warning
-        {{- end}}
+    status: |-
+      {{- $s := or (index . "level") (index . "severity_text") ""}}
+      {{- if or (eq $s "error") (eq $s "err") (eq $s "ERROR") (eq $s "ERR") (eq $s "Error") (eq $s "critical") (eq $s "fatal") (eq $s "CRITICAL") (eq $s "FATAL")}}Error
+      {{- else if or (eq $s "warning") (eq $s "warn") (eq $s "WARNING") (eq $s "WARN") (eq $s "Warning")}}Warning
+      {{- end}}

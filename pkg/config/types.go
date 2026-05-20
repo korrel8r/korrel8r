@@ -110,14 +110,8 @@ type StatusRule struct {
 	// Start specifies the set of classes that this rule can apply to.
 	Start ClassSpec `json:"start"`
 
-	// Result contains the template to generate labels.
-	Result LabelResultSpec `json:"result"`
-}
-
-// LabelResultSpec contains a template to generate labels.
-type LabelResultSpec struct {
-	// Labels template generates newline-separated label strings.
-	Labels string `json:"labels"`
+	// Status is a template that generates the status label string.
+	Status string `json:"status"`
 }
 
 // Tuning section for limits and optimizations.

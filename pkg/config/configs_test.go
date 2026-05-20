@@ -92,12 +92,12 @@ func TestLoad_statusRules(t *testing.T) {
 				{
 					Name:   "HasFinalizer",
 					Start:  ClassSpec{Domain: "k8s"},
-					Result: LabelResultSpec{Labels: "{{- with .metadata.finalizers}}has-finalizer{{end}}"},
+					Status: "{{- with .metadata.finalizers}}has-finalizer{{end}}",
 				},
 				{
 					Name:   "PodPhase",
 					Start:  ClassSpec{Domain: "k8s", Classes: []string{"Pod"}},
-					Result: LabelResultSpec{Labels: "phase-{{.status.phase}}"},
+					Status: "phase-{{.status.phase}}",
 				},
 			},
 		},

@@ -276,14 +276,12 @@ statusRules:
   - name: HasFinalizer
     start:
       domain: k8s
-    result:
-      labels: |-
-        {{- with index .metadata "finalizers"}}Finalizer{{end}}
+    status: |-
+      {{- with index .metadata "finalizers"}}Finalizer{{end}}
 
   - name: EventType
     start:
       domain: k8s
       classes: [Event.v1, Event.v1.events.k8s.io]
-    result:
-      labels: |-
-        {{- with index . "type"}}{{if ne . "Normal"}}{{.}}{{end}}{{end}}
+    status: |-
+      {{- with index . "type"}}{{if ne . "Normal"}}{{.}}{{end}}{{end}}

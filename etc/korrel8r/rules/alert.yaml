@@ -112,6 +112,5 @@ statusRules:
   - name: AlertSeverity
     start:
       domain: alert
-    result:
-      labels: |-
-        {{with .Labels.severity}}{{if ne . "none"}}{{.}}{{end}}{{end}}
+    status: |-
+      {{with .Labels.severity}}{{if ne . "none"}}{{.}}{{end}}{{end}}
