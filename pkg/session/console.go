@@ -12,7 +12,7 @@ import (
 	"github.com/korrel8r/korrel8r/pkg/api"
 )
 
-var NoConsoleErr = errors.New("no console is connected")
+var ErrNoConsole = errors.New("no console is connected")
 
 // consoleEvents implements the MCP-to-REST and REST-to-MCP pathways through a session.
 type consoleEvents struct {
@@ -40,7 +40,7 @@ func (c *consoleEvents) ShowInConsole(ctx context.Context, update *api.Console) 
 		c.mu.Unlock()
 
 		if listenerCtx == nil {
-			return NoConsoleErr
+			return ErrNoConsole
 		}
 
 		select {

@@ -7,6 +7,7 @@ import (
 	_ "embed"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"strings"
@@ -25,6 +26,7 @@ import (
 	v1 "github.com/prometheus/client_golang/api/prometheus/v1"
 	"github.com/prometheus/common/model"
 	k8sclient "sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/yaml"
 )
 
 var (
@@ -233,7 +235,10 @@ func (s *Store) getLokiRulesForTenant(ctx context.Context, tenant string, namesp
 	// Add namespace query parameters if we have any
 	if len(namespaces) > 0 {
 		queryParams := rulesURL.Query()
-		k8s.AddNamespaceParams(queryParams, namespaces)
+		// Loki Ruler uses kubernetes_namespace_name parameter, not namespace
+		for ns := range namespaces {
+			queryParams.Add("kubernetes_namespace_name", ns)
+		}
 		rulesURL.RawQuery = queryParams.Encode()
 	}
 
@@ -255,20 +260,26 @@ func (s *Store) getLokiRulesForTenant(ctx context.Context, tenant string, namesp
 		return v1.RulesResult{}, fmt.Errorf("loki ruler request returned status %d", resp.StatusCode)
 	}
 
-	// Parse response - Loki Ruler uses the same format as Prometheus
-	var apiResp struct {
-		Status string         `json:"status"`
-		Data   v1.RulesResult `json:"data"`
-	}
-	if err := json.NewDecoder(resp.Body).Decode(&apiResp); err != nil {
-		return v1.RulesResult{}, fmt.Errorf("failed to decode Loki rules response: %w", err)
+	// Parse response - Loki Ruler returns YAML format (different from Prometheus JSON)
+	// Response structure: map[filename.yaml][]RuleGroup
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return v1.RulesResult{}, fmt.Errorf("failed to read Loki rules response: %w", err)
 	}
 
-	if apiResp.Status != "success" {
-		return v1.RulesResult{}, fmt.Errorf("loki ruler API returned status: %s", apiResp.Status)
+	// Parse YAML response
+	var rulesMap map[string][]v1.RuleGroup
+	if err := yaml.Unmarshal(body, &rulesMap); err != nil {
+		return v1.RulesResult{}, fmt.Errorf("failed to unmarshal Loki rules YAML: %w", err)
 	}
 
-	return apiResp.Data, nil
+	// Flatten all rule groups from all files into a single result
+	var result v1.RulesResult
+	for _, groups := range rulesMap {
+		result.Groups = append(result.Groups, groups...)
+	}
+
+	return result, nil
 }
 
 // getLokiRules queries the Loki Ruler API for alerting rules across all tenants.
@@ -342,7 +353,7 @@ func extractNamespacesFromQuery(q Query) map[string]bool {
 
 // getRulesWithNamespaceFilter queries the Rules API with namespace filtering.
 // This is used for non-admin users on port 9093 which requires namespace parameters.
-func (s *Store) getRulesWithNamespaceFilter(ctx context.Context, promAPI v1.API, q Query) (v1.RulesResult, error) {
+func (s *Store) getRulesWithNamespaceFilter(ctx context.Context, q Query) (v1.RulesResult, error) {
 	// Extract unique namespaces from all subqueries
 	namespaces := extractNamespacesFromQuery(q)
 
@@ -428,26 +439,39 @@ func (s *Store) Get(ctx context.Context, query korrel8r.Query, c *korrel8r.Const
 		// Admin users: use the Rules API without namespace filtering (port 9091)
 		prometheusRules, err = promAPI.Rules(ctx)
 		if err != nil {
-			return fmt.Errorf("failed to query rules from Prometheus API: %w", err)
+			// Log at level 0 (always visible) for admin users - this is unexpected
+			log.V(0).Info("failed to query Prometheus rules (admin access)", "error", err)
 		}
 	} else {
 		// Non-admin users: use the Rules API with namespace filtering (port 9093)
-		prometheusRules, err = s.getRulesWithNamespaceFilter(ctx, promAPI, q)
+		prometheusRules, err = s.getRulesWithNamespaceFilter(ctx, q)
 		if err != nil {
-			return fmt.Errorf("failed to query rules with namespace filter: %w", err)
+			// Log at level 1 for non-admin users - might be expected RBAC limitation
+			log.V(1).Info("failed to query Prometheus rules with namespace filter", "error", err)
 		}
 	}
 
 	// Query Loki Ruler (if configured)
-	lokiRules, err := s.getLokiRules(ctx, namespaces)
-	if err != nil {
-		// Log error but don't fail - Loki Ruler is optional
-		log.V(3).Info("failed to query Loki ruler", "error", err)
+	var lokiRules v1.RulesResult
+	if len(namespaces) == 0 {
+		// Loki Ruler requires namespace for authorization - skip if not provided
+		log.V(1).Info("skipping Loki Ruler query - namespace required for Loki alert authorization")
+	} else {
+		lokiRules, err = s.getLokiRules(ctx, namespaces)
+		if err != nil {
+			// Log error but don't fail - Loki Ruler is optional
+			log.V(3).Info("failed to query Loki ruler", "error", err)
+		}
 	}
 
 	// Merge Prometheus and Loki rules
 	allRules := v1.RulesResult{
 		Groups: append(prometheusRules.Groups, lokiRules.Groups...),
+	}
+
+	// Warn if no rules found from any source
+	if len(allRules.Groups) == 0 {
+		log.V(0).Info("no alert rules found - check Prometheus and Loki Ruler access permissions")
 	}
 
 	for _, subquery := range q.Parsed {
@@ -468,6 +492,7 @@ func (s *Store) Get(ctx context.Context, query korrel8r.Query, c *korrel8r.Const
 }
 
 func (s *Store) getSubquery(ctx context.Context, prometheusRules v1.RulesResult, subQuery map[string]string) ([]*Object, error) {
+	// PRIMARY: Extract alerts from Rules API (works for Prometheus)
 	var alerts []*Object
 	for _, rg := range prometheusRules.Groups {
 		for _, r := range rg.Rules {
@@ -491,22 +516,60 @@ func (s *Store) getSubquery(ctx context.Context, prometheusRules v1.RulesResult,
 		}
 	}
 
-	// Gather matching alerts from the Alertmanager API and merge with the existing alerts.
-	// This is optional - if the user doesn't have access to Alertmanager, we'll just
-	// return alerts from the Rules API without timing information.
+	// Build Alertmanager filters from subQuery
 	var filters []string
 	for k, v := range subQuery {
 		filters = append(filters, fmt.Sprintf("%v=%v", k, v))
 	}
-	alertManagerAlerts, err := s.alertmanagerAPI.Alert.GetAlerts(alert.NewGetAlertsParamsWithContext(ctx).WithFilter(filters))
-	if err != nil {
-		// Log the error but don't fail - Alertmanager access may be restricted
-		// Non-admin users may not have access to Alertmanager
-		// Return alerts from Rules API only
+
+	// FALLBACK: If Rules API returned NO alerts, try Alertmanager
+	// This handles Loki case where Rules API has no ar.Alerts field
+	if len(alerts) == 0 {
+		log.V(3).Info("no alerts from Rules API, trying Alertmanager fallback")
+		alertManagerAlerts, err := s.alertmanagerAPI.Alert.GetAlerts(alert.NewGetAlertsParamsWithContext(ctx).WithFilter(filters))
+		if err != nil {
+			log.V(3).Info("failed to query Alertmanager for fallback", "error", err)
+			return alerts, nil // Return empty, don't fail
+		}
+		// Create Objects from Alertmanager alerts
+		for _, ama := range alertManagerAlerts.Payload {
+			// Check if alert matches subQuery
+			matches := true
+			for k, v := range subQuery {
+				if ama.Labels[k] != v {
+					matches = false
+					break
+				}
+			}
+			if !matches {
+				continue
+			}
+
+			// Create minimal Object with labels/annotations
+			obj := &Object{
+				Labels:      make(map[string]string, len(ama.Labels)),
+				Annotations: make(map[string]string, len(ama.Annotations)),
+			}
+			for k, v := range ama.Labels {
+				obj.Labels[k] = v
+			}
+			for k, v := range ama.Annotations {
+				obj.Annotations[k] = v
+			}
+			// Populate timing, receivers, status using existing augmentAlert logic
+			s.augmentAlert(obj, alertManagerAlerts)
+			alerts = append(alerts, obj)
+		}
 	} else {
-		// Augment alerts with Alertmanager data if available
-		for _, pa := range alerts {
-			s.augmentAlert(pa, alertManagerAlerts)
+		// AUGMENT: If we got alerts from Rules API, augment with Alertmanager timing data
+		alertManagerAlerts, err := s.alertmanagerAPI.Alert.GetAlerts(alert.NewGetAlertsParamsWithContext(ctx).WithFilter(filters))
+		if err != nil {
+			// Log the error but don't fail - Alertmanager access may be restricted
+			log.V(3).Info("failed to augment alerts from Alertmanager", "error", err)
+		} else {
+			for _, pa := range alerts {
+				s.augmentAlert(pa, alertManagerAlerts)
+			}
 		}
 	}
 	return alerts, nil

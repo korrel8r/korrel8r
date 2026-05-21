@@ -17,7 +17,7 @@ rules:
       classes: [Pod.v1]
     result:
       query: |-
-        k8s:Pod.v1:{namespace: "{{.Labels.namespace}}", name: "{{.Labels.pod}}"}
+        k8s:Pod.v1:{namespace: "{{or (index .Labels "kubernetes_namespace_name") (index .Labels "namespace")}}", name: "{{or (index .Labels "kubernetes_pod_name") (index .Labels "pod")}}"}
 
   - name: AlertToPodDisruptionBudget
     start:
@@ -67,6 +67,16 @@ rules:
     result:
       query: |-
         alert:alert:{"namespace":"{{.metadata.namespace}}","pod":"{{.metadata.name}}"}
+
+  - name: PodToLokiAlert
+    start:
+      domain: k8s
+      classes: [Pod]
+    goal:
+      domain: alert
+    result:
+      query: |-
+        alert:alert:{"namespace":"{{.metadata.namespace}}","kubernetes_pod_name":"{{.metadata.name}}"}
 
   - name: DeploymentToAlert
     start:
