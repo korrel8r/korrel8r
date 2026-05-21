@@ -4,15 +4,13 @@
 // Each session has a numeric ID for logging and a string Key for map lookup.
 // Sessions expire after a configurable timeout of inactivity.
 //
-// Session key resolution follows this priority:
-//  1. Bearer token resolved via TokenReview to username
-//  2. Hashed Authorization header
+// Session key is the username resolved from a bearer token via TokenReview.
 package session
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/base64"
+	"errors"
+	"fmt"
 	"net/http"
 	"sync"
 	"sync/atomic"
@@ -20,25 +18,24 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/korrel8r/korrel8r/internal/pkg/logging"
-	"github.com/korrel8r/korrel8r/pkg/api"
 	"github.com/korrel8r/korrel8r/pkg/auth"
 	"github.com/korrel8r/korrel8r/pkg/engine"
 )
 
 var log = logging.Log()
 
-// Console state, passes values between REST and MCP operations.
-type Console struct {
-}
+// AuthError wraps authentication errors so middleware can distinguish them from other session errors.
+type AuthError struct{ Err error }
+
+func (e *AuthError) Error() string { return e.Err.Error() }
+func (e *AuthError) Unwrap() error { return e.Err }
 
 // Session holds per-user state including engine, console state, and configuration.
 type Session struct {
-	ID             string // Session ID - a username or hashed authorization token.
-	Engine         *engine.Engine
-	ConsoleState   atomic.Pointer[api.Console]   // Current console state
-	ConsoleRequest chan *api.Console // Buffered channel, requested by agent.
-
+	ID       string // Session ID - a username or hashed authorization token.
+	Engine   *engine.Engine
 	lastUsed atomic.Int64 // UnixNano timestamp for expiration, atomic for lock-free access.
+	*consoleEvents
 }
 
 func (s *Session) String() string { return s.ID }
@@ -67,14 +64,15 @@ type singleManager struct {
 
 func newSession(e *engine.Engine, id string) *Session {
 	return &Session{
-		ID:             id,
-		Engine:         e,
-		ConsoleRequest: make(chan *api.Console, 1),
+		ID:            id,
+		Engine:        e,
+		consoleEvents: newConsoleEvents(),
 	}
 }
 
-// NewSingle returns a Manager that always returns the same session.
-func NewSingle(e *engine.Engine) Manager {
+// NewSingleManager returns a Manager that always returns the same session.
+// There is no session isolation.
+func NewSingleManager(e *engine.Engine) Manager {
 	return &singleManager{session: newSession(e, "")}
 }
 
@@ -100,49 +98,36 @@ type poolManager struct {
 	lastCleanup atomic.Int64
 }
 
-// NewPool creates a Manager that creates a new Session per key using factory
-// and expires sessions after timeout of inactivity.
-// timeout == 0 means never time out.
-// Automatically attempts to use k8s TokenReview for bearer token resolution.
-func NewPool(timeout time.Duration, factory func() (*engine.Engine, error)) Manager {
-	tokenReview, err := auth.NewTokenReview()
-	if err != nil {
-		log.V(1).Info("TokenReview not available, using hashed token as session ID", "error", err)
-	}
-	return NewPoolWithTokenReview(timeout, factory, tokenReview)
+// NewTokenReviewManager creates a Manager that creates per-user sessions
+// using bearer tokens and TokenReview to find the owning user-id.
+func NewTokenReviewManager(tokenReview *auth.TokenReview, timeout time.Duration, factory func() (*engine.Engine, error)) Manager {
+	return Manager(&poolManager{timeout: timeout, tokenReview: tokenReview, factory: factory})
 }
 
-// NewPoolWithTokenReview is like NewPool but uses the provided TokenReview
-// instead of creating one automatically. Pass nil to disable token resolution.
-func NewPoolWithTokenReview(timeout time.Duration, factory func() (*engine.Engine, error), tr *auth.TokenReview) Manager {
-	return &poolManager{
-		timeout:     timeout,
-		tokenReview: tr,
-		factory:     factory,
-	}
-}
-
-// id returns session ID for context
-func (m *poolManager) id(ctx context.Context) string {
-	token := auth.ContextToken(ctx)
-	if token == "" {
-		log.V(3).Info("No bearer token found, using generic session")
-		return ""
-	}
-	if m.tokenReview != nil {
-		userName, err := m.tokenReview.User(token)
-		if err == nil {
-			return userName
+func (m *poolManager) id(ctx context.Context) (id string, err error) {
+	defer func() {
+		if err != nil {
+			err = &AuthError{Err: fmt.Errorf("session authentication error: %w", err)}
 		}
-		log.V(3).Info("Token review error", "error", err)
+	}()
+	token := auth.ContextToken(ctx)
+	switch {
+	case token == "":
+		return "", errors.New("no bearer token in request")
+	case m.tokenReview == nil:
+		return "", errors.New("TokenReview is not available")
+	default:
+		return m.tokenReview.User(token)
 	}
-	log.V(3).Info("Cannot determine username, session ID is hashed token")
-	return hashToken(token)
 }
 
 // Get returns the Session for the given context, creating a new session if needed.
 func (m *poolManager) Get(ctx context.Context) (*Session, error) {
-	id := m.id(ctx)
+	id, err := m.id(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	v, _ := m.sessions.LoadOrStore(id, &entry{})
 	e := v.(*entry)
 	e.once.Do(func() {
@@ -189,11 +174,6 @@ func (m *poolManager) maybeCleanup(now int64) {
 	})
 }
 
-func hashToken(token string) string {
-	h := sha256.Sum256([]byte(token))
-	return base64.RawURLEncoding.EncodeToString(h[:])
-}
-
 type sessionKey struct{}
 
 // UpdateRequest adds session and timeout to request context.
@@ -217,7 +197,12 @@ func Middleware(sessions Manager) func(*gin.Context) {
 		c.Request = auth.UpdateRequest(c.Request)
 		req, cancel, err := UpdateRequest(c.Request, sessions)
 		if err != nil {
-			c.AbortWithStatusJSON(http.StatusInternalServerError, c.Error(err).JSON())
+			status := http.StatusInternalServerError
+			var authErr *AuthError
+			if errors.As(err, &authErr) {
+				status = http.StatusUnauthorized
+			}
+			c.AbortWithStatusJSON(status, c.Error(err).JSON())
 			return
 		}
 		defer cancel()

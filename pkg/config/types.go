@@ -118,6 +118,10 @@ type StatusRule struct {
 type Tuning struct {
 	// RequestTimeout cancels requests if they last longer than this timeout.
 	// If omitted or 0, requests never time out.
+	//
+	// This applies to all HTTP operations including long-lived SSE subscriptions,
+	// so it should be set generously as a safety net against resource exhaustion,
+	// not as a tight operational limit.
 	RequestTimeout Duration `json:"requestTimeout,omitempty"`
 
 	// SessionTimeout sets the idle timeout for sessions.
@@ -126,4 +130,8 @@ type Tuning struct {
 	// In server mode, the Authorization header of incoming REST or MCP requests identifies a session.
 	// Each session has a separate search engine, configuration and state.
 	SessionTimeout Duration `json:"sessionTimeout,omitempty"`
+
+	// UnsafeSharedSession skips authentication and uses a single shared session for all requests.
+	// WARNING: This disables per-user session isolation and should only be used for development or testing.
+	UnsafeSharedSession bool `json:"unsafeSharedSession,omitempty"`
 }

@@ -251,7 +251,7 @@ func (s *Store) getLokiRulesForTenant(ctx context.Context, tenant string, namesp
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
-		log.V(1).Info("Loki ruler request returned non-OK status", "status", resp.StatusCode, "url", rulesURL.String())
+		log.V(5).Info("Loki ruler request returned non-OK status", "status", resp.StatusCode, "url", rulesURL.String())
 		return v1.RulesResult{}, fmt.Errorf("loki ruler request returned status %d", resp.StatusCode)
 	}
 

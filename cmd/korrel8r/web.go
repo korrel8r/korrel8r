@@ -13,6 +13,7 @@ import (
 	"github.com/korrel8r/korrel8r/internal/pkg/build"
 	"github.com/korrel8r/korrel8r/internal/pkg/must"
 	"github.com/korrel8r/korrel8r/internal/pkg/tlsprofile"
+	"github.com/korrel8r/korrel8r/pkg/auth"
 	"github.com/korrel8r/korrel8r/pkg/config"
 	"github.com/korrel8r/korrel8r/pkg/engine"
 	"github.com/korrel8r/korrel8r/pkg/mcp"
@@ -61,16 +62,27 @@ var webCmd = &cobra.Command{
 			panic(fmt.Errorf("--tls-min-version, --tls-cipher-suites, and --tls-curves are not allowed with --http"))
 		}
 
-		// Use session timeout from initial configuration.
+		// Get session values from from top-level configuration
 		var timeout time.Duration
 		configs := must.Must1(config.Load(*configFlag))
 		if len(configs) > 0 && configs[0].Tuning != nil {
 			timeout = time.Duration(configs[0].Tuning.SessionTimeout)
+			if configs[0].Tuning.UnsafeSharedSession {
+				*unsafeSharedSessionFlag = true
+			}
 		}
-		sessions := session.NewPool(
-			timeout,
-			func() (*engine.Engine, error) { return newEngineWithConfigs(configs) },
-		)
+		var sessions session.Manager
+		if *unsafeSharedSessionFlag {
+			e := must.Must1(newEngineWithConfigs(configs))
+			sessions = session.NewSingleManager(e)
+		} else {
+			factory := func() (*engine.Engine, error) { return newEngineWithConfigs(configs) }
+			tokenReview, err := auth.NewTokenReview()
+			if err != nil {
+				panic(fmt.Errorf("cannot create token-based sessions: %w\nUse --unsafe-shared-session to run without authentication", err))
+			}
+			sessions = session.NewTokenReviewManager(tokenReview, timeout, factory)
+		}
 
 		gin.SetMode(gin.ReleaseMode)
 		router := gin.New()
@@ -101,15 +113,16 @@ var webCmd = &cobra.Command{
 }
 
 var (
-	httpFlag, httpsFlag *string
-	certFlag, keyFlag   *string
-	specFlag            *string
-	mcpFlag             *bool
-	restFlag            *bool
-	tlsMinVersionFlag   *string
-	tlsCipherSuitesFlag *[]string
-	tlsCurvesFlag       *[]string
-	WebProfile          func()
+	httpFlag, httpsFlag     *string
+	certFlag, keyFlag       *string
+	specFlag                *string
+	mcpFlag                 *bool
+	restFlag                *bool
+	unsafeSharedSessionFlag *bool
+	tlsMinVersionFlag       *string
+	tlsCipherSuitesFlag     *[]string
+	tlsCurvesFlag           *[]string
+	WebProfile              func()
 )
 
 func init() {
@@ -120,6 +133,7 @@ func init() {
 	keyFlag = webCmd.Flags().String("key", "", "Private key (PEM format) for https")
 	mcpFlag = webCmd.Flags().Bool("mcp", true, "Enable MCP streamable HTTP protocol on "+mcp.StreamablePath)
 	restFlag = webCmd.Flags().Bool("rest", true, "Enable HTTP REST server on "+rest.BasePath)
+	unsafeSharedSessionFlag = webCmd.Flags().Bool("unsafe-shared-session", false, "Allow unauthenticated requests to share a single session (UNSAFE: disables per-user isolation)")
 	specFlag = webCmd.Flags().String("spec", "", "Write OpenAPI specification to a file, '-' for stdout.")
 	tlsCipherSuitesFlag = webCmd.Flags().StringSlice("tls-cipher-suites", nil, "Comma-separated list of TLS cipher suites for https (IANA or OpenSSL names)")
 	tlsCurvesFlag = webCmd.Flags().StringSlice("tls-curves", nil, "Comma-separated list of TLS curves for https (Go or OpenSSL names, e.g. CurveP256/prime256v1, X25519)")

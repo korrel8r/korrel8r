@@ -26,6 +26,10 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	authenticationv1 "k8s.io/api/authentication/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/kubernetes/fake"
+	ktesting "k8s.io/client-go/testing"
 )
 
 func TestListTools(t *testing.T) {
@@ -180,7 +184,7 @@ func newEngineMany(t *testing.T) *engine.Engine {
 func newClient(t *testing.T, e *engine.Engine) *mcp.ClientSession {
 	t.Helper()
 	ctx := context.Background()
-	s := NewServer(session.NewSingle(e))
+	s := NewServer(session.NewSingleManager(e))
 	ct, st := mcp.NewInMemoryTransports()
 	ss, err := s.Connect(ctx, st, nil)
 	require.NoError(t, err)
@@ -239,7 +243,7 @@ func newInteropFixture(t *testing.T, e *engine.Engine) *interopFixture {
 	if os.Getenv(gin.EnvGinMode) == "" {
 		gin.SetMode(gin.TestMode)
 	}
-	sessions := session.NewSingle(e)
+	sessions := session.NewSingleManager(e)
 	router := gin.New()
 	_, err := rest.New(sessions, router)
 	require.NoError(t, err)
@@ -512,10 +516,7 @@ func newMultiSessionFixture(t *testing.T) *multiSessionFixture {
 	if os.Getenv(gin.EnvGinMode) == "" {
 		gin.SetMode(gin.TestMode)
 	}
-	sessions := session.NewPool(time.Hour, func() (*engine.Engine, error) {
-		return newEngine(t), nil
-	})
-
+	sessions := session.NewTokenReviewManager(fakeTokenReview(), time.Hour, func() (*engine.Engine, error) { return newEngine(t), nil })
 	router := gin.New()
 	_, err := rest.New(sessions, router)
 	require.NoError(t, err)
@@ -671,4 +672,17 @@ func TestMultiSession_SSEIsolation(t *testing.T) {
 	case <-time.After(200 * time.Millisecond):
 		// expected
 	}
+}
+
+func fakeTokenReview() *auth.TokenReview {
+	cs := fake.NewSimpleClientset()
+	cs.PrependReactor("create", "tokenreviews", func(action ktesting.Action) (bool, runtime.Object, error) {
+		tr := action.(ktesting.CreateAction).GetObject().(*authenticationv1.TokenReview)
+		tr.Status = authenticationv1.TokenReviewStatus{
+			Authenticated: true,
+			User:          authenticationv1.UserInfo{Username: tr.Spec.Token},
+		}
+		return true, tr, nil
+	})
+	return auth.NewTokenReviewFromClientset(cs)
 }

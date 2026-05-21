@@ -14,10 +14,31 @@ import (
 	"github.com/korrel8r/korrel8r/pkg/engine"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	authenticationv1 "k8s.io/api/authentication/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/kubernetes/fake"
+	ktesting "k8s.io/client-go/testing"
 )
 
 func testFactory() (*engine.Engine, error) {
 	return engine.Build().Domains(mock.NewDomain("mock")).Engine()
+}
+
+func testMulti(timeout time.Duration) Manager {
+	return NewTokenReviewManager(fakeTokenReview(), timeout, testFactory)
+}
+
+func fakeTokenReview() *auth.TokenReview {
+	cs := fake.NewSimpleClientset()
+	cs.PrependReactor("create", "tokenreviews", func(action ktesting.Action) (bool, runtime.Object, error) {
+		tr := action.(ktesting.CreateAction).GetObject().(*authenticationv1.TokenReview)
+		tr.Status = authenticationv1.TokenReviewStatus{
+			Authenticated: true,
+			User:          authenticationv1.UserInfo{Username: tr.Spec.Token},
+		}
+		return true, tr, nil
+	})
+	return auth.NewTokenReviewFromClientset(cs)
 }
 
 func tokenCtx(token string) context.Context {
@@ -32,27 +53,21 @@ func getSession(t *testing.T, m Manager, token string) *Session {
 }
 
 func TestGet_SameKey(t *testing.T) {
-	m := NewPool(time.Hour, testFactory)
+	m := testMulti(time.Hour)
 	s1 := getSession(t, m, "key-a")
 	s2 := getSession(t, m, "key-a")
 	assert.Same(t, s1, s2, "same key should return same session")
 }
 
 func TestGet_DifferentKeys(t *testing.T) {
-	m := NewPool(time.Hour, testFactory)
+	m := testMulti(time.Hour)
 	s1 := getSession(t, m, "key-a")
 	s2 := getSession(t, m, "key-b")
 	assert.NotSame(t, s1, s2, "different keys should return different sessions")
 }
 
-func TestGet_HashedKey(t *testing.T) {
-	m := NewPool(time.Hour, testFactory)
-	s := getSession(t, m, "some-token")
-	assert.Equal(t, hashToken("some-token"), s.ID, "should use hashed token as key")
-}
-
 func TestConcurrent(t *testing.T) {
-	m := NewPool(time.Hour, testFactory)
+	m := testMulti(time.Hour)
 	var wg sync.WaitGroup
 	var count atomic.Int32
 	for range 100 {
@@ -68,7 +83,7 @@ func TestConcurrent(t *testing.T) {
 }
 
 func TestConcurrent_NewKey(t *testing.T) {
-	m := NewPool(time.Hour, testFactory)
+	m := testMulti(time.Hour)
 
 	// All goroutines race to create the same new key.
 	// They should all get the same session.
@@ -90,9 +105,28 @@ func TestConcurrent_NewKey(t *testing.T) {
 	}
 }
 
+func TestUnsafeSharedSession(t *testing.T) {
+	e, err := testFactory()
+	require.NoError(t, err)
+	m := NewSingleManager(e)
+
+	// No token — gets the shared session.
+	s1, err := m.Get(context.Background())
+	require.NoError(t, err)
+	assert.Equal(t, "", s1.ID, "shared session should have empty ID")
+
+	// With tokens — still gets the same shared session.
+	s2, err := m.Get(tokenCtx("token-a"))
+	require.NoError(t, err)
+	s3, err := m.Get(tokenCtx("token-b"))
+	require.NoError(t, err)
+	assert.Same(t, s1, s2, "all requests should share the same session")
+	assert.Same(t, s1, s3, "all requests should share the same session")
+}
+
 func TestCleanup_OneExpiredOneActive(t *testing.T) {
 	timeout := 50 * time.Millisecond
-	m := NewPool(timeout, testFactory)
+	m := testMulti(timeout)
 
 	sOld := getSession(t, m, "old-token")
 
