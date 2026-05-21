@@ -4,7 +4,6 @@ package alert
 
 import (
 	"context"
-	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -26,39 +25,43 @@ func TestGetLokiRulesForTenant(t *testing.T) {
 			t.Errorf("Expected path %s, got %s", expectedPath, r.URL.Path)
 		}
 
-		// Return mock Loki rules response as raw JSON
-		// Use raw JSON to avoid encoding issues with prometheus types
-		responseJSON := `{
-			"status": "success",
-			"data": {
-				"groups": [{
-					"name": "devAppAlert",
-					"file": "dev-workload-alerts",
-					"rules": [{
-						"type": "alerting",
-						"name": "DevAppLogVolumeIsHigh",
-						"query": "count_over_time({kubernetes_namespace_name=\"test-namespace\"}[2m]) > 10",
-						"state": "firing",
-						"alerts": [{
-							"labels": {
-								"alertname": "DevAppLogVolumeIsHigh",
-								"namespace": "test-namespace",
-								"severity": "info"
-							},
-							"annotations": {
-								"description": "My application has high amount of logs."
-							},
-							"state": "firing",
-							"activeAt": "2024-01-01T00:00:00Z",
-							"value": "150"
-						}]
-					}]
-				}]
-			}
-		}`
+		// Return mock Loki rules response as YAML converted to JSON API format
+		// The Prometheus client library expects JSON API format (name/query), not YAML config format (alert/expr)
+		// IMPORTANT: Each rule MUST have a "type" field set to "alerting" or "recording"
+		// Note: interval must be a number (seconds), not a duration string
+		responseYAML := `dev-workload-alerts.yaml:
+  - name: devAppAlert
+    file: dev-workload-alerts.yaml
+    interval: 60
+    rules:
+      - type: alerting
+        name: DevAppLogVolumeIsHigh
+        query: count_over_time({kubernetes_namespace_name="test-namespace"}[2m]) > 10
+        duration: 0
+        labels:
+          alertname: DevAppLogVolumeIsHigh
+          namespace: test-namespace
+          severity: info
+        annotations:
+          description: My application has high amount of logs.
+        alerts:
+          - labels:
+              alertname: DevAppLogVolumeIsHigh
+              namespace: test-namespace
+              severity: info
+            annotations:
+              description: My application has high amount of logs.
+            state: firing
+            value: "15"
+            activeAt: "2024-01-01T00:00:00Z"
+        health: ok
+        evaluationTime: 0.1
+        lastEvaluation: "2024-01-01T00:00:00Z"
+        state: firing
+`
 
-		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(responseJSON))
+		w.Header().Set("Content-Type", "application/yaml")
+		_, _ = w.Write([]byte(responseYAML))
 	}))
 	defer server.Close()
 
@@ -88,13 +91,13 @@ func TestGetLokiRulesForTenant(t *testing.T) {
 func TestGetLokiRulesForTenant_WithNamespaceFilter(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Verify namespace query parameters
-		namespaces := r.URL.Query()["namespace"]
+		namespaces := r.URL.Query()["kubernetes_namespace_name"]
 		assert.Contains(t, namespaces, "test-ns-1")
 		assert.Contains(t, namespaces, "test-ns-2")
 
-		responseJSON := `{"status": "success", "data": {"groups": []}}`
-		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(responseJSON))
+		responseYAML := ``
+		w.Header().Set("Content-Type", "application/yaml")
+		_, _ = w.Write([]byte(responseYAML))
 	}))
 	defer server.Close()
 
@@ -114,24 +117,20 @@ func TestGetLokiRulesForTenant_Error(t *testing.T) {
 	tests := []struct {
 		name           string
 		statusCode     int
-		response       interface{}
+		responseBody   string
 		expectedErrMsg string
 	}{
 		{
 			name:           "non-OK status code",
 			statusCode:     http.StatusNotFound,
-			response:       nil,
+			responseBody:   "",
 			expectedErrMsg: "loki ruler request returned status 404",
 		},
 		{
-			name:       "non-success status in response",
-			statusCode: http.StatusOK,
-			response: struct {
-				Status string `json:"status"`
-			}{
-				Status: "error",
-			},
-			expectedErrMsg: "loki ruler API returned status: error",
+			name:           "invalid YAML",
+			statusCode:     http.StatusOK,
+			responseBody:   "invalid: [yaml",
+			expectedErrMsg: "failed to unmarshal Loki rules YAML",
 		},
 	}
 
@@ -139,9 +138,9 @@ func TestGetLokiRulesForTenant_Error(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(tt.statusCode)
-				if tt.response != nil {
-					w.Header().Set("Content-Type", "application/json")
-					_ = json.NewEncoder(w).Encode(tt.response)
+				if tt.responseBody != "" {
+					w.Header().Set("Content-Type", "application/yaml")
+					_, _ = w.Write([]byte(tt.responseBody))
 				}
 			}))
 			defer server.Close()
@@ -182,50 +181,58 @@ func TestGetLokiRules(t *testing.T) {
 
 		queriedTenants[tenant]++
 
-		// Return different alerts for each tenant using raw JSON
-		var responseJSON string
+		// Return different alerts for each tenant using JSON API format
+		// IMPORTANT: Each rule MUST have a "type" field set to "alerting" or "recording"
+		// Note: interval must be numeric (seconds), not duration string
+		var responseYAML string
 		switch tenant {
 		case "application":
-			responseJSON = `{
-				"status": "success",
-				"data": {
-					"groups": [{
-						"name": "app-alerts",
-						"rules": [{
-							"type": "alerting",
-							"name": "AppAlert",
-							"alerts": [{
-								"labels": {"alertname": "AppAlert", "tenant": "application"},
-								"state": "firing"
-							}]
-						}]
-					}]
-				}
-			}`
+			responseYAML = `app-alerts.yaml:
+  - name: app-alerts
+    file: app-alerts.yaml
+    interval: 60
+    rules:
+      - type: alerting
+        name: AppAlert
+        query: count_over_time({job="app"}[5m]) > 10
+        duration: 0
+        labels:
+          alertname: AppAlert
+          tenant: application
+        annotations: {}
+        alerts: []
+        health: ok
+        evaluationTime: 0.1
+        lastEvaluation: "2024-01-01T00:00:00Z"
+        state: inactive
+`
 		case "infrastructure":
-			responseJSON = `{
-				"status": "success",
-				"data": {
-					"groups": [{
-						"name": "infra-alerts",
-						"rules": [{
-							"type": "alerting",
-							"name": "InfraAlert",
-							"alerts": [{
-								"labels": {"alertname": "InfraAlert", "tenant": "infrastructure"},
-								"state": "firing"
-							}]
-						}]
-					}]
-				}
-			}`
+			responseYAML = `infra-alerts.yaml:
+  - name: infra-alerts
+    file: infra-alerts.yaml
+    interval: 60
+    rules:
+      - type: alerting
+        name: InfraAlert
+        query: count_over_time({job="infra"}[5m]) > 10
+        duration: 0
+        labels:
+          alertname: InfraAlert
+          tenant: infrastructure
+        annotations: {}
+        alerts: []
+        health: ok
+        evaluationTime: 0.1
+        lastEvaluation: "2024-01-01T00:00:00Z"
+        state: inactive
+`
 		default:
 			// audit tenant returns empty
-			responseJSON = `{"status": "success", "data": {"groups": []}}`
+			responseYAML = ``
 		}
 
-		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(responseJSON))
+		w.Header().Set("Content-Type", "application/yaml")
+		_, _ = w.Write([]byte(responseYAML))
 	}))
 	defer server.Close()
 
@@ -295,10 +302,16 @@ func TestGetLokiRules_PartialFailure(t *testing.T) {
 			return
 		}
 
-		// Return success for other tenants
-		responseJSON := `{"status": "success", "data": {"groups": [{"name": "test-group", "rules": []}]}}`
-		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(responseJSON))
+		// Return success for other tenants (JSON API format)
+		// Note: interval must be numeric (seconds)
+		responseYAML := `test-group.yaml:
+  - name: test-group
+    file: test-group.yaml
+    interval: 60
+    rules: []
+`
+		w.Header().Set("Content-Type", "application/yaml")
+		_, _ = w.Write([]byte(responseYAML))
 	}))
 	defer server.Close()
 
@@ -319,31 +332,32 @@ func TestGetLokiRules_PartialFailure(t *testing.T) {
 // TestStoreGet_WithLokiRuler tests integration of Loki Ruler into Store.Get
 // This is a minimal test since full integration would require mocking Prometheus/Alertmanager too
 func TestLokiRulerIntegration(t *testing.T) {
-	// Create a mock Loki Ruler server
+	// Create a mock Loki Ruler server that returns JSON API format YAML
+	// IMPORTANT: Each rule MUST have a "type" field set to "alerting" or "recording"
+	// Note: interval must be numeric (seconds)
 	lokiServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		responseJSON := `{
-			"status": "success",
-			"data": {
-				"groups": [{
-					"name": "loki-alerts",
-					"rules": [{
-						"type": "alerting",
-						"name": "LokiAlert",
-						"query": "count_over_time({job=\"test\"}[5m]) > 100",
-						"state": "firing",
-						"alerts": [{
-							"labels": {"alertname": "LokiAlert", "namespace": "test-ns"},
-							"state": "firing",
-							"activeAt": "2024-01-01T00:00:00Z",
-							"value": "200"
-						}]
-					}]
-				}]
-			}
-		}`
+		responseYAML := `loki-alerts.yaml:
+  - name: loki-alerts
+    file: loki-alerts.yaml
+    interval: 60
+    rules:
+      - type: alerting
+        name: LokiAlert
+        query: count_over_time({job="test"}[5m]) > 100
+        duration: 0
+        labels:
+          alertname: LokiAlert
+          namespace: test-ns
+        annotations: {}
+        alerts: []
+        health: ok
+        evaluationTime: 0.1
+        lastEvaluation: "2024-01-01T00:00:00Z"
+        state: inactive
+`
 
-		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(responseJSON))
+		w.Header().Set("Content-Type", "application/yaml")
+		_, _ = w.Write([]byte(responseYAML))
 	}))
 	defer lokiServer.Close()
 
@@ -356,7 +370,7 @@ func TestLokiRulerIntegration(t *testing.T) {
 
 	result, err := store.getLokiRules(context.Background(), nil)
 	require.NoError(t, err)
-	assert.Len(t, result.Groups, 3) // 3 tenants
+	assert.Len(t, result.Groups, 3, "Should have 3 groups (one per tenant)")
 
 	// Verify we got alerts from Loki Ruler
 	foundLokiAlert := false
