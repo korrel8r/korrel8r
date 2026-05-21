@@ -4,7 +4,9 @@
 package rest
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"slices"
@@ -231,52 +233,38 @@ func (a *API) SetConsole(c *gin.Context) {
 	if !check(c, http.StatusBadRequest, ConsoleOK(s.Engine, state)) {
 		return
 	}
-	s.ConsoleState.Store(state)
+	s.SetConsoleState(state)
 	c.JSON(http.StatusOK, state)
 }
 
 // SSE notification of console updates.
 // (GET /console/events)
 func (a *API) ConsoleEvents(c *gin.Context) {
-	// Set SSE headers
+	s, err := a.session(c)
+	if !check(c, http.StatusInternalServerError, err) {
+		return
+	}
+
 	w := c.Writer
 	w.Header().Set("Content-Type", "text/event-stream")
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("Connection", "keep-alive")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Headers", "Cache-Control")
-	w.Flush() // Send headers to start the SSE stream.
+	w.Flush()
 
-	s, err := a.session(c)
-	if !check(c, http.StatusInternalServerError, err) {
-		return
-	}
-	log := log // Don't modify main logger
-	if s.ID != "" {
-		log = log.WithValues("session", s)
-	}
+	log.V(3).Info("Console connected", "session", s)
+	defer log.V(3).Info("Console disconnected", "session", s)
+
 	keepAliveTicker := time.NewTicker(time.Minute)
 	defer keepAliveTicker.Stop()
-	log.V(3).Info("Console events started")
-	defer log.V(3).Info("Console events stopped")
-
-	for {
-		select {
-		case state := <-s.ConsoleRequest:
-			if !check(c, http.StatusInternalServerError, a.sendEvent(w, state)) {
-				return
-			}
-		case <-keepAliveTicker.C:
-			// Send a keep-alive comment
-			_, err = fmt.Fprint(w, ":keepalive\n\n")
-			if !check(c, http.StatusInternalServerError, err) {
-				return
-			}
-			w.Flush()
-
-		case <-c.Request.Context().Done():
-			return
-		}
+	err = s.ConsoleEvents(
+		c.Request.Context(),
+		func(c *api.Console) error { return a.sendEvent(w, c) },
+		func() error { _, err := fmt.Fprint(w, ":keepalive\n\n"); w.Flush(); return err },
+		keepAliveTicker)
+	if err != nil && !errors.Is(err, context.Canceled) && !errors.Is(err, context.DeadlineExceeded) {
+		log.V(3).Error(err, "Console send error", "session", s)
 	}
 }
 
@@ -288,7 +276,7 @@ func (a *API) sendEvent(w gin.ResponseWriter, update *api.Console) error {
 			return err
 		}
 		w.Flush()
-		log.V(3).Info("Console event sent", "event", string(b))
+		log.V(3).Info("Console update sent", "event", string(b))
 	}
 	return nil
 }

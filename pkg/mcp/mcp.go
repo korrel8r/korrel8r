@@ -63,6 +63,12 @@ Korrel8r finds correlations between observability signals and resources in a Kub
 It connects data from different domains (logs, metrics, alerts, traces, Kubernetes resources, etc.)
 by following correlation rules to build a graph of related objects.
 
+## Console tools
+
+If the user refers to a console:
+- Use get_console to find out what data the user is looking at, in the form of a korrel8r query.
+- Use show_in_console to display results in the console. Express the results as a korrel8r query.
+
 ## Search tools
 
 1. Use list_domains to discover available domains.
@@ -73,14 +79,6 @@ by following correlation rules to build a graph of related objects.
    - Use create_neighbors_graph for open-ended exploration
      (e.g. "what is related to this pod?", "show me everything connected to these traces").
 
-## Console tools
-
-The user may have a graphical console that displays cluster data.
-If the user refers to a console:
-- Use get_console to find out what data the user is looking at, in the form of a korrel8r query.
-- Use show_in_console to display results in the console. Express the results as a korrel8r query.
-
-Console tools return an error if no console is connected, you can still use search tools.
 `
 
 const (
@@ -316,10 +314,12 @@ high-volume domains like logs, metrics, and traces.
 	mcp.AddTool(s.Server, &mcp.Tool{
 		Name: GetConsole,
 		Description: `
-Returns the current state of the user's graphical console (e.g. OpenShift web console).
+If the user refers to a console, use this tool to find out what the user is looking at.
 The result includes:
-- view: a query that selects the data displayed in the main console view. Not set if the console is displaying a view that does not support queries.
-- search: parameters for the correlation search displayed in the troubleshooting panel. Not set if the troubleshooting panel is not open.
+- view: a korrel8r query selecting data displayed in the main console view.
+  Not set if the console is not displaying data.
+- search: parameters for the correlation search displayed in the troubleshooting panel.
+  Not set if the troubleshooting panel is not open.
 
 Use view and search to understand what the user is looking at,
 and include it as context for further planning or actions.
@@ -330,9 +330,9 @@ and include it as context for further planning or actions.
 			if err != nil {
 				return nil, nil, err
 			}
-			state := ss.ConsoleState.Load()
+			state := ss.ConsoleState()
 			if state == nil {
-				return nil, nil, errors.New("not connected to console")
+				return nil, nil, errors.New("no console is connected")
 			}
 			return nil, state, nil
 		})
@@ -340,7 +340,7 @@ and include it as context for further planning or actions.
 	mcp.AddTool(s.Server, &mcp.Tool{
 		Name: ShowInConsole,
 		Description: `
-Update the user's graphical console to display new data to the user.
+If the user refers to a console, use this tool to update the console to display new data.
 
 - view: setting this field to a query updates the main view of the console to display the results of the query.
 - search: setting this field displays a correlation graph in the console troubleshooting panel.
@@ -348,21 +348,15 @@ Update the user's graphical console to display new data to the user.
 Use 'help' to learn the class and query syntax for each domain.
 `,
 	},
-		func(ctx context.Context, req *mcp.CallToolRequest, input ShowInConsoleParams) (*mcp.CallToolResult, any, error) {
+		func(ctx context.Context, req *mcp.CallToolRequest, update ShowInConsoleParams) (*mcp.CallToolResult, any, error) {
 			ss, err := s.session(ctx)
 			if err != nil {
-				return nil, nil, err // This is an internal error
+				return nil, nil, err
 			}
-			if err := rest.ConsoleOK(ss.Engine, &input); err != nil {
-				return errorResult(err), nil, err
+			if err := rest.ConsoleOK(ss.Engine, &update); err != nil {
+				return nil, nil, err
 			}
-			// Drain any stale request, then send the new one.
-			select {
-			case <-ss.ConsoleRequest:
-			default:
-			}
-			ss.ConsoleRequest <- &input
-			return nil, nil, nil
+			return nil, nil, ss.ShowInConsole(ctx, &update)
 		})
 }
 
@@ -401,27 +395,24 @@ func (s *Server) logger(handler mcp.MethodHandler) mcp.MethodHandler {
 					"tool", tool,
 					"latency", latency,
 					"parameters", logging.JSON(req.GetParams())}
-				if sn, _ := s.session(ctx); s != nil {
+				if sn, _ := s.session(ctx); sn != nil {
 					values = append(values, "session", sn.ID)
 				}
 				if err != nil {
-					log.V(3).Info("MCP error", append([]any{"error", err}, values...))
-				} else {
-					if log.V(9).Enabled() { // Result is extra detail
-						values = append(values, "result", logging.JSON(result))
-					}
-					log.V(3).Info("MCP call", values...)
+					log.V(3).Info("MCP error", append([]any{"error", err}, values...)...)
+					return
 				}
+				if r, ok := result.(*mcp.CallToolResult); ok && r.IsError {
+					log.V(3).Info("MCP error result", append(values, "result", logging.JSON(result))...)
+					return
+				}
+				if log.V(9).Enabled() {
+					values = append(values, "result", logging.JSON(result))
+				}
+				log.V(3).Info("MCP OK", values...)
 			}()
 		}
 		return handler(ctx, tool, req)
-	}
-}
-
-func errorResult(err error) *mcp.CallToolResult {
-	return &mcp.CallToolResult{
-		Content: []mcp.Content{&mcp.TextContent{Text: err.Error()}},
-		IsError: true,
 	}
 }
 

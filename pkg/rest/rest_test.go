@@ -159,7 +159,7 @@ type testAPI struct {
 
 func newTestAPI(t *testing.T, e *engine.Engine) *testAPI {
 	r := ginEngine()
-	a, err := New(session.NewSingle(e), r)
+	a, err := New(session.NewSingleManager(e), r)
 	require.NoError(t, err)
 	return &testAPI{API: a, Router: r}
 }
@@ -291,7 +291,7 @@ func TestAPIGraphNeighbors_badRequest(t *testing.T) {
 	assert.Equal(t, http.StatusBadRequest, w.Code)
 }
 
-func TestMultiSession_QueryIsolation(t *testing.T) {
+func TestCluster_MultiSession_QueryIsolation(t *testing.T) {
 	// Each session gets a separate engine with different store data.
 	// Verify that REST requests with different auth tokens get different results.
 	var callCount atomic.Int32
@@ -302,7 +302,9 @@ func TestMultiSession_QueryIsolation(t *testing.T) {
 		s.AddQuery("mock:a:q", fmt.Sprintf("result-%d", n))
 		return engine.Build().Domains(d).Stores(s).Engine()
 	}
-	sessions := session.NewPool(time.Hour, factory)
+	tokenReview, err := auth.NewTokenReview()
+	require.NoError(t, err)
+	sessions := session.NewTokenReviewManager(tokenReview, time.Hour, factory)
 
 	r := ginEngine()
 	r.Use(func(c *gin.Context) {
@@ -310,7 +312,7 @@ func TestMultiSession_QueryIsolation(t *testing.T) {
 		c.Request = c.Request.WithContext(ctx)
 		c.Next()
 	})
-	_, err := New(sessions, r)
+	_, err = New(sessions, r)
 	require.NoError(t, err)
 
 	getObjects := func(token string) string {
