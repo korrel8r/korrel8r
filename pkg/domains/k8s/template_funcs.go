@@ -4,9 +4,12 @@
 //
 // The following template functions are available to rules.
 //
-//	k8sClass
-//	    Takes string arguments (apiVersion, kind).
-//	    Returns the korrel8r.Class implied by the arguments, or an error.
+//			k8sClass
+//			    Takes string arguments (apiVersion, kind).
+//			    Returns the korrel8r.Class implied by the arguments, or an error.
+//
+//	   k8sIsNamespaced
+//		      Takes a k8s Class argument, returns true if the class is a namespace-scoped resource.
 package k8s
 
 import (

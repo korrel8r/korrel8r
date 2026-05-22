@@ -1,12 +1,10 @@
 // Copyright: This file is part of korrel8r, released under https://github.com/korrel8r/korrel8r/blob/main/LICENSE
 
-// Package trace implements OpenTelemetry traces stored in the Grafana Tempo data store.
-//
-// See [Description] for details.
 package trace
 
 import (
 	"context"
+	_ "embed"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -27,7 +25,10 @@ var (
 	_ korrel8r.Class  = Class{}
 )
 
-var Domain = domain{Domain: impl.NewDomain("trace", Description, Class{})}
+//go:embed doc.md
+var description string
+
+var Domain = domain{Domain: impl.NewDomain("trace", description, Class{})}
 
 type domain struct{ *impl.Domain }
 

@@ -1,11 +1,9 @@
 // Copyright: This file is part of korrel8r, released under https://github.com/korrel8r/korrel8r/blob/main/LICENSE
 
-// Package log is a korrel8r domain for logs stored in LokiStack, Loki, or retrieved from the Kubernetes API server.
-//
-// See [Description] for details.
 package log
 
 import (
+	_ "embed"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -28,8 +26,11 @@ var (
 	_ korrel8r.Previewer = Class("")
 )
 
+//go:embed doc.md
+var description string
+
 var Domain = &domain{
-	impl.NewDomain("log", Description, Application, Infrastructure, Audit),
+	impl.NewDomain("log", description, Application, Infrastructure, Audit),
 }
 
 type domain struct{ *impl.Domain }

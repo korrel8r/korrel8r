@@ -1,0 +1,7 @@
+{{- header 2 .Name -}}
+{{- spacer -}}
+
+{{- if len .Doc.Blocks -}}
+	{{- template "doc" .Doc -}}
+	{{- spacer -}}
+{{- end -}}

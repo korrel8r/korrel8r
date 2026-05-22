@@ -1,0 +1,4 @@
+{{- range .Packages -}}
+  {{- template "doc" .Doc -}}
+  {{- spacer -}}
+{{- end -}}

@@ -1,232 +1,236 @@
-== alert
+=== alert
 
-Alerts that metric values are out of bounds.
+Domain alert is a korrel8r domain for Prometheus/AlertManager alerts.
 
-=== Classes
+==== Classes
 
- alert:alert
+----
+alert:alert
+----
 
-=== Object
+==== Object
 
-See the https://pkg.go.dev/github.com/korrel8r/korrel8r/pkg/domains/alert#Object[Go Object type].
-Use capitalized Go field name in templates, not lowercase JSON names.
+See the <<Object,Object>> type. Use capitalized Go field name in templates, not lowercase JSON names.
 
-=== Query
+==== Query
 
-Selector is one of the following
+Selector is one of the following:
 
 * JSON object with alert label field names and matching label values.
-* Array of objects as above, gets alerts that match any object in the array
-
-An empty selector matches all alerts:
-
- alert:alert:{}
+* Array of objects as above, gets alerts that match any object in the array.
 
 Examples:
-    alert:alert:{"container":"kube-rbac-proxy-main","namespace":"openshift-logging"}
-    alert:alert:[{"alertname":"alert1"},{"alertname":"alert2"}]
 
-=== Store
+----
+alert:alert:{"container":"kube-rbac-proxy-main","namespace":"openshift-logging"}
+alert:alert:[{"alertname":"alert1"},{"alertname":"alert2"}]
+----
+
+==== Store
 
 A client of Prometheus and/or AlertManager. Store configuration fields:
 
- domain: alert
- metrics: PROMETHEUS_URL
- alertmanager: ALERTMANAGER_URL
+----
+domain: alert
+metrics: PROMETHEUS_URL
+alertmanager: ALERTMANAGER_URL
+----
 
 At least one of the fields "metrics" or "alertmanager" must be present.
 
-== incident
+=== incident
 
-Incidents group alerts into higher-level groups.
+Domain incident is a korrel8r domain for cluster health incidents.
 
-For more about incidents see the https://github.com/openshift/cluster-health-analyzer[cluster-health-analyzer].
+For more about incidents see the https://github.com/openshift/cluster-health-analyzer[cluster\-health\-analyzer].
 
-=== Classes
+==== Classes
 
- incident:incident
+----
+incident:incident
+----
 
-=== Object
+==== Object
 
-An incident object contains id and mapping to the sources.
-Alert is the only supported source type at present.
+An incident object contains id and mapping to the sources. Alert is the only supported source type at present.
 
-=== Query
+==== Query
 
 Query selectors are JSON objects.
 
-An empty selector matches all incidents:
-
- incident:incident:{}
-
 Getting an incident by ID:
 
- incident:incident:{"id":"id-of-the-incident"}
+----
+incident:incident:{"id":"id-of-the-incident"}
+----
 
 Using alert labels to get a corresponding incident:
 
- incident:incident:{"alertLabels":{"alertname":"AlertmanagerReceiversNotConfigured","namespace":"openshift-monitoring"}}
+----
+incident:incident:{"alertLabels":{"alertname":"AlertmanagerReceiversNotConfigured","namespace":"openshift-monitoring"}}
+----
 
-=== Store
+==== Store
 
 A client of Prometheus. Store configuration:
 
- domain: incident
- metrics: PROMETHEUS_URL
+----
+domain: incident
+metrics: PROMETHEUS_URL
+----
 
-== k8s
+=== k8s
 
-Kubernetes resources.
+Domain k8s is a korrel8r domain for Kubernetes resources.
 
-=== Classes
+==== Classes
 
 Each Kind of kubernetes resource is a class. Class names have the format:
 
- k8s:KIND[.VERSION][.GROUP]
+----
+k8s:KIND[.VERSION][.GROUP]
+----
 
 Missing VERSION implies "v1", if present VERSION must follow the https://kubernetes.io/docs/tasks/extend-kubernetes/custom-resources/custom-resource-definition-versioning/#version-priority[Kubernetes version patterns]. Missing GROUP implies the core group.
 
 Examples:
 
- k8s:Pod
- k8s:Pod.v1
- k8s:Deployment.apps
- k8s:Deployment.v1.apps
- k8s:Route.v1.route.openshift.io
+----
+k8s:Pod
+k8s:Pod.v1
+k8s:Deployment.apps
+k8s:Deployment.v1.apps
+k8s:Route.v1.route.openshift.io
+----
 
-=== Object
+==== Object
 
-A map of JSON kubernetes field names and Go values.
-Rule templates should use the JSON (lowerCase) field names, not the UpperCase Go field names.
+A map of JSON kubernetes field names and Go values. Rule templates should use the JSON (lowerCase) field names, not the UpperCase Go field names.
 
-=== Query
+==== Query
 
-JSON selector with the following fields
+JSON selector with the following fields:
 
-* *namespace*: namespace containing the resource
-* *name*: name of resource
-* *labels*: label selector object for metadata labels - { "label": "value", ... }
-* *fields*: https://kubernetes.io/docs/concepts/overview/working-with-objects/field-selectors/[field selector object] - { "field": "value", ... }
-
-An empty selector matches all resources of the class:
-
- k8s:Pod:{}
+* namespace: namespace containing the resource
+* name: name of resource
+* labels: label selector object for metadata labels - { "label": "value", ... }
+* fields: https://kubernetes.io/docs/concepts/overview/working-with-objects/field-selectors/[field selector object] - { "field": "value", ... }
 
 Examples:
 
- k8s:Pod.v1:{"namespace":"some-namespace", "name":"some-name"}
- k8s:Deployment.v1:{"labels":{"app":"my-application"}, "namespace":"some-namespace" }
+----
+k8s:Pod.v1:{"namespace":"some-namespace", "name":"some-name"}
+k8s:Deployment.v1:{"labels":{"app":"my-application"}, "namespace":"some-namespace" }
+----
 
-=== Store
+==== Store
 
-The k8s domain automatically connects to the currently logged-in kubectl cluster.
-No additional configuration is needed.
+The k8s domain automatically connects to the currently logged-in kubectl cluster. No additional configuration is needed.
 
-  stores:
-       domain: k8s
+----
+stores:
+    domain: k8s
+----
 
-=== Template Functions
+==== Template Functions
 
 The following template functions are available to rules.
 
-* *k8sClass*: Takes string arguments (apiVersion, kind).
-Returns the korrel8r.Class implied by the arguments, or an error.
-* *k8sIsNamespaced*: Takes a k8s Class argument, returns true if the class is a namespace-scoped resource.
+----
+k8sClass
+		    Takes string arguments (apiVersion, kind).
+		    Returns the korrel8r.Class implied by the arguments, or an error.
 
-== log
+   k8sIsNamespaced
+	      Takes a k8s Class argument, returns true if the class is a namespace-scoped resource.
+----
 
-Log records from container and node logs.
+=== log
 
-Logs can be stored on the cluster in LokiStack or in an external Loki server.
-They can also be retrieved directly from the Kubernetes API server.
-Direct API server access does not provide long-term log storage,
-but it gives short-term access when there is no long term log store available.
+Domain log is a korrel8r domain for application, infrastructure, and audit logs.
 
-=== Classes
+Logs can be stored on the cluster in LokiStack or in an external Loki server. They can also be retrieved directly from the Kubernetes API server. Direct API server access does not provide long-term log storage, but it gives short-term access when there is no long term log store available.
 
- log:application
- log:infrastructure
- log:audit
+==== Classes
 
-=== Object
+----
+log:application
+log:infrastructure
+log:audit
+----
 
-A log object is a map of attributes with string keys and values.
-Attribute names contain only ASCII letters, digits, underscores, and colons (required for Loki labels).
-Other characters are replaced with "_".
+==== Object
 
-For stored logs: Loki stream labels and structured metadata labels become attributes.
-If the log body is a JSON object, all nested field paths are flattened into attribute names.
+A log object is a map of attributes with string keys and values. Attribute names contain only ASCII letters, digits, underscores, and colons (required for Loki labels). Other characters are replaced with "_".
 
-For direct logs: the pod, namespace, and label meta-data are added as attributes
-using the same label names as for stored logs.
+For stored logs: Loki stream labels and structured metadata labels become attributes. If the log body is a JSON object, all nested field paths are flattened into attribute names.
+
+For direct logs: the pod, namespace, and label meta-data are added as attributes using the same label names as for stored logs.
 
 Special attributes:
 
-* *body*: original log message.
-* *timestamp*: time the log was produced, if known, in RFC3339 format.
-* *observed_timestamp*: time the log was first stored or recorded, in RFC3339 format.
+* body: original log message.
+* timestamp: time the log was produced, if known, in RFC3339 format.
+* observed_timestamp: time the log was first stored or recorded, in RFC3339 format.
 
 ==== Viaq and OTEL attributes
 
 The openshift logging collector can store logs in two formats:
 
-* *Viaq*: legacy format with attributes like: "kubernetes_namespace_name", "kubernetes_pod_name"
-* *OTEL*: new standard format with attributes like: "k8s_namespace_name", "k8s_pod_name".
-Note the use of "_" rather than "." to give legal Loki label names.
-Otherwise these names are as given in the OTEL specification.
+* Viaq: legacy format with attributes like: "kubernetes_namespace_name", "kubernetes_pod_name"
+* OTEL: new standard format with attributes like: "k8s_namespace_name", "k8s_pod_name". Note the use of "_" rather than "." to give legal Loki label names. Otherwise these names are as given in the OTEL specification.
 
 For stored logs, korrel8r returns whatever format has been stored in Loki.
 
-For direct logs, _both_ Viaq and OTEL attributes are included to ease migration.
+For direct logs, both Viaq and OTEL attributes are included to ease migration.
 
-=== Query
+==== Query
 
 There are two types of query selector:
 
 * Direct container selector: The same JSON selector used in k8s queries, with an additional "container" field.
-* https://grafana.com/docs/loki/latest/query[LogQL] expression: LogQL queries can only be used to retrieve stored logs
+* https://grafana.com/docs/loki/latest/query[LogQL] expression: LogQL queries can only be used to retrieve stored logs.
 
 ==== Container selectors
 
 Container selector fields (see k8s domain for more detail), all fields are optional:
 
-* *namespace*
-* *name*
-* *labels*
-* *fields*
-* *containers*: array of container names, only get logs from these containers.
+* namespace
+* name
+* labels
+* fields
+* containers: array of container names, only get logs from these containers.
 
-If stored logs are available, the container selector is automatically translated into
-an equivalent LogQL expression.
-
-An empty selector matches all logs of the class:
-
- log:application:{}
+If stored logs are available, the container selector is automatically translated into an equivalent LogQL expression.
 
 Examples:
 
- log:application:{ "namespace": "something", "labels":{"app": "myapp"}, "containers":["foo", "bar"]}
- log:infrastructure:{ "namespace": "openshift-kube-apiserver", "containers":["kube-apiserver"]}
+----
+log:application:{ "namespace": "something", "labels":{"app": "myapp"}, "containers":["foo", "bar"]}
+log:infrastructure:{ "namespace": "openshift-kube-apiserver", "containers":["kube-apiserver"]}
+----
 
 ==== LogQL queries
 
 Selector is a https://grafana.com/docs/loki/latest/query[LogQL] expression, for example:
 
- log:infrastructure:{kubernetes_namespace_name="openshift-cluster-version", kubernetes_pod_name=~".*-operator-.*"}
+----
+log:infrastructure:{kubernetes_namespace_name="openshift-cluster-version", kubernetes_pod_name=~".*-operator-.*"}
+----
 
-==== Viaq and OTEL
+==== Viaq and OTEL in queries
 
-When translating container selectors into LogQL, Korrel8r currently uses Viaq attributes.
-This works with existing deployments and with the early support for OTEL logging,
-which include backward-compatible Viaq labels.
+When translating container selectors into LogQL, Korrel8r currently uses Viaq attributes. This works with existing deployments and with the early support for OTEL logging, which include backward-compatible Viaq labels.
 
 Korrel8r will be updated to use OTEL directly in future.
 
-=== Store Configuration
+==== Store Configuration
 
- domain: log
- lokiStack: https://URL_OF_DEFAULT_LOKISTACK
- direct: true
+----
+domain: log
+lokiStack: https://URL_OF_DEFAULT_LOKISTACK
+direct: true
+----
 
 Log queries work as follows:
 
@@ -235,134 +239,134 @@ Log queries work as follows:
 
 At least one of lokiStack and direct must be set.
 
-=== Template functions
+==== Template functions
 
 The following functions can be used in rule templates when the log domain is available:
 
-* *logTypeForNamespace*: Takes a namespace string, returns the log type for logs in that namespace; "application" or "infrastructure"
-* *logSafeLabel*: Replace all characters other than alphanumerics, '_' and ':' with '_'.
-* *logSafeLabels*: Takes a map[string]string argument.
-Returns a map where each key is replaced by the result of logSafeLabel
+* logTypeForNamespace: Takes a namespace string, returns the log type for logs in that namespace; "application" or "infrastructure"
+* logSafeLabel: Replace all characters other than alphanumerics, '_' and ':' with '_'.
+* logSafeLabels: Takes a map[string]string argument. Returns a map where each key is replaced by the result of logSafeLabel.
 
-== metric
+=== metric
 
-Time-series of measured values.
+Domain metric is a korrel8r domain for Prometheus metrics.
 
-=== Classes
+==== Classes
 
- metric:metric
+----
+metric:metric
+----
 
-=== Object
+==== Object
 
-A https://pkg.go.dev/github.com/prometheus/common@v0.45.0/model#Metric[Metric] is a time series identified by a label set. Korrel8r only uses labels for correlation, it does not use sample values. If a korrel8r search has time constraints, then metrics with no values that meet the constraint are ignored.
+A [Metric] is a time series identified by a label set. Korrel8r only uses labels for correlation, it does not use sample values. If a korrel8r search has time constraints, then metrics with no values that meet the constraint are ignored.
 
-=== Query
+==== Query
 
 Selector is a https://prometheus.io/docs/prometheus/latest/querying/basics/[PromQL] query string.
 
-Korrel8r uses metric labels for correlation, it does not use time-series data values.
-The PromQL expression is parsed to extract the label matchers for the series it refers to.
-
-An empty selector matches all metrics:
-
- metric:metric:{}
+Korrel8r uses metric labels for correlation, it does not use time-series data values. The PromQL expression is parsed to extract the label matchers for the series it refers to.
 
 Examples:
 
- metric:metric:kube_pod_info{namespace="default"}
- metric:metric:{namespace="tracing-app-k6",pod="k6-tracing-564cf6dc8b-hpxd2"}
+----
+metric:metric:kube_pod_info{namespace="default"}
+metric:metric:{namespace="tracing-app-k6",pod="k6-tracing-564cf6dc8b-hpxd2"}
+----
 
-=== Store
+==== Store
 
 Prometheus is the store, store configuration:
 
- domain: metric
- metric: URL_OF_PROMETHEUS
+----
+domain: metric
+metric: URL_OF_PROMETHEUS
+----
 
-== mock
+=== mock
 
 Mock domain.
 
-== netflow
+=== netflow
 
-Network flows from source nodes to destination nodes.
+Domain netflow is a korrel8r domain for network flow data.
 
-=== Classes
+==== Classes
 
- netflow:network
+----
+netflow:network
+----
 
-=== Object
+==== Object
 
 JSON object in https://docs.openshift.com/container-platform/latest/observability/network_observability/json-flows-format-reference.html[NetFlow] format.
 
-=== Query
+==== Query
 
-Selector is a https://grafana.com/docs/loki/latest/query/[LogQL] query string.
+Selector is a https://grafana.com/docs/loki/latest/query/[LogQL] query string. Examples:
 
-An empty selector matches all network flows:
+----
+netflow:network:{SrcK8S_Type="Pod", SrcK8S_Namespace="myNamespace"}
+netflow:network:{DstK8S_Namespace="openshift-apiserver", DstK8S_OwnerName="apiserver"}
+----
 
- netflow:network:{}
-
-Examples:
-
- netflow:network:{SrcK8S_Type="Pod", SrcK8S_Namespace="myNamespace"}
- netflow:network:{DstK8S_Namespace="openshift-apiserver", DstK8S_OwnerName="apiserver"}
-
-=== Store
+==== Store
 
 To connect to a netflow lokiStack store use this configuration:
 
- domain: netflow
- lokistack: URL_OF_LOKISTACK_PROXY
+----
+domain: netflow
+lokistack: URL_OF_LOKISTACK_PROXY
+----
 
 To connect to plain loki store use:
 
- domain: netflow
- loki: URL_OF_LOKI
+----
+domain: netflow
+loki: URL_OF_LOKI
+----
 
-== trace
+=== trace
 
-Follow the path of a request through your application.
+Domain trace is a korrel8r domain for OpenTelemetry traces.
 
 OpenTelemetry https://opentelemetry.io/docs/concepts/signals/traces[traces] stored in the Grafana https://grafana.com/docs/tempo/latest/[Tempo] data store.
 
-=== Classes
+==== Classes
 
- trace:span
+----
+trace:span
+----
 
-=== Object
+==== Object
 
-Represents a https://opentelemetry.io/docs/concepts/signals/traces/#spans[span].
-A trace is a set of spans with the same trace-id, there is no explicit class representing a trace.
+Represents a https://opentelemetry.io/docs/concepts/signals/traces/#spans[span]. A trace is a set of spans with the same trace-id, there is no explicit class representing a trace.
 
-=== Query
+==== Query
 
 Selector has two forms:
 
 * https://grafana.com/docs/tempo/latest/traceql/[TraceQL] query string
 * A list of trace IDs.
 
-An empty selector matches all spans:
+A https://grafana.com/docs/tempo/latest/traceql/[TraceQL] query can select spans from many traces. Example:
 
- trace:span:{}
+----
+trace:span:{resource.k8s.namespace.name="korrel8r"}
+----
 
-A https://grafana.com/docs/tempo/latest/traceql/[TraceQL] query can select spans from many traces.
+A trace-id query is a list of hexadecimal trace IDs. It returns all the spans included by each trace. Example:
 
-Example:
+----
+trace:span:a7880cc221e84e0d07b15993358811b7,b7880cc221e84e0d07b15993358811b7
+----
 
- trace:span:{resource.k8s.namespace.name="korrel8r"}
-
-A trace-id query is a list of hexadecimal trace IDs.
-It returns all the spans included by each trace.
-
-Example:
-
- trace:span:a7880cc221e84e0d07b15993358811b7,b7880cc221e84e0d07b15993358811b7
-
-=== Store
+==== Store
 
 The trace domain accepts an optional "tempoStack" field with a URL to connect.
 
- stores:
-   domain: trace
-   tempoStack: "https://url-of-tempostack"
+----
+stores:
+    domain: trace
+    tempoStack: "https://url-of-tempostack"
+----

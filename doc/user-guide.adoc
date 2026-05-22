@@ -492,7 +492,7 @@ Korrel8r provides additional _template functions_ to simplify writing rules and 
 {{(query "k8s:Route.route.openshift.io:{namespace: netobserv, name: loki}" | first).spec.host}}
 ----
 
-= Domain Reference
+== Domain Reference
 
 include::gen/domains.adoc[]
 

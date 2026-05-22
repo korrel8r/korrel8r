@@ -24,7 +24,7 @@ import (
 )
 
 var (
-	Spec     = must.Must1(api.GetSwagger())
+	Spec     = must.Must1(api.GetSpec())
 	BasePath = must.Must1(Spec.Servers.BasePath())
 )
 
