@@ -1,12 +1,10 @@
 // Copyright: This file is part of korrel8r, released under https://github.com/korrel8r/korrel8r/blob/main/LICENSE
 
-// Package netflow is a domain for network observability flow events stored in Loki or LokiStack.
-//
-// See [Description] for details.
 package netflow
 
 import (
 	"context"
+	_ "embed"
 	"encoding/json"
 	"fmt"
 	"hash/fnv"
@@ -37,7 +35,11 @@ var (
 // - Default LokiStack store on current Openshift cluster: `{}`
 // - Remote LokiStack: `{ "lokiStack": "https://url-of-lokistack"}`
 // - Plain Loki store: `{ "loki": "https://url-of-loki"}`
-var Domain = domain{Domain: impl.NewDomain("netflow", Description, Class{})}
+//
+//go:embed doc.md
+var description string
+
+var Domain = domain{Domain: impl.NewDomain("netflow", description, Class{})}
 
 type domain struct{ *impl.Domain }
 

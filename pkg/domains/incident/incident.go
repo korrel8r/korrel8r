@@ -1,13 +1,10 @@
 // Copyright: This file is part of korrel8r, released under https://github.com/korrel8r/korrel8r/blob/main/LICENSE
 
-// Package incident provides mapping to [cluster-health-analyzer] incidents.
-//
-// See [Description] for details.
-// [cluster-health-analyzer]: https://github.com/openshift/cluster-health-analyzer
 package incident
 
 import (
 	"context"
+	_ "embed"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -33,12 +30,15 @@ var (
 	_ korrel8r.Object = &Object{}
 )
 
+//go:embed doc.md
+var description string
+
 const (
 	name           = "incident"
 	srcLabelPrefix = "src_"
 )
 
-var Domain = &domain{impl.NewDomain(name, Description, Class{})}
+var Domain = &domain{impl.NewDomain(name, description, Class{})}
 
 type domain struct{ *impl.Domain }
 
@@ -74,7 +74,7 @@ type Class struct{}
 func (c Class) Domain() korrel8r.Domain                     { return Domain }
 func (c Class) Name() string                                { return name }
 func (c Class) String() string                              { return korrel8r.ClassString(c) }
-func (c Class) Description() string                         { return Description }
+func (c Class) Description() string                         { return description }
 func (c Class) Unmarshal(b []byte) (korrel8r.Object, error) { return impl.UnmarshalAs[*Object](b) }
 func (c Class) ID(o korrel8r.Object) any {
 	if o, ok := o.(*Object); ok {

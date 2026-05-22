@@ -6,7 +6,6 @@ package text
 import (
 	"fmt"
 	"io"
-	"regexp"
 	"strings"
 	"text/tabwriter"
 
@@ -47,21 +46,15 @@ func (e *Printer) DescribeDomains(w io.Writer) {
 }
 
 func (e *Printer) DescribeDomain(w io.Writer, d korrel8r.Domain) {
-	fmt.Fprintf(w, "# %v\n\n%v\n", d.Name(), d.Description())
+	fmt.Fprintf(w, "\n## %v\n\n%v\n", d.Name(), d.Description())
 }
 
 func (p *Printer) Error(w io.Writer, err error) {
 	fmt.Fprintln(w, "Error: ", err)
 }
 
-var summaryRE = regexp.MustCompile(`(?s)\s*(.*?)(?:\n\n|\n$|$)`)
-
-// Summary extracts the first text block in a markdown document as a single line.
-// Used to extract summaries from domain descriptions.
+// Summary extracts the first line of description to use as a summary.
 func Summary(description string) string {
-	m := summaryRE.FindStringSubmatch(description)
-	if len(m) > 1 {
-		return m[1]
-	}
-	return ""
+	summary, _, _ := strings.Cut(description, "\n")
+	return summary
 }

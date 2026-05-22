@@ -1,12 +1,10 @@
 // Copyright: This file is part of korrel8r, released under https://github.com/korrel8r/korrel8r/blob/main/LICENSE
 
-// Package alert provides Prometheus and Loki alerts, queries and access to Thanos, AlertManager, and Loki Ruler stores.
-//
-// See [Description] for details.
 package alert
 
 import (
 	"context"
+	_ "embed"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -39,7 +37,10 @@ var (
 	_ korrel8r.Object = &Object{}
 )
 
-var Domain = domain{Domain: impl.NewDomain("alert", Description, Class{})}
+//go:embed doc.md
+var description string
+
+var Domain = domain{Domain: impl.NewDomain("alert", description, Class{})}
 
 type domain struct{ *impl.Domain }
 

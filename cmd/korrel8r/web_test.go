@@ -77,18 +77,18 @@ func assertDo(t *testing.T, h *http.Client, want, method, url, body string) {
 	t.Helper()
 	got, err := request(t, h, method, url, body)
 	require.NoError(t, err)
-	assert.JSONEq(t, want, got)
+	assert.JSONEq(t, want, got, test.JSONString(got))
 }
 
 const domains = `[
-{"name":"alert", "description": "Alerts that metric values are out of bounds."},
-{"name":"incident", "description": "Incidents group alerts into higher-level groups."},
-{"name":"k8s", "description": "Kubernetes resources."},
-{"name":"log", "description": "Log records from container and node logs."},
-{"name":"metric", "description": "Time-series of measured values."},
-{"name":"mock","description": "Mock domain.", "stores":[{"domain":"mock", "mockData":"testdata/mock_store.yaml"}]},
-{"name":"netflow","description": "Network flows from source nodes to destination nodes."},
-{"name":"trace","description": "Follow the path of a request through your application."}
+{"description":"Domain alert is a korrel8r domain for Prometheus/AlertManager alerts.","name":"alert"},
+{"description":"Domain incident is a korrel8r domain for cluster health incidents.","name":"incident"},
+{"description":"Domain k8s is a korrel8r domain for Kubernetes resources.","name":"k8s"},
+{"description":"Domain log is a korrel8r domain for application, infrastructure, and audit logs.","name":"log"},
+{"description":"Domain metric is a korrel8r domain for Prometheus metrics.","name":"metric"},
+{"description":"Mock domain.","name":"mock", "stores":[{"domain":"mock", "mockData":"testdata/mock_store.yaml"}]},
+{"description":"Domain netflow is a korrel8r domain for network flow data.","name":"netflow"},
+{"description":"Domain trace is a korrel8r domain for OpenTelemetry traces.","name":"trace"}
 ]`
 
 func TestMain_server_insecure(t *testing.T) {

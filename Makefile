@@ -8,7 +8,7 @@ help: ## Display this help.
 	@grep -E '^## [A-Z0-9_]+: ' Makefile | sed 's/^## \([A-Z0-9_]*\): \(.*\)/\1#\2/' | column -s'#' -t
 
 ## VERSION: Semantic version for release, use -dev for development pre-release versions.
-VERSION?=0.10.1-dev
+VERSION?=0.11.0-dev
 ## REGISTRY_BASE: Image registry base, for example quay.io/somebody
 REGISTRY_BASE?=$(error REGISTRY_BASE must be set to push images)
 ## IMGTOOL: May be podman or docker.
@@ -30,7 +30,9 @@ VERSION_TXT=internal/pkg/build/version.txt
 OPENAPI_SPEC=doc/korrel8r-openapi.yaml
 GEN_OPENAPI_API=pkg/api/gen-openapi.go
 GEN_OPENAPI_IMPL=pkg/rest/gen-openapi.go
-GENERATED=$(VERSION_TXT) $(GEN_OPENAPI_IMPL) $(GEN_OPENAPI_API)
+GEN_DOMAIN_DOC=$(subst doc.go,doc.md,$(wildcard pkg/domains/*/doc.go))
+
+GENERATED=$(VERSION_TXT) $(GEN_OPENAPI_IMPL) $(GEN_OPENAPI_API) $(GEN_DOMAIN_DOC)
 
 all: _site test image-build			## Build and test everything locally. Recommended before commit.
 
@@ -159,11 +161,16 @@ $(KRAMDOC):
 	@mkdir -p $(dir $@)
 	gem install kramdown-asciidoc --user-install --bindir $(BIN)
 
-doc/gen/domains.adoc: $(GENERATED) $(KRAMDOC) $(shell find pkg/domains -name "*.go")
+doc/gen/domains.adoc: $(GEN_DOMAIN_DOC) $(KRAMDOC)
 	@mkdir -p $(dir $@)
 	go run ./cmd/korrel8r describe | $(KRAMDOC) -o $@ --heading-offset=1 -
 
-doc/gen/rest_api.adoc: $(OPENAPI_SPEC)
+GOTXT=doc/gomarkdoc
+%/doc.md: %/doc.go $(wildcard $(GOTXT)/*.gotxt) $(MAKEFILE_LIST)
+	@mkdir -p $(dir $@)
+	go tool gomarkdoc ./$(dir $@) --template-file file=$(GOTXT)/file.gotxt | sed 's/^Package $(notdir $(dir $@))/Domain /' > $@
+
+doc/gen/rest_api.adoc: $(OPENAPI_SPEC) $(OPENAPI_GEN)
 	@mkdir -p $(dir $@)
 	$(IMGTOOL) run --rm -v $(CURDIR):/app:z docker.io/openapitools/openapi-generator-cli \
 		generate -g asciidoc -c /app/doc/openapi-asciidoc.yaml -i /app/$< -o /app/$@.dir

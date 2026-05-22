@@ -1,13 +1,11 @@
 // Copyright: This file is part of korrel8r, released under https://github.com/korrel8r/korrel8r/blob/main/LICENSE
 
-// Package k8s implements Kubernetes resources stored in a Kube API server.
-//
-// See [Description] for details.
 package k8s
 
 import (
 	"cmp"
 	"context"
+	_ "embed"
 	"encoding/json"
 	"fmt"
 	"maps"
@@ -31,6 +29,9 @@ import (
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
+
+//go:embed doc.md
+var description string
 
 var (
 	log    = logging.Log()
@@ -99,7 +100,7 @@ func newDomain() *domain {
 
 func (d *domain) Name() string        { return "k8s" }
 func (d *domain) String() string      { return d.Name() }
-func (d *domain) Description() string { return Description }
+func (d *domain) Description() string { return description }
 
 func (d *domain) Classes() []korrel8r.Class { d.m.Lock(); defer d.m.Unlock(); return d.classes }
 

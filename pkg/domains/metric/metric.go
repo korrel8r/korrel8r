@@ -1,12 +1,10 @@
 // Copyright: This file is part of korrel8r, released under https://github.com/korrel8r/korrel8r/blob/main/LICENSE
 
-// Package metric represents Prometheus metric time-series as objects.
-//
-// See [Description] for details.
 package metric
 
 import (
 	"context"
+	_ "embed"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -27,8 +25,11 @@ const (
 	name = "metric"
 )
 
+//go:embed doc.md
+var description string
+
 var (
-	Domain = &domain{Domain: impl.NewDomain(name, Description, Class{})}
+	Domain = &domain{Domain: impl.NewDomain(name, description, Class{})}
 
 	log = logging.Log()
 
