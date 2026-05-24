@@ -20,8 +20,8 @@ func TestDomain(t *testing.T) {
 
 	t.Run("Domain description", func(t *testing.T) {
 		description := Domain.Description()
-		assert.Equal(t, "Log records from container and node logs.", text.Summary(description))
-		assert.Contains(t, description, "Log records from container and node logs.")
+		assert.Equal(t, "Domain log is a korrel8r domain for application, infrastructure, and audit logs.", text.Summary(description))
+		assert.Contains(t, description, "Domain log is a korrel8r domain for application, infrastructure, and audit logs.")
 	})
 
 	t.Run("Domain classes", func(t *testing.T) {
