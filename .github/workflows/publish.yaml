@@ -14,7 +14,7 @@ jobs:
     outputs:
       should-deploy: ${{ steps.status.outputs.changes != '0' }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           # Get full history for reliable git operations
           fetch-depth: 0
@@ -29,12 +29,12 @@ jobs:
              echo "::notice::No changes in the last 24 hours, skipping build"
           fi
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         if: steps.status.outputs.changes != '0'
         with:
           go-version: "1.25"
 
-      - uses: actions/cache@v4
+      - uses: actions/cache@v5
         if: steps.status.outputs.changes != '0'
         with:
           path: |
@@ -46,11 +46,11 @@ jobs:
 
       - name: Generate Web Site
         if: steps.status.outputs.changes != '0'
-        run: make doc/public
+        run: make publish
 
       - name: Upload web site
         if: steps.status.outputs.changes != '0'
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v5
         with:
           path: doc/public
 
@@ -71,4 +71,4 @@ jobs:
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
