@@ -5,7 +5,7 @@ weight: 1
 
 # Korrel8r
 
-**Navigate relationships between cluster resources and observability signals.**
+*Navigate relationships between cluster resources and observability signals.*
 
 Observability for Kubernetes clusters often involves multiple systems:
 logs in Loki, metrics in Prometheus, traces in Tempo, events in the API server,
@@ -44,7 +44,7 @@ Neighborhood Search
 - **Observability tool builders** who want to display and manipulate correlation graphs
 - **Integrated solutions** — for example the [OpenShift Console Troubleshooting Panel](https://github.com/openshift/troubleshooting-panel-console-plugin)
 
-## About OpenTelemetry
+## Relationship to OpenTelemetry
 
 The [OpenTelemetry](https://opentelemetry.io) project (OTEL) defines standard vocabularies for traces, metrics, and logs.
 Korrel8r can correlate OTEL data with other data formats for observability signals.
@@ -56,19 +56,19 @@ Korrel8r complements OTEL by:
 - Supporting data types beyond the current OTEL specification (like Kubernetes events or network flows)
 - Working with any query language or storage system
 
-## Documentation
+# Documentation
 
 - [Getting Started](getting-started/) — Installation, running, and first queries
 - [Concepts](concepts/) — How domains, classes, queries, and rules work
 
 ## Reference
 
-- [Configuration](reference/configuration/) — Config file format, stores, rules, and templates
+- [Korrel8r Command](reference/cmd/) — Command-line reference
 - [Domains](reference/domains/) — Signal domains, classes, and query syntax
+- [Client Command](https://korrel8r.github.io/client/) — Command-line REST client for korrel8r servers
+- [Configuration](reference/configuration/) — Configuration file format, stores, rules, and templates
 - [REST API](reference/rest/) — HTTP API reference
-- [Commands](reference/cmd/) — Command-line interface
 
 ## Links
 
-- [Client Documentation](https://korrel8r.github.io/client/)
 - [GitHub Repository](https://github.com/korrel8r/korrel8r)

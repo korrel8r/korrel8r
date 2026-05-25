@@ -1,5 +1,5 @@
 ---
-title: Commands
+title: Korrel8r Command
 description: Command-line interface
 ---
 ## korrel8r

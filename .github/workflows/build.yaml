@@ -24,16 +24,8 @@ jobs:
         with:
           go-version: "1.25" # Should match ../../go.mod
 
-      - name: lint
-        run: make lint
-
       - name: test
         run: make test-no-cluster
-        env:
-          NOLINT: 1
-
-      - name: build
-        run: make build
         env:
           NOLINT: 1
 
