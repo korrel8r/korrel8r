@@ -55,7 +55,7 @@ rules:
       classes: [Event.]
     result:
       query: >
-        k8s:Event:{"fields":{
+        k8s:Event:{"namespace":"{{.metadata.namespace}}", "fields":{
         "involvedObject.namespace":"{{.metadata.namespace}}",
         "involvedObject.name": "{{.metadata.name}}",
         "involvedObject.kind": "{{.kind}}",

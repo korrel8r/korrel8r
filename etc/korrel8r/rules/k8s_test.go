@@ -45,7 +45,7 @@ func TestK8sRules(t *testing.T) {
 		{
 			rule:  "AllToEvent",
 			start: newK8s("Pod", "aNamespace", "foo", nil),
-			want:  []string{`k8s:Event.v1:{"fields":{"involvedObject.apiVersion":"v1","involvedObject.kind":"Pod","involvedObject.name":"foo","involvedObject.namespace":"aNamespace"}}`},
+			want:  []string{`k8s:Event.v1:{"namespace":"aNamespace","fields":{"involvedObject.apiVersion":"v1","involvedObject.kind":"Pod","involvedObject.name":"foo","involvedObject.namespace":"aNamespace"}}`},
 		},
 		{
 			rule:  "AllToMetric",
