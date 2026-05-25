@@ -46,6 +46,35 @@
 //	stores:
 //	    domain: k8s
 //
+// # Field Selectors
+//
+// Kubernetes defines [field selectors],
+// similar to label selectors but acting on resource field values.
+//
+// Not all fields are supported, the following are allowed as field-selectors in a query.
+//
+// All resources support the field metadata.name, the resource name.
+// All namespaced resources also support metadata.namespace, the resource namespace.
+//
+// Core Resources (v1):
+//   - pods: metadata.name, metadata.namespace, spec.nodeName, spec.restartPolicy, spec.schedulerName, spec.serviceAccountName, spec.hostNetwork, status.phase, status.podIP, status.nominatedNodeName
+//   - events: metadata.name, metadata.namespace, involvedObject.kind, involvedObject.namespace, involvedObject.name, involvedObject.uid, involvedObject.apiVersion, involvedObject.resourceVersion, involvedObject.fieldPath, reason, reportingComponent, source, type
+//   - namespaces: metadata.name, status.phase
+//   - nodes: metadata.name, spec.unschedulable
+//   - secrets: metadata.name, metadata.namespace, type
+//   - services: metadata.name, metadata.namespace, spec.clusterIP
+//   - replicationcontrollers: metadata.name, metadata.namespace, status.replicas
+//
+// Other Built-in Resources:
+//   - events.events.k8s.io: metadata.name, metadata.namespace, reason, reportingController, regarding.kind, regarding.namespace, regarding.name, regarding.uid, regarding.apiVersion, regarding.resourceVersion, regarding.fieldPath, type
+//   - jobs.batch: metadata.name, metadata.namespace, status.successful
+//   - certificatesigningrequests.certificates.k8s.io: metadata.name, spec.signerName
+//   - resourceslices.resource.k8s.io: metadata.name, spec.nodeName
+//
+// Since K8s 1.30+, CRDs can define custom selectableFields.
+// None of the OpenShift observability resources do this.
+//
 // [Kubernetes version patterns]: https://kubernetes.io/docs/tasks/extend-kubernetes/custom-resources/custom-resource-definition-versioning/#version-priority
+// [field selectors]: https://kubernetes.io/docs/concepts/overview/working-with-objects/field-selectors/
 // [field selector object]: https://kubernetes.io/docs/concepts/overview/working-with-objects/field-selectors/
 package k8s

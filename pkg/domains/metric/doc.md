@@ -1,4 +1,4 @@
-Domain metric is a korrel8r domain for Prometheus metrics.
+Prometheus metrics.
 
 ### Classes
 

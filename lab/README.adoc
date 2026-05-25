@@ -1,3 +1,0 @@
-= Korrel8r Lab
-
-This directory is for experimental stuff that's not ready to include in korrel8r.

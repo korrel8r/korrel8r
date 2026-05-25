@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ if .IsHome }}{{ .Site.Title }}{{ else }}{{ .Title }} - {{ .Site.Title }}{{ end }}</title>
+  <meta name="description" content="{{ .Site.Params.description }}">
+  <link rel="stylesheet" href="{{ "css/style.css" | relURL }}">
+  <link rel="icon" href="{{ "images/icon.svg" | relURL }}">
+</head>
+<body>
+  <div class="container">
+    <nav class="sidebar">
+      <div class="sidebar-header">
+        <a href="{{ "/" | relURL }}">
+          <img src="{{ "images/icon.svg" | relURL }}" alt="" width="28" height="28">
+          <strong>Korrel8r</strong>
+        </a>
+      </div>
+      {{ partial "nav.html" . }}
+    </nav>
+    <main class="content">
+      {{ block "main" . }}{{ end }}
+    </main>
+  </div>
+</body>
+</html>

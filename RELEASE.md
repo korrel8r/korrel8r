@@ -1,0 +1,44 @@
+# Releasing a New Version
+
+Steps to release a new version X.Y.Z, for maintainers.
+
+On branch `vX.Y`:
+
+## Update CHANGELOG
+
+Update CHANGELOG.md to reflect changes since last release, add the new release header.
+Follow [these guidelines](http://keepachangelog.com).
+You can list git changes with:
+
+    git log --oneline $(git describe --abbrev=0).. --reverse
+
+## Prepare for Release
+
+Edit Makefile and set `VERSION?=X.Y.Z` for the new release.
+Make sure you are logged in to `quay.io/korrel8r` to push images.
+
+    make clean; make pre-release REGISTRY_BASE=quay.io/korrel8r
+
+Use `git status` to verify that all changes are related to the version number change.
+
+## Release Latest Version
+
+Updating the latest version to `X.Y.Z` is done on main to avoid needless branching.
+
+1. Commit and push your changes to `main` with commit message `Release X.Y.Z`
+2. `make release REGISTRY_BASE=quay.io/korrel8r`
+
+`make release` does the following:
+
+- `make clean` and re-build, verify nothing changes, working tree is clean.
+- Create and push the git tag `vX.Y.Z`
+- Update the `latest` image tag to point to the new images.
+
+## Release Patch to Old Version
+
+Version branches are created only when needed.
+To release a patch `X.Y.Z` to an old X.Y version:
+
+1. Create branch `vX.Y`, if it does not already exist, starting from tag `vX.Y.0`
+2. Commit and push your changes to branch `vX.Y` with message `Release X.Y.Z`
+3. `make release REGISTRY_BASE=quay.io/korrel8r`

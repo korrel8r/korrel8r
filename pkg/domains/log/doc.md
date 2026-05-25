@@ -1,4 +1,4 @@
-Domain log is a korrel8r domain for application, infrastructure, and audit logs.
+application, infrastructure, and audit logs.
 
 Logs can be stored on the cluster in LokiStack or in an external Loki server. They can also be retrieved directly from the Kubernetes API server. Direct API server access does not provide long\-term log storage, but it gives short\-term access when there is no long term log store available.
 

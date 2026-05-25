@@ -22,14 +22,14 @@ func TestMain_list(t *testing.T) {
 	out, err := cliCommand(t, "list").Output()
 	require.NoError(t, test.ExecError(err))
 	want := `
-alert     Domain alert is a korrel8r domain for Prometheus/AlertManager alerts.
-incident  Domain incident is a korrel8r domain for cluster health incidents.
-k8s       Domain k8s is a korrel8r domain for Kubernetes resources.
-log       Domain log is a korrel8r domain for application, infrastructure, and audit logs.
-metric    Domain metric is a korrel8r domain for Prometheus metrics.
+alert     Prometheus/AlertManager alerts.
+incident  cluster health incidents.
+k8s       Kubernetes resources.
+log       application, infrastructure, and audit logs.
+metric    Prometheus metrics.
 mock      Mock domain.
-netflow   Domain netflow is a korrel8r domain for network flow data.
-trace     Domain trace is a korrel8r domain for OpenTelemetry traces.
+netflow   network flow data.
+trace     OpenTelemetry traces.
 `
 	assert.Equal(t, strings.TrimSpace(want), strings.TrimSpace(string(out)))
 }

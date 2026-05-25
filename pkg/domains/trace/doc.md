@@ -1,4 +1,4 @@
-Domain trace is a korrel8r domain for OpenTelemetry traces.
+OpenTelemetry traces.
 
 OpenTelemetry [traces](<https://opentelemetry.io/docs/concepts/signals/traces>) stored in the Grafana [Tempo](<https://grafana.com/docs/tempo/latest/>) data store.
 

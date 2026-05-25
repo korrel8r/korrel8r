@@ -3,9 +3,9 @@
 # Targets: ## inline comment after the target.
 help: ## Display this help.
 	@echo; echo = Targets =
-	@grep -E '^[A-Za-z0-9_-]+:.*##' Makefile | sed 's/:.*##\s*/#/' | column -s'#' -t
+	@grep -hE '^[A-Za-z0-9_-]+:.*##' Makefile doc.mk | sed 's/:.*##\s*/#/' | column -s'#' -t
 	@echo; echo  = Variables =
-	@grep -E '^## [A-Z0-9_]+: ' Makefile | sed 's/^## \([A-Z0-9_]*\): \(.*\)/\1#\2/' | column -s'#' -t
+	@grep -hE '^## [A-Z0-9_]+: ' Makefile doc.mk | sed 's/^## \([A-Z0-9_]*\): \(.*\)/\1#\2/' | column -s'#' -t
 
 ## VERSION: Semantic version for release, use -dev for development pre-release versions.
 VERSION?=0.11.0-dev
@@ -25,16 +25,22 @@ export PATH := $(abspath $(BIN)):$(PATH)
 export GOCOVERDIR := $(abspath _cover)
 $(shell mkdir -p $(GOCOVERDIR))
 
-# Generated files
-VERSION_TXT=internal/pkg/build/version.txt
+# Sources for generated files
 OPENAPI_SPEC=doc/korrel8r-openapi.yaml
+DOMAINS=$(patsubst pkg/domains/%/doc.go,%,$(wildcard pkg/domains/*/doc.go))
+
+# Generated files required to build the Go code.
+VERSION_TXT=internal/pkg/build/version.txt
 GEN_OPENAPI_API=pkg/api/gen-openapi.go
 GEN_OPENAPI_IMPL=pkg/rest/gen-openapi.go
-GEN_DOMAIN_DOC=$(subst doc.go,doc.md,$(wildcard pkg/domains/*/doc.go))
+GEN_DOMAIN_DOC=$(patsubst %.go,%.md,$(wildcard pkg/domains/*/doc.go))
 
 GENERATED=$(VERSION_TXT) $(GEN_OPENAPI_IMPL) $(GEN_OPENAPI_API) $(GEN_DOMAIN_DOC)
 
-all: _site test image-build			## Build and test everything locally. Recommended before commit.
+all: doc/public test image-build			## Build and test everything locally. Recommended before commit.
+all-no-cluster: doc/public test-no-cluster image-build
+
+.DELETE_ON_ERROR:
 
 generate:  $(GENERATED)
 	$(MAKE) kustomize-edit
@@ -49,7 +55,8 @@ install: lint							## Build and install korrel8r with go install.
 	go install ./cmd/korrel8r
 
 clean: ## Remove generated files, including checked-in files.
-	rm -rf _site $(GENERATED) doc/gen tmp $(GEN_OPENAPI_API) $(GEN_OPENAPI_IMPL) $(BIN) $(GOCOVERDIR)
+	rm -rf doc/public doc/content/reference/cmd doc/content/reference/rest $(GENERATED) $(BIN) $(GOCOVERDIR)
+	ls doc/content/reference/domains | grep -v index | xargs rm -rf
 
 ifneq ($(VERSION),$(file <$(VERSION_TXT)))
 .PHONY: $(VERSION_TXT) # Force update if VERSION_TXT does not match $(VERSION)
@@ -60,23 +67,31 @@ $(VERSION_TXT):
 $(BIN):
 	mkdir -p $(BIN)
 
-
 $(GEN_OPENAPI_API): $(OPENAPI_SPEC)
 	go tool oapi-codegen -generate types,spec -package api -o $@ $<
 
 $(GEN_OPENAPI_IMPL): $(OPENAPI_SPEC)
 	go tool oapi-codegen -generate gin -package rest -import-mapping "$<:github.com/korrel8r/korrel8r/pkg/api" -alias-types -o $@ $<
 
+# Generate the pkg/domains/*/doc.md files that are embedded in the korrel8r executable.
+%/doc.md: %/doc.go $(shell find doc/gomarkdoc)
+	@mkdir -p $(dir $@)
+	go tool gomarkdoc ./$(dir $@) --template-file file=doc/gomarkdoc/file.gotxt | sed -E 's/[Pp]ackage *[a-zA-Z0-9]+ *(is a)? *(korrel8r)? *(domain)? *(for)? *//' > $@
+
 SHELLCHECK:= $(BIN)/shellcheck
 $(SHELLCHECK): $(BIN)
 	./hack/install-shellcheck.sh $(BIN) 0.10.0
 
+ifndef NOLINT
 lint: $(GENERATED) $(SHELLCHECK) ## Run the linter to find and fix code style problems.
 	hack/copyright.sh
 	go mod tidy
 	go tool golangci-lint run --fix
 	go tool shfmt -l -w ./**/*.sh
 	$(SHELLCHECK) -x -S style hack/*.sh
+else
+lint: ## Linting skipped (NOLINT is set).
+endif
 
 .PHONY: test
 test: lint											## Run all tests, no cache. Requires an openshift cluster.
@@ -127,69 +142,12 @@ undeploy:			## Delete resources created by `make deploy`
 	@kubectl delete -k config/route || true
 	@kubectl delete -k config || true
 
-ASCIIDOCTOR:=$(BIN)/asciidoctor
-$(ASCIIDOCTOR): $(BIN)
-	gem install asciidoctor --user-install --bindir $(BIN)
-
-# From github.com:darshandsoni/asciidoctor-skins.git
-CSS?=adoc-readthedocs.css
-ADOC_FLAGS=-v -a allow-uri-read -a stylesdir=$(shell pwd)/doc/css -a stylesheet=$(CSS)  -a revnumber=$(VERSION) -a revdate=$(shell date -I)
-LINKCHECKER?=$(or $(shell type -p linkchecker),$(warning linkchecker not found: skipping link checks))
-LINKCHECK_FLAGS=--no-warnings --check-extern --ignore-url='//(localhost|[^:/]*\.example)([:/].*)?$$'
-
-# _site is published to github pages by .github/workflows/asciidoctor-ghpages.yml.
-_site: doc $(shell find etc/korrel8r -name gen -prune -o -print) $(ASCIIDOCTOR) ## Generate the website HTML.
-	git submodule init
-	git submodule update --force
-	@mkdir -p $@/doc/images
-	cp -r doc/images etc/korrel8r $@
-	$(ASCIIDOCTOR) $(ADOC_FLAGS) -D$@ doc/user-guide.adoc -o index.html
-	$(ASCIIDOCTOR) $(ADOC_FLAGS) -D$@/gen/cmd doc/gen/cmd/*.adoc
-	$(and $(LINKCHECKER),$(LINKCHECKER) $(LINKCHECK_FLAGS) $@)
-	@touch $@
-
-_site/man: $(shell find ./cmd)	## Generated man pages.
-	@mkdir -p $@
-	go run ./cmd/korrel8r doc man $@
-	@touch $@
-
-doc: doc/gen/domains.adoc doc/gen/rest_api.adoc doc/gen/cmd
-	@touch $@
-
-KRAMDOC=$(BIN)/kramdoc
-$(KRAMDOC):
-	@mkdir -p $(dir $@)
-	gem install kramdown-asciidoc --user-install --bindir $(BIN)
-
-doc/gen/domains.adoc: $(GEN_DOMAIN_DOC) $(KRAMDOC)
-	@mkdir -p $(dir $@)
-	go run ./cmd/korrel8r describe | $(KRAMDOC) -o $@ --heading-offset=1 -
-
-GOTXT=doc/gomarkdoc
-%/doc.md: %/doc.go $(wildcard $(GOTXT)/*.gotxt) $(MAKEFILE_LIST)
-	@mkdir -p $(dir $@)
-	go tool gomarkdoc ./$(dir $@) --template-file file=$(GOTXT)/file.gotxt | sed 's/^Package $(notdir $(dir $@))/Domain /' > $@
-
-doc/gen/rest_api.adoc: $(OPENAPI_SPEC) $(OPENAPI_GEN)
-	@mkdir -p $(dir $@)
-	$(IMGTOOL) run --rm -v $(CURDIR):/app:z docker.io/openapitools/openapi-generator-cli \
-		generate -g asciidoc -c /app/doc/openapi-asciidoc.yaml -i /app/$< -o /app/$@.dir
-	@mv -f $@.dir/index.adoc $@
-	@rm -rf $@.dir
-
-doc/gen/cmd: $(KRAMDOC) $(GENERATED) $(shell find ./cmd/korrel8r)
-	@mkdir -p $@
-	unset KORREL8R_CONFIG; go run ./cmd/korrel8r doc markdown $@
-	go tool korrel8rcli doc markdown $@
-	hack/md-to-adoc.sh $(KRAMDOC) $@/*.md
-	@touch $@
-
-# See doc/RELEASE.adoc
+# See RELEASE.md
 pre-release:
 	$(MAKE) all image kustomize-edit
 	@echo Ready to release $(VERSION) to $(REGISTRY_BASE)
 
-# See doc/RELEASE.adoc
+# See RELEASE.md
 release:
 	$(MAKE) clean
 	$(MAKE) pre-release
@@ -197,10 +155,9 @@ release:
 	$(MAKE) image-latest
 	@echo Released $(VERSION) to $(REGISTRY_BASE)
 
-# Force download of all tools needed for development
-tools: $(ASCIIDOCTOR) $(KRAMDOC) $(SHELLCHECK)
-
 DEVSPACE_IMAGE?="$(REGISTRY_BASE)/korrel8r:devspace"
 devspace-image:									## Rebuild the devspace base image
 	$(IMGTOOL) build --tag=$(DEVSPACE_IMAGE) -f devspace.Containerfile
 	$(IMGTOOL) push $(DEVSPACE_IMAGE)
+
+include doc.mk
