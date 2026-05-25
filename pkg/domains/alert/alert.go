@@ -159,13 +159,15 @@ func (q Query) String() string        { return korrel8r.QueryString(q) }
 
 // Store is a client of Prometheus, AlertManager, and Loki Ruler.
 type Store struct {
-	alertmanagerAPI      *client.AlertmanagerAPI
-	prometheusAPI        v1.API
-	prometheusURL        *url.URL         // Original URL from configuration
-	prometheusConfigPort string           // Port from configuration (e.g., "9091")
-	lokiRulerURL         *url.URL         // Loki Ruler URL from configuration
-	httpClient           *http.Client     // HTTP client for recreating prometheus client
-	k8sClient            k8sclient.Client // For RBAC permission checks
+	alertmanagerAPI         *client.AlertmanagerAPI
+	prometheusAPI           v1.API
+	prometheusURL           *url.URL         // Original URL from configuration
+	prometheusConfigPort    string           // Port from configuration (e.g., "9091")
+	alertmanagerURL         *url.URL         // Original Alertmanager URL from configuration
+	alertmanagerConfigPort  string           // Alertmanager port from configuration (e.g., "9094")
+	lokiRulerURL            *url.URL         // Loki Ruler URL from configuration
+	httpClient              *http.Client     // HTTP client for recreating prometheus client
+	k8sClient               k8sclient.Client // For RBAC permission checks
 	*impl.Store
 }
 
@@ -188,14 +190,16 @@ func NewStore(alertmanagerURL *url.URL, prometheusURL *url.URL, lokiRulerURL *ur
 	}
 
 	return &Store{
-		alertmanagerAPI:      alertmanagerAPI,
-		prometheusAPI:        prometheusAPI,
-		prometheusURL:        prometheusURL,
-		prometheusConfigPort: prometheusURL.Port(),
-		lokiRulerURL:         lokiRulerURL,
-		httpClient:           hc,
-		k8sClient:            k8sClient,
-		Store:                impl.NewStore(Domain),
+		alertmanagerAPI:        alertmanagerAPI,
+		prometheusAPI:          prometheusAPI,
+		prometheusURL:          prometheusURL,
+		prometheusConfigPort:   prometheusURL.Port(),
+		alertmanagerURL:        alertmanagerURL,
+		alertmanagerConfigPort: alertmanagerURL.Port(),
+		lokiRulerURL:           lokiRulerURL,
+		httpClient:             hc,
+		k8sClient:              k8sClient,
+		Store:                  impl.NewStore(Domain),
 	}, nil
 }
 
@@ -317,6 +321,63 @@ func (s *Store) getEffectivePrometheusAPI(ctx context.Context) (v1.API, error) {
 		return nil, err
 	}
 	return newPrometheusClient(u, s.httpClient)
+}
+
+// getEffectiveAlertmanagerAPI returns an Alertmanager API client with the appropriate port based on user permissions.
+// Admin users (with cluster-monitoring-view) use the configured port (typically 9094) for cluster-wide access.
+// Non-admin users use the tenancy port 9092 for namespace-scoped access (requires monitoring-edit role in their project).
+func (s *Store) getEffectiveAlertmanagerAPI(ctx context.Context, namespaces map[string]bool) (*client.AlertmanagerAPI, error) {
+	u, err := k8s.GetEffectivePrometheusURL(ctx, s.alertmanagerURL, s.alertmanagerConfigPort, s.k8sClient, "alert", k8s.TenancyPortQuery)
+	if err != nil {
+		return nil, err
+	}
+
+	// If using tenancy port (9092), wrap HTTP client to inject namespace query parameters
+	httpClient := s.httpClient
+	if u.Port() == k8s.TenancyPortQuery {
+		if len(namespaces) > 0 {
+			log.V(3).Info("using Alertmanager tenancy port with namespace filtering", "port", k8s.TenancyPortQuery, "namespaces", namespaces)
+			// Wrap the transport to inject namespace parameters
+			wrappedClient := *s.httpClient // Copy the client
+			baseTransport := s.httpClient.Transport
+			if baseTransport == nil {
+				baseTransport = http.DefaultTransport
+			}
+			wrappedClient.Transport = &namespaceInjectingTransport{
+				base:       baseTransport,
+				namespaces: namespaces,
+			}
+			httpClient = &wrappedClient
+		} else {
+			// Non-admin user querying without namespace - this will likely fail
+			log.V(1).Info("namespace-scoped Alertmanager access requires namespace in query", "port", k8s.TenancyPortQuery, "hint", "add namespace to alert query for non-admin access")
+		}
+	} else {
+		log.V(3).Info("using Alertmanager configured port", "port", u.Port(), "namespaces_count", len(namespaces))
+	}
+
+	return newAlertmanagerClient(u, httpClient)
+}
+
+// namespaceInjectingTransport wraps an HTTP RoundTripper to inject namespace query parameters.
+// This is required for Alertmanager port 9092 (namespace-scoped access).
+type namespaceInjectingTransport struct {
+	base       http.RoundTripper
+	namespaces map[string]bool
+}
+
+func (t *namespaceInjectingTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	// Clone the request to avoid modifying the original
+	req = req.Clone(req.Context())
+	// Add namespace query parameters to the request URL
+	if len(t.namespaces) > 0 {
+		q := req.URL.Query()
+		for ns := range t.namespaces {
+			q.Add("namespace", ns)
+		}
+		req.URL.RawQuery = q.Encode()
+	}
+	return t.base.RoundTrip(req)
 }
 
 func convertLabelSetToMap(m model.LabelSet) map[string]string {
@@ -475,7 +536,7 @@ func (s *Store) Get(ctx context.Context, query korrel8r.Query, c *korrel8r.Const
 	}
 
 	for _, subquery := range q.Parsed {
-		alerts, err := s.getSubquery(ctx, allRules, subquery)
+		alerts, err := s.getSubquery(ctx, allRules, subquery, namespaces)
 		if err != nil {
 			return err
 		}
@@ -491,7 +552,7 @@ func (s *Store) Get(ctx context.Context, query korrel8r.Query, c *korrel8r.Const
 	return nil
 }
 
-func (s *Store) getSubquery(ctx context.Context, prometheusRules v1.RulesResult, subQuery map[string]string) ([]*Object, error) {
+func (s *Store) getSubquery(ctx context.Context, prometheusRules v1.RulesResult, subQuery map[string]string, namespaces map[string]bool) ([]*Object, error) {
 	// PRIMARY: Extract alerts from Rules API (works for Prometheus)
 	var alerts []*Object
 	for _, rg := range prometheusRules.Groups {
@@ -526,7 +587,13 @@ func (s *Store) getSubquery(ctx context.Context, prometheusRules v1.RulesResult,
 	// This handles Loki case where Rules API has no ar.Alerts field
 	if len(alerts) == 0 {
 		log.V(3).Info("no alerts from Rules API, trying Alertmanager fallback")
-		alertManagerAlerts, err := s.alertmanagerAPI.Alert.GetAlerts(alert.NewGetAlertsParamsWithContext(ctx).WithFilter(filters))
+		// Get Alertmanager API with appropriate port for user's permissions
+		alertmanagerAPI, err := s.getEffectiveAlertmanagerAPI(ctx, namespaces)
+		if err != nil {
+			log.V(3).Info("failed to get Alertmanager API", "error", err)
+			return alerts, nil // Return empty, don't fail
+		}
+		alertManagerAlerts, err := alertmanagerAPI.Alert.GetAlerts(alert.NewGetAlertsParamsWithContext(ctx).WithFilter(filters))
 		if err != nil {
 			log.V(3).Info("failed to query Alertmanager for fallback", "error", err)
 			return alerts, nil // Return empty, don't fail
@@ -562,13 +629,19 @@ func (s *Store) getSubquery(ctx context.Context, prometheusRules v1.RulesResult,
 		}
 	} else {
 		// AUGMENT: If we got alerts from Rules API, augment with Alertmanager timing data
-		alertManagerAlerts, err := s.alertmanagerAPI.Alert.GetAlerts(alert.NewGetAlertsParamsWithContext(ctx).WithFilter(filters))
+		// Get Alertmanager API with appropriate port for user's permissions
+		alertmanagerAPI, err := s.getEffectiveAlertmanagerAPI(ctx, namespaces)
 		if err != nil {
-			// Log the error but don't fail - Alertmanager access may be restricted
-			log.V(3).Info("failed to augment alerts from Alertmanager", "error", err)
+			log.V(3).Info("failed to get Alertmanager API for augmentation", "error", err)
 		} else {
-			for _, pa := range alerts {
-				s.augmentAlert(pa, alertManagerAlerts)
+			alertManagerAlerts, err := alertmanagerAPI.Alert.GetAlerts(alert.NewGetAlertsParamsWithContext(ctx).WithFilter(filters))
+			if err != nil {
+				// Log the error but don't fail - Alertmanager access may be restricted
+				log.V(3).Info("failed to augment alerts from Alertmanager", "error", err)
+			} else {
+				for _, pa := range alerts {
+					s.augmentAlert(pa, alertManagerAlerts)
+				}
 			}
 		}
 	}
