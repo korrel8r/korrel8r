@@ -1,4 +1,4 @@
-Domain alert is a korrel8r domain for Prometheus/AlertManager alerts.
+Prometheus/AlertManager alerts.
 
 ### Classes
 

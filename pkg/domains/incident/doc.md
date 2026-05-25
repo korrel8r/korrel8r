@@ -1,4 +1,4 @@
-Domain incident is a korrel8r domain for cluster health incidents.
+cluster health incidents.
 
 For more about incidents see the [cluster\\\-health\\\-analyzer](<https://github.com/openshift/cluster-health-analyzer>).
 

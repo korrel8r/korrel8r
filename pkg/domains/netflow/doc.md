@@ -1,4 +1,4 @@
-Domain netflow is a korrel8r domain for network flow data.
+network flow data.
 
 ### Classes
 
