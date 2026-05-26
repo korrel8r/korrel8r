@@ -79,7 +79,7 @@ var webCmd = &cobra.Command{
 			factory := func() (*engine.Engine, error) { return newEngineWithConfigs(configs) }
 			tokenReview, err := auth.NewTokenReview()
 			if err != nil {
-				panic(fmt.Errorf("cannot create token-based sessions: %w\nUse --unsafe-shared-session to run without authentication", err))
+				panic(fmt.Errorf("authentication unavailable: %w\nUse the --unsafe-shared-session flag if you want an unauthenticated server", err))
 			}
 			sessions = session.NewTokenReviewManager(tokenReview, timeout, factory)
 		}

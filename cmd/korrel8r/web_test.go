@@ -36,7 +36,7 @@ func startServer(t *testing.T, h *http.Client, scheme string, args ...string) *u
 	port, err := test.ListenPort()
 	require.NoError(t, err)
 	addr := net.JoinHostPort("localhost", strconv.Itoa(port))
-	cmd := command(t, append([]string{"web", "--" + scheme, addr}, args...)...)
+	cmd := command(t, append([]string{"web", "--" + scheme, addr, "--unsafe-shared-session"}, args...)...)
 	require.NoError(t, cmd.Start())
 	// Wait till server is available.
 	require.Eventually(t, func() bool {
@@ -135,7 +135,7 @@ func TestMain_server_tls_min_version(t *testing.T) {
 	port, err := test.ListenPort()
 	require.NoError(t, err)
 	addr := net.JoinHostPort("localhost", strconv.Itoa(port))
-	cmd := command(t, append([]string{"web", "--https", addr}, certArgs...)...)
+	cmd := command(t, append([]string{"web", "--https", addr, "--unsafe-shared-session"}, certArgs...)...)
 	require.NoError(t, cmd.Start())
 	t.Cleanup(func() { _ = cmd.Process.Kill() })
 
