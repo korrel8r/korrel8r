@@ -9,6 +9,30 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 _Note unreleased changes on main here pending the next release_
 
+## [0.11.0] - 2026-05-26
+
+### Added
+- Use TokenReview to get per-user sessions.
+- MCP `get_objects` tool, equivalent to REST `/objects` endpoint.
+- Constraint argument to REST `/objects` endpoint.
+- Alert-status rule and status rules on korrel8r graph result nodes.
+- Support for non-admin users to correlate Loki alerts (COO-1307).
+- CLI `describe` command and domain doc generation.
+
+### Fixed
+- MCP/REST communication and MCP documentation.
+- Better control of request logging.
+- Neighbor traversal to follow multiple paths to the same class.
+- Missing to-alert rules.
+- Stale console update requests stuck in korrel8r.
+- Robust console connection, authentication, and error handling.
+- Display logging alert correctly (COO-1307).
+- Out-of-cluster server tests need `--unsafe-shared-session`.
+
+### Changed
+- Converted all documentation to markdown.
+- Updated dependencies and workflow configuration.
+
 ## [0.10.0] - 2026-04-21
 
 ### Added

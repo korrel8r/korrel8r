@@ -8,7 +8,7 @@ help: ## Display this help.
 	@grep -hE '^## [A-Z0-9_]+: ' Makefile doc.mk | sed 's/^## \([A-Z0-9_]*\): \(.*\)/\1#\2/' | column -s'#' -t
 
 ## VERSION: Semantic version for release, use -dev for development pre-release versions.
-VERSION?=0.11.0-dev
+VERSION?=0.11.0
 ## REGISTRY_BASE: Image registry base, for example quay.io/somebody
 REGISTRY_BASE?=$(error REGISTRY_BASE must be set to push images)
 ## IMGTOOL: May be podman or docker.
@@ -37,7 +37,7 @@ GEN_DOMAIN_DOC=$(patsubst %.go,%.md,$(wildcard pkg/domains/*/doc.go))
 
 GENERATED=$(VERSION_TXT) $(GEN_OPENAPI_IMPL) $(GEN_OPENAPI_API) $(GEN_DOMAIN_DOC)
 
-all: publish test image-build			## Build and test everything locally. Recommended before commit.
+all: publish test-no-cluster image-build			## Build and test everything locally. Recommended before commit.
 
 .DELETE_ON_ERROR:
 
