@@ -55,7 +55,7 @@ paths:
           content:
             application/json:
               schema:
-                type: object
+                $ref: "#/components/schemas/Empty"
 
   /domains:
     get:
@@ -70,10 +70,7 @@ paths:
           content:
             application/json:
               schema:
-                type: array
-                x-go-type-skip-optional-pointer: true
-                items:
-                  $ref: "#/components/schemas/Domain"
+                $ref: "#/components/schemas/Domains"
         "400":
           description: invalid parameters
           content:
@@ -107,12 +104,7 @@ paths:
           content:
             application/json:
               schema:
-                type: array
-                x-go-type-skip-optional-pointer: true
-                items:
-                  type: string
-                  description: Class name (without domain prefix)
-                example: ["Pod", "Service", "Deployment"]
+                $ref: "#/components/schemas/Classes"
         "400":
           description: invalid parameters
           content:
@@ -263,10 +255,7 @@ paths:
           content:
             application/json:
               schema:
-                type: array
-                x-go-type-skip-optional-pointer: true
-                items:
-                  $ref: "#/components/schemas/Node"
+                $ref: "#/components/schemas/Nodes"
         "400":
           description: invalid parameters
           content:
@@ -308,11 +297,7 @@ paths:
           content:
             application/json:
               schema:
-                type: array
-                x-go-type-skip-optional-pointer: true
-                items:
-                  type: object
-                  additionalProperties: true
+                $ref: "#/components/schemas/Objects"
         "400":
           description: invalid parameters
           content:
@@ -347,7 +332,7 @@ paths:
           content:
             application/json:
               schema:
-                type: object
+                $ref: "#/components/schemas/Empty"
         "400":
           description: invalid parameters
           content:
@@ -388,6 +373,15 @@ components:
 
       x-go-type-skip-optional-pointer: true
 
+    Classes:
+      description: List of class names for a domain.
+      type: array
+      x-go-type-skip-optional-pointer: true
+      items:
+        type: string
+        description: Class name (without domain prefix)
+      example: ["Pod", "Service", "Deployment"]
+
     Class:
       type: string
       pattern: "[^:]+:[^:]+"
@@ -427,6 +421,13 @@ components:
           x-oapi-codegen-extra-tags:
             jsonschema: "Limit total number of objects per query."
 
+    Domains:
+      description: List of Korrel8r domains and configured stores.
+      type: array
+      x-go-type-skip-optional-pointer: true
+      items:
+        $ref: "#/components/schemas/Domain"
+
     Domain:
       type: object
       description: Domain configuration information.
@@ -445,6 +446,10 @@ components:
           items:
             $ref: "#/components/schemas/Store"
           x-go-type-skip-optional-pointer: true
+
+    Empty:
+      description: Empty JSON object.
+      type: object
 
     Edge:
       type: object
@@ -549,6 +554,13 @@ components:
           x-oapi-codegen-extra-tags:
             jsonschema: "Starting point for the search."
 
+    Nodes:
+      description: List of result nodes.
+      type: array
+      x-go-type-skip-optional-pointer: true
+      items:
+        $ref: "#/components/schemas/Node"
+
     Node:
       description: Node in the result graph, contains results for a single class.
       type: object
@@ -634,6 +646,13 @@ components:
           x-oapi-codegen-extra-tags:
             jsonschema: "Queries generated while following this rule."
       description: Rule is a correlation rule with a list of queries and results counts found during navigation.
+
+    Objects:
+      description: List of data objects serialized as JSON.
+      type: array
+      x-go-type-skip-optional-pointer: true
+      items:
+        $ref: "#/components/schemas/Object"
 
     Object:
       description: Data object serialized as JSON.

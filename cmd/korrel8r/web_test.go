@@ -36,7 +36,7 @@ func startServer(t *testing.T, h *http.Client, scheme string, args ...string) *u
 	port, err := test.ListenPort()
 	require.NoError(t, err)
 	addr := net.JoinHostPort("localhost", strconv.Itoa(port))
-	cmd := command(t, append([]string{"web", "--" + scheme, addr}, args...)...)
+	cmd := command(t, append([]string{"web", "--" + scheme, addr, "--unsafe-shared-session"}, args...)...)
 	require.NoError(t, cmd.Start())
 	// Wait till server is available.
 	require.Eventually(t, func() bool {
@@ -81,14 +81,14 @@ func assertDo(t *testing.T, h *http.Client, want, method, url, body string) {
 }
 
 const domains = `[
-{"description":"Domain alert is a korrel8r domain for Prometheus/AlertManager alerts.","name":"alert"},
-{"description":"Domain incident is a korrel8r domain for cluster health incidents.","name":"incident"},
-{"description":"Domain k8s is a korrel8r domain for Kubernetes resources.","name":"k8s"},
-{"description":"Domain log is a korrel8r domain for application, infrastructure, and audit logs.","name":"log"},
-{"description":"Domain metric is a korrel8r domain for Prometheus metrics.","name":"metric"},
+{"description":"Prometheus/AlertManager alerts.","name":"alert"},
+{"description":"cluster health incidents.","name":"incident"},
+{"description":"Kubernetes resources.","name":"k8s"},
+{"description":"application, infrastructure, and audit logs.","name":"log"},
+{"description":"Prometheus metrics.","name":"metric"},
 {"description":"Mock domain.","name":"mock", "stores":[{"domain":"mock", "mockData":"testdata/mock_store.yaml"}]},
-{"description":"Domain netflow is a korrel8r domain for network flow data.","name":"netflow"},
-{"description":"Domain trace is a korrel8r domain for OpenTelemetry traces.","name":"trace"}
+{"description":"network flow data.","name":"netflow"},
+{"description":"OpenTelemetry traces.","name":"trace"}
 ]`
 
 func TestMain_server_insecure(t *testing.T) {
@@ -135,7 +135,7 @@ func TestMain_server_tls_min_version(t *testing.T) {
 	port, err := test.ListenPort()
 	require.NoError(t, err)
 	addr := net.JoinHostPort("localhost", strconv.Itoa(port))
-	cmd := command(t, append([]string{"web", "--https", addr}, certArgs...)...)
+	cmd := command(t, append([]string{"web", "--https", addr, "--unsafe-shared-session"}, certArgs...)...)
 	require.NoError(t, cmd.Start())
 	t.Cleanup(func() { _ = cmd.Process.Kill() })
 

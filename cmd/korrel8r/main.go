@@ -23,7 +23,7 @@ var (
 
 	rootCmd = &cobra.Command{
 		Use:     "korrel8r",
-		Short:   "REST service to correlate observability data",
+		Short:   "Correlate observability data in a cluster",
 		Version: build.Version,
 	}
 
