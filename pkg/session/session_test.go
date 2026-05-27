@@ -9,15 +9,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/korrel8r/korrel8r/internal/pkg/test"
 	"github.com/korrel8r/korrel8r/internal/pkg/test/mock"
 	"github.com/korrel8r/korrel8r/pkg/auth"
 	"github.com/korrel8r/korrel8r/pkg/engine"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	authenticationv1 "k8s.io/api/authentication/v1"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/kubernetes/fake"
-	ktesting "k8s.io/client-go/testing"
 )
 
 func testFactory() (*engine.Engine, error) {
@@ -25,20 +22,7 @@ func testFactory() (*engine.Engine, error) {
 }
 
 func testMulti(timeout time.Duration) Manager {
-	return NewTokenReviewManager(fakeTokenReview(), timeout, testFactory)
-}
-
-func fakeTokenReview() *auth.TokenReview {
-	cs := fake.NewSimpleClientset()
-	cs.PrependReactor("create", "tokenreviews", func(action ktesting.Action) (bool, runtime.Object, error) {
-		tr := action.(ktesting.CreateAction).GetObject().(*authenticationv1.TokenReview)
-		tr.Status = authenticationv1.TokenReviewStatus{
-			Authenticated: true,
-			User:          authenticationv1.UserInfo{Username: tr.Spec.Token},
-		}
-		return true, tr, nil
-	})
-	return auth.NewTokenReviewFromClientset(cs)
+	return NewTokenReviewManager(test.FakeTokenReview(), timeout, testFactory)
 }
 
 func tokenCtx(token string) context.Context {

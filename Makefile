@@ -42,7 +42,6 @@ all: publish test-no-cluster image-build ## Build and test everything locally. R
 .DELETE_ON_ERROR:
 
 generate:  $(GENERATED)
-	$(MAKE) kustomize-edit
 	hack/copyright.sh
 
 $(OPENAPI_SPEC): $(VERSION_TXT) # Stamp x-korrel8r-version in the OpenAPI spec.
@@ -116,7 +115,7 @@ bench: generate	## Run all benchmarks.
 	go test -fullpath -bench=. -run=NONE ./... > _bench-$(shell date -I).txt
 	go tool benchstat _bench-*.txt
 
-image-build: lint ## Build image locally, don't push.
+image-build: lint kustomize-edit ## Build image locally, don't push.
 	$(IMGTOOL) build --tag=$(IMAGE) -f Containerfile .
 
 image: image-build ## Build and push image.
@@ -156,7 +155,7 @@ release:
 	@echo Released $(VERSION) to $(REGISTRY_BASE)
 
 DEVSPACE_IMAGE?="$(REGISTRY_BASE)/korrel8r:devspace"
-devspace-image:									## Rebuild the devspace base image
+devspace-image:	kustomize-edit ## Rebuild the devspace base image
 	$(IMGTOOL) build --tag=$(DEVSPACE_IMAGE) -f devspace.Containerfile
 	$(IMGTOOL) push $(DEVSPACE_IMAGE)
 
