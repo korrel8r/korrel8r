@@ -3,12 +3,12 @@
 # Targets: ## inline comment after the target.
 help: ## Display this help.
 	@echo; echo = Targets =
-	@grep -hE '^[A-Za-z0-9_-]+:.*##' Makefile doc.mk | sed 's/:.*##\s*/#/' | column -s'#' -t
+	@grep -hE '^[A-Za-z0-9_-]+:.*##' Makefile | sed 's/:.*##\s*/#/' | column -s'#' -t
 	@echo; echo  = Variables =
-	@grep -hE '^## [A-Z0-9_]+: ' Makefile doc.mk | sed 's/^## \([A-Z0-9_]*\): \(.*\)/\1#\2/' | column -s'#' -t
+	@grep -hE '^## [A-Z0-9_]+: ' Makefile | sed 's/^## \([A-Z0-9_]*\): \(.*\)/\1#\2/' | column -s'#' -t
 
 ## VERSION: Semantic version for release, use -dev for development pre-release versions.
-VERSION?=0.11.0
+VERSION?=0.11.1-dev
 ## REGISTRY_BASE: Image registry base, for example quay.io/somebody
 REGISTRY_BASE?=$(error REGISTRY_BASE must be set to push images)
 ## IMGTOOL: May be podman or docker.
@@ -37,12 +37,13 @@ GEN_DOMAIN_DOC=$(patsubst %.go,%.md,$(wildcard pkg/domains/*/doc.go))
 
 GENERATED=$(VERSION_TXT) $(GEN_OPENAPI_IMPL) $(GEN_OPENAPI_API) $(GEN_DOMAIN_DOC)
 
-all: publish test-no-cluster image-build			## Build and test everything locally. Recommended before commit.
+all: publish test-no-cluster image-build ## Build and test everything locally. Recommended before commit.
 
 .DELETE_ON_ERROR:
 
 generate:  $(GENERATED)
 	$(MAKE) kustomize-edit
+	hack/copyright.sh
 
 $(OPENAPI_SPEC): $(VERSION_TXT) # Stamp x-korrel8r-version in the OpenAPI spec.
 	@sed -i -e '/x-korrel8r-version/d' -e '/^  version: /a\  x-korrel8r-version: "$(VERSION)"' $@
@@ -53,9 +54,10 @@ build: lint $(BIN)				## Build korrel8r executable.
 install: lint							## Build and install korrel8r with go install.
 	go install ./cmd/korrel8r
 
+# Append more cleanup files with +=
+CLEANFILES+=$(GENERATED) $(BIN) $(GOCOVERDIR)
 clean: ## Remove generated files, including checked-in files.
-	rm -rf doc/public doc/content/reference/cmd doc/content/reference/rest $(GENERATED) $(BIN) $(GOCOVERDIR)
-	ls doc/content/reference/domains | grep -v index | xargs rm -rf
+	-rm -rf $(CLEANFILES)
 
 ifneq ($(VERSION),$(file <$(VERSION_TXT)))
 .PHONY: $(VERSION_TXT) # Force update if VERSION_TXT does not match $(VERSION)
@@ -82,8 +84,7 @@ $(SHELLCHECK): $(BIN)
 	./hack/install-shellcheck.sh $(BIN) 0.10.0
 
 ifndef NOLINT
-lint: $(GENERATED) $(SHELLCHECK) ## Run the linter to find and fix code style problems.
-	hack/copyright.sh
+lint: generate $(SHELLCHECK) ## Run the linter to find and fix code style problems.
 	go mod tidy
 	go tool golangci-lint run --fix
 	go tool shfmt -l -w ./**/*.sh
@@ -111,7 +112,7 @@ cover:  ## Run tests with accumulated coverage stats in _cover.
 	@echo == Aggregate coverage across all tests.
 	go tool covdata percent -i $(GOCOVERDIR)
 
-bench: $(GENERATED)	## Run all benchmarks.
+bench: generate	## Run all benchmarks.
 	go test -fullpath -bench=. -run=NONE ./... > _bench-$(shell date -I).txt
 	go tool benchstat _bench-*.txt
 
@@ -161,37 +162,51 @@ devspace-image:									## Rebuild the devspace base image
 
 ## Documentation rules
 
-FRONT=./hack/front-matter.sh
-DOMAIN_DOCS=$(foreach D,$(DOMAINS), doc/content/reference/domains/$(D).md)
-DOC_CONTENT=$(DOMAIN_DOCS) doc/content/reference/rest/index.md doc/content/reference/cmd/index.md
-DOC_PUBLISH=$(DOC_CONTENT) $(shell find doc | grep -v doc/public 2>/dev/null)
-
 .PHONY: publish
-publish: $(DOC_PUBLISH)
-	go tool hugo --source doc --quiet
+publish: doc/public
 
 .PHONY: preview
-preview: $(DOC_PUBLISH)
+preview: doc/public
 	go tool hugo server --source doc --baseURL http://localhost:1313 --bind 0.0.0.0 --quiet
 
 .PHONY: check-links
-check-links: $(DOC_PUBLISH) ## Check for broken internal links in the generated site.
+check-links: doc/public ## Check for broken internal links in the generated site.
 	hack/check-links.sh doc/public "^/client/"
 
-doc/content/reference/domains/%.md: pkg/domains/%/doc.md $(GENERATED) $(MAKEFILE_LIST)
+FRONT=./hack/front-matter.sh
+
+DOC_PUBLIC+=$(foreach D,$(DOMAINS), doc/content/reference/domains/$(D).md)
+doc/content/reference/domains/%.md: pkg/domains/%/doc.md generate $(MAKEFILE_LIST)
 	@mkdir -p $(dir $@)
 	@cp $< $@
 	@sed -i '1i # $(basename $(notdir $@))' $@
 	@$(FRONT) $@ 'title: $(basename $(notdir $@))' "description: $$(sed -n '/^[^#]/{/./p;q}' $@)"
 
+
+DOC_PUBLIC+=doc/content/reference/rest/index.md
+CLEANFILES+=doc/content/reference/rest
 doc/content/reference/rest/index.md: $(OPENAPI_SPEC) $(MAKEFILE_LIST)
 	@mkdir -p $(dir $@)
-	go tool openapi-markdown -o $@ -title "" -description "" $<
+	go tool openapi-markdown -o $@ -title "REST API" -description "HTTP API reference" $<
+	@perl -pi -e 'if (/^### ((?:PUT|GET|POST|DELETE|PATCH) .+)$$/) { my $$t = $$1; (my $$a = lc $$t) =~ s/[^a-z0-9]//g; $$_ = "### $$t {#$$a}\n"; }' $@
 	@$(FRONT) $@ 'title: REST API' 'description: HTTP API reference'
 
-doc/content/reference/cmd/index.md: $(GENERATED) $(MAKEFILE_LIST) $(shell find cmd pkg)
+DOC_PUBLIC+=doc/content/reference/cmd/_index.md
+CLEANFILES+=doc/content/reference/cmd
+doc/content/reference/cmd/_index.md: generate $(MAKEFILE_LIST) $(shell find cmd pkg)
 	@mkdir -p $(dir $@)
 	unset KORREL8R_CONFIG; go run ./cmd/korrel8r doc markdown $(dir $@)
 	@mv $(dir $@)korrel8r.md $@
-	@$(FRONT) $@ 'title: Korrel8r Command' 'description: Command-line interface'
+	@$(FRONT) $@ "title: Korrel8r Command" "description: Command line interface"
 	@sed -i '/###### Auto generated by/d' $@
+	@for f in $(dir $@)korrel8r_*.md; do \
+		$(FRONT) "$$f" "title: $$(basename "$$f" .md | sed 's/_/ /g')"; \
+		sed -i '/^### SEE ALSO/,$$d' "$$f"; \
+	done
+	@touch $@
+
+doc/public: $(DOC_PUBLIC) $(shell find doc/content doc/hugo.yaml doc/layouts doc/static)
+	go tool hugo --source doc --quiet
+	@touch $@
+CLEANFILES+=doc/public
+CLEANFILES+=$(DOC_PUBLIC)
