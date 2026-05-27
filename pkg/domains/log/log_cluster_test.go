@@ -205,7 +205,7 @@ func logger(namespace, name, text string, first, last int, containers ...string)
 				Image: "quay.io/quay/busybox",
 				Command: []string{
 					"sh", "-c",
-					fmt.Sprintf(`for i in $(seq %v %v); do echo "%v: %v $i"; sleep .001; done; sleep 1h`, first, last, c, text),
+					fmt.Sprintf(`for i in $(seq %v %v); do echo "%v: %v $i"; sleep .01; done; sleep 1h`, first, last, c, text),
 				},
 				SecurityContext: test.DefaultSecurityContext,
 			})

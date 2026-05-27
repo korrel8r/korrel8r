@@ -5,5 +5,5 @@
 sort -u | while read -r QUERY; do
 	# Key must be quoted.
 	echo "$QUERY" | jq -Rr '@json + ":"'
-	korrel8r objects "$QUERY"
+	korrel8r objects --limit "${LIMIT:-0}" "$QUERY"
 done

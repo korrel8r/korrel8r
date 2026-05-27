@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/korrel8r/korrel8r/internal/pkg/test"
 	"github.com/korrel8r/korrel8r/internal/pkg/test/mock"
 	"github.com/korrel8r/korrel8r/pkg/api"
 	"github.com/korrel8r/korrel8r/pkg/auth"
@@ -291,7 +292,7 @@ func TestAPIGraphNeighbors_badRequest(t *testing.T) {
 	assert.Equal(t, http.StatusBadRequest, w.Code)
 }
 
-func TestCluster_MultiSession_QueryIsolation(t *testing.T) {
+func TestMultiSession_QueryIsolation(t *testing.T) {
 	// Each session gets a separate engine with different store data.
 	// Verify that REST requests with different auth tokens get different results.
 	var callCount atomic.Int32
@@ -302,9 +303,7 @@ func TestCluster_MultiSession_QueryIsolation(t *testing.T) {
 		s.AddQuery("mock:a:q", fmt.Sprintf("result-%d", n))
 		return engine.Build().Domains(d).Stores(s).Engine()
 	}
-	tokenReview, err := auth.NewTokenReview()
-	require.NoError(t, err)
-	sessions := session.NewTokenReviewManager(tokenReview, time.Hour, factory)
+	sessions := session.NewTokenReviewManager(test.FakeTokenReview(), time.Hour, factory)
 
 	r := ginEngine()
 	r.Use(func(c *gin.Context) {
@@ -312,7 +311,7 @@ func TestCluster_MultiSession_QueryIsolation(t *testing.T) {
 		c.Request = c.Request.WithContext(ctx)
 		c.Next()
 	})
-	_, err = New(sessions, r)
+	_, err := New(sessions, r)
 	require.NoError(t, err)
 
 	getObjects := func(token string) string {
