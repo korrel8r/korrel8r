@@ -2,7 +2,9 @@
 title: REST API
 description: HTTP API reference
 ---
-# korrel8r-openapi
+# REST API
+
+HTTP API reference
 
 ## Table of Contents
 
@@ -21,7 +23,7 @@ GET [/console/events](#getconsoleevents) | SSE event stream of console display u
 
 ## configure
 
-### PUT /config
+### PUT /config {#putconfig}
 
 Modify selected configuration settings (e.g. log verbosity) on a running service.
 
@@ -44,7 +46,7 @@ OK
 
 ## console
 
-### PUT /console
+### PUT /console {#putconsole}
 
 Store console state so an agent can read it via MCP tool get_console. The MCP client must have the same session (Authorization header) as the REST client.
 
@@ -119,7 +121,7 @@ invalid parameters
 }
 ```
 
-### GET /console/events
+### GET /console/events {#getconsoleevents}
 
 Updates are triggered by update requests from MCP tool show_in_console. The MCP client must have the same session (Authorization header) as the REST client.
 
@@ -133,7 +135,7 @@ SSE stream where each event's data field contains a JSON-encoded Console object.
 
 ## correlate
 
-### POST /graphs/goals
+### POST /graphs/goals {#postgraphsgoals}
 
 Specify a set of start objects, as queries or serialized objects, and a goal class. Returns a graph containing all paths leading from a start object to a goal object.
 
@@ -270,7 +272,7 @@ result not found
 }
 ```
 
-### POST /graphs/neighbors
+### POST /graphs/neighbors {#postgraphsneighbors}
 
 Specify a set of start objects, as queries or serialized objects, and a depth for the neighborhood search. Returns a graph of all paths with depth or less edges leading from start objects.
 
@@ -404,7 +406,7 @@ result not found
 }
 ```
 
-### POST /graphs/neighbours
+### POST /graphs/neighbours {#postgraphsneighbours}
 
 Specify a set of start objects, as queries or serialized objects, and a depth for the neighborhood search. Returns a graph of all paths with depth or less edges leading from start objects.
 
@@ -538,7 +540,7 @@ result not found
 }
 ```
 
-### POST /lists/goals
+### POST /lists/goals {#postlistsgoals}
 
 Specify a set of start objects, as queries or serialized objects, and a goal class. Returns a list of all objects of the goal class that can be reached from a start object.
 
@@ -623,7 +625,7 @@ result not found
 
 ## query
 
-### GET /domains
+### GET /domains {#getdomains}
 
 Returns a list of Korrel8r domains and the stores configured for each domain.
 
@@ -668,7 +670,7 @@ result not found
 }
 ```
 
-### GET /domain/{domain}/classes
+### GET /domain/{domain}/classes {#getdomaindomainclasses}
 
 Returns a list of class names for the specified domain.
 
@@ -713,7 +715,7 @@ domain not found
 }
 ```
 
-### GET /objects
+### GET /objects {#getobjects}
 
 Execute a single Korrel8r 'query' and return the list of serialized objects found. Does not perform any correlation actions.
 
