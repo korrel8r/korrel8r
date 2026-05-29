@@ -7,7 +7,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
-_Note unreleased changes on main here pending the next release_
+### Added
+- Documentation for admin and non-admin user access patterns in Korrel8r.
+
+### Fixed
+- Broken links in command reference documentation.
+- Minor test failures and test issues.
 
 ## [0.11.0] - 2026-05-26
 
