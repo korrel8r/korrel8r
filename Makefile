@@ -37,9 +37,7 @@ GEN_DOMAIN_DOC=$(patsubst %.go,%.md,$(wildcard pkg/domains/*/doc.go))
 
 GENERATED=$(VERSION_TXT) $(GEN_OPENAPI_IMPL) $(GEN_OPENAPI_API) $(GEN_DOMAIN_DOC)
 
-all: publish test-no-cluster image-build ## Build and test everything locally. Recommended before commit.
-
-.DELETE_ON_ERROR:
+all: test doc image-build ## Build and test everything locally. Recommended before commit.
 
 generate:  $(GENERATED)
 	hack/copyright.sh
@@ -161,38 +159,40 @@ devspace-image:	kustomize-edit ## Rebuild the devspace base image
 
 ## Documentation rules
 
-.PHONY: publish
-publish: doc/public
+doc: doc/public
+	$(MAKE) check-links
 
 .PHONY: preview
 preview: doc/public
-	go tool hugo server --source doc --baseURL http://localhost:1313 --bind 0.0.0.0 --quiet
+	go tool hugo server --source doc --baseURL http://localhost:1313 --bind 0.0.0.0
+	@touch $<
 
 .PHONY: check-links
 check-links: doc/public ## Check for broken internal links in the generated site.
 	hack/check-links.sh doc/public "^/client/"
 
+# Pre-pends front matter to file: --- title: description:
 FRONT=./hack/front-matter.sh
 
-DOC_PUBLIC+=$(foreach D,$(DOMAINS), doc/content/reference/domains/$(D).md)
-doc/content/reference/domains/%.md: pkg/domains/%/doc.md generate $(MAKEFILE_LIST)
+DOC_PUBLIC+=$(foreach D,$(DOMAINS), doc/content/docs/reference/domains/$(D).md)
+doc/content/docs/reference/domains/%.md: pkg/domains/%/doc.md generate
 	@mkdir -p $(dir $@)
 	@cp $< $@
-	@sed -i '1i # $(basename $(notdir $@))' $@
 	@$(FRONT) $@ 'title: $(basename $(notdir $@))' "description: $$(sed -n '/^[^#]/{/./p;q}' $@)"
 
 
-DOC_PUBLIC+=doc/content/reference/rest/index.md
-CLEANFILES+=doc/content/reference/rest
-doc/content/reference/rest/index.md: $(OPENAPI_SPEC) $(MAKEFILE_LIST)
+DOC_PUBLIC+=doc/content/docs/reference/rest/index.md
+CLEANFILES+=doc/content/docs/reference/rest
+doc/content/docs/reference/rest/index.md: $(OPENAPI_SPEC) $(MAKEFILE_LIST)
 	@mkdir -p $(dir $@)
 	go tool openapi-markdown -o $@ -title "REST API" -description "HTTP API reference" $<
-	@perl -pi -e 'if (/^### ((?:PUT|GET|POST|DELETE|PATCH) .+)$$/) { my $$t = $$1; (my $$a = lc $$t) =~ s/[^a-z0-9]//g; $$_ = "### $$t {#$$a}\n"; }' $@
+	@sed -i 's/^# REST API$$//'	$@				# Remove redundant header
+	@perl -pi -e 'if (/^### ((?:PUT|GET|POST|DELETE|PATCH) .+)$$/) { my $$t = $$1; (my $$a = lc $$t) =~ s/[^a-z0-9]//g; $$_ = "### $$t {#$$a}\n"; }' $@ # Fix anchors
 	@$(FRONT) $@ 'title: REST API' 'description: HTTP API reference'
 
-DOC_PUBLIC+=doc/content/reference/cmd/_index.md
-CLEANFILES+=doc/content/reference/cmd
-doc/content/reference/cmd/_index.md: generate $(MAKEFILE_LIST) $(shell find cmd pkg)
+DOC_PUBLIC+=doc/content/docs/reference/cmd/_index.md
+CLEANFILES+=doc/content/docs/reference/cmd
+doc/content/docs/reference/cmd/_index.md: generate  $(shell find cmd pkg)
 	@mkdir -p $(dir $@)
 	unset KORREL8R_CONFIG; go run ./cmd/korrel8r doc markdown $(dir $@)
 	@mv $(dir $@)korrel8r.md $@
@@ -204,8 +204,8 @@ doc/content/reference/cmd/_index.md: generate $(MAKEFILE_LIST) $(shell find cmd 
 	done
 	@touch $@
 
-doc/public: $(DOC_PUBLIC) $(shell find doc/content doc/hugo.yaml doc/layouts doc/static)
-	go tool hugo --source doc --quiet
+doc/public: $(DOC_PUBLIC) $(shell find doc/content doc/hugo.yaml doc/static)
+	go tool hugo --source doc
 	@touch $@
 CLEANFILES+=doc/public
 CLEANFILES+=$(DOC_PUBLIC)

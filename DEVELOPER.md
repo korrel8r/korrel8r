@@ -27,7 +27,7 @@ but also useful for debugging. Log levels are used to allow a sliding scale of l
 
 ## Architecture Overview
 
-> **Understanding User Workflows**: Before diving into the code, read the [User Guide](https://korrel8r.github.io/korrel8r/#how_korrel8r_works) to understand how users interact with domains, classes, queries, and rules.
+> **Understanding User Workflows**: Before diving into the code, read the [Introduction](https://korrel8r.github.io/korrel8r/docs/introduction/) to understand how users interact with domains, classes, queries, and rules.
 
 ### Domains (`pkg/domains/`)
 A `Domain` implements one type of observability data and clients for the associated stores.
@@ -45,7 +45,7 @@ Each rule contains a Go templates that define how to correlate data.
 - Start and goal classes may be in the same or different domains.
 - The template is applied to an `Object` of a start class, and generates a `Query` to return objects of a goal class.
 - Rules are defined in YAML files, new can be added without rebuilding korrel8r.
-- See [User Guide Configuration](https://korrel8r.github.io/korrel8r/#_configuration) for rule syntax and examples.
+- See [Configuration](https://korrel8r.github.io/korrel8r/docs/configuration/) for rule syntax and examples.
 
 ### Engine (`pkg/engine/`)
 
@@ -104,7 +104,7 @@ make help
 
 ### Running locally
 
-Korrel8r can run outside of the cluster for development. See the [User Guide](https://korrel8r.github.io/korrel8r/#_running_outside_the_cluster) for complete setup instructions.
+Korrel8r can run outside of the cluster for development. See [Getting Started](https://korrel8r.github.io/korrel8r/docs/getting-started/#command-line) for setup instructions.
 
 ``` bash
 # Set default configuration.
@@ -136,7 +136,7 @@ export REGISTRY_BASE=quay.io/YOUR_ACCOUNT_HERE
 make image deploy
 
 # Call the /domains REST endpoint using URL of korrel8r route and login token for cluster.
-KORREL8R_URL=$(oc get route/korrel8r -n korrel8r -o template='https://{{.spec.host}}')
+KORREL8R_URL=$(oc get route/korrel8r -n openshift-cluster-observability-operator -o template='https://{{.spec.host}}')
 TOKEN=$(oc whoami -t)
 curl --oauth2-bearer $TOKEN $KORREL8R_URL/api/v1alpha1/domains
 ```
@@ -238,63 +238,8 @@ go tool pprof cpu.prof
 
 ## AI Agent Tips
 
-### Custom Slash Commands
-
-**`/generate-rule` - Interactive Rule Generator**
-
-This custom slash command provides an interactive assistant for creating new Korrel8r correlation rules. It's particularly useful when adding new correlations between observability domains.
-
-Usage:
-```
-/generate-rule [optional-domain]
-```
-
-The command will guide you through creating a new correlation rule by asking:
-1. Source domain and classes (what you're correlating from)
-2. Target domain and classes (what you're correlating to)
-3. Field mappings between source and target
-4. Rule name
-5. Target file location in `etc/korrel8r/rules/`
-
-**Supported Domains:**
-- `k8s` - Kubernetes resources (Pod, Deployment.apps, Node, Event.v1, etc.)
-- `log` - Application logs (types vary by namespace)
-- `metric` - Prometheus metrics
-- `alert` - Alertmanager alerts
-- `trace` - Distributed traces
-- `netflow` - Network flow data
-- `incident` - Incident management
-
-**Example Workflow:**
-1. User runs `/generate-rule`
-2. Agent asks about source and target domains
-3. Agent generates YAML rule with appropriate Go template query
-4. Agent offers to create/update the rule file in `etc/korrel8r/rules/`
-
-**Available Template Functions:**
-Common Go template functions available in rule queries:
-- `{{.metadata.namespace}}`, `{{.metadata.name}}` - K8s object field access
-- `{{mustToJson .}}` - Convert to JSON
-- `{{k8sClass .apiVersion .kind}}` - Generate K8s class name
-- `{{lower .kind}}` - Lowercase string
-- `{{logTypeForNamespace .metadata.namespace}}` - Get log type for namespace
-- Standard template functions: `{{with}}`, `{{range}}`, etc.
-
-### Effective Development Patterns
-
-**Understanding the Codebase**
-1. Start with `pkg/korrel8r/korrel8r.go` - understand core abstractions
-2. Examine existing domains in `pkg/domains/` for implementation patterns
-3. Review correlation rules in `etc/korrel8r/rules/` for relationship logic
-4. Study REST API in `pkg/rest/` for external interface patterns
-
-**Code Generation and Templates**
-- Rule templates use Go template syntax - familiar patterns in `text/template`
-- Configuration uses standard YAML/JSON unmarshaling with struct tags
-- Domain registration follows Go init() patterns
-
-**Common Gotchas**
-- Bearer token authentication - tokens expire, need refresh logic
-- Domain interface evolution - check for interface compatibility
-- Rule template syntax - Go templates have specific escaping requirements
+- Use `/generate-rule` to interactively create new correlation rules.
+- Core abstractions are in `pkg/korrel8r/korrel8r.go`; follow existing domains in `pkg/domains/` as patterns.
+- Correlation rules live in `etc/korrel8r/rules/` — see the [Writing Rules](https://korrel8r.github.io/korrel8r/docs/writing-rules/) guide for syntax and examples.
+- REST API is in `pkg/rest/`.
 

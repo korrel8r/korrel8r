@@ -1,3 +1,7 @@
+---
+title: incident
+description: cluster health incidents.
+---
 cluster health incidents.
 
 For more about incidents see the [cluster health analyzer](<https://github.com/openshift/cluster-health-analyzer>).
