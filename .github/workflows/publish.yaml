@@ -46,7 +46,7 @@ jobs:
 
       - name: Generate Web Site
         if: steps.status.outputs.changes != '0'
-        run: make publish
+        run: make doc/public
 
       - name: Upload web site
         if: steps.status.outputs.changes != '0'

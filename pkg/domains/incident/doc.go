@@ -2,8 +2,7 @@
 
 // Package incident is a korrel8r domain for cluster health incidents.
 //
-// For more about incidents see the
-// [cluster-health-analyzer].
+// For more about incidents see the [cluster health analyzer].
 //
 // # Classes
 //
@@ -33,5 +32,5 @@
 //	domain: incident
 //	metrics: PROMETHEUS_URL
 //
-// [cluster-health-analyzer]: https://github.com/openshift/cluster-health-analyzer
+// [cluster health analyzer]: https://github.com/openshift/cluster-health-analyzer
 package incident
