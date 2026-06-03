@@ -1,0 +1,22 @@
+{{ $section := .Site.GetPage "/docs" }}
+{{ with $section }}
+<nav class="sidebar">
+  {{ template "sidebar-tree" (dict "pages" .Pages "current" $ "depth" 0) }}
+</nav>
+{{ end }}
+
+{{ define "sidebar-tree" }}
+  {{ range .pages.ByWeight }}
+    {{ $isCurrent := eq $.current.RelPermalink .RelPermalink }}
+    {{ $isAncestor := .IsAncestor $.current }}
+    <a href="{{ .RelPermalink }}"{{ if $isCurrent }} class="active"{{ end }}>{{ .Title }}</a>
+    {{ if .Pages }}
+      {{ $expand := or (le $.depth 0) $isCurrent $isAncestor }}
+      {{ if $expand }}
+        <div class="sidebar-children">
+          {{ template "sidebar-tree" (dict "pages" .Pages "current" $.current "depth" (add $.depth 1)) }}
+        </div>
+      {{ end }}
+    {{ end }}
+  {{ end }}
+{{ end }}

@@ -1,10 +1,8 @@
 ---
-title: Admin and Non-Admin User Access
+title: Admin vs Regular User
 description: Understanding how admin and non-admin users access observability data
-weight: 5
+weight: 7
 ---
-
-# Admin and Non-Admin User Access
 
 Korrel8r respects Kubernetes RBAC permissions when accessing observability data. This guide explains the differences between admin and non-admin user access patterns.
 
