@@ -15,5 +15,5 @@ if head -1 "$file" | grep -q '^---'; then
 fi
 
 tmp=$(mktemp)
-printf '%s\n' '---' "$@" '---' | cat - "$file" >"$tmp"
+printf '%s\n' '---' "$@" '---' '<!-- Generated content, do not edit! -->' | cat - "$file" >"$tmp"
 mv "$tmp" "$file"

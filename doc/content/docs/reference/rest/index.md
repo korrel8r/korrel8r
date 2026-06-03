@@ -2,6 +2,7 @@
 title: REST API
 description: HTTP API reference
 ---
+<!-- Generated content, do not edit! -->
 
 
 HTTP API reference

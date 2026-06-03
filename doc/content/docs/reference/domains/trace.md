@@ -2,6 +2,7 @@
 title: trace
 description: OpenTelemetry traces.
 ---
+<!-- Generated content, do not edit! -->
 OpenTelemetry traces.
 
 OpenTelemetry [traces](<https://opentelemetry.io/docs/concepts/signals/traces>) stored in the Grafana [Tempo](<https://grafana.com/docs/tempo/latest/>) data store.

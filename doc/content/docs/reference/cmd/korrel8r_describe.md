@@ -1,6 +1,7 @@
 ---
 title: korrel8r describe
 ---
+<!-- Generated content, do not edit! -->
 ## korrel8r describe
 
 Documentation for DOMAIN or for all domains.

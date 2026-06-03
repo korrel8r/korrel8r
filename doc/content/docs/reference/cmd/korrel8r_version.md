@@ -1,6 +1,7 @@
 ---
 title: korrel8r version
 ---
+<!-- Generated content, do not edit! -->
 ## korrel8r version
 
 Print the version of this command.

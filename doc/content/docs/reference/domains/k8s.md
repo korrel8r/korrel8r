@@ -2,6 +2,7 @@
 title: k8s
 description: Kubernetes resources.
 ---
+<!-- Generated content, do not edit! -->
 Kubernetes resources.
 
 ### Classes

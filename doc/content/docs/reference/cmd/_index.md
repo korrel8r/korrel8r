@@ -2,6 +2,7 @@
 title: Korrel8r Command
 description: Command line interface
 ---
+<!-- Generated content, do not edit! -->
 ## korrel8r
 
 Correlate observability data in a cluster

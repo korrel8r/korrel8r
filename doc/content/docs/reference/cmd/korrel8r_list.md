@@ -1,6 +1,7 @@
 ---
 title: korrel8r list
 ---
+<!-- Generated content, do not edit! -->
 ## korrel8r list
 
 List domains or classes in DOMAIN.

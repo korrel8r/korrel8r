@@ -1,6 +1,7 @@
 ---
 title: korrel8r web
 ---
+<!-- Generated content, do not edit! -->
 ## korrel8r web
 
 Start REST server. Listening address must be  provided via --http or --https.

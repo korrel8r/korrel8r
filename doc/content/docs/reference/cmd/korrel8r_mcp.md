@@ -1,6 +1,7 @@
 ---
 title: korrel8r mcp
 ---
+<!-- Generated content, do not edit! -->
 ## korrel8r mcp
 
 MCP stdio server

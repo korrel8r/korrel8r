@@ -2,6 +2,7 @@
 title: alert
 description: Prometheus/AlertManager alerts.
 ---
+<!-- Generated content, do not edit! -->
 Prometheus/AlertManager alerts.
 
 ### Classes
