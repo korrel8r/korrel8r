@@ -1,13 +1,12 @@
 {{ define "main" }}
 <article>
+  <h1>{{ .Title }}</h1>
   {{ .Content }}
-  {{ if not .Pages.ByWeight }}
-  {{ else if or (not .File) (not (in .File.Dir "cmd")) }}
-  <ul>
-    {{ range .Pages.ByWeight }}
-    <li><a href="{{ .RelPermalink }}">{{ .Title }}</a>{{ with .Description }} — {{ . }}{{ end }}</li>
-    {{ end }}
-  </ul>
+  {{ range .Pages.ByWeight }}
+    <div class="page-item">
+      <h2><a href="{{ .RelPermalink }}">{{ .Title }}</a></h2>
+      {{ with .Description }}<p>{{ . }}</p>{{ end }}
+    </div>
   {{ end }}
 </article>
 {{ end }}
