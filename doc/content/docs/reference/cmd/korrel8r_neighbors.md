@@ -1,6 +1,7 @@
 ---
 title: korrel8r neighbors
 ---
+<!-- Generated content, do not edit! -->
 ## korrel8r neighbors
 
 Get graph of nearest neighbors

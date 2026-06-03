@@ -1,6 +1,7 @@
 ---
 title: korrel8r rules
 ---
+<!-- Generated content, do not edit! -->
 ## korrel8r rules
 
 List rules by start, goal or name

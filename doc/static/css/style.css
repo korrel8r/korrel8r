@@ -192,6 +192,16 @@ tr:hover td { background: var(--bg-alt); }
 .page-item h2 { margin: 0 0 0.25rem; font-size: 1.1rem; border: none; padding: 0; }
 .page-item p { color: var(--fg-muted); margin: 0; }
 
+.page-footer {
+  margin-top: 3rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+  font-size: 0.85rem;
+}
+
+.page-footer a { color: var(--fg-muted); text-decoration: none; }
+.page-footer a:hover { color: var(--link); text-decoration: underline; }
+
 @media (max-width: 48rem) {
   .container { flex-direction: column; padding: 1rem; }
   aside { width: 100%; }

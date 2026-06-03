@@ -11,7 +11,7 @@
 <body>
   <header>
     <nav>
-      <a href="{{ "/" | relURL }}" class="site-title"><img src="{{ "favicon.svg" | relURL }}" alt="" class="site-logo">{{ .Site.Title }}</a>
+      <a href="{{ site.Home.RelPermalink }}" class="site-title"><img src="{{ "favicon.svg" | relURL }}" alt="" class="site-logo">{{ .Site.Title }}</a>
       {{ range .Site.Menus.main }}
         <a href="{{ .URL }}">{{ .Name }}</a>
       {{ end }}
@@ -23,6 +23,11 @@
     </aside>
     <main>
       {{ block "main" . }}{{ end }}
+      {{ if .File }}
+      <footer class="page-footer">
+        <a href="https://github.com/korrel8r/korrel8r/blob/main/doc/content/{{ .File.Path }}">Page source on GitHub</a>
+      </footer>
+      {{ end }}
     </main>
   </div>
 </body>

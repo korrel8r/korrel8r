@@ -2,6 +2,7 @@
 title: netflow
 description: network flow data.
 ---
+<!-- Generated content, do not edit! -->
 network flow data.
 
 ### Classes

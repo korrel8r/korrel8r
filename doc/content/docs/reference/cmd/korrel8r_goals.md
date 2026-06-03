@@ -1,6 +1,7 @@
 ---
 title: korrel8r goals
 ---
+<!-- Generated content, do not edit! -->
 ## korrel8r goals
 
 Execute QUERY, find all paths to GOAL classes.

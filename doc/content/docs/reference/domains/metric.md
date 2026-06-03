@@ -2,6 +2,7 @@
 title: metric
 description: Prometheus metrics.
 ---
+<!-- Generated content, do not edit! -->
 Prometheus metrics.
 
 ### Classes

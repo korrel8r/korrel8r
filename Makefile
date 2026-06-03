@@ -176,7 +176,7 @@ check-links: doc/public ## Check for broken internal links in the generated site
 FRONT=./hack/front-matter.sh
 
 DOC_PUBLIC+=$(foreach D,$(DOMAINS), doc/content/docs/reference/domains/$(D).md)
-doc/content/docs/reference/domains/%.md: pkg/domains/%/doc.md generate
+doc/content/docs/reference/domains/%.md: pkg/domains/%/doc.md generate $(FRONT)
 	@mkdir -p $(dir $@)
 	@cp $< $@
 	@$(FRONT) $@ 'title: $(basename $(notdir $@))' "description: $$(sed -n '/^[^#]/{/./p;q}' $@)"
@@ -184,7 +184,7 @@ doc/content/docs/reference/domains/%.md: pkg/domains/%/doc.md generate
 
 DOC_PUBLIC+=doc/content/docs/reference/rest/index.md
 CLEANFILES+=doc/content/docs/reference/rest
-doc/content/docs/reference/rest/index.md: $(OPENAPI_SPEC) $(MAKEFILE_LIST)
+doc/content/docs/reference/rest/index.md: $(OPENAPI_SPEC) $(MAKEFILE_LIST) $(FRONT)
 	@mkdir -p $(dir $@)
 	go tool openapi-markdown -o $@ -title "REST API" -description "HTTP API reference" $<
 	@sed -i 's/^# REST API$$//'	$@				# Remove redundant header
@@ -193,7 +193,7 @@ doc/content/docs/reference/rest/index.md: $(OPENAPI_SPEC) $(MAKEFILE_LIST)
 
 DOC_PUBLIC+=doc/content/docs/reference/cmd/_index.md
 CLEANFILES+=doc/content/docs/reference/cmd
-doc/content/docs/reference/cmd/_index.md: generate  $(shell find cmd pkg)
+doc/content/docs/reference/cmd/_index.md: generate  $(shell find cmd pkg) $(FRONT)
 	@mkdir -p $(dir $@)
 	unset KORREL8R_CONFIG; go run ./cmd/korrel8r doc markdown $(dir $@)
 	@mv $(dir $@)korrel8r.md $@

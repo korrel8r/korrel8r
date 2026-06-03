@@ -1,6 +1,7 @@
 ---
 title: korrel8r stores
 ---
+<!-- Generated content, do not edit! -->
 ## korrel8r stores
 
 List the stores configured for the listed domains, or for all domains if none are listed.

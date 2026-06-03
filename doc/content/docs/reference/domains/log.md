@@ -2,6 +2,7 @@
 title: log
 description: application, infrastructure, and audit logs.
 ---
+<!-- Generated content, do not edit! -->
 application, infrastructure, and audit logs.
 
 Logs can be stored on the cluster in LokiStack or in an external Loki server. They can also be retrieved directly from the Kubernetes API server. Direct API server access does not provide long\-term log storage, but it gives short\-term access when there is no long term log store available.

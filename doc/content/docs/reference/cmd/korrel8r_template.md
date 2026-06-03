@@ -1,6 +1,7 @@
 ---
 title: korrel8r template
 ---
+<!-- Generated content, do not edit! -->
 ## korrel8r template
 
 Apply a Go template to the korrel8r engine.

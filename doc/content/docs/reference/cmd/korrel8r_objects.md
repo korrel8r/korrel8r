@@ -1,6 +1,7 @@
 ---
 title: korrel8r objects
 ---
+<!-- Generated content, do not edit! -->
 ## korrel8r objects
 
 Execute QUERY and print the results
