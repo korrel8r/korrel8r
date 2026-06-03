@@ -110,7 +110,7 @@ The console receives these updates in real time via `GET /console/events` (an SS
 
 Follow the [Getting Started](../getting-started/) guide.
 For OpenShift, the recommended approach is the
-[Cluster Observability Operator](../getting-started/#cluster-observability-operator-recommended),
+[Cluster Observability Operator](../getting-started/#cluster-observability-operator),
 which deploys and configures korrel8r automatically.
 
 ### Connecting an agent via MCP stdio

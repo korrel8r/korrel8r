@@ -1,7 +1,7 @@
 ---
 title: Korrel8r
 weight: 1
-description: Korrel8r Site
+description: Korrel8r Book
 ---
 <br>
 

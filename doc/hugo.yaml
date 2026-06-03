@@ -1,18 +1,14 @@
-baseURL: https://korrel8r.github.io/korrel8r/
+baseURL: https://korrel8r.github.io/korrel8r
 title: Korrel8r
-
-module:
-  imports:
-    - path: github.com/imfing/hextra
 
 markup:
   goldmark:
-    renderer:
-      unsafe: true
     extensions:
       definitionList: true
+    renderer:
+      unsafe: true
   highlight:
-    style: friendly
+    style: github
 
 params:
   description: "Correlate observability signals and Kubernetes resources"
@@ -26,18 +22,9 @@ params:
     width: normal
   theme:
     default: system
-  editURL:
-    base: https://github.com/korrel8r/korrel8r/edit/main/doc/content
 
 menu:
   main:
-    - name: Documentation
-      pageRef: /docs
-      weight: 1
     - name: GitHub
       url: https://github.com/korrel8r/korrel8r
-      weight: 2
-  sidebar:
-    - name: Client Command
-      url: https://korrel8r.github.io/client/
-      weight: 1
+      weight: 100

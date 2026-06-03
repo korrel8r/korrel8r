@@ -26,7 +26,7 @@ The panel is read-only: it shows what Korrel8r found, but does not modify any cl
 ## Installation
 
 The troubleshooting panel is automatically installed and configured when you install the
-[Cluster Observability Operator](../getting-started/#cluster-observability-operator-recommended) (COO)
+[Cluster Observability Operator](../getting-started/#cluster-observability-operator) (COO)
 on an OpenShift cluster. No additional configuration is needed.
 
 For details on the COO and Korrel8r installation, see [Getting Started](../getting-started/).

@@ -8,7 +8,7 @@ help: ## Display this help.
 	@grep -hE '^## [A-Z0-9_]+: ' Makefile | sed 's/^## \([A-Z0-9_]*\): \(.*\)/\1#\2/' | column -s'#' -t
 
 ## VERSION: Semantic version for release, use -dev for development pre-release versions.
-VERSION?=0.11.1
+VERSION?=0.11.2-dev
 ## REGISTRY_BASE: Image registry base, for example quay.io/somebody
 REGISTRY_BASE?=$(error REGISTRY_BASE must be set to push images)
 ## IMGTOOL: May be podman or docker.
@@ -26,7 +26,7 @@ export GOCOVERDIR := $(abspath _cover)
 $(shell mkdir -p $(GOCOVERDIR))
 
 # Sources for generated files
-OPENAPI_SPEC=doc/korrel8r-openapi.yaml
+OPENAPI_SPEC=korrel8r-openapi.yaml
 DOMAINS=$(patsubst pkg/domains/%/doc.go,%,$(wildcard pkg/domains/*/doc.go))
 
 # Generated files required to build the Go code.
@@ -164,6 +164,7 @@ doc: doc/public
 
 .PHONY: preview
 preview: doc/public
+	@rm -rf $<
 	go tool hugo server --source doc --baseURL http://localhost:1313 --bind 0.0.0.0
 	@touch $<
 
@@ -204,7 +205,7 @@ doc/content/docs/reference/cmd/_index.md: generate  $(shell find cmd pkg)
 	done
 	@touch $@
 
-doc/public: $(DOC_PUBLIC) $(shell find doc/content doc/hugo.yaml doc/static)
+doc/public: $(DOC_PUBLIC) $(shell find doc/* -name public -prune -o -print)
 	go tool hugo --source doc
 	@touch $@
 CLEANFILES+=doc/public
