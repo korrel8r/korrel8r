@@ -25,6 +25,16 @@ params:
 
 menu:
   main:
-    - name: GitHub
-      url: https://github.com/korrel8r/korrel8r
+    - name: Documentation
+      url: /docs/introduction
+
       weight: 100
+    - name: GitHub
+      url: https://github.com/korrel8r/korrel8r/
+      weight: 101
+    - name: Client
+      url: https://korrel8r.github.io/client/
+      weight: 102
+    - name: Recorded Demos
+      url: https://github.com/korrel8r/demos
+      weight: 103
