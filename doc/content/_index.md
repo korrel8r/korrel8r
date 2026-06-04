@@ -2,6 +2,7 @@
 title: Korrel8r
 weight: 1
 description: Korrel8r Book
+hideChildren: true
 ---
 <br>
 
@@ -25,7 +26,3 @@ Korrel8r works with many query languages and storage systems, bridges
 [OpenTelemetry](https://opentelemetry.io) and non-OTEL data,
 and is extensible via YAML rules and pluggable domains.
 It can be used as an in-cluster service and a local command.
-
-- Read the [documentation](docs/introduction) to install and use korrel8r.
-- There are some [recorded demos](https://github.com/korrel8r/demos) you can look at.
-- See the [GitHub project](https://github.com/korrel8r/korrel8r) to contribute or learn more.
