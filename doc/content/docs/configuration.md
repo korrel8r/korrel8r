@@ -151,6 +151,22 @@ The query template should generate a string of the form:
 
 The _query-details_ part depends on the domain, see the [Domain Reference](../reference/domains/).
 
+## statusRules
+
+Rules that generate [statuses](../statuses/) for objects in a correlation graph:
+
+```yaml
+statusRules:
+  - name: "rule_name"           # 1. Identifies the rule in log output
+    start:                      # 2. Start objects must belong to one of these classes
+      domain: "domain_name"
+      classes:                  #    Optional — omit for all classes in the domain
+        - "class_name"
+    status: "status_template"   # 3. Go template that outputs labels, one per line
+```
+
+See [Statuses](../statuses/) for details and examples.
+
 ## aliases
 
 Short-hand alias names for groups of classes:

@@ -40,7 +40,7 @@ see the [Troubleshooting Panel User Guide](https://github.com/openshift/troubles
 ## AI Agent Integration
 
 The troubleshooting panel can work together with an AI agent via Korrel8r's
-[console bridge](../ai-agents/#console-bridge).
+[agent-console navigation](../ai-agents/#agent-console-navigation).
 In this mode, an AI agent can see what you are viewing in the console and update the display
 with its findings — enabling a conversational troubleshooting workflow.
 

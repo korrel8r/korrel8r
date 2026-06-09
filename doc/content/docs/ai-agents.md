@@ -1,4 +1,4 @@
----
+n---
 title: AI Agents
 description: Using korrel8r with AI agents via MCP
 weight: 7
@@ -13,8 +13,18 @@ providing tools to explore correlations, retrieve data, and interact with the Op
 
 There are two main ways agents use korrel8r:
 
-1. **Correlation and data access** — agent can find related signals and retrieve observability data across domains.
-2. **Console bridge** — two-way link between an AI agent and the OpenShift console.
+1. [Correlation and data access](#correlation-and-data-access) - agent can find related signals and retrieve observability data across domains.
+2. [Agent-console navigation](#agent-console-navigation) — two-way link between an AI agent and the OpenShift console.
+
+## Correlation and data access
+
+### Reducing token costs
+
+Korrel8r returns [correlation graphs](../introduction/#correlation-graphs) containing queries, counts,
+and [statuses](../statuses/) — not full data objects.
+An agent can examine what data is available and how interesting it is _before_ making expensive calls
+to retrieve the actual data, significantly reducing token costs.
+See [Graph-first workflow](../introduction/#graph-first-workflow) for details.
 
 ### Discovering available data
 
@@ -33,13 +43,13 @@ Korrel8r offers two search strategies, exposed as MCP tools:
 : Find paths from a starting point to a specific kind of data.
   Use this for targeted questions like "find logs related to this pod"
   or "what alerts fired for this deployment?"
-  See [Goal Search](../introduction/) for how this works.
+  See [Goal Search](../introduction/#goal-search) for how this works.
 
 `create_neighbors_graph`
 : Explore everything related to a starting point, up to a given depth.
   Use this for open-ended investigation like "what is related to this pod?"
   or "show me everything connected to these alerts."
-  See [Neighborhood Search](../introduction/) for how this works.
+  See [Neighborhood Search](../introduction/#neighborhood-search) for how this works.
 
 Both tools return a correlation graph — nodes representing classes of data (with queries and result counts)
 and edges representing the correlation rules that connect them.
@@ -60,15 +70,17 @@ A typical agent session might look like this:
 4. The agent calls `get_objects` with the log query from the graph (adding a time constraint) to retrieve the actual log entries.
 5. The agent analyzes the logs and reports the root cause.
 
-## Console bridge
+## Agent-Console Navigation
 
 *When you need to: let an agent see what a user is viewing in the OpenShift console, or update the console to show relevant data.*
 
-Korrel8r bridges an AI agent (connected via MCP) and the OpenShift console (connected via REST),
+For the console side see the [Console Agent Navigation Guide](https://github.com/openshift/troubleshooting-panel-console-plugin/blob/main/doc/agent-navigation.md).
+
+Korrel8r connects an AI agent (connected via MCP) and the OpenShift console (connected via REST),
 enabling conversational troubleshooting: the user looks at something in the console,
 asks the agent a question, and the agent can understand the context and display its findings back in the console.
 
-The bridge works through a shared [session](../reference/rest/#putconsole).
+The connection works through a shared [session](../reference/rest/#putconsole).
 The console and the agent authenticate with the same bearer token to share a session.
 
 ### Console → Agent: reading console state
@@ -143,13 +155,12 @@ korrel8r web --http :8080
 ```
 
 The agent connects to `http://<host>:8080/mcp` and authenticates with a bearer token.
-This mode also serves the REST API at `/api/v1alpha1`, required for the console bridge.
+This mode also serves the REST API at `/api/v1alpha1`, required for agent-console navigation.
 See [`korrel8r web`](../reference/cmd/korrel8r_web/) for all options.
 
-### Enabling the console bridge
+### Enabling agent-console navigation
 
-The console bridge requires korrel8r to run as a web service (not stdio)
-with both MCP (`/mcp`) and REST (`/api/v1alpha1`) endpoints enabled (the default).
+Korrel8r must run as a web service (not stdio) with both MCP (`/mcp`) and REST (`/api/v1alpha1`) endpoints enabled (the default).
 The console and agent must authenticate as the same user to share a session.
 
 > [!NOTE]
@@ -198,7 +209,7 @@ You can ask questions like:
 
 <!-- TODO: Add a worked example session transcript. -->
 
-### Example: agent with console bridge
+### Example: agent-console navigation
 
 See the [Agent Navigation Guide](https://github.com/openshift/troubleshooting-panel-console-plugin/blob/main/doc/agent-navigation.md)
 for step-by-step instructions on connecting an agent to the console.
@@ -226,5 +237,5 @@ See also the [REST API Reference](../reference/rest/) and [Domain Reference](../
 | `create_goals_graph` | [Goal search](../introduction/): find paths from start objects to specific goal classes |
 | `create_neighbors_graph` | [Neighborhood search](../introduction/): explore all data reachable within N steps |
 | `get_objects` | Execute a [query](../introduction/#domains-organize-data) and return matching objects |
-| `get_console` | Read the current console state (for [console-integrated agents](#console-bridge)) |
-| `show_in_console` | Update the console display (for [console-integrated agents](#console-bridge)) |
+| `get_console` | Read the current console state (for [agent-console navigation](#agent-console-navigation)) |
+| `show_in_console` | Update the console display (for [agent-console navigation](#agent-console-navigation)) |

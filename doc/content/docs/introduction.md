@@ -56,3 +56,48 @@ resulting queries to retrieve more objects, applying more rules, and so on.
 
 Korrel8r comes with a comprehensive set of rules for Kubernetes and observability data.
 You can also [write your own rules](../writing-rules/) to handle custom relationships.
+
+## Correlation graphs
+
+When korrel8r searches for correlated data, it returns a _correlation graph_.
+The graph contains nodes, edges, queries, and counts — but not the full data objects themselves.
+
+Each **node** represents a class of data (e.g. `k8s:Pod` or `log:application`).
+Nodes contain:
+- **queries** that will retrieve the actual data from the store.
+- **counts** of how many items each query returns.
+- **[statuses](../statuses/)** like `Error` or `Warning`, with counts.
+
+**Edges** represent the correlation rules that connect one class to another.
+
+### Graph-first workflow
+
+This design lets you examine what data is available _before_ deciding what to retrieve.
+For example, if one query returns 200 log records with 50 errors and another returns 1000 records with no errors,
+you can check the 200 more interesting logs first — there is no need to retrieve the other 1000.
+
+Following a chain of rules (e.g. Alert → Deployment → Pod → logs) requires retrieving intermediate data,
+but the graph lets you skip intermediate steps and go straight to the results you need.
+
+## Search strategies
+
+Korrel8r offers two search strategies that traverse the rule graph in different ways.
+
+### Goal search
+
+Find paths from a starting point to one or more specific _goal_ classes.
+Use this for targeted questions:
+- "Find logs related to this pod"
+- "What alerts fired for this deployment?"
+
+Korrel8r finds the shortest paths through the rule graph from the start class to each goal class,
+following rules and retrieving data along the way.
+
+### Neighborhood search
+
+Explore everything related to a starting point, up to a given _depth_ (number of rule hops).
+Use this for open-ended investigation:
+- "What is related to this pod?"
+- "Show me everything connected to these alerts"
+
+Korrel8r follows all rules reachable within the depth limit, building a graph of everything it finds.
