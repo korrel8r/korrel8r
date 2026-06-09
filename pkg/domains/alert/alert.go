@@ -312,24 +312,22 @@ func (s *Store) getLokiRules(ctx context.Context, namespaces map[string]bool) (v
 	return combinedResult, nil
 }
 
-// getEffectivePrometheusAPI returns a Prometheus API client with the appropriate port based on user permissions.
-// Admin users (with cluster-monitoring-view) use the configured port (typically 9091).
-// Non-admin users use the tenancy port 9093 for namespace-scoped rules/alerts access.
-func (s *Store) getEffectivePrometheusAPI(ctx context.Context) (v1.API, error) {
-	u, err := k8s.GetEffectivePrometheusURL(ctx, s.prometheusURL, s.prometheusConfigPort, s.k8sClient, "alert", k8s.TenancyPortRules)
-	if err != nil {
-		return nil, err
+// prometheusURLForAccess returns a Prometheus URL with the appropriate port.
+// Admin users use the configured port; non-admin users use the tenancy port.
+func (s *Store) prometheusURLForAccess(hasClusterAccess bool) *url.URL {
+	u := *s.prometheusURL
+	if !hasClusterAccess {
+		u.Host = k8s.ReplacePort(u.Host, k8s.TenancyPortRules)
 	}
-	return newPrometheusClient(u, s.httpClient)
+	return &u
 }
 
-// getEffectiveAlertmanagerAPI returns an Alertmanager API client with the appropriate port based on user permissions.
-// Admin users (with cluster-monitoring-view) use the configured port (typically 9094) for cluster-wide access.
-// Non-admin users use the tenancy port 9092 for namespace-scoped access (requires monitoring-edit role in their project).
-func (s *Store) getEffectiveAlertmanagerAPI(ctx context.Context, namespaces map[string]bool) (*client.AlertmanagerAPI, error) {
-	u, err := k8s.GetEffectivePrometheusURL(ctx, s.alertmanagerURL, s.alertmanagerConfigPort, s.k8sClient, "alert", k8s.TenancyPortQuery)
-	if err != nil {
-		return nil, err
+// alertmanagerAPIForAccess returns an Alertmanager API client with the appropriate port.
+// Admin users use the configured port; non-admin users use the tenancy port.
+func (s *Store) alertmanagerAPIForAccess(hasClusterAccess bool, namespaces map[string]bool) (*client.AlertmanagerAPI, error) {
+	u := *s.alertmanagerURL
+	if !hasClusterAccess {
+		u.Host = k8s.ReplacePort(u.Host, k8s.TenancyPortQuery)
 	}
 
 	// If using tenancy port (9092), wrap HTTP client to inject namespace query parameters
@@ -356,7 +354,7 @@ func (s *Store) getEffectiveAlertmanagerAPI(ctx context.Context, namespaces map[
 		log.V(3).Info("using Alertmanager configured port", "port", u.Port(), "namespaces_count", len(namespaces))
 	}
 
-	return newAlertmanagerClient(u, httpClient)
+	return newAlertmanagerClient(&u, httpClient)
 }
 
 // namespaceInjectingTransport wraps an HTTP RoundTripper to inject namespace query parameters.
@@ -479,16 +477,15 @@ func (s *Store) Get(ctx context.Context, query korrel8r.Query, c *korrel8r.Const
 		return err
 	}
 
-	// Get the effective Prometheus API based on user permissions (admin vs non-admin)
-	promAPI, err := s.getEffectivePrometheusAPI(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to get effective Prometheus API: %w", err)
-	}
-
-	// Check if user has cluster-level access
+	// Check RBAC once — used for both Prometheus and Alertmanager port selection
 	hasClusterAccess, err := k8s.CanAccessPrometheusAPI(ctx, s.k8sClient)
 	if err != nil {
 		hasClusterAccess = false
+	}
+
+	promAPI, err := newPrometheusClient(s.prometheusURLForAccess(hasClusterAccess), s.httpClient)
+	if err != nil {
+		return fmt.Errorf("failed to create Prometheus client: %w", err)
 	}
 
 	// Extract namespaces from query for filtering
@@ -535,14 +532,19 @@ func (s *Store) Get(ctx context.Context, query korrel8r.Query, c *korrel8r.Const
 		log.V(0).Info("no alert rules found - check Prometheus and Loki Ruler access permissions")
 	}
 
+	// Build Alertmanager client once for all subqueries
+	alertmanagerAPI, amErr := s.alertmanagerAPIForAccess(hasClusterAccess, namespaces)
+	if amErr != nil {
+		log.V(3).Info("failed to get Alertmanager API", "error", amErr)
+	}
+
 	for _, subquery := range q.Parsed {
-		alerts, err := s.getSubquery(ctx, allRules, subquery, namespaces)
+		alerts, err := s.getSubquery(ctx, allRules, subquery, alertmanagerAPI)
 		if err != nil {
 			return err
 		}
 
 		for _, a := range alerts {
-			// Only include alerts that overlap with the constraint interval or have no start/end time.
 			if c.CompareTime(a.StartsAt) <= 0 && c.CompareTime(a.EndsAt) >= 0 {
 				result.Append(a)
 			}
@@ -552,8 +554,7 @@ func (s *Store) Get(ctx context.Context, query korrel8r.Query, c *korrel8r.Const
 	return nil
 }
 
-func (s *Store) getSubquery(ctx context.Context, prometheusRules v1.RulesResult, subQuery map[string]string, namespaces map[string]bool) ([]*Object, error) {
-	// PRIMARY: Extract alerts from Rules API (works for Prometheus)
+func (s *Store) getSubquery(ctx context.Context, prometheusRules v1.RulesResult, subQuery map[string]string, alertmanagerAPI *client.AlertmanagerAPI) ([]*Object, error) {
 	var alerts []*Object
 	for _, rg := range prometheusRules.Groups {
 		for _, r := range rg.Rules {
@@ -577,30 +578,24 @@ func (s *Store) getSubquery(ctx context.Context, prometheusRules v1.RulesResult,
 		}
 	}
 
-	// Build Alertmanager filters from subQuery
+	if alertmanagerAPI == nil {
+		return alerts, nil
+	}
+
 	var filters []string
 	for k, v := range subQuery {
 		filters = append(filters, fmt.Sprintf("%v=%v", k, v))
 	}
 
-	// FALLBACK: If Rules API returned NO alerts, try Alertmanager
-	// This handles Loki case where Rules API has no ar.Alerts field
 	if len(alerts) == 0 {
+		// FALLBACK: Rules API returned no alerts, try Alertmanager
 		log.V(3).Info("no alerts from Rules API, trying Alertmanager fallback")
-		// Get Alertmanager API with appropriate port for user's permissions
-		alertmanagerAPI, err := s.getEffectiveAlertmanagerAPI(ctx, namespaces)
-		if err != nil {
-			log.V(3).Info("failed to get Alertmanager API", "error", err)
-			return alerts, nil // Return empty, don't fail
-		}
 		alertManagerAlerts, err := alertmanagerAPI.Alert.GetAlerts(alert.NewGetAlertsParamsWithContext(ctx).WithFilter(filters))
 		if err != nil {
 			log.V(3).Info("failed to query Alertmanager for fallback", "error", err)
-			return alerts, nil // Return empty, don't fail
+			return alerts, nil
 		}
-		// Create Objects from Alertmanager alerts
 		for _, ama := range alertManagerAlerts.Payload {
-			// Check if alert matches subQuery
 			matches := true
 			for k, v := range subQuery {
 				if ama.Labels[k] != v {
@@ -612,7 +607,6 @@ func (s *Store) getSubquery(ctx context.Context, prometheusRules v1.RulesResult,
 				continue
 			}
 
-			// Create minimal Object with labels/annotations
 			obj := &Object{
 				Labels:      make(map[string]string, len(ama.Labels)),
 				Annotations: make(map[string]string, len(ama.Annotations)),
@@ -623,30 +617,21 @@ func (s *Store) getSubquery(ctx context.Context, prometheusRules v1.RulesResult,
 			for k, v := range ama.Annotations {
 				obj.Annotations[k] = v
 			}
-			// Populate timing, receivers, status using existing augmentAlert logic
 			s.augmentAlert(obj, alertManagerAlerts)
 			alerts = append(alerts, obj)
 		}
 	} else {
-		// AUGMENT: If we got alerts from Rules API, augment with Alertmanager timing data
-		// Get Alertmanager API with appropriate port for user's permissions
-		alertmanagerAPI, err := s.getEffectiveAlertmanagerAPI(ctx, namespaces)
+		// AUGMENT: enrich Rules API alerts with Alertmanager timing data
+		alertManagerAlerts, err := alertmanagerAPI.Alert.GetAlerts(alert.NewGetAlertsParamsWithContext(ctx).WithFilter(filters))
 		if err != nil {
-			log.V(3).Info("failed to get Alertmanager API for augmentation", "error", err)
+			log.V(3).Info("failed to augment alerts from Alertmanager", "error", err)
 		} else {
-			alertManagerAlerts, err := alertmanagerAPI.Alert.GetAlerts(alert.NewGetAlertsParamsWithContext(ctx).WithFilter(filters))
-			if err != nil {
-				// Log the error but don't fail - Alertmanager access may be restricted
-				log.V(3).Info("failed to augment alerts from Alertmanager", "error", err)
-			} else {
-				for _, pa := range alerts {
-					s.augmentAlert(pa, alertManagerAlerts)
-				}
+			for _, pa := range alerts {
+				s.augmentAlert(pa, alertManagerAlerts)
 			}
 		}
 	}
 	return alerts, nil
-
 }
 
 // augmentAlert augment a prometheus alert using the matching alertManager alert if there is one.
