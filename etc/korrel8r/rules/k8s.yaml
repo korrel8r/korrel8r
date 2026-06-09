@@ -285,3 +285,9 @@ statusRules:
       classes: [Event.v1, Event.v1.events.k8s.io]
     status: |-
       {{- with index . "type"}}{{if ne . "Normal"}}{{.}}{{end}}{{end}}
+
+  - name: HealthStatus
+    start:
+      domain: k8s
+    status: |-
+      {{- k8sHealthStatus . -}}
