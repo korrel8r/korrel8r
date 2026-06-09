@@ -82,10 +82,15 @@ The following template functions are available to rules.
 
 ```
 k8sClass
-		    Takes string arguments (apiVersion, kind).
-		    Returns the korrel8r.Class implied by the arguments, or an error.
+	Takes string arguments (apiVersion, kind).
+	Returns the korrel8r.Class implied by the arguments, or an error.
 
-   k8sIsNamespaced
-	      Takes a k8s Class argument, returns true if the class is a namespace-scoped resource.
+k8sIsNamespaced
+	Takes a k8s Class argument, returns true if the class is a namespace-scoped resource.
+
+k8sHealthStatus
+	Takes a k8s Object, evaluates its health using the kube-health library.
+	Returns "Error", "Warning", or "" for healthy/unknown objects.
+	Analyzes observed generation and standard Kubernetes conditions.
 ```
 

@@ -57,10 +57,10 @@ func New(data *Data) *Graph {
 
 // Weight an edge by the "spread" of its rules.
 //
-// Wildcard rules in domains with many classes (e.g. k8s, DependentToOwner) are "expensive".
-// They create many speculative graph lines, but following these lines often leads nowhere.
-// Weight edges based on the least expensive rule, in other words avoid
-// consider an edge expensive if it has with only expensive rules.
+// Wildcard rules in domains with many classes (e.g. k8s, DependentToOwner)
+// create many speculative graph lines, but following these lines often leads nowhere.
+// The weight of an edge is the spread of its least expensive rule.
+// In other words consider an edge expensive if it only has expensive rules.
 func (g *Graph) Weight(u, v int64) (w float64, ok bool) {
 	if u == v {
 		return 0, true

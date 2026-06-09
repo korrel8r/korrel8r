@@ -75,6 +75,21 @@ statusRules:
       {{- with index . "type"}}{{if ne . "Normal"}}{{.}}{{end}}{{end}}
 ```
 
+### Kubernetes health status
+
+Evaluates the health of any Kubernetes resource using the [kube-health](https://github.com/rhobs/kube-health) library.
+Analyzes observed generation and standard Kubernetes conditions (e.g. `Ready`, `Available`, `MemoryPressure`)
+to produce `Error` or `Warning` statuses. Objects without a `status` field or with healthy conditions produce no status.
+
+```yaml
+statusRules:
+  - name: HealthStatus
+    start:
+      domain: k8s
+    status: |-
+      {{- k8sHealthStatus . -}}
+```
+
 ### Kubernetes finalizers
 
 Marks any Kubernetes resource that has finalizers with `Finalizer`.
