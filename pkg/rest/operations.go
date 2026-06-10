@@ -50,7 +50,6 @@ func New(sessions session.Manager, r *gin.Engine) (*API, error) {
 		Sessions: sessions,
 		Router:   r,
 	}
-	r.Use(session.Middleware(sessions))
 	rg := r.Group(BasePath)
 	rg.Use(a.logger) // Apply logger only to API endpoints
 	RegisterHandlers(rg, a)

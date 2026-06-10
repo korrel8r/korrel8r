@@ -38,6 +38,7 @@ func queryCounts(gq graph.Queries, _ api.GraphOptions) []api.QueryCount {
 		for k, v := range qc.StatusCounts {
 			aqc.Statuses = append(aqc.Statuses, api.StatusCount{Status: k, Count: ptr.To(v)})
 		}
+		slices.SortFunc(aqc.Statuses, func(a, b api.StatusCount) int { return cmp.Compare(a.Status, b.Status) })
 		qcs = append(qcs, aqc)
 	}
 	slices.SortFunc(qcs, func(a, b api.QueryCount) int {
@@ -144,6 +145,9 @@ func Normalize(v any) any {
 		}
 	case []api.QueryCount:
 		slices.SortFunc(v, func(a, b api.QueryCount) int { return strings.Compare(a.Query, b.Query) })
+		for _, qc := range v {
+			slices.SortFunc(qc.Statuses, func(a, b api.StatusCount) int { return cmp.Compare(a.Status, b.Status) })
+		}
 	}
 	return v
 }

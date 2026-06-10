@@ -33,6 +33,8 @@ func newConsoleEvents() *consoleEvents {
 
 // ShowInConsole sends an update to the console via the unbuffered fromAgent channel.
 // Blocks until the console receives the update or ctx is canceled.
+// The blocking is deliberate, it delays returning until we know the update was at least sent.
+// This tells the caller it was likely sent and processed, although it's not guaranteed.
 func (c *consoleEvents) ShowInConsole(ctx context.Context, update *api.Console) error {
 	for {
 		c.mu.Lock()
