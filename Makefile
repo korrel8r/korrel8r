@@ -91,12 +91,15 @@ else
 lint: ## Linting skipped (NOLINT is set).
 endif
 
+# Setting NO_CLUSTER=1 skips cluster tests
+TEST_FLAGS?=$(and $(NO_CLUSTER),-skip='Cluster|/Cluster')
+
 .PHONY: test
 test: lint											## Run all tests, no cache. Requires an openshift cluster.
-	go test -fullpath -race ./...
+	go test -fullpath -race ./... $(TEST_FLAGS)
 
 test-no-cluster: lint	## Run all tests that don't require an openshift cluster.
-	go test -fullpath -race  -skip='Cluster|/Cluster' ./...
+	$(MAKE) test NO_CLUSTER=1
 
 test-clean: ## Remove test namespaces from the cluster
 	kubectl delete ns -l test=korrel8r
@@ -104,10 +107,10 @@ test-clean: ## Remove test namespaces from the cluster
 .PHONY: cover
 cover:  ## Run tests with accumulated coverage stats in _cover.
 	@rm -rf  $(GOCOVERDIR) ; mkdir -p $(GOCOVERDIR)
-	@echo == Individual package test coverage.
-	go test -fullpath -cover ./... -test.gocoverdir=$(GOCOVERDIR)
+	@echo ==== Individual package test coverage ====
+	go test -fullpath -cover $(TEST_FLAGS) ./... -test.gocoverdir=$(GOCOVERDIR)
 	@echo
-	@echo == Aggregate coverage across all tests.
+	@echo ==== Aggregate coverage across all tests ====
 	go tool covdata percent -i $(GOCOVERDIR)
 
 bench: generate	## Run all benchmarks.
