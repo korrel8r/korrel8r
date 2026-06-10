@@ -77,7 +77,8 @@ $(GEN_OPENAPI_IMPL): $(OPENAPI_SPEC)
 	go tool gomarkdoc ./$(dir $@) --template-file file=doc/gomarkdoc/file.gotxt | sed -E 's/[Pp]ackage *[a-zA-Z0-9]+ *(is a)? *(korrel8r)? *(domain)? *(for)? *//' > $@
 
 SHELLCHECK:= $(BIN)/shellcheck
-$(SHELLCHECK): $(BIN)
+$(SHELLCHECK):
+	@mkdir -p $(BIN)
 	./hack/install-shellcheck.sh $(BIN) 0.10.0
 
 ifndef NOLINT
