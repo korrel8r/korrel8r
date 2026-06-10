@@ -1,4 +1,4 @@
-n---
+---
 title: AI Agents
 description: Using korrel8r with AI agents via MCP
 weight: 7
@@ -13,7 +13,7 @@ providing tools to explore correlations, retrieve data, and interact with the Op
 
 There are two main ways agents use korrel8r:
 
-1. [Correlation and data access](#correlation-and-data-access) - agent can find related signals and retrieve observability data across domains.
+1. [Correlation and data access](#correlation-and-data-access) — agent can find related signals and retrieve observability data across domains.
 2. [Agent-console navigation](#agent-console-navigation) — two-way link between an AI agent and the OpenShift console.
 
 ## Correlation and data access
@@ -70,7 +70,7 @@ A typical agent session might look like this:
 4. The agent calls `get_objects` with the log query from the graph (adding a time constraint) to retrieve the actual log entries.
 5. The agent analyzes the logs and reports the root cause.
 
-## Agent-Console Navigation
+## Agent-console navigation
 
 *When you need to: let an agent see what a user is viewing in the OpenShift console, or update the console to show relevant data.*
 
@@ -206,8 +206,6 @@ You can ask questions like:
 - "What domains does korrel8r know about?"
 - "Find all logs related to the deployment `web` in namespace `myapp`"
 - "What is related to this pod? Show me everything within 2 steps."
-
-<!-- TODO: Add a worked example session transcript. -->
 
 ### Example: agent-console navigation
 
