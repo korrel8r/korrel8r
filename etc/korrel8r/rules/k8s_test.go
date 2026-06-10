@@ -305,6 +305,49 @@ func TestK8sStatusRules(t *testing.T) {
 			start: newK8s("Event.v1", "ns", "evt3", nil),
 			want:  nil,
 		},
+		{
+			rule:  "HealthStatus",
+			class: "Pod",
+			start: newK8s("Pod", "ns", "unhealthy-pod", k8s.Object{
+				"status": k8s.Object{
+					"conditions": []any{
+						k8s.Object{"type": "Ready", "status": "False"},
+					},
+				},
+			}),
+			want: []string{"Error"},
+		},
+		{
+			rule:  "HealthStatus",
+			class: "Node",
+			start: newK8s("Node", "", "bad-node", k8s.Object{
+				"status": k8s.Object{
+					"conditions": []any{
+						k8s.Object{"type": "Ready", "status": "True"},
+						k8s.Object{"type": "MemoryPressure", "status": "True"},
+					},
+				},
+			}),
+			want: []string{"Warning"},
+		},
+		{
+			rule:  "HealthStatus",
+			class: "Pod",
+			start: newK8s("Pod", "ns", "healthy-pod", k8s.Object{
+				"status": k8s.Object{
+					"conditions": []any{
+						k8s.Object{"type": "Ready", "status": "True"},
+					},
+				},
+			}),
+			want: nil,
+		},
+		{
+			rule:  "HealthStatus",
+			class: "Pod",
+			start: newK8s("Pod", "ns", "no-status", nil),
+			want:  nil,
+		},
 	} {
 		x.Run(t)
 	}
