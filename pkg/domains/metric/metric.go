@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/korrel8r/korrel8r/internal/pkg/logging"
+	"github.com/korrel8r/korrel8r/internal/pkg/prometheus"
 	"github.com/korrel8r/korrel8r/pkg/config"
 	"github.com/korrel8r/korrel8r/pkg/domains/k8s"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
@@ -114,17 +115,6 @@ func NewStore(baseURL string, hc *http.Client) (korrel8r.Store, error) {
 
 func (s *Store) Domain() korrel8r.Domain { return Domain }
 
-// getEffectiveURL returns the URL with the appropriate port based on user permissions.
-// Admin users (with cluster-monitoring-view) use the configured port (typically 9091).
-// Non-admin users use the tenancy port 9092 for namespace-scoped query access.
-func (s *Store) getEffectiveURL(ctx context.Context) (*url.URL, error) {
-	u, err := k8s.GetEffectivePrometheusURL(ctx, s.baseURL, s.configuredPort, s.k8sClient, "metric", k8s.TenancyPortQuery)
-	if err != nil {
-		return nil, err
-	}
-	return u.JoinPath("/api/v1"), nil
-}
-
 type response struct {
 	Status string `json:"status"`
 	Data   []model.Metric
@@ -136,11 +126,7 @@ func (s *Store) Get(ctx context.Context, kquery korrel8r.Query, c *korrel8r.Cons
 		return err
 	}
 
-	// Get the effective URL based on user permissions (admin vs non-admin)
-	baseURL, err := s.getEffectiveURL(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to get effective URL: %w", err)
-	}
+	baseURL := prometheus.EffectiveURL(ctx, s.baseURL, s.k8sClient).JoinPath("/api/v1")
 
 	// NOTE: Store does not use github.com/prometheus/client_golang because the current version v1.19.1
 	// does not allow setting the "limit" query parameter. Hand code the REST query.
@@ -160,7 +146,7 @@ func (s *Store) Get(ctx context.Context, kquery korrel8r.Query, c *korrel8r.Cons
 
 	// Add namespace parameter for port 9092 (tenancy port)
 	// The prom-label-proxy requires this parameter for namespace scoping
-	k8s.AddNamespaceParams(q, namespaces)
+	prometheus.AddNamespaceParams(q, namespaces)
 
 	if c != nil {
 		if c.Start != nil && !c.Start.IsZero() {
