@@ -98,7 +98,7 @@ var webCmd = &cobra.Command{
 			log.V(0).Info("MCP Streamable endpoint", "path", mcp.StreamablePath)
 		}
 		s.Handler = router
-		if profileTypeFlag.String() == "http" {
+		if *httpprofileFlag {
 			rest.WebProfile(router)
 		}
 		log := log.WithValues("addr", s.Addr, "version", build.Version, "configuration", *configFlag)

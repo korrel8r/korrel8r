@@ -31,7 +31,6 @@ var (
 	verboseFlag = rootCmd.PersistentFlags().IntP("verbose", "v", 0, "Verbosity for logging (0: notice/error, 1: info/warn, 2: debug, 3: per-request, 4: per-rule, 5: per-query, 9: extra detail")
 	configFlag  = rootCmd.PersistentFlags().StringP("config", "c", getConfig(), "Configuration file")
 	panicFlag   = rootCmd.PersistentFlags().Bool("panic", false, "Panic on error")
-	// see profile.go for profile flag
 )
 
 const (
@@ -39,23 +38,21 @@ const (
 	defaultConfig = "/etc/korrel8r/korrel8r.yaml"
 )
 
-var profileStop interface{ Stop() }
-
 func init() {
 	rootCmd.PersistentFlags().VarP(outputFlag, "output", "o", outputFlag.DocString(""))
 	_ = rootCmd.PersistentFlags().MarkHidden("panic")
 	_ = rootCmd.PersistentFlags().MarkHidden("sync")
 	rootCmd.CompletionOptions.HiddenDefaultCmd = true
 
+	var profileStop func()
 	cobra.OnInitialize(func() {
 		logging.Init(verboseFlag)
 		k8s.SetLogger(logging.Log())
-		profileStop = StartProfile()
+		profileStop = startProfile()
 	})
-
 	cobra.OnFinalize(func() {
 		if profileStop != nil {
-			profileStop.Stop()
+			profileStop()
 		}
 	})
 }
