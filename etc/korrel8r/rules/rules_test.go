@@ -20,8 +20,8 @@ import (
 	"github.com/korrel8r/korrel8r/pkg/domains/k8s"
 	"github.com/korrel8r/korrel8r/pkg/engine"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
-	"github.com/korrel8r/korrel8r/pkg/status"
 	slices2 "github.com/korrel8r/korrel8r/pkg/slices"
+	"github.com/korrel8r/korrel8r/pkg/status"
 	"github.com/korrel8r/korrel8r/pkg/unique"
 	"github.com/stretchr/testify/assert"
 	"k8s.io/apimachinery/pkg/api/meta/testrestmapper"
@@ -112,7 +112,8 @@ func TestMain(m *testing.M) {
 		rules.Add(r.Name())
 	}
 	m.Run()
-	if len(rules) > 0 {
+	// Report if some rules were tested but not all.
+	if len(rules) < len(e.Rules()) && len(rules) > 0 {
 		fmt.Printf("FAIL: %v rules not tested:\n- %v\n", len(rules), strings.Join(slices.Collect(maps.Keys(rules)), "\n- "))
 		os.Exit(1)
 	}

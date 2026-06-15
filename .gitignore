@@ -1,6 +1,6 @@
 /_bin/
 /_cover/
-/_bench-*.txt
+/_bench/
 /hack/kind/jsonnet/vendor/
 /.devspace/
 __debug_bin*

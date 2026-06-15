@@ -23,7 +23,8 @@ IMAGE=$(IMG):$(VERSION)
 BIN ?= _bin
 export PATH := $(abspath $(BIN)):$(PATH)
 export GOCOVERDIR := $(abspath _cover)
-$(shell mkdir -p $(GOCOVERDIR))
+$(shell mkdir -p $(GOCOVERDIR) $(BIN))
+
 
 # Sources for generated files
 OPENAPI_SPEC=korrel8r-openapi.yaml
@@ -113,9 +114,13 @@ cover:  ## Run tests with accumulated coverage stats in _cover.
 	@echo ==== Aggregate coverage across all tests ====
 	go tool covdata percent -i $(GOCOVERDIR)
 
-bench: generate	## Run all benchmarks.
-	go test -fullpath -bench=. -run=NONE ./... > _bench-$(shell date -I).txt
-	go tool benchstat _bench-*.txt
+COUNT?=6
+DESCRIBE?=$(or $(shell git describe --all --dirty | sed 's-^heads/--'),$(error git describe is empty))
+.PHONY: _bench/domains
+_bench/domains: generate	## Run domain benchmarks.
+	mkdir -p $@
+	go test -v -bench='Domain' -run=- -count=$(COUNT) ./pkg/domains/... | tee $@/$(DESCRIBE).bench
+	go tool benchstat $@/*
 
 image-build: lint kustomize-edit ## Build image locally, don't push.
 	$(IMGTOOL) build --tag=$(IMAGE) -f Containerfile .

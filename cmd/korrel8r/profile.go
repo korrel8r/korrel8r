@@ -3,49 +3,61 @@
 package main
 
 import (
-	"maps"
 	"os"
-	"slices"
+	"runtime"
+	"runtime/pprof"
+	"runtime/trace"
 
-	"github.com/korrel8r/korrel8r/internal/pkg/enumflag"
-	"github.com/pkg/profile"
-)
-
-const (
-	profileEnv     = "KORREL8R_PROFILE"
-	profilePathEnv = "KORREL8R_PROFILE_PATH"
+	"github.com/korrel8r/korrel8r/internal/pkg/must"
 )
 
 var (
-	profileTypes = map[string]func(*profile.Profile){
-		"block":     profile.BlockProfile,
-		"cpu":       profile.CPUProfile,
-		"goroutine": profile.GoroutineProfile,
-		"mem":       profile.MemProfile,
-		"alloc":     profile.MemProfileAllocs,
-		"heap":      profile.MemProfileHeap,
-		"mutex":     profile.MutexProfile,
-		"clock":     profile.ClockProfile,
-		"trace":     profile.TraceProfile,
-	}
-	profileTypeFlag = enumflag.New(os.Getenv(profileEnv), slices.Collect(maps.Keys(profileTypes)))
-	profilePathFlag = rootCmd.PersistentFlags().String("profilePath", os.Getenv(profilePathEnv), "Output path for profile")
+	cpuprofileFlag   = rootCmd.PersistentFlags().String("cpuprofile", "", "Write CPU profile to `file`")
+	memprofileFlag   = rootCmd.PersistentFlags().String("memprofile", "", "Write memory profile to `file`")
+	blockprofileFlag = rootCmd.PersistentFlags().String("blockprofile", "", "Write block profile to `file`")
+	mutexprofileFlag = rootCmd.PersistentFlags().String("mutexprofile", "", "Write mutex profile to `file`")
+	traceFlag        = rootCmd.PersistentFlags().String("trace", "", "Write execution trace to `file`")
+	httpprofileFlag  = rootCmd.PersistentFlags().Bool("httpprofile", false, "Enable pprof HTTP endpoints")
 )
 
-func init() {
-	rootCmd.PersistentFlags().Var(profileTypeFlag, "profile", profileTypeFlag.DocString("Enable profiling"))
+func startProfile() (stop func()) {
+	var closers []func()
+	stop = func() {
+		for i := len(closers) - 1; i >= 0; i-- {
+			closers[i]()
+		}
+	}
+	if *cpuprofileFlag != "" {
+		f := must.Must1(os.Create(*cpuprofileFlag))
+		must.Must(pprof.StartCPUProfile(f))
+		closers = append(closers, func() { pprof.StopCPUProfile(); f.Close() })
+	}
+	if *traceFlag != "" {
+		f := must.Must1(os.Create(*traceFlag))
+		must.Must(trace.Start(f))
+		closers = append(closers, func() { trace.Stop(); f.Close() })
+	}
+	if *blockprofileFlag != "" {
+		runtime.SetBlockProfileRate(1)
+		closers = append(closers, func() { writeProfile("block", *blockprofileFlag) })
+	}
+	if *mutexprofileFlag != "" {
+		runtime.SetMutexProfileFraction(1)
+		closers = append(closers, func() { writeProfile("mutex", *mutexprofileFlag) })
+	}
+	if *memprofileFlag != "" {
+		closers = append(closers, func() {
+			runtime.GC()
+			writeProfile("allocs", *memprofileFlag)
+		})
+	}
+	return stop
 }
 
-type noopStop struct{}
-
-func (noopStop) Stop() {}
-
-func StartProfile() interface{ Stop() } {
-	if opt, ok := profileTypes[profileTypeFlag.String()]; ok {
-		if *profilePathFlag == "" {
-			*profilePathFlag = "."
-		}
-		return profile.Start(profile.ProfilePath(*profilePathFlag), opt)
+func writeProfile(name, path string) {
+	f := must.Must1(os.Create(path))
+	defer f.Close()
+	if profile := pprof.Lookup(name); profile != nil {
+		must.Must(profile.WriteTo(f, 0))
 	}
-	return noopStop{}
 }
