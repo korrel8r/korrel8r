@@ -3,15 +3,15 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"io"
 	"reflect"
 
 	"github.com/korrel8r/korrel8r/internal/pkg/enumflag"
+	"github.com/korrel8r/korrel8r/internal/pkg/json"
 	"github.com/korrel8r/korrel8r/internal/pkg/must"
+	"github.com/korrel8r/korrel8r/internal/pkg/yaml"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
-	"sigs.k8s.io/yaml"
 )
 
 type printer interface {

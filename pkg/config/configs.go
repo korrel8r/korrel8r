@@ -14,8 +14,8 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/korrel8r/korrel8r/internal/pkg/yaml"
 	"github.com/korrel8r/korrel8r/pkg/unique"
-	"sigs.k8s.io/yaml"
 )
 
 // Load loads all configurations from a file or URL.

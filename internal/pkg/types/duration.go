@@ -3,8 +3,9 @@
 package types
 
 import (
-	"encoding/json"
 	"time"
+
+	"github.com/korrel8r/korrel8r/internal/pkg/json"
 )
 
 // MilliDuration wraps time.Duration to (un)marshal as milliseconds.

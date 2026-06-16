@@ -3,9 +3,10 @@
 package types
 
 import (
-	"encoding/json"
 	"math"
 	"strconv"
+
+	"github.com/korrel8r/korrel8r/internal/pkg/json"
 )
 
 // ProtobufInt is an int64 that (un)marshlas using JSON protobuf encoding

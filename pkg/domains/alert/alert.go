@@ -5,7 +5,6 @@ package alert
 import (
 	"context"
 	_ "embed"
-	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -15,8 +14,10 @@ import (
 
 	openapiclient "github.com/go-openapi/runtime/client"
 	"github.com/go-openapi/strfmt"
+	"github.com/korrel8r/korrel8r/internal/pkg/json"
 	"github.com/korrel8r/korrel8r/internal/pkg/logging"
 	"github.com/korrel8r/korrel8r/internal/pkg/prometheus"
+	"github.com/korrel8r/korrel8r/internal/pkg/yaml"
 	"github.com/korrel8r/korrel8r/pkg/config"
 	"github.com/korrel8r/korrel8r/pkg/domains/k8s"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
@@ -27,7 +28,6 @@ import (
 	v1 "github.com/prometheus/client_golang/api/prometheus/v1"
 	"github.com/prometheus/common/model"
 	k8sclient "sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/yaml"
 )
 
 var (
@@ -321,7 +321,7 @@ func (s *Store) alertmanagerAPIForAccess(ctx context.Context, namespaces map[str
 	httpClient := s.httpClient
 	if u.Port() == prometheus.NamespacedPort {
 		if len(namespaces) > 0 {
-			log.V(3).Info("using Alertmanager tenancy port with namespace filtering", "port", prometheus.NamespacedPort, "namespaces", namespaces)
+			log.V(5).Info("using Alertmanager tenancy port with namespace filtering", "port", prometheus.NamespacedPort, "namespaces", namespaces)
 			// Wrap the transport to inject namespace parameters
 			wrappedClient := *s.httpClient // Copy the client
 			baseTransport := s.httpClient.Transport
@@ -338,7 +338,7 @@ func (s *Store) alertmanagerAPIForAccess(ctx context.Context, namespaces map[str
 			log.V(1).Info("namespace-scoped Alertmanager access requires namespace in query", "port", prometheus.NamespacedPort, "hint", "add namespace to alert query for non-admin access")
 		}
 	} else {
-		log.V(3).Info("using Alertmanager configured port", "port", u.Port(), "namespaces_count", len(namespaces))
+		log.V(5).Info("using Alertmanager configured port", "port", u.Port(), "namespaces_count", len(namespaces))
 	}
 
 	return newAlertmanagerClient(u, httpClient)
@@ -493,7 +493,7 @@ func (s *Store) Get(ctx context.Context, query korrel8r.Query, c *korrel8r.Const
 		lokiRules, err = s.getLokiRules(ctx, namespaces)
 		if err != nil {
 			// Log error but don't fail - Loki Ruler is optional
-			log.V(3).Info("failed to query Loki ruler", "error", err)
+			log.V(5).Info("failed to query Loki ruler", "error", err)
 		}
 	}
 
@@ -510,7 +510,7 @@ func (s *Store) Get(ctx context.Context, query korrel8r.Query, c *korrel8r.Const
 	// Build Alertmanager client once for all subqueries
 	alertmanagerAPI, amErr := s.alertmanagerAPIForAccess(ctx, namespaces)
 	if amErr != nil {
-		log.V(3).Info("failed to get Alertmanager API", "error", amErr)
+		log.V(5).Info("failed to get Alertmanager API", "error", amErr)
 	}
 
 	for _, subquery := range q.Parsed {
@@ -564,10 +564,10 @@ func (s *Store) getSubquery(ctx context.Context, prometheusRules v1.RulesResult,
 
 	if len(alerts) == 0 {
 		// FALLBACK: Rules API returned no alerts, try Alertmanager
-		log.V(3).Info("no alerts from Rules API, trying Alertmanager fallback")
+		log.V(5).Info("no alerts from Rules API, trying Alertmanager fallback")
 		alertManagerAlerts, err := alertmanagerAPI.Alert.GetAlerts(alert.NewGetAlertsParamsWithContext(ctx).WithFilter(filters))
 		if err != nil {
-			log.V(3).Info("failed to query Alertmanager for fallback", "error", err)
+			log.V(5).Info("failed to query Alertmanager for fallback", "error", err)
 			return alerts, nil
 		}
 		for _, ama := range alertManagerAlerts.Payload {
@@ -599,7 +599,7 @@ func (s *Store) getSubquery(ctx context.Context, prometheusRules v1.RulesResult,
 		// AUGMENT: enrich Rules API alerts with Alertmanager timing data
 		alertManagerAlerts, err := alertmanagerAPI.Alert.GetAlerts(alert.NewGetAlertsParamsWithContext(ctx).WithFilter(filters))
 		if err != nil {
-			log.V(3).Info("failed to augment alerts from Alertmanager", "error", err)
+			log.V(5).Info("failed to augment alerts from Alertmanager", "error", err)
 		} else {
 			for _, pa := range alerts {
 				s.augmentAlert(pa, alertManagerAlerts)

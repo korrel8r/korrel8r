@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"reflect"
 
-	"sigs.k8s.io/yaml"
+	"github.com/korrel8r/korrel8r/internal/pkg/yaml"
 )
 
 // TypeName returns the name of the static type of its argument, which may be an interface.
