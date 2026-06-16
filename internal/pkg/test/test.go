@@ -5,7 +5,6 @@ package test
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"math/rand"
 	"net"
@@ -14,6 +13,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/korrel8r/korrel8r/internal/pkg/json"
 	"github.com/korrel8r/korrel8r/internal/pkg/logging"
 	"github.com/korrel8r/korrel8r/pkg/auth"
 	"github.com/stretchr/testify/require"

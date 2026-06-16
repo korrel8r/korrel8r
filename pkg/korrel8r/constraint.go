@@ -3,9 +3,9 @@
 package korrel8r
 
 import (
-	"encoding/json"
 	"time"
 
+	"github.com/korrel8r/korrel8r/internal/pkg/json"
 	"github.com/korrel8r/korrel8r/pkg/ptr"
 )
 

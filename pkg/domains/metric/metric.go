@@ -72,7 +72,7 @@ func (c Class) String() string          { return korrel8r.ClassString(c) }
 func (c Class) Unmarshal(b []byte) (korrel8r.Object, error) { return impl.UnmarshalAs[Object](b) }
 func (c Class) Preview(o korrel8r.Object) string            { return Preview(o) }
 func (c Class) ID(o korrel8r.Object) any {
-	if o := o.(Object); o != nil {
+	if o, _ := o.(Object); o != nil {
 		return o.Fingerprint()
 	}
 	return nil

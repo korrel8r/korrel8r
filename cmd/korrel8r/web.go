@@ -3,7 +3,6 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
@@ -11,6 +10,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/korrel8r/korrel8r/internal/pkg/build"
+	"github.com/korrel8r/korrel8r/internal/pkg/json"
 	"github.com/korrel8r/korrel8r/internal/pkg/must"
 	"github.com/korrel8r/korrel8r/internal/pkg/tlsprofile"
 	"github.com/korrel8r/korrel8r/pkg/auth"

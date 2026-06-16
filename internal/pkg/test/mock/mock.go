@@ -4,12 +4,12 @@
 package mock
 
 import (
-	"encoding/json"
 	"fmt"
 	"slices"
 	"strings"
 	"time"
 
+	"github.com/korrel8r/korrel8r/internal/pkg/json"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	slices2 "github.com/korrel8r/korrel8r/pkg/slices"
 )

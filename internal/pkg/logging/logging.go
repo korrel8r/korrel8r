@@ -16,7 +16,6 @@
 package logging
 
 import (
-	"encoding/json"
 	"fmt"
 	"io"
 	"log"
@@ -26,6 +25,7 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/go-logr/stdr"
+	"github.com/korrel8r/korrel8r/internal/pkg/json"
 )
 
 const verboseEnv = "KORREL8R_VERBOSE"

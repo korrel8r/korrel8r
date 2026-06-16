@@ -1,0 +1,233 @@
+-*- mode: compilation; default-directory: "~/src/korrel8r/korrel8r/internal/pkg/json/" -*-
+Compilation started at Tue Jun 16 14:04:12
+
+go test -bench . -run - -count 10
+goos: linux
+goarch: amd64
+pkg: github.com/korrel8r/korrel8r/internal/pkg/json
+cpu: AMD Ryzen 7 PRO 7840HS w/ Radeon 780M Graphics 
+BenchmarkMarshalAlert/std-16       	  651903	      1801 ns/op
+BenchmarkMarshalAlert/std-16       	  665036	      1809 ns/op
+BenchmarkMarshalAlert/std-16       	  685039	      1751 ns/op
+BenchmarkMarshalAlert/std-16       	  611511	      1772 ns/op
+BenchmarkMarshalAlert/std-16       	  591236	      1751 ns/op
+BenchmarkMarshalAlert/std-16       	  610701	      1766 ns/op
+BenchmarkMarshalAlert/std-16       	  675141	      1749 ns/op
+BenchmarkMarshalAlert/std-16       	  612922	      1776 ns/op
+BenchmarkMarshalAlert/std-16       	  644415	      1782 ns/op
+BenchmarkMarshalAlert/std-16       	  607006	      1745 ns/op
+BenchmarkMarshalAlert/sonic-16     	 1375270	       873.5 ns/op
+BenchmarkMarshalAlert/sonic-16     	 1372761	       870.0 ns/op
+BenchmarkMarshalAlert/sonic-16     	 1368229	       877.6 ns/op
+BenchmarkMarshalAlert/sonic-16     	 1378716	       866.7 ns/op
+BenchmarkMarshalAlert/sonic-16     	 1380789	       869.6 ns/op
+BenchmarkMarshalAlert/sonic-16     	 1382911	       869.2 ns/op
+BenchmarkMarshalAlert/sonic-16     	 1363952	       882.1 ns/op
+BenchmarkMarshalAlert/sonic-16     	 1396135	       858.0 ns/op
+BenchmarkMarshalAlert/sonic-16     	 1367606	       872.7 ns/op
+BenchmarkMarshalAlert/sonic-16     	 1369060	       878.2 ns/op
+BenchmarkUnmarshalAlert/std-16     	  203509	      5475 ns/op
+BenchmarkUnmarshalAlert/std-16     	  204858	      5411 ns/op
+BenchmarkUnmarshalAlert/std-16     	  209976	      5427 ns/op
+BenchmarkUnmarshalAlert/std-16     	  201132	      5437 ns/op
+BenchmarkUnmarshalAlert/std-16     	  201400	      5573 ns/op
+BenchmarkUnmarshalAlert/std-16     	  200085	      5666 ns/op
+BenchmarkUnmarshalAlert/std-16     	  205633	      5603 ns/op
+BenchmarkUnmarshalAlert/std-16     	  213094	      5638 ns/op
+BenchmarkUnmarshalAlert/std-16     	  204826	      5695 ns/op
+BenchmarkUnmarshalAlert/std-16     	  198262	      5545 ns/op
+BenchmarkUnmarshalAlert/sonic-16   	  757350	      1576 ns/op
+BenchmarkUnmarshalAlert/sonic-16   	  704746	      1580 ns/op
+BenchmarkUnmarshalAlert/sonic-16   	  668271	      1582 ns/op
+BenchmarkUnmarshalAlert/sonic-16   	  681974	      1589 ns/op
+BenchmarkUnmarshalAlert/sonic-16   	  792236	      1569 ns/op
+BenchmarkUnmarshalAlert/sonic-16   	  727310	      1573 ns/op
+BenchmarkUnmarshalAlert/sonic-16   	  725637	      1568 ns/op
+BenchmarkUnmarshalAlert/sonic-16   	  738175	      1604 ns/op
+BenchmarkUnmarshalAlert/sonic-16   	  781795	      1595 ns/op
+BenchmarkUnmarshalAlert/sonic-16   	  697576	      1568 ns/op
+BenchmarkMarshalGraphSmall/std-16  	  597897	      1942 ns/op
+BenchmarkMarshalGraphSmall/std-16  	  547081	      1966 ns/op
+BenchmarkMarshalGraphSmall/std-16  	  587068	      1929 ns/op
+BenchmarkMarshalGraphSmall/std-16  	  564442	      1903 ns/op
+BenchmarkMarshalGraphSmall/std-16  	  574436	      1889 ns/op
+BenchmarkMarshalGraphSmall/std-16  	  563862	      1915 ns/op
+BenchmarkMarshalGraphSmall/std-16  	  534771	      1897 ns/op
+BenchmarkMarshalGraphSmall/std-16  	  593305	      1905 ns/op
+BenchmarkMarshalGraphSmall/std-16  	  631186	      1901 ns/op
+BenchmarkMarshalGraphSmall/std-16  	  547066	      1919 ns/op
+BenchmarkMarshalGraphSmall/sonic-16         	 1258304	       951.9 ns/op
+BenchmarkMarshalGraphSmall/sonic-16         	 1268902	       941.7 ns/op
+BenchmarkMarshalGraphSmall/sonic-16         	 1280235	       934.6 ns/op
+BenchmarkMarshalGraphSmall/sonic-16         	 1271655	       942.4 ns/op
+BenchmarkMarshalGraphSmall/sonic-16         	 1276634	       943.7 ns/op
+BenchmarkMarshalGraphSmall/sonic-16         	 1297350	       931.5 ns/op
+BenchmarkMarshalGraphSmall/sonic-16         	 1271006	       943.8 ns/op
+BenchmarkMarshalGraphSmall/sonic-16         	 1271509	       938.9 ns/op
+BenchmarkMarshalGraphSmall/sonic-16         	 1295715	       927.3 ns/op
+BenchmarkMarshalGraphSmall/sonic-16         	 1288100	       934.8 ns/op
+BenchmarkMarshalGraphLarge/std-16           	   55640	     20494 ns/op
+BenchmarkMarshalGraphLarge/std-16           	   58612	     20486 ns/op
+BenchmarkMarshalGraphLarge/std-16           	   59004	     20483 ns/op
+BenchmarkMarshalGraphLarge/std-16           	   57721	     20790 ns/op
+BenchmarkMarshalGraphLarge/std-16           	   57746	     20520 ns/op
+BenchmarkMarshalGraphLarge/std-16           	   57618	     20657 ns/op
+BenchmarkMarshalGraphLarge/std-16           	   57601	     20367 ns/op
+BenchmarkMarshalGraphLarge/std-16           	   57882	     20608 ns/op
+BenchmarkMarshalGraphLarge/std-16           	   58968	     20524 ns/op
+BenchmarkMarshalGraphLarge/std-16           	   56962	     20590 ns/op
+BenchmarkMarshalGraphLarge/sonic-16         	  142977	      8371 ns/op
+BenchmarkMarshalGraphLarge/sonic-16         	  142393	      8434 ns/op
+BenchmarkMarshalGraphLarge/sonic-16         	  138249	      8512 ns/op
+BenchmarkMarshalGraphLarge/sonic-16         	  143526	      8417 ns/op
+BenchmarkMarshalGraphLarge/sonic-16         	  144338	      8342 ns/op
+BenchmarkMarshalGraphLarge/sonic-16         	  141658	      8517 ns/op
+BenchmarkMarshalGraphLarge/sonic-16         	  136585	      8554 ns/op
+BenchmarkMarshalGraphLarge/sonic-16         	  136210	      8483 ns/op
+BenchmarkMarshalGraphLarge/sonic-16         	  139777	      8483 ns/op
+BenchmarkMarshalGraphLarge/sonic-16         	  141778	      8506 ns/op
+BenchmarkUnmarshalGraphSmall/std-16         	   96039	     12440 ns/op
+BenchmarkUnmarshalGraphSmall/std-16         	   95017	     12464 ns/op
+BenchmarkUnmarshalGraphSmall/std-16         	   93319	     12226 ns/op
+BenchmarkUnmarshalGraphSmall/std-16         	   97936	     12270 ns/op
+BenchmarkUnmarshalGraphSmall/std-16         	   95205	     12226 ns/op
+BenchmarkUnmarshalGraphSmall/std-16         	   93817	     12349 ns/op
+BenchmarkUnmarshalGraphSmall/std-16         	   95404	     12207 ns/op
+BenchmarkUnmarshalGraphSmall/std-16         	   95810	     12226 ns/op
+BenchmarkUnmarshalGraphSmall/std-16         	   93620	     12323 ns/op
+BenchmarkUnmarshalGraphSmall/std-16         	   96134	     12279 ns/op
+BenchmarkUnmarshalGraphSmall/sonic-16       	  261568	      3851 ns/op
+BenchmarkUnmarshalGraphSmall/sonic-16       	  310155	      3823 ns/op
+BenchmarkUnmarshalGraphSmall/sonic-16       	  293420	      3860 ns/op
+BenchmarkUnmarshalGraphSmall/sonic-16       	  291420	      3831 ns/op
+BenchmarkUnmarshalGraphSmall/sonic-16       	  315688	      3887 ns/op
+BenchmarkUnmarshalGraphSmall/sonic-16       	  293880	      3855 ns/op
+BenchmarkUnmarshalGraphSmall/sonic-16       	  282952	      3865 ns/op
+BenchmarkUnmarshalGraphSmall/sonic-16       	  293760	      3850 ns/op
+BenchmarkUnmarshalGraphSmall/sonic-16       	  302587	      3811 ns/op
+BenchmarkUnmarshalGraphSmall/sonic-16       	  296247	      3829 ns/op
+BenchmarkUnmarshalGraphLarge/std-16         	    9288	    129958 ns/op
+BenchmarkUnmarshalGraphLarge/std-16         	    8895	    129705 ns/op
+BenchmarkUnmarshalGraphLarge/std-16         	    7824	    130242 ns/op
+BenchmarkUnmarshalGraphLarge/std-16         	    7810	    129846 ns/op
+BenchmarkUnmarshalGraphLarge/std-16         	    9196	    129518 ns/op
+BenchmarkUnmarshalGraphLarge/std-16         	    7882	    128346 ns/op
+BenchmarkUnmarshalGraphLarge/std-16         	    9234	    129487 ns/op
+BenchmarkUnmarshalGraphLarge/std-16         	    9106	    130975 ns/op
+BenchmarkUnmarshalGraphLarge/std-16         	    7765	    133159 ns/op
+BenchmarkUnmarshalGraphLarge/std-16         	    8061	    131520 ns/op
+BenchmarkUnmarshalGraphLarge/sonic-16       	   31866	     37521 ns/op
+BenchmarkUnmarshalGraphLarge/sonic-16       	   30952	     37840 ns/op
+BenchmarkUnmarshalGraphLarge/sonic-16       	   32116	     37065 ns/op
+BenchmarkUnmarshalGraphLarge/sonic-16       	   31798	     37343 ns/op
+BenchmarkUnmarshalGraphLarge/sonic-16       	   32174	     37375 ns/op
+BenchmarkUnmarshalGraphLarge/sonic-16       	   31987	     37042 ns/op
+BenchmarkUnmarshalGraphLarge/sonic-16       	   31912	     37284 ns/op
+BenchmarkUnmarshalGraphLarge/sonic-16       	   31938	     37258 ns/op
+BenchmarkUnmarshalGraphLarge/sonic-16       	   31998	     37739 ns/op
+BenchmarkUnmarshalGraphLarge/sonic-16       	   32155	     37786 ns/op
+BenchmarkDecoder/std-16                     	    6972	    148797 ns/op
+BenchmarkDecoder/std-16                     	    6748	    149536 ns/op
+BenchmarkDecoder/std-16                     	    6830	    150314 ns/op
+BenchmarkDecoder/std-16                     	    8050	    149686 ns/op
+BenchmarkDecoder/std-16                     	    7927	    146624 ns/op
+BenchmarkDecoder/std-16                     	    7408	    146897 ns/op
+BenchmarkDecoder/std-16                     	    7323	    146299 ns/op
+BenchmarkDecoder/std-16                     	    6909	    147514 ns/op
+BenchmarkDecoder/std-16                     	    7737	    147644 ns/op
+BenchmarkDecoder/std-16                     	    6894	    146219 ns/op
+BenchmarkDecoder/sonic-16                   	   28532	     41553 ns/op
+BenchmarkDecoder/sonic-16                   	   28519	     41817 ns/op
+BenchmarkDecoder/sonic-16                   	   29006	     41793 ns/op
+BenchmarkDecoder/sonic-16                   	   28602	     41931 ns/op
+BenchmarkDecoder/sonic-16                   	   28687	     41912 ns/op
+BenchmarkDecoder/sonic-16                   	   28579	     42115 ns/op
+BenchmarkDecoder/sonic-16                   	   28314	     42238 ns/op
+BenchmarkDecoder/sonic-16                   	   28740	     41716 ns/op
+BenchmarkDecoder/sonic-16                   	   29246	     41829 ns/op
+BenchmarkDecoder/sonic-16                   	   27978	     42263 ns/op
+BenchmarkSonicAPIKind-16                    	1000000000	         0.0000075 ns/op
+--- BENCH: BenchmarkSonicAPIKind-16
+    json_bench_test.go:214: sonic.APIKind = 1 (0=std, 1=sonic)
+    json_bench_test.go:214: sonic.APIKind = 1 (0=std, 1=sonic)
+    json_bench_test.go:214: sonic.APIKind = 1 (0=std, 1=sonic)
+    json_bench_test.go:214: sonic.APIKind = 1 (0=std, 1=sonic)
+    json_bench_test.go:214: sonic.APIKind = 1 (0=std, 1=sonic)
+    json_bench_test.go:214: sonic.APIKind = 1 (0=std, 1=sonic)
+BenchmarkSonicAPIKind-16                    	1000000000	         0.0000072 ns/op
+--- BENCH: BenchmarkSonicAPIKind-16
+    json_bench_test.go:214: sonic.APIKind = 1 (0=std, 1=sonic)
+    json_bench_test.go:214: sonic.APIKind = 1 (0=std, 1=sonic)
+    json_bench_test.go:214: sonic.APIKind = 1 (0=std, 1=sonic)
+    json_bench_test.go:214: sonic.APIKind = 1 (0=std, 1=sonic)
+    json_bench_test.go:214: sonic.APIKind = 1 (0=std, 1=sonic)
+    json_bench_test.go:214: sonic.APIKind = 1 (0=std, 1=sonic)
+BenchmarkSonicAPIKind-16                    	1000000000	         0.0000082 ns/op
+--- BENCH: BenchmarkSonicAPIKind-16
+    json_bench_test.go:214: sonic.APIKind = 1 (0=std, 1=sonic)
+    json_bench_test.go:214: sonic.APIKind = 1 (0=std, 1=sonic)
+    json_bench_test.go:214: sonic.APIKind = 1 (0=std, 1=sonic)
+    json_bench_test.go:214: sonic.APIKind = 1 (0=std, 1=sonic)
+    json_bench_test.go:214: sonic.APIKind = 1 (0=std, 1=sonic)
+    json_bench_test.go:214: sonic.APIKind = 1 (0=std, 1=sonic)
+BenchmarkSonicAPIKind-16                    	1000000000	         0.0000116 ns/op
+--- BENCH: BenchmarkSonicAPIKind-16
+    json_bench_test.go:214: sonic.APIKind = 1 (0=std, 1=sonic)
+    json_bench_test.go:214: sonic.APIKind = 1 (0=std, 1=sonic)
+    json_bench_test.go:214: sonic.APIKind = 1 (0=std, 1=sonic)
+    json_bench_test.go:214: sonic.APIKind = 1 (0=std, 1=sonic)
+    json_bench_test.go:214: sonic.APIKind = 1 (0=std, 1=sonic)
+    json_bench_test.go:214: sonic.APIKind = 1 (0=std, 1=sonic)
+BenchmarkSonicAPIKind-16                    	1000000000	         0.0000100 ns/op
+--- BENCH: BenchmarkSonicAPIKind-16
+    json_bench_test.go:214: sonic.APIKind = 1 (0=std, 1=sonic)
+    json_bench_test.go:214: sonic.APIKind = 1 (0=std, 1=sonic)
+    json_bench_test.go:214: sonic.APIKind = 1 (0=std, 1=sonic)
+    json_bench_test.go:214: sonic.APIKind = 1 (0=std, 1=sonic)
+    json_bench_test.go:214: sonic.APIKind = 1 (0=std, 1=sonic)
+    json_bench_test.go:214: sonic.APIKind = 1 (0=std, 1=sonic)
+BenchmarkSonicAPIKind-16                    	1000000000	         0.0000068 ns/op
+--- BENCH: BenchmarkSonicAPIKind-16
+    json_bench_test.go:214: sonic.APIKind = 1 (0=std, 1=sonic)
+    json_bench_test.go:214: sonic.APIKind = 1 (0=std, 1=sonic)
+    json_bench_test.go:214: sonic.APIKind = 1 (0=std, 1=sonic)
+    json_bench_test.go:214: sonic.APIKind = 1 (0=std, 1=sonic)
+    json_bench_test.go:214: sonic.APIKind = 1 (0=std, 1=sonic)
+    json_bench_test.go:214: sonic.APIKind = 1 (0=std, 1=sonic)
+BenchmarkSonicAPIKind-16                    	1000000000	         0.0000059 ns/op
+--- BENCH: BenchmarkSonicAPIKind-16
+    json_bench_test.go:214: sonic.APIKind = 1 (0=std, 1=sonic)
+    json_bench_test.go:214: sonic.APIKind = 1 (0=std, 1=sonic)
+    json_bench_test.go:214: sonic.APIKind = 1 (0=std, 1=sonic)
+    json_bench_test.go:214: sonic.APIKind = 1 (0=std, 1=sonic)
+    json_bench_test.go:214: sonic.APIKind = 1 (0=std, 1=sonic)
+    json_bench_test.go:214: sonic.APIKind = 1 (0=std, 1=sonic)
+BenchmarkSonicAPIKind-16                    	1000000000	         0.0000055 ns/op
+--- BENCH: BenchmarkSonicAPIKind-16
+    json_bench_test.go:214: sonic.APIKind = 1 (0=std, 1=sonic)
+    json_bench_test.go:214: sonic.APIKind = 1 (0=std, 1=sonic)
+    json_bench_test.go:214: sonic.APIKind = 1 (0=std, 1=sonic)
+    json_bench_test.go:214: sonic.APIKind = 1 (0=std, 1=sonic)
+    json_bench_test.go:214: sonic.APIKind = 1 (0=std, 1=sonic)
+    json_bench_test.go:214: sonic.APIKind = 1 (0=std, 1=sonic)
+BenchmarkSonicAPIKind-16                    	1000000000	         0.0000064 ns/op
+--- BENCH: BenchmarkSonicAPIKind-16
+    json_bench_test.go:214: sonic.APIKind = 1 (0=std, 1=sonic)
+    json_bench_test.go:214: sonic.APIKind = 1 (0=std, 1=sonic)
+    json_bench_test.go:214: sonic.APIKind = 1 (0=std, 1=sonic)
+    json_bench_test.go:214: sonic.APIKind = 1 (0=std, 1=sonic)
+    json_bench_test.go:214: sonic.APIKind = 1 (0=std, 1=sonic)
+    json_bench_test.go:214: sonic.APIKind = 1 (0=std, 1=sonic)
+BenchmarkSonicAPIKind-16                    	1000000000	         0.0000059 ns/op
+--- BENCH: BenchmarkSonicAPIKind-16
+    json_bench_test.go:214: sonic.APIKind = 1 (0=std, 1=sonic)
+    json_bench_test.go:214: sonic.APIKind = 1 (0=std, 1=sonic)
+    json_bench_test.go:214: sonic.APIKind = 1 (0=std, 1=sonic)
+    json_bench_test.go:214: sonic.APIKind = 1 (0=std, 1=sonic)
+    json_bench_test.go:214: sonic.APIKind = 1 (0=std, 1=sonic)
+    json_bench_test.go:214: sonic.APIKind = 1 (0=std, 1=sonic)
+PASS
+ok  	github.com/korrel8r/korrel8r/internal/pkg/json	161.759s
+
+Compilation finished at Tue Jun 16 14:06:54, duration 0:02:42
+Elapsed time: 161.998836861 seconds

@@ -4,7 +4,6 @@ package mock
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"io"
 	"net/url"
@@ -13,11 +12,12 @@ import (
 	"sync"
 	"time"
 
+	"github.com/korrel8r/korrel8r/internal/pkg/json"
 	"github.com/korrel8r/korrel8r/internal/pkg/test"
+	"github.com/korrel8r/korrel8r/internal/pkg/yaml"
 	"github.com/korrel8r/korrel8r/pkg/config"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"github.com/korrel8r/korrel8r/pkg/unique"
-	yaml "sigs.k8s.io/yaml"
 )
 
 // Store is a mock store where queries are resolved by:
@@ -228,8 +228,11 @@ func (m *QueryMap) Put(q string, f QueryFunc) {
 type QueryDir string
 
 func (s QueryDir) Get(q korrel8r.Query) ([]korrel8r.Object, error) {
-	filename := url.QueryEscape(q.String())
-	f, err := os.Open(filepath.Join(string(s), filename))
+	// Try literal query string as filename, then url escape.
+	f, err := os.Open(filepath.Join(string(s), q.String()))
+	if os.IsNotExist(err) {
+		f, err = os.Open(filepath.Join(string(s), url.QueryEscape(q.String())))
+	}
 	switch {
 	case os.IsNotExist(err):
 		return nil, nil

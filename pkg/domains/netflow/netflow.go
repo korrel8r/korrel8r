@@ -5,7 +5,6 @@ package netflow
 import (
 	"context"
 	_ "embed"
-	"encoding/json"
 	"fmt"
 	"hash/fnv"
 	"maps"
@@ -13,6 +12,7 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/korrel8r/korrel8r/internal/pkg/json"
 	"github.com/korrel8r/korrel8r/internal/pkg/loki"
 	"github.com/korrel8r/korrel8r/pkg/config"
 	"github.com/korrel8r/korrel8r/pkg/domains/k8s"

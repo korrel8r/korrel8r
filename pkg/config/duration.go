@@ -3,9 +3,10 @@
 package config
 
 import (
-	"encoding/json"
 	"errors"
 	"time"
+
+	"github.com/korrel8r/korrel8r/internal/pkg/json"
 )
 
 // Duration is a time.Duration with JSON marshal/unmarshal using [time.ParseDuration] format.

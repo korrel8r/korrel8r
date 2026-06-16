@@ -4,9 +4,9 @@ package domain
 
 import (
 	"context"
-	"encoding/json"
 	"testing"
 
+	"github.com/korrel8r/korrel8r/internal/pkg/json"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"github.com/korrel8r/korrel8r/pkg/ptr"
 	"github.com/korrel8r/korrel8r/pkg/result"
