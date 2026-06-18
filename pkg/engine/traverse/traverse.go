@@ -58,9 +58,9 @@ type traverser struct {
 type worker struct {
 	*traverser
 	node          *graph.Node
-	rules         *unique.List[korrel8r.Rule]          // Outgoing Rules.
-	inbox, outbox *unique.DedupList[string, queryLine] // Incoming and outgoing queries
-	processed     int                                  // Count of node.Result already processed
+	rules         *unique.List[korrel8r.Rule]                  // Outgoing Rules.
+	inbox, outbox *unique.DedupList[korrel8r.Query, queryLine] // Incoming and outgoing queries
+	processed     int                                          // Count of node.Result already processed
 }
 
 // queryLine is a query and the graph line associated with it.
@@ -69,7 +69,7 @@ type queryLine struct {
 	Line  *graph.Line
 }
 
-func (ql queryLine) ID() string { return ql.Query.String() }
+func (ql queryLine) ID() korrel8r.Query { return ql.Query }
 
 func newTraverser(e *engine.Engine, g *graph.Graph, c *korrel8r.Constraint) *traverser {
 	return &traverser{

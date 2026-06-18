@@ -23,7 +23,7 @@ var log = logging.Log()
 // Engine manages a set of rules and stores to perform correlation.
 // Once created (see [Build]) an engine is immutable and concurrent safe.
 type Engine struct {
-	domains       korrel8r.Domains
+	domains       *korrel8r.Domains
 	storeHolders  map[korrel8r.Domain]*storeHolders
 	templateFuncs template.FuncMap
 	rulesByName   map[string]korrel8r.Rule

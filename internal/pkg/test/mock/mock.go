@@ -18,7 +18,7 @@ var (
 	// Validate implementation of interfaces.
 	_ korrel8r.Domain = &Domain{}
 	_ korrel8r.Class  = Class{}
-	_ korrel8r.Query  = Query{}
+	_ korrel8r.Query  = &Query{}
 	_ korrel8r.Rule   = &Rule{}
 	_ korrel8r.Store  = &Store{}
 )
@@ -134,16 +134,16 @@ type Query struct {
 }
 
 func NewQuery(c korrel8r.Class, selector string, result ...korrel8r.Object) korrel8r.Query {
-	return Query{class: c, data: selector, result: result}
+	return &Query{class: c, data: selector, result: result}
 }
 
 func NewQueryError(c korrel8r.Class, selector string, err error) korrel8r.Query {
-	return Query{class: c, data: selector, err: err}
+	return &Query{class: c, data: selector, err: err}
 }
 
-func (q Query) Class() korrel8r.Class { return q.class }
-func (q Query) Data() string          { return q.data }
-func (q Query) String() string        { return korrel8r.QueryString(q) }
+func (q *Query) Class() korrel8r.Class { return q.class }
+func (q *Query) Data() string          { return q.data }
+func (q *Query) String() string        { return korrel8r.QueryString(q) }
 
 // Timestamper interface for objects with a Timestamp() method.
 type Timestamper interface{ Timestamp() time.Time }

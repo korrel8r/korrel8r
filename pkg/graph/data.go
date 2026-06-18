@@ -150,14 +150,14 @@ type QueryCount struct {
 }
 
 // Queries is a map of QueryCount by Query name.
-type Queries map[string]QueryCount
+type Queries map[korrel8r.Query]QueryCount
 
-func (qs Queries) Has(q korrel8r.Query) bool { _, ok := qs[q.String()]; return ok }
+func (qs Queries) Has(q korrel8r.Query) bool { _, ok := qs[q]; return ok }
 func (qs Queries) Set(q korrel8r.Query, n int) {
-	qs[q.String()] = QueryCount{Query: q, Count: n}
+	qs[q] = QueryCount{Query: q, Count: n}
 }
 func (qs Queries) Get(q korrel8r.Query) int {
-	if qc, ok := qs[q.String()]; ok {
+	if qc, ok := qs[q]; ok {
 		return qc.Count
 	}
 	return -1
@@ -165,15 +165,14 @@ func (qs Queries) Get(q korrel8r.Query) int {
 
 // AddStatuses merges status counts into the QueryCount for q.
 func (qs Queries) AddStatuses(q korrel8r.Query, statuses map[string]int) {
-	key := q.String()
-	qc := qs[key]
+	qc := qs[q]
 	if qc.StatusCounts == nil {
 		qc.StatusCounts = map[string]int{}
 	}
 	for k, v := range statuses {
 		qc.StatusCounts[k] += v
 	}
-	qs[key] = qc
+	qs[q] = qc
 }
 
 // Total of the counts
