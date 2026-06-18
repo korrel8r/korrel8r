@@ -12,7 +12,7 @@ import (
 // TODO https://github.com/korrel8r/korrel8r/issues/148  store does not respect limits.
 // Remove ClusterSetup when fixed.
 var fixture = domain.Fixture{
-	Query:        alert.Query{Qs: "{}"},
+	Query:        &alert.Query{Qs: "{}"},
 	ClusterSetup: func(testing.TB) bool { return false },
 }
 

@@ -8,10 +8,11 @@ import (
 	"reflect"
 
 	"github.com/korrel8r/korrel8r/internal/pkg/yaml"
+	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 )
 
 // TypeName returns the name of the static type of its argument, which may be an interface.
-func TypeName[T any](v T) string { return reflect.TypeOf((*T)(nil)).Elem().String() }
+func TypeName[T any](v T) string { return reflect.TypeFor[T]().String() }
 
 // TypeAssert does a type assertion and returns a useful error if it fails.
 func TypeAssert[T any](x any) (v T, err error) {
@@ -31,3 +32,30 @@ func UnmarshalAs[T any](b []byte) (T, error) {
 
 // Unmarshal can unmarshal YAML or JSON.
 func Unmarshal(b []byte, v any) error { return yaml.UnmarshalStrict(b, &v) }
+
+// AssertDomainTypes is a compile-time assertion that types meet the korrel8r interface requirements.
+func AssertDomainTypes[
+	Class interface {
+		korrel8r.Class
+		comparable
+	},
+	Query interface {
+		korrel8r.Query
+		comparable
+	}](korrel8r.Domain, korrel8r.Object, Class, Query, korrel8r.Store) any {
+	return nil
+}
+
+func AssertQuery[Query interface {
+	korrel8r.Query
+	comparable
+}](Query) any {
+	return nil
+}
+
+func AssertClass[Class interface {
+	korrel8r.Class
+	comparable
+}](Class) any {
+	return nil
+}

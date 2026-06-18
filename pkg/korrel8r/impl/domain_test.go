@@ -30,7 +30,7 @@ func TestDomain(t *testing.T) {
 // dummy testClass for test
 type testClass string
 
-var _ korrel8r.Class = testClass("")
+var _ = AssertClass(testClass(""))
 
 var testDomainSingleton korrel8r.Domain
 

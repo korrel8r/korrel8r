@@ -17,14 +17,7 @@ import (
 	"github.com/korrel8r/korrel8r/pkg/korrel8r/impl"
 )
 
-var (
-	// Verify implementing interfaces.
-	_ korrel8r.Domain    = Domain
-	_ korrel8r.Store     = &Store{}
-	_ korrel8r.Query     = &Query{}
-	_ korrel8r.Class     = Class("")
-	_ korrel8r.Previewer = Class("")
-)
+var _ = impl.AssertDomainTypes(Domain, Object{}, Class(""), &Query{}, &Store{})
 
 //go:embed doc.md
 var description string

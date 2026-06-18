@@ -73,13 +73,7 @@ type Store struct {
 }
 
 // Validate interfaces
-var (
-	_ korrel8r.Domain = Domain
-	_ korrel8r.Class  = Class{}
-	_ korrel8r.Object = Object(nil)
-	_ korrel8r.Query  = &Query{}
-	_ korrel8r.Store  = &Store{}
-)
+var _ = impl.AssertDomainTypes(Domain, Object(nil), Class{}, &Query{}, &Store{})
 
 // domain implementation
 type domain struct {
@@ -277,9 +271,9 @@ func (c Class) Namespaced() bool {
 
 func NewQuery(c Class, s Selector) *Query { return &Query{class: c, Selector: s} }
 
-func (q Query) Class() korrel8r.Class { return q.class }
-func (q Query) Data() string          { b, _ := json.Marshal(q); return string(b) }
-func (q Query) String() string        { return korrel8r.QueryString(q) }
+func (q *Query) Class() korrel8r.Class { return q.class }
+func (q *Query) Data() string          { b, _ := json.Marshal(q); return string(b) }
+func (q *Query) String() string        { return korrel8r.QueryString(q) }
 
 func (s *Store) Domain() korrel8r.Domain  { return Domain }
 func (s *Store) Client() client.WithWatch { return s.c }

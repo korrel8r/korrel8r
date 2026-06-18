@@ -34,12 +34,7 @@ var (
 
 	log = logging.Log()
 
-	// Validate implementation of interfaces.
-	_ korrel8r.Domain = Domain
-	_ korrel8r.Class  = Class{}
-	_ korrel8r.Query  = Query("")
-	_ korrel8r.Store  = &Store{}
-	_ korrel8r.Object = Object{}
+	_ = impl.AssertDomainTypes(Domain, Object{}, Class{}, Query(""), &Store{})
 )
 
 type domain struct{ *impl.Domain }

@@ -21,13 +21,7 @@ import (
 	"github.com/prometheus/common/model"
 )
 
-var (
-	_ korrel8r.Domain = Domain
-	_ korrel8r.Class  = Class{}
-	_ korrel8r.Query  = Query{}
-	_ korrel8r.Store  = &Store{}
-	_ korrel8r.Object = &Object{}
-)
+var _ = impl.AssertDomainTypes(Domain, &Object{}, Class{}, &Query{}, &Store{})
 
 //go:embed doc.md
 var description string
@@ -43,7 +37,7 @@ type domain struct{ *impl.Domain }
 
 func (d *domain) Query(s string) (korrel8r.Query, error) {
 	_, query, err := impl.UnmarshalQueryString[Query](d, s)
-	return query, err
+	return &query, err
 }
 
 const (
@@ -105,9 +99,9 @@ type Query struct {
 	AlertLabels map[string]string `json:"alertLabels,omitempty"`
 }
 
-func (q Query) Class() korrel8r.Class { return Class{} }
-func (q Query) Data() string          { b, _ := json.Marshal(q); return string(b) }
-func (q Query) String() string        { return korrel8r.QueryString(q) }
+func (q *Query) Class() korrel8r.Class { return Class{} }
+func (q *Query) Data() string          { b, _ := json.Marshal(q); return string(b) }
+func (q *Query) String() string        { return korrel8r.QueryString(q) }
 
 // Store is a client of Prometheus.
 type Store struct {
@@ -141,7 +135,7 @@ func newPrometheusClient(u *url.URL, hc *http.Client) (v1.API, error) {
 }
 
 func (s Store) Get(ctx context.Context, query korrel8r.Query, c *korrel8r.Constraint, result korrel8r.Appender) error {
-	q, err := impl.TypeAssert[Query](query)
+	q, err := impl.TypeAssert[*Query](query)
 	if err != nil {
 		return err
 	}
@@ -167,7 +161,7 @@ func (s Store) Get(ctx context.Context, query korrel8r.Query, c *korrel8r.Constr
 	return nil
 }
 
-func preparePromQL(q Query, c *korrel8r.Constraint) (string, time.Time, error) {
+func preparePromQL(q *Query, c *korrel8r.Constraint) (string, time.Time, error) {
 	t := time.Now().UTC()
 	promq := "cluster:health:components:map"
 
@@ -225,7 +219,7 @@ func loadObjects(data model.Vector) []*Object {
 	return ret
 }
 
-func filterObjects(objects []*Object, q Query) (ret []*Object) {
+func filterObjects(objects []*Object, q *Query) (ret []*Object) {
 	for _, o := range objects {
 		if len(q.AlertLabels) > 0 {
 			// Check for any source labels matching the labels in the query.

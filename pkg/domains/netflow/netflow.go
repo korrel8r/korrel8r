@@ -20,14 +20,7 @@ import (
 	"github.com/korrel8r/korrel8r/pkg/korrel8r/impl"
 )
 
-var (
-	// Verify implementing interfaces.
-	_ korrel8r.Domain = Domain
-	_ korrel8r.Store  = &store{}
-	_ korrel8r.Store  = &stackStore{}
-	_ korrel8r.Query  = Query("")
-	_ korrel8r.Class  = Class{}
-)
+var _ = impl.AssertDomainTypes(Domain, Object{}, Class{}, Query(""), &stackStore{})
 
 // Domain for log records produced by openshift-logging.
 //

@@ -10,7 +10,7 @@ import (
 )
 
 var fixture = domain.Fixture{
-	Query:        incident.Query{},
+	Query:        &incident.Query{},
 	ClusterSetup: func(testing.TB) bool { return false },
 }
 

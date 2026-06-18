@@ -31,15 +31,9 @@ import (
 	k8sclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-var (
-	log = logging.Log()
+var log = logging.Log()
 
-	_ korrel8r.Domain = Domain
-	_ korrel8r.Class  = Class{}
-	_ korrel8r.Query  = Query{}
-	_ korrel8r.Store  = &Store{}
-	_ korrel8r.Object = &Object{}
-)
+var _ = impl.AssertDomainTypes(Domain, Object{}, Class{}, &Query{}, &Store{})
 
 //go:embed doc.md
 var description string
@@ -67,7 +61,7 @@ func (d domain) Query(s string) (korrel8r.Query, error) {
 		}
 	}
 
-	return Query{Qs: qs, Parsed: query}, nil
+	return &Query{Qs: qs, Parsed: query}, nil
 }
 
 const (
@@ -155,9 +149,9 @@ type Query struct {
 	Parsed []map[string]string
 }
 
-func (q Query) Class() korrel8r.Class { return Class{} }
-func (q Query) Data() string          { return q.Qs }
-func (q Query) String() string        { return korrel8r.QueryString(q) }
+func (q *Query) Class() korrel8r.Class { return Class{} }
+func (q *Query) Data() string          { return q.Qs }
+func (q *Query) String() string        { return korrel8r.QueryString(q) }
 
 // Store is a client of Prometheus, AlertManager, and Loki Ruler.
 type Store struct {
@@ -388,7 +382,7 @@ func matchesSubquery(q map[string]string, a *v1.Alert) bool {
 }
 
 // extractNamespacesFromQuery extracts unique namespace values from parsed alert queries.
-func extractNamespacesFromQuery(q Query) map[string]bool {
+func extractNamespacesFromQuery(q *Query) map[string]bool {
 	namespaces := make(map[string]bool)
 	for _, subq := range q.Parsed {
 		if ns, ok := subq["namespace"]; ok && ns != "" {
@@ -400,7 +394,7 @@ func extractNamespacesFromQuery(q Query) map[string]bool {
 
 // getRulesWithNamespaceFilter queries the Rules API with namespace filtering.
 // This is used for non-admin users on port 9093 which requires namespace parameters.
-func (s *Store) getRulesWithNamespaceFilter(ctx context.Context, q Query) (v1.RulesResult, error) {
+func (s *Store) getRulesWithNamespaceFilter(ctx context.Context, q *Query) (v1.RulesResult, error) {
 	// Extract unique namespaces from all subqueries
 	namespaces := extractNamespacesFromQuery(q)
 
@@ -454,7 +448,7 @@ func (s *Store) getRulesWithNamespaceFilter(ctx context.Context, q Query) (v1.Ru
 }
 
 func (s *Store) Get(ctx context.Context, query korrel8r.Query, c *korrel8r.Constraint, result korrel8r.Appender) error {
-	q, err := impl.TypeAssert[Query](query)
+	q, err := impl.TypeAssert[*Query](query)
 	if err != nil {
 		return err
 	}
