@@ -65,7 +65,8 @@ type Class interface {
 //
 // Classes that implement IDer can be de-duplicated when collected in a Result.map
 type IDer interface {
-	ID(Object) any // ID must be a comparable type.
+	// ID must be a comparable type.
+	ID(Object) any
 }
 
 // Store is a source of signal data that can be queried.
@@ -81,10 +82,9 @@ type Store interface {
 }
 
 // Query is a request that selects some subset of Objects from a Store.
+// Query types must be comparable.
 //
-// A query can only be used with a Store for the same domain as its class.
-//
-// Must be implemented by a korrel8r domain.
+// Implemented by domains, a query can only be used with a Store for the same domain as its Class.
 type Query interface {
 	// Class returned by this query.
 	Class() Class

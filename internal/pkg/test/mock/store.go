@@ -40,7 +40,7 @@ type Store struct {
 func NewStore(d korrel8r.Domain, c ...korrel8r.Class) *Store {
 	// Always include a query function for a mock.[Query] that contains its own result.
 	containsResult := func(q korrel8r.Query) ([]korrel8r.Object, error) {
-		if mq, ok := q.(Query); ok {
+		if mq, ok := q.(*Query); ok {
 			return mq.result, mq.err
 		}
 		return nil, nil

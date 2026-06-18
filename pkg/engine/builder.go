@@ -34,7 +34,7 @@ type Builder struct {
 
 func Build() *Builder {
 	e := &Engine{
-		domains:      korrel8r.Domains{},
+		domains:      korrel8r.NewDomains(),
 		storeHolders: map[korrel8r.Domain]*storeHolders{},
 		rulesByName:  map[string]korrel8r.Rule{},
 		statuses:     map[string][]status.Rule{},
@@ -49,7 +49,7 @@ func Build() *Builder {
 // Domains adds domains that will be recognized by the engine.
 func (b *Builder) Domains(domains ...korrel8r.Domain) *Builder {
 	for _, d := range domains {
-		switch b.e.domains[d.Name()] {
+		switch b.e.domains.Get(d.Name()) {
 		case d: // Already present
 		case nil:
 			b.e.domains.Add(d)

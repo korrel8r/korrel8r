@@ -18,12 +18,12 @@ var _ korrel8r.Rule = &templateRule{}
 type templateRule struct {
 	query       *template.Template
 	start, goal []korrel8r.Class
-	domains     korrel8r.Domains
+	domains     *korrel8r.Domains
 }
 
 // NewTemplateRule returns a korrel8r.Rule that uses a Go template to transform objects to queries.
 func NewTemplateRule(start, goal []korrel8r.Class, query *template.Template) korrel8r.Rule {
-	domains := korrel8r.Domains{}
+	domains := korrel8r.NewDomains()
 	for _, c := range goal {
 		domains.Add(c.Domain())
 	}

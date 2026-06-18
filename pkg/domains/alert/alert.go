@@ -7,6 +7,7 @@ import (
 	_ "embed"
 	"fmt"
 	"io"
+	"maps"
 	"net/http"
 	"net/url"
 	"strings"
@@ -586,12 +587,8 @@ func (s *Store) getSubquery(ctx context.Context, prometheusRules v1.RulesResult,
 				Labels:      make(map[string]string, len(ama.Labels)),
 				Annotations: make(map[string]string, len(ama.Annotations)),
 			}
-			for k, v := range ama.Labels {
-				obj.Labels[k] = v
-			}
-			for k, v := range ama.Annotations {
-				obj.Annotations[k] = v
-			}
+			maps.Copy(obj.Labels, ama.Labels)
+			maps.Copy(obj.Annotations, ama.Annotations)
 			s.augmentAlert(obj, alertManagerAlerts)
 			alerts = append(alerts, obj)
 		}
