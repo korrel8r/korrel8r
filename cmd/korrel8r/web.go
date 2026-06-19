@@ -23,9 +23,10 @@ import (
 )
 
 var webCmd = &cobra.Command{
-	Use:   "web [flags]",
-	Short: "Start REST server. Listening address must be  provided via --http or --https.",
-	Args:  cobra.NoArgs,
+	Use:     "web [flags]",
+	Short:   "Start REST server. Listening address must be  provided via --http or --https.",
+	Aliases: []string{"server"},
+	Args:    cobra.NoArgs,
 	Run: func(_ *cobra.Command, args []string) {
 		if *specFlag != "" {
 			var out = os.Stdout
@@ -97,6 +98,11 @@ var webCmd = &cobra.Command{
 			router.Any(mcp.StreamablePath, gin.WrapH(mcpSrv.HTTPHandler()))
 			log.V(0).Info("MCP Streamable endpoint", "path", mcp.StreamablePath)
 		}
+		metricsHandler, metricsStop := startMetrics()
+		defer metricsStop()
+		router.GET("/metrics", gin.WrapH(metricsHandler))
+		log.V(0).Info("Metrics endpoint", "path", "/metrics")
+
 		s.Handler = router
 		if *httpprofileFlag {
 			rest.WebProfile(router)
@@ -122,7 +128,6 @@ var (
 	tlsMinVersionFlag       *string
 	tlsCipherSuitesFlag     *[]string
 	tlsCurvesFlag           *[]string
-	WebProfile              func()
 )
 
 func init() {
@@ -138,4 +143,5 @@ func init() {
 	tlsCipherSuitesFlag = webCmd.Flags().StringSlice("tls-cipher-suites", nil, "Comma-separated list of TLS cipher suites for https (IANA or OpenSSL names)")
 	tlsCurvesFlag = webCmd.Flags().StringSlice("tls-curves", nil, "Comma-separated list of TLS curves for https (Go or OpenSSL names, e.g. CurveP256/prime256v1, X25519)")
 	tlsMinVersionFlag = webCmd.Flags().String("tls-min-version", "", "Minimum TLS version for https (e.g. VersionTLS12, VersionTLS13)")
+	otelCollectorFlag = webCmd.Flags().String("otel-collector", "", "URL of OTLP collector endpoint for pushing metrics (e.g. http://localhost:4318/v1/metrics)")
 }

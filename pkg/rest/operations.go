@@ -52,7 +52,7 @@ func New(sessions session.Manager, r *gin.Engine) (*API, error) {
 	}
 	r.Use(session.Middleware(sessions))
 	rg := r.Group(BasePath)
-	rg.Use(a.logger) // Apply logger only to API endpoints
+	rg.Use(Metrics(), a.logger)
 	RegisterHandlers(rg, a)
 	// Helpful endpoints showing routes.
 	r.GET(BasePath, func(c *gin.Context) { spec, _ := api.GetSpec(); c.JSON(http.StatusOK, spec) })

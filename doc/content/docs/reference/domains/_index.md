@@ -1,7 +1,7 @@
 ---
 title: Domains
 description: Signal domains, classes, and query syntax
-weight: 1
+weight: 10
 ---
 
 A _domain_ represents one type of signal or resource.

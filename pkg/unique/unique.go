@@ -41,11 +41,13 @@ type DedupList[K comparable, V any] struct {
 	List []V
 }
 
-// Add a value if not already present.
-func (l *DedupList[K, V]) Add(v V) {
+// Add a value if not already present. Return true if added.
+func (l *DedupList[K, V]) Add(v V) bool {
 	if l.Unique(v) {
 		l.List = append(l.List, v)
+		return true
 	}
+	return false
 }
 
 func (l *DedupList[K, V]) Append(values ...V) {

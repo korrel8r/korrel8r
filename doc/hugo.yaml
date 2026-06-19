@@ -25,10 +25,6 @@ params:
 
 menu:
   main:
-    - name: Documentation
-      url: /docs/introduction
-
-      weight: 100
     - name: GitHub
       url: https://github.com/korrel8r/korrel8r/
       weight: 101
