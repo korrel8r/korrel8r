@@ -3,6 +3,8 @@
 // package unique provides functions and types to remove duplicate values.
 package unique
 
+import "unique"
+
 // Deduplicator keeps track of comparable keys that identify unique values.
 type Deduplicator[K comparable, V any] struct {
 	key  func(V) K
@@ -53,3 +55,6 @@ func (l *DedupList[K, V]) Append(values ...V) {
 }
 
 func (l *DedupList[K, V]) Clear() { l.List = l.List[:0] }
+
+// MakeValue returns a unique copy of the value. Avoids duplicates and speeds up comparisons.
+func MakeValue[T comparable](v T) T { return unique.Make(v).Value() }
