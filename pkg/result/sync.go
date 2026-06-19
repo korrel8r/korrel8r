@@ -1,32 +1,31 @@
 // Copyright: This file is part of korrel8r, released under https://github.com/korrel8r/korrel8r/blob/main/LICENSE
 
 // Package async provides goroutine-safe collection types.
-package async
+package result
 
 import (
 	"sync"
 
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
-	"github.com/korrel8r/korrel8r/pkg/result"
 )
 
-var _ result.Result = (*Result)(nil)
+var _ Result = (*SyncResult)(nil)
 
-// Result is a goroutine-safe [result.Result] with blocking Wait support.
-type Result struct {
+// SyncResult is a concurrent-safe [Result] with blocking [Wait].
+type SyncResult struct {
 	mu     sync.Mutex
 	cond   *sync.Cond
-	inner  result.Result
+	inner  Result
 	closed bool
 }
 
-func New(class korrel8r.Class) *Result {
-	r := &Result{inner: result.New(class)}
+func NewSyncResult(class korrel8r.Class) *SyncResult {
+	r := &SyncResult{inner: New(class)}
 	r.cond = sync.NewCond(&r.mu)
 	return r
 }
 
-func (r *Result) Add(o korrel8r.Object) bool {
+func (r *SyncResult) Add(o korrel8r.Object) bool {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	ok := r.inner.Add(o)
@@ -36,7 +35,7 @@ func (r *Result) Add(o korrel8r.Object) bool {
 	return ok
 }
 
-func (r *Result) Append(objects ...korrel8r.Object) {
+func (r *SyncResult) Append(objects ...korrel8r.Object) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.inner.Append(objects...)
@@ -45,15 +44,15 @@ func (r *Result) Append(objects ...korrel8r.Object) {
 	}
 }
 
-func (r *Result) List() []korrel8r.Object {
+func (r *SyncResult) List() []korrel8r.Object {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	return r.inner.List()
 }
 
-// Wait blocks until len(List()) > n or the Result is closed.
+// Wait blocks until len(List()) > n or the SyncResult is closed.
 // Returns List()[n:] or nil if closed with no new elements.
-func (r *Result) Wait(n int) []korrel8r.Object {
+func (r *SyncResult) Wait(n int) []korrel8r.Object {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	for len(r.inner.List()) <= n && !r.closed {
@@ -67,7 +66,7 @@ func (r *Result) Wait(n int) []korrel8r.Object {
 }
 
 // Close signals that no more objects will be added, unblocking all waiters.
-func (r *Result) Close() {
+func (r *SyncResult) Close() {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	r.closed = true

@@ -5,6 +5,9 @@ package korrel8r
 import (
 	"fmt"
 	"regexp"
+
+	"github.com/korrel8r/korrel8r/internal/pkg/cache"
+	"github.com/korrel8r/korrel8r/pkg/unique"
 )
 
 var (
@@ -31,17 +34,21 @@ func QuerySplit(query string) (domain, class, data string, err error) {
 }
 
 func ClassJoin(domain, name string) string {
-	return fmt.Sprintf("%v:%v", domain, name)
+	return unique.MakeValue(fmt.Sprintf("%v:%v", domain, name))
 }
 
 func QueryJoin(domain, class, selector string) string {
-	return fmt.Sprintf("%v:%v:%v", domain, class, selector)
+	return unique.MakeValue(fmt.Sprintf("%v:%v:%v", domain, class, selector))
 }
 
-func ClassString(c Class) string {
-	return fmt.Sprintf("%v:%v", c.Domain(), c.Name())
-}
+func ClassString(c Class) string { return classString(c) }
 
-func QueryString(q Query) string {
-	return fmt.Sprintf("%v:%v", ClassString(q.Class()), q.Data())
-}
+var classString = cache.Func(func(c Class) string {
+	return unique.MakeValue(fmt.Sprintf("%v:%v", c.Domain().Name(), c.Name()))
+})
+
+func QueryString(q Query) string { return queryString(q) }
+
+var queryString = cache.Func(func(q Query) string {
+	return unique.MakeValue(fmt.Sprintf("%v:%v", ClassString(q.Class()), q.Data()))
+})

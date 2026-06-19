@@ -114,13 +114,15 @@ cover:  ## Run tests with accumulated coverage stats in _cover.
 	@echo ==== Aggregate coverage across all tests ====
 	go tool covdata percent -i $(GOCOVERDIR)
 
-COUNT?=6
-DESCRIBE?=$(or $(shell git describe --all --dirty | sed 's-^heads/--'),$(error git describe is empty))
-.PHONY: _bench/domains
-_bench/domains: generate	## Run domain benchmarks.
-	mkdir -p $@
-	go test -v -bench='Domain' -run=- -count=$(COUNT) ./pkg/domains/... | tee $@/$(DESCRIBE).bench
-	go tool benchstat $@/*
+DESCRIBE=$(or $(shell git describe --all --dirty | sed 's-^heads/--'),$(error git describe is empty))
+BENCH_NAME?=$(DESCRIBE)
+BENCH_PKG?=./...
+BENCH_COUNT?=6
+.PHONY: bench
+bench:
+	mkdir -p _bench
+	go test -v -bench=. -run=- -count=$(BENCH_COUNT) $(BENCH_PKG) | tee _bench/$(BENCH_NAME).bench
+	go tool benchstat _bench/*
 
 image-build: lint kustomize-edit ## Build image locally, don't push.
 	$(IMGTOOL) build --tag=$(IMAGE) -f Containerfile .
