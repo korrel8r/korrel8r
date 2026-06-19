@@ -30,12 +30,12 @@ func startProfile() (stop func()) {
 	if *cpuprofileFlag != "" {
 		f := must.Must1(os.Create(*cpuprofileFlag))
 		must.Must(pprof.StartCPUProfile(f))
-		closers = append(closers, func() { pprof.StopCPUProfile(); f.Close() })
+		closers = append(closers, func() { pprof.StopCPUProfile(); _ = f.Close() })
 	}
 	if *traceFlag != "" {
 		f := must.Must1(os.Create(*traceFlag))
 		must.Must(trace.Start(f))
-		closers = append(closers, func() { trace.Stop(); f.Close() })
+		closers = append(closers, func() { trace.Stop(); _ = f.Close() })
 	}
 	if *blockprofileFlag != "" {
 		runtime.SetBlockProfileRate(1)
@@ -56,7 +56,7 @@ func startProfile() (stop func()) {
 
 func writeProfile(name, path string) {
 	f := must.Must1(os.Create(path))
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	if profile := pprof.Lookup(name); profile != nil {
 		must.Must(profile.WriteTo(f, 0))
 	}

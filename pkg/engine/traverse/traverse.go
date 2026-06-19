@@ -12,6 +12,8 @@ import (
 	"github.com/korrel8r/korrel8r/pkg/graph"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"github.com/korrel8r/korrel8r/pkg/unique"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/metric"
 )
 
 // Goals traverses all paths from start objects to all goal classes.
@@ -71,6 +73,14 @@ type queryLine struct {
 
 func (ql queryLine) ID() korrel8r.Query { return ql.Query }
 
+func (ql queryLine) MetricAttributes() metric.MeasurementOption {
+	queryAttr := attribute.String("query", ql.Query.String())
+	if ql.Line != nil {
+		return metric.WithAttributes(queryAttr, attribute.String("line", ql.Line.String()))
+	}
+	return metric.WithAttributes(queryAttr)
+}
+
 func newTraverser(e *engine.Engine, g *graph.Graph, c *korrel8r.Constraint) *traverser {
 	return &traverser{
 		engine:     e,
@@ -92,7 +102,10 @@ func (t *traverser) run(ctx context.Context, start Start, depth int) (*graph.Gra
 	w := t.newWorker(startNode)
 	w.node.Result.Append(start.Objects...)
 	for _, q := range start.Queries {
-		w.inbox.Add(queryLine{Query: q})
+		ql := queryLine{Query: q}
+		if !w.inbox.Add(ql) {
+			metricDuplicateQueries.Add(ctx, 1, ql.MetricAttributes())
+		}
 	}
 
 	// Create workers for start and goal of all rules in the graph.
@@ -135,7 +148,9 @@ func (t *traverser) run(ctx context.Context, start Start, depth int) (*graph.Gra
 					if t.createsCycle(w.node.ID(), next.node.ID()) {
 						continue
 					}
-					next.inbox.Add(ql)
+					if !next.inbox.Add(ql) {
+						metricDuplicateQueries.Add(ctx, 1, ql.MetricAttributes())
+					}
 				}
 			}
 			w.outbox.Clear()
@@ -180,6 +195,7 @@ func (w *worker) Run(ctx context.Context) {
 		// Error is logged by engine.Get
 		_ = w.engine.Get(ctx, ql.Query, w.constraint, w.node.Result)
 		result := w.node.Result.List()[before:]
+		metricQueries.Add(ctx, 1, ql.MetricAttributes())
 		w.node.Queries.Set(ql.Query, len(result))
 		if ql.Line != nil {
 			ql.Line.Queries.Set(ql.Query, len(result))
@@ -206,10 +222,17 @@ func (w *worker) Run(ctx context.Context) {
 			}
 			queries, err := r.Apply(o)
 			log.V(4).Info("Rule applied", "name", r.Name(), "start", w.node.Class, "error", err, "queries", len(queries))
+			metricRules.Add(ctx, 1, metric.WithAttributes(
+				attribute.String("rule", r.Name()),
+				attribute.String("start", w.node.Class.String()),
+				attribute.Int("queries", len(queries))))
 			for _, q := range queries {
 				if line := w.graph.FindLine(w.node.Class, q.Class(), r); line != nil {
 					log.V(5).Info("Add line", "line", line, "query", q)
-					w.outbox.Add(queryLine{Query: q, Line: line})
+					ql := queryLine{Query: q, Line: line}
+					if !w.outbox.Add(ql) {
+						metricDuplicateQueries.Add(ctx, 1, ql.MetricAttributes())
+					}
 				}
 			}
 		}

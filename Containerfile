@@ -7,7 +7,7 @@ WORKDIR /src
 # Download and cache go modules before building.
 COPY go.mod go.mod
 COPY go.sum go.sum
-RUN go mod download
+RUN go mod download -x
 
 # Copy go sources and build
 COPY cmd cmd

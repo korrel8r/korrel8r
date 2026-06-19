@@ -16,6 +16,8 @@ import (
 	"github.com/korrel8r/korrel8r/pkg/graph"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"github.com/korrel8r/korrel8r/pkg/status"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/metric"
 )
 
 var log = logging.Log()
@@ -130,20 +132,29 @@ func (e *Engine) Graph() *graph.Graph { return graph.NewData(e.Rules()...).FullG
 func (e *Engine) Get(ctx context.Context, query korrel8r.Query, constraint *korrel8r.Constraint, result korrel8r.Appender) (err error) {
 	count := 0
 	constraint = constraint.Default()
+	domain := query.Class().Domain().Name()
 	ss := e.storeHolders[query.Class().Domain()]
 	if len(ss.stores) == 0 {
-		return fmt.Errorf("no stores found for domain %v", query.Class().Domain().Name())
+		return fmt.Errorf("no stores found for domain %v", domain)
 	}
-	if log.V(2).Enabled() {
-		start := time.Now()
-		defer func() {
-			if err != nil {
-				log.V(2).Info("Get failed", "error", err, "query", query.String(), "constraint", constraint.String(), "duration", time.Since(start))
-			} else {
-				log.V(5).Info("Get", "count", count, "query", query.String(), "constraint", constraint.String(), "duration", time.Since(start))
-			}
-		}()
-	}
+	start := time.Now()
+	defer func() {
+		duration := time.Since(start)
+		status := "ok"
+		if err != nil {
+			status = "error"
+		}
+		attrs := metric.WithAttributes(
+			attribute.String("domain", domain),
+			attribute.String("status", status))
+		metricStoreQueries.Add(ctx, 1, attrs)
+		metricStoreQueryDuration.Record(ctx, duration.Seconds(), attrs)
+		if err != nil {
+			log.V(2).Info("Get failed", "error", err, "query", query.String(), "constraint", constraint.String(), "duration", duration)
+		} else {
+			log.V(5).Info("Get", "count", count, "query", query.String(), "constraint", constraint.String(), "duration", duration)
+		}
+	}()
 	return ss.Get(ctx, query, constraint, korrel8r.AppenderFunc(func(o korrel8r.Object) { count++; result.Append(o) }))
 }
 

@@ -108,7 +108,7 @@ func NewServer(sessions session.Manager) *Server {
 		sessions: sessions,
 	}
 	s.addTools()
-	s.AddReceivingMiddleware(s.logger)
+	s.AddReceivingMiddleware(s.metrics, s.logger)
 	return s
 }
 
