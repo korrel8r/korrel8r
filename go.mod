@@ -42,7 +42,7 @@ require (
 	go.opentelemetry.io/otel/exporters/prometheus v0.64.0
 	go.opentelemetry.io/otel/metric v1.43.0
 	go.opentelemetry.io/proto/otlp v1.10.0
-	golang.org/x/sync v0.20.0
+	golang.org/x/sync v0.21.0
 	gonum.org/v1/gonum v0.17.0
 	google.golang.org/protobuf v1.36.11
 	k8s.io/api v0.35.3
@@ -155,11 +155,11 @@ require (
 	github.com/bep/lazycache v0.8.1 // indirect
 	github.com/bep/logg v0.4.0 // indirect
 	github.com/bep/mclib v1.20401.20400 // indirect
-	github.com/bep/overlayfs v0.10.0 // indirect
+	github.com/bep/overlayfs v0.11.0 // indirect
 	github.com/bep/simplecobra v0.7.0 // indirect
 	github.com/bep/textandbinarywriter v0.1.0 // indirect
 	github.com/bep/tmc v0.6.0 // indirect
-	github.com/bits-and-blooms/bitset v1.24.4 // indirect
+	github.com/bits-and-blooms/bitset v1.24.5 // indirect
 	github.com/bkielbasa/cyclop v1.2.3 // indirect
 	github.com/blang/semver/v4 v4.0.0 // indirect
 	github.com/blizzy78/varnamelen v0.8.0 // indirect
@@ -270,7 +270,7 @@ require (
 	github.com/gohugoio/go-radix v1.2.0 // indirect
 	github.com/gohugoio/hashstructure v0.6.0 // indirect
 	github.com/gohugoio/httpcache v0.8.0 // indirect
-	github.com/gohugoio/hugo v0.162.1 // indirect
+	github.com/gohugoio/hugo v0.163.3 // indirect
 	github.com/gohugoio/hugo-goldmark-extensions/extras v0.7.0 // indirect
 	github.com/gohugoio/hugo-goldmark-extensions/passthrough v0.5.0 // indirect
 	github.com/golang-jwt/jwt/v5 v5.3.1 // indirect
@@ -410,7 +410,7 @@ require (
 	github.com/quic-go/quic-go v0.59.1 // indirect
 	github.com/raeperd/recvcheck v0.2.0 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
-	github.com/rogpeppe/go-internal v1.14.1 // indirect
+	github.com/rogpeppe/go-internal v1.15.0 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/ryancurrah/gomodguard v1.4.1 // indirect
 	github.com/ryancurrah/gomodguard/v2 v2.1.3 // indirect
@@ -445,7 +445,7 @@ require (
 	github.com/tdewolff/minify/v2 v2.24.13 // indirect
 	github.com/tdewolff/parse/v2 v2.8.12 // indirect
 	github.com/tetafro/godot v1.5.6 // indirect
-	github.com/tetratelabs/wazero v1.11.1-0.20260521072212-475a1f8f0dc3 // indirect
+	github.com/tetratelabs/wazero v1.12.0 // indirect
 	github.com/timakin/bodyclose v0.0.0-20260129054331-73d1f95b84b4 // indirect
 	github.com/timonwong/loggercheck v0.11.0 // indirect
 	github.com/tomarrell/wrapcheck/v2 v2.12.0 // indirect
@@ -494,14 +494,14 @@ require (
 	golang.org/x/arch v0.27.0 // indirect
 	golang.org/x/crypto v0.52.0 // indirect
 	golang.org/x/exp/typeparams v0.0.0-20260209203927-2842357ff358 // indirect
-	golang.org/x/image v0.41.0 // indirect
+	golang.org/x/image v0.42.0 // indirect
 	golang.org/x/mod v0.36.0 // indirect
 	golang.org/x/net v0.55.0 // indirect
 	golang.org/x/oauth2 v0.36.0 // indirect
 	golang.org/x/perf v0.0.0-20260512194132-3cf34090a3db // indirect
 	golang.org/x/sys v0.45.0 // indirect
 	golang.org/x/term v0.43.0 // indirect
-	golang.org/x/text v0.37.0 // indirect
+	golang.org/x/text v0.38.0 // indirect
 	golang.org/x/time v0.15.0 // indirect
 	golang.org/x/tools v0.45.0 // indirect
 	golang.org/x/xerrors v0.0.0-20240903120638-7835f813f4da // indirect
