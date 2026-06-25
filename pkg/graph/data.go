@@ -8,8 +8,8 @@ import (
 	"strings"
 	"unique"
 
-	"github.com/korrel8r/korrel8r/internal/pkg/json"
 	"github.com/korrel8r/korrel8r/internal/pkg/cache"
+	"github.com/korrel8r/korrel8r/internal/pkg/json"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"github.com/korrel8r/korrel8r/pkg/result"
 	"gonum.org/v1/gonum/graph"
@@ -40,16 +40,14 @@ func NewData(rules ...korrel8r.Rule) *Data {
 func (d *Data) addRule(r korrel8r.Rule) {
 	for _, start := range r.Start() {
 		for _, goal := range r.Goal() {
-			if start != goal { // No circular rules.
-				id := int64(len(d.Lines))
-				l := &Line{
-					Line:    multi.Line{F: d.addClass(start), T: d.addClass(goal), UID: id},
-					Rule:    r,
-					Attrs:   Attrs{},
-					Queries: Queries{},
-				}
-				d.Lines = append(d.Lines, l)
+			id := int64(len(d.Lines))
+			l := &Line{
+				Line:    multi.Line{F: d.addClass(start), T: d.addClass(goal), UID: id},
+				Rule:    r,
+				Attrs:   Attrs{},
+				Queries: Queries{},
 			}
+			d.Lines = append(d.Lines, l)
 		}
 	}
 }

@@ -5,7 +5,9 @@ package traverse
 import (
 	"context"
 	"fmt"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/korrel8r/korrel8r/internal/pkg/test/mock"
 	"github.com/korrel8r/korrel8r/pkg/engine"
@@ -131,8 +133,8 @@ func TestTraverserCycle(t *testing.T) {
 		start := Start{Class: b.Class("d:a"), Objects: []korrel8r.Object{0}}
 		g, err := Neighbors(context.Background(), e, start, 2)
 		require.NoError(t, err)
-		assert.ElementsMatch(t, []string{"ab(d:a->d:b)"}, g.LineStrings())
-		assert.ElementsMatch(t, []string{"d:a[0]", "d:b[1]"}, g.NodeStrings(true))
+		assert.ElementsMatch(t, []string{"ab(d:a->d:b)", "ba(d:b->d:a)"}, g.LineStrings())
+		assert.ElementsMatch(t, []string{"d:a[0,2]", "d:b[1]"}, g.NodeStrings(true))
 	})
 
 	t.Run("three_node_cycle", func(t *testing.T) {
@@ -148,8 +150,8 @@ func TestTraverserCycle(t *testing.T) {
 		start := Start{Class: b.Class("d:a"), Objects: []korrel8r.Object{0}}
 		g, err := Neighbors(context.Background(), e, start, 3)
 		require.NoError(t, err)
-		assert.ElementsMatch(t, []string{"ab(d:a->d:b)", "bc(d:b->d:c)"}, g.LineStrings())
-		assert.ElementsMatch(t, []string{"d:a[0]", "d:b[1]", "d:c[2]"}, g.NodeStrings(true))
+		assert.ElementsMatch(t, []string{"ab(d:a->d:b)", "bc(d:b->d:c)", "ca(d:c->d:a)"}, g.LineStrings())
+		assert.ElementsMatch(t, []string{"d:a[0,3]", "d:b[1]", "d:c[2]"}, g.NodeStrings(true))
 	})
 
 	t.Run("cycle_with_branch", func(t *testing.T) {
@@ -169,11 +171,60 @@ func TestTraverserCycle(t *testing.T) {
 		assert.ElementsMatch(t, []string{
 			"ab(d:a->d:b)",
 			"bc(d:b->d:c)",
+			"ca(d:c->d:a)",
 			"ad(d:a->d:d)",
 		}, g.LineStrings())
 		assert.ElementsMatch(t, []string{
-			"d:a[0]", "d:b[1]", "d:c[2]", "d:d[4]",
+			"d:a[0,3]", "d:b[1]", "d:c[2]", "d:d[4]",
 		}, g.NodeStrings(true))
+	})
+}
+
+// TestTraverserCycleUniqueQueries tests that cyclic rules generating unique queries
+// on every application (defeating query deduplication) do not cause infinite recursion.
+func TestTraverserCycleUniqueQueries(t *testing.T) {
+	b := mock.NewBuilder("d")
+	var counter atomic.Int64
+
+	// Each application generates a new unique query with a new unique object,
+	// so queryBox deduplication cannot stop the cycle.
+	uniqueRule := func(goalClass string) mock.ApplyFunc {
+		return func(start korrel8r.Object) ([]korrel8r.Query, error) {
+			n := counter.Add(1)
+			return []korrel8r.Query{
+				b.Query(goalClass, fmt.Sprintf("unique-%d", n), fmt.Sprintf("obj-%d", n)),
+			}, nil
+		}
+	}
+
+	e, err := engine.Build().Rules(
+		b.Rule("ab", "d:a", "d:b", uniqueRule("d:b")),
+		b.Rule("ba", "d:b", "d:a", uniqueRule("d:a")),
+	).Stores(b.Store("d", nil)).Engine()
+	require.NoError(t, err)
+
+	t.Run("Neighbors", func(t *testing.T) {
+		counter.Store(0)
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		start := Start{Class: b.Class("d:a"), Objects: []korrel8r.Object{"start"}}
+		g, err := Neighbors(ctx, e, start, 5)
+		require.NoError(t, err, "should terminate at depth limit without context cancellation")
+		assert.NotEmpty(t, g.NodeStrings(true), "should have results")
+		t.Logf("nodes: %v", g.NodeStrings(true))
+		t.Logf("lines: %v", g.LineStrings())
+	})
+
+	t.Run("Goals", func(t *testing.T) {
+		counter.Store(0)
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		start := Start{Class: b.Class("d:a"), Objects: []korrel8r.Object{"start"}}
+		g, err := Goals(ctx, e, start, []korrel8r.Class{b.Class("d:b")})
+		require.NoError(t, err, "should terminate without context cancellation")
+		assert.NotEmpty(t, g.NodeStrings(true), "should have results")
+		t.Logf("nodes: %v", g.NodeStrings(true))
+		t.Logf("lines: %v", g.LineStrings())
 	})
 }
 
