@@ -120,14 +120,10 @@ type Previewer interface {
 // Not required for a domain implementations: implemented by [Result]
 type Appender interface{ Append(...Object) }
 
-// AppenderFunc adapts a function as an Appender. AppenderFunc(f).Append(object...) calls f for each object.
-type AppenderFunc func(Object)
+// AppenderFunc adapts a function as an Appender.
+type AppenderFunc func(...Object)
 
-func (f AppenderFunc) Append(objects ...Object) {
-	for _, o := range objects {
-		f(o)
-	}
-}
+func (f AppenderFunc) Append(objects ...Object) { f(objects...) }
 
 var _ Appender = AppenderFunc(nil) // AppenderFunc implements appender
 
