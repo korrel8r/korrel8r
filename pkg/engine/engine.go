@@ -155,7 +155,10 @@ func (e *Engine) Get(ctx context.Context, query korrel8r.Query, constraint *korr
 			log.V(5).Info("Get", "count", count, "query", query.String(), "constraint", constraint.String(), "duration", duration)
 		}
 	}()
-	return ss.Get(ctx, query, constraint, korrel8r.AppenderFunc(func(o korrel8r.Object) { count++; result.Append(o) }))
+	return ss.Get(ctx, query, constraint, korrel8r.AppenderFunc(func(o ...korrel8r.Object) {
+		count += len(o)
+		result.Append(o...)
+	}))
 }
 
 // NewTemplate returns a template set up with options and funcs for this engine.
