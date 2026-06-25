@@ -60,9 +60,20 @@ type traverser struct {
 type worker struct {
 	*traverser
 	node          *graph.Node
-	rules         *unique.List[korrel8r.Rule]                  // Outgoing Rules.
-	inbox, outbox *unique.DedupList[korrel8r.Query, queryLine] // Incoming and outgoing queries
-	processed     int                                          // Count of node.Result already processed
+	rules         unique.Set[korrel8r.Rule] // Outgoing Rules.
+	inbox, outbox queryBox                  // Incoming and outgoing queries
+	processed     int                       // Count of node.Result already processed
+}
+
+type queryBox map[korrel8r.Query]queryLine
+
+func (qb queryBox) Add(ctx context.Context, ql queryLine) bool {
+	if _, ok := qb[ql.Query]; ok {
+		metricDuplicateQueries.Add(ctx, 1, ql.MetricAttributes())
+		return false // Already present
+	}
+	qb[ql.Query] = ql
+	return true
 }
 
 // queryLine is a query and the graph line associated with it.
@@ -103,9 +114,7 @@ func (t *traverser) run(ctx context.Context, start Start, depth int) (*graph.Gra
 	w.node.Result.Append(start.Objects...)
 	for _, q := range start.Queries {
 		ql := queryLine{Query: q}
-		if !w.inbox.Add(ql) {
-			metricDuplicateQueries.Add(ctx, 1, ql.MetricAttributes())
-		}
+		w.inbox.Add(ctx, ql)
 	}
 
 	// Create workers for start and goal of all rules in the graph.
@@ -143,17 +152,15 @@ func (t *traverser) run(ctx context.Context, start Start, depth int) (*graph.Gra
 		// Redistribute outboxes to inboxes. Not concurrent, touches all workers.
 		// Skip lines that would create cycles among visited nodes.
 		for _, w := range working {
-			for _, ql := range w.outbox.List {
+			for _, ql := range w.outbox {
 				if next := t.workers[ql.Query.Class()]; next != nil {
 					if t.createsCycle(w.node.ID(), next.node.ID()) {
 						continue
 					}
-					if !next.inbox.Add(ql) {
-						metricDuplicateQueries.Add(ctx, 1, ql.MetricAttributes())
-					}
+					next.inbox.Add(ctx, ql)
 				}
 			}
-			w.outbox.Clear()
+			w.outbox = queryBox{} // Clear
 		}
 	}
 	t.graph.RemoveEmpty()
@@ -166,9 +173,9 @@ func (t *traverser) newWorker(n *graph.Node) *worker {
 		w = &worker{
 			traverser: t,
 			node:      n,
-			rules:     unique.NewList[korrel8r.Rule](),
-			inbox:     unique.NewDeduplicator(queryLine.ID).List(),
-			outbox:    unique.NewDeduplicator(queryLine.ID).List(),
+			rules:     unique.NewSet[korrel8r.Rule](),
+			inbox:     queryBox{},
+			outbox:    queryBox{},
 		}
 		t.workers[n.Class] = w
 	}
@@ -176,18 +183,18 @@ func (t *traverser) newWorker(n *graph.Node) *worker {
 }
 
 func (w *worker) HasWork() bool {
-	return len(w.inbox.List) > 0 || len(w.node.Result.List()) > w.processed
+	return len(w.inbox) > 0 || len(w.node.Result.List()) > w.processed
 }
 
 // Run processes queries in inbox, populates graph results, applies rules, and stores new queries in outbox.
 func (w *worker) Run(ctx context.Context) {
 	defer func() {
-		w.inbox.Clear()
+		w.inbox = queryBox{}
 		w.processed = len(w.node.Result.List())
 	}()
 	// Process queries from inbox, apply status rules per query.
 	statusRules := w.engine.StatusRulesFor(w.node.Class)
-	for _, ql := range w.inbox.List {
+	for _, ql := range w.inbox {
 		if ctx.Err() != nil {
 			return
 		}
@@ -216,7 +223,7 @@ func (w *worker) Run(ctx context.Context) {
 
 	// Apply correlation rules to un-processed results, generate queries in outbox.
 	for _, o := range w.node.Result.List()[w.processed:] {
-		for _, r := range w.rules.List {
+		for r := range w.rules {
 			if ctx.Err() != nil {
 				return
 			}
@@ -230,9 +237,7 @@ func (w *worker) Run(ctx context.Context) {
 				if line := w.graph.FindLine(w.node.Class, q.Class(), r); line != nil {
 					log.V(5).Info("Add line", "line", line, "query", q)
 					ql := queryLine{Query: q, Line: line}
-					if !w.outbox.Add(ql) {
-						metricDuplicateQueries.Add(ctx, 1, ql.MetricAttributes())
-					}
+					w.outbox.Add(ctx, ql)
 				}
 			}
 		}
