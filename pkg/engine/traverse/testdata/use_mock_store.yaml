@@ -2,25 +2,25 @@
 # Template URLs query the store host from routes provided when stores are installed in their default locations.
 stores:
   - domain: k8s
-    mockData: testdata/mock_store.yaml
+    mockData: testdata/mock_store
 
   - domain: alert
-    mockData: testdata/mock_store.yaml
+    mockData: testdata/mock_store
 
   - domain: log
-    mockData: testdata/mock_store.yaml
+    mockData: testdata/mock_store
 
   - domain: metric
-    mockData: testdata/mock_store.yaml
+    mockData: testdata/mock_store
 
   - domain: netflow
-    mockData: testdata/mock_store.yaml
+    mockData: testdata/mock_store
 
   - domain: trace
-    mockData: testdata/mock_store.yaml
+    mockData: testdata/mock_store
 
   - domain: incident
-    mockData: testdata/mock_store.yaml
+    mockData: testdata/mock_store
 
 include:
   - ../../../../etc/korrel8r/rules/all.yaml

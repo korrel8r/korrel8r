@@ -4,6 +4,8 @@ package mock
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"io"
 	"net/url"
@@ -223,15 +225,31 @@ func (m *QueryMap) Put(q string, f QueryFunc) {
 
 // QueryDir is a directory of query files containing results in ndjson format.
 //
-// The file names are URL query-escaped strings, to prevent problems with
-// unusual characters in file names.
+// File names are tried in order: literal query string, URL query-escaped, then
+// SHA-256 hex hash (for names that contain path separators or exceed filesystem limits).
 type QueryDir string
 
+// QueryFileName returns the escaped file name for a query string.
+// It uses URL query-escaping when the result fits in 255 bytes,
+// otherwise falls back to a SHA-256 hex hash.
+func QueryFileName(query string) string {
+	escaped := url.QueryEscape(query)
+	if len(escaped) <= 255 {
+		return escaped
+	}
+	h := sha256.Sum256([]byte(query))
+	return hex.EncodeToString(h[:])
+}
+
 func (s QueryDir) Get(q korrel8r.Query) ([]korrel8r.Object, error) {
-	// Try literal query string as filename, then url escape.
-	f, err := os.Open(filepath.Join(string(s), q.String()))
+	qs := q.String()
+	f, err := os.Open(filepath.Join(string(s), qs))
 	if os.IsNotExist(err) {
-		f, err = os.Open(filepath.Join(string(s), url.QueryEscape(q.String())))
+		f, err = os.Open(filepath.Join(string(s), url.QueryEscape(qs)))
+	}
+	if os.IsNotExist(err) {
+		h := sha256.Sum256([]byte(qs))
+		f, err = os.Open(filepath.Join(string(s), hex.EncodeToString(h[:])))
 	}
 	switch {
 	case os.IsNotExist(err):
