@@ -7,12 +7,29 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [0.11.2] - 2026-06-26
+
 ### Added
-- Documentation for admin and non-admin user access patterns in Korrel8r.
+- Kube-health status check for korrel8r (#367).
+- Prometheus metrics for monitoring (#123).
+- Documentation for admin and non-admin user access patterns.
+
+### Changed
+- **BREAKING**: Replaced `--profile`/`--profilePath` with standard Go profiling flags (`--cpuprofile`, `--memprofile`, etc.).
+- Replaced `encoding/json` with faster `bytedance/sonic` JSON package.
+- Concurrent-safe domains with query interning.
+- Reduced default constraint limit, added limit to result size.
+- Restructured and updated user documentation.
+
+### Performance
+- Reduced memory allocations in graph construction and traversal.
+- String caching and interning for reduced allocations.
+- Simplified graph traversal code.
 
 ### Fixed
 - Broken links in command reference documentation.
 - Minor test failures and test issues.
+- Lint warnings in MCP and REST code.
 
 ## [0.11.0] - 2026-05-26
 
