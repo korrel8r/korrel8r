@@ -40,7 +40,7 @@ func TestConstraint_String(t *testing.T) {
 func TestConstraint_Default(t *testing.T) {
 	c := (*Constraint)(nil).Default()
 	assert.NotNil(t, c.Limit)
-	assert.Equal(t, 1000, *c.Limit)
+	assert.Equal(t, 100, *c.Limit)
 	assert.NotNil(t, c.Start)
 	assert.NotNil(t, c.End)
 	assert.True(t, c.Start.Before(*c.End))
