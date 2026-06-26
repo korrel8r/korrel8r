@@ -31,6 +31,7 @@ type Engine struct {
 	rulesByName   map[string]korrel8r.Rule
 	rules         []korrel8r.Rule
 	statuses      map[string][]status.Rule // Keyed by class.String()
+	data          *graph.Data              // Immutable rule graph data, built once.
 
 	// Tuning parameters
 	Tuning config.Tuning
@@ -125,8 +126,8 @@ func (e *Engine) Rule(name string) korrel8r.Rule { return e.rulesByName[name] }
 // StatusRulesFor returns the status rules for the given class.
 func (e *Engine) StatusRulesFor(c korrel8r.Class) []status.Rule { return e.statuses[c.String()] }
 
-// Graph creates a new graph of the engine's rules.
-func (e *Engine) Graph() *graph.Graph { return graph.NewData(e.Rules()...).FullGraph() }
+// Graph creates a new mutable graph from the engine's cached immutable rule data.
+func (e *Engine) Graph() *graph.Graph { return e.data.FullGraph() }
 
 // Get results for query from all stores for the query domain.
 func (e *Engine) Get(ctx context.Context, query korrel8r.Query, constraint *korrel8r.Constraint, result korrel8r.Appender) (err error) {
@@ -150,9 +151,9 @@ func (e *Engine) Get(ctx context.Context, query korrel8r.Query, constraint *korr
 		metricStoreQueries.Add(ctx, 1, attrs)
 		metricStoreQueryDuration.Record(ctx, duration.Seconds(), attrs)
 		if err != nil {
-			log.V(2).Info("Get failed", "error", err, "query", query.String(), "constraint", constraint.String(), "duration", duration)
+			log.V(2).Info("Get failed", "error", err, "query", query, "constraint", constraint, "duration", duration)
 		} else {
-			log.V(5).Info("Get", "count", count, "query", query.String(), "constraint", constraint.String(), "duration", duration)
+			log.V(5).Info("Get", "count", count, "query", query, "constraint", constraint, "duration", duration)
 		}
 	}()
 	return ss.Get(ctx, query, constraint, korrel8r.AppenderFunc(func(o ...korrel8r.Object) {

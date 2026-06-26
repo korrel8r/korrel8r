@@ -77,10 +77,14 @@ func (g *Graph) Weight(u, v int64) (w float64, ok bool) {
 
 func (g *Graph) NodeFor(c korrel8r.Class) *Node {
 	n := g.Data.NodeFor(c)
-	if n == nil || g.Node(n.ID()) == nil {
+	if n == nil {
 		return nil
 	}
-	return n
+	gn := g.Node(n.ID())
+	if gn == nil {
+		return nil
+	}
+	return gn.(*Node)
 }
 
 func (g *Graph) NodeForErr(c korrel8r.Class) (*Node, error) {

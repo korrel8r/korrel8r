@@ -8,10 +8,13 @@ package rules
 import (
 	"bytes"
 	"strings"
+	"sync"
 	"text/template"
 
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 )
+
+var bufPool = sync.Pool{New: func() any { return new(bytes.Buffer) }}
 
 var _ korrel8r.Rule = &templateRule{}
 
@@ -22,11 +25,8 @@ type templateRule struct {
 }
 
 // NewTemplateRule returns a korrel8r.Rule that uses a Go template to transform objects to queries.
-func NewTemplateRule(start, goal []korrel8r.Class, query *template.Template) korrel8r.Rule {
-	domains := korrel8r.NewDomains()
-	for _, c := range goal {
-		domains.Add(c.Domain())
-	}
+// The domains registry is used to parse generated query strings.
+func NewTemplateRule(start, goal []korrel8r.Class, query *template.Template, domains *korrel8r.Domains) korrel8r.Rule {
 	return &templateRule{start: start, goal: goal, query: query, domains: domains}
 }
 
@@ -40,7 +40,9 @@ func (r *templateRule) Goal() []korrel8r.Class  { return r.goal }
 // Returns (nil, err) if template execution returns a non-nil error.
 // Returns (nil, nil) if template result is blank (all spaces)
 func (r *templateRule) Apply(start korrel8r.Object) ([]korrel8r.Query, error) {
-	b := &bytes.Buffer{}
+	b := bufPool.Get().(*bytes.Buffer)
+	b.Reset()
+	defer bufPool.Put(b)
 	if err := r.query.Execute(b, start); err != nil {
 		return nil, err
 	}

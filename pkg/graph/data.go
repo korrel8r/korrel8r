@@ -42,10 +42,8 @@ func (d *Data) addRule(r korrel8r.Rule) {
 		for _, goal := range r.Goal() {
 			id := int64(len(d.Lines))
 			l := &Line{
-				Line:    multi.Line{F: d.addClass(start), T: d.addClass(goal), UID: id},
-				Rule:    r,
-				Attrs:   Attrs{},
-				Queries: Queries{},
+				Line: multi.Line{F: d.addClass(start), T: d.addClass(goal), UID: id},
+				Rule: r,
 			}
 			d.Lines = append(d.Lines, l)
 		}
@@ -59,11 +57,8 @@ func (d *Data) addClass(c korrel8r.Class) *Node {
 	}
 	id := int64(len(d.Nodes))
 	n := &Node{
-		Node:    multi.Node(id),
-		Class:   c,
-		Attrs:   Attrs{},
-		Result:  result.New(c),
-		Queries: Queries{},
+		Node:  multi.Node(id),
+		Class: c,
 	}
 	d.Nodes = append(d.Nodes, n)
 	d.nodeID[c.String()] = id
@@ -81,17 +76,24 @@ func (d *Data) NodeFor(c korrel8r.Class) *Node {
 // EmptyGraph returns a new emptpy graph.
 func (d *Data) EmptyGraph() *Graph { return New(d) }
 
-// FullGraph returns a new graph of all the Data.
+// FullGraph returns a new graph with fresh mutable copies of all nodes and lines.
 func (d *Data) FullGraph() *Graph {
 	g := New(d)
-	for _, l := range d.Lines {
-		g.SetLine(l)
+	// Create fresh nodes with their own mutable state.
+	nodes := make([]*Node, len(d.Nodes))
+	for i, n := range d.Nodes {
+		nodes[i] = n.Copy()
 	}
-	for _, n := range d.Nodes {
-		if nn := g.Node(n.ID()); nn == nil {
+	// Create fresh lines pointing to the new nodes.
+	for _, l := range d.Lines {
+		from := nodes[l.From().(*Node).ID()]
+		to := nodes[l.To().(*Node).ID()]
+		g.SetLine(l.Copy(from, to))
+	}
+	// Add any isolated nodes not connected by a line.
+	for _, n := range nodes {
+		if g.Node(n.ID()) == nil {
 			g.AddNode(n)
-		} else if nn != n {
-			panic(fmt.Errorf("invalid node %v, already have %v", n, nn))
 		}
 	}
 	return g
@@ -124,6 +126,17 @@ type Node struct {
 	Queries Queries       // All queries leading to this node.
 }
 
+// Copy returns a new Node with the same identity but fresh mutable state.
+func (n *Node) Copy() *Node {
+	return &Node{
+		Node:    n.Node,
+		Class:   n.Class,
+		Attrs:   Attrs{},
+		Result:  result.New(n.Class),
+		Queries: Queries{},
+	}
+}
+
 func (n *Node) String(sorted bool) string {
 	var result []string
 	for _, o := range n.Result.List() {
@@ -139,7 +152,7 @@ func (n *Node) String(sorted bool) string {
 	return fmt.Sprintf("%v[%v]", n.Class, strings.Join(result, ","))
 }
 func (n *Node) DOTID() string { return n.Class.String() }
-func (n *Node) Empty() bool   { return len(n.Result.List()) == 0 }
+func (n *Node) Empty() bool   { return n.Result == nil || len(n.Result.List()) == 0 }
 
 // QueryCount records count of objects resulting from a query.
 // Count == -1 means the query has not been evaluated.
@@ -198,6 +211,16 @@ func (l *Line) String() string { return lineString(l) }
 var lineString = cache.FuncWeakKey(func(l *Line) string {
 	return unique.Make(fmt.Sprintf("%v(%v->%v)", l.Rule.Name(), l.Start().Class, l.Goal().Class)).Value()
 })
+
+// Copy returns a new Line with the same rule but fresh mutable state, pointing to the given nodes.
+func (l *Line) Copy(from, to *Node) *Line {
+	return &Line{
+		Line:    multi.Line{F: from, T: to, UID: l.UID},
+		Rule:    l.Rule,
+		Attrs:   Attrs{},
+		Queries: Queries{},
+	}
+}
 
 func (l *Line) DOTID() string { return l.Rule.Name() }
 func (l *Line) Start() *Node  { return l.From().(*Node) }
