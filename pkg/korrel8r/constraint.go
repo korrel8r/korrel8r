@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/korrel8r/korrel8r/internal/pkg/json"
-	"github.com/korrel8r/korrel8r/pkg/ptr"
 )
 
 // Constraint included in a store Get operation to restrict the resulting objects.
@@ -46,19 +45,19 @@ func (c *Constraint) CompareTime(when time.Time) int {
 func (c *Constraint) Default() *Constraint {
 	// Hard-wired fallback defaults
 	const defaultDuration = time.Hour
-	const defaultLimit = 1000
+	const defaultLimit = 100
 
 	if c == nil {
 		return (&Constraint{}).Default()
 	}
 	if c.Limit == nil {
-		c.Limit = ptr.To(defaultLimit)
+		c.Limit = new(defaultLimit)
 	}
 	if c.End == nil {
-		c.End = ptr.To(time.Now())
+		c.End = new(time.Now())
 	}
 	if c.Start == nil {
-		c.Start = ptr.To(c.End.Add(-defaultDuration))
+		c.Start = new(c.End.Add(-defaultDuration))
 	}
 	return c
 }

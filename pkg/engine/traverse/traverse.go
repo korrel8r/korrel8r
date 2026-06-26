@@ -49,10 +49,11 @@ type Start struct {
 var log = logging.Log()
 
 type traverser struct {
-	engine     *engine.Engine
-	graph      *graph.Graph
-	workers    map[korrel8r.Class]*worker
-	constraint *korrel8r.Constraint
+	engine      *engine.Engine
+	graph       *graph.Graph
+	workers     map[korrel8r.Class]*worker
+	constraint  *korrel8r.Constraint
+	resultLimit int
 }
 
 // A worker gets queries from a store, applies rules and sends new queries to other workers.
@@ -94,10 +95,11 @@ func (ql queryLine) MetricAttributes() metric.MeasurementOption {
 
 func newTraverser(e *engine.Engine, g *graph.Graph, c *korrel8r.Constraint) *traverser {
 	return &traverser{
-		engine:     e,
-		graph:      g,
-		workers:    map[korrel8r.Class]*worker{},
-		constraint: c,
+		engine:      e,
+		graph:       g,
+		workers:     map[korrel8r.Class]*worker{},
+		constraint:  c,
+		resultLimit: c.Default().GetLimit() * 10,
 	}
 }
 
@@ -179,6 +181,10 @@ func (t *traverser) newWorker(n *graph.Node) *worker {
 }
 
 func (w *worker) HasWork() bool {
+	if len(w.node.Result.List()) >= w.resultLimit {
+		log.V(2).Info("Result limit reached, skipping node", "class", w.node.Class, "results", len(w.node.Result.List()), "limit", w.resultLimit)
+		return false
+	}
 	return len(w.inbox) > 0 || len(w.node.Result.List()) > w.processed
 }
 
@@ -193,6 +199,10 @@ func (w *worker) Run(ctx context.Context) {
 	for _, ql := range w.inbox {
 		if ctx.Err() != nil {
 			return
+		}
+		if len(w.node.Result.List()) >= w.resultLimit {
+			log.V(2).Info("Result limit reached, skipping queries", "class", w.node.Class, "results", len(w.node.Result.List()), "limit", w.resultLimit)
+			break
 		}
 		before := len(w.node.Result.List())
 		// Error is logged by engine.Get
