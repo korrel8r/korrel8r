@@ -21,7 +21,6 @@ import (
 	"github.com/korrel8r/korrel8r/pkg/auth"
 	"github.com/korrel8r/korrel8r/pkg/engine"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
-	"github.com/korrel8r/korrel8r/pkg/ptr"
 	"github.com/korrel8r/korrel8r/pkg/rest"
 	"github.com/korrel8r/korrel8r/pkg/session"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -136,7 +135,7 @@ func TestGetObjects_withConstraint(t *testing.T) {
 		Name: GetObjects,
 		Arguments: ObjectsParams{
 			Query:      "mock:a:many",
-			Constraint: &api.Constraint{Limit: ptr.To(1)},
+			Constraint: &api.Constraint{Limit: new(1)},
 		},
 	})
 	require.NoError(t, err)
@@ -398,7 +397,7 @@ func TestInterop_GetObjects_withConstraint(t *testing.T) {
 		Name: GetObjects,
 		Arguments: ObjectsParams{
 			Query:      "mock:a:many",
-			Constraint: &api.Constraint{Limit: ptr.To(1)},
+			Constraint: &api.Constraint{Limit: new(1)},
 		},
 	})
 	require.NoError(t, err)
@@ -475,6 +474,7 @@ func TestInterop_ShowInConsoleToSSE(t *testing.T) {
 				events <- data
 			}
 		}
+		_ = s.Err()
 	}()
 	time.Sleep(100 * time.Millisecond) // let SSE handler start
 
@@ -635,6 +635,7 @@ func TestMultiSession_SSEIsolation(t *testing.T) {
 					events <- data
 				}
 			}
+			_ = s.Err()
 		}()
 		return events
 	}

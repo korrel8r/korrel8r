@@ -21,7 +21,6 @@ import (
 
 	"github.com/korrel8r/korrel8r/internal/pkg/test"
 	"github.com/korrel8r/korrel8r/pkg/api"
-	"github.com/korrel8r/korrel8r/pkg/ptr"
 	"github.com/korrel8r/korrel8r/pkg/rest"
 
 	"github.com/stretchr/testify/assert"
@@ -107,8 +106,8 @@ const testRequest = `{  "depth": 1, "start": { "queries": [ "mock:foo:x" ] }}`
 
 var testResponse = rest.Normalize(api.Graph{
 	Nodes: []api.Node{
-		{Class: "mock:foo", Queries: []api.QueryCount{{Query: "mock:foo:x", Count: ptr.To(1)}}, Count: ptr.To(1)},
-		{Class: "mock:bar", Queries: []api.QueryCount{{Query: "mock:bar:y", Count: ptr.To(1)}}, Count: ptr.To(1)}},
+		{Class: "mock:foo", Queries: []api.QueryCount{{Query: "mock:foo:x", Count: new(1)}}, Count: new(1)},
+		{Class: "mock:bar", Queries: []api.QueryCount{{Query: "mock:bar:y", Count: new(1)}}, Count: new(1)}},
 	Edges: []api.Edge{{Start: "mock:foo", Goal: "mock:bar", Rules: []api.Rule(nil)}},
 })
 
