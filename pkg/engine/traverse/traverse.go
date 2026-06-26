@@ -156,7 +156,7 @@ func (t *traverser) run(ctx context.Context, start Start, depth int) (*graph.Gra
 					next.inbox.Add(ctx, ql)
 				}
 			}
-			w.outbox = queryBox{} // Clear
+			clear(w.outbox)
 		}
 	}
 	t.graph.RemoveEmpty()
@@ -185,7 +185,7 @@ func (w *worker) HasWork() bool {
 // Run processes queries in inbox, populates graph results, applies rules, and stores new queries in outbox.
 func (w *worker) Run(ctx context.Context) {
 	defer func() {
-		w.inbox = queryBox{}
+		clear(w.inbox)
 		w.processed = len(w.node.Result.List())
 	}()
 	// Process queries from inbox, apply status rules per query.

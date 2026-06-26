@@ -6,10 +6,13 @@ package status
 import (
 	"bytes"
 	"strings"
+	"sync"
 	"text/template"
 
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 )
+
+var bufPool = sync.Pool{New: func() any { return new(bytes.Buffer) }}
 
 // Rule generates labels from an object.
 type Rule interface {
@@ -36,7 +39,9 @@ func (l *templateStatus) Name() string            { return l.tmpl.Name() }
 func (l *templateStatus) Start() []korrel8r.Class { return l.start }
 
 func (l *templateStatus) Apply(start korrel8r.Object) ([]string, error) {
-	b := &bytes.Buffer{}
+	b := bufPool.Get().(*bytes.Buffer)
+	b.Reset()
+	defer bufPool.Put(b)
 	if err := l.tmpl.Execute(b, start); err != nil {
 		return nil, err
 	}

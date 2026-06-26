@@ -15,9 +15,10 @@ import (
 
 	"github.com/Masterminds/sprig/v3"
 	"github.com/korrel8r/korrel8r/pkg/config"
+	"github.com/korrel8r/korrel8r/pkg/graph"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
-	"github.com/korrel8r/korrel8r/pkg/status"
 	"github.com/korrel8r/korrel8r/pkg/rules"
+	"github.com/korrel8r/korrel8r/pkg/status"
 	"github.com/korrel8r/korrel8r/pkg/unique"
 )
 
@@ -183,6 +184,7 @@ func (b *Builder) Engine() (*Engine, error) {
 	for class, rules := range b.missingClasses {
 		log.V(1).Info("skipped rules with missing class", "class", class, "rules", rules)
 	}
+	b.e.data = graph.NewData(b.e.rules...)
 	e, err := b.e, b.err
 	*b = *Build() // Reset the builder.
 	return e, err
@@ -227,7 +229,7 @@ func (b *Builder) configRule(r config.Rule) {
 	if b.err != nil {
 		return
 	}
-	b.rules(rules.NewTemplateRule(start, goal, tmpl))
+	b.rules(rules.NewTemplateRule(start, goal, tmpl, b.e.domains))
 }
 
 func (b *Builder) configStatusRule(r config.StatusRule) {
