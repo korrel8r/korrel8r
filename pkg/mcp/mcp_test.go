@@ -465,7 +465,7 @@ func TestInterop_ShowInConsoleToSSE(t *testing.T) {
 	t.Cleanup(func() { _ = resp.Body.Close() })
 
 	// Read SSE data events in background.
-	events := make(chan string, 1)
+	events := make(chan string, 10)
 	go func() {
 		defer close(events)
 		s := bufio.NewScanner(resp.Body)
@@ -476,7 +476,16 @@ func TestInterop_ShowInConsoleToSSE(t *testing.T) {
 		}
 		_ = s.Err()
 	}()
-	time.Sleep(100 * time.Millisecond) // let SSE handler start
+
+	// MCP client already connected in fixture — expect initial empty Console{}.
+	select {
+	case data := <-events:
+		var got api.Console
+		require.NoError(t, json.Unmarshal([]byte(data), &got))
+		assert.Equal(t, api.Console{}, got)
+	case <-time.After(2 * time.Second):
+		t.Fatal("timed out waiting for initial SSE event")
+	}
 
 	// Send console update via MCP show_in_console.
 	want := api.Console{View: "mock:a:x"}
@@ -646,6 +655,17 @@ func TestMultiSession_SSEIsolation(t *testing.T) {
 
 	// MCP client for token-A sends a console update.
 	csA := f.mcpClient(t, "token-A")
+
+	// Session A receives the initial empty Console{} from MCP connect.
+	select {
+	case data := <-eventsA:
+		var got api.Console
+		require.NoError(t, json.Unmarshal([]byte(data), &got))
+		assert.Equal(t, api.Console{}, got)
+	case <-time.After(2 * time.Second):
+		t.Fatal("timed out waiting for initial SSE event on session A")
+	}
+
 	r, err := csA.CallTool(context.Background(), &mcp.CallToolParams{
 		Name:      ShowInConsole,
 		Arguments: ShowInConsoleParams{View: "mock:a:x"},
@@ -669,5 +689,72 @@ func TestMultiSession_SSEIsolation(t *testing.T) {
 		t.Fatalf("session B should not receive session A's update, got: %s", data)
 	case <-time.After(200 * time.Millisecond):
 		// expected
+	}
+}
+
+func TestInterop_SSEFanOut(t *testing.T) {
+	f := newInteropFixture(t, newEngine(t))
+
+	restSrv := httptest.NewServer(f.router)
+	t.Cleanup(restSrv.Close)
+
+	// Connect two SSE clients to the same session.
+	connectSSE := func() <-chan string {
+		ctx, cancel := context.WithCancel(context.Background())
+		t.Cleanup(cancel)
+		req, err := http.NewRequestWithContext(ctx, "GET", restSrv.URL+"/api/v1alpha1/console/events", nil)
+		require.NoError(t, err)
+		resp, err := http.DefaultClient.Do(req)
+		require.NoError(t, err)
+		t.Cleanup(func() { _ = resp.Body.Close() })
+
+		events := make(chan string, 10)
+		go func() {
+			defer close(events)
+			s := bufio.NewScanner(resp.Body)
+			for s.Scan() {
+				if data, ok := strings.CutPrefix(s.Text(), "data: "); ok {
+					events <- data
+				}
+			}
+			_ = s.Err()
+		}()
+		return events
+	}
+
+	eventsA := connectSSE()
+	eventsB := connectSSE()
+
+	// Both should receive the initial empty Console{} (MCP client already connected in fixture).
+	for _, events := range []<-chan string{eventsA, eventsB} {
+		select {
+		case data := <-events:
+			var got api.Console
+			require.NoError(t, json.Unmarshal([]byte(data), &got))
+			assert.Equal(t, api.Console{}, got)
+		case <-time.After(2 * time.Second):
+			t.Fatal("timed out waiting for initial SSE event")
+		}
+	}
+
+	// Send a console update via MCP.
+	want := api.Console{View: "mock:a:x"}
+	r, err := f.mcp.CallTool(context.Background(), &mcp.CallToolParams{
+		Name:      ShowInConsole,
+		Arguments: ShowInConsoleParams(want),
+	})
+	require.NoError(t, err)
+	require.False(t, r.IsError)
+
+	// Both SSE clients should receive the update.
+	for _, events := range []<-chan string{eventsA, eventsB} {
+		select {
+		case data := <-events:
+			var got api.Console
+			require.NoError(t, json.Unmarshal([]byte(data), &got))
+			assert.Equal(t, want, got)
+		case <-time.After(2 * time.Second):
+			t.Fatal("timed out waiting for SSE event")
+		}
 	}
 }

@@ -108,7 +108,7 @@ func NewServer(sessions session.Manager) *Server {
 		sessions: sessions,
 	}
 	s.addTools()
-	s.AddReceivingMiddleware(s.metrics, s.logger)
+	s.AddReceivingMiddleware(s.mcpInitNotifier, s.metrics, s.logger)
 	return s
 }
 
@@ -356,7 +356,7 @@ Use 'help' to learn the class and query syntax for each domain.
 			if err := rest.ConsoleOK(ss.Engine, &update); err != nil {
 				return nil, nil, err
 			}
-			return nil, nil, ss.ShowInConsole(ctx, &update)
+			return nil, nil, ss.ShowInConsole(&update)
 		})
 }
 
@@ -382,6 +382,19 @@ func (s *Server) session(ctx context.Context) (*session.Session, error) {
 // Per-session state is resolved per-request by tool handlers via sessions.Get.
 func (s *Server) handler(*http.Request) *mcp.Server {
 	return s.Server
+}
+
+// mcpInitNotifier is middleware that notifies the session when an MCP client connects.
+func (s *Server) mcpInitNotifier(handler mcp.MethodHandler) mcp.MethodHandler {
+	return func(ctx context.Context, method string, req mcp.Request) (mcp.Result, error) {
+		result, err := handler(ctx, method, req)
+		if err == nil && method == "initialize" {
+			if ss, e := s.session(ctx); e == nil {
+				_ = ss.ShowInConsole(&api.Console{})
+			}
+		}
+		return result, err
+	}
 }
 
 // logger is middleware to do debug logging of MCP methods
