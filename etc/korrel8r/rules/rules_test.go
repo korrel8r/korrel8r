@@ -39,6 +39,7 @@ var customResourcesForTests = []*metav1.APIResourceList{
 		GroupVersion: "operators.coreos.com/v1alpha1",
 		APIResources: []metav1.APIResource{
 			{Kind: "ClusterServiceVersion", Namespaced: false},
+			{Kind: "Subscription", Namespaced: false},
 		},
 	},
 	{
@@ -51,6 +52,7 @@ var customResourcesForTests = []*metav1.APIResourceList{
 		GroupVersion: "kubevirt.io/v1",
 		APIResources: []metav1.APIResource{
 			{Kind: "VirtualMachineInstance", Namespaced: true},
+			{Kind: "VirtualMachine", Namespaced: true},
 		},
 	},
 	{
@@ -192,7 +194,7 @@ func newK8s(class, namespace, name string, object k8s.Object) k8s.Object {
 	kc := k8s.Domain.Class(class)
 	if kc == nil {
 		_, file, line, _ := runtime.Caller(0)
-		panic(fmt.Errorf("class not found: k8s:%v. To add it, update customResourcesForTests at %v:%v", class, file, line))
+		panic(fmt.Errorf("class not found: k8s:%v. To add it, update customResourcesForTests. See %v:%v", class, file, line))
 	}
 	c := kc.(k8s.Class)
 	u.GetObjectKind().SetGroupVersionKind(c.GVK())

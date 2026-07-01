@@ -64,7 +64,7 @@ func TestK8sRules(t *testing.T) {
 		},
 		{
 			rule:  "DeploymentToAlert",
-			start: newK8s("Deployment", "aNamespace", "foo", nil),
+			start: newK8s("Deployment.apps", "aNamespace", "foo", nil),
 			want:  []string{`alert:alert:{"namespace":"aNamespace","deployment":"foo"}`},
 		},
 		{
