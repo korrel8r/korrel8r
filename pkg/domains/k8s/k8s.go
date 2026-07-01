@@ -7,7 +7,6 @@ import (
 	"context"
 	_ "embed"
 	"fmt"
-	"maps"
 	"net/url"
 	"regexp"
 	"slices"
@@ -18,6 +17,7 @@ import (
 	"github.com/korrel8r/korrel8r/internal/pkg/logging"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r/impl"
+	"github.com/korrel8r/korrel8r/pkg/unique"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -80,13 +80,14 @@ type domain struct {
 	m         sync.Mutex
 	resources map[korrel8r.Class]metav1.APIResource
 	groups    map[string]*metav1.APIGroup
-	classes   []korrel8r.Class // Sorted class list
+	classes   unique.Set[korrel8r.Class]
 }
 
 func newDomain() *domain {
 	d := &domain{
 		resources: map[korrel8r.Class]metav1.APIResource{},
 		groups:    map[string]*metav1.APIGroup{},
+		classes:   unique.NewSet[korrel8r.Class](),
 	}
 	d.addClasses(nil, defaultResources)
 	return d
@@ -96,7 +97,13 @@ func (d *domain) Name() string        { return "k8s" }
 func (d *domain) String() string      { return d.Name() }
 func (d *domain) Description() string { return description }
 
-func (d *domain) Classes() []korrel8r.Class { d.m.Lock(); defer d.m.Unlock(); return d.classes }
+func (d *domain) Classes() []korrel8r.Class {
+	d.m.Lock()
+	defer d.m.Unlock()
+	classes := d.classes.List()
+	slices.SortFunc(classes, func(a, b korrel8r.Class) int { return cmp.Compare(a.String(), b.String()) })
+	return classes
+}
 
 func nonBlank(v1, v2 string) string {
 	if v1 == "" {
@@ -123,6 +130,7 @@ func (d *domain) addClasses(groups []*metav1.APIGroup, resourceLists []*metav1.A
 				Kind:    r.Kind,
 			}
 			c := Class(gvk)
+			d.classes.Add(c)
 			d.resources[c] = r
 			// Make sure every known resource has a group with a preferred version.
 			if _, ok := d.groups[gvk.Group]; !ok {
@@ -138,9 +146,6 @@ func (d *domain) addClasses(groups []*metav1.APIGroup, resourceLists []*metav1.A
 			}
 		}
 	}
-	// Update the sorted class list.
-	d.classes = slices.Collect(maps.Keys(d.resources))
-	slices.SortFunc(d.classes, func(a, b korrel8r.Class) int { return cmp.Compare(a.String(), b.String()) })
 }
 
 // Store connects to the kube config default cluster. The config parameter is ignored.
@@ -166,7 +171,11 @@ func (d *domain) Class(name string) korrel8r.Class {
 		}
 		gvk.Version = g.PreferredVersion.Version
 	}
-	return Class(gvk)
+	c := Class(gvk)
+	if !d.classes.Has(c) {
+		return nil
+	}
+	return c
 }
 
 func (d *domain) Query(s string) (korrel8r.Query, error) {
@@ -409,6 +418,9 @@ var defaultResources = []*metav1.APIResourceList{
 	}},
 	{GroupVersion: "policy/v1", APIResources: []metav1.APIResource{
 		{Namespaced: true, Kind: "PodDisruptionBudget"},
+	}},
+	{GroupVersion: "events.k8s.io/v1", APIResources: []metav1.APIResource{
+		{Namespaced: true, Kind: "Event"},
 	}},
 	{GroupVersion: "storage.k8s.io/v1", APIResources: []metav1.APIResource{
 		{Namespaced: false, Kind: "VolumeSnapshotClass"},

@@ -58,6 +58,19 @@ func TestDomain_Class(t *testing.T) {
 	}
 }
 
+func TestDomain_Class_invalid(t *testing.T) {
+	for _, name := range []string{
+		"NoSuchKind",
+		"NoSuchKind.v1",
+		"Pod.v99",
+		"Deployment.v1.nosuchgroup",
+	} {
+		t.Run(name, func(t *testing.T) {
+			assert.Nil(t, Domain.Class(name))
+		})
+	}
+}
+
 func TestDomain_Query(t *testing.T) {
 	for _, x := range []struct {
 		s    string
