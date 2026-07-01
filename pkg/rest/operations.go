@@ -256,10 +256,17 @@ func (a *API) ConsoleEvents(c *gin.Context) {
 	log.V(3).Info("Console connected", "session", s)
 	defer log.V(3).Info("Console disconnected", "session", s)
 
+	// SSE is long-lived — use a context that detects HTTP client disconnect
+	// but is not subject to the request timeout.
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	stop := context.AfterFunc(c.Request.Context(), cancel)
+	defer stop()
+
 	keepAliveTicker := time.NewTicker(time.Minute)
 	defer keepAliveTicker.Stop()
 	err = s.ConsoleEvents(
-		c.Request.Context(),
+		ctx,
 		func(c *api.Console) error { return a.sendEvent(w, c) },
 		func() error { _, err := fmt.Fprint(w, ":keepalive\n\n"); w.Flush(); return err },
 		keepAliveTicker)

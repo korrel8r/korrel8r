@@ -5,6 +5,7 @@ package session
 import (
 	"context"
 	"errors"
+	"slices"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -14,81 +15,88 @@ import (
 
 var ErrNoConsole = errors.New("no console is connected")
 
-// consoleEvents implements the MCP-to-REST and REST-to-MCP pathways through a session.
-type consoleEvents struct {
-	fromConsole atomic.Pointer[api.Console] // State from console, REST to MCP.
-	fromAgent   chan *api.Console           // Unbuffered: blocks MCP sender till console receives.
+type consoleListener struct {
+	ch chan *api.Console
+}
 
-	mu          sync.Mutex
-	cancel      context.CancelFunc // Cancel the current console listener.
-	listenerCtx context.Context    // Non-nil while a console listener is active.
+// consoleEvents implements the MCP-to-REST and REST-to-MCP pathways through a session.
+// Multiple console SSE listeners can be active simultaneously; ShowInConsole fans out to all.
+type consoleEvents struct {
+	fromConsole  atomic.Pointer[api.Console] // State from console, REST to MCP.
+	mcpConnected bool                        // True after an MCP client has connected. Protected by mu.
+
+	mu        sync.Mutex
+	listeners []*consoleListener
 }
 
 func newConsoleEvents() *consoleEvents {
-	return &consoleEvents{
-		fromAgent: make(chan *api.Console),
-		cancel:    func() {},
+	return &consoleEvents{}
+}
+
+// addListener registers a new SSE listener.
+// Returns true if an MCP client is already connected.
+func (c *consoleEvents) addListener() (*consoleListener, bool) {
+	l := &consoleListener{ch: make(chan *api.Console, 1)}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.listeners = append(c.listeners, l)
+	return l, c.mcpConnected
+}
+
+func (c *consoleEvents) removeListener(l *consoleListener) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.listeners = slices.DeleteFunc(c.listeners, func(x *consoleListener) bool { return x == l })
+	if len(c.listeners) == 0 {
+		c.fromConsole.Store(nil)
 	}
 }
 
-// ShowInConsole sends an update to the console via the unbuffered fromAgent channel.
-// Blocks until the console receives the update or ctx is canceled.
-// The blocking is deliberate, it delays returning until we know the update was at least sent.
-// This tells the caller it was likely sent and processed, although it's not guaranteed.
-func (c *consoleEvents) ShowInConsole(ctx context.Context, update *api.Console) error {
-	for {
-		c.mu.Lock()
-		listenerCtx := c.listenerCtx
-		c.mu.Unlock()
-
-		if listenerCtx == nil {
-			return ErrNoConsole
-		}
-
-		select {
-		case c.fromAgent <- update:
-			return nil
-		case <-listenerCtx.Done():
-			// Listener may have been replaced — retry with fresh state.
-			continue
-		case <-ctx.Done():
-			return ctx.Err()
-		}
+// ShowInConsole sends an update to all connected console SSE listeners.
+// Any previously unsent value is replaced with the new one.
+// Records that an MCP client is connected, so late-joining listeners
+// receive an initial notification.
+// Returns ErrNoConsole if no listeners are connected.
+func (c *consoleEvents) ShowInConsole(update *api.Console) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.mcpConnected = true
+	if len(c.listeners) == 0 {
+		return ErrNoConsole
 	}
+	for _, l := range c.listeners {
+		select {
+		case <-l.ch:
+		default:
+		}
+		l.ch <- update
+	}
+	return nil
 }
 
 // ConsoleEvents loops sending updates and keepalives until ctx is canceled or a send fails.
 // ctx should be the HTTP request context, which cancels on client disconnect.
 // Avoid passing a context with a short timeout — this is a long-lived SSE subscription.
 //
-// Only one listener is active at a time. A new caller evicts the previous listener
-// by canceling its context, so a stale connection cannot lock out new consoles.
+// Multiple listeners can be active simultaneously; each receives all updates.
 func (c *consoleEvents) ConsoleEvents(
 	ctx context.Context,
 	send func(*api.Console) error,
 	tick func() error,
 	ticker *time.Ticker) error {
 
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
-	func() {
-		c.mu.Lock()
-		defer c.mu.Unlock()
-		c.cancel()
-		c.cancel = cancel
-		c.listenerCtx = ctx
-	}()
-	defer func() {
-		c.mu.Lock()
-		defer c.mu.Unlock()
-		if c.listenerCtx == ctx {
-			c.fromConsole.Store(nil)
-			c.listenerCtx = nil
+	l, connected := c.addListener()
+	defer c.removeListener(l)
+
+	if connected {
+		if err := send(&api.Console{}); err != nil {
+			return err
 		}
-	}()
+	}
+
 	for {
 		select {
-		case update := <-c.fromAgent:
+		case update := <-l.ch:
 			if err := send(update); err != nil {
 				return err
 			}
