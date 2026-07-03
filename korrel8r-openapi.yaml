@@ -404,22 +404,37 @@ components:
       properties:
         start:
           type: string
-          description: Ignore objects with timestamps before this start time.
+          description: >
+            Ignore objects with timestamps before this start time.
+            Default: 1 hour before end.
           format: date-time
           x-oapi-codegen-extra-tags:
-            jsonschema: "Ignore objects with timestamps before this start time."
+            jsonschema: "Ignore objects with timestamps before this start time. Default: 1 hour before end."
         end:
           type: string
-          description: Ignore objects with timestamps after this end time.
+          description: >
+            Ignore objects with timestamps after this end time.
+            Default: now.
           format: date-time
           example: "2017-07-21T17:32:28.1341231Z"
           x-oapi-codegen-extra-tags:
-            jsonschema: "Ignore objects with timestamps after this end time."
+            jsonschema: "Ignore objects with timestamps after this end time. Default: now."
         limit:
           type: integer
-          description: Limit total number of objects per query.
+          description: >
+            Limit total number of objects per query.
+            Default: 100.
+          default: 100
           x-oapi-codegen-extra-tags:
-            jsonschema: "Limit total number of objects per query."
+            jsonschema: "Limit total number of objects per query. Default: 100."
+        queryLimit:
+          type: integer
+          description: >
+            Limit total number of queries per class during traversal.
+            Default: 10.
+          default: 10
+          x-oapi-codegen-extra-tags:
+            jsonschema: "Limit total number of queries per class during traversal. Default: 10."
 
     Domains:
       description: List of Korrel8r domains and configured stores.
