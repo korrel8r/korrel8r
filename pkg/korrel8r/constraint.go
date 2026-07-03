@@ -12,6 +12,8 @@ import (
 type Constraint struct {
 	// Limit number of objects returned per query
 	Limit *int `json:"limit,omitempty"`
+	// QueryLimit limits the number of queries per class during traversal
+	QueryLimit *int `json:"queryLimit,omitempty"`
 	// Start ignore data before this time (RFC 3339)
 	Start *time.Time `json:"start,omitempty"`
 	// End ignore data after this time (RFC 3339)
@@ -46,12 +48,16 @@ func (c *Constraint) Default() *Constraint {
 	// Hard-wired fallback defaults
 	const defaultDuration = time.Hour
 	const defaultLimit = 100
+	const defaultQueryLimit = 10
 
 	if c == nil {
 		return (&Constraint{}).Default()
 	}
 	if c.Limit == nil {
 		c.Limit = new(defaultLimit)
+	}
+	if c.QueryLimit == nil {
+		c.QueryLimit = new(defaultQueryLimit)
 	}
 	if c.End == nil {
 		c.End = new(time.Now())
@@ -66,6 +72,14 @@ func (c *Constraint) Default() *Constraint {
 func (c *Constraint) GetLimit() int {
 	if c != nil && c.Limit != nil {
 		return *c.Limit
+	}
+	return 0
+}
+
+// GetQueryLimit returns query limit or 0, safe to call with c == nil
+func (c *Constraint) GetQueryLimit() int {
+	if c != nil && c.QueryLimit != nil {
+		return *c.QueryLimit
 	}
 	return 0
 }

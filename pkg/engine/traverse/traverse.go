@@ -49,11 +49,10 @@ type Start struct {
 var log = logging.Log()
 
 type traverser struct {
-	engine      *engine.Engine
-	graph       *graph.Graph
-	workers     map[korrel8r.Class]*worker
-	constraint  *korrel8r.Constraint
-	resultLimit int
+	engine     *engine.Engine
+	graph      *graph.Graph
+	workers    map[korrel8r.Class]*worker
+	constraint *korrel8r.Constraint
 }
 
 // A worker gets queries from a store, applies rules and sends new queries to other workers.
@@ -95,11 +94,10 @@ func (ql queryLine) MetricAttributes() metric.MeasurementOption {
 
 func newTraverser(e *engine.Engine, g *graph.Graph, c *korrel8r.Constraint) *traverser {
 	return &traverser{
-		engine:      e,
-		graph:       g,
-		workers:     map[korrel8r.Class]*worker{},
-		constraint:  c,
-		resultLimit: c.Default().GetLimit() * 10,
+		engine:     e,
+		graph:      g,
+		workers:    map[korrel8r.Class]*worker{},
+		constraint: c,
 	}
 }
 
@@ -180,15 +178,19 @@ func (t *traverser) newWorker(n *graph.Node) *worker {
 	return w
 }
 
+func (w *worker) overQueryLimit() bool {
+	limit := w.constraint.GetQueryLimit()
+	return limit > 0 && len(w.node.Queries) > limit
+}
+
 func (w *worker) HasWork() bool {
-	if len(w.node.Result.List()) >= w.resultLimit {
-		log.V(2).Info("Result limit reached, skipping node", "class", w.node.Class, "results", len(w.node.Result.List()), "limit", w.resultLimit)
-		return false
+	if w.overQueryLimit() {
+		log.V(2).Info("Query limit reached", "class", w.node.Class, "queries", len(w.node.Queries))
 	}
 	return len(w.inbox) > 0 || len(w.node.Result.List()) > w.processed
 }
 
-// Run processes queries in inbox, populates graph results, applies rules, and stores new queries in outbox.
+// Run processes queries in inbox, populates node results, applies rules, stores new queries in outbox.
 func (w *worker) Run(ctx context.Context) {
 	defer func() {
 		clear(w.inbox)
@@ -200,8 +202,7 @@ func (w *worker) Run(ctx context.Context) {
 		if ctx.Err() != nil {
 			return
 		}
-		if len(w.node.Result.List()) >= w.resultLimit {
-			log.V(2).Info("Result limit reached, skipping queries", "class", w.node.Class, "results", len(w.node.Result.List()), "limit", w.resultLimit)
+		if w.overQueryLimit() {
 			break
 		}
 		before := len(w.node.Result.List())

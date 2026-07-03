@@ -242,7 +242,7 @@ func constraintTo(c *api.Constraint) *korrel8r.Constraint {
 	if c == nil {
 		return nil
 	}
-	return &korrel8r.Constraint{Limit: c.Limit, Start: c.Start, End: c.End}
+	return &korrel8r.Constraint{Limit: c.Limit, QueryLimit: c.QueryLimit, Start: c.Start, End: c.End}
 }
 
 func ListDomains(e *engine.Engine) []api.Domain {
