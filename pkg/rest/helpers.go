@@ -36,7 +36,7 @@ func queryCounts(gq graph.Queries, _ api.GraphOptions) []api.QueryCount {
 		}
 		aqc := api.QueryCount{Query: qc.Query.String(), Count: &qc.Count}
 		for k, v := range qc.StatusCounts {
-			aqc.Statuses = append(aqc.Statuses, api.StatusCount{Status: k, Count: ptr.To(v)})
+			aqc.Statuses = append(aqc.Statuses, api.StatusCount{Status: k, Count: new(v)})
 		}
 		slices.SortFunc(aqc.Statuses, func(a, b api.StatusCount) int { return cmp.Compare(a.Status, b.Status) })
 		qcs = append(qcs, aqc)
@@ -60,7 +60,7 @@ func node(n *graph.Node, opts api.GraphOptions) api.Node {
 	node := api.Node{
 		Class:   n.Class.String(),
 		Queries: queryCounts(n.Queries, opts),
-		Count:   ptr.To(len(n.Result.List())),
+		Count:   new(len(n.Result.List())),
 	}
 	if ptr.Deref(opts.Results) {
 		for _, o := range n.Result.List() {

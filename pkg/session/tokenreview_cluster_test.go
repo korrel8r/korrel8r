@@ -27,7 +27,6 @@ func TestTokenReviewCluster_SessionID(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.NotEmpty(t, s.ID, "session ID should be a username")
-	t.Logf("Session ID (username): %s", s.ID)
 
 	// Same token should return the same session.
 	s2, err := m.Get(tokenCtx(cfg.BearerToken))

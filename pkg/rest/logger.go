@@ -13,26 +13,34 @@ func (a *API) logger(c *gin.Context) {
 	if !log.V(2).Enabled() {
 		return // Nothing to do for V < 2
 	}
-	var rw *responseWriter
-	if log.V(9).Enabled() {
-		rw = newResponseWriter(c.Writer) // Save the response
-		c.Writer = rw
-	}
+
 	start := time.Now()
+	detail := log.V(9).Enabled() // Extra detail
+
+	values := []any{
+		"method", c.Request.Method,
+		"url", c.Request.URL,
+	}
+	var rw *responseWriter
+	if detail {
+		rw = newResponseWriter(c.Writer)
+		c.Writer = rw // Save the response
+		values = append(values,
+			"from", c.Request.RemoteAddr,
+			"body", copyBody(c.Request),
+		)
+	}
+
+	log.V(3).Info("REST Request", values...)
 
 	defer func() {
-		latency := time.Since(start)
-		status := c.Writer.Status()
-		values := []any{
-			"method", c.Request.Method,
-			"url", c.Request.URL,
-			"status", status,
-			"latency", latency,
-		}
-		if rw != nil { // Response was saved, extra detail
+		values = append(values,
+			"status", c.Writer.Status(),
+			"latency", time.Since(start),
+		)
+		if detail {
 			values = append(values,
-				"from", c.Request.RemoteAddr,
-				"body", copyBody(c.Request),
+				"request", copyBody(c.Request),
 				"response", rw.String(),
 			)
 		}
@@ -40,9 +48,9 @@ func (a *API) logger(c *gin.Context) {
 			values = append(values, "errors", c.Errors.Errors())
 		}
 		if c.IsAborted() || c.Writer.Status()/100 != 2 {
-			log.V(2).Info("Request failed", values...)
+			log.V(2).Info("REST Request failed", values...)
 		} else {
-			log.V(3).Info("Request OK", values...)
+			log.V(3).Info("REST Request OK", values...)
 		}
 	}()
 	c.Next()

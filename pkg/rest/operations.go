@@ -245,6 +245,11 @@ func (a *API) ConsoleEvents(c *gin.Context) {
 		return
 	}
 
+	if !check(c, http.StatusConflict, s.SetListener()) {
+		return
+	}
+	defer s.ClearListener()
+
 	w := c.Writer
 	w.Header().Set("Content-Type", "text/event-stream")
 	w.Header().Set("Cache-Control", "no-cache")
@@ -253,17 +258,15 @@ func (a *API) ConsoleEvents(c *gin.Context) {
 	w.Header().Set("Access-Control-Allow-Headers", "Cache-Control")
 	w.Flush()
 
-	log.V(3).Info("Console connected", "session", s)
-	defer log.V(3).Info("Console disconnected", "session", s)
-
-	// SSE is long-lived — use a context that detects HTTP client disconnect
-	// but is not subject to the request timeout.
-	ctx, cancel := context.WithCancel(context.Background())
+	// Strip the middleware's request timeout — SSE is long-lived.
+	// context.WithoutCancel preserves values but detaches from the deadline,
+	// then AfterFunc re-attaches disconnect detection from the parent.
+	ctx, cancel := context.WithCancel(context.WithoutCancel(c.Request.Context()))
 	defer cancel()
 	stop := context.AfterFunc(c.Request.Context(), cancel)
 	defer stop()
 
-	keepAliveTicker := time.NewTicker(time.Minute)
+	keepAliveTicker := time.NewTicker(3 * time.Second)
 	defer keepAliveTicker.Stop()
 	err = s.ConsoleEvents(
 		ctx,
@@ -271,7 +274,7 @@ func (a *API) ConsoleEvents(c *gin.Context) {
 		func() error { _, err := fmt.Fprint(w, ":keepalive\n\n"); w.Flush(); return err },
 		keepAliveTicker)
 	if err != nil && !errors.Is(err, context.Canceled) && !errors.Is(err, context.DeadlineExceeded) {
-		log.V(3).Error(err, "Console send error", "session", s)
+		log.V(3).Error(err, "Console SSE error", "session", s)
 	}
 }
 
