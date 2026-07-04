@@ -104,11 +104,18 @@ func NewServer(sessions session.Manager) *Server {
 	s := &Server{
 		Server: mcp.NewServer(
 			&mcp.Implementation{Name: "korrel8r", Title: "Korrel8r MCP Server", Version: build.Version},
-			&mcp.ServerOptions{Instructions: instructions}),
+			&mcp.ServerOptions{
+				Instructions:       instructions,
+				InitializedHandler: func(ctx context.Context, _ *mcp.InitializedRequest) {
+					if ss, err := sessions.Get(ctx); err == nil {
+						ss.EnqueueConsoleUpdate(&api.Console{})
+					}
+				},
+			}),
 		sessions: sessions,
 	}
 	s.addTools()
-	s.AddReceivingMiddleware(s.mcpInitNotifier, s.metrics, s.logger)
+	s.AddReceivingMiddleware(s.metrics, s.logger)
 	return s
 }
 
@@ -382,19 +389,6 @@ func (s *Server) session(ctx context.Context) (*session.Session, error) {
 // Per-session state is resolved per-request by tool handlers via sessions.Get.
 func (s *Server) handler(*http.Request) *mcp.Server {
 	return s.Server
-}
-
-// mcpInitNotifier is middleware that notifies the session when an MCP client connects.
-func (s *Server) mcpInitNotifier(handler mcp.MethodHandler) mcp.MethodHandler {
-	return func(ctx context.Context, method string, req mcp.Request) (mcp.Result, error) {
-		result, err := handler(ctx, method, req)
-		if err == nil && method == "initialize" {
-			if ss, e := s.session(ctx); e == nil {
-				_ = ss.ShowInConsole(&api.Console{})
-			}
-		}
-		return result, err
-	}
 }
 
 // logger is middleware to do debug logging of MCP methods

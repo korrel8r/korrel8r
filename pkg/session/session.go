@@ -66,7 +66,7 @@ func newSession(e *engine.Engine, id string) *Session {
 	return &Session{
 		ID:            id,
 		Engine:        e,
-		consoleEvents: newConsoleEvents(),
+		consoleEvents: newConsoleEvents(id),
 	}
 }
 
@@ -198,8 +198,7 @@ func Middleware(sessions Manager) func(*gin.Context) {
 		req, cancel, err := UpdateRequest(c.Request, sessions)
 		if err != nil {
 			status := http.StatusInternalServerError
-			var authErr *AuthError
-			if errors.As(err, &authErr) {
+			if _, ok := errors.AsType[*AuthError](err); ok {
 				status = http.StatusUnauthorized
 			}
 			c.AbortWithStatusJSON(status, c.Error(err).JSON())
