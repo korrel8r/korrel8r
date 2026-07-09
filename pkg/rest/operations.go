@@ -154,7 +154,7 @@ func (a *API) Objects(c *gin.Context, params ObjectsParams) {
 	if !check(c, http.StatusBadRequest, err) {
 		return
 	}
-	constraint := constraintTo(params.Constraint)
+	constraint := Constraint(params.Constraint)
 	result := result.New(query.Class())
 	if !check(c, http.StatusNotFound, e.Get(c.Request.Context(), query, constraint, result)) {
 		return
@@ -245,10 +245,10 @@ func (a *API) ConsoleEvents(c *gin.Context) {
 		return
 	}
 
-	if !check(c, http.StatusConflict, s.SetListener()) {
+	if !check(c, http.StatusConflict, s.Listen()) {
 		return
 	}
-	defer s.ClearListener()
+	defer s.Close()
 
 	w := c.Writer
 	w.Header().Set("Content-Type", "text/event-stream")
@@ -266,27 +266,28 @@ func (a *API) ConsoleEvents(c *gin.Context) {
 	stop := context.AfterFunc(c.Request.Context(), cancel)
 	defer stop()
 
-	keepAliveTicker := time.NewTicker(3 * time.Second)
-	defer keepAliveTicker.Stop()
 	err = s.ConsoleEvents(
 		ctx,
 		func(c *api.Console) error { return a.sendEvent(w, c) },
 		func() error { _, err := fmt.Fprint(w, ":keepalive\n\n"); w.Flush(); return err },
-		keepAliveTicker)
+		3*time.Second)
 	if err != nil && !errors.Is(err, context.Canceled) && !errors.Is(err, context.DeadlineExceeded) {
 		log.V(3).Error(err, "Console SSE error", "session", s)
 	}
 }
 
 func (a *API) sendEvent(w gin.ResponseWriter, update *api.Console) error {
-	if update != nil {
-		b, _ := json.Marshal(update)
-		_, err := fmt.Fprintf(w, "event: console-update\ndata: %v\n\n", string(b))
-		if err != nil {
-			return err
-		}
-		w.Flush()
-		log.V(3).Info("Console update sent", "event", string(b))
+	b, _ := json.Marshal(update)
+	if _, err := w.Write([]byte("event: console-update\ndata: ")); err != nil {
+		return err
 	}
+	if _, err := w.Write(b); err != nil {
+		return err
+	}
+	if _, err := w.Write([]byte("\n\n")); err != nil {
+		return err
+	}
+	w.Flush()
+	log.V(3).Info("Console update sent", "event", string(b))
 	return nil
 }

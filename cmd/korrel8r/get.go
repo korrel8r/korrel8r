@@ -13,7 +13,6 @@ import (
 	"github.com/korrel8r/korrel8r/pkg/engine"
 	"github.com/korrel8r/korrel8r/pkg/engine/traverse"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
-	"github.com/korrel8r/korrel8r/pkg/ptr"
 	"github.com/korrel8r/korrel8r/pkg/rest"
 	"github.com/spf13/cobra"
 )
@@ -25,9 +24,9 @@ var (
 	objects      []string
 	limit        int
 	graphOptions = api.GraphOptions{
-		Rules:   ptr.To(false),
-		Errors:  ptr.To(false),
-		Results: ptr.To(false),
+		Rules:   new(false),
+		Errors:  new(false),
+		Results: new(false),
 	}
 	// Constraint values
 	since, until, timeout time.Duration
@@ -125,14 +124,14 @@ func init() {
 func constraint() *korrel8r.Constraint {
 	c := &korrel8r.Constraint{}
 	if limit > 0 {
-		c.Limit = ptr.To(limit)
+		c.Limit = new(limit)
 	}
 	now := time.Now()
 	if since > 0 {
-		c.Start = ptr.To(now.Add(-since))
+		c.Start = new(now.Add(-since))
 	}
 	if until > 0 {
-		c.End = ptr.To(now.Add(-until))
+		c.End = new(now.Add(-until))
 	}
 	return c
 }
