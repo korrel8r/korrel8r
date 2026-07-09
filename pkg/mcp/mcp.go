@@ -105,12 +105,6 @@ func NewServer(sessions session.Manager) *Server {
 			&mcp.Implementation{Name: "korrel8r", Title: "Korrel8r MCP Server", Version: build.Version},
 			&mcp.ServerOptions{
 				Instructions: instructions,
-				InitializedHandler: func(ctx context.Context, _ *mcp.InitializedRequest) {
-					if ss, err := sessions.Get(ctx); err == nil {
-						// Send an empty event to announce we are connected.
-						ss.Send(&api.Console{})
-					}
-				},
 			}),
 		sessions: sessions,
 	}

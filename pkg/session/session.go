@@ -66,7 +66,7 @@ func newSession(e *engine.Engine, id string) *Session {
 	return &Session{
 		ID:            id,
 		Engine:        e,
-		consoleEvents: newConsoleEvents(id),
+		consoleEvents: newConsoleEvents(),
 	}
 }
 
