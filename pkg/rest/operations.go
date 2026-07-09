@@ -245,18 +245,7 @@ func (a *API) ConsoleEvents(c *gin.Context) {
 		return
 	}
 
-	if !check(c, http.StatusConflict, s.Listen()) {
-		return
-	}
-	defer s.Close()
-
 	w := c.Writer
-	w.Header().Set("Content-Type", "text/event-stream")
-	w.Header().Set("Cache-Control", "no-cache")
-	w.Header().Set("Connection", "keep-alive")
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.Header().Set("Access-Control-Allow-Headers", "Cache-Control")
-	w.Flush()
 
 	// Strip the middleware's request timeout — SSE is long-lived.
 	// context.WithoutCancel preserves values but detaches from the deadline,
@@ -268,9 +257,22 @@ func (a *API) ConsoleEvents(c *gin.Context) {
 
 	err = s.ConsoleEvents(
 		ctx,
+		func() error {
+			w.Header().Set("Content-Type", "text/event-stream")
+			w.Header().Set("Cache-Control", "no-cache")
+			w.Header().Set("Connection", "keep-alive")
+			w.Header().Set("Access-Control-Allow-Origin", "*")
+			w.Header().Set("Access-Control-Allow-Headers", "Cache-Control")
+			w.Flush()
+			return nil
+		},
 		func(c *api.Console) error { return a.sendEvent(w, c) },
 		func() error { _, err := fmt.Fprint(w, ":keepalive\n\n"); w.Flush(); return err },
 		3*time.Second)
+	if errors.Is(err, session.ErrConsoleBusy) {
+		check(c, http.StatusConflict, err)
+		return
+	}
 	if err != nil && !errors.Is(err, context.Canceled) && !errors.Is(err, context.DeadlineExceeded) {
 		log.V(3).Error(err, "Console SSE error", "session", s)
 	}

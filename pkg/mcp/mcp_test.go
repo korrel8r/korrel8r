@@ -477,7 +477,7 @@ func TestInterop_ShowInConsoleToSSE(t *testing.T) {
 		_ = s.Err()
 	}()
 
-	// Send console update via MCP show_in_console.
+	time.Sleep(100 * time.Millisecond) // Let ConsoleEvents enter its select loop.
 	want := api.Console{View: "mock:a:x"}
 	r, err := f.mcp.CallTool(context.Background(), &mcp.CallToolParams{
 		Name:      ShowInConsole,
@@ -486,17 +486,6 @@ func TestInterop_ShowInConsoleToSSE(t *testing.T) {
 	require.NoError(t, err)
 	require.False(t, r.IsError, "show_in_console should succeed")
 
-	// First event is the empty MCP-connected signal.
-	select {
-	case data := <-events:
-		var got api.Console
-		require.NoError(t, json.Unmarshal([]byte(data), &got))
-		assert.Equal(t, api.Console{}, got)
-	case <-time.After(2 * time.Second):
-		t.Fatal("timed out waiting for MCP connection event")
-	}
-
-	// Second event is the actual update.
 	select {
 	case data := <-events:
 		var got api.Console
@@ -649,12 +638,13 @@ func TestMultiSession_SSEIsolation(t *testing.T) {
 		return events
 	}
 
+	csA := f.mcpClient(t, "token-A")
+	_ = f.mcpClient(t, "token-B")
+
 	eventsA := connectSSE("token-A")
 	eventsB := connectSSE("token-B")
-	time.Sleep(100 * time.Millisecond) // let SSE handlers start
+	time.Sleep(100 * time.Millisecond) // Let both ConsoleEvents loops start.
 
-	// MCP client for token-A sends a console update.
-	csA := f.mcpClient(t, "token-A")
 	r, err := csA.CallTool(context.Background(), &mcp.CallToolParams{
 		Name:      ShowInConsole,
 		Arguments: ShowInConsoleParams{View: "mock:a:x"},
@@ -662,18 +652,17 @@ func TestMultiSession_SSEIsolation(t *testing.T) {
 	require.NoError(t, err)
 	require.False(t, r.IsError)
 
-	receive := func(events <-chan string) api.Console {
-		data := <-events
+	// Session A receives the update.
+	select {
+	case data := <-eventsA:
 		var got api.Console
 		require.NoError(t, json.Unmarshal([]byte(data), &got))
-		return got
+		assert.Equal(t, api.Console{View: "mock:a:x"}, got)
+	case <-time.After(2 * time.Second):
+		t.Fatal("timed out waiting for SSE event on session-A")
 	}
-	// MCP Connection event
-	assert.Equal(t, api.Console{}, receive(eventsA))
-	// Expected update.
-	assert.Equal(t, api.Console{View: "mock:a:x"}, receive(eventsA))
 
-	// Session B's SSE client should NOT receive anything.
+	// Session B should NOT receive anything.
 	select {
 	case data := <-eventsB:
 		t.Fatalf("session B should not receive session A's update, got: %s", data)

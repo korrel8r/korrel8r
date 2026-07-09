@@ -14,168 +14,65 @@ import (
 
 func console(view string) *api.Console { return &api.Console{View: api.Query(view)} }
 
-func TestSetListener_Busy(t *testing.T) {
-	c := newConsoleEvents("test")
-	require.NoError(t, c.Listen())
-	defer c.Close()
-	assert.ErrorIs(t, c.Listen(), ErrConsoleBusy)
-}
+func noop(*api.Console) error { return nil }
 
-func TestSetListener_Reuse(t *testing.T) {
-	c := newConsoleEvents("test")
-	require.NoError(t, c.Listen())
-	c.Close()
-	require.NoError(t, c.Listen())
-	c.Close()
-}
-
-func TestShowInConsole_NoListener(t *testing.T) {
-	c := newConsoleEvents("test")
+func TestShowInConsole_ErrNoConsole(t *testing.T) {
+	c := newConsoleEvents()
 	assert.ErrorIs(t, c.ShowInConsole(console("v1")), ErrNoConsole)
 }
 
-func TestShowInConsole_Send(t *testing.T) {
-	c := newConsoleEvents("test")
-	require.NoError(t, c.Listen())
-	defer c.Close()
-	require.NoError(t, c.ShowInConsole(console("v1")))
-	select {
-	case got := <-c.toConsole:
-		assert.Equal(t, console("v1"), got)
-	case <-time.After(time.Second):
-		t.Fatal("timed out waiting for update")
-	}
-}
+func TestConsoleEvents_ErrConsoleBusy(t *testing.T) {
+	c := newConsoleEvents()
 
-func TestShowInConsole_LatestValueWins(t *testing.T) {
-	c := newConsoleEvents("test")
-	require.NoError(t, c.Listen())
-	defer c.Close()
-	require.NoError(t, c.ShowInConsole(console("v1")))
-	require.NoError(t, c.ShowInConsole(console("v2")))
-	select {
-	case got := <-c.toConsole:
-		assert.Equal(t, console("v2"), got)
-	case <-time.After(time.Second):
-		t.Fatal("timed out waiting for update")
-	}
-}
+	// Two competing calls, one will return ErrConsoleBusy
+	ctx, cancel := context.WithCancel(context.Background())
+	errCh := make(chan error, 2)
+	go func() { errCh <- c.ConsoleEvents(ctx, nil, noop, func() error { return nil }, time.Hour) }()
+	go func() { errCh <- c.ConsoleEvents(ctx, nil, noop, func() error { return nil }, time.Hour) }()
+	assert.ErrorIs(t, <-errCh, ErrConsoleBusy)
+	cancel()
+	assert.ErrorIs(t, <-errCh, context.Canceled)
 
-func TestClearListener_DrainsPending(t *testing.T) {
-	c := newConsoleEvents("test")
-	require.NoError(t, c.Listen())
-	require.NoError(t, c.ShowInConsole(console("v1")))
-	c.Close()
+	// Next call should be OK, previous calls are over.
+	ctx, cancel = context.WithCancel(context.Background())
+	go func() { errCh <- c.ConsoleEvents(ctx, nil, noop, func() error { return nil }, time.Hour) }()
 	select {
-	case <-c.toConsole:
-		t.Fatal("expected channel to be drained")
+	case err := <-errCh:
+		t.Fatalf("unexpected error: %v", err)
 	default:
 	}
-}
-
-func TestConsoleState(t *testing.T) {
-	c := newConsoleEvents("test")
-	assert.Nil(t, c.ConsoleState())
-	c.SetConsoleState(console("state1"))
-	assert.Equal(t, console("state1"), c.ConsoleState())
-}
-
-func TestClearListener_ResetsConsoleState(t *testing.T) {
-	c := newConsoleEvents("test")
-	require.NoError(t, c.Listen())
-	c.SetConsoleState(console("state1"))
-	c.Close()
-	assert.Nil(t, c.ConsoleState())
+	cancel()
+	assert.ErrorIs(t, <-errCh, context.Canceled)
 }
 
 func TestConsoleEvents_SendsUpdates(t *testing.T) {
-	c := newConsoleEvents("test")
-	require.NoError(t, c.Listen())
-	defer c.Close()
-
+	c := newConsoleEvents()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	var received []*api.Console
 	send := func(u *api.Console) error {
 		received = append(received, u)
-		if len(received) == 3 {
+		if len(received) == 2 {
 			cancel()
 		}
 		return nil
 	}
 
-	// ShowInConsole sets mcpConnected, so ConsoleEvents sends an initial empty event.
+	errCh := make(chan error)
+	go func() { errCh <- c.ConsoleEvents(ctx, nil, send, func() error { return nil }, time.Hour) }()
+	time.Sleep(10 * time.Millisecond)
+
 	require.NoError(t, c.ShowInConsole(console("v1")))
+	time.Sleep(10 * time.Millisecond)
+	require.NoError(t, c.ShowInConsole(console("v2")))
 
-	go func() {
-		time.Sleep(10 * time.Millisecond)
-		require.NoError(t, c.ShowInConsole(console("v2")))
-	}()
-
-	err := c.ConsoleEvents(ctx, send, func() error { return nil }, time.Hour)
-	assert.ErrorIs(t, err, context.Canceled)
-	assert.Equal(t, []*api.Console{{}, console("v1"), console("v2")}, received)
-}
-
-func TestConsoleEvents_SendBeforeListen(t *testing.T) {
-	c := newConsoleEvents("test")
-	c.Send(&api.Console{})
-
-	require.NoError(t, c.Listen())
-	defer c.Close()
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	var received []*api.Console
-	send := func(u *api.Console) error {
-		received = append(received, u)
-		cancel()
-		return nil
-	}
-
-	err := c.ConsoleEvents(ctx, send, func() error { return nil }, time.Hour)
-	assert.ErrorIs(t, err, context.Canceled)
-	assert.Equal(t, []*api.Console{{}}, received)
-}
-
-func TestConsoleEvents_ReconnectSendsEmpty(t *testing.T) {
-	c := newConsoleEvents("test")
-	require.NoError(t, c.Listen())
-
-	// MCP connects via ShowInConsole, consumed by the first loop.
-	require.NoError(t, c.ShowInConsole(console("v1")))
-	ctx1, cancel1 := context.WithCancel(context.Background())
-	go func() {
-		time.Sleep(10 * time.Millisecond)
-		cancel1()
-	}()
-	_ = c.ConsoleEvents(ctx1, func(*api.Console) error { return nil }, func() error { return nil }, time.Hour)
-	c.Close()
-
-	// New listener reconnects — gets initial empty because mcpConnected persists.
-	require.NoError(t, c.Listen())
-	defer c.Close()
-
-	ctx2, cancel2 := context.WithCancel(context.Background())
-	defer cancel2()
-
-	var received []*api.Console
-	err := c.ConsoleEvents(ctx2, func(u *api.Console) error {
-		received = append(received, u)
-		cancel2()
-		return nil
-	}, func() error { return nil }, time.Hour)
-	assert.ErrorIs(t, err, context.Canceled)
-	assert.Equal(t, []*api.Console{{}}, received)
+	assert.ErrorIs(t, <-errCh, context.Canceled)
+	assert.Equal(t, []*api.Console{console("v1"), console("v2")}, received)
 }
 
 func TestConsoleEvents_Tick(t *testing.T) {
-	c := newConsoleEvents("test")
-	require.NoError(t, c.Listen())
-	defer c.Close()
-
+	c := newConsoleEvents()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -188,7 +85,27 @@ func TestConsoleEvents_Tick(t *testing.T) {
 		return nil
 	}
 
-	err := c.ConsoleEvents(ctx, func(*api.Console) error { return nil }, tick, 10*time.Millisecond)
+	err := c.ConsoleEvents(ctx, nil, noop, tick, 10*time.Millisecond)
 	assert.ErrorIs(t, err, context.Canceled)
 	assert.GreaterOrEqual(t, tickCount, 2)
+}
+
+func TestConsoleState(t *testing.T) {
+	c := newConsoleEvents()
+	assert.Nil(t, c.ConsoleState())
+	c.SetConsoleState(console("state1"))
+	assert.Equal(t, console("state1"), c.ConsoleState())
+}
+
+func TestConsoleEvents_ResetsConsoleState(t *testing.T) {
+	c := newConsoleEvents()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	go func() {
+		c.SetConsoleState(console("state1"))
+		cancel()
+	}()
+
+	_ = c.ConsoleEvents(ctx, nil, noop, func() error { return nil }, time.Hour)
+	assert.Nil(t, c.ConsoleState())
 }
