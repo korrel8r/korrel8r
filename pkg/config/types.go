@@ -116,7 +116,7 @@ type StatusRule struct {
 
 // Tuning section for limits and optimizations.
 type Tuning struct {
-	// RequestTimeout cancels requests if they last longer than this timeout.
+	// RequestTimeout cancels incoming or outgoing requests that last longer than this timeout.
 	// If omitted or 0, requests never time out.
 	// Long-lived SSE subscriptions are exempt from this timeout.
 	RequestTimeout Duration `json:"requestTimeout,omitempty"`

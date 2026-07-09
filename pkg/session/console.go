@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/korrel8r/korrel8r/pkg/api"
-	"github.com/korrel8r/korrel8r/internal/pkg/logging"
 )
 
 var (
@@ -22,34 +21,34 @@ var (
 type consoleEvents struct {
 	session      string
 	fromConsole  atomic.Pointer[api.Console] // Latest state from console (REST→MCP).
-	update       chan *api.Console           // Latest-value channel for console updates (MCP→REST).
+	toConsole    chan *api.Console           // Latest-value channel for console updates (MCP→REST).
 	connected    atomic.Bool                 // True while an SSE listener is connected.
-	mcpConnected atomic.Bool                 // True once any MCP client has connected; survives listener reconnects.
+	mcpConnected atomic.Bool                 // True once ShowInConsole has been called; survives listener reconnects.
 }
 
 func newConsoleEvents(session string) *consoleEvents {
 	return &consoleEvents{
-		session: session,
-		update:  make(chan *api.Console, 1),
+		session:   session,
+		toConsole: make(chan *api.Console, 1),
 	}
 }
 
-// SetListener registers the SSE listener for this session.
+// Listen registers the SSE listener for this session.
 // Returns ErrConsoleBusy if a listener is already connected.
-// The caller must call ClearListener when done.
-func (c *consoleEvents) SetListener() error {
+// The caller must call Close when done.
+func (c *consoleEvents) Listen() error {
 	if !c.connected.CompareAndSwap(false, true) {
 		return ErrConsoleBusy
 	}
 	return nil
 }
 
-// ClearListener removes the active SSE listener and drains pending updates.
-func (c *consoleEvents) ClearListener() {
+// Close removes the active SSE listener and drains pending updates.
+func (c *consoleEvents) Close() {
 	c.connected.Store(false)
 	c.fromConsole.Store(nil)
 	select {
-	case <-c.update:
+	case <-c.toConsole:
 	default:
 	}
 }
@@ -61,20 +60,24 @@ func (c *consoleEvents) ShowInConsole(update *api.Console) error {
 	if !c.connected.Load() {
 		return ErrNoConsole
 	}
-	c.EnqueueConsoleUpdate(update)
+	c.mcpConnected.Store(true)
+	c.Send(update)
 	return nil
 }
 
-// EnqueueConsoleUpdate enqueues an update without requiring a connected listener.
+// Send enqueues an update without requiring a connected listener.
 // Use this for signals (like MCP connection) that may arrive before the SSE listener starts.
-func (c *consoleEvents) EnqueueConsoleUpdate(update *api.Console) {
-	c.mcpConnected.Store(true)
+func (c *consoleEvents) Send(update *api.Console) {
+	// Drain old value
 	select {
-	case <-c.update:
+	case <-c.toConsole:
 	default:
 	}
-	c.update <- update
-	log.V(3).Info("Console: enqueue", "session", c.session, "update", logging.JSON(update))
+	// Post new value
+	select {
+	case c.toConsole <- update:
+	default:
+	}
 }
 
 // ConsoleEvents loops sending updates and keepalives until ctx is canceled or a send fails.
@@ -86,22 +89,20 @@ func (c *consoleEvents) ConsoleEvents(
 	ctx context.Context,
 	send func(*api.Console) error,
 	tick func() error,
-	ticker *time.Ticker) error {
+	tickInterval time.Duration) error {
 
-	consoleSend := func(update *api.Console) error {
-		log.V(3).Info("Console: send", "session", c.session, "update", logging.JSON(update))
-		return send(update)
-	}
-
+	// Send empty "connected" notification directly (not via channel, to preserve pending updates).
 	if c.mcpConnected.Load() {
-		if err := consoleSend(&api.Console{}); err != nil {
+		if err := send(&api.Console{}); err != nil {
 			return err
 		}
 	}
+	ticker := time.NewTicker(tickInterval)
+	defer ticker.Stop()
 	for {
 		select {
-		case update := <-c.update:
-			if err := consoleSend(update); err != nil {
+		case update := <-c.toConsole:
+			if err := send(update); err != nil {
 				return err
 			}
 		case <-ticker.C:

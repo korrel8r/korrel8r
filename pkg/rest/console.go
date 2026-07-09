@@ -32,10 +32,8 @@ func ConsoleOK(e *engine.Engine, c *api.Console) error {
 		default:
 			return fmt.Errorf("search must have exactly one of .goals or .neighbors")
 		}
-		if start != nil {
-			if _, err := TraverseStart(e, *start); err != nil {
-				return err
-			}
+		if _, err := TraverseStart(e, *start); err != nil {
+			return err
 		}
 	}
 	return nil

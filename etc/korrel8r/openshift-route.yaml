@@ -27,3 +27,7 @@ stores:
 
 include:
   - rules/all.yaml
+
+tuning:
+  requestTimeout: 1m
+  sessionTimeout: 5m

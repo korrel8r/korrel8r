@@ -5,7 +5,6 @@ package mcp
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -108,7 +107,8 @@ func NewServer(sessions session.Manager) *Server {
 				Instructions: instructions,
 				InitializedHandler: func(ctx context.Context, _ *mcp.InitializedRequest) {
 					if ss, err := sessions.Get(ctx); err == nil {
-						ss.EnqueueConsoleUpdate(&api.Console{})
+						// Send an empty event to announce we are connected.
+						ss.Send(&api.Console{})
 					}
 				},
 			}),
@@ -224,6 +224,8 @@ depth 2-3 typically reaches related signals like logs, metrics, and alerts.
 			if err != nil {
 				return nil, nil, err
 			}
+			ctx, cancel := ss.Engine.WithTimeout(ctx, 0)
+			defer cancel()
 			start, err := rest.TraverseStart(ss.Engine, input.Start)
 			if err != nil {
 				return nil, nil, err
@@ -260,6 +262,8 @@ Example: to find logs for a crashing pod, use:
 			if err != nil {
 				return nil, nil, err
 			}
+			ctx, cancel := ss.Engine.WithTimeout(ctx, 0)
+			defer cancel()
 			start, err := rest.TraverseStart(ss.Engine, input.Start)
 			if err != nil {
 				return nil, nil, err
@@ -299,14 +303,13 @@ high-volume domains like logs, metrics, and traces.
 			if err != nil {
 				return nil, nil, err
 			}
+			ctx, cancel := ss.Engine.WithTimeout(ctx, 0)
+			defer cancel()
 			query, err := ss.Engine.Query(input.Query)
 			if err != nil {
 				return nil, nil, err
 			}
-			var constraint *korrel8r.Constraint
-			if c := input.Constraint; c != nil {
-				constraint = &korrel8r.Constraint{Limit: c.Limit, Start: c.Start, End: c.End}
-			}
+			constraint := rest.Constraint(input.Constraint)
 			r := result.New(query.Class())
 			if err := ss.Engine.Get(ctx, query, constraint, r); err != nil {
 				return nil, nil, err
@@ -339,7 +342,7 @@ and include it as context for further planning or actions.
 			}
 			state := ss.ConsoleState()
 			if state == nil {
-				return nil, nil, errors.New("no console is connected")
+				return nil, nil, session.ErrNoConsole
 			}
 			return nil, state, nil
 		})

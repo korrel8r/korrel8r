@@ -140,7 +140,7 @@ func (e *Engine) Get(ctx context.Context, query korrel8r.Query, constraint *korr
 	}
 	start := time.Now()
 	defer func() {
-		duration := time.Since(start)
+		latency := time.Since(start)
 		status := "ok"
 		if err != nil {
 			status = "error"
@@ -149,11 +149,11 @@ func (e *Engine) Get(ctx context.Context, query korrel8r.Query, constraint *korr
 			attribute.String("domain", domain),
 			attribute.String("status", status))
 		metricStoreQueries.Add(ctx, 1, attrs)
-		metricStoreQueryDuration.Record(ctx, duration.Seconds(), attrs)
+		metricStoreQueryDuration.Record(ctx, latency.Seconds(), attrs)
 		if err != nil {
-			log.V(2).Info("Get failed", "error", err, "query", query, "constraint", constraint, "duration", duration)
+			log.V(2).Info("Get failed", "error", err, "query", query, "constraint", constraint, "latency", latency)
 		} else {
-			log.V(5).Info("Get", "count", count, "query", query, "constraint", constraint, "duration", duration)
+			log.V(5).Info("Get", "count", count, "query", query, "constraint", constraint, "latency", latency)
 		}
 	}()
 	return ss.Get(ctx, query, constraint, korrel8r.AppenderFunc(func(o ...korrel8r.Object) {

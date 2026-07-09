@@ -234,11 +234,12 @@ func TraverseStart(e *engine.Engine, start api.Start) (traverse.Start, error) {
 		Class:      class,
 		Objects:    objects,
 		Queries:    queries,
-		Constraint: constraintTo(start.Constraint),
+		Constraint: Constraint(start.Constraint),
 	}, nil
 }
 
-func constraintTo(c *api.Constraint) *korrel8r.Constraint {
+// Constraint converts an api.Constraint to a korrel8r.Constraint
+func Constraint(c *api.Constraint) *korrel8r.Constraint {
 	if c == nil {
 		return nil
 	}
