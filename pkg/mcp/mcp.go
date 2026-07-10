@@ -105,7 +105,7 @@ func NewServer(sessions session.Manager) *Server {
 		Server: mcp.NewServer(
 			&mcp.Implementation{Name: "korrel8r", Title: "Korrel8r MCP Server", Version: build.Version},
 			&mcp.ServerOptions{
-				Instructions:       instructions,
+				Instructions: instructions,
 				InitializedHandler: func(ctx context.Context, _ *mcp.InitializedRequest) {
 					if ss, err := sessions.Get(ctx); err == nil {
 						ss.EnqueueConsoleUpdate(&api.Console{})
@@ -394,29 +394,28 @@ func (s *Server) handler(*http.Request) *mcp.Server {
 // logger is middleware to do debug logging of MCP methods
 func (s *Server) logger(handler mcp.MethodHandler) mcp.MethodHandler {
 	return func(ctx context.Context, tool string, req mcp.Request) (result mcp.Result, err error) {
-		if log.V(3).Enabled() { // Nothing to do if V < 3
+		if log.V(3).Enabled() {
 			start := time.Now()
+			detail := log.V(9).Enabled() // Extra detail
+
+			// Log on receiving request
+			common := []any{"tool", tool, "parameters", logging.JSON(req.GetParams())}
+			if sn, _ := s.session(ctx); sn != nil {
+				common = append(common, "session", sn.ID)
+			}
+			log.V(3).Info("MCP Request", common...)
+
+			// Log before sending response
 			defer func() {
-				latency := time.Since(start)
-				values := []any{
-					"tool", tool,
-					"latency", latency,
-					"parameters", logging.JSON(req.GetParams())}
-				if sn, _ := s.session(ctx); sn != nil {
-					values = append(values, "session", sn.ID)
-				}
+				values := append(common, "latency", time.Since(start))
 				if err != nil {
-					log.V(3).Info("MCP error", append([]any{"error", err}, values...)...)
-					return
-				}
-				if r, ok := result.(*mcp.CallToolResult); ok && r.IsError {
-					log.V(3).Info("MCP error result", append(values, "result", logging.JSON(result))...)
-					return
-				}
-				if log.V(9).Enabled() {
+					values = append(values, "error", err)
+				} else if r, ok := result.(*mcp.CallToolResult); ok && r.IsError {
+					values = append(values, "error", logging.JSON(result))
+				} else if detail {
 					values = append(values, "result", logging.JSON(result))
 				}
-				log.V(3).Info("MCP OK", values...)
+				log.V(3).Info("MCP Response", values...)
 			}()
 		}
 		return handler(ctx, tool, req)
