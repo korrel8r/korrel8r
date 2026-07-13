@@ -1,0 +1,370 @@
+# Correlation rules for KubeVirt / OpenShift Virtualization resources.
+#
+# CRDs covered:
+#   - VirtualMachine (kubevirt.io/v1)
+#   - VirtualMachineInstance (kubevirt.io/v1)
+#   - VirtualMachineInstanceMigration (kubevirt.io/v1)
+#   - DataVolume (cdi.kubevirt.io/v1beta1)
+#   - VirtualMachineSnapshot (snapshot.kubevirt.io/v1beta1)
+#   - VirtualMachineRestore (snapshot.kubevirt.io/v1beta1)
+#   - VirtualMachineExport (export.kubevirt.io/v1beta1)
+#
+# Metric label conventions in KubeVirt:
+#   - kubevirt_vm_* metrics use label "name" for the VM name
+#   - kubevirt_vmi_* metrics use label "name" for the VMI name
+#   - migration metrics use "vmi" for VMI name and "vmim" for migration name
+
+rules:
+  # ─── VM ↔ VMI / Pod / Node / PVC (core navigation) ──────────────────────────
+
+  - name: VmToVmi
+    start:
+      domain: k8s
+      classes: [VirtualMachine.kubevirt.io]
+    goal:
+      domain: k8s
+      classes: [VirtualMachineInstance.kubevirt.io]
+    result:
+      query: |-
+        k8s:VirtualMachineInstance.kubevirt.io:{"namespace":"{{.metadata.namespace}}","name":"{{.metadata.name}}"}
+
+  - name: VmiToPod
+    start:
+      domain: k8s
+      classes: [VirtualMachineInstance.kubevirt.io]
+    goal:
+      domain: k8s
+      classes: [Pod]
+    result:
+      query: |-
+        k8s:Pod:{"namespace":"{{.metadata.namespace}}","labels":{"vm.kubevirt.io/name":"{{.metadata.name}}","kubevirt.io":"virt-launcher"}}
+
+  - name: VmiToNode
+    start:
+      domain: k8s
+      classes: [VirtualMachineInstance.kubevirt.io]
+    goal:
+      domain: k8s
+      classes: [Node]
+    result:
+      query: |-
+        k8s:Node:{"name":"{{.status.nodeName}}"}
+
+  - name: VmToPVC
+    start:
+      domain: k8s
+      classes: [VirtualMachine.kubevirt.io]
+    goal:
+      domain: k8s
+      classes: [PersistentVolumeClaim]
+    result:
+      query: |-
+        {{- range .spec.dataVolumeTemplates }}
+        k8s:PersistentVolumeClaim:{"namespace":"{{$.metadata.namespace}}","name":"{{.metadata.name}}"}
+        {{- end }}
+
+  # ─── Alert ↔ VirtualMachine ────────────────────────────────────────────────
+
+  - name: AlertToVM
+    start:
+      domain: alert
+    goal:
+      domain: k8s
+      classes: [VirtualMachine.kubevirt.io]
+    result:
+      query: |-
+        k8s:VirtualMachine.kubevirt.io:{"namespace":"{{.Labels.namespace}}","name":"{{.Labels.name}}"}
+
+  - name: VmToAlert
+    start:
+      domain: k8s
+      classes: [VirtualMachine.kubevirt.io]
+    goal:
+      domain: alert
+    result:
+      query: |-
+        alert:alert:{"namespace":"{{.metadata.namespace}}","name":"{{.metadata.name}}"}
+
+  # ─── Alert ↔ VirtualMachineInstance ────────────────────────────────────────
+
+  - name: AlertToVMI
+    start:
+      domain: alert
+    goal:
+      domain: k8s
+      classes: [VirtualMachineInstance.kubevirt.io]
+    result:
+      query: |-
+        k8s:VirtualMachineInstance.kubevirt.io:{"namespace":"{{.Labels.namespace}}","name":"{{.Labels.name}}"}
+
+  - name: VmiToAlert
+    start:
+      domain: k8s
+      classes: [VirtualMachineInstance.kubevirt.io]
+    goal:
+      domain: alert
+    result:
+      query: |-
+        alert:alert:{"namespace":"{{.metadata.namespace}}","name":"{{.metadata.name}}"}
+
+  # ─── Alert ↔ VirtualMachineInstanceMigration ───────────────────────────────
+
+  - name: AlertToVmim
+    start:
+      domain: alert
+    goal:
+      domain: k8s
+      classes: [VirtualMachineInstanceMigration.kubevirt.io]
+    result:
+      query: |-
+        k8s:VirtualMachineInstanceMigration.kubevirt.io:{"namespace":"{{.Labels.namespace}}","name":"{{.Labels.vmim}}"}
+
+  - name: VmimToAlert
+    start:
+      domain: k8s
+      classes: [VirtualMachineInstanceMigration.kubevirt.io]
+    goal:
+      domain: alert
+    result:
+      query: |-
+        alert:alert:{"namespace":"{{.metadata.namespace}}","vmim":"{{.metadata.name}}"}
+
+  # ─── VM / VMI → Metrics (KubeVirt-specific label format) ──────────────────
+
+  - name: VmToMetric
+    start:
+      domain: k8s
+      classes: [VirtualMachine.kubevirt.io]
+    goal:
+      domain: metric
+    result:
+      query: |-
+        metric:metric:{namespace="{{.metadata.namespace}}",name="{{.metadata.name}}"}
+
+  - name: VmiToMetric
+    start:
+      domain: k8s
+      classes: [VirtualMachineInstance.kubevirt.io]
+    goal:
+      domain: metric
+    result:
+      query: |-
+        metric:metric:{namespace="{{.metadata.namespace}}",name="{{.metadata.name}}"}
+
+  # ─── VMI → Logs (shortcut: finds virt-launcher pod logs for a VMI) ────────
+
+  - name: VmiToLogs
+    start:
+      domain: k8s
+      classes: [VirtualMachineInstance.kubevirt.io]
+    goal:
+      domain: log
+    result:
+      query: |-
+        log:{{logTypeForNamespace .metadata.namespace}}:{"namespace":"{{.metadata.namespace}}","labels":{"kubevirt.io":"virt-launcher","vm.kubevirt.io/name":"{{.metadata.name}}"}}
+
+  # ─── VirtualMachineInstanceMigration ↔ VMI ────────────────────────────────
+
+  - name: VmimToVmi
+    start:
+      domain: k8s
+      classes: [VirtualMachineInstanceMigration.kubevirt.io]
+    goal:
+      domain: k8s
+      classes: [VirtualMachineInstance.kubevirt.io]
+    result:
+      query: |-
+        k8s:VirtualMachineInstance.kubevirt.io:{"namespace":"{{.metadata.namespace}}","name":"{{.spec.vmiName}}"}
+
+  - name: VmiToVmim
+    start:
+      domain: k8s
+      classes: [VirtualMachineInstance.kubevirt.io]
+    goal:
+      domain: k8s
+      classes: [VirtualMachineInstanceMigration.kubevirt.io]
+    result:
+      query: |-
+        k8s:VirtualMachineInstanceMigration.kubevirt.io:{"namespace":"{{.metadata.namespace}}","labels":{"kubevirt.io/vmi-name":"{{.metadata.name}}"}}
+
+  # ─── DataVolume ↔ PVC ─────────────────────────────────────────────────────
+
+  - name: DataVolumeToPVC
+    start:
+      domain: k8s
+      classes: [DataVolume.cdi.kubevirt.io]
+    goal:
+      domain: k8s
+      classes: [PersistentVolumeClaim]
+    result:
+      query: |-
+        k8s:PersistentVolumeClaim:{"namespace":"{{.metadata.namespace}}","name":"{{.metadata.name}}"}
+
+  # ─── VirtualMachine ↔ DataVolume ──────────────────────────────────────────
+
+  - name: VmToDataVolume
+    start:
+      domain: k8s
+      classes: [VirtualMachine.kubevirt.io]
+    goal:
+      domain: k8s
+      classes: [DataVolume.cdi.kubevirt.io]
+    result:
+      query: |-
+        {{- range .spec.dataVolumeTemplates }}
+        k8s:DataVolume.cdi.kubevirt.io:{"namespace":"{{$.metadata.namespace}}","name":"{{.metadata.name}}"}
+        {{- end }}
+
+  # ─── VirtualMachineSnapshot ↔ VirtualMachine ─────────────────────────────
+
+  - name: VmSnapshotToVm
+    start:
+      domain: k8s
+      classes: [VirtualMachineSnapshot.snapshot.kubevirt.io]
+    goal:
+      domain: k8s
+      classes: [VirtualMachine.kubevirt.io]
+    result:
+      query: |-
+        k8s:VirtualMachine.kubevirt.io:{"namespace":"{{.metadata.namespace}}","name":"{{.spec.source.name}}"}
+
+  - name: VmToVmSnapshot
+    start:
+      domain: k8s
+      classes: [VirtualMachine.kubevirt.io]
+    goal:
+      domain: k8s
+      classes: [VirtualMachineSnapshot.snapshot.kubevirt.io]
+    result:
+      query: |-
+        k8s:VirtualMachineSnapshot.snapshot.kubevirt.io:{"namespace":"{{.metadata.namespace}}","labels":{"vm.kubevirt.io/name":"{{.metadata.name}}"}}
+
+  # ─── VirtualMachineRestore ↔ VirtualMachine ──────────────────────────────
+
+  - name: VmRestoreToVm
+    start:
+      domain: k8s
+      classes: [VirtualMachineRestore.snapshot.kubevirt.io]
+    goal:
+      domain: k8s
+      classes: [VirtualMachine.kubevirt.io]
+    result:
+      query: |-
+        k8s:VirtualMachine.kubevirt.io:{"namespace":"{{.metadata.namespace}}","name":"{{.spec.target.name}}"}
+
+  - name: VmToVmRestore
+    start:
+      domain: k8s
+      classes: [VirtualMachine.kubevirt.io]
+    goal:
+      domain: k8s
+      classes: [VirtualMachineRestore.snapshot.kubevirt.io]
+    result:
+      query: |-
+        k8s:VirtualMachineRestore.snapshot.kubevirt.io:{"namespace":"{{.metadata.namespace}}","labels":{"vm.kubevirt.io/name":"{{.metadata.name}}"}}
+
+  # ─── VirtualMachineRestore → VirtualMachineSnapshot ───────────────────────
+
+  - name: VmRestoreToVmSnapshot
+    start:
+      domain: k8s
+      classes: [VirtualMachineRestore.snapshot.kubevirt.io]
+    goal:
+      domain: k8s
+      classes: [VirtualMachineSnapshot.snapshot.kubevirt.io]
+    result:
+      query: |-
+        k8s:VirtualMachineSnapshot.snapshot.kubevirt.io:{"namespace":"{{.metadata.namespace}}","name":"{{.spec.virtualMachineSnapshotName}}"}
+
+  # ─── VirtualMachineExport → source resource ───────────────────────────────
+
+  - name: VmExportToVm
+    start:
+      domain: k8s
+      classes: [VirtualMachineExport.export.kubevirt.io]
+    goal:
+      domain: k8s
+      classes: [VirtualMachine.kubevirt.io]
+    result:
+      query: |-
+        {{- if eq .spec.source.kind "VirtualMachine" -}}
+        k8s:VirtualMachine.kubevirt.io:{"namespace":"{{.metadata.namespace}}","name":"{{.spec.source.name}}"}
+        {{- end -}}
+
+  - name: VmExportToVmSnapshot
+    start:
+      domain: k8s
+      classes: [VirtualMachineExport.export.kubevirt.io]
+    goal:
+      domain: k8s
+      classes: [VirtualMachineSnapshot.snapshot.kubevirt.io]
+    result:
+      query: |-
+        {{- if eq .spec.source.kind "VirtualMachineSnapshot" -}}
+        k8s:VirtualMachineSnapshot.snapshot.kubevirt.io:{"namespace":"{{.metadata.namespace}}","name":"{{.spec.source.name}}"}
+        {{- end -}}
+
+  - name: VmExportToPVC
+    start:
+      domain: k8s
+      classes: [VirtualMachineExport.export.kubevirt.io]
+    goal:
+      domain: k8s
+      classes: [PersistentVolumeClaim]
+    result:
+      query: |-
+        {{- if eq .spec.source.kind "PersistentVolumeClaim" -}}
+        k8s:PersistentVolumeClaim:{"namespace":"{{.metadata.namespace}}","name":"{{.spec.source.name}}"}
+        {{- end -}}
+
+  # ─── Node → VMIs running on it (impact assessment) ────────────────────────
+  # KubeVirt labels VMIs with kubevirt.io/nodeName after scheduling.
+
+  - name: NodeToVmi
+    start:
+      domain: k8s
+      classes: [Node]
+    goal:
+      domain: k8s
+      classes: [VirtualMachineInstance.kubevirt.io]
+    result:
+      query: |-
+        k8s:VirtualMachineInstance.kubevirt.io:{"labels":{"kubevirt.io/nodeName":"{{.metadata.name}}"}}
+
+  # ─── DataVolume → CDI importer Pod (disk provisioning debugging) ───────────
+  # CDI creates importer pods labeled with the PVC name they're populating.
+  # DataVolume and its PVC share the same namespace/name.
+
+  - name: DataVolumeToImporterPod
+    start:
+      domain: k8s
+      classes: [DataVolume.cdi.kubevirt.io]
+    goal:
+      domain: k8s
+      classes: [Pod]
+    result:
+      query: |-
+        k8s:Pod:{"namespace":"{{.metadata.namespace}}","labels":{"cdi.kubevirt.io/storage.import.importPvcName":"{{.metadata.name}}"}}
+
+  # ─── VMI → NetworkAttachmentDefinition (Multus network debugging) ──────────
+  # VMIs reference NADs in spec.networks[].multus.networkName.
+  # Note: only handles same-namespace NADs (format "name").
+  # Cross-namespace format ("namespace/name") requires splitting which
+  # Go templates cannot do without a custom function.
+
+  - name: VmiToNetAttachDef
+    start:
+      domain: k8s
+      classes: [VirtualMachineInstance.kubevirt.io]
+    goal:
+      domain: k8s
+      classes: [NetworkAttachmentDefinition.k8s.cni.cncf.io]
+    result:
+      query: |-
+        {{- range .spec.networks }}
+        {{- with index . "multus" }}
+        {{- if not (contains "/" .networkName) }}
+        k8s:NetworkAttachmentDefinition.k8s.cni.cncf.io:{"namespace":"{{$.metadata.namespace}}","name":"{{.networkName}}"}
+        {{- end }}
+        {{- end }}
+        {{- end }}

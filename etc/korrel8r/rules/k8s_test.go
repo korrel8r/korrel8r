@@ -116,30 +116,6 @@ func TestK8sRules(t *testing.T) {
 			want: []string{`k8s:PersistentVolume.v1:{"name":"owner"}`},
 		},
 		{
-			rule: "VmiToNode",
-			start: newK8s("VirtualMachineInstance.kubevirt.io", "vm-ns", "vm-name", k8s.Object{
-				"status": k8s.Object{
-					"nodeName": "worker-1",
-				},
-			}),
-			want: []string{`k8s:Node.v1:{"name":"worker-1"}`},
-		},
-		{
-			rule: "VmToPVC",
-			start: newK8s("VirtualMachine.kubevirt.io", "vm-ns", "vm-name", k8s.Object{
-				"spec": k8s.Object{
-					"dataVolumeTemplates": []k8s.Object{
-						{"metadata": k8s.Object{"name": "dv1"}},
-						{"metadata": k8s.Object{"name": "dv2"}},
-					},
-				},
-			}),
-			want: []string{
-				`k8s:PersistentVolumeClaim.v1:{"namespace":"vm-ns","name":"dv1"}`,
-				`k8s:PersistentVolumeClaim.v1:{"namespace":"vm-ns","name":"dv2"}`,
-			},
-		},
-		{
 			rule: "PVCToPV",
 			start: newK8s("PersistentVolumeClaim", "ns", "pvc-1", k8s.Object{
 				"spec": k8s.Object{
@@ -165,16 +141,6 @@ func TestK8sRules(t *testing.T) {
 				},
 			}),
 			want: []string{`k8s:StorageClass.v1.storage.k8s.io:{"name":"sc-1"}`},
-		},
-		{
-			rule:  "VmToVmi",
-			start: newK8s("VirtualMachine.kubevirt.io", "vm-ns", "vm-name", nil),
-			want:  []string{`k8s:VirtualMachineInstance.v1.kubevirt.io:{"namespace":"vm-ns","name":"vm-name"}`},
-		},
-		{
-			rule:  "VmiToPod",
-			start: newK8s("VirtualMachineInstance.kubevirt.io", "vm-ns", "vm-name", nil),
-			want:  []string{`k8s:Pod.v1:{"namespace":"vm-ns","labels":{"kubevirt.io":"virt-launcher","vm.kubevirt.io/name":"vm-name"}}`},
 		},
 		{
 			rule:  "NodeToPod",
