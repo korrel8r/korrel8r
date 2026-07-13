@@ -120,17 +120,6 @@ rules:
       query: |-
         k8s:Node:{"name":"{{.spec.nodeName}}"}
 
-  - name: VmiToNode
-    start:
-      domain: k8s
-      classes: [VirtualMachineInstance.kubevirt.io]
-    goal:
-      domain: k8s
-      classes: [Node]
-    result:
-      query: |-
-        k8s:Node:{"name":"{{.status.nodeName}}"}
-
   - name: VolumeAttachmentToNode
     start:
       domain: k8s
@@ -170,19 +159,6 @@ rules:
         k8s:Node:{"name":"{{.}}"}
         {{- end}}
 
-  - name: VmToPVC
-    start:
-      domain: k8s
-      classes: [VirtualMachine.kubevirt.io]
-    goal:
-      domain: k8s
-      classes: [PersistentVolumeClaim]
-    result:
-      query: |-
-        {{- range .spec.dataVolumeTemplates }}
-        k8s:PersistentVolumeClaim:{"namespace":"{{$.metadata.namespace}}","name":"{{.metadata.name}}"}
-        {{- end }}
-
   - name: PVCToPV
     start:
       domain: k8s
@@ -215,28 +191,6 @@ rules:
     result:
       query: |-
         k8s:StorageClass.storage.k8s.io:{"name":"{{.spec.storageClassName}}"}
-
-  - name: VmToVmi
-    start:
-      domain: k8s
-      classes: [VirtualMachine.kubevirt.io]
-    goal:
-      domain: k8s
-      classes: [VirtualMachineInstance.kubevirt.io]
-    result:
-      query: |-
-        k8s:VirtualMachineInstance.kubevirt.io:{"namespace":"{{.metadata.namespace}}","name":"{{.metadata.name}}"}
-
-  - name: VmiToPod
-    start:
-      domain: k8s
-      classes: [VirtualMachineInstance.kubevirt.io]
-    goal:
-      domain: k8s
-      classes: [Pod]
-    result:
-      query: |-
-        k8s:Pod:{"namespace":"{{.metadata.namespace}}","labels":{"vm.kubevirt.io/name":"{{.metadata.name}}","kubevirt.io":"virt-launcher"}}
 
   - name: SubscriptionToCSV
     start:

@@ -53,6 +53,32 @@ var customResourcesForTests = []*metav1.APIResourceList{
 		APIResources: []metav1.APIResource{
 			{Kind: "VirtualMachineInstance", Namespaced: true},
 			{Kind: "VirtualMachine", Namespaced: true},
+			{Kind: "VirtualMachineInstanceMigration", Namespaced: true},
+		},
+	},
+	{
+		GroupVersion: "cdi.kubevirt.io/v1beta1",
+		APIResources: []metav1.APIResource{
+			{Kind: "DataVolume", Namespaced: true},
+		},
+	},
+	{
+		GroupVersion: "snapshot.kubevirt.io/v1beta1",
+		APIResources: []metav1.APIResource{
+			{Kind: "VirtualMachineSnapshot", Namespaced: true},
+			{Kind: "VirtualMachineRestore", Namespaced: true},
+		},
+	},
+	{
+		GroupVersion: "export.kubevirt.io/v1beta1",
+		APIResources: []metav1.APIResource{
+			{Kind: "VirtualMachineExport", Namespaced: true},
+		},
+	},
+	{
+		GroupVersion: "k8s.cni.cncf.io/v1",
+		APIResources: []metav1.APIResource{
+			{Kind: "NetworkAttachmentDefinition", Namespaced: true},
 		},
 	},
 	{
