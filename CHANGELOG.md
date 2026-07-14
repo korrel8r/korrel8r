@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [0.11.3] - 2026-07-14
+
+### Security
+- CVE-2026-42151: Upgraded prometheus client and other dependencies (COO-1892).
+
+### Added
+- Query limit parameter on constraints to control traversal breadth.
+
+### Fixed
+- Kubernetes domain now rejects non-existent classes.
+- Single console per session to prevent stale updates.
+
+### Changed
+- Simplified console connection logic.
+- Separated request/response logs for MCP and HTTP.
+
 ## [0.11.2] - 2026-06-26
 
 ### Added

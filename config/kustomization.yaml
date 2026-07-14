@@ -19,3 +19,6 @@ images:
 - name: quay.io/alanconway/korrel8r
   newName: quay.io/alanconway/korrel8r
   newTag: 0.11.3-dev
+- name: quay.io/korrel8r/korrel8r
+  newName: quay.io/korrel8r/korrel8r
+  newTag: 0.11.3
