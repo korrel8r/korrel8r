@@ -4,6 +4,10 @@
 #   - VirtualMachine (kubevirt.io/v1)
 #   - VirtualMachineInstance (kubevirt.io/v1)
 #   - VirtualMachineInstanceMigration (kubevirt.io/v1)
+#   - VirtualMachineInstancetype (instancetype.kubevirt.io/v1beta1)
+#   - VirtualMachineClusterInstancetype (instancetype.kubevirt.io/v1beta1)
+#   - VirtualMachinePreference (instancetype.kubevirt.io/v1beta1)
+#   - VirtualMachineClusterPreference (instancetype.kubevirt.io/v1beta1)
 #   - DataVolume (cdi.kubevirt.io/v1beta1)
 #   - VirtualMachineSnapshot (snapshot.kubevirt.io/v1beta1)
 #   - VirtualMachineRestore (snapshot.kubevirt.io/v1beta1)
@@ -59,8 +63,22 @@ rules:
       classes: [PersistentVolumeClaim]
     result:
       query: |-
-        {{- range .spec.dataVolumeTemplates }}
+        {{- range index .spec "dataVolumeTemplates" }}
         k8s:PersistentVolumeClaim:{"namespace":"{{$.metadata.namespace}}","name":"{{.metadata.name}}"}
+        {{- end }}
+        {{- range .spec.template.spec.volumes }}
+        {{- with index . "persistentVolumeClaim" }}
+        k8s:PersistentVolumeClaim:{"namespace":"{{$.metadata.namespace}}","name":"{{.claimName}}"}
+        {{- end }}
+        {{- with index . "dataVolume" }}
+        k8s:PersistentVolumeClaim:{"namespace":"{{$.metadata.namespace}}","name":"{{.name}}"}
+        {{- end }}
+        {{- with index . "ephemeral" }}
+        k8s:PersistentVolumeClaim:{"namespace":"{{$.metadata.namespace}}","name":"{{.persistentVolumeClaim.claimName}}"}
+        {{- end }}
+        {{- with index . "memoryDump" }}
+        k8s:PersistentVolumeClaim:{"namespace":"{{$.metadata.namespace}}","name":"{{.claimName}}"}
+        {{- end }}
         {{- end }}
 
   # ─── Alert ↔ VirtualMachine ────────────────────────────────────────────────
@@ -211,8 +229,56 @@ rules:
       classes: [DataVolume.cdi.kubevirt.io]
     result:
       query: |-
-        {{- range .spec.dataVolumeTemplates }}
+        {{- range index .spec "dataVolumeTemplates" }}
         k8s:DataVolume.cdi.kubevirt.io:{"namespace":"{{$.metadata.namespace}}","name":"{{.metadata.name}}"}
+        {{- end }}
+        {{- range .spec.template.spec.volumes }}
+        {{- with index . "dataVolume" }}
+        k8s:DataVolume.cdi.kubevirt.io:{"namespace":"{{$.metadata.namespace}}","name":"{{.name}}"}
+        {{- end }}
+        {{- end }}
+
+  # ─── VMI → PVC / DataVolume (running instance storage correlation) ───────
+  # VMI spec.volumes[] is copied from the VM template at launch.
+  # These rules enable storage event correlation from a running VMI.
+
+  - name: VmiToPVC
+    start:
+      domain: k8s
+      classes: [VirtualMachineInstance.kubevirt.io]
+    goal:
+      domain: k8s
+      classes: [PersistentVolumeClaim]
+    result:
+      query: |-
+        {{- range .spec.volumes }}
+        {{- with index . "persistentVolumeClaim" }}
+        k8s:PersistentVolumeClaim:{"namespace":"{{$.metadata.namespace}}","name":"{{.claimName}}"}
+        {{- end }}
+        {{- with index . "dataVolume" }}
+        k8s:PersistentVolumeClaim:{"namespace":"{{$.metadata.namespace}}","name":"{{.name}}"}
+        {{- end }}
+        {{- with index . "ephemeral" }}
+        k8s:PersistentVolumeClaim:{"namespace":"{{$.metadata.namespace}}","name":"{{.persistentVolumeClaim.claimName}}"}
+        {{- end }}
+        {{- with index . "memoryDump" }}
+        k8s:PersistentVolumeClaim:{"namespace":"{{$.metadata.namespace}}","name":"{{.claimName}}"}
+        {{- end }}
+        {{- end }}
+
+  - name: VmiToDataVolume
+    start:
+      domain: k8s
+      classes: [VirtualMachineInstance.kubevirt.io]
+    goal:
+      domain: k8s
+      classes: [DataVolume.cdi.kubevirt.io]
+    result:
+      query: |-
+        {{- range .spec.volumes }}
+        {{- with index . "dataVolume" }}
+        k8s:DataVolume.cdi.kubevirt.io:{"namespace":"{{$.metadata.namespace}}","name":"{{.name}}"}
+        {{- end }}
         {{- end }}
 
   # ─── VirtualMachineSnapshot ↔ VirtualMachine ─────────────────────────────
@@ -346,11 +412,29 @@ rules:
       query: |-
         k8s:Pod:{"namespace":"{{.metadata.namespace}}","labels":{"cdi.kubevirt.io/storage.import.importPvcName":"{{.metadata.name}}"}}
 
-  # ─── VMI → NetworkAttachmentDefinition (Multus network debugging) ──────────
+  # ─── VM / VMI → NetworkAttachmentDefinition (Multus network debugging) ───
+  # VMs reference NADs in spec.template.spec.networks[].multus.networkName.
   # VMIs reference NADs in spec.networks[].multus.networkName.
   # Note: only handles same-namespace NADs (format "name").
   # Cross-namespace format ("namespace/name") requires splitting which
   # Go templates cannot do without a custom function.
+
+  - name: VmToNetAttachDef
+    start:
+      domain: k8s
+      classes: [VirtualMachine.kubevirt.io]
+    goal:
+      domain: k8s
+      classes: [NetworkAttachmentDefinition.k8s.cni.cncf.io]
+    result:
+      query: |-
+        {{- range .spec.template.spec.networks }}
+        {{- with index . "multus" }}
+        {{- if not (contains "/" .networkName) }}
+        k8s:NetworkAttachmentDefinition.k8s.cni.cncf.io:{"namespace":"{{$.metadata.namespace}}","name":"{{.networkName}}"}
+        {{- end }}
+        {{- end }}
+        {{- end }}
 
   - name: VmiToNetAttachDef
     start:
@@ -366,5 +450,215 @@ rules:
         {{- if not (contains "/" .networkName) }}
         k8s:NetworkAttachmentDefinition.k8s.cni.cncf.io:{"namespace":"{{$.metadata.namespace}}","name":"{{.networkName}}"}
         {{- end }}
+        {{- end }}
+        {{- end }}
+
+  # ─── VM / VMI → Secret (cloud-init, sysprep, access credentials) ──────────
+  # Secrets are referenced from multiple volume types and accessCredentials.
+  # A missing or invalid Secret commonly causes VM boot failures.
+
+  - name: VmToSecret
+    start:
+      domain: k8s
+      classes: [VirtualMachine.kubevirt.io]
+    goal:
+      domain: k8s
+      classes: [Secret]
+    result:
+      query: |-
+        {{- range .spec.template.spec.volumes }}
+        {{- with index . "secret" }}
+        k8s:Secret:{"namespace":"{{$.metadata.namespace}}","name":"{{.secretName}}"}
+        {{- end }}
+        {{- with index . "cloudInitNoCloud" }}
+        {{- with index . "secretRef" }}
+        k8s:Secret:{"namespace":"{{$.metadata.namespace}}","name":"{{.name}}"}
+        {{- end }}
+        {{- with index . "networkDataSecretRef" }}
+        k8s:Secret:{"namespace":"{{$.metadata.namespace}}","name":"{{.name}}"}
+        {{- end }}
+        {{- end }}
+        {{- with index . "cloudInitConfigDrive" }}
+        {{- with index . "secretRef" }}
+        k8s:Secret:{"namespace":"{{$.metadata.namespace}}","name":"{{.name}}"}
+        {{- end }}
+        {{- with index . "networkDataSecretRef" }}
+        k8s:Secret:{"namespace":"{{$.metadata.namespace}}","name":"{{.name}}"}
+        {{- end }}
+        {{- end }}
+        {{- with index . "sysprep" }}
+        {{- with index . "secret" }}
+        k8s:Secret:{"namespace":"{{$.metadata.namespace}}","name":"{{.name}}"}
+        {{- end }}
+        {{- end }}
+        {{- end }}
+        {{- range index .spec.template.spec "accessCredentials" }}
+        {{- with index . "sshPublicKey" }}
+        {{- with index .source "secret" }}
+        k8s:Secret:{"namespace":"{{$.metadata.namespace}}","name":"{{.secretName}}"}
+        {{- end }}
+        {{- end }}
+        {{- with index . "userPassword" }}
+        {{- with index .source "secret" }}
+        k8s:Secret:{"namespace":"{{$.metadata.namespace}}","name":"{{.secretName}}"}
+        {{- end }}
+        {{- end }}
+        {{- end }}
+
+  - name: VmiToSecret
+    start:
+      domain: k8s
+      classes: [VirtualMachineInstance.kubevirt.io]
+    goal:
+      domain: k8s
+      classes: [Secret]
+    result:
+      query: |-
+        {{- range .spec.volumes }}
+        {{- with index . "secret" }}
+        k8s:Secret:{"namespace":"{{$.metadata.namespace}}","name":"{{.secretName}}"}
+        {{- end }}
+        {{- with index . "cloudInitNoCloud" }}
+        {{- with index . "secretRef" }}
+        k8s:Secret:{"namespace":"{{$.metadata.namespace}}","name":"{{.name}}"}
+        {{- end }}
+        {{- with index . "networkDataSecretRef" }}
+        k8s:Secret:{"namespace":"{{$.metadata.namespace}}","name":"{{.name}}"}
+        {{- end }}
+        {{- end }}
+        {{- with index . "cloudInitConfigDrive" }}
+        {{- with index . "secretRef" }}
+        k8s:Secret:{"namespace":"{{$.metadata.namespace}}","name":"{{.name}}"}
+        {{- end }}
+        {{- with index . "networkDataSecretRef" }}
+        k8s:Secret:{"namespace":"{{$.metadata.namespace}}","name":"{{.name}}"}
+        {{- end }}
+        {{- end }}
+        {{- with index . "sysprep" }}
+        {{- with index . "secret" }}
+        k8s:Secret:{"namespace":"{{$.metadata.namespace}}","name":"{{.name}}"}
+        {{- end }}
+        {{- end }}
+        {{- end }}
+        {{- range index .spec "accessCredentials" }}
+        {{- with index . "sshPublicKey" }}
+        {{- with index .source "secret" }}
+        k8s:Secret:{"namespace":"{{$.metadata.namespace}}","name":"{{.secretName}}"}
+        {{- end }}
+        {{- end }}
+        {{- with index . "userPassword" }}
+        {{- with index .source "secret" }}
+        k8s:Secret:{"namespace":"{{$.metadata.namespace}}","name":"{{.secretName}}"}
+        {{- end }}
+        {{- end }}
+        {{- end }}
+
+  # ─── VM / VMI → ConfigMap (sysprep, volume mounts) ────────────────────────
+
+  - name: VmToConfigMap
+    start:
+      domain: k8s
+      classes: [VirtualMachine.kubevirt.io]
+    goal:
+      domain: k8s
+      classes: [ConfigMap]
+    result:
+      query: |-
+        {{- range .spec.template.spec.volumes }}
+        {{- with index . "configMap" }}
+        k8s:ConfigMap:{"namespace":"{{$.metadata.namespace}}","name":"{{.name}}"}
+        {{- end }}
+        {{- with index . "sysprep" }}
+        {{- with index . "configMap" }}
+        k8s:ConfigMap:{"namespace":"{{$.metadata.namespace}}","name":"{{.name}}"}
+        {{- end }}
+        {{- end }}
+        {{- end }}
+
+  - name: VmiToConfigMap
+    start:
+      domain: k8s
+      classes: [VirtualMachineInstance.kubevirt.io]
+    goal:
+      domain: k8s
+      classes: [ConfigMap]
+    result:
+      query: |-
+        {{- range .spec.volumes }}
+        {{- with index . "configMap" }}
+        k8s:ConfigMap:{"namespace":"{{$.metadata.namespace}}","name":"{{.name}}"}
+        {{- end }}
+        {{- with index . "sysprep" }}
+        {{- with index . "configMap" }}
+        k8s:ConfigMap:{"namespace":"{{$.metadata.namespace}}","name":"{{.name}}"}
+        {{- end }}
+        {{- end }}
+        {{- end }}
+
+  # ─── VM / VMI → ServiceAccount ────────────────────────────────────────────
+
+  - name: VmToServiceAccount
+    start:
+      domain: k8s
+      classes: [VirtualMachine.kubevirt.io]
+    goal:
+      domain: k8s
+      classes: [ServiceAccount]
+    result:
+      query: |-
+        {{- range .spec.template.spec.volumes }}
+        {{- with index . "serviceAccount" }}
+        k8s:ServiceAccount:{"namespace":"{{$.metadata.namespace}}","name":"{{.serviceAccountName}}"}
+        {{- end }}
+        {{- end }}
+
+  - name: VmiToServiceAccount
+    start:
+      domain: k8s
+      classes: [VirtualMachineInstance.kubevirt.io]
+    goal:
+      domain: k8s
+      classes: [ServiceAccount]
+    result:
+      query: |-
+        {{- range .spec.volumes }}
+        {{- with index . "serviceAccount" }}
+        k8s:ServiceAccount:{"namespace":"{{$.metadata.namespace}}","name":"{{.serviceAccountName}}"}
+        {{- end }}
+        {{- end }}
+
+  # ─── VM → Instancetype / Preference (config resolution) ───────────────────
+  # VMs reference instancetypes and preferences by name + optional kind.
+  # Default kind is the cluster-scoped variant.
+
+  - name: VmToInstancetype
+    start:
+      domain: k8s
+      classes: [VirtualMachine.kubevirt.io]
+    goal:
+      domain: k8s
+    result:
+      query: |-
+        {{- with index .spec "instancetype" }}
+        {{- if eq (index . "kind") "VirtualMachineInstancetype" }}
+        k8s:VirtualMachineInstancetype.instancetype.kubevirt.io:{"namespace":"{{$.metadata.namespace}}","name":"{{.name}}"}
+        {{- else }}
+        k8s:VirtualMachineClusterInstancetype.instancetype.kubevirt.io:{"name":"{{.name}}"}
+        {{- end }}
+        {{- end }}
+
+  - name: VmToPreference
+    start:
+      domain: k8s
+      classes: [VirtualMachine.kubevirt.io]
+    goal:
+      domain: k8s
+    result:
+      query: |-
+        {{- with index .spec "preference" }}
+        {{- if eq (index . "kind") "VirtualMachinePreference" }}
+        k8s:VirtualMachinePreference.instancetype.kubevirt.io:{"namespace":"{{$.metadata.namespace}}","name":"{{.name}}"}
+        {{- else }}
+        k8s:VirtualMachineClusterPreference.instancetype.kubevirt.io:{"name":"{{.name}}"}
         {{- end }}
         {{- end }}

@@ -82,6 +82,15 @@ var customResourcesForTests = []*metav1.APIResourceList{
 		},
 	},
 	{
+		GroupVersion: "instancetype.kubevirt.io/v1beta1",
+		APIResources: []metav1.APIResource{
+			{Kind: "VirtualMachineInstancetype", Namespaced: true},
+			{Kind: "VirtualMachineClusterInstancetype", Namespaced: false},
+			{Kind: "VirtualMachinePreference", Namespaced: true},
+			{Kind: "VirtualMachineClusterPreference", Namespaced: false},
+		},
+	},
+	{
 		GroupVersion: "config.openshift.io/v1",
 		APIResources: []metav1.APIResource{
 			{Kind: "Node", Namespaced: false},
