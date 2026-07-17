@@ -50,12 +50,11 @@ func New(sessions session.Manager, r *gin.Engine) (*API, error) {
 		Sessions: sessions,
 		Router:   r,
 	}
-	r.Use(session.Middleware(sessions))
-	rg := r.Group(BasePath)
+	rg := r.Group(api.BasePath)
 	rg.Use(Metrics(), a.logger)
 	RegisterHandlers(rg, a)
 	// Helpful endpoints showing routes.
-	r.GET(BasePath, func(c *gin.Context) { spec, _ := api.GetSpec(); c.JSON(http.StatusOK, spec) })
+	r.GET(api.BasePath, func(c *gin.Context) { spec, _ := api.GetSpec(); c.JSON(http.StatusOK, spec) })
 	r.GET("/", a.homePage)
 	return a, nil
 }
@@ -219,8 +218,67 @@ func okResponse(c *gin.Context, body any) {
 	}
 }
 
+func (a *API) Help(c *gin.Context) {
+	session, err := a.session(c)
+	if !check(c, http.StatusInternalServerError, err) {
+		return
+	}
+	doc, err := DomainHelp(session.Engine, "")
+	if !check(c, http.StatusInternalServerError, err) {
+		return
+	}
+	c.JSON(http.StatusOK, api.Help{Documentation: doc})
+}
+
+func (a *API) HelpDomain(c *gin.Context, domain string) {
+	session, err := a.session(c)
+	if !check(c, http.StatusInternalServerError, err) {
+		return
+	}
+	doc, err := DomainHelp(session.Engine, domain)
+	if !check(c, http.StatusNotFound, err, "domain not found: %s", domain) {
+		return
+	}
+	c.JSON(http.StatusOK, api.Help{Documentation: doc})
+}
+
+// GetConsole returns the current console state.
+// (GET /console)
+func (a *API) GetConsole(c *gin.Context) {
+	s, err := a.session(c)
+	if !check(c, http.StatusInternalServerError, err) {
+		return
+	}
+	state := s.ConsoleState()
+	if state == nil {
+		check(c, http.StatusNotFound, session.ErrNoConsole)
+		return
+	}
+	c.JSON(http.StatusOK, state)
+}
+
+// ShowInConsole pushes a console display update to the SSE stream.
+// (PUT /console/events)
+func (a *API) ShowInConsole(c *gin.Context) {
+	update := &api.Console{}
+	if !check(c, http.StatusBadRequest, c.BindJSON(update)) {
+		return
+	}
+	s, err := a.session(c)
+	if !check(c, http.StatusInternalServerError, err) {
+		return
+	}
+	if !check(c, http.StatusBadRequest, ConsoleOK(s.Engine, update)) {
+		return
+	}
+	if !check(c, http.StatusNotFound, s.ShowInConsole(update)) {
+		return
+	}
+	c.JSON(http.StatusOK, struct{}{})
+}
+
 // Set the actual console display, called by the console itself.
-// (POST /console)
+// (PUT /console)
 func (a *API) SetConsole(c *gin.Context) {
 	state := &api.Console{}
 	if !check(c, http.StatusBadRequest, c.BindJSON(state)) {

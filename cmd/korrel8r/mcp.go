@@ -4,10 +4,16 @@ package main
 
 import (
 	"context"
+	"os"
 
+	"github.com/gin-gonic/gin"
+	"github.com/korrel8r/korrel8r/internal/pkg/build"
+	"github.com/korrel8r/korrel8r/internal/pkg/logging"
+	mcpmetrics "github.com/korrel8r/korrel8r/internal/pkg/mcp"
 	"github.com/korrel8r/korrel8r/internal/pkg/must"
 	"github.com/korrel8r/korrel8r/pkg/config"
 	"github.com/korrel8r/korrel8r/pkg/mcp"
+	"github.com/korrel8r/korrel8r/pkg/rest"
 	"github.com/korrel8r/korrel8r/pkg/session"
 	"github.com/spf13/cobra"
 )
@@ -23,7 +29,16 @@ For a HTTP streaming server use the 'web' command with the '--mcp' flag.
 	Run: func(cmd *cobra.Command, args []string) {
 		configs := must.Must1(config.Load(*configFlag))
 		e := must.Must1(newEngineWithConfigs(configs))
-		server := mcp.NewServer(session.NewSingleManager(e))
+		sessions := session.NewSingleManager(e)
+		if os.Getenv(gin.EnvGinMode) == "" {
+			gin.SetMode(gin.ReleaseMode)
+		}
+		router := gin.New()
+		router.Use(gin.Recovery(), session.Middleware(sessions))
+		must.Must1(rest.New(sessions, router))
+		client := mcp.NewClientForHandler(router)
+		server := mcp.NewServer(client, build.Version, logging.Log())
+		server.AddReceivingMiddleware(mcpmetrics.Metrics)
 		log.Info("MCP server starting on stdio.")
 		must.Must(server.ServeStdio(context.Background()))
 	},

@@ -8,7 +8,7 @@ import (
 	"net/url"
 	"testing"
 
-	"github.com/korrel8r/korrel8r/pkg/auth"
+	"github.com/korrel8r/korrel8r/pkg/api/auth"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	authv1 "k8s.io/api/authorization/v1"

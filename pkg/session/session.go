@@ -18,7 +18,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/korrel8r/korrel8r/internal/pkg/logging"
-	"github.com/korrel8r/korrel8r/pkg/auth"
+	"github.com/korrel8r/korrel8r/pkg/api/auth"
+	"github.com/korrel8r/korrel8r/pkg/tokenreview"
 	"github.com/korrel8r/korrel8r/pkg/engine"
 )
 
@@ -92,7 +93,7 @@ type entry struct {
 // poolManager maps session keys to Sessions, with timeout-based cleanup.
 type poolManager struct {
 	sessions    sync.Map // map[string]*entry
-	tokenReview *auth.TokenReview
+	tokenReview *tokenreview.TokenReview
 	factory     func() (*engine.Engine, error)
 	timeout     time.Duration
 	lastCleanup atomic.Int64
@@ -100,7 +101,7 @@ type poolManager struct {
 
 // NewTokenReviewManager creates a Manager that creates per-user sessions
 // using bearer tokens and TokenReview to find the owning user-id.
-func NewTokenReviewManager(tokenReview *auth.TokenReview, timeout time.Duration, factory func() (*engine.Engine, error)) Manager {
+func NewTokenReviewManager(tokenReview *tokenreview.TokenReview, timeout time.Duration, factory func() (*engine.Engine, error)) Manager {
 	return Manager(&poolManager{timeout: timeout, tokenReview: tokenReview, factory: factory})
 }
 

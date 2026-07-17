@@ -1,23 +1,16 @@
 // Copyright: This file is part of korrel8r, released under https://github.com/korrel8r/korrel8r/blob/main/LICENSE
 
-// Package mcp provides an MCP server and argument structures for MCP client calls.
+// Package mcp provides an MCP server that proxies to the korrel8r REST API.
 package mcp
 
 import (
 	"context"
-	"fmt"
+	"encoding/json"
 	"net/http"
-	"strings"
 	"time"
 
-	"github.com/korrel8r/korrel8r/internal/pkg/build"
-	"github.com/korrel8r/korrel8r/internal/pkg/logging"
+	"github.com/go-logr/logr"
 	"github.com/korrel8r/korrel8r/pkg/api"
-	"github.com/korrel8r/korrel8r/pkg/engine/traverse"
-	"github.com/korrel8r/korrel8r/pkg/korrel8r"
-	"github.com/korrel8r/korrel8r/pkg/rest"
-	"github.com/korrel8r/korrel8r/pkg/result"
-	"github.com/korrel8r/korrel8r/pkg/session"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
@@ -94,22 +87,23 @@ const (
 
 type Server struct {
 	*mcp.Server
-	sessions session.Manager
+	client *Client
+	log    logr.Logger
 }
 
-// NewServer creates a new MCP server.
-// Tool handlers resolve the session per-request using the auth token from the context.
-func NewServer(sessions session.Manager) *Server {
+// NewServer creates a new MCP server that proxies to a korrel8r REST API via the given client.
+func NewServer(client *Client, version string, log logr.Logger) *Server {
 	s := &Server{
 		Server: mcp.NewServer(
-			&mcp.Implementation{Name: "korrel8r", Title: "Korrel8r MCP Server", Version: build.Version},
+			&mcp.Implementation{Name: "korrel8r", Title: "Korrel8r MCP Server", Version: version},
 			&mcp.ServerOptions{
 				Instructions: instructions,
 			}),
-		sessions: sessions,
+		client: client,
+		log:    log,
 	}
 	s.addTools()
-	s.AddReceivingMiddleware(s.metrics, s.logger)
+	s.AddReceivingMiddleware(s.logger)
 	return s
 }
 
@@ -123,11 +117,11 @@ Use this first to discover available domains, then use list_domain_classes to ex
 `,
 	},
 		func(ctx context.Context, req *mcp.CallToolRequest, input struct{}) (_ *mcp.CallToolResult, out ListDomainsResult, err error) {
-			ss, err := s.session(ctx)
+			domains, err := s.client.ListDomains(ctx)
 			if err != nil {
 				return nil, ListDomainsResult{}, err
 			}
-			return nil, ListDomainsResult{Domains: rest.ListDomains(ss.Engine)}, nil
+			return nil, ListDomainsResult{Domains: domains}, nil
 		})
 
 	mcp.AddTool(s.Server, &mcp.Tool{
@@ -142,19 +136,11 @@ Class names are used in queries and as goal parameters. The full class name is "
 `,
 	},
 		func(ctx context.Context, req *mcp.CallToolRequest, input DomainParams) (*mcp.CallToolResult, *ListDomainClassesResult, error) {
-			ss, err := s.session(ctx)
+			classes, err := s.client.ListDomainClasses(ctx, input.Domain)
 			if err != nil {
 				return nil, nil, err
 			}
-			d, err := ss.Engine.Domain(input.Domain)
-			if err != nil {
-				return nil, nil, err
-			}
-			out := &ListDomainClassesResult{Domain: d.Name()}
-			for _, c := range d.Classes() {
-				out.Classes = append(out.Classes, c.Name())
-			}
-			return nil, out, nil
+			return nil, &ListDomainClassesResult{Domain: input.Domain, Classes: classes}, nil
 		})
 
 	mcp.AddTool(s.Server, &mcp.Tool{
@@ -174,25 +160,11 @@ For example: create_neighbors_graph, create_goals_graph, get_console or show_in_
 `,
 	},
 		func(ctx context.Context, req *mcp.CallToolRequest, input HelpParams) (*mcp.CallToolResult, *HelpResult, error) {
-			ss, err := s.session(ctx)
+			doc, err := s.client.Help(ctx, input.Domain)
 			if err != nil {
 				return nil, nil, err
 			}
-			var b strings.Builder
-			var domains []korrel8r.Domain
-			if input.Domain != "" {
-				d, err := ss.Engine.Domain(input.Domain)
-				if err != nil {
-					return nil, nil, err
-				}
-				domains = []korrel8r.Domain{d}
-			} else {
-				domains = ss.Engine.Domains()
-			}
-			for _, d := range domains {
-				fmt.Fprintf(&b, "%s\n\n", d.Description())
-			}
-			return nil, &HelpResult{Documentation: b.String()}, nil
+			return nil, &HelpResult{Documentation: doc}, nil
 		})
 
 	mcp.AddTool(s.Server, &mcp.Tool{
@@ -214,21 +186,11 @@ depth 2-3 typically reaches related signals like logs, metrics, and alerts.
 `,
 	},
 		func(ctx context.Context, req *mcp.CallToolRequest, input NeighborParams) (*mcp.CallToolResult, *api.Graph, error) {
-			ss, err := s.session(ctx)
+			g, err := s.client.GraphNeighbors(ctx, input)
 			if err != nil {
 				return nil, nil, err
 			}
-			ctx, cancel := ss.Engine.WithTimeout(ctx, 0)
-			defer cancel()
-			start, err := rest.TraverseStart(ss.Engine, input.Start)
-			if err != nil {
-				return nil, nil, err
-			}
-			g, err := traverse.Neighbors(ctx, ss.Engine, start, input.Depth)
-			if err != nil {
-				return nil, nil, err
-			}
-			return nil, rest.NewGraph(g, nil), nil
+			return nil, g, nil
 		})
 
 	mcp.AddTool(s.Server, &mcp.Tool{
@@ -252,25 +214,11 @@ Example: to find logs for a crashing pod, use:
 `,
 	},
 		func(ctx context.Context, req *mcp.CallToolRequest, input GoalParams) (*mcp.CallToolResult, *api.Graph, error) {
-			ss, err := s.session(ctx)
+			g, err := s.client.GraphGoals(ctx, input)
 			if err != nil {
 				return nil, nil, err
 			}
-			ctx, cancel := ss.Engine.WithTimeout(ctx, 0)
-			defer cancel()
-			start, err := rest.TraverseStart(ss.Engine, input.Start)
-			if err != nil {
-				return nil, nil, err
-			}
-			goals, err := ss.Engine.Classes(input.Goals)
-			if err != nil {
-				return nil, nil, err
-			}
-			g, err := traverse.Goals(ctx, ss.Engine, start, goals)
-			if err != nil {
-				return nil, nil, err
-			}
-			return nil, rest.NewGraph(g, nil), nil
+			return nil, g, nil
 		})
 
 	mcp.AddTool(s.Server, &mcp.Tool{
@@ -293,24 +241,17 @@ high-volume domains like logs, metrics, and traces.
 `,
 	},
 		func(ctx context.Context, req *mcp.CallToolRequest, input ObjectsParams) (*mcp.CallToolResult, *ObjectsResult, error) {
-			ss, err := s.session(ctx)
+			raw, err := s.client.GetObjects(ctx, input.Query, input.Constraint)
 			if err != nil {
 				return nil, nil, err
 			}
-			ctx, cancel := ss.Engine.WithTimeout(ctx, 0)
-			defer cancel()
-			query, err := ss.Engine.Query(input.Query)
-			if err != nil {
-				return nil, nil, err
-			}
-			constraint := rest.Constraint(input.Constraint)
-			r := result.New(query.Class())
-			if err := ss.Engine.Get(ctx, query, constraint, r); err != nil {
-				return nil, nil, err
-			}
-			objects := []any(r.List())
-			if objects == nil {
-				objects = []any{}
+			objects := make([]any, len(raw))
+			for i, r := range raw {
+				var v any
+				if err := json.Unmarshal(r, &v); err != nil {
+					return nil, nil, err
+				}
+				objects[i] = v
 			}
 			return nil, &ObjectsResult{Objects: objects}, nil
 		})
@@ -330,15 +271,11 @@ and include it as context for further planning or actions.
 `,
 	},
 		func(ctx context.Context, req *mcp.CallToolRequest, input struct{}) (*mcp.CallToolResult, *api.Console, error) {
-			ss, err := s.session(ctx)
+			console, err := s.client.GetConsole(ctx)
 			if err != nil {
 				return nil, nil, err
 			}
-			state := ss.ConsoleState()
-			if state == nil {
-				return nil, nil, session.ErrNoConsole
-			}
-			return nil, state, nil
+			return nil, console, nil
 		})
 
 	mcp.AddTool(s.Server, &mcp.Tool{
@@ -353,14 +290,10 @@ Use 'help' to learn the class and query syntax for each domain.
 `,
 	},
 		func(ctx context.Context, req *mcp.CallToolRequest, update ShowInConsoleParams) (*mcp.CallToolResult, any, error) {
-			ss, err := s.session(ctx)
-			if err != nil {
+			if err := s.client.ShowInConsole(ctx, &update); err != nil {
 				return nil, nil, err
 			}
-			if err := rest.ConsoleOK(ss.Engine, &update); err != nil {
-				return nil, nil, err
-			}
-			return nil, nil, ss.ShowInConsole(&update)
+			return nil, nil, nil
 		})
 }
 
@@ -374,49 +307,48 @@ func (s *Server) HTTPHandler() http.Handler {
 	return mcp.NewStreamableHTTPHandler(s.handler, &mcp.StreamableHTTPOptions{})
 }
 
-func (s *Server) session(ctx context.Context) (*session.Session, error) {
-	// First check for session already set on context by transport.
-	if s := session.FromContext(ctx); s != nil {
-		return s, nil
-	}
-	return s.sessions.Get(ctx)
-}
-
 // handler returns the shared server for all requests.
-// Per-session state is resolved per-request by tool handlers via sessions.Get.
 func (s *Server) handler(*http.Request) *mcp.Server {
 	return s.Server
+}
+
+// jsonValue wraps a value for JSON rendering in log output.
+type jsonValue struct{ v any }
+
+func (j jsonValue) MarshalLog() any {
+	b, err := json.Marshal(j.v)
+	if err != nil {
+		return err.Error()
+	}
+	var v any
+	if err := json.Unmarshal(b, &v); err != nil {
+		return string(b)
+	}
+	return v
 }
 
 // logger is middleware to do debug logging of MCP methods
 func (s *Server) logger(handler mcp.MethodHandler) mcp.MethodHandler {
 	return func(ctx context.Context, tool string, req mcp.Request) (result mcp.Result, err error) {
-		if log.V(3).Enabled() {
+		if s.log.V(3).Enabled() {
 			start := time.Now()
-			detail := log.V(9).Enabled() // Extra detail
+			detail := s.log.V(9).Enabled()
 
-			// Log on receiving request
-			common := []any{"tool", tool, "parameters", logging.JSON(req.GetParams())}
-			if sn, _ := s.session(ctx); sn != nil {
-				common = append(common, "session", sn.ID)
-			}
-			log.V(3).Info("MCP Request", common...)
+			common := []any{"tool", tool, "parameters", jsonValue{req.GetParams()}}
+			s.log.V(3).Info("MCP Request", common...)
 
-			// Log before sending response
 			defer func() {
 				values := append(common, "latency", time.Since(start))
 				if err != nil {
 					values = append(values, "error", err)
 				} else if r, ok := result.(*mcp.CallToolResult); ok && r.IsError {
-					values = append(values, "error", logging.JSON(result))
+					values = append(values, "error", jsonValue{result})
 				} else if detail {
-					values = append(values, "result", logging.JSON(result))
+					values = append(values, "result", jsonValue{result})
 				}
-				log.V(3).Info("MCP Response", values...)
+				s.log.V(3).Info("MCP Response", values...)
 			}()
 		}
 		return handler(ctx, tool, req)
 	}
 }
-
-var log = logging.Log()

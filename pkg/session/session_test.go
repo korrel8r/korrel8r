@@ -11,7 +11,7 @@ import (
 
 	"github.com/korrel8r/korrel8r/internal/pkg/test"
 	"github.com/korrel8r/korrel8r/internal/pkg/test/mock"
-	"github.com/korrel8r/korrel8r/pkg/auth"
+	"github.com/korrel8r/korrel8r/pkg/api/auth"
 	"github.com/korrel8r/korrel8r/pkg/engine"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

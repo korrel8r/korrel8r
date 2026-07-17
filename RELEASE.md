@@ -31,8 +31,12 @@ Updating the latest version to `X.Y.Z` is done on main to avoid needless branchi
 `make release` does the following:
 
 - `make clean` and re-build, verify nothing changes, working tree is clean.
-- Create and push the git tag `vX.Y.Z`
+- Create and push git tags: `vX.Y.Z`, `pkg/api/vX.Y.Z`, `pkg/mcp/vX.Y.Z`
 - Update the `latest` image tag to point to the new images.
+
+The `pkg/api` and `pkg/mcp` submodule tags are required so that external
+consumers can resolve these modules via `go get`. All three tags are
+created from the same commit to keep versions in sync.
 
 ## Release Patch to Old Version
 
