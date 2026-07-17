@@ -3,7 +3,9 @@
 package rest
 
 import (
+	"bufio"
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -19,7 +21,7 @@ import (
 	"github.com/korrel8r/korrel8r/internal/pkg/test"
 	"github.com/korrel8r/korrel8r/internal/pkg/test/mock"
 	"github.com/korrel8r/korrel8r/pkg/api"
-	"github.com/korrel8r/korrel8r/pkg/auth"
+	"github.com/korrel8r/korrel8r/pkg/api/auth"
 	"github.com/korrel8r/korrel8r/pkg/config"
 	"github.com/korrel8r/korrel8r/pkg/engine"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
@@ -331,6 +333,114 @@ func TestMultiSession_QueryIsolation(t *testing.T) {
 	// Same token should get the same result (same session reused).
 	resultA2 := getObjects("Bearer token-A")
 	assert.Equal(t, resultA, resultA2, "same token should reuse session")
+}
+
+func TestAPI_Help(t *testing.T) {
+	e, err := engine.Build().Domains(mock.NewDomain("mock", "a")).Engine()
+	require.NoError(t, err)
+	a := newTestAPI(t, e)
+	w := a.do(t, "GET", "/api/v1alpha1/help", nil)
+	require.Equal(t, http.StatusOK, w.Code)
+	var got api.Help
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &got))
+	assert.Contains(t, got.Documentation, "Mock domain.")
+}
+
+func TestAPI_HelpDomain(t *testing.T) {
+	e, err := engine.Build().Domains(mock.NewDomain("mock", "a"), mock.NewDomain("other")).Engine()
+	require.NoError(t, err)
+	a := newTestAPI(t, e)
+	w := a.do(t, "GET", "/api/v1alpha1/help/mock", nil)
+	require.Equal(t, http.StatusOK, w.Code)
+	var got api.Help
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &got))
+	assert.Contains(t, got.Documentation, "Mock domain.")
+}
+
+func TestAPI_HelpDomain_notFound(t *testing.T) {
+	e, err := engine.Build().Domains(mock.NewDomain("mock")).Engine()
+	require.NoError(t, err)
+	a := newTestAPI(t, e)
+	w := a.do(t, "GET", "/api/v1alpha1/help/nosuch", nil)
+	assert.Equal(t, http.StatusNotFound, w.Code)
+}
+
+func TestAPI_GetConsole(t *testing.T) {
+	d := mock.NewDomain("mock", "a")
+	e, err := engine.Build().Domains(d).Stores(mock.NewStore(d)).Engine()
+	require.NoError(t, err)
+	a := newTestAPI(t, e)
+
+	// Set console state via PUT
+	w := a.do(t, "PUT", "/api/v1alpha1/console", api.Console{View: "mock:a:x"})
+	require.Equal(t, http.StatusOK, w.Code)
+
+	// Read it back via GET
+	w = a.do(t, "GET", "/api/v1alpha1/console", nil)
+	require.Equal(t, http.StatusOK, w.Code)
+	var got api.Console
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &got))
+	assert.Equal(t, api.Query("mock:a:x"), got.View)
+}
+
+func TestAPI_GetConsole_noConsole(t *testing.T) {
+	e, err := engine.Build().Domains(mock.NewDomain("mock")).Engine()
+	require.NoError(t, err)
+	a := newTestAPI(t, e)
+	w := a.do(t, "GET", "/api/v1alpha1/console", nil)
+	assert.Equal(t, http.StatusNotFound, w.Code)
+}
+
+func TestAPI_ShowInConsole(t *testing.T) {
+	d := mock.NewDomain("mock", "a")
+	e, err := engine.Build().Domains(d).Stores(mock.NewStore(d)).Engine()
+	require.NoError(t, err)
+	a := newTestAPI(t, e)
+
+	// Start SSE listener on a real HTTP server
+	srv := httptest.NewServer(a.Router)
+	defer srv.Close()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	req, err := http.NewRequestWithContext(ctx, "GET", srv.URL+"/api/v1alpha1/console/events", nil)
+	require.NoError(t, err)
+	resp, err := http.DefaultClient.Do(req)
+	require.NoError(t, err)
+	defer func() { _ = resp.Body.Close() }()
+
+	events := make(chan string, 10)
+	go func() {
+		defer close(events)
+		s := bufio.NewScanner(resp.Body)
+		for s.Scan() {
+			if data, ok := strings.CutPrefix(s.Text(), "data: "); ok {
+				events <- data
+			}
+		}
+	}()
+
+	time.Sleep(100 * time.Millisecond) // Let SSE listener start
+	w := a.do(t, "PUT", "/api/v1alpha1/console/events", api.Console{View: "mock:a:x"})
+	require.Equal(t, http.StatusOK, w.Code)
+
+	select {
+	case data := <-events:
+		var got api.Console
+		require.NoError(t, json.Unmarshal([]byte(data), &got))
+		assert.Equal(t, api.Query("mock:a:x"), got.View)
+	case <-time.After(2 * time.Second):
+		t.Fatal("timed out waiting for SSE event")
+	}
+}
+
+func TestAPI_ShowInConsole_noListener(t *testing.T) {
+	d := mock.NewDomain("mock", "a")
+	e, err := engine.Build().Domains(d).Stores(mock.NewStore(d)).Engine()
+	require.NoError(t, err)
+	a := newTestAPI(t, e)
+	w := a.do(t, "PUT", "/api/v1alpha1/console/events", api.Console{View: "mock:a:x"})
+	assert.Equal(t, http.StatusNotFound, w.Code)
 }
 
 func TestTraverseStart_errors(t *testing.T) {

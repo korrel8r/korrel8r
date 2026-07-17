@@ -51,9 +51,9 @@ var customResourcesForTests = []*metav1.APIResourceList{
 	{
 		GroupVersion: "kubevirt.io/v1",
 		APIResources: []metav1.APIResource{
-			{Kind: "VirtualMachineInstance", Namespaced: true},
-			{Kind: "VirtualMachine", Namespaced: true},
-			{Kind: "VirtualMachineInstanceMigration", Namespaced: true},
+			{Name: "virtualmachineinstances", Kind: "VirtualMachineInstance", Namespaced: true},
+			{Name: "virtualmachines", Kind: "VirtualMachine", Namespaced: true},
+			{Name: "virtualmachineinstancemigrations", Kind: "VirtualMachineInstanceMigration", Namespaced: true},
 		},
 	},
 	{

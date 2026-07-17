@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/korrel8r/korrel8r/internal/pkg/cache"
-	"github.com/korrel8r/korrel8r/pkg/auth"
+	"github.com/korrel8r/korrel8r/pkg/api/auth"
 	authv1 "k8s.io/api/authorization/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )

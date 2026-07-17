@@ -45,7 +45,7 @@ func startServer(t *testing.T, h *http.Client, scheme string, args ...string) *u
 	t.Cleanup(func() {
 		_ = cmd.Process.Kill()
 	})
-	return &url.URL{Scheme: scheme, Host: addr, Path: rest.BasePath}
+	return &url.URL{Scheme: scheme, Host: addr, Path: api.BasePath}
 }
 
 func request(t *testing.T, h *http.Client, method, url, body string) (string, error) {
@@ -146,7 +146,7 @@ func TestMain_server_tls_min_version(t *testing.T) {
 			MaxVersion: tls.VersionTLS13,
 		},
 	}}
-	u := fmt.Sprintf("https://%v%v/domains", addr, rest.BasePath)
+	u := fmt.Sprintf("https://%v%v/domains", addr, api.BasePath)
 	require.Eventually(t, func() bool {
 		_, err = tls13Client.Get(u)
 		return err == nil

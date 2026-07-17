@@ -18,12 +18,18 @@ type ServerInterface interface {
 	// Change configuration settings at runtime.
 	// (PUT /config)
 	SetConfig(c *gin.Context, params SetConfigParams)
+	// Get current console state.
+	// (GET /console)
+	GetConsole(c *gin.Context)
 	// Make console state available to an agent.
 	// (PUT /console)
 	SetConsole(c *gin.Context)
 	// SSE event stream of console display updates from an agent.
 	// (GET /console/events)
 	ConsoleEvents(c *gin.Context)
+	// Send a display update to the console.
+	// (PUT /console/events)
+	ShowInConsole(c *gin.Context)
 	// Get the list of classes for a domain.
 	// (GET /domain/{domain}/classes)
 	ListDomainClasses(c *gin.Context, domain string)
@@ -39,6 +45,12 @@ type ServerInterface interface {
 	// Create a neighborhood graph around a start object to a given depth.
 	// (POST /graphs/neighbours)
 	GraphNeighbours(c *gin.Context, params GraphNeighboursParams)
+	// Get help about all domains.
+	// (GET /help)
+	Help(c *gin.Context)
+	// Get help about a specific domain.
+	// (GET /help/{domain})
+	HelpDomain(c *gin.Context, domain string)
 	// Create a list of goal nodes related to a starting point.
 	// (POST /lists/goals)
 	ListGoals(c *gin.Context)
@@ -83,6 +95,19 @@ func (siw *ServerInterfaceWrapper) SetConfig(c *gin.Context) {
 	siw.Handler.SetConfig(c, params)
 }
 
+// GetConsole operation middleware
+func (siw *ServerInterfaceWrapper) GetConsole(c *gin.Context) {
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.GetConsole(c)
+}
+
 // SetConsole operation middleware
 func (siw *ServerInterfaceWrapper) SetConsole(c *gin.Context) {
 
@@ -107,6 +132,19 @@ func (siw *ServerInterfaceWrapper) ConsoleEvents(c *gin.Context) {
 	}
 
 	siw.Handler.ConsoleEvents(c)
+}
+
+// ShowInConsole operation middleware
+func (siw *ServerInterfaceWrapper) ShowInConsole(c *gin.Context) {
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.ShowInConsole(c)
 }
 
 // ListDomainClasses operation middleware
@@ -228,6 +266,44 @@ func (siw *ServerInterfaceWrapper) GraphNeighbours(c *gin.Context) {
 	siw.Handler.GraphNeighbours(c, params)
 }
 
+// Help operation middleware
+func (siw *ServerInterfaceWrapper) Help(c *gin.Context) {
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.Help(c)
+}
+
+// HelpDomain operation middleware
+func (siw *ServerInterfaceWrapper) HelpDomain(c *gin.Context) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "domain" -------------
+	var domain string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "domain", c.Param("domain"), &domain, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter domain: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.HelpDomain(c, domain)
+}
+
 // ListGoals operation middleware
 func (siw *ServerInterfaceWrapper) ListGoals(c *gin.Context) {
 
@@ -304,13 +380,17 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 	}
 
 	router.PUT(options.BaseURL+"/config", wrapper.SetConfig)
+	router.GET(options.BaseURL+"/console", wrapper.GetConsole)
 	router.PUT(options.BaseURL+"/console", wrapper.SetConsole)
 	router.GET(options.BaseURL+"/console/events", wrapper.ConsoleEvents)
+	router.PUT(options.BaseURL+"/console/events", wrapper.ShowInConsole)
 	router.GET(options.BaseURL+"/domain/:domain/classes", wrapper.ListDomainClasses)
 	router.GET(options.BaseURL+"/domains", wrapper.ListDomains)
 	router.POST(options.BaseURL+"/graphs/goals", wrapper.GraphGoals)
 	router.POST(options.BaseURL+"/graphs/neighbors", wrapper.GraphNeighbors)
 	router.POST(options.BaseURL+"/graphs/neighbours", wrapper.GraphNeighbours)
+	router.GET(options.BaseURL+"/help", wrapper.Help)
+	router.GET(options.BaseURL+"/help/:domain", wrapper.HelpDomain)
 	router.POST(options.BaseURL+"/lists/goals", wrapper.ListGoals)
 	router.GET(options.BaseURL+"/objects", wrapper.Objects)
 }
