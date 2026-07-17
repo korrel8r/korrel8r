@@ -12,9 +12,12 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/gin-gonic/gin"
+	"github.com/go-logr/logr"
 	"github.com/korrel8r/korrel8r/internal/pkg/test/mock"
 	"github.com/korrel8r/korrel8r/pkg/engine"
 	mcpserver "github.com/korrel8r/korrel8r/pkg/mcp"
+	"github.com/korrel8r/korrel8r/pkg/rest"
 	"github.com/korrel8r/korrel8r/pkg/session"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
@@ -33,8 +36,17 @@ func run() error {
 		return fmt.Errorf("building engine: %w", err)
 	}
 
-	// Create an MCP server and list its tools via an in-memory client.
-	s := mcpserver.NewServer(session.NewSingleManager(e))
+	// Create a REST router and MCP server with in-process transport.
+	if os.Getenv(gin.EnvGinMode) == "" {
+		gin.SetMode(gin.ReleaseMode)
+	}
+	router := gin.New()
+	sessions := session.NewSingleManager(e)
+	if _, err := rest.New(sessions, router); err != nil {
+		return fmt.Errorf("creating REST API: %w", err)
+	}
+	client := mcpserver.NewClientForHandler(router)
+	s := mcpserver.NewServer(client, "dev", logr.Discard())
 	ct, st := mcp.NewInMemoryTransports()
 	ctx := context.Background()
 	ss, err := s.Connect(ctx, st, nil)

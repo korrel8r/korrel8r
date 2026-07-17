@@ -17,7 +17,7 @@ info:
     name: Apache 2.0
     url: https://github.com/korrel8r/korrel8r/blob/main/LICENSE
   version: v1alpha1
-  x-korrel8r-version: "0.11.3"
+  x-korrel8r-version: "0.11.3-dev"
 externalDocs:
   url: https://korrel8r.github.io/korrel8r/
   description: Korrel8r User Guide
@@ -311,7 +311,73 @@ paths:
               schema:
                 $ref: "#/components/schemas/Error"
 
+  /help:
+    get:
+      summary: Get help about all domains.
+      description: >
+        Returns full documentation for all correlation domains,
+        including class names, query syntax, and examples.
+      operationId: help
+      tags: [query]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Help"
+
+  /help/{domain}:
+    get:
+      summary: Get help about a specific domain.
+      description: >
+        Returns full documentation for a single domain,
+        including class names, query syntax, and examples.
+      operationId: helpDomain
+      tags: [query]
+      parameters:
+        - name: domain
+          in: path
+          required: true
+          description: Name of the domain to get help for
+          schema:
+            type: string
+          example: k8s
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Help"
+        "404":
+          description: domain not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
   /console:
+    get:
+      summary: Get current console state.
+      description: >
+        Returns the current console state set by a browser client via PUT /console.
+        Enables agents to discover what the user is looking at.
+      operationId: getConsole
+      tags: [console]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Console"
+        "404":
+          description: no console state available
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
     put:
       summary: Make console state available to an agent.
       description: >
@@ -342,6 +408,41 @@ paths:
       x-codegen-request-body-name: request
 
   /console/events:
+    put:
+      summary: Send a display update to the console.
+      description: >
+        Push a console display update to the SSE event stream.
+        The update is delivered to the browser client connected via GET /console/events.
+        Enables agents to direct the console to display specific data.
+      operationId: showInConsole
+      tags: [console]
+      requestBody:
+        description: Console display update to send to the browser.
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Console"
+        required: true
+      responses:
+        "200":
+          description: Update sent successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Empty"
+        "400":
+          description: invalid parameters
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: no console connected
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+      x-codegen-request-body-name: request
     get:
       summary: SSE event stream of console display updates from an agent.
       description: >
@@ -465,6 +566,16 @@ components:
     Empty:
       description: Empty JSON object.
       type: object
+
+    Help:
+      description: Domain help documentation including query syntax and examples.
+      type: object
+      required: [documentation]
+      properties:
+        documentation:
+          type: string
+          description: Full documentation text for one or more domains.
+          x-go-type-skip-optional-pointer: true
 
     Edge:
       type: object

@@ -11,14 +11,17 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/korrel8r/korrel8r/internal/pkg/build"
 	"github.com/korrel8r/korrel8r/internal/pkg/json"
+	"github.com/korrel8r/korrel8r/internal/pkg/logging"
+	mcpmetrics "github.com/korrel8r/korrel8r/internal/pkg/mcp"
 	"github.com/korrel8r/korrel8r/internal/pkg/must"
 	"github.com/korrel8r/korrel8r/internal/pkg/tlsprofile"
-	"github.com/korrel8r/korrel8r/pkg/auth"
+	"github.com/korrel8r/korrel8r/pkg/api"
 	"github.com/korrel8r/korrel8r/pkg/config"
 	"github.com/korrel8r/korrel8r/pkg/engine"
 	"github.com/korrel8r/korrel8r/pkg/mcp"
 	"github.com/korrel8r/korrel8r/pkg/rest"
 	"github.com/korrel8r/korrel8r/pkg/session"
+	"github.com/korrel8r/korrel8r/pkg/tokenreview"
 	"github.com/spf13/cobra"
 )
 
@@ -36,7 +39,7 @@ var webCmd = &cobra.Command{
 			}
 			j := json.NewEncoder(out)
 			j.SetIndent("", "  ")
-			must.Must(j.Encode(rest.Spec))
+			must.Must(j.Encode(api.Spec))
 			return
 		}
 
@@ -78,23 +81,30 @@ var webCmd = &cobra.Command{
 			sessions = session.NewSingleManager(e)
 		} else {
 			factory := func() (*engine.Engine, error) { return newEngineWithConfigs(configs) }
-			tokenReview, err := auth.NewTokenReview()
+			tokenReview, err := tokenreview.New()
 			if err != nil {
 				panic(fmt.Errorf("authentication unavailable: %w\nUse the --unsafe-shared-session flag if you want an unauthenticated server", err))
 			}
 			sessions = session.NewTokenReviewManager(tokenReview, timeout, factory)
 		}
 
-		gin.SetMode(gin.ReleaseMode)
+		if os.Getenv(gin.EnvGinMode) == "" {
+			gin.SetMode(gin.ReleaseMode)
+		}
 		router := gin.New()
 		router.Use(gin.Recovery(), session.Middleware(sessions))
 
 		if *restFlag {
 			must.Must1(rest.New(sessions, router))
-			log.V(0).Info("REST endpoint", "path", rest.BasePath)
+			log.V(0).Info("REST endpoint", "path", api.BasePath)
 		}
 		if *mcpFlag {
-			mcpSrv := mcp.NewServer(sessions)
+			mcpRouter := gin.New()
+			mcpRouter.Use(gin.Recovery(), session.Middleware(sessions))
+			must.Must1(rest.New(sessions, mcpRouter))
+			client := mcp.NewClientForHandler(mcpRouter)
+			mcpSrv := mcp.NewServer(client, build.Version, logging.Log())
+			mcpSrv.AddReceivingMiddleware(mcpmetrics.Metrics)
 			router.Any(mcp.StreamablePath, gin.WrapH(mcpSrv.HTTPHandler()))
 			log.V(0).Info("MCP Streamable endpoint", "path", mcp.StreamablePath)
 		}
@@ -137,7 +147,7 @@ func init() {
 	httpsFlag = webCmd.Flags().String("https", "", "host:port address for secure https listener")
 	keyFlag = webCmd.Flags().String("key", "", "Private key (PEM format) for https")
 	mcpFlag = webCmd.Flags().Bool("mcp", true, "Enable MCP streamable HTTP protocol on "+mcp.StreamablePath)
-	restFlag = webCmd.Flags().Bool("rest", true, "Enable HTTP REST server on "+rest.BasePath)
+	restFlag = webCmd.Flags().Bool("rest", true, "Enable HTTP REST server on "+api.BasePath)
 	unsafeSharedSessionFlag = webCmd.Flags().Bool("unsafe-shared-session", false, "Allow unauthenticated requests to share a single session (UNSAFE: disables per-user isolation)")
 	specFlag = webCmd.Flags().String("spec", "", "Write OpenAPI specification to a file, '-' for stdout.")
 	tlsCipherSuitesFlag = webCmd.Flags().StringSlice("tls-cipher-suites", nil, "Comma-separated list of TLS cipher suites for https (IANA or OpenSSL names)")

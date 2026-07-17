@@ -21,8 +21,8 @@ var (
 		metric.WithUnit("s"))
 )
 
-// metrics returns middleware that records MCP tool call metrics.
-func (s *Server) metrics(handler mcp.MethodHandler) mcp.MethodHandler {
+// Metrics returns middleware that records MCP tool call metrics.
+func Metrics(handler mcp.MethodHandler) mcp.MethodHandler {
 	return func(ctx context.Context, method string, req mcp.Request) (mcp.Result, error) {
 		start := time.Now()
 		result, err := handler(ctx, method, req)

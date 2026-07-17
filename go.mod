@@ -7,6 +7,11 @@ module github.com/korrel8r/korrel8r
 // - .github/workflows/publish.yaml
 go 1.26.0
 
+replace (
+	github.com/korrel8r/korrel8r/pkg/api => ./pkg/api
+	github.com/korrel8r/korrel8r/pkg/mcp => ./pkg/mcp
+)
+
 tool (
 	github.com/duh-rpc/openapi-markdown.go/cmd/openapi-markdown
 	github.com/gohugoio/hugo
@@ -21,13 +26,14 @@ tool (
 require (
 	github.com/Masterminds/sprig/v3 v3.3.0
 	github.com/bytedance/sonic v1.15.2
-	github.com/getkin/kin-openapi v0.142.0
 	github.com/gin-contrib/pprof v1.5.4
 	github.com/gin-gonic/gin v1.12.0
 	github.com/go-logr/logr v1.4.3
 	github.com/go-logr/stdr v1.2.2
 	github.com/go-openapi/runtime v0.32.4
 	github.com/go-openapi/strfmt v0.26.4
+	github.com/korrel8r/korrel8r/pkg/api v0.0.0
+	github.com/korrel8r/korrel8r/pkg/mcp v0.0.0-00010101000000-000000000000
 	github.com/modelcontextprotocol/go-sdk v1.6.1
 	github.com/oapi-codegen/runtime v1.5.0
 	github.com/prometheus/alertmanager v0.33.1
@@ -55,6 +61,7 @@ require (
 require (
 	github.com/cenkalti/backoff/v5 v5.0.3 // indirect
 	github.com/dlclark/regexp2/v2 v2.2.1 // indirect
+	github.com/getkin/kin-openapi v0.142.0 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.29.0 // indirect
 	github.com/prometheus/otlptranslator v1.0.0 // indirect
 )

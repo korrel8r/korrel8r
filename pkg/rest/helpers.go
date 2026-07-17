@@ -13,7 +13,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/korrel8r/korrel8r/internal/pkg/json"
-	"github.com/korrel8r/korrel8r/internal/pkg/must"
 	"github.com/korrel8r/korrel8r/internal/pkg/text"
 	"github.com/korrel8r/korrel8r/pkg/api"
 	"github.com/korrel8r/korrel8r/pkg/engine"
@@ -21,11 +20,6 @@ import (
 	"github.com/korrel8r/korrel8r/pkg/graph"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"github.com/korrel8r/korrel8r/pkg/ptr"
-)
-
-var (
-	Spec     = must.Must1(api.GetSpec())
-	BasePath = must.Must1(Spec.Servers.BasePath())
 )
 
 func queryCounts(gq graph.Queries, _ api.GraphOptions) []api.QueryCount {
@@ -244,6 +238,26 @@ func Constraint(c *api.Constraint) *korrel8r.Constraint {
 		return nil
 	}
 	return &korrel8r.Constraint{Limit: c.Limit, QueryLimit: c.QueryLimit, Start: c.Start, End: c.End}
+}
+
+// DomainHelp returns the full description text for domains.
+// If domain is empty, returns help for all domains.
+func DomainHelp(e *engine.Engine, domain string) (string, error) {
+	var b strings.Builder
+	var domains []korrel8r.Domain
+	if domain != "" {
+		d, err := e.Domain(domain)
+		if err != nil {
+			return "", err
+		}
+		domains = []korrel8r.Domain{d}
+	} else {
+		domains = e.Domains()
+	}
+	for _, d := range domains {
+		fmt.Fprintf(&b, "%s\n\n", d.Description())
+	}
+	return b.String(), nil
 }
 
 func ListDomains(e *engine.Engine) []api.Domain {

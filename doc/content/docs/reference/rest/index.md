@@ -20,7 +20,11 @@ POST [/graphs/neighbors](#postgraphsneighbors) | Create a neighborhood graph aro
 POST [/graphs/neighbours](#postgraphsneighbours) | Create a neighborhood graph around a start object to a given depth.
 POST [/lists/goals](#postlistsgoals) | Create a list of goal nodes related to a starting point.
 GET [/objects](#getobjects) | Execute a query, returns a list of JSON objects.
+GET [/help](#gethelp) | Get help about all domains.
+GET [/help/{domain}](#gethelpdomain) | Get help about a specific domain.
+GET [/console](#getconsole) | Get current console state.
 PUT [/console](#putconsole) | Make console state available to an agent.
+PUT [/console/events](#putconsoleevents) | Send a display update to the console.
 GET [/console/events](#getconsoleevents) | SSE event stream of console display updates from an agent.
 
 ## configure
@@ -47,6 +51,75 @@ OK
 #### Field Definitions
 
 ## console
+
+### GET /console {#getconsole}
+
+Returns the current console state set by a browser client via PUT /console. Enables agents to discover what the user is looking at.
+
+
+### Responses
+
+#### 200 Response
+
+OK
+
+```json
+{
+   "search": {
+      "goals": {
+         "goals": [
+            "k8s:Pod",
+            "metric:metric"
+         ],
+         "start": {
+            "class": {},
+            "constraint": {
+               "end": "2017-07-21T17:32:28.1341231Z",
+               "limit": 100,
+               "queryLimit": 10,
+               "start": "2024-01-15T10:30:00Z"
+            },
+            "objects": [],
+            "queries": [
+               "k8s:Pod:{\"namespace\":\"default\",\"name\":\"my-pod\"}"
+            ]
+         }
+      },
+      "neighbors": {
+         "depth": 46,
+         "start": {
+            "class": {},
+            "constraint": {
+               "end": "2017-07-21T17:32:28.1341231Z",
+               "limit": 100,
+               "queryLimit": 10,
+               "start": "2024-01-15T10:30:00Z"
+            },
+            "objects": [],
+            "queries": [
+               "k8s:Pod:{\"namespace\":\"default\",\"name\":\"my-pod\"}"
+            ]
+         }
+      }
+   },
+   "view": {}
+}
+```
+
+#### Field Definitions
+
+- `view` The main console view displays the results of this query.
+- `search` The troubleshooting panel displays the results of this correlation search.
+
+#### 404 Response
+
+no console state available
+
+```json
+{
+   "error": "An error occurred"
+}
+```
 
 ### PUT /console {#putconsole}
 
@@ -78,7 +151,7 @@ Store console state so an agent can read it via MCP tool get_console. The MCP cl
          }
       },
       "neighbors": {
-         "depth": 2,
+         "depth": 46,
          "start": {
             "class": {},
             "constraint": {
@@ -118,6 +191,93 @@ Console display updated successfully
 #### 400 Response
 
 invalid parameters
+
+```json
+{
+   "error": "An error occurred"
+}
+```
+
+### PUT /console/events {#putconsoleevents}
+
+Push a console display update to the SSE event stream. The update is delivered to the browser client connected via GET /console/events. Enables agents to direct the console to display specific data.
+
+
+### Request
+
+```json
+{
+   "search": {
+      "goals": {
+         "goals": [
+            "k8s:Pod",
+            "metric:metric"
+         ],
+         "start": {
+            "class": {},
+            "constraint": {
+               "end": "2017-07-21T17:32:28.1341231Z",
+               "limit": 100,
+               "queryLimit": 10,
+               "start": "2024-01-15T10:30:00Z"
+            },
+            "objects": [],
+            "queries": [
+               "k8s:Pod:{\"namespace\":\"default\",\"name\":\"my-pod\"}"
+            ]
+         }
+      },
+      "neighbors": {
+         "depth": 46,
+         "start": {
+            "class": {},
+            "constraint": {
+               "end": "2017-07-21T17:32:28.1341231Z",
+               "limit": 100,
+               "queryLimit": 10,
+               "start": "2024-01-15T10:30:00Z"
+            },
+            "objects": [],
+            "queries": [
+               "k8s:Pod:{\"namespace\":\"default\",\"name\":\"my-pod\"}"
+            ]
+         }
+      }
+   },
+   "view": {}
+}
+```
+
+#### Field Definitions
+
+- `view` The main console view displays the results of this query.
+- `search` The troubleshooting panel displays the results of this correlation search.
+
+### Responses
+
+#### 200 Response
+
+Update sent successfully
+
+```json
+{}
+```
+
+#### Field Definitions
+
+#### 400 Response
+
+invalid parameters
+
+```json
+{
+   "error": "An error occurred"
+}
+```
+
+#### 404 Response
+
+no console connected
 
 ```json
 {
@@ -193,7 +353,7 @@ OK
          "goal": {},
          "rules": [
             {
-               "name": "sLiFD4MY7O",
+               "name": "3gDk8Bg7W9",
                "queries": []
             }
          ],
@@ -202,11 +362,11 @@ OK
    ],
    "nodes": [
       {
-         "class": "3gDk8Bg7W9",
-         "count": 14,
+         "class": "LLxq2zGNO6",
+         "count": 32,
          "queries": [
             {
-               "count": 24,
+               "count": 99,
                "query": {},
                "statuses": []
             }
@@ -290,7 +450,7 @@ Specify a set of start objects, as queries or serialized objects, and a depth fo
 
 ```json
 {
-   "depth": 60,
+   "depth": 8,
    "start": {
       "class": {},
       "constraint": {
@@ -328,7 +488,7 @@ OK
          "goal": {},
          "rules": [
             {
-               "name": "sLiFD4MY7O",
+               "name": "3gDk8Bg7W9",
                "queries": []
             }
          ],
@@ -337,11 +497,11 @@ OK
    ],
    "nodes": [
       {
-         "class": "3gDk8Bg7W9",
-         "count": 14,
+         "class": "LLxq2zGNO6",
+         "count": 32,
          "queries": [
             {
-               "count": 24,
+               "count": 99,
                "query": {},
                "statuses": []
             }
@@ -425,7 +585,7 @@ Specify a set of start objects, as queries or serialized objects, and a depth fo
 
 ```json
 {
-   "depth": 60,
+   "depth": 8,
    "start": {
       "class": {},
       "constraint": {
@@ -463,7 +623,7 @@ OK
          "goal": {},
          "rules": [
             {
-               "name": "sLiFD4MY7O",
+               "name": "3gDk8Bg7W9",
                "queries": []
             }
          ],
@@ -472,11 +632,11 @@ OK
    ],
    "nodes": [
       {
-         "class": "3gDk8Bg7W9",
-         "count": 14,
+         "class": "LLxq2zGNO6",
+         "count": 32,
          "queries": [
             {
-               "count": 24,
+               "count": 99,
                "query": {},
                "statuses": []
             }
@@ -593,11 +753,11 @@ OK
 ```json
 [
    {
-      "class": "q2zGNO6q1X",
-      "count": 19,
+      "class": "h3S7gYekwH",
+      "count": 79,
       "queries": [
          {
-            "count": 64,
+            "count": 99,
             "query": {},
             "statuses": []
          }
@@ -761,6 +921,62 @@ invalid parameters
 #### 404 Response
 
 result not found
+
+```json
+{
+   "error": "An error occurred"
+}
+```
+
+### GET /help {#gethelp}
+
+Returns full documentation for all correlation domains, including class names, query syntax, and examples.
+
+
+### Responses
+
+#### 200 Response
+
+OK
+
+```json
+{
+   "documentation": "gObD0iOtQN"
+}
+```
+
+#### Field Definitions
+
+- `documentation` *(string, required)* Full documentation text for one or more domains.
+
+### GET /help/{domain} {#gethelpdomain}
+
+Returns full documentation for a single domain, including class names, query syntax, and examples.
+
+
+#### Path Parameters
+
+- `domain` *(string, required)* Name of the domain to get help for
+
+### Responses
+
+#### 200 Response
+
+OK
+
+```json
+{
+   "documentation": "gObD0iOtQN"
+}
+```
+
+#### Field Definitions
+
+- `documentation` *(string, required)* Full documentation text for one or more domains.
+
+#### 404 Response
+
+domain not found
 
 ```json
 {

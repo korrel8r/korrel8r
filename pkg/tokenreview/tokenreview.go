@@ -1,6 +1,6 @@
 // Copyright: This file is part of korrel8r, released under https://github.com/korrel8r/korrel8r/blob/main/LICENSE
 
-package auth
+package tokenreview
 
 import (
 	"context"
@@ -32,13 +32,13 @@ type TokenReview struct {
 	cache     sync.Map // map[string]cacheEntry — keyed by bearer token
 }
 
-// NewTokenReviewFromClientset creates a TokenReview from an existing Kubernetes clientset.
-func NewTokenReviewFromClientset(cs kubernetes.Interface) *TokenReview {
+// NewFromClientset creates a TokenReview from an existing Kubernetes clientset.
+func NewFromClientset(cs kubernetes.Interface) *TokenReview {
 	return &TokenReview{clientset: cs}
 }
 
-// NewTokenReview creates a TokenReview using in-cluster or kubeconfig credentials.
-func NewTokenReview() (*TokenReview, error) {
+// New creates a TokenReview using in-cluster or kubeconfig credentials.
+func New() (*TokenReview, error) {
 	cfg, err := config.GetConfig()
 	if err != nil {
 		return nil, err

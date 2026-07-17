@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/korrel8r/korrel8r/pkg/auth"
+	"github.com/korrel8r/korrel8r/pkg/api/auth"
 	"github.com/stretchr/testify/assert"
 )
 

@@ -15,7 +15,7 @@ import (
 
 	"github.com/korrel8r/korrel8r/internal/pkg/json"
 	"github.com/korrel8r/korrel8r/internal/pkg/logging"
-	"github.com/korrel8r/korrel8r/pkg/auth"
+	"github.com/korrel8r/korrel8r/pkg/tokenreview"
 	"github.com/stretchr/testify/require"
 	authenticationv1 "k8s.io/api/authentication/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -86,7 +86,7 @@ func JSONPretty(v any) string {
 
 // FakeTokenReview returns a TokenReview that accepts any token
 // and uses the token string as the username.
-func FakeTokenReview() *auth.TokenReview {
+func FakeTokenReview() *tokenreview.TokenReview {
 	cs := fake.NewSimpleClientset()
 	cs.PrependReactor("create", "tokenreviews", func(action ktesting.Action) (bool, runtime.Object, error) {
 		tr := action.(ktesting.CreateAction).GetObject().(*authenticationv1.TokenReview)
@@ -96,7 +96,7 @@ func FakeTokenReview() *auth.TokenReview {
 		}
 		return true, tr, nil
 	})
-	return auth.NewTokenReviewFromClientset(cs)
+	return tokenreview.NewFromClientset(cs)
 }
 
 func RandomName(n int) string {

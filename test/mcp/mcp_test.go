@@ -1,12 +1,15 @@
 // Copyright: This file is part of korrel8r, released under https://github.com/korrel8r/korrel8r/blob/main/LICENSE
 
-package mcp
+// package test_mcp tests korrel8r via the MCP API.
+// These tests are not in the mcp client package because they depend on the korrel8r engine.
+package test_mcp
 
 import (
 	"bufio"
 	"bytes"
 	"context"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -15,12 +18,14 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/go-logr/logr"
 	"github.com/korrel8r/korrel8r/internal/pkg/test"
 	"github.com/korrel8r/korrel8r/internal/pkg/test/mock"
 	"github.com/korrel8r/korrel8r/pkg/api"
-	"github.com/korrel8r/korrel8r/pkg/auth"
+	"github.com/korrel8r/korrel8r/pkg/api/auth"
 	"github.com/korrel8r/korrel8r/pkg/engine"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
+	mcpserver "github.com/korrel8r/korrel8r/pkg/mcp"
 	"github.com/korrel8r/korrel8r/pkg/rest"
 	"github.com/korrel8r/korrel8r/pkg/session"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -38,14 +43,14 @@ func TestListTools(t *testing.T) {
 	}
 	assert.ElementsMatch(t, names,
 		[]string{
-			GetConsole,
-			ShowInConsole,
-			CreateNeighborsGraph,
-			CreateGoalsGraph,
-			GetObjects,
-			Help,
-			ListDomainClasses,
-			ListDomains})
+			mcpserver.GetConsole,
+			mcpserver.ShowInConsole,
+			mcpserver.CreateNeighborsGraph,
+			mcpserver.CreateGoalsGraph,
+			mcpserver.GetObjects,
+			mcpserver.Help,
+			mcpserver.ListDomainClasses,
+			mcpserver.ListDomains})
 }
 
 func TestListDomains(t *testing.T) {
@@ -67,7 +72,7 @@ func TestListDomainClasses(t *testing.T) {
 	client := newClient(t, newEngine(t))
 	r, err := client.CallTool(context.Background(), &mcp.CallToolParams{
 		Name:      "list_domain_classes",
-		Arguments: DomainParams{Domain: "mock"},
+		Arguments: mcpserver.DomainParams{Domain: "mock"},
 	})
 	require.NoError(t, err)
 	want := map[string]any{
@@ -81,8 +86,8 @@ func TestListDomainClasses(t *testing.T) {
 func TestCreateNeighborsGraph(t *testing.T) {
 	client := newClient(t, newEngine(t))
 	r, err := client.CallTool(context.Background(), &mcp.CallToolParams{
-		Name:      CreateNeighborsGraph,
-		Arguments: NeighborParams{Depth: 5, Start: api.Start{Queries: []string{"mock:a:x"}}},
+		Name:      mcpserver.CreateNeighborsGraph,
+		Arguments: mcpserver.NeighborParams{Depth: 5, Start: api.Start{Queries: []string{"mock:a:x"}}},
 	})
 	require.NoError(t, err)
 	got := graphContent(t, r)
@@ -93,8 +98,8 @@ func TestCreateNeighborsGraph(t *testing.T) {
 func TestCreateGoalsGraph(t *testing.T) {
 	client := newClient(t, newEngine(t))
 	r, err := client.CallTool(context.Background(), &mcp.CallToolParams{
-		Name: CreateGoalsGraph,
-		Arguments: GoalParams{
+		Name: mcpserver.CreateGoalsGraph,
+		Arguments: mcpserver.GoalParams{
 			Goals: []string{"mock:b"},
 			Start: api.Start{Queries: []string{"mock:a:x"}},
 		},
@@ -108,8 +113,8 @@ func TestCreateGoalsGraph(t *testing.T) {
 func TestGetObjects(t *testing.T) {
 	client := newClient(t, newEngine(t))
 	r, err := client.CallTool(context.Background(), &mcp.CallToolParams{
-		Name:      GetObjects,
-		Arguments: ObjectsParams{Query: "mock:a:x"},
+		Name:      mcpserver.GetObjects,
+		Arguments: mcpserver.ObjectsParams{Query: "mock:a:x"},
 	})
 	require.NoError(t, err)
 	require.False(t, r.IsError)
@@ -120,8 +125,8 @@ func TestGetObjects(t *testing.T) {
 func TestGetObjects_empty(t *testing.T) {
 	client := newClient(t, newEngine(t))
 	r, err := client.CallTool(context.Background(), &mcp.CallToolParams{
-		Name:      GetObjects,
-		Arguments: ObjectsParams{Query: "mock:a:none"},
+		Name:      mcpserver.GetObjects,
+		Arguments: mcpserver.ObjectsParams{Query: "mock:a:none"},
 	})
 	require.NoError(t, err)
 	require.False(t, r.IsError)
@@ -132,8 +137,8 @@ func TestGetObjects_empty(t *testing.T) {
 func TestGetObjects_withConstraint(t *testing.T) {
 	client := newClient(t, newEngineMany(t))
 	r, err := client.CallTool(context.Background(), &mcp.CallToolParams{
-		Name: GetObjects,
-		Arguments: ObjectsParams{
+		Name: mcpserver.GetObjects,
+		Arguments: mcpserver.ObjectsParams{
 			Query:      "mock:a:many",
 			Constraint: &api.Constraint{Limit: new(1)},
 		},
@@ -144,11 +149,45 @@ func TestGetObjects_withConstraint(t *testing.T) {
 	assert.Equal(t, []any{"a1"}, got["objects"])
 }
 
+func TestHelp(t *testing.T) {
+	client := newClient(t, newEngine(t))
+	r, err := client.CallTool(context.Background(), &mcp.CallToolParams{
+		Name:      mcpserver.Help,
+		Arguments: mcpserver.HelpParams{},
+	})
+	require.NoError(t, err)
+	require.False(t, r.IsError)
+	got := r.StructuredContent.(map[string]any)
+	assert.Contains(t, got["documentation"], "Mock domain.")
+}
+
+func TestHelp_singleDomain(t *testing.T) {
+	client := newClient(t, newEngine(t))
+	r, err := client.CallTool(context.Background(), &mcp.CallToolParams{
+		Name:      mcpserver.Help,
+		Arguments: mcpserver.HelpParams{Domain: "mock"},
+	})
+	require.NoError(t, err)
+	require.False(t, r.IsError)
+	got := r.StructuredContent.(map[string]any)
+	assert.Contains(t, got["documentation"], "Mock domain.")
+}
+
+func TestHelp_invalidDomain(t *testing.T) {
+	client := newClient(t, newEngine(t))
+	r, err := client.CallTool(context.Background(), &mcp.CallToolParams{
+		Name:      mcpserver.Help,
+		Arguments: mcpserver.HelpParams{Domain: "nosuch"},
+	})
+	require.NoError(t, err)
+	assert.True(t, r.IsError)
+}
+
 func TestGetObjects_invalidQuery(t *testing.T) {
 	client := newClient(t, newEngine(t))
 	r, err := client.CallTool(context.Background(), &mcp.CallToolParams{
-		Name:      GetObjects,
-		Arguments: ObjectsParams{Query: "bad:query"},
+		Name:      mcpserver.GetObjects,
+		Arguments: mcpserver.ObjectsParams{Query: "bad:query"},
 	})
 	require.NoError(t, err)
 	assert.True(t, r.IsError)
@@ -177,10 +216,26 @@ func newEngineMany(t *testing.T) *engine.Engine {
 	return e
 }
 
+// newRouter creates a gin router with REST endpoints for the given engine.
+func newRouter(t *testing.T, e *engine.Engine) *gin.Engine {
+	t.Helper()
+	if os.Getenv(gin.EnvGinMode) == "" {
+		gin.SetMode(gin.TestMode)
+	}
+	sessions := session.NewSingleManager(e)
+	router := gin.New()
+	router.Use(session.Middleware(sessions))
+	_, err := rest.New(sessions, router)
+	require.NoError(t, err)
+	return router
+}
+
 func newClient(t *testing.T, e *engine.Engine) *mcp.ClientSession {
 	t.Helper()
 	ctx := context.Background()
-	s := NewServer(session.NewSingleManager(e))
+	router := newRouter(t, e)
+	client := mcpserver.NewClientForHandler(router)
+	s := mcpserver.NewServer(client, "test", logr.Discard())
 	ct, st := mcp.NewInMemoryTransports()
 	ss, err := s.Connect(ctx, st, nil)
 	require.NoError(t, err)
@@ -193,11 +248,84 @@ func newClient(t *testing.T, e *engine.Engine) *mcp.ClientSession {
 
 func list[T any](x ...T) []T { return x }
 
+func TestServeStdio(t *testing.T) {
+	router := newRouter(t, newEngine(t))
+	client := mcpserver.NewClientForHandler(router)
+	s := mcpserver.NewServer(client, "test", logr.Discard())
+
+	// Create pipe pairs: server reads from srvR, writes to srvW.
+	// Client reads from cliR, writes to cliW.
+	srvR, cliW := io.Pipe()
+	cliR, srvW := io.Pipe()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	t.Cleanup(cancel)
+
+	serverDone := make(chan error, 1)
+	go func() {
+		serverDone <- s.Run(ctx, &mcp.IOTransport{Reader: srvR, Writer: srvW})
+	}()
+
+	c := mcp.NewClient(&mcp.Implementation{Name: "stdio-test"}, nil)
+	cs, err := c.Connect(ctx, &mcp.IOTransport{Reader: cliR, Writer: cliW}, nil)
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = cs.Close() })
+
+	r, err := cs.CallTool(ctx, &mcp.CallToolParams{Name: mcpserver.ListDomains})
+	require.NoError(t, err)
+	require.False(t, r.IsError)
+	got := r.StructuredContent.(map[string]any)
+	domains := got["domains"].([]any)
+	assert.Len(t, domains, 1)
+	assert.Equal(t, "mock", domains[0].(map[string]any)["name"])
+
+	cancel()
+	err = <-serverDone
+	if err != nil {
+		assert.ErrorIs(t, err, context.Canceled)
+	}
+}
+
+func TestGetObjects_withTimeConstraint(t *testing.T) {
+	d := mock.NewDomain("mock", "a")
+	s := mock.NewStore(d)
+	s.AddQuery("mock:a:q", []korrel8r.Object{"o1", "o2", "o3"})
+	var gotConstraint *korrel8r.Constraint
+	s.ConstraintFunc = func(c *korrel8r.Constraint, _ korrel8r.Object) bool {
+		gotConstraint = c
+		return true
+	}
+	e, err := engine.Build().Domains(d).Stores(s).Engine()
+	require.NoError(t, err)
+
+	client := newClient(t, e)
+	start := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
+	end := time.Date(2025, 1, 2, 0, 0, 0, 0, time.UTC)
+	r, err := client.CallTool(context.Background(), &mcp.CallToolParams{
+		Name: mcpserver.GetObjects,
+		Arguments: mcpserver.ObjectsParams{
+			Query: "mock:a:q",
+			Constraint: &api.Constraint{
+				Limit: new(2),
+				Start: &start,
+				End:   &end,
+			},
+		},
+	})
+	require.NoError(t, err)
+	require.False(t, r.IsError)
+
+	// Verify constraint was forwarded through the REST layer
+	require.NotNil(t, gotConstraint, "constraint should be forwarded to the store")
+	assert.Equal(t, &start, gotConstraint.Start)
+	assert.Equal(t, &end, gotConstraint.End)
+}
+
 func TestListDomainClasses_invalid(t *testing.T) {
 	client := newClient(t, newEngine(t))
 	r, err := client.CallTool(context.Background(), &mcp.CallToolParams{
-		Name:      ListDomainClasses,
-		Arguments: DomainParams{Domain: "nosuch"},
+		Name:      mcpserver.ListDomainClasses,
+		Arguments: mcpserver.DomainParams{Domain: "nosuch"},
 	})
 	require.NoError(t, err) // MCP call succeeds, error is in result
 	assert.True(t, r.IsError)
@@ -206,8 +334,8 @@ func TestListDomainClasses_invalid(t *testing.T) {
 func TestCreateNeighborsGraph_invalidQuery(t *testing.T) {
 	client := newClient(t, newEngine(t))
 	r, err := client.CallTool(context.Background(), &mcp.CallToolParams{
-		Name:      CreateNeighborsGraph,
-		Arguments: NeighborParams{Depth: 1, Start: api.Start{Queries: []string{"bad:query"}}},
+		Name:      mcpserver.CreateNeighborsGraph,
+		Arguments: mcpserver.NeighborParams{Depth: 1, Start: api.Start{Queries: []string{"bad:query"}}},
 	})
 	require.NoError(t, err)
 	assert.True(t, r.IsError)
@@ -216,8 +344,8 @@ func TestCreateNeighborsGraph_invalidQuery(t *testing.T) {
 func TestCreateGoalsGraph_invalidGoal(t *testing.T) {
 	client := newClient(t, newEngine(t))
 	r, err := client.CallTool(context.Background(), &mcp.CallToolParams{
-		Name: CreateGoalsGraph,
-		Arguments: GoalParams{
+		Name: mcpserver.CreateGoalsGraph,
+		Arguments: mcpserver.GoalParams{
 			Goals: []string{"bad:class"},
 			Start: api.Start{Queries: []string{"mock:a:x"}},
 		},
@@ -236,15 +364,9 @@ type interopFixture struct {
 
 func newInteropFixture(t *testing.T, e *engine.Engine) *interopFixture {
 	t.Helper()
-	if os.Getenv(gin.EnvGinMode) == "" {
-		gin.SetMode(gin.TestMode)
-	}
-	sessions := session.NewSingleManager(e)
-	router := gin.New()
-	_, err := rest.New(sessions, router)
-	require.NoError(t, err)
-
-	mcpSrv := NewServer(sessions)
+	router := newRouter(t, e)
+	client := mcpserver.NewClientForHandler(router)
+	mcpSrv := mcpserver.NewServer(client, "test", logr.Discard())
 	srv := httptest.NewServer(mcpSrv.HTTPHandler())
 	t.Cleanup(srv.Close)
 
@@ -287,6 +409,27 @@ func graphContent(t *testing.T, r *mcp.CallToolResult) string {
 	return string(out)
 }
 
+func TestInterop_Help(t *testing.T) {
+	f := newInteropFixture(t, newEngine(t))
+
+	// REST: GET /api/v1alpha1/help
+	w := f.restDo(t, "GET", "/api/v1alpha1/help", nil)
+	require.Equal(t, http.StatusOK, w.Code)
+	var restHelp api.Help
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &restHelp))
+
+	// MCP: help
+	r, err := f.mcp.CallTool(context.Background(), &mcp.CallToolParams{
+		Name:      mcpserver.Help,
+		Arguments: mcpserver.HelpParams{},
+	})
+	require.NoError(t, err)
+	require.False(t, r.IsError)
+	mcpResult := r.StructuredContent.(map[string]any)
+
+	assert.Equal(t, restHelp.Documentation, mcpResult["documentation"])
+}
+
 func TestInterop_ListDomains(t *testing.T) {
 	f := newInteropFixture(t, newEngine(t))
 
@@ -297,7 +440,7 @@ func TestInterop_ListDomains(t *testing.T) {
 	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &restDomains))
 
 	// MCP: list_domains
-	r, err := f.mcp.CallTool(context.Background(), &mcp.CallToolParams{Name: ListDomains})
+	r, err := f.mcp.CallTool(context.Background(), &mcp.CallToolParams{Name: mcpserver.ListDomains})
 	require.NoError(t, err)
 	mcpResult := r.StructuredContent.(map[string]any)
 	mcpDomains := mcpResult["domains"].([]any)
@@ -324,8 +467,8 @@ func TestInterop_NeighborsGraph(t *testing.T) {
 
 	// MCP: create_neighbors_graph
 	r, err := f.mcp.CallTool(context.Background(), &mcp.CallToolParams{
-		Name:      CreateNeighborsGraph,
-		Arguments: NeighborParams(params),
+		Name:      mcpserver.CreateNeighborsGraph,
+		Arguments: mcpserver.NeighborParams(params),
 	})
 	require.NoError(t, err)
 	mcpGraphJSON := graphContent(t, r)
@@ -351,8 +494,8 @@ func TestInterop_GoalsGraph(t *testing.T) {
 
 	// MCP: create_goals_graph
 	r, err := f.mcp.CallTool(context.Background(), &mcp.CallToolParams{
-		Name:      CreateGoalsGraph,
-		Arguments: GoalParams(params),
+		Name:      mcpserver.CreateGoalsGraph,
+		Arguments: mcpserver.GoalParams(params),
 	})
 	require.NoError(t, err)
 	mcpGraphJSON := graphContent(t, r)
@@ -372,8 +515,8 @@ func TestInterop_GetObjects(t *testing.T) {
 
 	// MCP: get_objects
 	r, err := f.mcp.CallTool(context.Background(), &mcp.CallToolParams{
-		Name:      GetObjects,
-		Arguments: ObjectsParams{Query: "mock:a:x"},
+		Name:      mcpserver.GetObjects,
+		Arguments: mcpserver.ObjectsParams{Query: "mock:a:x"},
 	})
 	require.NoError(t, err)
 	require.False(t, r.IsError)
@@ -394,8 +537,8 @@ func TestInterop_GetObjects_withConstraint(t *testing.T) {
 
 	// MCP: get_objects with constraint
 	r, err := f.mcp.CallTool(context.Background(), &mcp.CallToolParams{
-		Name: GetObjects,
-		Arguments: ObjectsParams{
+		Name: mcpserver.GetObjects,
+		Arguments: mcpserver.ObjectsParams{
 			Query:      "mock:a:many",
 			Constraint: &api.Constraint{Limit: new(1)},
 		},
@@ -417,7 +560,7 @@ func TestInterop_SetConsoleViaREST_GetViaMCP(t *testing.T) {
 	require.Equal(t, http.StatusOK, w.Code)
 
 	// Read via MCP get_console
-	r, err := f.mcp.CallTool(context.Background(), &mcp.CallToolParams{Name: GetConsole})
+	r, err := f.mcp.CallTool(context.Background(), &mcp.CallToolParams{Name: mcpserver.GetConsole})
 	require.NoError(t, err)
 	require.False(t, r.IsError, "get_console should succeed")
 	got := r.StructuredContent.(map[string]any)
@@ -435,8 +578,8 @@ func TestInterop_ListDomainClasses(t *testing.T) {
 
 	// MCP: list_domain_classes
 	r, err := f.mcp.CallTool(context.Background(), &mcp.CallToolParams{
-		Name:      ListDomainClasses,
-		Arguments: DomainParams{Domain: "mock"},
+		Name:      mcpserver.ListDomainClasses,
+		Arguments: mcpserver.DomainParams{Domain: "mock"},
 	})
 	require.NoError(t, err)
 	mcpResult := r.StructuredContent.(map[string]any)
@@ -480,8 +623,8 @@ func TestInterop_ShowInConsoleToSSE(t *testing.T) {
 	time.Sleep(100 * time.Millisecond) // Let ConsoleEvents enter its select loop.
 	want := api.Console{View: "mock:a:x"}
 	r, err := f.mcp.CallTool(context.Background(), &mcp.CallToolParams{
-		Name:      ShowInConsole,
-		Arguments: ShowInConsoleParams(want),
+		Name:      mcpserver.ShowInConsole,
+		Arguments: mcpserver.ShowInConsoleParams(want),
 	})
 	require.NoError(t, err)
 	require.False(t, r.IsError, "show_in_console should succeed")
@@ -513,13 +656,15 @@ func newMultiSessionFixture(t *testing.T) *multiSessionFixture {
 	}
 	sessions := session.NewTokenReviewManager(test.FakeTokenReview(), time.Hour, func() (*engine.Engine, error) { return newEngine(t), nil })
 	router := gin.New()
+	router.Use(session.Middleware(sessions))
 	_, err := rest.New(sessions, router)
 	require.NoError(t, err)
 
-	mcpSrv := NewServer(sessions)
+	client := mcpserver.NewClientForHandler(router)
+	mcpSrv := mcpserver.NewServer(client, "test", logr.Discard())
 	mcpHandler := mcpSrv.HTTPHandler()
-	// Wrap the MCP HTTP handler with auth middleware so sessions.Get resolves
-	// the bearer token from the Authorization header.
+	// Wrap the MCP HTTP handler with auth middleware so the MCP REST client
+	// can forward the bearer token from the incoming MCP request.
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		mcpHandler.ServeHTTP(w, auth.UpdateRequest(r))
 	})
@@ -562,7 +707,7 @@ func (f *multiSessionFixture) mcpClient(t *testing.T, token string) *mcp.ClientS
 // mcpGetConsoleView calls MCP get_console and returns the view field.
 func mcpGetConsoleView(t *testing.T, cs *mcp.ClientSession) string {
 	t.Helper()
-	r, err := cs.CallTool(context.Background(), &mcp.CallToolParams{Name: GetConsole})
+	r, err := cs.CallTool(context.Background(), &mcp.CallToolParams{Name: mcpserver.GetConsole})
 	require.NoError(t, err)
 	require.False(t, r.IsError, "get_console should succeed")
 	return r.StructuredContent.(map[string]any)["view"].(string)
@@ -646,8 +791,8 @@ func TestMultiSession_SSEIsolation(t *testing.T) {
 	time.Sleep(100 * time.Millisecond) // Let both ConsoleEvents loops start.
 
 	r, err := csA.CallTool(context.Background(), &mcp.CallToolParams{
-		Name:      ShowInConsole,
-		Arguments: ShowInConsoleParams{View: "mock:a:x"},
+		Name:      mcpserver.ShowInConsole,
+		Arguments: mcpserver.ShowInConsoleParams{View: "mock:a:x"},
 	})
 	require.NoError(t, err)
 	require.False(t, r.IsError)
