@@ -7,6 +7,13 @@ weight: 20
 Korrel8r exposes [Prometheus](https://prometheus.io/) metrics at `/metrics`.
 Scrape this endpoint or use the `--otel-collector` flag to push metrics via OTLP.
 
+## korrel8r/mcp
+
+| Metric | Type | Unit | Description |
+|--------|------|------|-------------|
+| `mcp.tool.calls` | counter |  | Total MCP tool calls |
+| `mcp.tool.duration` | histogram | s | MCP tool call duration in seconds |
+
 ## korrel8r/engine
 
 | Metric | Type | Unit | Description |
@@ -21,13 +28,6 @@ Scrape this endpoint or use the `--otel-collector` flag to push metrics via OTLP
 | `traverse.rules` | counter |  | Number of rule applications |
 | `traverse.queries` | counter |  | Number of query executions |
 | `traverse.duplicate_queries` | counter |  | Number of duplicate queries ignored |
-
-## korrel8r/mcp
-
-| Metric | Type | Unit | Description |
-|--------|------|------|-------------|
-| `mcp.tool.calls` | counter |  | Total MCP tool calls |
-| `mcp.tool.duration` | histogram | s | MCP tool call duration in seconds |
 
 ## korrel8r/rest
 

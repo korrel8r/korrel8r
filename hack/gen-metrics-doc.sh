@@ -19,7 +19,7 @@ join_continuations() {
 }
 
 # Find all metrics.go files under pkg/
-find pkg -name metrics.go -print0 | sort -z | while IFS= read -r -d '' file; do
+find pkg internal/pkg -name metrics.go -print0 | sort -z | while IFS= read -r -d '' file; do
 	meter=""
 
 	while IFS= read -r line; do

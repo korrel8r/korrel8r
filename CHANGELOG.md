@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [0.11.4] - 2026-07-22
+
+### Added
+- KubeVirt correlation rules for VM troubleshooting.
+- New REST endpoints: GET /help, GET /help/{domain}, GET /console, PUT /console/events.
+- `pkg/api` and `pkg/mcp` as independent Go submodules for external MCP clients.
+
+### Changed
+- MCP server refactored as a pure REST HTTP client.
+
+### Fixed
+- Missing panic recovery in MCP stdio router.
+
 ## [0.11.3] - 2026-07-14
 
 ### Security
