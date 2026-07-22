@@ -2,7 +2,8 @@
 
 Steps to release a new version X.Y.Z, for maintainers.
 
-On branch `vX.Y`:
+- latest version, use branch `main`
+- update for an old version use branch `vX.Y`
 
 ## Update CHANGELOG
 

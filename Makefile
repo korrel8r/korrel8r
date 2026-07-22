@@ -8,7 +8,7 @@ help: ## Display this help.
 	@grep -hE '^## [A-Z0-9_]+: ' Makefile | sed 's/^## \([A-Z0-9_]*\): \(.*\)/\1#\2/' | column -s'#' -t
 
 ## VERSION: Semantic version for release, use -dev for development pre-release versions.
-VERSION?=0.11.3-dev
+VERSION?=0.11.4
 ## REGISTRY_BASE: Image registry base, for example quay.io/somebody
 REGISTRY_BASE?=$(error REGISTRY_BASE must be set to push images)
 ## IMGTOOL: May be podman or docker.
@@ -218,7 +218,7 @@ doc/content/docs/reference/cmd/_index.md: generate  $(shell find cmd pkg) $(FRON
 
 DOC_PUBLIC+=doc/content/docs/reference/metrics/index.md
 CLEANFILES+=doc/content/docs/reference/metrics
-doc/content/docs/reference/metrics/index.md: hack/gen-metrics-doc.sh $(shell find pkg -name metrics.go) $(FRONT)
+doc/content/docs/reference/metrics/index.md: hack/gen-metrics-doc.sh $(shell find pkg internal/pkg -name metrics.go) $(FRONT)
 	@mkdir -p $(dir $@)
 	$< > $@
 	@$(FRONT) $@ 'title: Metrics' 'description: Prometheus metrics reference' 'weight: 20'
