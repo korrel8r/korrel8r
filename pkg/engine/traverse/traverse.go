@@ -1,6 +1,17 @@
 // Copyright: This file is part of korrel8r, released under https://github.com/korrel8r/korrel8r/blob/main/LICENSE
 
-// package traverse traverses graphs to find related objects.
+// Package traverse finds correlated objects by traversing a rule graph.
+//
+// The algorithm uses a worker-per-class model with iterative breadth-first expansion:
+//
+//  1. The full rule graph is reduced to relevant paths (goal-directed or depth-limited neighborhood).
+//  2. A worker is created for each class node. Workers own disjoint data and communicate via query channels.
+//  3. Each iteration runs concurrently:
+//     a. Workers process inbox queries by calling stores (engine.Get) to collect objects.
+//     b. Workers apply correlation rules to new objects, producing queries in their outbox.
+//     c. Outboxes are redistributed to inboxes by query class (sequential barrier).
+//  4. Iterations repeat until no worker has work, the depth limit is reached, or the context is cancelled.
+//  5. Empty nodes and lines are pruned from the result graph.
 package traverse
 
 import (
@@ -60,9 +71,11 @@ type traverser struct {
 type worker struct {
 	*traverser
 	node          *graph.Node
-	rules         unique.Set[korrel8r.Rule] // Outgoing Rules.
-	inbox, outbox queryBox                  // Incoming and outgoing queries
-	processed     int                       // Count of node.Result already processed
+	rules         unique.Set[korrel8r.Rule]                       // Outgoing Rules.
+	lines         map[korrel8r.Rule]map[korrel8r.Class]*graph.Line // Cached line lookups by (rule, goalClass).
+	ruleAttrs     map[korrel8r.Rule]metric.MeasurementOption       // Pre-computed metric attributes per rule.
+	inbox, outbox queryBox                                         // Incoming and outgoing queries
+	processed     int                                              // Count of node.Result already processed
 }
 
 type queryBox map[korrel8r.Query]queryLine
@@ -118,10 +131,21 @@ func (t *traverser) run(ctx context.Context, start Start, depth int) (*graph.Gra
 	}
 
 	// Create workers for start and goal of all rules in the graph.
+	// Pre-compute line lookups and metric attributes per (worker, rule).
 	t.graph.EachLine(func(l *graph.Line) {
 		t.newWorker(l.Start())
 		t.newWorker(l.Goal())
-		t.workers[l.Start().Class].rules.Add(l.Rule)
+		w := t.workers[l.Start().Class]
+		w.rules.Add(l.Rule)
+		if w.lines[l.Rule] == nil {
+			w.lines[l.Rule] = map[korrel8r.Class]*graph.Line{}
+		}
+		w.lines[l.Rule][l.Goal().Class] = l
+		if _, ok := w.ruleAttrs[l.Rule]; !ok {
+			w.ruleAttrs[l.Rule] = metric.WithAttributes(
+				attribute.String("rule", l.Rule.Name()),
+				attribute.String("start", w.node.Class.String()))
+		}
 	})
 
 	// Run until no work is left or we have reached the requested depth.
@@ -170,6 +194,8 @@ func (t *traverser) newWorker(n *graph.Node) *worker {
 			traverser: t,
 			node:      n,
 			rules:     unique.NewSet[korrel8r.Rule](),
+			lines:     map[korrel8r.Rule]map[korrel8r.Class]*graph.Line{},
+			ruleAttrs: map[korrel8r.Rule]metric.MeasurementOption{},
 			inbox:     queryBox{},
 			outbox:    queryBox{},
 		}
@@ -236,12 +262,9 @@ func (w *worker) Run(ctx context.Context) {
 			}
 			queries, err := r.Apply(o)
 			log.V(4).Info("Rule applied", "name", r.Name(), "start", w.node.Class, "error", err, "queries", len(queries))
-			metricRules.Add(ctx, 1, metric.WithAttributes(
-				attribute.String("rule", r.Name()),
-				attribute.String("start", w.node.Class.String()),
-				attribute.Int("queries", len(queries))))
+			metricRules.Add(ctx, 1, w.ruleAttrs[r])
 			for _, q := range queries {
-				if line := w.graph.FindLine(w.node.Class, q.Class(), r); line != nil {
+				if line := w.lines[r][q.Class()]; line != nil {
 					log.V(5).Info("Add line", "line", line, "query", q)
 					ql := queryLine{Query: q, Line: line}
 					w.outbox.Add(ctx, ql)
