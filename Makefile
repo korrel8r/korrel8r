@@ -138,7 +138,7 @@ DEPLOY_ROUTE=kubectl apply -k config/route -n $(NAMESPACE) || echo "skipping rou
 
 kustomize-edit:
 	cd config; \
-	go tool kustomize edit set image "$(REGISTRY_BASE)/korrel8r=$(IMAGE)"; \
+	go tool kustomize edit set image "korrel8r=$(IMAGE)"; \
 	go tool kustomize edit set namespace "$(NAMESPACE)"
 
 deploy: image ## Deploy to current cluster using kustomize.

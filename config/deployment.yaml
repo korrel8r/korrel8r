@@ -17,27 +17,27 @@ spec:
           secret:
             secretName: korrel8r
       containers:
-      - name: korrel8r
-        image: "quay.io/korrel8r/korrel8r"
-        imagePullPolicy: Always
-        command:
-          - "korrel8r"
-          - "web"
-          - "--verbose=2"
-          - "--https=:8443"
-          - "--cert=/etc/secrets/tls.crt"
-          - "--key=/etc/secrets/tls.key"
-          - "--config=/etc/korrel8r/openshift-svc.yaml"
-        volumeMounts:
-          - name: secrets
-            readOnly: true
-            mountPath: /etc/secrets
-        ports:
-        - containerPort: 8080
-        securityContext:
-          runAsNonRoot: true
-          allowPrivilegeEscalation: false
-          capabilities:
-            drop: ["ALL"]
-          seccompProfile:
-            type: RuntimeDefault
+        - name: korrel8r
+          image: korrel8r
+          imagePullPolicy: Always
+          command:
+            - "korrel8r"
+            - "web"
+            - "--verbose=2"
+            - "--https=:8443"
+            - "--cert=/etc/secrets/tls.crt"
+            - "--key=/etc/secrets/tls.key"
+            - "--config=/etc/korrel8r/openshift-svc.yaml"
+          volumeMounts:
+            - name: secrets
+              readOnly: true
+              mountPath: /etc/secrets
+          ports:
+            - containerPort: 8080
+          securityContext:
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+            seccompProfile:
+              type: RuntimeDefault
