@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [0.11.5] - 2026-07-23
+
+### Changed
+- Exported `mcp.AddTools` and `mcp.Instructions` for external MCP clients.
+
+### Performance
+- Pre-calculate metric and FindLine in graph traversal.
+
+### Dependencies
+- Bump google.golang.org/grpc from 1.82.0 to 1.82.1.
+
 ## [0.11.4] - 2026-07-22
 
 ### Added
