@@ -8,7 +8,7 @@ help: ## Display this help.
 	@grep -hE '^## [A-Z0-9_]+: ' Makefile | sed 's/^## \([A-Z0-9_]*\): \(.*\)/\1#\2/' | column -s'#' -t
 
 ## VERSION: Semantic version for release, use -dev for development pre-release versions.
-VERSION?=0.11.5-dev
+VERSION?=0.11.5
 ## REGISTRY_BASE: Image registry base, for example quay.io/somebody
 REGISTRY_BASE?=$(error REGISTRY_BASE must be set to push images)
 ## IMGTOOL: May be podman or docker.
@@ -152,6 +152,8 @@ undeploy:			## Delete resources created by `make deploy`
 
 # See RELEASE.md
 pre-release:
+	@branch=$$(git rev-parse --abbrev-ref HEAD); \
+	case "$$branch" in main|v[0-9]*.[0-9]*) ;; *) echo "error: releases must be from main or vX.Y branch, not $$branch" >&2; exit 1;; esac
 	$(MAKE) all image kustomize-edit
 	@echo Ready to release $(VERSION) to $(REGISTRY_BASE)
 
