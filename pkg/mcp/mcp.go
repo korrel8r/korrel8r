@@ -50,7 +50,7 @@ type ObjectsResult struct {
 	Objects []any `json:"objects" jsonschema:"List of objects matching the query"`
 }
 
-const instructions = `
+const Instructions = `
 Korrel8r finds correlations between observability signals and resources in a Kubernetes cluster.
 It connects data from different domains (logs, metrics, alerts, traces, Kubernetes resources, etc.)
 by following correlation rules to build a graph of related objects.
@@ -89,7 +89,10 @@ type Server struct {
 	*mcp.Server
 	client *Client
 	log    logr.Logger
+	tools  []*mcp.Tool
 }
+
+func (s *Server) AllTools() []*mcp.Tool { return s.tools }
 
 // NewServer creates a new MCP server that proxies to a korrel8r REST API via the given client.
 func NewServer(client *Client, version string, log logr.Logger) *Server {
@@ -97,18 +100,29 @@ func NewServer(client *Client, version string, log logr.Logger) *Server {
 		Server: mcp.NewServer(
 			&mcp.Implementation{Name: "korrel8r", Title: "Korrel8r MCP Server", Version: version},
 			&mcp.ServerOptions{
-				Instructions: instructions,
+				Instructions: Instructions,
 			}),
 		client: client,
 		log:    log,
 	}
-	s.addTools()
+	s.tools = AddTools(s.Server, s.client)
 	s.AddReceivingMiddleware(s.logger)
 	return s
 }
 
-func (s *Server) addTools() {
-	mcp.AddTool(s.Server, &mcp.Tool{
+func addTool[In, Out any](tools *[]*mcp.Tool, server *mcp.Server, t *mcp.Tool, h mcp.ToolHandlerFor[In, Out]) {
+	*tools = append(*tools, t)
+	if server != nil {
+		mcp.AddTool(server, t, h)
+	}
+}
+
+// AddTools adds korrel8r tools to server using client, and returns the list of tools added.
+// If server is nil, returns the tool list without registering them.
+func AddTools(server *mcp.Server, client *Client) []*mcp.Tool {
+	var tools []*mcp.Tool
+
+	addTool(&tools, server, &mcp.Tool{
 		Name: ListDomains,
 		Description: `
 Returns a list of Korrel8r domains with descriptions.
@@ -117,14 +131,14 @@ Use this first to discover available domains, then use list_domain_classes to ex
 `,
 	},
 		func(ctx context.Context, req *mcp.CallToolRequest, input struct{}) (_ *mcp.CallToolResult, out ListDomainsResult, err error) {
-			domains, err := s.client.ListDomains(ctx)
+			domains, err := client.ListDomains(ctx)
 			if err != nil {
 				return nil, ListDomainsResult{}, err
 			}
 			return nil, ListDomainsResult{Domains: domains}, nil
 		})
 
-	mcp.AddTool(s.Server, &mcp.Tool{
+	addTool(&tools, server, &mcp.Tool{
 		Name: ListDomainClasses,
 		Description: `
 List the classes in a domain.
@@ -136,14 +150,14 @@ Class names are used in queries and as goal parameters. The full class name is "
 `,
 	},
 		func(ctx context.Context, req *mcp.CallToolRequest, input DomainParams) (*mcp.CallToolResult, *ListDomainClassesResult, error) {
-			classes, err := s.client.ListDomainClasses(ctx, input.Domain)
+			classes, err := client.ListDomainClasses(ctx, input.Domain)
 			if err != nil {
 				return nil, nil, err
 			}
 			return nil, &ListDomainClassesResult{Domain: input.Domain, Classes: classes}, nil
 		})
 
-	mcp.AddTool(s.Server, &mcp.Tool{
+	addTool(&tools, server, &mcp.Tool{
 		Name: Help,
 		Description: `
 Get help about korrel8r domains, classes, and query syntax.
@@ -160,14 +174,14 @@ For example: create_neighbors_graph, create_goals_graph, get_console or show_in_
 `,
 	},
 		func(ctx context.Context, req *mcp.CallToolRequest, input HelpParams) (*mcp.CallToolResult, *HelpResult, error) {
-			doc, err := s.client.Help(ctx, input.Domain)
+			doc, err := client.Help(ctx, input.Domain)
 			if err != nil {
 				return nil, nil, err
 			}
 			return nil, &HelpResult{Documentation: doc}, nil
 		})
 
-	mcp.AddTool(s.Server, &mcp.Tool{
+	addTool(&tools, server, &mcp.Tool{
 		Name: CreateNeighborsGraph,
 		Description: `
 Search for correlated observability signals and resources starting from known objects.
@@ -186,14 +200,14 @@ depth 2-3 typically reaches related signals like logs, metrics, and alerts.
 `,
 	},
 		func(ctx context.Context, req *mcp.CallToolRequest, input NeighborParams) (*mcp.CallToolResult, *api.Graph, error) {
-			g, err := s.client.GraphNeighbors(ctx, input)
+			g, err := client.GraphNeighbors(ctx, input)
 			if err != nil {
 				return nil, nil, err
 			}
 			return nil, g, nil
 		})
 
-	mcp.AddTool(s.Server, &mcp.Tool{
+	addTool(&tools, server, &mcp.Tool{
 		Name: CreateGoalsGraph,
 		Description: `
 Search for correlations between start objects and specific goal classes.
@@ -214,14 +228,14 @@ Example: to find logs for a crashing pod, use:
 `,
 	},
 		func(ctx context.Context, req *mcp.CallToolRequest, input GoalParams) (*mcp.CallToolResult, *api.Graph, error) {
-			g, err := s.client.GraphGoals(ctx, input)
+			g, err := client.GraphGoals(ctx, input)
 			if err != nil {
 				return nil, nil, err
 			}
 			return nil, g, nil
 		})
 
-	mcp.AddTool(s.Server, &mcp.Tool{
+	addTool(&tools, server, &mcp.Tool{
 		Name: GetObjects,
 		Description: `
 Execute a query and return matching objects as complete JSON.
@@ -241,7 +255,7 @@ high-volume domains like logs, metrics, and traces.
 `,
 	},
 		func(ctx context.Context, req *mcp.CallToolRequest, input ObjectsParams) (*mcp.CallToolResult, *ObjectsResult, error) {
-			raw, err := s.client.GetObjects(ctx, input.Query, input.Constraint)
+			raw, err := client.GetObjects(ctx, input.Query, input.Constraint)
 			if err != nil {
 				return nil, nil, err
 			}
@@ -256,7 +270,7 @@ high-volume domains like logs, metrics, and traces.
 			return nil, &ObjectsResult{Objects: objects}, nil
 		})
 
-	mcp.AddTool(s.Server, &mcp.Tool{
+	addTool(&tools, server, &mcp.Tool{
 		Name: GetConsole,
 		Description: `
 If the user refers to a console, use this tool to find out what the user is looking at.
@@ -271,14 +285,14 @@ and include it as context for further planning or actions.
 `,
 	},
 		func(ctx context.Context, req *mcp.CallToolRequest, input struct{}) (*mcp.CallToolResult, *api.Console, error) {
-			console, err := s.client.GetConsole(ctx)
+			console, err := client.GetConsole(ctx)
 			if err != nil {
 				return nil, nil, err
 			}
 			return nil, console, nil
 		})
 
-	mcp.AddTool(s.Server, &mcp.Tool{
+	addTool(&tools, server, &mcp.Tool{
 		Name: ShowInConsole,
 		Description: `
 If the user refers to a console, use this tool to update the console to display new data.
@@ -290,11 +304,13 @@ Use 'help' to learn the class and query syntax for each domain.
 `,
 	},
 		func(ctx context.Context, req *mcp.CallToolRequest, update ShowInConsoleParams) (*mcp.CallToolResult, any, error) {
-			if err := s.client.ShowInConsole(ctx, &update); err != nil {
+			if err := client.ShowInConsole(ctx, &update); err != nil {
 				return nil, nil, err
 			}
 			return nil, nil, nil
 		})
+
+	return tools
 }
 
 // ServeStdio runs an MCP server, it returns when the client disconnects or the context is canceled.
