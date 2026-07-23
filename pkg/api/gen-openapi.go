@@ -270,7 +270,7 @@ type ListGoalsJSONRequestBody = Goals
 // const string: with thousands of chunks the chained `+` fold is several
 // times slower for the Go compiler than parsing a slice literal.
 var swaggerSpec = []string{
-	"7Dxrcxs3kn8FNXdVsuqGpOTsVVL85shary9+aE3nPpzl2wJnmiRWIDABMKS4Lv33q25gHhyC9OgZX+Iv",
+	"7Dxrcxs3kn8FNXdVsuqGpORsXVL85shary9+aE3nPpzl2wJnmiRWIDABMKS4Lv33q25gHhyC9OgZX+Iv",
 	"iUXONLob/X7wS5LpZaEVKGeT8Zek4IYvwYGhv14ZXizeF05oRX/nYDMj6O9knIQvWKaVM1pKoebMLYDN",
 	"tFkyPaN/G3ClUZCzOYIaJmkC14XUOSRjZ0pIE4GQfivBbJI0UXwJyTjR4cQ0sdkClvyhji6MLsA4AUQM",
 	"GKNNhKzXM4aoMaEyWebAlFaDGXdcMnqDLcFaPgeLEN2mQISnWkvgKkmT64HmhRhkOoc5qAFcO8MHjs/p",

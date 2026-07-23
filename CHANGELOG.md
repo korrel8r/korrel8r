@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [0.11.6] - 2026-07-23
+
+### Fixed
+- Set input schemas in mcp.AddTools for proper tool discovery.
+
 ## [0.11.5] - 2026-07-23
 
 ### Changed
