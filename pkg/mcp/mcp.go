@@ -7,9 +7,11 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"reflect"
 	"time"
 
 	"github.com/go-logr/logr"
+	"github.com/google/jsonschema-go/jsonschema"
 	"github.com/korrel8r/korrel8r/pkg/api"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
@@ -111,6 +113,11 @@ func NewServer(client *Client, version string, log logr.Logger) *Server {
 }
 
 func addTool[In, Out any](tools *[]*mcp.Tool, server *mcp.Server, t *mcp.Tool, h mcp.ToolHandlerFor[In, Out]) {
+	if t.InputSchema == nil {
+		if s, err := jsonschema.ForType(reflect.TypeFor[In](), nil); err == nil {
+			t.InputSchema = s
+		}
+	}
 	*tools = append(*tools, t)
 	if server != nil {
 		mcp.AddTool(server, t, h)

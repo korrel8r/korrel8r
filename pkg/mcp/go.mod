@@ -6,7 +6,8 @@ replace github.com/korrel8r/korrel8r/pkg/api => ../api
 
 require (
 	github.com/go-logr/logr v1.4.3
-	github.com/korrel8r/korrel8r/pkg/api v0.11.4
+	github.com/google/jsonschema-go v0.4.3
+	github.com/korrel8r/korrel8r/pkg/api v0.11.5
 	github.com/modelcontextprotocol/go-sdk v1.6.1
 )
 
@@ -14,7 +15,6 @@ require (
 	github.com/getkin/kin-openapi v0.142.0 // indirect
 	github.com/go-openapi/jsonpointer v0.22.5 // indirect
 	github.com/go-openapi/swag/jsonname v0.25.5 // indirect
-	github.com/google/jsonschema-go v0.4.3 // indirect
 	github.com/oasdiff/yaml v0.1.1 // indirect
 	github.com/oasdiff/yaml3 v0.0.14 // indirect
 	github.com/rogpeppe/go-internal v1.15.0 // indirect
