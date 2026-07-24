@@ -8,26 +8,23 @@ import "unique"
 // Deduplicator keeps track of comparable keys that identify unique values.
 type Deduplicator[K comparable, V any] struct {
 	key  func(V) K
-	seen Set[any]
+	seen Set[K]
 }
 
 // NewDeduplicator uses func key to extract keys from values.
 func NewDeduplicator[K comparable, V any](key func(V) K) *Deduplicator[K, V] {
-	return &Deduplicator[K, V]{key: key}
+	return &Deduplicator[K, V]{key: key, seen: Set[K]{}}
 }
 
-// Unique returns true if  the key of v has not been seen before.
+// Unique returns true if the key of v has not been seen before.
 // Unique will return false for future values with the same key.
 func (d *Deduplicator[K, V]) Unique(v V) bool {
 	k := d.key(v)
-	_, seen := d.seen[k]
-	if !seen {
-		if d.seen == nil {
-			d.seen = map[any]struct{}{}
-		}
-		d.seen[k] = struct{}{}
+	if d.seen.Has(k) {
+		return false
 	}
-	return !seen
+	d.seen.Add(k)
+	return true
 }
 
 func (d *Deduplicator[K, V]) List(values ...V) *DedupList[K, V] {

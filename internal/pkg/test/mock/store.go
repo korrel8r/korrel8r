@@ -108,7 +108,7 @@ func (s *Store) Resolve(korrel8r.Query) *url.URL { panic("not implemented") }
 
 func (s *Store) AddLookup(lookup QueryFunc) { s.lookup = append(s.lookup, lookup) }
 
-func (s *Store) AddDir(dir string) { s.AddLookup(QueryDir(dir).Get) }
+func (s *Store) AddDir(dir string) { s.AddLookup(NewQueryDir(dir).Get) }
 
 // Add query with result.
 // Query can be a korrel8r.Query or a string.
@@ -224,10 +224,22 @@ func (m *QueryMap) Put(q string, f QueryFunc) {
 }
 
 // QueryDir is a directory of query files containing results in ndjson format.
+// Results are cached after first read since files are static during tests.
 //
 // File names are tried in order: literal query string, URL query-escaped, then
 // SHA-256 hex hash (for names that contain path separators or exceed filesystem limits).
-type QueryDir string
+type QueryDir struct {
+	dir   string
+	cache sync.Map // query string → cachedResult
+}
+
+type cachedResult struct {
+	objects []korrel8r.Object
+	err     error
+}
+
+// NewQueryDir creates a QueryDir for the given directory path.
+func NewQueryDir(dir string) *QueryDir { return &QueryDir{dir: dir} }
 
 // QueryFileName returns the escaped file name for a query string.
 // It uses URL query-escaping when the result fits in 255 bytes,
@@ -241,15 +253,25 @@ func QueryFileName(query string) string {
 	return hex.EncodeToString(h[:])
 }
 
-func (s QueryDir) Get(q korrel8r.Query) ([]korrel8r.Object, error) {
+func (s *QueryDir) Get(q korrel8r.Query) ([]korrel8r.Object, error) {
 	qs := q.String()
-	f, err := os.Open(filepath.Join(string(s), qs))
+	if v, ok := s.cache.Load(qs); ok {
+		cr := v.(cachedResult)
+		return cr.objects, cr.err
+	}
+	objects, err := s.readFile(qs)
+	s.cache.Store(qs, cachedResult{objects, err})
+	return objects, err
+}
+
+func (s *QueryDir) readFile(qs string) ([]korrel8r.Object, error) {
+	f, err := os.Open(filepath.Join(s.dir, qs))
 	if os.IsNotExist(err) {
-		f, err = os.Open(filepath.Join(string(s), url.QueryEscape(qs)))
+		f, err = os.Open(filepath.Join(s.dir, url.QueryEscape(qs)))
 	}
 	if os.IsNotExist(err) {
 		h := sha256.Sum256([]byte(qs))
-		f, err = os.Open(filepath.Join(string(s), hex.EncodeToString(h[:])))
+		f, err = os.Open(filepath.Join(s.dir, hex.EncodeToString(h[:])))
 	}
 	switch {
 	case os.IsNotExist(err):
@@ -257,6 +279,7 @@ func (s QueryDir) Get(q korrel8r.Query) ([]korrel8r.Object, error) {
 	case err != nil:
 		return nil, err
 	default:
+		defer func() { _ = f.Close() }()
 		var result []korrel8r.Object
 		d := json.NewDecoder(f)
 		for {
