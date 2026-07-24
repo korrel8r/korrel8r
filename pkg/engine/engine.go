@@ -126,8 +126,9 @@ func (e *Engine) Rule(name string) korrel8r.Rule { return e.rulesByName[name] }
 // StatusRulesFor returns the status rules for the given class.
 func (e *Engine) StatusRulesFor(c korrel8r.Class) []status.Rule { return e.statuses[c.String()] }
 
-// Graph creates a new mutable graph from the engine's cached immutable rule data.
-func (e *Engine) Graph() *graph.Graph { return e.data.FullGraph() }
+// Graph returns the read-only topology graph. Callers use GoalPaths/Neighbors/Select
+// to create mutable subgraphs for traversal.
+func (e *Engine) Graph() *graph.Graph { return e.data.TopoGraph() }
 
 // Get results for query from all stores for the query domain.
 func (e *Engine) Get(ctx context.Context, query korrel8r.Query, constraint *korrel8r.Constraint, result korrel8r.Appender) (err error) {

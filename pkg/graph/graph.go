@@ -29,6 +29,7 @@ type Graph struct {
 	*multi.DirectedGraph
 	GraphAttrs, NodeAttrs, EdgeAttrs Attrs
 	Data                             *Data
+	allLines                         []*Line // Cached lines; nil = use gonum iterators.
 }
 
 // New empty graph based on Data
@@ -111,11 +112,28 @@ func (g *Graph) EachEdge(visit func(*Edge)) {
 }
 
 func (g *Graph) EachLine(visit func(*Line)) {
-	edges := g.Edges()
-	for edges.Next() {
-		e := edges.Edge()
-		g.EachLineBetween(e.From().(*Node), e.To().(*Node), visit)
+	for _, l := range g.allLines {
+		visit(l)
 	}
+}
+
+// copyNode returns the mutable copy of n in g, creating one if absent.
+func (g *Graph) copyNode(n *Node) *Node {
+	if existing := g.Node(n.ID()); existing != nil {
+		return existing.(*Node)
+	}
+	c := n.Copy()
+	g.AddNode(c)
+	return c
+}
+
+// copyLine copies l into g with fresh mutable state, copying endpoint nodes if needed.
+// Appends the copy to allLines and returns it.
+func (g *Graph) copyLine(l *Line) *Line {
+	c := l.Copy(g.copyNode(l.Start()), g.copyNode(l.Goal()))
+	g.SetLine(c)
+	g.allLines = append(g.allLines, c)
+	return c
 }
 
 // EachLineBetween calls visit(l) for each line between start and goal (if there are any).
@@ -144,12 +162,12 @@ func (g *Graph) EachLineTo(goal *Node, visit func(*Line)) {
 	}
 }
 
-// Select creates a sub-graph of all lines where keep(line) is true.
+// Select creates a mutable sub-graph of all lines where keep(line) is true.
 func (g *Graph) Select(keep func(*Line) bool) *Graph {
 	sub := g.Data.EmptyGraph()
 	g.EachLine(func(l *Line) {
 		if keep(l) {
-			sub.SetLine(l)
+			sub.copyLine(l)
 		}
 	})
 	return sub
@@ -160,7 +178,7 @@ func (g *Graph) DOTAttributers() (graph, node, edge encoding.Attributer) {
 	return g.GraphAttrs, g.NodeAttrs, g.EdgeAttrs
 }
 
-// GoalPaths returns a new rules sub-graph of nodes on a path to the goal class.
+// GoalPaths returns a new mutable sub-graph of nodes on a path to the goal class.
 // Includes k-shortest paths with cost <= shortest+1.
 func (g *Graph) GoalPaths(start korrel8r.Class, goals []korrel8r.Class) (*Graph, error) {
 	u, err := g.NodeForErr(start)
@@ -168,7 +186,7 @@ func (g *Graph) GoalPaths(start korrel8r.Class, goals []korrel8r.Class) (*Graph,
 		return nil, err
 	}
 	sub := g.Data.EmptyGraph()
-	sub.AddNode(u)
+	sub.copyNode(u)
 	for _, goal := range goals {
 		v, err := g.NodeForErr(goal)
 		if err != nil {
@@ -176,11 +194,11 @@ func (g *Graph) GoalPaths(start korrel8r.Class, goals []korrel8r.Class) (*Graph,
 		}
 		// Find shortest paths, and shortest+1 paths
 		paths := path.YenKShortestPaths(g, -1, 1, u, v)
-		for _, path := range paths {
-			for i := 1; i < len(path); i++ {
-				lines := g.Lines(path[i-1].ID(), path[i].ID())
+		for _, p := range paths {
+			for i := 1; i < len(p); i++ {
+				lines := g.Lines(p[i-1].ID(), p[i].ID())
 				for lines.Next() {
-					sub.SetLine(lines.Line())
+					sub.copyLine(lines.Line().(*Line))
 				}
 			}
 		}
@@ -188,20 +206,20 @@ func (g *Graph) GoalPaths(start korrel8r.Class, goals []korrel8r.Class) (*Graph,
 	return sub, nil
 }
 
-// Neighbors returns a breadth-first neighborhood following up to maxDepth edges from start.
+// Neighbors returns a mutable breadth-first neighborhood following up to maxDepth edges from start.
 func (g *Graph) Neighbors(start korrel8r.Class, maxDepth int) (*Graph, error) {
 	sub := g.Data.EmptyGraph()
 	u, err := g.NodeForErr(start)
 	if err != nil {
 		return nil, err
 	}
-	sub.AddNode(u)
+	sub.copyNode(u)
 	depth := 0
 	bf := traverse.BreadthFirst{
 		Traverse: func(e graph.Edge) bool {
 			ok := depth < maxDepth
 			if ok {
-				EdgeFor(e).EachLine(func(l *Line) { sub.SetLine(l) })
+				EdgeFor(e).EachLine(func(l *Line) { sub.copyLine(l) })
 			}
 			return ok
 		}}
@@ -227,11 +245,15 @@ func (g *Graph) FindLine(start, goal korrel8r.Class, rule korrel8r.Rule) *Line {
 
 // Remove empty nodes and lines from the graph.
 func (g *Graph) RemoveEmpty() {
-	g.EachLine(func(l *Line) {
+	kept := g.allLines[:0]
+	for _, l := range g.allLines {
 		if l.Queries.Total() == 0 {
 			g.RemoveLine(l.F.ID(), l.T.ID(), l.ID())
+		} else {
+			kept = append(kept, l)
 		}
-	})
+	}
+	g.allLines = kept
 	g.EachNode(func(n *Node) {
 		if len(n.Result.List()) == 0 {
 			g.RemoveNode(n.ID())
@@ -261,6 +283,14 @@ func (g *Graph) RemoveEmptyGoalPaths(goals []korrel8r.Class) {
 			g.RemoveNode(n.ID())
 		}
 	})
+	// Rebuild allLines — RemoveNode removes edges from gonum but not from allLines.
+	kept := g.allLines[:0]
+	for _, l := range g.allLines {
+		if g.Node(l.F.ID()) != nil && g.Node(l.T.ID()) != nil {
+			kept = append(kept, l)
+		}
+	}
+	g.allLines = kept
 }
 
 func (g *Graph) LineStrings() (lines []string) {
