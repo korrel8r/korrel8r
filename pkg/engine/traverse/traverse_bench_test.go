@@ -16,7 +16,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-const delay = time.Millisecond
+const delay = time.Microsecond
 
 func makeEngine(b *testing.B) *engine.Engine {
 	b.Helper()
