@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"slices"
 	"strings"
+	"sync"
 	"unique"
 
 	"github.com/korrel8r/korrel8r/internal/pkg/cache"
@@ -19,11 +20,14 @@ import (
 // Data contains a set of class nodes and rule lines to be used in rule/class graphs.
 // Graphs based on the same Data have consistent node and line IDs.
 //
-// Concurrency: Data is immutable once created.
+// Concurrency: Data is immutable once created. The topology graph is built lazily and shared.
 type Data struct {
 	Nodes  []*Node          // Nodes, index == Node.ID()
 	Lines  []*Line          // Lines, index == Line.ID()
 	nodeID map[string]int64 // Map by full class name
+
+	topo     *Graph    // Lazy read-only topology graph with immutable nodes/lines.
+	topoOnce sync.Once // Guards topo construction.
 }
 
 // NewData creates a new data set from a list of rules.
@@ -79,24 +83,30 @@ func (d *Data) EmptyGraph() *Graph { return New(d) }
 // FullGraph returns a new graph with fresh mutable copies of all nodes and lines.
 func (d *Data) FullGraph() *Graph {
 	g := New(d)
-	// Create fresh nodes with their own mutable state.
-	nodes := make([]*Node, len(d.Nodes))
-	for i, n := range d.Nodes {
-		nodes[i] = n.Copy()
-	}
-	// Create fresh lines pointing to the new nodes.
 	for _, l := range d.Lines {
-		from := nodes[l.From().(*Node).ID()]
-		to := nodes[l.To().(*Node).ID()]
-		g.SetLine(l.Copy(from, to))
+		g.copyLine(l)
 	}
-	// Add any isolated nodes not connected by a line.
-	for _, n := range nodes {
-		if g.Node(n.ID()) == nil {
-			g.AddNode(n)
-		}
+	for _, n := range d.Nodes {
+		g.copyNode(n)
 	}
 	return g
+}
+
+// TopoGraph returns a read-only topology graph backed by Data's immutable nodes and lines.
+// Built once and shared across all callers. Use for BFS/pathfinding, then build mutable
+// subgraphs via GoalPaths/Neighbors for traversal.
+func (d *Data) TopoGraph() *Graph {
+	d.topoOnce.Do(func() {
+		d.topo = New(d)
+		d.topo.allLines = d.Lines
+		for _, n := range d.Nodes {
+			d.topo.AddNode(n)
+		}
+		for _, l := range d.Lines {
+			d.topo.SetLine(l)
+		}
+	})
+	return d.topo
 }
 
 // Rules returns a copy of the complete list of rules.
