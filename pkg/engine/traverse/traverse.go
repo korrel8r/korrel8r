@@ -202,7 +202,6 @@ func (t *traverser) run(ctx context.Context, start Start) (*graph.Graph, error) 
 
 	// Launch worker pool — workers block on the empty queue until work arrives.
 	numWorkers := runtime.GOMAXPROCS(0)
-	log.V(2).Info("Search concurrency", "workers", numWorkers)
 	var workerWg sync.WaitGroup
 	for range numWorkers {
 		workerWg.Go(func() {
@@ -330,7 +329,7 @@ func (n *node) overLimit(limit int) bool {
 	n.mu.Lock()
 	defer n.mu.Unlock()
 	if limit > 0 && len(n.Queries) > limit {
-		log.V(2).Info("Query limit reached", "class", n.Class, "queries", len(n.Queries))
+		log.V(5).Info("Query limit reached", "class", n.Class, "queries", len(n.Queries))
 		return true
 	}
 	return false
