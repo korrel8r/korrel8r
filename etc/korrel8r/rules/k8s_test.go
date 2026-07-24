@@ -143,11 +143,6 @@ func TestK8sRules(t *testing.T) {
 			want: []string{`k8s:StorageClass.v1.storage.k8s.io:{"name":"sc-1"}`},
 		},
 		{
-			rule:  "NodeToPod",
-			start: newK8s("Node", "", "worker-1", nil),
-			want:  []string{`k8s:Pod.v1:{"fields":{"spec.nodeName":"worker-1"}}`},
-		},
-		{
 			rule: "VolumeAttachmentToNode",
 			start: newK8s("VolumeAttachment.storage.k8s.io", "", "va-1", k8s.Object{
 				"spec": k8s.Object{

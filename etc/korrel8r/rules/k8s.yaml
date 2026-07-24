@@ -87,17 +87,6 @@ rules:
           {{- end}}
         {{end -}}
 
-  - name: NodeToPod
-    start:
-      domain: k8s
-      classes: [Node]
-    goal:
-      domain: k8s
-      classes: [Pod]
-    result:
-      query: |-
-        k8s:Pod:{"fields":{"spec.nodeName":"{{.metadata.name}}"}}
-
   - name: NodeToResourceSlice
     start:
       domain: k8s
