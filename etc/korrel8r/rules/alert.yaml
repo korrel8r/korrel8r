@@ -7,7 +7,7 @@ rules:
       classes: [Deployment.apps]
     result:
       query: |-
-        k8s:Deployment.v1.apps:{namespace: "{{.Labels.namespace}}", name: "{{.Labels.deployment}}"}
+        k8s:Deployment.v1.apps:{namespace: "{{index .Labels "namespace" | required}}", name: "{{index .Labels "deployment" | required}}"}
 
   - name: AlertToPod
     start:
@@ -17,7 +17,7 @@ rules:
       classes: [Pod.v1]
     result:
       query: |-
-        k8s:Pod.v1:{namespace: "{{or (index .Labels "kubernetes_namespace_name") (index .Labels "namespace")}}", name: "{{or (index .Labels "kubernetes_pod_name") (index .Labels "pod")}}"}
+        k8s:Pod.v1:{namespace: "{{or (index .Labels "kubernetes_namespace_name") (index .Labels "namespace") | required}}", name: "{{or (index .Labels "kubernetes_pod_name") (index .Labels "pod") | required}}"}
 
   - name: AlertToPodDisruptionBudget
     start:
@@ -27,7 +27,7 @@ rules:
       classes: [PodDisruptionBudget.v1.policy]
     result:
       query: |-
-        k8s:PodDisruptionBudget.v1.policy:{namespace: "{{.Labels.namespace}}", name: "{{.Labels.poddisruptionbudget}}"}
+        k8s:PodDisruptionBudget.v1.policy:{namespace: "{{index .Labels "namespace" | required}}", name: "{{index .Labels "poddisruptionbudget" | required}}"}
 
   - name: AlertToDaemonSet
     start:
@@ -37,7 +37,7 @@ rules:
       classes: [DaemonSet.apps]
     result:
       query: |-
-        k8s:DaemonSet.apps:{namespace: "{{.Labels.namespace}}", name: "{{.Labels.daemonset}}"}
+        k8s:DaemonSet.apps:{namespace: "{{index .Labels "namespace" | required}}", name: "{{index .Labels "daemonset" | required}}"}
 
   - name: AlertToStatefulSet
     start:
@@ -47,7 +47,7 @@ rules:
       classes: [StatefulSet.apps]
     result:
       query: |-
-        k8s:StatefulSet.apps:{namespace: "{{.Labels.namespace}}", name: "{{.Labels.statefulset}}"}
+        k8s:StatefulSet.apps:{namespace: "{{index .Labels "namespace" | required}}", name: "{{index .Labels "statefulset" | required}}"}
 
   - name: AlertToMetric
     start:
@@ -56,7 +56,7 @@ rules:
       domain: metric
     result:
       query: |-
-        metric:metric:{{.Expression}}
+        metric:metric:{{required .Expression}}
 
   - name: PodToAlert
     start:

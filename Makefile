@@ -232,6 +232,13 @@ doc/content/docs/reference/mcp/index.md: $(shell find pkg/mcp) cmd/korrel8r-docg
 	go run ./cmd/korrel8r-docgen > $@
 	@$(FRONT) $@ 'title: MCP API' 'description: MCP tool reference' 'weight: 60'
 
+DOC_PUBLIC+=doc/content/docs/reference/template-functions.md
+CLEANFILES+=doc/content/docs/reference/template-functions.md
+doc/content/docs/reference/template-functions.md: pkg/engine/template_funcs.go $(shell find doc/gomarkdoc) $(FRONT)
+	@mkdir -p $(dir $@)
+	go tool gomarkdoc ./pkg/engine/ --template-file file=doc/gomarkdoc/file.gotxt | sed '1,/^$$/d' > $@
+	@$(FRONT) $@ 'title: Template Functions' 'description: Functions available in rule templates' 'weight: 10'
+
 doc/public: $(DOC_PUBLIC) $(shell find doc/* -name public -prune -o -print)
 	go tool hugo --source doc
 	@touch $@

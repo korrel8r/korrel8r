@@ -52,7 +52,7 @@ rules:
       classes: [Node]
     result:
       query: |-
-        k8s:Node:{"name":"{{.status.nodeName}}"}
+        k8s:Node:{"name":"{{required (index .status "nodeName")}}"}
 
   - name: VmToPVC
     start:
@@ -91,7 +91,7 @@ rules:
       classes: [VirtualMachine.kubevirt.io]
     result:
       query: |-
-        k8s:VirtualMachine.kubevirt.io:{"namespace":"{{.Labels.namespace}}","name":"{{.Labels.name}}"}
+        k8s:VirtualMachine.kubevirt.io:{"namespace":"{{index .Labels "namespace" | required}}","name":"{{index .Labels "name" | required}}"}
 
   - name: VmToAlert
     start:
@@ -113,7 +113,7 @@ rules:
       classes: [VirtualMachineInstance.kubevirt.io]
     result:
       query: |-
-        k8s:VirtualMachineInstance.kubevirt.io:{"namespace":"{{.Labels.namespace}}","name":"{{.Labels.name}}"}
+        k8s:VirtualMachineInstance.kubevirt.io:{"namespace":"{{index .Labels "namespace" | required}}","name":"{{index .Labels "name" | required}}"}
 
   - name: VmiToAlert
     start:
@@ -135,7 +135,7 @@ rules:
       classes: [VirtualMachineInstanceMigration.kubevirt.io]
     result:
       query: |-
-        k8s:VirtualMachineInstanceMigration.kubevirt.io:{"namespace":"{{.Labels.namespace}}","name":"{{.Labels.vmim}}"}
+        k8s:VirtualMachineInstanceMigration.kubevirt.io:{"namespace":"{{index .Labels "namespace" | required}}","name":"{{index .Labels "vmim" | required}}"}
 
   - name: VmimToAlert
     start:

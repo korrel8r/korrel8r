@@ -102,9 +102,7 @@ The `lower` function converts the Kind (e.g. "Pod") to lowercase for the PromQL 
 Rule templates use [Go template syntax](https://pkg.go.dev/text/template).
 The template receives the start object as its context (`.`), so you can access fields directly.
 
-Korrel8r includes the [Sprig](http://masterminds.github.io/sprig/) template function library.
-Some domains provide additional functions -- see the [Domain Reference](../reference/domains/)
-and [Configuration Reference](../configuration/#about-templates) for details.
+Korrel8r provides additional [template functions](../reference/template-functions/) to simplify writing rules. Domains may provide additional functions -- see the [Domain Reference](../reference/domains/)
 
 Common patterns:
 

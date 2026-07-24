@@ -7,7 +7,7 @@ rules:
       classes: [Pod]
     result:
       query: |-
-        k8s:Pod:{namespace: "{{.kubernetes_namespace_name}}", name: "{{.kubernetes_pod_name}}"}
+        k8s:Pod:{namespace: "{{index . "kubernetes_namespace_name" | required}}", name: "{{index . "kubernetes_pod_name" | required}}"}
 
   - name: SelectorToLogs
     start:
