@@ -2,20 +2,21 @@
 
 // Package traverse finds correlated objects by traversing a rule graph.
 //
-// The algorithm uses a worker-per-class model with iterative breadth-first expansion:
+// The algorithm uses concurrent workers fed by a shared query channel:
 //
 //  1. The full rule graph is reduced to relevant paths (goal-directed or depth-limited neighborhood).
-//  2. A worker is created for each class node. Workers own disjoint data and communicate via query channels.
-//  3. Each iteration runs concurrently:
-//     a. Workers process inbox queries by calling stores (engine.Get) to collect objects.
-//     b. Workers apply correlation rules to new objects, producing queries in their outbox.
-//     c. Outboxes are redistributed to inboxes by query class (sequential barrier).
-//  4. Iterations repeat until no worker has work, the depth limit is reached, or the context is cancelled.
+//  2. A node is created for each class, protected by a mutex for concurrent access.
+//  3. A fixed-size worker pool reads queryLines from a shared channel:
+//     a. Each worker executes a query via engine.Get to collect objects.
+//     b. New objects are added to the target node, applying correlation rules immediately.
+//     c. Resulting queries are deduplicated and sent back to the channel.
+//  4. Traversal completes when all in-flight work is done (tracked by sync.WaitGroup).
 //  5. Empty nodes and lines are pruned from the result graph.
 package traverse
 
 import (
 	"context"
+	"runtime"
 	"sync"
 
 	"github.com/korrel8r/korrel8r/internal/pkg/logging"
@@ -34,7 +35,7 @@ func Goals(ctx context.Context, e *engine.Engine, start Start, goals []korrel8r.
 	if err != nil {
 		return nil, err
 	}
-	g, err = newTraverser(e, g, start.Constraint).run(ctx, start, -1)
+	g, err = newTraverser(e, g, start.Constraint, -1).run(ctx, start)
 	g.RemoveEmptyGoalPaths(goals)
 	return g, err
 }
@@ -42,11 +43,11 @@ func Goals(ctx context.Context, e *engine.Engine, start Start, goals []korrel8r.
 // Neighbors traverses to all neighbors of the start objects, traversing links up to the given depth.
 func Neighbors(ctx context.Context, e *engine.Engine, start Start, depth int) (*graph.Graph, error) {
 	log.V(2).Info("Neighbourhood search", "start", start, "depth", depth, "constraint", start.Constraint)
-	g, err := e.Graph().Neighbors(start.Class, depth) // Reduce the graph.
+	g, err := e.Graph().Neighbors(start.Class, depth)
 	if err != nil {
 		return nil, err
 	}
-	return newTraverser(e, g, start.Constraint).run(ctx, start, depth)
+	return newTraverser(e, g, start.Constraint, depth).run(ctx, start)
 }
 
 // Start point information for graph traversal.
@@ -59,43 +60,12 @@ type Start struct {
 
 var log = logging.Log()
 
-type traverser struct {
-	engine     *engine.Engine
-	graph      *graph.Graph
-	workers    map[korrel8r.Class]*worker
-	constraint *korrel8r.Constraint
-}
-
-// A worker gets queries from a store, applies rules and sends new queries to other workers.
-// Workers operate on disjoint data (node, class and store) and communicate via channels.
-type worker struct {
-	*traverser
-	node          *graph.Node
-	rules         unique.Set[korrel8r.Rule]                       // Outgoing Rules.
-	lines         map[korrel8r.Rule]map[korrel8r.Class]*graph.Line // Cached line lookups by (rule, goalClass).
-	ruleAttrs     map[korrel8r.Rule]metric.MeasurementOption       // Pre-computed metric attributes per rule.
-	inbox, outbox queryBox                                         // Incoming and outgoing queries
-	processed     int                                              // Count of node.Result already processed
-}
-
-type queryBox map[korrel8r.Query]queryLine
-
-func (qb queryBox) Add(ctx context.Context, ql queryLine) bool {
-	if _, ok := qb[ql.Query]; ok {
-		metricDuplicateQueries.Add(ctx, 1, ql.MetricAttributes())
-		return false // Already present
-	}
-	qb[ql.Query] = ql
-	return true
-}
-
-// queryLine is a query and the graph line associated with it.
+// queryLine is a query, the graph line that generated it, and its traversal depth.
 type queryLine struct {
 	Query korrel8r.Query
 	Line  *graph.Line
+	depth int
 }
-
-func (ql queryLine) ID() korrel8r.Query { return ql.Query }
 
 func (ql queryLine) MetricAttributes() metric.MeasurementOption {
 	queryAttr := attribute.String("query", ql.Query.String())
@@ -105,143 +75,240 @@ func (ql queryLine) MetricAttributes() metric.MeasurementOption {
 	return metric.WithAttributes(queryAttr)
 }
 
-func newTraverser(e *engine.Engine, g *graph.Graph, c *korrel8r.Constraint) *traverser {
-	return &traverser{
-		engine:     e,
-		graph:      g,
-		workers:    map[korrel8r.Class]*worker{},
-		constraint: c,
-	}
+type lineKey struct {
+	start, goal korrel8r.Class
+	rule        korrel8r.Rule
 }
 
-// run starts the search and waits for it to complete.
-// If depth is >= 0 the search is limited to that depth. If depth < 0 there is no depth limit.
-func (t *traverser) run(ctx context.Context, start Start, depth int) (*graph.Graph, error) {
+// node wraps a graph.Node with a mutex for concurrent access.
+type node struct {
+	mu sync.Mutex
+	*graph.Node
+	processed int // count of Result objects already rule-applied
+}
 
-	// Prime the start worker
-	startNode, err := t.graph.NodeForErr(start.Class)
-	if err != nil {
-		return nil, err
+// workQueue is an unbounded, mutex-protected FIFO queue.
+// put never blocks, so producer-consumer deadlock is impossible.
+type workQueue struct {
+	mu     sync.Mutex
+	cond   *sync.Cond
+	items  []queryLine
+	closed bool
+}
+
+func newWorkQueue() *workQueue {
+	q := &workQueue{}
+	q.cond = sync.NewCond(&q.mu)
+	return q
+}
+
+func (q *workQueue) put(ql queryLine) {
+	q.mu.Lock()
+	q.items = append(q.items, ql)
+	q.mu.Unlock()
+	q.cond.Signal()
+}
+
+func (q *workQueue) get() (queryLine, bool) {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	for len(q.items) == 0 && !q.closed {
+		q.cond.Wait()
 	}
-	w := t.newWorker(startNode)
-	w.node.Result.Append(start.Objects...)
-	for _, q := range start.Queries {
-		ql := queryLine{Query: q}
-		w.inbox.Add(ctx, ql)
+	if len(q.items) == 0 {
+		return queryLine{}, false
+	}
+	ql := q.items[0]
+	q.items = q.items[1:]
+	return ql, true
+}
+
+func (q *workQueue) close() {
+	q.mu.Lock()
+	q.closed = true
+	q.mu.Unlock()
+	q.cond.Broadcast()
+}
+
+type traverser struct {
+	engine     *engine.Engine
+	graph      *graph.Graph
+	constraint *korrel8r.Constraint
+	maxDepth   int // -1 for unlimited
+
+	// Read-only after init
+	nodes     map[korrel8r.Class]*node
+	rules     map[korrel8r.Class]unique.Set[korrel8r.Rule]
+	lines     map[lineKey]*graph.Line
+	ruleAttrs map[korrel8r.Rule]metric.MeasurementOption
+
+	// Concurrent state
+	work   *workQueue
+	wg     sync.WaitGroup
+	seenMu sync.Mutex
+	seen   map[korrel8r.Query]struct{}
+	lineMu sync.Mutex
+}
+
+func newTraverser(e *engine.Engine, g *graph.Graph, c *korrel8r.Constraint, maxDepth int) *traverser {
+	t := &traverser{
+		engine:     e,
+		graph:      g,
+		constraint: c,
+		maxDepth:   maxDepth,
+		nodes:      map[korrel8r.Class]*node{},
+		rules:      map[korrel8r.Class]unique.Set[korrel8r.Rule]{},
+		lines:      map[lineKey]*graph.Line{},
+		ruleAttrs:  map[korrel8r.Rule]metric.MeasurementOption{},
+		work:       newWorkQueue(),
+		seen:       map[korrel8r.Query]struct{}{},
 	}
 
-	// Create workers for start and goal of all rules in the graph.
-	// Pre-compute line lookups and metric attributes per (worker, rule).
-	t.graph.EachLine(func(l *graph.Line) {
-		t.newWorker(l.Start())
-		t.newWorker(l.Goal())
-		w := t.workers[l.Start().Class]
-		w.rules.Add(l.Rule)
-		if w.lines[l.Rule] == nil {
-			w.lines[l.Rule] = map[korrel8r.Class]*graph.Line{}
+	g.EachLine(func(l *graph.Line) {
+		t.getOrCreateNode(l.Start())
+		t.getOrCreateNode(l.Goal())
+		startClass := l.Start().Class
+		if t.rules[startClass] == nil {
+			t.rules[startClass] = unique.NewSet[korrel8r.Rule]()
 		}
-		w.lines[l.Rule][l.Goal().Class] = l
-		if _, ok := w.ruleAttrs[l.Rule]; !ok {
-			w.ruleAttrs[l.Rule] = metric.WithAttributes(
+		t.rules[startClass].Add(l.Rule)
+		t.lines[lineKey{start: startClass, rule: l.Rule, goal: l.Goal().Class}] = l
+		if _, ok := t.ruleAttrs[l.Rule]; !ok {
+			t.ruleAttrs[l.Rule] = metric.WithAttributes(
 				attribute.String("rule", l.Rule.Name()),
-				attribute.String("start", w.node.Class.String()))
+				attribute.String("start", startClass.String()))
 		}
 	})
 
-	// Run until no work is left or we have reached the requested depth.
-	// Depth < 0 means no depth limit.
-	for i := 0; i <= depth || depth < 0; i++ {
-		if ctx.Err() != nil {
-			return nil, ctx.Err()
-		}
+	return t
+}
 
-		// Collect workers with work.
-		working := make([]*worker, 0, len(t.workers))
-		for _, w := range t.workers {
-			if w.HasWork() {
-				working = append(working, w)
-			}
-		}
-		if len(working) == 0 {
-			break // No work to do
-		}
-
-		// Process inboxes concurrently, fill outboxes
-		var busy sync.WaitGroup
-		for _, w := range working {
-			busy.Go(func() { ; w.Run(ctx) })
-		}
-		busy.Wait() // Wait for worker.Run() goroutines to complete.
-
-		// Redistribute outboxes to inboxes. Not concurrent, touches all workers.
-		for _, w := range working {
-			for _, ql := range w.outbox {
-				if next := t.workers[ql.Query.Class()]; next != nil {
-					next.inbox.Add(ctx, ql)
-				}
-			}
-			clear(w.outbox)
-		}
+func (t *traverser) getOrCreateNode(gn *graph.Node) *node {
+	n := t.nodes[gn.Class]
+	if n == nil {
+		n = &node{Node: gn}
+		t.nodes[gn.Class] = n
 	}
+	return n
+}
+
+// run launches the worker pool, primes start data, and waits for completion.
+func (t *traverser) run(ctx context.Context, start Start) (*graph.Graph, error) {
+	startGraphNode, err := t.graph.NodeForErr(start.Class)
+	if err != nil {
+		return nil, err
+	}
+	startNode := t.getOrCreateNode(startGraphNode)
+
+	// Launch worker pool — workers block on the empty queue until work arrives.
+	numWorkers := runtime.GOMAXPROCS(0)
+	log.V(2).Info("Search concurrency", "workers", numWorkers)
+	var workerWg sync.WaitGroup
+	for range numWorkers {
+		workerWg.Go(func() {
+			for ql, ok := t.work.get(); ok; ql, ok = t.work.get() {
+				t.handleQuery(ctx, ql)
+			}
+		})
+	}
+
+	// Sentinel prevents premature WaitGroup completion during priming.
+	t.wg.Add(1)
+
+	startNode.mu.Lock()
+	startNode.Result.Append(start.Objects...)
+	startNode.mu.Unlock()
+
+	for _, q := range start.Queries {
+		t.dedupAndSend(ctx, queryLine{Query: q, depth: 0})
+	}
+
+	t.applyRules(ctx, startNode, 1)
+
+	t.wg.Done() // Release sentinel.
+	t.wg.Wait()
+	t.work.close()
+	workerWg.Wait()
+
 	t.graph.RemoveEmpty()
-	return t.graph, nil
+	return t.graph, ctx.Err()
 }
 
-func (t *traverser) newWorker(n *graph.Node) *worker {
-	w := t.workers[n.Class]
-	if w == nil {
-		w = &worker{
-			traverser: t,
-			node:      n,
-			rules:     unique.NewSet[korrel8r.Rule](),
-			lines:     map[korrel8r.Rule]map[korrel8r.Class]*graph.Line{},
-			ruleAttrs: map[korrel8r.Rule]metric.MeasurementOption{},
-			inbox:     queryBox{},
-			outbox:    queryBox{},
-		}
-		t.workers[n.Class] = w
+// dedupAndSend checks depth and query dedup, then adds to the work queue.
+func (t *traverser) dedupAndSend(ctx context.Context, ql queryLine) {
+	if t.maxDepth >= 0 && ql.depth > t.maxDepth {
+		return
 	}
-	return w
-}
-
-func (w *worker) overQueryLimit() bool {
-	limit := w.constraint.GetQueryLimit()
-	return limit > 0 && len(w.node.Queries) > limit
-}
-
-func (w *worker) HasWork() bool {
-	if w.overQueryLimit() {
-		log.V(2).Info("Query limit reached", "class", w.node.Class, "queries", len(w.node.Queries))
+	if ctx.Err() != nil {
+		return
 	}
-	return len(w.inbox) > 0 || len(w.node.Result.List()) > w.processed
+	if t.isDuplicate(ctx, ql) {
+		return
+	}
+	t.wg.Add(1)
+	t.work.put(ql)
 }
 
-// Run processes queries in inbox, populates node results, applies rules, stores new queries in outbox.
-func (w *worker) Run(ctx context.Context) {
-	defer func() {
-		clear(w.inbox)
-		w.processed = len(w.node.Result.List())
-	}()
-	// Process queries from inbox, apply status rules per query.
-	statusRules := w.engine.StatusRulesFor(w.node.Class)
-	for _, ql := range w.inbox {
-		if ctx.Err() != nil {
-			return
-		}
-		if w.overQueryLimit() {
-			break
-		}
-		before := len(w.node.Result.List())
-		// Error is logged by engine.Get
-		_ = w.engine.Get(ctx, ql.Query, w.constraint, w.node.Result)
-		result := w.node.Result.List()[before:]
-		metricQueries.Add(ctx, 1, ql.MetricAttributes())
-		w.node.Queries.Set(ql.Query, len(result))
-		if ql.Line != nil {
-			ql.Line.Queries.Set(ql.Query, len(result))
-		}
+func (t *traverser) isDuplicate(ctx context.Context, ql queryLine) bool {
+	t.seenMu.Lock()
+	defer t.seenMu.Unlock()
+	if _, exists := t.seen[ql.Query]; exists {
+		metricDuplicateQueries.Add(ctx, 1, ql.MetricAttributes())
+		return true
+	}
+	t.seen[ql.Query] = struct{}{}
+	return false
+}
+
+// handleQuery processes a single queryLine: executes the query, adds results, applies rules.
+func (t *traverser) handleQuery(ctx context.Context, ql queryLine) {
+	defer t.wg.Done()
+	if ctx.Err() != nil {
+		return
+	}
+
+	goalClass := ql.Query.Class()
+	n := t.nodes[goalClass]
+	if n == nil {
+		return
+	}
+	if n.overLimit(t.constraint.GetQueryLimit()) {
+		return
+	}
+
+	// Execute query into a local slice.
+	var results []korrel8r.Object
+	_ = t.engine.Get(ctx, ql.Query, t.constraint, korrel8r.AppenderFunc(func(objects ...korrel8r.Object) {
+		results = append(results, objects...)
+	}))
+	metricQueries.Add(ctx, 1, ql.MetricAttributes())
+
+	// Add unique new objects to node and record query.
+	// The captured resultList slice header is safe to read after unlock because:
+	// 1. Result only appends — elements at indices [before:len] are never modified.
+	// 2. A concurrent append may grow the backing array, but the old array stays valid.
+	// 3. We only read indices < our captured len, so concurrent writes at higher indices don't matter.
+	n.mu.Lock()
+	before := len(n.Result.List())
+	for _, o := range results {
+		n.Result.Add(o)
+	}
+	resultList := n.Result.List()
+	resultCount := len(resultList) - before
+	n.Queries.Set(ql.Query, resultCount)
+	n.mu.Unlock()
+
+	if ql.Line != nil {
+		t.lineMu.Lock()
+		ql.Line.Queries.Set(ql.Query, resultCount)
+		t.lineMu.Unlock()
+	}
+
+	// Apply status rules to unique new objects.
+	statusRules := t.engine.StatusRulesFor(goalClass)
+	if len(statusRules) > 0 {
 		statusCounts := map[string]int{}
-		for _, o := range result {
+		for _, o := range resultList[before:] {
 			for _, r := range statusRules {
 				statuses, _ := r.Apply(o)
 				for _, s := range statuses {
@@ -250,24 +317,53 @@ func (w *worker) Run(ctx context.Context) {
 			}
 		}
 		if len(statusCounts) > 0 {
-			w.node.Queries.AddStatuses(ql.Query, statusCounts)
+			n.mu.Lock()
+			n.Queries.AddStatuses(ql.Query, statusCounts)
+			n.mu.Unlock()
 		}
 	}
 
-	// Apply correlation rules to un-processed results, generate queries in outbox.
-	for _, o := range w.node.Result.List()[w.processed:] {
-		for r := range w.rules {
+	t.applyRules(ctx, n, ql.depth+1)
+}
+
+func (n *node) overLimit(limit int) bool {
+	n.mu.Lock()
+	defer n.mu.Unlock()
+	if limit > 0 && len(n.Queries) > limit {
+		log.V(2).Info("Query limit reached", "class", n.Class, "queries", len(n.Queries))
+		return true
+	}
+	return false
+}
+
+// applyRules applies outgoing correlation rules to unprocessed objects in a node.
+// The processed counter ensures each object is rule-applied exactly once,
+// even when multiple goroutines call this concurrently for the same node.
+func (t *traverser) applyRules(ctx context.Context, n *node, nextDepth int) {
+	// Snapshot the objects, update processed, release the lock
+	n.mu.Lock()
+	objects := n.Result.List()
+	start := n.processed
+	n.processed = len(objects)
+	class := n.Class
+	n.mu.Unlock()
+
+	if start >= len(objects) {
+		return
+	}
+
+	rules := t.rules[class]
+	for _, o := range objects[start:] {
+		for r := range rules {
 			if ctx.Err() != nil {
 				return
 			}
 			queries, err := r.Apply(o)
-			log.V(4).Info("Rule applied", "name", r.Name(), "start", w.node.Class, "error", err, "queries", len(queries))
-			metricRules.Add(ctx, 1, w.ruleAttrs[r])
+			log.V(4).Info("Rule applied", "name", r.Name(), "start", class, "error", err, "queries", len(queries))
+			metricRules.Add(ctx, 1, t.ruleAttrs[r])
 			for _, q := range queries {
-				if line := w.lines[r][q.Class()]; line != nil {
-					log.V(5).Info("Add line", "line", line, "query", q)
-					ql := queryLine{Query: q, Line: line}
-					w.outbox.Add(ctx, ql)
+				if line := t.lines[lineKey{start: class, rule: r, goal: q.Class()}]; line != nil {
+					t.dedupAndSend(ctx, queryLine{Query: q, Line: line, depth: nextDepth})
 				}
 			}
 		}
