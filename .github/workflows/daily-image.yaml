@@ -12,6 +12,7 @@ permissions:
 
 jobs:
   build-image:
+    if: github.repository == 'korrel8r/korrel8r'
     runs-on: ubuntu-latest
     timeout-minutes: 30         # Container builds can take time
 
