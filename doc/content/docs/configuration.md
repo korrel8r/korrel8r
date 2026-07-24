@@ -181,25 +181,6 @@ aliases:
 
 ## About Templates
 
-Korrel8r rules and store configuration can include
-[Go templates](https://pkg.go.dev/text/template).
+Korrel8r rules and store configuration can include [Go templates](https://pkg.go.dev/text/template).
+Korrel8r provides additional [template functions](../reference/template-functions/), domains may provide additional functions -- see the [Domain Reference](../reference/domains/)
 
-> [!TIP]
-> This is the same template syntax as the `kubectl` command with the `--output=template` option.
-
-Korrel8r provides additional _template functions_ to simplify writing rules and configurations:
-
-- The [Sprig](http://masterminds.github.io/sprig/) library of general purpose template functions is always available.
-- Some domains (for example the `k8s` domain) provide domain-specific functions, see the [Domain Reference](../reference/domains/).
-- The following function is available for store configurations:
-
-query
-: Takes a single argument, a korrel8r query string.
-  Executes the query and returns the result as a `[]any`.
-  May return an error.
-
-**Example**: Query the k8s cluster for a route, extract the "host" field:
-
-```
-{{(query "k8s:Route.route.openshift.io:{namespace: netobserv, name: loki}" | first).spec.host}}
-```

@@ -107,7 +107,7 @@ rules:
       classes: [Node]
     result:
       query: |-
-        k8s:Node:{"name":"{{.spec.nodeName}}"}
+        k8s:Node:{"name":"{{required (index .spec "nodeName")}}"}
 
   - name: VolumeAttachmentToNode
     start:
@@ -157,7 +157,7 @@ rules:
       classes: [PersistentVolume]
     result:
       query: |-
-        k8s:PersistentVolume:{"name":"{{.spec.volumeName}}"}
+        k8s:PersistentVolume:{"name":"{{required (index .spec "volumeName")}}"}
 
   - name: PVToStorageClass
     start:
@@ -168,7 +168,7 @@ rules:
       classes: [StorageClass.storage.k8s.io]
     result:
       query: |-
-        k8s:StorageClass.storage.k8s.io:{"name":"{{.spec.storageClassName}}"}
+        k8s:StorageClass.storage.k8s.io:{"name":"{{required (index .spec "storageClassName")}}"}
 
   - name: PVCToStorageClass
     start:
@@ -179,7 +179,7 @@ rules:
       classes: [StorageClass.storage.k8s.io]
     result:
       query: |-
-        k8s:StorageClass.storage.k8s.io:{"name":"{{.spec.storageClassName}}"}
+        k8s:StorageClass.storage.k8s.io:{"name":"{{required (index .spec "storageClassName")}}"}
 
   - name: SubscriptionToCSV
     start:
@@ -190,7 +190,7 @@ rules:
       classes: [ClusterServiceVersion.v1alpha1.operators.coreos.com]
     result:
       query: |-
-        k8s:ClusterServiceVersion.v1alpha1.operators.coreos.com:{"name":"{{index .status "currentCSV"}}"}
+        k8s:ClusterServiceVersion.v1alpha1.operators.coreos.com:{"name":"{{required (index .status "currentCSV")}}"}
 
   - name: CSVToCRD
     start:
