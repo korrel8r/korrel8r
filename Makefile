@@ -25,6 +25,11 @@ export PATH := $(abspath $(BIN)):$(PATH)
 export GOCOVERDIR := $(abspath _cover)
 $(shell mkdir -p $(GOCOVERDIR) $(BIN))
 
+# Install tool binaries from the tools module into $(BIN), which is on PATH.
+$(BIN)/.tools: tools/go.mod tools/go.sum
+	GOBIN=$(abspath $(BIN)) go -C tools install tool
+	@touch $@
+
 
 # Sources for generated files
 OPENAPI_SPEC=korrel8r-openapi.yaml
@@ -66,16 +71,16 @@ $(VERSION_TXT):
 $(BIN):
 	mkdir -p $(BIN)
 
-$(GEN_OPENAPI_API): $(OPENAPI_SPEC)
-	go tool oapi-codegen -generate types,spec -package api -o $@ $<
+$(GEN_OPENAPI_API): $(OPENAPI_SPEC) | $(BIN)/.tools
+	oapi-codegen -generate types,spec -package api -o $@ $<
 
-$(GEN_OPENAPI_IMPL): $(OPENAPI_SPEC)
-	go tool oapi-codegen -generate gin -package rest -import-mapping "$<:github.com/korrel8r/korrel8r/pkg/api" -alias-types -o $@ $<
+$(GEN_OPENAPI_IMPL): $(OPENAPI_SPEC) | $(BIN)/.tools
+	oapi-codegen -generate gin -package rest -import-mapping "$<:github.com/korrel8r/korrel8r/pkg/api" -alias-types -o $@ $<
 
 # Generate the pkg/domains/*/doc.md files that are embedded in the korrel8r executable.
-%/doc.md: %/doc.go $(shell find doc/gomarkdoc)
+%/doc.md: %/doc.go $(shell find doc/gomarkdoc) | $(BIN)/.tools
 	@mkdir -p $(dir $@)
-	go tool gomarkdoc ./$(dir $@) --template-file file=doc/gomarkdoc/file.gotxt | sed -E 's/[Pp]ackage *[a-zA-Z0-9]+ *(is a)? *(korrel8r)? *(domain)? *(for)? *//' > $@
+	gomarkdoc ./$(dir $@) --template-file file=doc/gomarkdoc/file.gotxt | sed -E 's/[Pp]ackage *[a-zA-Z0-9]+ *(is a)? *(korrel8r)? *(domain)? *(for)? *//' > $@
 
 SHELLCHECK:= $(BIN)/shellcheck
 $(SHELLCHECK):
@@ -83,10 +88,11 @@ $(SHELLCHECK):
 	./hack/install-shellcheck.sh $(BIN) 0.10.0
 
 ifndef NOLINT
-lint: generate $(SHELLCHECK) ## Run the linter to find and fix code style problems.
+lint: generate $(SHELLCHECK) $(BIN)/.tools ## Run the linter to find and fix code style problems.
 	go mod tidy
-	go tool golangci-lint run --fix
-	go tool shfmt -l -w ./**/*.sh
+	go -C tools mod tidy
+	golangci-lint run --fix
+	shfmt -l -w ./**/*.sh
 	$(SHELLCHECK) -x -S style hack/*.sh
 else
 lint: ## Linting skipped (NOLINT is set).
@@ -119,10 +125,10 @@ BENCH_NAME?=$(DESCRIBE)
 BENCH_PKG?=./...
 BENCH_COUNT?=6
 .PHONY: bench
-bench:
+bench: $(BIN)/.tools
 	mkdir -p _bench
 	go test -v -bench=. -run=- -count=$(BENCH_COUNT) $(BENCH_PKG) | tee _bench/$(BENCH_NAME).bench
-	go tool benchstat _bench/*
+	benchstat _bench/*
 
 image-build: lint kustomize-edit ## Build image locally, don't push.
 	$(IMGTOOL) build --tag=$(IMAGE) -f Containerfile .
@@ -136,10 +142,10 @@ image-latest: image ## Build and push image with 'latest' alias
 WAIT_DEPLOYMENT=hack/wait.sh rollout $(NAMESPACE) deployment.apps/korrel8r
 DEPLOY_ROUTE=kubectl apply -k config/route -n $(NAMESPACE) || echo "skipping route" # Non-openshift cluster
 
-kustomize-edit:
+kustomize-edit: $(BIN)/.tools
 	cd config; \
-	go tool kustomize edit set image "korrel8r=$(IMAGE)"; \
-	go tool kustomize edit set namespace "$(NAMESPACE)"
+	kustomize edit set image "korrel8r=$(IMAGE)"; \
+	kustomize edit set namespace "$(NAMESPACE)"
 
 deploy: image ## Deploy to current cluster using kustomize.
 	kubectl apply -k config
@@ -176,9 +182,9 @@ doc: doc/public
 	$(MAKE) check-links
 
 .PHONY: preview
-preview: doc/public
+preview: doc/public | $(BIN)/.tools
 	@rm -rf $<
-	go tool hugo server --source doc --baseURL http://localhost:1313 --bind 0.0.0.0
+	hugo server --source doc --baseURL http://localhost:1313 --bind 0.0.0.0
 	@touch $<
 
 .PHONY: check-links
@@ -197,9 +203,9 @@ doc/content/docs/reference/domains/%.md: pkg/domains/%/doc.md generate $(FRONT)
 
 DOC_PUBLIC+=doc/content/docs/reference/rest/index.md
 CLEANFILES+=doc/content/docs/reference/rest
-doc/content/docs/reference/rest/index.md: $(OPENAPI_SPEC) $(MAKEFILE_LIST) $(FRONT)
+doc/content/docs/reference/rest/index.md: $(OPENAPI_SPEC) $(MAKEFILE_LIST) $(FRONT) | $(BIN)/.tools
 	@mkdir -p $(dir $@)
-	go tool openapi-markdown -o $@ -title "REST API" -description "HTTP API reference" $<
+	openapi-markdown -o $@ -title "REST API" -description "HTTP API reference" $<
 	@sed -i 's/^# REST API$$//'	$@				# Remove redundant header
 	@perl -pi -e 'if (/^### ((?:PUT|GET|POST|DELETE|PATCH) .+)$$/) { my $$t = $$1; (my $$a = lc $$t) =~ s/[^a-z0-9]//g; $$_ = "### $$t {#$$a}\n"; }' $@ # Fix anchors
 	@$(FRONT) $@ 'title: REST API' 'description: HTTP API reference' 'weight: 50'
@@ -234,13 +240,13 @@ doc/content/docs/reference/mcp/index.md: $(shell find pkg/mcp) cmd/korrel8r-docg
 
 DOC_PUBLIC+=doc/content/docs/reference/template-functions.md
 CLEANFILES+=doc/content/docs/reference/template-functions.md
-doc/content/docs/reference/template-functions.md: pkg/engine/template_funcs.go $(shell find doc/gomarkdoc) $(FRONT)
+doc/content/docs/reference/template-functions.md: pkg/engine/template_funcs.go $(shell find doc/gomarkdoc) $(FRONT) | $(BIN)/.tools
 	@mkdir -p $(dir $@)
-	go tool gomarkdoc ./pkg/engine/ --template-file file=doc/gomarkdoc/file.gotxt | sed '1,/^$$/d' > $@
+	gomarkdoc ./pkg/engine/ --template-file file=doc/gomarkdoc/file.gotxt | sed '1,/^$$/d' > $@
 	@$(FRONT) $@ 'title: Template Functions' 'description: Functions available in rule templates' 'weight: 10'
 
-doc/public: $(DOC_PUBLIC) $(shell find doc/* -name public -prune -o -print)
-	go tool hugo --source doc
+doc/public: $(DOC_PUBLIC) $(shell find doc/* -name public -prune -o -print) | $(BIN)/.tools
+	hugo --source doc
 	@touch $@
 CLEANFILES+=doc/public
 CLEANFILES+=$(DOC_PUBLIC)
