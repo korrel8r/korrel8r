@@ -465,7 +465,7 @@ func (s *Store) Get(ctx context.Context, query korrel8r.Query, c *korrel8r.Const
 	var prometheusRules v1.RulesResult
 	if ok, _ := prometheus.CanAccessPrometheusAPI(ctx, s.k8sClient); ok {
 		// Admin users: use the Rules API without namespace filtering (port 9091)
-		prometheusRules, err = promAPI.Rules(ctx)
+		prometheusRules, err = promAPI.Rules(ctx, nil)
 		if err != nil {
 			// Log at level 0 (always visible) for admin users - this is unexpected
 			log.V(0).Info("failed to query Prometheus rules (admin access)", "error", err)
