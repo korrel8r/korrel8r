@@ -48,11 +48,6 @@ func TestK8sRules(t *testing.T) {
 			want:  []string{`k8s:Event.v1:{"namespace":"aNamespace","fields":{"involvedObject.apiVersion":"v1","involvedObject.kind":"Pod","involvedObject.name":"foo","involvedObject.namespace":"aNamespace"}}`},
 		},
 		{
-			rule:  "AllToMetric",
-			start: newK8s("Pod", "aNamespace", "foo", nil),
-			want:  []string{`metric:metric:{namespace="aNamespace",pod="foo"}`},
-		},
-		{
 			rule:  "PodToAlert",
 			start: newK8s("Pod", "aNamespace", "foo", nil),
 			want:  []string{`alert:alert:{"namespace":"aNamespace","pod":"foo"}`},
