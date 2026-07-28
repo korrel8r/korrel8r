@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -58,6 +59,24 @@ func (domain) Store(s any) (korrel8r.Store, error) {
 	return NewStore(cs[StoreKeyMetricURL], hc)
 }
 
+func (o Object) String() string {
+	metricName := o.Labels["__name__"]
+	labelStrings := make([]string, 0, len(o.Labels))
+	for k, v := range o.Labels {
+		if k != "__name__" {
+			labelStrings = append(labelStrings, fmt.Sprintf("%s=%q", k, v))
+		}
+	}
+	sort.Strings(labelStrings)
+	if len(labelStrings) == 0 {
+		if metricName != "" {
+			return metricName
+		}
+		return "{}"
+	}
+	return fmt.Sprintf("%s{%s}", metricName, strings.Join(labelStrings, ", "))
+}
+
 type Class struct{} // Singleton class
 
 func (c Class) Domain() korrel8r.Domain { return Domain }
@@ -67,13 +86,24 @@ func (c Class) String() string          { return korrel8r.ClassString(c) }
 func (c Class) Unmarshal(b []byte) (korrel8r.Object, error) { return impl.UnmarshalAs[Object](b) }
 func (c Class) Preview(o korrel8r.Object) string            { return Preview(o) }
 func (c Class) ID(o korrel8r.Object) any {
-	if o, _ := o.(Object); o != nil {
-		return o.Fingerprint()
+	if o, ok := o.(Object); ok {
+		return o.Fingerprint
 	}
 	return nil
 }
 
-type Object = model.Metric
+type Object struct {
+	Labels      map[string]string `json:"labels"`
+	Fingerprint string            `json:"fingerprint"`
+}
+
+func convertMetricToMap(m model.Metric) map[string]string {
+	res := make(map[string]string, len(m))
+	for k, v := range m {
+		res[string(k)] = string(v)
+	}
+	return res
+}
 
 func Preview(o korrel8r.Object) string {
 	return impl.Preview(o, func(o Object) string { return o.String() })
@@ -165,7 +195,10 @@ func (s *Store) Get(ctx context.Context, kquery korrel8r.Query, c *korrel8r.Cons
 		return fmt.Errorf("GET %v: unexpected status: %v", u, r.Status)
 	}
 	for _, m := range r.Data {
-		result.Append(m)
+		result.Append(Object{
+			Labels:      convertMetricToMap(m),
+			Fingerprint: m.Fingerprint().String(),
+		})
 	}
 	return nil
 }

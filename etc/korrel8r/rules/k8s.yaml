@@ -62,15 +62,6 @@ rules:
         "involvedObject.apiVersion": "{{.apiVersion}}"
         } }
 
-  - name: AllToMetric
-    start:
-      domain: k8s
-    goal:
-      domain: metric
-    result:
-      query: |-
-        metric:metric:{namespace="{{.metadata.namespace}}",{{lower .kind}}="{{.metadata.name}}"}
-
   - name: DependentToOwner
     start:
       domain: k8s

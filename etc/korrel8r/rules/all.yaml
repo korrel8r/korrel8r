@@ -5,4 +5,5 @@ include:
   - netflow.yaml
   - trace.yaml
   - incident.yaml
+  - metric.yaml
   - kubevirt.yaml
