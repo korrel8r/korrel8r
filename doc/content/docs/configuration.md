@@ -179,6 +179,40 @@ aliases:
       - "class_name"
 ```
 
+## templates
+
+Named templates that can be reused from rule, status, or store templates:
+
+```yaml
+templates:
+  - name: "template_name"       # 1. Name used to invoke the template
+    template: "template_body"   # 2. Go template body
+```
+
+Named templates are invoked from rule or status templates using the standard Go template syntax:
+
+```
+{{template "template_name" <data>}}
+```
+
+The `<data>` expression becomes `.` inside the named template.
+Use the [sprig](http://masterminds.github.io/sprig/) `dict` function to pass named parameters:
+
+```yaml
+templates:
+  - name: myHelper
+    template: 'k8s:{{.class}}:{"namespace":"{{index .labels "namespace"}}"}'
+
+rules:
+  - name: MyRule
+    start: {domain: alert}
+    goal: {domain: k8s, classes: [Pod]}
+    result:
+      query: '{{template "myHelper" (dict "labels" .Labels "class" "Pod")}}'
+```
+
+Named templates defined in any configuration file (including [included](#include) files) are available to all rules across all files.
+
 ## About Templates
 
 Korrel8r rules and store configuration can include [Go templates](https://pkg.go.dev/text/template).

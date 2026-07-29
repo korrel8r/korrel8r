@@ -17,6 +17,10 @@ type Config struct {
 	// Include lists additional configuration files or URLs to include.
 	Include []string `json:"include,omitempty"`
 
+	// Templates defines named Go templates that can be invoked from rule or status templates.
+	// Each template is available via {{template "name" .}} in any rule or status template.
+	Templates []Template `json:"templates,omitempty"`
+
 	// StatusRules generate statuses from Objects to annotate graph nodes.
 	StatusRules []StatusRule `json:"statusRules,omitempty"`
 
@@ -27,6 +31,15 @@ type Config struct {
 
 	// Soure of configuration, file or URL.
 	Source string `json:"-"`
+}
+
+// Template defines a named Go template that can be invoked from rule or status templates.
+type Template struct {
+	// Name is the template name, used to invoke it via {{template "name" .}}.
+	Name string `json:"name"`
+
+	// Template is the body of the Go template.
+	Template string `json:"template"`
 }
 
 // Configs is a list of configs from different sources.

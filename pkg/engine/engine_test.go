@@ -196,6 +196,89 @@ func TestEngine_LabelersFor(t *testing.T) {
 	assert.Empty(t, e.StatusRulesFor(b))
 }
 
+func TestEngine_NamedTemplates(t *testing.T) {
+	d := mock.NewDomain("mock", "a", "b")
+	a := d.Class("a")
+	b := d.Class("b")
+	s := mock.NewStore(d, a, b)
+	q := mock.NewQuery(b, "hello")
+	s.AddQuery(q, "world")
+
+	e, err := engine.Build().Domains(d).Stores(s).
+		Config(config.Configs{
+			{
+				Templates: []config.Template{
+					{Name: "helper", Template: `mock:b:hello`},
+				},
+				Rules: []config.Rule{{
+					Name:   "ab",
+					Start:  config.ClassSpec{Domain: "mock", Classes: []string{"a"}},
+					Goal:   config.ClassSpec{Domain: "mock", Classes: []string{"b"}},
+					Result: config.ResultSpec{Query: `{{template "helper" .}}`},
+				}},
+			},
+		}).Engine()
+	require.NoError(t, err)
+
+	// Verify rule applies using the named template
+	g, err := traverse.Goals(context.Background(), e,
+		traverse.Start{Class: a, Objects: []korrel8r.Object{"x"}},
+		[]korrel8r.Class{b})
+	require.NoError(t, err)
+	if node := g.NodeFor(b); assert.NotNil(t, node) {
+		assert.Equal(t, []korrel8r.Object{"world"}, node.Result.List())
+	}
+}
+
+func TestEngine_NamedTemplates_FromInclude(t *testing.T) {
+	d := mock.NewDomain("mock", "a", "b")
+	a := d.Class("a")
+	b := d.Class("b")
+	s := mock.NewStore(d, a, b)
+	q := mock.NewQuery(b, "hello")
+	s.AddQuery(q, "world")
+
+	// Templates from one config should be available in rules from another config.
+	e, err := engine.Build().Domains(d).Stores(s).
+		Config(config.Configs{
+			{
+				Templates: []config.Template{
+					{Name: "shared", Template: `mock:b:hello`},
+				},
+			},
+			{
+				Rules: []config.Rule{{
+					Name:   "ab",
+					Start:  config.ClassSpec{Domain: "mock", Classes: []string{"a"}},
+					Goal:   config.ClassSpec{Domain: "mock", Classes: []string{"b"}},
+					Result: config.ResultSpec{Query: `{{template "shared" .}}`},
+				}},
+			},
+		}).Engine()
+	require.NoError(t, err)
+
+	g, err := traverse.Goals(context.Background(), e,
+		traverse.Start{Class: a, Objects: []korrel8r.Object{"x"}},
+		[]korrel8r.Class{b})
+	require.NoError(t, err)
+	if node := g.NodeFor(b); assert.NotNil(t, node) {
+		assert.Equal(t, []korrel8r.Object{"world"}, node.Result.List())
+	}
+}
+
+func TestEngine_NamedTemplates_Invalid(t *testing.T) {
+	d := mock.NewDomain("mock", "a", "b")
+	_, err := engine.Build().Domains(d).
+		Config(config.Configs{
+			{
+				Templates: []config.Template{
+					{Name: "bad", Template: `{{invalid`},
+				},
+			},
+		}).Engine()
+	assert.ErrorContains(t, err, `invalid template "bad"`)
+}
+
 // Mock object has a name and a timestamp.
 type obj struct {
 	Name string

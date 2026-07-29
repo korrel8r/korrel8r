@@ -28,6 +28,7 @@ type Engine struct {
 	domains       *korrel8r.Domains
 	storeHolders  map[korrel8r.Domain]*storeHolders
 	templateFuncs template.FuncMap
+	templateBase  *template.Template // Base template set with named templates from configuration.
 	rulesByName   map[string]korrel8r.Rule
 	rules         []korrel8r.Rule
 	statuses      map[string][]status.Rule // Keyed by class.String()
@@ -163,12 +164,14 @@ func (e *Engine) Get(ctx context.Context, query korrel8r.Query, constraint *korr
 	}))
 }
 
-// NewTemplate returns a template set up with options and funcs for this engine.
+// NewTemplate returns a template set up with options, funcs and named templates for this engine.
 // See package documentation for more.
 func (e *Engine) NewTemplate(name string) *template.Template {
-	// raise an error on lookup of a non-existent map key in a template.
-	// Note use the sprig function "get" to return an empty value for missing keys.
-	return template.New(name).Funcs(e.templateFuncs).Option("missingkey=error")
+	t, err := e.templateBase.Clone()
+	if err != nil {
+		panic(fmt.Errorf("clone template: %w", err))
+	}
+	return t.New(name)
 }
 
 // execTemplate is a convenience to call NewTemplate, execute the template and stringify the result.
