@@ -24,6 +24,9 @@ type Builder struct {
 	err     error
 	finally []func()
 
+	// Named templates from configuration, collected before building the template base.
+	templates []config.Template
+
 	// Skipped rules by missing class.
 	missingClasses map[string][]string
 }
@@ -38,6 +41,7 @@ func Build() *Builder {
 	// Add template functions that are always available.
 	e.templateFuncs = globalTemplateFuncs(e)
 	maps.Copy(e.templateFuncs, sprig.TxtFuncMap())
+	e.templateBase = template.New("").Funcs(e.templateFuncs).Option("missingkey=error")
 
 	return &Builder{e: e, missingClasses: map[string][]string{}}
 }
@@ -169,6 +173,9 @@ func (b *Builder) ConfigFile(file string) *Builder {
 // Engine returns the final engine, which can not be modified.
 // The [Builder] is reset to the initial state returned by [Build].
 func (b *Builder) Engine() (*Engine, error) {
+	// Build the base template set with named templates before processing rules.
+	b.buildTemplateBase()
+
 	// Complete deferred configuration
 	for _, f := range b.finally {
 		f()
@@ -190,6 +197,7 @@ func (b *Builder) config(c *config.Config) {
 		return
 	}
 	b.StoreConfigs(c.Stores...)
+	b.templates = append(b.templates, c.Templates...)
 	for _, r := range c.Rules {
 		if b.err != nil {
 			return
@@ -202,6 +210,21 @@ func (b *Builder) config(c *config.Config) {
 			return
 		}
 		b.finally = append(b.finally, func() { b.configStatusRule(lr) })
+	}
+}
+
+// buildTemplateBase adds named templates from configuration to the base template set.
+func (b *Builder) buildTemplateBase() {
+	if b.err != nil {
+		return
+	}
+	// Update funcs to include domain-specific functions added after Build().
+	b.e.templateBase.Funcs(b.e.templateFuncs)
+	for _, t := range b.templates {
+		if _, err := b.e.templateBase.New(t.Name).Parse(t.Template); err != nil {
+			b.err = fmt.Errorf("invalid template %q: %w", t.Name, err)
+			return
+		}
 	}
 }
 

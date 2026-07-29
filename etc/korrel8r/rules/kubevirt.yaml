@@ -18,6 +18,65 @@
 #   - kubevirt_vmi_* metrics use label "name" for the VMI name
 #   - migration metrics use "vmi" for VMI name and "vmim" for migration name
 
+templates:
+  # kubevirtVolumeSecrets scans kubevirt volumes and accessCredentials for Secret references.
+  # Usage: {{template "kubevirtVolumeSecrets" (dict "ns" .metadata.namespace "volumes" <volumes> "creds" <accessCredentials>)}}
+  - name: kubevirtVolumeSecrets
+    template: |-
+      {{- range .volumes }}
+      {{- with index . "secret" }}
+      k8s:Secret:{"namespace":"{{$.ns}}","name":"{{.secretName}}"}
+      {{- end }}
+      {{- with index . "cloudInitNoCloud" }}
+      {{- with index . "secretRef" }}
+      k8s:Secret:{"namespace":"{{$.ns}}","name":"{{.name}}"}
+      {{- end }}
+      {{- with index . "networkDataSecretRef" }}
+      k8s:Secret:{"namespace":"{{$.ns}}","name":"{{.name}}"}
+      {{- end }}
+      {{- end }}
+      {{- with index . "cloudInitConfigDrive" }}
+      {{- with index . "secretRef" }}
+      k8s:Secret:{"namespace":"{{$.ns}}","name":"{{.name}}"}
+      {{- end }}
+      {{- with index . "networkDataSecretRef" }}
+      k8s:Secret:{"namespace":"{{$.ns}}","name":"{{.name}}"}
+      {{- end }}
+      {{- end }}
+      {{- with index . "sysprep" }}
+      {{- with index . "secret" }}
+      k8s:Secret:{"namespace":"{{$.ns}}","name":"{{.name}}"}
+      {{- end }}
+      {{- end }}
+      {{- end }}
+      {{- range .creds }}
+      {{- with index . "sshPublicKey" }}
+      {{- with index .source "secret" }}
+      k8s:Secret:{"namespace":"{{$.ns}}","name":"{{.secretName}}"}
+      {{- end }}
+      {{- end }}
+      {{- with index . "userPassword" }}
+      {{- with index .source "secret" }}
+      k8s:Secret:{"namespace":"{{$.ns}}","name":"{{.secretName}}"}
+      {{- end }}
+      {{- end }}
+      {{- end }}
+
+  # kubevirtVolumeConfigMaps scans kubevirt volumes for ConfigMap references.
+  # Usage: {{template "kubevirtVolumeConfigMaps" (dict "ns" .metadata.namespace "volumes" <volumes>)}}
+  - name: kubevirtVolumeConfigMaps
+    template: |-
+      {{- range .volumes }}
+      {{- with index . "configMap" }}
+      k8s:ConfigMap:{"namespace":"{{$.ns}}","name":"{{.name}}"}
+      {{- end }}
+      {{- with index . "sysprep" }}
+      {{- with index . "configMap" }}
+      k8s:ConfigMap:{"namespace":"{{$.ns}}","name":"{{.name}}"}
+      {{- end }}
+      {{- end }}
+      {{- end }}
+
 rules:
   # ─── VM ↔ VMI / Pod / Node / PVC (core navigation) ──────────────────────────
 
@@ -466,44 +525,7 @@ rules:
       classes: [Secret]
     result:
       query: |-
-        {{- range .spec.template.spec.volumes }}
-        {{- with index . "secret" }}
-        k8s:Secret:{"namespace":"{{$.metadata.namespace}}","name":"{{.secretName}}"}
-        {{- end }}
-        {{- with index . "cloudInitNoCloud" }}
-        {{- with index . "secretRef" }}
-        k8s:Secret:{"namespace":"{{$.metadata.namespace}}","name":"{{.name}}"}
-        {{- end }}
-        {{- with index . "networkDataSecretRef" }}
-        k8s:Secret:{"namespace":"{{$.metadata.namespace}}","name":"{{.name}}"}
-        {{- end }}
-        {{- end }}
-        {{- with index . "cloudInitConfigDrive" }}
-        {{- with index . "secretRef" }}
-        k8s:Secret:{"namespace":"{{$.metadata.namespace}}","name":"{{.name}}"}
-        {{- end }}
-        {{- with index . "networkDataSecretRef" }}
-        k8s:Secret:{"namespace":"{{$.metadata.namespace}}","name":"{{.name}}"}
-        {{- end }}
-        {{- end }}
-        {{- with index . "sysprep" }}
-        {{- with index . "secret" }}
-        k8s:Secret:{"namespace":"{{$.metadata.namespace}}","name":"{{.name}}"}
-        {{- end }}
-        {{- end }}
-        {{- end }}
-        {{- range index .spec.template.spec "accessCredentials" }}
-        {{- with index . "sshPublicKey" }}
-        {{- with index .source "secret" }}
-        k8s:Secret:{"namespace":"{{$.metadata.namespace}}","name":"{{.secretName}}"}
-        {{- end }}
-        {{- end }}
-        {{- with index . "userPassword" }}
-        {{- with index .source "secret" }}
-        k8s:Secret:{"namespace":"{{$.metadata.namespace}}","name":"{{.secretName}}"}
-        {{- end }}
-        {{- end }}
-        {{- end }}
+        {{template "kubevirtVolumeSecrets" (dict "ns" .metadata.namespace "volumes" .spec.template.spec.volumes "creds" (index .spec.template.spec "accessCredentials"))}}
 
   - name: VmiToSecret
     start:
@@ -514,44 +536,7 @@ rules:
       classes: [Secret]
     result:
       query: |-
-        {{- range .spec.volumes }}
-        {{- with index . "secret" }}
-        k8s:Secret:{"namespace":"{{$.metadata.namespace}}","name":"{{.secretName}}"}
-        {{- end }}
-        {{- with index . "cloudInitNoCloud" }}
-        {{- with index . "secretRef" }}
-        k8s:Secret:{"namespace":"{{$.metadata.namespace}}","name":"{{.name}}"}
-        {{- end }}
-        {{- with index . "networkDataSecretRef" }}
-        k8s:Secret:{"namespace":"{{$.metadata.namespace}}","name":"{{.name}}"}
-        {{- end }}
-        {{- end }}
-        {{- with index . "cloudInitConfigDrive" }}
-        {{- with index . "secretRef" }}
-        k8s:Secret:{"namespace":"{{$.metadata.namespace}}","name":"{{.name}}"}
-        {{- end }}
-        {{- with index . "networkDataSecretRef" }}
-        k8s:Secret:{"namespace":"{{$.metadata.namespace}}","name":"{{.name}}"}
-        {{- end }}
-        {{- end }}
-        {{- with index . "sysprep" }}
-        {{- with index . "secret" }}
-        k8s:Secret:{"namespace":"{{$.metadata.namespace}}","name":"{{.name}}"}
-        {{- end }}
-        {{- end }}
-        {{- end }}
-        {{- range index .spec "accessCredentials" }}
-        {{- with index . "sshPublicKey" }}
-        {{- with index .source "secret" }}
-        k8s:Secret:{"namespace":"{{$.metadata.namespace}}","name":"{{.secretName}}"}
-        {{- end }}
-        {{- end }}
-        {{- with index . "userPassword" }}
-        {{- with index .source "secret" }}
-        k8s:Secret:{"namespace":"{{$.metadata.namespace}}","name":"{{.secretName}}"}
-        {{- end }}
-        {{- end }}
-        {{- end }}
+        {{template "kubevirtVolumeSecrets" (dict "ns" .metadata.namespace "volumes" .spec.volumes "creds" (index .spec "accessCredentials"))}}
 
   # ─── VM / VMI → ConfigMap (sysprep, volume mounts) ────────────────────────
 
@@ -564,16 +549,7 @@ rules:
       classes: [ConfigMap]
     result:
       query: |-
-        {{- range .spec.template.spec.volumes }}
-        {{- with index . "configMap" }}
-        k8s:ConfigMap:{"namespace":"{{$.metadata.namespace}}","name":"{{.name}}"}
-        {{- end }}
-        {{- with index . "sysprep" }}
-        {{- with index . "configMap" }}
-        k8s:ConfigMap:{"namespace":"{{$.metadata.namespace}}","name":"{{.name}}"}
-        {{- end }}
-        {{- end }}
-        {{- end }}
+        {{template "kubevirtVolumeConfigMaps" (dict "ns" .metadata.namespace "volumes" .spec.template.spec.volumes)}}
 
   - name: VmiToConfigMap
     start:
@@ -584,16 +560,7 @@ rules:
       classes: [ConfigMap]
     result:
       query: |-
-        {{- range .spec.volumes }}
-        {{- with index . "configMap" }}
-        k8s:ConfigMap:{"namespace":"{{$.metadata.namespace}}","name":"{{.name}}"}
-        {{- end }}
-        {{- with index . "sysprep" }}
-        {{- with index . "configMap" }}
-        k8s:ConfigMap:{"namespace":"{{$.metadata.namespace}}","name":"{{.name}}"}
-        {{- end }}
-        {{- end }}
-        {{- end }}
+        {{template "kubevirtVolumeConfigMaps" (dict "ns" .metadata.namespace "volumes" .spec.volumes)}}
 
   # ─── VM / VMI → ServiceAccount ────────────────────────────────────────────
 
