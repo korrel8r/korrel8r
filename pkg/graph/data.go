@@ -26,8 +26,8 @@ type Data struct {
 	Lines  []*Line          // Lines, index == Line.ID()
 	nodeID map[string]int64 // Map by full class name
 
-	topo     *Graph    // Lazy read-only topology graph with immutable nodes/lines.
-	topoOnce sync.Once // Guards topo construction.
+	shared     *Graph    // Lazy read-only graph with immutable nodes/lines.
+	sharedOnce sync.Once // Guards shared graph construction.
 }
 
 // NewData creates a new data set from a list of rules.
@@ -92,21 +92,21 @@ func (d *Data) FullGraph() *Graph {
 	return g
 }
 
-// TopoGraph returns a read-only topology graph backed by Data's immutable nodes and lines.
-// Built once and shared across all callers. Use for BFS/pathfinding, then build mutable
-// subgraphs via GoalPaths/Neighbors for traversal.
-func (d *Data) TopoGraph() *Graph {
-	d.topoOnce.Do(func() {
-		d.topo = New(d)
-		d.topo.allLines = d.Lines
+// SharedGraph returns a read-only graph backed by Data's nodes and lines.
+// It is built once and shared by all callers.
+// Use to build mutable sub-graphs for traversal.
+func (d *Data) SharedGraph() *Graph {
+	d.sharedOnce.Do(func() {
+		d.shared = New(d)
+		d.shared.allLines = d.Lines
 		for _, n := range d.Nodes {
-			d.topo.AddNode(n)
+			d.shared.AddNode(n)
 		}
 		for _, l := range d.Lines {
-			d.topo.SetLine(l)
+			d.shared.SetLine(l)
 		}
 	})
-	return d.topo
+	return d.shared
 }
 
 // Rules returns a copy of the complete list of rules.

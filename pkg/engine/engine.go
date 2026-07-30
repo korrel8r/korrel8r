@@ -129,7 +129,7 @@ func (e *Engine) StatusRulesFor(c korrel8r.Class) []status.Rule { return e.statu
 
 // Graph returns the read-only topology graph. Callers use GoalPaths/Neighbors/Select
 // to create mutable subgraphs for traversal.
-func (e *Engine) Graph() *graph.Graph { return e.data.TopoGraph() }
+func (e *Engine) Graph() *graph.Graph { return e.data.SharedGraph() }
 
 // Get results for query from all stores for the query domain.
 func (e *Engine) Get(ctx context.Context, query korrel8r.Query, constraint *korrel8r.Constraint, result korrel8r.Appender) (err error) {
