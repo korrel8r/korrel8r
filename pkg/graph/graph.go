@@ -17,7 +17,6 @@ import (
 	"gonum.org/v1/gonum/graph/encoding"
 	"gonum.org/v1/gonum/graph/multi"
 	"gonum.org/v1/gonum/graph/path"
-	"gonum.org/v1/gonum/graph/traverse"
 )
 
 // Graph is a directed multigraph with [korrel8r.Class] nodes and [korrel8r.Rule] lines.
@@ -178,55 +177,6 @@ func (g *Graph) DOTAttributers() (graph, node, edge encoding.Attributer) {
 	return g.GraphAttrs, g.NodeAttrs, g.EdgeAttrs
 }
 
-// GoalPaths returns a new mutable sub-graph of nodes on a path to the goal class.
-// Includes k-shortest paths with cost <= shortest+1.
-func (g *Graph) GoalPaths(start korrel8r.Class, goals []korrel8r.Class) (*Graph, error) {
-	u, err := g.NodeForErr(start)
-	if err != nil {
-		return nil, err
-	}
-	sub := g.Data.EmptyGraph()
-	sub.copyNode(u)
-	for _, goal := range goals {
-		v, err := g.NodeForErr(goal)
-		if err != nil {
-			return nil, err
-		}
-		// Find shortest paths, and shortest+1 paths
-		paths := path.YenKShortestPaths(g, -1, 1, u, v)
-		for _, p := range paths {
-			for i := 1; i < len(p); i++ {
-				lines := g.Lines(p[i-1].ID(), p[i].ID())
-				for lines.Next() {
-					sub.copyLine(lines.Line().(*Line))
-				}
-			}
-		}
-	}
-	return sub, nil
-}
-
-// Neighbors returns a mutable breadth-first neighborhood following up to maxDepth edges from start.
-func (g *Graph) Neighbors(start korrel8r.Class, maxDepth int) (*Graph, error) {
-	sub := g.Data.EmptyGraph()
-	u, err := g.NodeForErr(start)
-	if err != nil {
-		return nil, err
-	}
-	sub.copyNode(u)
-	depth := 0
-	bf := traverse.BreadthFirst{
-		Traverse: func(e graph.Edge) bool {
-			ok := depth < maxDepth
-			if ok {
-				EdgeFor(e).EachLine(func(l *Line) { sub.copyLine(l) })
-			}
-			return ok
-		}}
-	_ = bf.Walk(g, u, func(n graph.Node, d int) bool { depth = d; return d > maxDepth })
-	return sub, nil
-}
-
 // FindLine finds a line between start and goal with rule. Nil if not found.
 func (g *Graph) FindLine(start, goal korrel8r.Class, rule korrel8r.Rule) *Line {
 	u, v := g.NodeFor(start), g.NodeFor(goal)
@@ -241,6 +191,12 @@ func (g *Graph) FindLine(start, goal korrel8r.Class, rule korrel8r.Rule) *Line {
 		}
 	}
 	return nil
+}
+
+// AddLine adds a line to the graph and the allLines cache.
+func (g *Graph) AddLine(l *Line) {
+	g.SetLine(l)
+	g.allLines = append(g.allLines, l)
 }
 
 // Remove empty nodes and lines from the graph.

@@ -11,6 +11,7 @@ import (
 
 	"github.com/korrel8r/korrel8r/internal/pkg/test/mock"
 	"github.com/korrel8r/korrel8r/pkg/engine"
+	"github.com/korrel8r/korrel8r/pkg/graph"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -326,4 +327,151 @@ func TestTraverserNeighbors(t *testing.T) {
 			}
 		})
 	}
+}
+
+func lineStrings(lines []*graph.Line) []string {
+	s := make([]string, len(lines))
+	for i, l := range lines {
+		s[i] = l.String()
+	}
+	return s
+}
+
+func TestGoalScope(t *testing.T) {
+	b := mock.NewBuilder("d")
+	r := b.Rule
+	// Paths:
+	// a-(b1,b2)-c len(3)
+	// a-(b1,b2)-c-d len(4)
+	// a-x-y-z-d len(5)
+	g := graph.NewData(
+		r("ab", "d:a", "d:b", nil),
+		r("bc1", "d:b", "d:c", nil),
+		r("bc2", "d:b", "d:c", nil),
+		r("cd", "d:c", "d:d", nil),
+		r("ax", "d:a", "d:x", nil),
+		r("xy", "d:x", "d:y", nil),
+		r("yz", "d:y", "d:z", nil),
+		r("za", "d:z", "d:a", nil), // Cycle
+		r("zd", "d:z", "d:d", nil),
+		r("ze", "d:z", "d:e", nil),
+		r("ed", "d:e", "d:d", nil),
+	).FullGraph()
+
+	for _, x := range []struct {
+		name  string
+		start korrel8r.Class
+		goals []korrel8r.Class
+		lines []string
+	}{
+		{
+			name:  "shortest",
+			start: b.Class("d:a"),
+			goals: b.Classes("d:c"),
+			lines: []string{"ab(d:a->d:b)", "bc1(d:b->d:c)", "bc2(d:b->d:c)"},
+		},
+		{
+			name:  "k-shortest+1",
+			start: b.Class("d:a"),
+			goals: b.Classes("d:d"),
+			lines: []string{
+				"ab(d:a->d:b)", "bc1(d:b->d:c)", "bc2(d:b->d:c)", "cd(d:c->d:d)",
+				"ax(d:a->d:x)", "xy(d:x->d:y)", "yz(d:y->d:z)", "zd(d:z->d:d)"},
+		},
+		{
+			name:  "cycle",
+			start: b.Class("d:a"),
+			goals: b.Classes("d:z"),
+			lines: []string{"ax(d:a->d:x)", "xy(d:x->d:y)", "yz(d:y->d:z)"},
+		},
+	} {
+		t.Run(x.name, func(t *testing.T) {
+			lines, err := goalScope(g, x.start, x.goals)
+			if assert.NoError(t, err) {
+				assert.ElementsMatch(t, x.lines, lineStrings(lines))
+			}
+		})
+	}
+
+	t.Run("error_bad_start", func(t *testing.T) {
+		_, err := goalScope(g, b.Class("d:missing"), b.Classes("d:b"))
+		assert.Error(t, err)
+	})
+
+	t.Run("error_bad_goal", func(t *testing.T) {
+		_, err := goalScope(g, b.Class("d:a"), b.Classes("d:missing"))
+		assert.Error(t, err)
+	})
+}
+
+func TestNeighborScope(t *testing.T) {
+	b := mock.NewBuilder("d")
+	r := b.Rule
+	g := graph.NewData(
+		r("ab", "d:a", "d:b", nil),
+		r("ac", "d:a", "d:c", nil),
+		r("bx", "d:b", "d:x", nil),
+		r("cy", "d:c", "d:y", nil),
+		r("yz", "d:y", "d:z", nil),
+		r("zq", "d:z", "d:q", nil),
+	).FullGraph()
+
+	for _, x := range []struct {
+		depth int
+		lines []string
+	}{
+		{
+			depth: 0,
+			lines: []string{},
+		},
+		{
+			depth: 1,
+			lines: []string{
+				"ab(d:a->d:b)",
+				"ac(d:a->d:c)",
+			},
+		},
+		{
+			depth: 2,
+			lines: []string{
+				"ab(d:a->d:b)",
+				"ac(d:a->d:c)",
+				"bx(d:b->d:x)",
+				"cy(d:c->d:y)",
+			},
+		},
+		{
+			depth: 3,
+			lines: []string{
+				"ab(d:a->d:b)",
+				"ac(d:a->d:c)",
+				"bx(d:b->d:x)",
+				"cy(d:c->d:y)",
+				"yz(d:y->d:z)",
+			},
+		},
+		{
+			depth: 4,
+			lines: []string{
+				"ab(d:a->d:b)",
+				"ac(d:a->d:c)",
+				"bx(d:b->d:x)",
+				"cy(d:c->d:y)",
+				"yz(d:y->d:z)",
+				"zq(d:z->d:q)",
+			},
+		},
+	} {
+		t.Run(fmt.Sprintf("depth %v", x.depth), func(t *testing.T) {
+			lines, err := neighborScope(g, b.Class("d:a"), x.depth)
+			if assert.NoError(t, err) {
+				assert.ElementsMatch(t, x.lines, lineStrings(lines))
+			}
+		})
+	}
+
+	t.Run("error_bad_start", func(t *testing.T) {
+		_, err := neighborScope(g, b.Class("d:missing"), 1)
+		assert.Error(t, err)
+	})
 }
