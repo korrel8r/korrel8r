@@ -14,9 +14,10 @@ ENV GOCACHE=/src/go-build
 ENV GOBIN=/usr/bin
 RUN mkdir -p $GOCACHE $GOMODCACHE
 
-# Download and cache go modules.
-COPY go.mod go.mod
-COPY go.sum go.sum
+# Download and cache go modules before building.
+COPY go.mod go.sum ./
+COPY pkg/api/go.mod pkg/api/go.sum pkg/api/
+COPY pkg/mcp/go.mod pkg/mcp/go.sum pkg/mcp/
 RUN go mod download -x
 
 RUN mkdir -p /.devspace

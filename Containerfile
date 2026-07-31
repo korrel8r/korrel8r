@@ -4,6 +4,7 @@ FROM registry.access.redhat.com/ubi10/go-toolset AS builder
 
 USER 0
 WORKDIR /src
+
 # Download and cache go modules before building.
 COPY go.mod go.sum ./
 COPY pkg/api/go.mod pkg/api/go.sum pkg/api/
