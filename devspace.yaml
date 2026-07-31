@@ -1,24 +1,16 @@
 version: v2beta1
 name: korrel8r
 
-functions:
-  # Scale down COO so it doesn't fight over the korrel8r deployment
-  scale_down_coo: kubectl scale --replicas=0 -n ${DEVSPACE_NAMESPACE} deployment/observability-operator
-  scale_up_coo:   kubectl scale --replicas=1 -n ${DEVSPACE_NAMESPACE} deployment/observability-operator
-
 # This is a list of `pipelines` that DevSpace can execute (you can define your own)
 pipelines:
   # This is the pipeline for the main command: `devspace dev` (or `devspace run-pipeline dev`)
   dev:
-    run: |-
-      scale_down_coo
-      start_dev app                # Start dev mode "app" (see "dev" section)
+    run: start_dev app # Start dev mode "app" (see "dev" section)
 
   # Pipelilne to return to norml: `devspace purge`
   purge:
-    run: |-
-      stop_dev --all
-      scale_up_coo
+    run: stop_dev --all
+
 vars:
   REGISTRY_BASE:
 dev:
@@ -42,16 +34,16 @@ dev:
 
     # Sync local files necessary for auto-rebuild to the development container.
     sync:
-      - path: './:/src'
+      - path: "./:/src"
         excludePaths:
-          - '**'
-          - '!/Makefile'
-          - '!/go.mod'
-          - '!/go.sum'
-          - '!/cmd'
-          - '!/pkg'
-          - '!/internal'
-          - '!/etc'
+          - "**"
+          - "!/Makefile"
+          - "!/go.mod"
+          - "!/go.sum"
+          - "!/cmd"
+          - "!/pkg"
+          - "!/internal"
+          - "!/etc"
         onUpload:
           restartContainer: true
         startContainer: true
