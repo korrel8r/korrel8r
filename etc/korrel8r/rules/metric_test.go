@@ -83,18 +83,6 @@ func TestMetricRules(t *testing.T) {
 			want:  []string{`k8s:Node.v1:{"name":"worker-1"}`},
 		},
 
-		// Standard Prometheus labels
-		{
-			rule:  "MetricToNamespace",
-			start: metric.Object{Labels: map[string]string{"namespace": "openshift-monitoring"}, Fingerprint: "abc123"},
-			want:  []string{`k8s:Namespace.v1:{"name":"openshift-monitoring"}`},
-		},
-		// OTel labels
-		{
-			rule:  "MetricToNamespace",
-			start: metric.Object{Labels: map[string]string{"k8s_namespace_name": "openshift-monitoring"}, Fingerprint: "abc123"},
-			want:  []string{`k8s:Namespace.v1:{"name":"openshift-monitoring"}`},
-		},
 	} {
 		x.Run(t)
 	}
@@ -112,7 +100,6 @@ func TestMetricRulesRequiredGuards(t *testing.T) {
 		{rule: "MetricToDaemonSet", start: metric.Object{Labels: map[string]string{"namespace": "foo"}}},
 		{rule: "MetricToStatefulSet", start: metric.Object{Labels: map[string]string{"namespace": "foo"}}},
 		{rule: "MetricToNode", start: metric.Object{Labels: map[string]string{"namespace": "foo"}}},
-		{rule: "MetricToNamespace", start: metric.Object{Labels: map[string]string{"pod": "bar"}}},
 	} {
 		t.Run(fmt.Sprintf("%v_missing_label", x.rule), func(t *testing.T) {
 			r := e.Rule(x.rule)

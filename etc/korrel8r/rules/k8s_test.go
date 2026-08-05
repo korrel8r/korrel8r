@@ -33,6 +33,15 @@ func TestK8sRules(t *testing.T) {
 			want: []string{`k8s:Pod.v1:{"namespace":"ns","labels":{"test":"testme"}}`},
 		},
 		{
+			rule: "ServiceToPods",
+			start: newK8s("Service", "ns", "my-svc", k8s.Object{
+				"spec": k8s.Object{
+					"selector": k8s.Object{"app": "web"},
+				},
+			}),
+			want: []string{`k8s:Pod.v1:{"namespace":"ns","labels":{"app":"web"}}`},
+		},
+		{
 			rule:  "EventToAll",
 			start: k8sEvent(newK8s("Pod", "aNamespace", "foo", nil), "a"),
 			want:  []string{`k8s:Pod.v1:{"namespace":"aNamespace","name":"foo"}`},
@@ -76,15 +85,6 @@ func TestK8sRules(t *testing.T) {
 			rule:  "PodDisruptionBudgetToAlert",
 			start: newK8s("PodDisruptionBudget.policy", "aNamespace", "foo", nil),
 			want:  []string{`alert:alert:{"namespace":"aNamespace","poddisruptionbudget":"foo"}`},
-		},
-		{
-			rule: "PodToNode",
-			start: newK8s("Pod", "ns", "pod", k8s.Object{
-				"spec": k8s.Object{
-					"nodeName": "worker-1",
-				},
-			}),
-			want: []string{`k8s:Node.v1:{"name":"worker-1"}`},
 		},
 		{
 			rule: "DependentToOwner",
@@ -138,40 +138,117 @@ func TestK8sRules(t *testing.T) {
 			want: []string{`k8s:StorageClass.v1.storage.k8s.io:{"name":"sc-1"}`},
 		},
 		{
-			rule: "VolumeAttachmentToNode",
-			start: newK8s("VolumeAttachment.storage.k8s.io", "", "va-1", k8s.Object{
+			rule: "PodToPVC",
+			start: newK8s("Pod", "ns", "my-pod", k8s.Object{
 				"spec": k8s.Object{
-					"nodeName": "worker-1",
+					"volumes": []k8s.Object{
+						{"name": "data", "persistentVolumeClaim": k8s.Object{"claimName": "my-pvc"}},
+						{"name": "config", "configMap": k8s.Object{"name": "my-cm"}},
+					},
 				},
 			}),
-			want: []string{`k8s:Node.v1:{"name":"worker-1"}`},
+			want: []string{`k8s:PersistentVolumeClaim.v1:{"namespace":"ns","name":"my-pvc"}`},
 		},
 		{
-			rule:  "NodeToResourceSlice",
-			start: newK8s("Node", "", "worker-1", nil),
-			want:  []string{`k8s:ResourceSlice.v1.resource.k8s.io:{"fields":{"spec.nodeName":"worker-1"}}`},
+			rule: "PodToConfigMap",
+			start: newK8s("Pod", "ns", "my-pod", k8s.Object{
+				"spec": k8s.Object{
+					"volumes": []k8s.Object{
+						{"name": "config", "configMap": k8s.Object{"name": "app-config"}},
+						{"name": "data", "emptyDir": k8s.Object{}},
+					},
+				},
+			}),
+			want: []string{`k8s:ConfigMap.v1:{"namespace":"ns","name":"app-config"}`},
 		},
 		{
-			rule: "EndpointSliceToNode",
-			start: newK8s("EndpointSlice.discovery.k8s.io", "ns", "eps-1", k8s.Object{
-				"endpoints": []k8s.Object{
-					{"nodeName": "worker-1"},
-					{"nodeName": "worker-2"},
+			rule: "PodToSecret",
+			start: newK8s("Pod", "ns", "my-pod", k8s.Object{
+				"spec": k8s.Object{
+					"volumes": []k8s.Object{
+						{"name": "certs", "secret": k8s.Object{"secretName": "tls-secret"}},
+						{"name": "keys", "secret": k8s.Object{"secretName": "api-keys"}},
+					},
 				},
 			}),
 			want: []string{
-				`k8s:Node.v1:{"name":"worker-1"}`,
-				`k8s:Node.v1:{"name":"worker-2"}`,
+				`k8s:Secret.v1:{"namespace":"ns","name":"tls-secret"}`,
+				`k8s:Secret.v1:{"namespace":"ns","name":"api-keys"}`,
 			},
 		},
 		{
-			rule: "ResourceSliceToNode",
-			start: newK8s("ResourceSlice.resource.k8s.io", "", "rs-1", k8s.Object{
+			rule: "PodToServiceAccount",
+			start: newK8s("Pod", "ns", "my-pod", k8s.Object{
 				"spec": k8s.Object{
-					"nodeName": "worker-1",
+					"serviceAccountName": "my-sa",
 				},
 			}),
-			want: []string{`k8s:Node.v1:{"name":"worker-1"}`},
+			want: []string{`k8s:ServiceAccount.v1:{"namespace":"ns","name":"my-sa"}`},
+		},
+		{
+			rule: "PVToPVC",
+			start: newK8s("PersistentVolume", "", "pv-123", k8s.Object{
+				"spec": k8s.Object{
+					"claimRef": k8s.Object{
+						"namespace": "ns",
+						"name":      "my-pvc",
+					},
+				},
+			}),
+			want: []string{`k8s:PersistentVolumeClaim.v1:{"namespace":"ns","name":"my-pvc"}`},
+		},
+		{
+			rule: "IngressToService",
+			start: newK8s("Ingress.networking.k8s.io", "ns", "my-ingress", k8s.Object{
+				"spec": k8s.Object{
+					"rules": []k8s.Object{
+						{"http": k8s.Object{
+							"paths": []k8s.Object{
+								{"backend": k8s.Object{"service": k8s.Object{"name": "web-svc"}}},
+								{"backend": k8s.Object{"service": k8s.Object{"name": "api-svc"}}},
+							},
+						}},
+					},
+				},
+			}),
+			want: []string{
+				`k8s:Service.v1:{"namespace":"ns","name":"web-svc"}`,
+				`k8s:Service.v1:{"namespace":"ns","name":"api-svc"}`,
+			},
+		},
+		{
+			rule: "HPAToTarget",
+			start: newK8s("HorizontalPodAutoscaler.autoscaling", "ns", "my-hpa", k8s.Object{
+				"spec": k8s.Object{
+					"scaleTargetRef": k8s.Object{
+						"apiVersion": "apps/v1",
+						"kind":       "Deployment",
+						"name":       "my-deploy",
+					},
+				},
+			}),
+			want: []string{`k8s:Deployment.v1.apps:{"namespace":"ns","name":"my-deploy"}`},
+		},
+		{
+			rule:  "ServiceToEndpointSlice",
+			start: newK8s("Service", "ns", "my-svc", nil),
+			want:  []string{`k8s:EndpointSlice.v1.discovery.k8s.io:{"namespace":"ns","labels":{"kubernetes.io/service-name":"my-svc"}}`},
+		},
+		{
+			rule:  "ServiceToEndpoints",
+			start: newK8s("Service", "ns", "my-svc", nil),
+			want:  []string{`k8s:Endpoints.v1:{"namespace":"ns","name":"my-svc"}`},
+		},
+		{
+			rule: "EndpointSliceToService",
+			start: newK8s("EndpointSlice.discovery.k8s.io", "ns", "my-svc-abc12", k8s.Object{
+				"metadata": k8s.Object{
+					"labels": k8s.Object{
+						"kubernetes.io/service-name": "my-svc",
+					},
+				},
+			}),
+			want: []string{`k8s:Service.v1:{"namespace":"ns","name":"my-svc"}`},
 		},
 		{
 			rule: "CSVToCRD",

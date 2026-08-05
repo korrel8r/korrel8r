@@ -57,13 +57,3 @@ rules:
     result:
       query: |-
         k8s:Node:{"name":"{{or (index .Labels "k8s_node_name") (index .Labels "node") | required}}"}
-
-  - name: MetricToNamespace
-    start:
-      domain: metric
-    goal:
-      domain: k8s
-      classes: [Namespace]
-    result:
-      query: |-
-        k8s:Namespace:{"name":"{{or (index .Labels "k8s_namespace_name") (index .Labels "namespace") | required}}"}

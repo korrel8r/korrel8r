@@ -23,7 +23,6 @@ func TestSelectorToLogsRules(t *testing.T) {
 	}
 	want := []korrel8r.Class{
 		k8s.Class{Group: "", Version: "v1", Kind: "ReplicationController"},
-		k8s.Class{Group: "", Version: "v1", Kind: "Service"},
 		k8s.Class{Group: "apps", Version: "v1", Kind: "Deployment"},
 		k8s.Class{Group: "batch", Version: "v1", Kind: "Job"},
 		k8s.Class{Group: "policy", Version: "v1", Kind: "PodDisruptionBudget"},
@@ -43,6 +42,15 @@ func TestLogRules(t *testing.T) {
 					"selector": k8s.Object{"matchLabels": map[string]string{"a.b/c": "x"}},
 				}},
 			want: []string{`log:application:{"namespace":"ns","labels":{"a.b/c":"x"}}`},
+		},
+		{
+			rule: "ServiceToLogs",
+			start: newK8s("Service", "ns", "my-svc", k8s.Object{
+				"spec": k8s.Object{
+					"selector": k8s.Object{"app": "web"},
+				},
+			}),
+			want: []string{`log:application:{"namespace":"ns","labels":{"app":"web"}}`},
 		},
 		{
 			rule:  "PodToLogs",
