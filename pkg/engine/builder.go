@@ -15,6 +15,8 @@ import (
 	"github.com/korrel8r/korrel8r/pkg/rules"
 	"github.com/korrel8r/korrel8r/pkg/status"
 	"github.com/korrel8r/korrel8r/pkg/unique"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/metric"
 )
 
 // Builder initializes the state of an engine.
@@ -187,6 +189,14 @@ func (b *Builder) Engine() (*Engine, error) {
 		log.V(1).Info("skipped rules with missing class", "class", class, "rules", rules)
 	}
 	b.e.data = graph.NewData(b.e.rules...)
+	b.e.storeMetricAttrs = map[string][2]metric.MeasurementOption{}
+	for _, d := range b.e.domains.List() {
+		name := d.Name()
+		b.e.storeMetricAttrs[name] = [2]metric.MeasurementOption{
+			metric.WithAttributes(attribute.String("domain", name), attribute.String("status", "ok")),
+			metric.WithAttributes(attribute.String("domain", name), attribute.String("status", "error")),
+		}
+	}
 	e, err := b.e, b.err
 	*b = *Build() // Reset the builder.
 	return e, err

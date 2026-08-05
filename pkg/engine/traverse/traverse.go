@@ -128,14 +128,6 @@ type queryLine struct {
 	depth int
 }
 
-func (ql queryLine) MetricAttributes() metric.MeasurementOption {
-	queryAttr := attribute.String("query", ql.Query.String())
-	if ql.Line != nil {
-		return metric.WithAttributes(queryAttr, attribute.String("line", ql.Line.String()))
-	}
-	return metric.WithAttributes(queryAttr)
-}
-
 type lineKey struct {
 	start, goal korrel8r.Class
 	rule        korrel8r.Rule
@@ -366,7 +358,11 @@ func (t *traverser) isDuplicate(ctx context.Context, ql queryLine) bool {
 	t.seenMu.Lock()
 	defer t.seenMu.Unlock()
 	if _, exists := t.seen[ql.Query]; exists {
-		metricDuplicateQueries.Add(ctx, 1, ql.MetricAttributes())
+		if ql.Line != nil {
+			metricDuplicateQueries.Add(ctx, 1, t.ruleAttrs[ql.Line.Rule])
+		} else {
+			metricDuplicateQueries.Add(ctx, 1)
+		}
 		return true
 	}
 	t.seen[ql.Query] = struct{}{}
@@ -394,7 +390,11 @@ func (t *traverser) handleQuery(ctx context.Context, ql queryLine) {
 	_ = t.engine.Get(ctx, ql.Query, t.constraint, korrel8r.AppenderFunc(func(objects ...korrel8r.Object) {
 		results = append(results, objects...)
 	}))
-	metricQueries.Add(ctx, 1, ql.MetricAttributes())
+	if ql.Line != nil {
+		metricQueries.Add(ctx, 1, t.ruleAttrs[ql.Line.Rule])
+	} else {
+		metricQueries.Add(ctx, 1)
+	}
 
 	// Add unique new objects to node and record query.
 	// The captured resultList slice header is safe to read after unlock because:
