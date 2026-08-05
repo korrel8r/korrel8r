@@ -16,7 +16,6 @@ import (
 	"github.com/korrel8r/korrel8r/pkg/graph"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"github.com/korrel8r/korrel8r/pkg/status"
-	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
 )
 
@@ -36,6 +35,9 @@ type Engine struct {
 
 	// Tuning parameters
 	Tuning config.Tuning
+
+	// Pre-calculated metric attributes per domain, indexed by [domain][status=="error"]
+	storeMetricAttrs map[string][2]metric.MeasurementOption
 }
 
 func (e *Engine) Domain(name string) (korrel8r.Domain, error) { return e.domains.Domain(name) }
@@ -143,13 +145,11 @@ func (e *Engine) Get(ctx context.Context, query korrel8r.Query, constraint *korr
 	start := time.Now()
 	defer func() {
 		latency := time.Since(start)
-		status := "ok"
+		statusIdx := 0
 		if err != nil {
-			status = "error"
+			statusIdx = 1
 		}
-		attrs := metric.WithAttributes(
-			attribute.String("domain", domain),
-			attribute.String("status", status))
+		attrs := e.storeMetricAttrs[domain][statusIdx]
 		metricStoreQueries.Add(ctx, 1, attrs)
 		metricStoreQueryDuration.Record(ctx, latency.Seconds(), attrs)
 		if err != nil {
