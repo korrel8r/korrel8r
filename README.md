@@ -46,13 +46,13 @@ See all available images at: https://quay.io/repository/korrel8r/korrel8r?tab=ta
 ## Documentation
 
 - **[User Guide](https://korrel8r.github.io/korrel8r)** - Complete installation, usage, and reference guide
-- **[Developer Guide](AGENTS.md)** - Contributing and development setup
+- **[Contribution Guide](CONTRIBUTING.md)** - Contributing and development setup
 - **[GitHub Issues](https://github.com/korrel8r/korrel8r/issues)** - Report bugs or request features
 - **[GitHub Discussions](https://github.com/korrel8r/korrel8r/discussions)** - Community support
 
 ## Contributing
 
-We welcome contributions! See the [Developer Guide](AGENTS.md) for setup instructions, development workflows, and contribution guidelines.
+We welcome contributions! See [CONTRIBUTING.md](CONTRIBUTING.md) for how to get started.
 
 - **[Project Board](https://github.com/orgs/korrel8r/projects/3)** - Current work and project status
 - **[Pull Requests](https://github.com/korrel8r/korrel8r/pulls)** - Submit contributions
