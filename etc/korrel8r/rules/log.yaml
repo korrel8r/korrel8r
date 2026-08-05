@@ -21,6 +21,18 @@ rules:
         "namespace":"{{.metadata.namespace}}",
         "labels":{{.spec.selector.matchLabels | mustToJson}} }
 
+  - name: ServiceToLogs
+    start:
+      domain: k8s
+      classes: [Service]
+    goal:
+      domain: log
+    result:
+      query: >
+        log:{{logTypeForNamespace .metadata.namespace}}:{
+        "namespace":"{{.metadata.namespace}}",
+        "labels":{{.spec.selector | mustToJson}} }
+
   - name: PodToLogs
     start:
       domain: k8s

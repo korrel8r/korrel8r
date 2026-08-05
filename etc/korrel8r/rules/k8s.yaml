@@ -3,7 +3,6 @@ aliases:
     domain: k8s
     classes:
       - ReplicationController
-      - Service
       - DaemonSet.apps
       - Deployment.apps
       - ReplicaSet.apps
@@ -22,6 +21,18 @@ rules:
       query: |-
         k8s:Pod:{"namespace": "{{.metadata.namespace}}"
         {{- with .spec.selector.matchLabels}}, "labels": {{mustToJson . -}}{{end -}} }
+
+  - name: ServiceToPods
+    start:
+      domain: k8s
+      classes: [Service]
+    goal:
+      domain: k8s
+      classes: [Pod]
+    result:
+      query: |-
+        k8s:Pod:{"namespace":"{{.metadata.namespace}}"
+        {{- with .spec.selector}}, "labels": {{mustToJson . -}}{{end -}} }
 
   - name: EventToAll
     start:
@@ -78,66 +89,94 @@ rules:
           {{- end}}
         {{end -}}
 
-  - name: NodeToResourceSlice
-    start:
-      domain: k8s
-      classes: [Node]
-    goal:
-      domain: k8s
-      classes: [ResourceSlice.resource.k8s.io]
-    result:
-      query: |-
-        k8s:ResourceSlice.resource.k8s.io:{"fields":{"spec.nodeName":"{{.metadata.name}}"}}
-
-  - name: PodToNode
+  - name: PodToPVC
     start:
       domain: k8s
       classes: [Pod]
     goal:
       domain: k8s
-      classes: [Node]
+      classes: [PersistentVolumeClaim]
     result:
       query: |-
-        k8s:Node:{"name":"{{required (index .spec "nodeName")}}"}
+        {{- range .spec.volumes}}
+        {{- with index . "persistentVolumeClaim"}}
+        k8s:PersistentVolumeClaim:{"namespace":"{{$.metadata.namespace}}","name":"{{.claimName}}"}
+        {{- end}}
+        {{- end}}
 
-  - name: VolumeAttachmentToNode
+  - name: PodToConfigMap
     start:
       domain: k8s
-      classes: [VolumeAttachment.storage.k8s.io]
+      classes: [Pod]
     goal:
       domain: k8s
-      classes: [Node]
+      classes: [ConfigMap]
     result:
       query: |-
-        k8s:Node:{"name":"{{.spec.nodeName}}"}
+        {{- range .spec.volumes}}
+        {{- with index . "configMap"}}
+        k8s:ConfigMap:{"namespace":"{{$.metadata.namespace}}","name":"{{.name}}"}
+        {{- end}}
+        {{- end}}
 
-  - name: EndpointSliceToNode
+  - name: PodToSecret
+    start:
+      domain: k8s
+      classes: [Pod]
+    goal:
+      domain: k8s
+      classes: [Secret]
+    result:
+      query: |-
+        {{- range .spec.volumes}}
+        {{- with index . "secret"}}
+        k8s:Secret:{"namespace":"{{$.metadata.namespace}}","name":"{{.secretName}}"}
+        {{- end}}
+        {{- end}}
+
+  - name: PodToServiceAccount
+    start:
+      domain: k8s
+      classes: [Pod]
+    goal:
+      domain: k8s
+      classes: [ServiceAccount]
+    result:
+      query: |-
+        k8s:ServiceAccount:{"namespace":"{{.metadata.namespace}}","name":"{{required (index .spec "serviceAccountName")}}"}
+
+  - name: ServiceToEndpointSlice
+    start:
+      domain: k8s
+      classes: [Service]
+    goal:
+      domain: k8s
+      classes: [EndpointSlice.discovery.k8s.io]
+    result:
+      query: |-
+        k8s:EndpointSlice.discovery.k8s.io:{"namespace":"{{.metadata.namespace}}","labels":{"kubernetes.io/service-name":"{{.metadata.name}}"}}
+
+  - name: ServiceToEndpoints
+    start:
+      domain: k8s
+      classes: [Service]
+    goal:
+      domain: k8s
+      classes: [Endpoints]
+    result:
+      query: |-
+        k8s:Endpoints:{"namespace":"{{.metadata.namespace}}","name":"{{.metadata.name}}"}
+
+  - name: EndpointSliceToService
     start:
       domain: k8s
       classes: [EndpointSlice.discovery.k8s.io]
     goal:
       domain: k8s
-      classes: [Node]
+      classes: [Service]
     result:
       query: |-
-        {{- range .endpoints}}
-        {{- with .nodeName}}
-        k8s:Node:{"name":"{{.}}"}
-        {{- end}}
-        {{- end}}
-
-  - name: ResourceSliceToNode
-    start:
-      domain: k8s
-      classes: [ResourceSlice.resource.k8s.io]
-    goal:
-      domain: k8s
-      classes: [Node]
-    result:
-      query: |-
-        {{- with .spec.nodeName}}
-        k8s:Node:{"name":"{{.}}"}
-        {{- end}}
+        k8s:Service:{"namespace":"{{.metadata.namespace}}","name":"{{required (index .metadata.labels "kubernetes.io/service-name")}}"}
 
   - name: PVCToPV
     start:
@@ -149,6 +188,19 @@ rules:
     result:
       query: |-
         k8s:PersistentVolume:{"name":"{{required (index .spec "volumeName")}}"}
+
+  - name: PVToPVC
+    start:
+      domain: k8s
+      classes: [PersistentVolume]
+    goal:
+      domain: k8s
+      classes: [PersistentVolumeClaim]
+    result:
+      query: |-
+        {{- with .spec.claimRef}}
+        k8s:PersistentVolumeClaim:{"namespace":"{{.namespace}}","name":"{{.name}}"}
+        {{- end}}
 
   - name: PVToStorageClass
     start:
@@ -205,6 +257,40 @@ rules:
     result:
       query: |-
         k8s:{{.spec.names.kind}}.{{(index .spec.versions 0).name}}.{{.spec.group}}:{}
+
+  - name: IngressToService
+    start:
+      domain: k8s
+      classes: [Ingress.networking.k8s.io]
+    goal:
+      domain: k8s
+      classes: [Service]
+    result:
+      query: |-
+        {{- with index .spec "defaultBackend"}}
+        {{- with .service}}
+        k8s:Service:{"namespace":"{{$.metadata.namespace}}","name":"{{.name}}"}
+        {{- end}}
+        {{- end}}
+        {{- range .spec.rules}}
+        {{- range .http.paths}}
+        {{- with .backend.service}}
+        k8s:Service:{"namespace":"{{$.metadata.namespace}}","name":"{{.name}}"}
+        {{- end}}
+        {{- end}}
+        {{- end}}
+
+  - name: HPAToTarget
+    start:
+      domain: k8s
+      classes: [HorizontalPodAutoscaler.autoscaling]
+    goal:
+      domain: k8s
+    result:
+      query: |-
+        {{- with .spec.scaleTargetRef}}
+        {{k8sClass .apiVersion .kind}}:{"namespace":"{{$.metadata.namespace}}","name":"{{.name}}"}
+        {{- end}}
 
 statusRules:
   - name: HasFinalizer

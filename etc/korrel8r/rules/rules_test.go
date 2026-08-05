@@ -108,6 +108,18 @@ var customResourcesForTests = []*metav1.APIResourceList{
 			{Kind: "ResourceSlice", Namespaced: false},
 		},
 	},
+	{
+		GroupVersion: "networking.k8s.io/v1",
+		APIResources: []metav1.APIResource{
+			{Kind: "Ingress", Namespaced: true},
+		},
+	},
+	{
+		GroupVersion: "autoscaling/v2",
+		APIResources: []metav1.APIResource{
+			{Kind: "HorizontalPodAutoscaler", Namespaced: true},
+		},
+	},
 }
 
 // setup an engine, add customResources to the k8s domain.
