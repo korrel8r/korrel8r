@@ -42,8 +42,11 @@ make help              # Show available targets and variables
 3. Run tests:
    ```bash
    make test              # All tests (requires cluster)
-   make test-no-cluster   # Tests that don't require a cluster
+   make test NO_CLUSTER=1 # Tests that don't require a cluster
+   make cover             # Tests with coverage
+   go tool cover -html=cover.out
    ```
+   **Cluster tests** require a `kubectl`/`oc` session with cluster access, observability stores deployed, logged in as `kubeadmin` or user with sufficient RBAC.
 4. Run the full lint and test suite before committing:
    ```bash
    make all
