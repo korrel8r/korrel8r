@@ -98,18 +98,11 @@ devspace dev
 
 ## Testing
 
+See [CONTRIBUTING.md](CONTRIBUTING.md) for test commands. Test organization:
+
 - **Package tests**: Standard Go tests in every `pkg/` sub-directory.
 - **Cluster tests**: "Cluster" in the test name (e.g., `TestClusterConnection`) means the test requires a cluster.
 - **Rule tests**: Tests in `etc/korrel8r/rules/*_test.go` test rules defined in YAML configuration.
-
-```bash
-make test              # All tests (requires cluster)
-make test-no-cluster   # Tests without cluster dependency
-make cover             # Tests with coverage
-go tool cover -html=cover.out
-```
-
-**Cluster test requirements**: `kubectl`/`oc` session with cluster access, observability stores deployed, logged in as `kubeadmin` or user with sufficient RBAC.
 
 ## Debugging
 

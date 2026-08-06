@@ -105,9 +105,6 @@ TEST_FLAGS?=$(and $(NO_CLUSTER),-skip='Cluster|/Cluster')
 test: lint											## Run all tests, no cache. Requires an openshift cluster.
 	go test -fullpath -race ./... $(TEST_FLAGS)
 
-test-no-cluster: lint	## Run all tests that don't require an openshift cluster.
-	$(MAKE) test NO_CLUSTER=1
-
 test-clean: ## Remove test namespaces from the cluster
 	kubectl delete ns -l test=korrel8r
 

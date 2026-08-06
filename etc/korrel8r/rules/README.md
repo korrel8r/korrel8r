@@ -56,8 +56,8 @@ Each rule file has a corresponding `*_test.go` file. After creating a rule:
 1. Add test cases to the appropriate test file
 2. Run tests:
    ```bash
-   make test                # All tests
-   make test-no-cluster    # Without cluster
+   make      test                 # All tests
+   make test NO_CLUSTER=1         # Skip cluster tests
    go test ./etc/korrel8r/rules/  # Just rule tests
    ```
 
