@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [0.12.0] - 2026-08-06
+
+### Added
+- Reusable named templates in rule configuration.
+- Metric correlation rules.
+- Improved rule coverage for k8s domain.
+- `assert` and `required` template functions for rule guards.
+
+### Fixed
+- Metric Object type for template compatibility.
+- Removed problematic NodeToPods rule.
+- Correct config image replacement.
+
+### Performance
+- Concurrent search algorithm.
+- Reduced copying of graph structs.
+- Cache/pre-compute metric labels on hot path.
+
+### Changed
+- Moved tools to separate Go submodule.
+- Replaced `make test-no-cluster` with `make test NO_CLUSTER=1`.
+
 ## [0.11.6] - 2026-07-23
 
 ### Fixed

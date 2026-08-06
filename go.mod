@@ -21,8 +21,8 @@ require (
 	github.com/go-logr/stdr v1.2.2
 	github.com/go-openapi/runtime v0.33.0
 	github.com/go-openapi/strfmt v0.27.0
-	github.com/korrel8r/korrel8r/pkg/api v0.11.6
-	github.com/korrel8r/korrel8r/pkg/mcp v0.11.6
+	github.com/korrel8r/korrel8r/pkg/api v0.12.0
+	github.com/korrel8r/korrel8r/pkg/mcp v0.12.0
 	github.com/modelcontextprotocol/go-sdk v1.7.0
 	github.com/oapi-codegen/runtime v1.6.0
 	github.com/prometheus/alertmanager v0.33.1
