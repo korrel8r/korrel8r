@@ -84,10 +84,12 @@ func (domain) Store(s any) (korrel8r.Store, error) {
 	}
 }
 
+// TemplateFuncs for the netflow domain.
+//
+//	netflowTypeToK8s typeString
+//	 Convert a netflow type field value to a k8s class.
 func (domain) TemplateFuncs() map[string]any {
 	return map[string]any{
-		// Convert a netflow type field to a k8s class.
-		// Need to add the "apps" group to the Deployment type.
 		"netflowTypeToK8s": func(t string) (string, error) {
 			if t == "Deployment" {
 				return "k8s:Deployment.v1.apps", nil

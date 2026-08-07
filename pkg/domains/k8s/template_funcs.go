@@ -1,8 +1,15 @@
 // Copyright: This file is part of korrel8r, released under https://github.com/korrel8r/korrel8r/blob/main/LICENSE
 
-// # Template Functions
-//
-// The following template functions are available to rules.
+package k8s
+
+import (
+	"github.com/korrel8r/korrel8r/pkg/korrel8r"
+	"github.com/rhobs/kube-health/pkg/analyze"
+	khstatus "github.com/rhobs/kube-health/pkg/status"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+)
+
+// TemplateFuncs for the k8s domain.
 //
 //	k8sClass
 //		Takes string arguments (apiVersion, kind).
@@ -15,15 +22,6 @@
 //		Takes a k8s Object, evaluates its health using the kube-health library.
 //		Returns "Error", "Warning", or "" for healthy/unknown objects.
 //		Analyzes observed generation and standard Kubernetes conditions.
-package k8s
-
-import (
-	"github.com/korrel8r/korrel8r/pkg/korrel8r"
-	"github.com/rhobs/kube-health/pkg/analyze"
-	khstatus "github.com/rhobs/kube-health/pkg/status"
-	"k8s.io/apimachinery/pkg/runtime/schema"
-)
-
 func (d *domain) TemplateFuncs() map[string]any {
 	return map[string]any{
 		"k8sClass": func(apiVersion, kind string) korrel8r.Class {
