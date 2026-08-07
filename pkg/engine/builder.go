@@ -41,7 +41,7 @@ func Build() *Builder {
 		statuses:     map[string][]status.Rule{},
 	}
 	// Add template functions that are always available.
-	e.templateFuncs = globalTemplateFuncs(e)
+	e.templateFuncs = e.TemplateFuncs()
 	maps.Copy(e.templateFuncs, sprig.TxtFuncMap())
 	e.templateBase = template.New("").Funcs(e.templateFuncs).Option("missingkey=error")
 

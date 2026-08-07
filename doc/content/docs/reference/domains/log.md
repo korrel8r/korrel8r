@@ -95,11 +95,3 @@ Log queries work as follows:
 
 At least one of lokiStack and direct must be set.
 
-### Template functions
-
-The following functions can be used in rule templates when the log domain is available:
-
-- logTypeForNamespace: Takes a namespace string, returns the log type for logs in that namespace; "application" or "infrastructure"
-- logSafeLabel: Replace all characters other than alphanumerics, '\_' and ':' with '\_'.
-- logSafeLabels: Takes a map\[string\]string argument. Returns a map where each key is replaced by the result of logSafeLabel.
-

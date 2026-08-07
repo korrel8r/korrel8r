@@ -8,6 +8,18 @@ import (
 	"regexp"
 )
 
+// TemplateFuncs for the log domain.
+//
+//	logTypeForNamespace string
+//	    Returns the log type ("application" or "infrastructure") for logs from that namespace.
+//
+//	logSafeLabel string
+//	    Replace all characters other than alphanumerics, '_' and ':' with '_'.
+//
+//	logSafeLabels map[string]string
+//	    Returns a map where each key is replaced by the result of logSafeLabel.
+//
+// [LogQL]: https://grafana.com/docs/loki/latest/query
 func (domain) TemplateFuncs() map[string]any {
 	return map[string]any{
 		"logSafeLabel":        SafeLabel,
