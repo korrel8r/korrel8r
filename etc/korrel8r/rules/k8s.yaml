@@ -248,6 +248,18 @@ rules:
         k8s:CustomResourceDefinition.apiextensions.k8s.io:{"name":"{{ .name }}"}
         {{- end }}
 
+  - name: CRToCRD
+    start:
+      domain: k8s
+    goal:
+      domain: k8s
+      classes: [CustomResourceDefinition.apiextensions.k8s.io]
+    result:
+      query: |-
+        {{- with k8sCRDName .apiVersion .kind -}}
+        k8s:CustomResourceDefinition.apiextensions.k8s.io:{"name":"{{.}}"}
+        {{- end -}}
+
   - name: CRDToInstances
     start:
       domain: k8s
@@ -257,6 +269,101 @@ rules:
     result:
       query: |-
         k8s:{{.spec.names.kind}}.{{(index .spec.versions 0).name}}.{{.spec.group}}:{}
+
+  - name: CSVToDeployment
+    start:
+      domain: k8s
+      classes: [ClusterServiceVersion.v1alpha1.operators.coreos.com]
+    goal:
+      domain: k8s
+      classes: [Deployment.apps]
+    result:
+      query: |-
+        {{- range .spec.install.spec.deployments}}
+        k8s:Deployment.apps:{"namespace":"{{$.metadata.namespace}}","name":"{{.name}}"}
+        {{- end}}
+
+  - name: SubscriptionToInstallPlan
+    start:
+      domain: k8s
+      classes: [Subscription.v1alpha1.operators.coreos.com]
+    goal:
+      domain: k8s
+      classes: [InstallPlan.v1alpha1.operators.coreos.com]
+    result:
+      query: |-
+        {{- with index .status "installPlanRef"}}
+        k8s:InstallPlan.v1alpha1.operators.coreos.com:{"namespace":"{{.namespace}}","name":"{{.name}}"}
+        {{- end}}
+
+  - name: InstallPlanToCSV
+    start:
+      domain: k8s
+      classes: [InstallPlan.v1alpha1.operators.coreos.com]
+    goal:
+      domain: k8s
+      classes: [ClusterServiceVersion.v1alpha1.operators.coreos.com]
+    result:
+      query: |-
+        {{- range .spec.clusterServiceVersionNames}}
+        k8s:ClusterServiceVersion.v1alpha1.operators.coreos.com:{"namespace":"{{$.metadata.namespace}}","name":"{{.}}"}
+        {{- end}}
+
+  - name: SubscriptionToCatalogSource
+    start:
+      domain: k8s
+      classes: [Subscription.v1alpha1.operators.coreos.com]
+    goal:
+      domain: k8s
+      classes: [CatalogSource.v1alpha1.operators.coreos.com]
+    result:
+      query: |-
+        k8s:CatalogSource.v1alpha1.operators.coreos.com:{"namespace":"{{required (index .spec "sourceNamespace")}}","name":"{{required (index .spec "source")}}"}
+
+  - name: OperatorToCRD
+    start:
+      domain: k8s
+      classes: [Operator.v1.operators.coreos.com]
+    goal:
+      domain: k8s
+      classes: [CustomResourceDefinition.apiextensions.k8s.io]
+    result:
+      query: |-
+        {{- range .status.components.refs}}
+        {{- if eq .kind "CustomResourceDefinition"}}
+        k8s:CustomResourceDefinition.apiextensions.k8s.io:{"name":"{{.name}}"}
+        {{- end}}
+        {{- end}}
+
+  - name: OperatorToCSV
+    start:
+      domain: k8s
+      classes: [Operator.v1.operators.coreos.com]
+    goal:
+      domain: k8s
+      classes: [ClusterServiceVersion.v1alpha1.operators.coreos.com]
+    result:
+      query: |-
+        {{- range .status.components.refs}}
+        {{- if eq .kind "ClusterServiceVersion"}}
+        k8s:ClusterServiceVersion.v1alpha1.operators.coreos.com:{"namespace":"{{.namespace}}","name":"{{.name}}"}
+        {{- end}}
+        {{- end}}
+
+  - name: OperatorToSubscription
+    start:
+      domain: k8s
+      classes: [Operator.v1.operators.coreos.com]
+    goal:
+      domain: k8s
+      classes: [Subscription.v1alpha1.operators.coreos.com]
+    result:
+      query: |-
+        {{- range .status.components.refs}}
+        {{- if eq .kind "Subscription"}}
+        k8s:Subscription.v1alpha1.operators.coreos.com:{"namespace":"{{.namespace}}","name":"{{.name}}"}
+        {{- end}}
+        {{- end}}
 
   - name: IngressToService
     start:

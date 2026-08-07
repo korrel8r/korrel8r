@@ -57,6 +57,11 @@ k8sHealthStatus
 	Takes a k8s Object, evaluates its health using the kube-health library.
 	Returns "Error", "Warning", or "" for healthy/unknown objects.
 	Analyzes observed generation and standard Kubernetes conditions.
+
+k8sCRDName
+    Takes string arguments (apiVersion, kind).
+    Returns the CustomResourceDefinition name (plural.group) for the resource,
+    or "" if it is a core resource or unknown.
 ```
 
 

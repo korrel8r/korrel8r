@@ -124,6 +124,9 @@ func (d *domain) addClasses(groups []*metav1.APIGroup, resourceLists []*metav1.A
 			continue
 		}
 		for _, r := range l.APIResources {
+			if strings.Contains(r.Name, "/") {
+				continue // Skip subresources (e.g. "pods/status")
+			}
 			gvk := schema.GroupVersionKind{
 				Group:   nonBlank(r.Group, gv.Group),
 				Version: nonBlank(r.Version, gv.Version),
