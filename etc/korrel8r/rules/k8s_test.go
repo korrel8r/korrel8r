@@ -251,6 +251,11 @@ func TestK8sRules(t *testing.T) {
 			want: []string{`k8s:Service.v1:{"namespace":"ns","name":"my-svc"}`},
 		},
 		{
+			rule:  "CRToCRD",
+			start: newK8s("VirtualMachineInstance.kubevirt.io", "vm-ns", "vm-name", nil),
+			want:  []string{`k8s:CustomResourceDefinition.v1.apiextensions.k8s.io:{"name":"virtualmachineinstances.kubevirt.io"}`},
+		},
+		{
 			rule: "CSVToCRD",
 			start: newK8s("ClusterServiceVersion.operators.coreos.com", "operators", "test-operator.v0.1.0", k8s.Object{
 				"spec": k8s.Object{
@@ -277,6 +282,129 @@ func TestK8sRules(t *testing.T) {
 				},
 			}),
 			want: []string{`k8s:Node.v1.config.openshift.io:{}`},
+		},
+		{
+			rule: "CSVToDeployment",
+			start: newK8s("ClusterServiceVersion.operators.coreos.com", "operators", "my-operator.v1.0.0", k8s.Object{
+				"spec": k8s.Object{
+					"install": k8s.Object{
+						"spec": k8s.Object{
+							"deployments": []k8s.Object{
+								{"name": "my-operator-controller"},
+								{"name": "my-operator-webhook"},
+							},
+						},
+					},
+				},
+			}),
+			want: []string{
+				`k8s:Deployment.v1.apps:{"namespace":"operators","name":"my-operator-controller"}`,
+				`k8s:Deployment.v1.apps:{"namespace":"operators","name":"my-operator-webhook"}`,
+			},
+		},
+		{
+			rule: "SubscriptionToInstallPlan",
+			start: newK8s("Subscription.v1alpha1.operators.coreos.com", "operators", "my-sub", k8s.Object{
+				"status": k8s.Object{
+					"installPlanRef": k8s.Object{
+						"namespace": "operators",
+						"name":      "install-abc123",
+					},
+				},
+			}),
+			want: []string{`k8s:InstallPlan.v1alpha1.operators.coreos.com:{"namespace":"operators","name":"install-abc123"}`},
+		},
+		{
+			rule: "InstallPlanToCSV",
+			start: newK8s("InstallPlan.v1alpha1.operators.coreos.com", "operators", "install-abc123", k8s.Object{
+				"spec": k8s.Object{
+					"clusterServiceVersionNames": []any{"my-operator.v1.0.0", "dep-operator.v2.0.0"},
+				},
+			}),
+			want: []string{
+				`k8s:ClusterServiceVersion.v1alpha1.operators.coreos.com:{"namespace":"operators","name":"my-operator.v1.0.0"}`,
+				`k8s:ClusterServiceVersion.v1alpha1.operators.coreos.com:{"namespace":"operators","name":"dep-operator.v2.0.0"}`,
+			},
+		},
+		{
+			rule: "SubscriptionToCatalogSource",
+			start: newK8s("Subscription.v1alpha1.operators.coreos.com", "operators", "my-sub", k8s.Object{
+				"spec": k8s.Object{
+					"source":          "redhat-operators",
+					"sourceNamespace": "openshift-marketplace",
+				},
+			}),
+			want: []string{`k8s:CatalogSource.v1alpha1.operators.coreos.com:{"namespace":"openshift-marketplace","name":"redhat-operators"}`},
+		},
+		{
+			rule: "OperatorToCRD",
+			start: newK8s("Operator.v1.operators.coreos.com", "", "my-operator.openshift-operators", k8s.Object{
+				"status": k8s.Object{
+					"components": k8s.Object{
+						"refs": []any{
+							k8s.Object{
+								"apiVersion": "apiextensions.k8s.io/v1",
+								"kind":       "CustomResourceDefinition",
+								"name":       "myresources.example.com",
+							},
+							k8s.Object{
+								"apiVersion": "operators.coreos.com/v1alpha1",
+								"kind":       "ClusterServiceVersion",
+								"namespace":  "openshift-operators",
+								"name":       "my-operator.v1.0.0",
+							},
+						},
+					},
+				},
+			}),
+			want: []string{`k8s:CustomResourceDefinition.v1.apiextensions.k8s.io:{"name":"myresources.example.com"}`},
+		},
+		{
+			rule: "OperatorToCSV",
+			start: newK8s("Operator.v1.operators.coreos.com", "", "my-operator.openshift-operators", k8s.Object{
+				"status": k8s.Object{
+					"components": k8s.Object{
+						"refs": []any{
+							k8s.Object{
+								"apiVersion": "apiextensions.k8s.io/v1",
+								"kind":       "CustomResourceDefinition",
+								"name":       "myresources.example.com",
+							},
+							k8s.Object{
+								"apiVersion": "operators.coreos.com/v1alpha1",
+								"kind":       "ClusterServiceVersion",
+								"namespace":  "openshift-operators",
+								"name":       "my-operator.v1.0.0",
+							},
+						},
+					},
+				},
+			}),
+			want: []string{`k8s:ClusterServiceVersion.v1alpha1.operators.coreos.com:{"namespace":"openshift-operators","name":"my-operator.v1.0.0"}`},
+		},
+		{
+			rule: "OperatorToSubscription",
+			start: newK8s("Operator.v1.operators.coreos.com", "", "my-operator.openshift-operators", k8s.Object{
+				"status": k8s.Object{
+					"components": k8s.Object{
+						"refs": []any{
+							k8s.Object{
+								"apiVersion": "operators.coreos.com/v1alpha1",
+								"kind":       "Subscription",
+								"namespace":  "openshift-operators",
+								"name":       "my-operator",
+							},
+							k8s.Object{
+								"apiVersion": "operators.coreos.com/v1alpha1",
+								"kind":       "ClusterServiceVersion",
+								"namespace":  "openshift-operators",
+								"name":       "my-operator.v1.0.0",
+							},
+						},
+					},
+				},
+			}),
+			want: []string{`k8s:Subscription.v1alpha1.operators.coreos.com:{"namespace":"openshift-operators","name":"my-operator"}`},
 		},
 		{
 			rule: "SubscriptionToCSV",

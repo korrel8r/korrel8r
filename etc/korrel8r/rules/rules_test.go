@@ -40,6 +40,14 @@ var customResourcesForTests = []*metav1.APIResourceList{
 		APIResources: []metav1.APIResource{
 			{Kind: "ClusterServiceVersion", Namespaced: false},
 			{Kind: "Subscription", Namespaced: false},
+			{Kind: "InstallPlan", Namespaced: true},
+			{Kind: "CatalogSource", Namespaced: true},
+		},
+	},
+	{
+		GroupVersion: "operators.coreos.com/v1",
+		APIResources: []metav1.APIResource{
+			{Kind: "Operator", Namespaced: false},
 		},
 	},
 	{
