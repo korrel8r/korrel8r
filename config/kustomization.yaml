@@ -18,4 +18,4 @@ labels:
 images:
 - name: korrel8r
   newName: quay.io/alanconway/korrel8r
-  newTag: 0.12.0
+  newTag: 0.12.1-dev
