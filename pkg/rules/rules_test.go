@@ -21,8 +21,9 @@ func testDomains(d korrel8r.Domain) *korrel8r.Domains {
 func TestTemplateRule_Apply(t *testing.T) {
 	d := mock.NewDomain("test", "a", "b")
 	a, b := d.Class("a"), d.Class("b")
-	tmpl := template.Must(template.New("test-rule").Parse(`test:b:got-{{.}}`))
-	rule := NewTemplateRule([]korrel8r.Class{a}, []korrel8r.Class{b}, tmpl, testDomains(d))
+	tmpl := template.New("test-rule")
+	rule, err := NewTemplateRule([]korrel8r.Class{a}, []korrel8r.Class{b}, tmpl, (`test:b:got-{{.}}`), testDomains(d))
+	require.NoError(t, err)
 
 	queries, err := rule.Apply("hello")
 	require.NoError(t, err)
@@ -33,8 +34,9 @@ func TestTemplateRule_Apply(t *testing.T) {
 func TestTemplateRule_Apply_MultiLine(t *testing.T) {
 	d := mock.NewDomain("test", "a", "b")
 	a, b := d.Class("a"), d.Class("b")
-	tmpl := template.Must(template.New("multi").Parse("test:b:first\ntest:b:second"))
-	rule := NewTemplateRule([]korrel8r.Class{a}, []korrel8r.Class{b}, tmpl, testDomains(d))
+	tmpl := template.New("multi")
+	rule, err := NewTemplateRule([]korrel8r.Class{a}, []korrel8r.Class{b}, tmpl, ("test:b:first\ntest:b:second"), testDomains(d))
+	require.NoError(t, err)
 
 	queries, err := rule.Apply("x")
 	require.NoError(t, err)
@@ -46,8 +48,9 @@ func TestTemplateRule_Apply_MultiLine(t *testing.T) {
 func TestTemplateRule_Apply_Blank(t *testing.T) {
 	d := mock.NewDomain("test", "a", "b")
 	a, b := d.Class("a"), d.Class("b")
-	tmpl := template.Must(template.New("blank").Parse("  \n  \n  "))
-	rule := NewTemplateRule([]korrel8r.Class{a}, []korrel8r.Class{b}, tmpl, testDomains(d))
+	tmpl := template.New("blank")
+	rule, err := NewTemplateRule([]korrel8r.Class{a}, []korrel8r.Class{b}, tmpl, ("  \n  \n  "), testDomains(d))
+	require.NoError(t, err)
 
 	queries, err := rule.Apply("x")
 	require.NoError(t, err)
@@ -57,20 +60,11 @@ func TestTemplateRule_Apply_Blank(t *testing.T) {
 func TestTemplateRule_Accessors(t *testing.T) {
 	d := mock.NewDomain("test", "a", "b")
 	a, b := d.Class("a"), d.Class("b")
-	tmpl := template.Must(template.New("myrule").Parse("test:b:x"))
-	rule := NewTemplateRule([]korrel8r.Class{a}, []korrel8r.Class{b}, tmpl, testDomains(d))
+	tmpl := template.New("myrule")
+	rule, err := NewTemplateRule([]korrel8r.Class{a}, []korrel8r.Class{b}, tmpl, ("test:b:x"), testDomains(d))
+	require.NoError(t, err)
 
 	assert.Equal(t, "myrule", rule.Name())
 	assert.Equal(t, []korrel8r.Class{a}, rule.Start())
 	assert.Equal(t, []korrel8r.Class{b}, rule.Goal())
-}
-
-func TestTemplateRule_Apply_TemplateError(t *testing.T) {
-	d := mock.NewDomain("test", "a", "b")
-	a, b := d.Class("a"), d.Class("b")
-	tmpl := template.Must(template.New("bad").Option("missingkey=error").Parse(`test:b:{{.NoSuchField}}`))
-	rule := NewTemplateRule([]korrel8r.Class{a}, []korrel8r.Class{b}, tmpl, testDomains(d))
-
-	_, err := rule.Apply("a string")
-	assert.Error(t, err)
 }

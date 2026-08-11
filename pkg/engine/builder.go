@@ -252,12 +252,11 @@ func (b *Builder) configRule(r config.Rule) {
 	if len(start) == 0 || len(goal) == 0 {
 		return
 	}
-	var tmpl *template.Template
-	tmpl, b.err = b.e.NewTemplate(r.Name).Parse(r.Result.Query)
-	if b.err != nil {
-		return
+	var kr korrel8r.Rule
+	kr, b.err = rules.NewTemplateRule(start, goal, b.e.NewTemplate(r.Name), r.Result.Query, b.e.domains)
+	if b.err == nil {
+		b.rules(kr)
 	}
-	b.rules(rules.NewTemplateRule(start, goal, tmpl, b.e.domains))
 }
 
 func (b *Builder) configStatusRule(r config.StatusRule) {
