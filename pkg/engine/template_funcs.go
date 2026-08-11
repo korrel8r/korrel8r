@@ -19,6 +19,9 @@ import (
 //
 // The standard [Go template] and [Sprig] library functions are always available, as are the following:
 //
+//	currentRule
+//	  Returns the [korrel8r.Rule] currently being evaluated
+//
 //	assert [message] value
 //	    Fails if value is empty, optional message string is included in the error.
 //	    A value is "empty" if it is nil, false, zero, or a zero-length string, slice, or map.

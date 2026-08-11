@@ -25,9 +25,18 @@ type templateRule struct {
 }
 
 // NewTemplateRule returns a korrel8r.Rule that uses a Go template to transform objects to queries.
-// The domains registry is used to parse generated query strings.
-func NewTemplateRule(start, goal []korrel8r.Class, query *template.Template, domains *korrel8r.Domains) korrel8r.Rule {
-	return &templateRule{start: start, goal: goal, query: query, domains: domains}
+// It takes a new, unparsed template and so allow Funcs and sub-templates can be included.
+// It parses the query string into the unparsed template. Rule name is the template name.
+func NewTemplateRule(start, goal []korrel8r.Class, unparsed *template.Template, query string, domains *korrel8r.Domains) (korrel8r.Rule, error) {
+	r := &templateRule{start: start, goal: goal, query: unparsed, domains: domains}
+	var err error
+	r.query, err = r.query.Funcs(
+		template.FuncMap{"currentRule": func() korrel8r.Rule { return r }},
+	).Parse(query)
+	if err != nil {
+		return nil, err
+	}
+	return r, nil
 }
 
 func (r *templateRule) Name() string            { return r.query.Name() }

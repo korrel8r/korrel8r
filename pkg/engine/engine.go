@@ -166,13 +166,7 @@ func (e *Engine) Get(ctx context.Context, query korrel8r.Query, constraint *korr
 
 // NewTemplate returns a template set up with options, funcs and named templates for this engine.
 // See package documentation for more.
-func (e *Engine) NewTemplate(name string) *template.Template {
-	t, err := e.templateBase.Clone()
-	if err != nil {
-		panic(fmt.Errorf("clone template: %w", err))
-	}
-	return t.New(name)
-}
+func (e *Engine) NewTemplate(name string) *template.Template { return e.templateBase.New(name) }
 
 // execTemplate is a convenience to call NewTemplate, execute the template and stringify the result.
 func (e *Engine) execTemplate(name, tmplString string, data any) (string, error) {
