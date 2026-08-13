@@ -8,6 +8,7 @@ tool (
 	github.com/golangci/golangci-lint/v2/cmd/golangci-lint
 	github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen
 	github.com/princjef/gomarkdoc/cmd/gomarkdoc
+	github.com/valyala/quicktemplate/qtc
 	golang.org/x/perf/cmd/benchstat
 	mvdan.cc/sh/v3/cmd/shfmt
 	sigs.k8s.io/kustomize/kustomize/v5
@@ -368,6 +369,7 @@ require (
 	github.com/ultraware/whitespace v0.2.0 // indirect
 	github.com/uudashr/gocognit v1.2.1 // indirect
 	github.com/uudashr/iface v1.4.2 // indirect
+	github.com/valyala/quicktemplate v1.8.0 // indirect
 	github.com/vmware-labs/yaml-jsonpath v0.3.2 // indirect
 	github.com/x-cray/logrus-prefixed-formatter v0.5.2 // indirect
 	github.com/xanzy/ssh-agent v0.3.3 // indirect

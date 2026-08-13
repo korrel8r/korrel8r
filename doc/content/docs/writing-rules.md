@@ -118,13 +118,35 @@ Common patterns:
 If a template returns a blank string or raises an error, korrel8r skips the rule for that object.
 Errors are logged, blanks are ignored silently.
 
-## Adding a Rule
+## Compiled Rules (Quicktemplate)
 
-1. Choose or create a YAML file in `etc/korrel8r/rules/`.
-   Files are organized by domain: `k8s.yaml`, `log.yaml`, `alert.yaml`, etc.
-   If you add a new file, include it in `all.yaml` to have it picked up by default configurations.
+Instead of being loaded from a configuration file, rules can be compiled into the korrel8r binary
+as Go code. Compiling is faster and type-safe, but requires rebuilding the executable whenever a
+rule changes.
 
-2. Add your rule to the `rules` list in the file.
+Compiled rules are [quicktemplate](https://github.com/valyala/quicktemplate) `{% func %}` templates
+in `pkg/rules/quickrules/*.qtpl`. Each rule is a YAML annotation (the same schema as the
+configuration rules above) followed by a template function that generates goal queries:
 
-3. If you want to [contribute your rule to the project](https://github.com/korrel8r/korrel8r), add a test case in the corresponding `*_test.go` file.
-   
+```text
+# MetricToPod creates a k8s Pod query from the pod labels of a metric.
+name: MetricToPod
+start:
+  domain: metric
+  classes: [metric]
+goal:
+  domain: k8s
+  classes: [Pod]
+
+{% func MetricToPod(o interface{}) %}
+{% code
+	m := o.(metric.Object) // Start object, type-checked at compile time.
+%}
+k8s:Pod:{"namespace":{%q= m.Labels["namespace"] %},"name":{%q= m.Labels["pod"] %}}
+{% endfunc %}
+```
+
+This is only an outline: `{% code %}` blocks may run arbitrary, type-checked Go. For the full
+tutorial on writing, compiling, and testing quick rules, see the
+[Quick Rules README](https://github.com/korrel8r/korrel8r/blob/main/pkg/rules/quickrules/README.md).
+

@@ -1,0 +1,59 @@
+{% package quickrules %}
+
+{% import "github.com/korrel8r/korrel8r/pkg/domains/metric" %}
+{% import "github.com/korrel8r/korrel8r/pkg/rules" %}
+
+# MetricToPod creates a k8s Pod query from the pod labels of a metric.
+name: MetricToPod
+start:
+  domain: metric
+  classes: [metric]
+goal:
+  domain: k8s
+  classes: [Pod]
+
+{% func MetricToPod(o interface{}) %}
+{% code
+	m := o.(metric.Object)
+	ns := m.Labels["k8s_namespace_name"]
+	if ns == "" {
+		ns = m.Labels["namespace"]
+	}
+	name := m.Labels["k8s_pod_name"]
+	if name == "" {
+		name = m.Labels["pod"]
+	}
+	if ns == "" || name == "" {
+		rules.Fail("MetricToPod: missing required pod labels: %v", m.Labels)
+	}
+%}
+k8s:Pod:{"namespace":{%q= ns %},"name":{%q= name %}}
+{% endfunc %}
+
+
+# MetricToDeployment creates a k8s Deployment query from the deployment labels of a metric.
+name: MetricToDeployment
+start:
+  domain: metric
+  classes: [metric]
+goal:
+  domain: k8s
+  classes: [Deployment.apps]
+
+{% func MetricToDeployment(o interface{}) %}
+{% code
+	m := o.(metric.Object)
+	ns := m.Labels["k8s_namespace_name"]
+	if ns == "" {
+		ns = m.Labels["namespace"]
+	}
+	name := m.Labels["k8s_deployment_name"]
+	if name == "" {
+		name = m.Labels["deployment"]
+	}
+	if ns == "" || name == "" {
+		rules.Fail("MetricToDeployment: missing required deployment labels: %v", m.Labels)
+	}
+%}
+k8s:Deployment.apps:{"namespace":{%q= ns %},"name":{%q= name %}}
+{% endfunc %}

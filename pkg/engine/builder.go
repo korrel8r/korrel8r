@@ -49,6 +49,10 @@ func Build() *Builder {
 	return &Builder{e: e, missingClasses: map[string][]string{}}
 }
 
+// GetDomains returns the domain registry used by the engine.
+// Domains are collected here before the engine is built.
+func (b *Builder) GetDomains() *korrel8r.Domains { return b.e.domains }
+
 // Domains adds domains that will be recognized by the engine.
 func (b *Builder) Domains(domains ...korrel8r.Domain) *Builder {
 	for _, d := range domains {

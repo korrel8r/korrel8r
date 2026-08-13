@@ -8,26 +8,6 @@ rules:
       query: |-
         metric:metric:{namespace="{{.metadata.namespace}}",{{lower .kind}}="{{.metadata.name}}"}
 
-  - name: MetricToPod
-    start:
-      domain: metric
-    goal:
-      domain: k8s
-      classes: [Pod]
-    result:
-      query: |-
-        k8s:Pod:{"namespace":"{{or (index .Labels "k8s_namespace_name") (index .Labels "namespace") | required}}","name":"{{or (index .Labels "k8s_pod_name") (index .Labels "pod") | required}}"}
-
-  - name: MetricToDeployment
-    start:
-      domain: metric
-    goal:
-      domain: k8s
-      classes: [Deployment.apps]
-    result:
-      query: |-
-        k8s:Deployment.apps:{"namespace":"{{or (index .Labels "k8s_namespace_name") (index .Labels "namespace") | required}}","name":"{{or (index .Labels "k8s_deployment_name") (index .Labels "deployment") | required}}"}
-
   - name: MetricToDaemonSet
     start:
       domain: metric

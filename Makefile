@@ -41,8 +41,13 @@ GEN_OPENAPI_API=pkg/api/gen-openapi.go
 GEN_OPENAPI_IMPL=pkg/rest/gen-openapi.go
 # These markdown files are embedded in the executable.
 GEN_DOMAIN_DOC=$(patsubst %.go,%.md,$(wildcard pkg/domains/*/doc.go))
+# Compiled quicktemplate rules, see pkg/rules/quickrules.
+QTPL_DIR=pkg/rules/quickrules
+QTPL_SRC=$(wildcard $(QTPL_DIR)/*.qtpl)
+QTPL_GEN=$(QTPL_SRC:.qtpl=.qtpl.go)
+GEN_APPLYFUNCS=$(QTPL_DIR)/applyfuncs.go
 
-GENERATED=$(VERSION_TXT) $(GEN_OPENAPI_IMPL) $(GEN_OPENAPI_API) $(GEN_DOMAIN_DOC)
+GENERATED=$(VERSION_TXT) $(GEN_OPENAPI_IMPL) $(GEN_OPENAPI_API) $(GEN_DOMAIN_DOC) $(QTPL_GEN) $(GEN_APPLYFUNCS)
 
 all: test doc image-build ## Build and test everything locally. Recommended before commit.
 
@@ -74,6 +79,14 @@ $(GEN_OPENAPI_API): $(OPENAPI_SPEC) $(BIN)
 
 $(GEN_OPENAPI_IMPL): $(OPENAPI_SPEC) $(BIN)
 	oapi-codegen -generate gin -package rest -import-mapping "$<:github.com/korrel8r/korrel8r/pkg/api" -alias-types -o $@ $<
+
+# Compile quicktemplate files to go.
+%.qtpl.go: %.qtpl $(BIN)
+	qtc -file $<
+
+# Generate the applyFuncs map for compiled rules from their {% func %} declarations.
+$(GEN_APPLYFUNCS): $(QTPL_SRC) hack/gen-applyfuncs.sh
+	hack/gen-applyfuncs.sh $(QTPL_DIR) | gofmt > $@
 
 # Generate the pkg/domains/*/doc.md files that are embedded in the korrel8r executable.
 %/doc.md: %/doc.go $(shell find doc/gomarkdoc) $(BIN)

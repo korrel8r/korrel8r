@@ -55,13 +55,20 @@ func (r *templateRule) Apply(start korrel8r.Object) ([]korrel8r.Query, error) {
 	if err := r.query.Execute(b, start); err != nil {
 		return nil, err
 	}
+	return parseQueries(r.domains, b.String())
+}
+
+// parseQueries converts a rule result string into a list of queries.
+// The string may be blank (all whitespace) meaning the rule does not apply, or a list of
+// query strings separated by newlines. Returns an error if any line is an invalid query.
+func parseQueries(domains *korrel8r.Domains, result string) ([]korrel8r.Query, error) {
 	var queries []korrel8r.Query
-	for q := range strings.SplitSeq(b.String(), "\n") {
+	for q := range strings.SplitSeq(result, "\n") {
 		q = strings.TrimSpace(q)
 		if q == "" {
 			continue
 		}
-		query, err := r.domains.Query(q)
+		query, err := domains.Query(q)
 		if err != nil {
 			return nil, err
 		}
