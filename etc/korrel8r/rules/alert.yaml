@@ -1,14 +1,4 @@
 rules:
-  - name: AlertToDeployment
-    start:
-      domain: alert
-    goal:
-      domain: k8s
-      classes: [Deployment.apps]
-    result:
-      query: |-
-        k8s:Deployment.v1.apps:{namespace: "{{index .Labels "namespace" | required}}", name: "{{index .Labels "deployment" | required}}"}
-
   - name: AlertToPod
     start:
       domain: alert

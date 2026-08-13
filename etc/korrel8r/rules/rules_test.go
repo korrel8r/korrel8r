@@ -20,6 +20,7 @@ import (
 	"github.com/korrel8r/korrel8r/pkg/domains/k8s"
 	"github.com/korrel8r/korrel8r/pkg/engine"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
+	"github.com/korrel8r/korrel8r/pkg/rules/quickrules"
 	slices2 "github.com/korrel8r/korrel8r/pkg/slices"
 	"github.com/korrel8r/korrel8r/pkg/status"
 	"github.com/korrel8r/korrel8r/pkg/unique"
@@ -152,11 +153,10 @@ func setup() *engine.Engine {
 	if err != nil {
 		panic(err)
 	}
-	e, err := engine.Build().
-		Domains(domains.All...).
-		Stores(s).
-		Config(configs).
-		Engine()
+	b := engine.Build().Domains(domains.All...)
+	b.Stores(s)
+	b.Rules(quickrules.Rules(b.GetDomains())...)
+	e, err := b.Config(configs).Engine()
 	if err != nil {
 		panic(err)
 	}

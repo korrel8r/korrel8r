@@ -32,6 +32,7 @@ require (
 	github.com/rhobs/kube-health v0.4.1
 	github.com/spf13/cobra v1.10.2
 	github.com/stretchr/testify v1.11.1
+	github.com/valyala/quicktemplate v1.8.0
 	go.opentelemetry.io/otel v1.45.0
 	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp v1.45.0
 	go.opentelemetry.io/otel/exporters/prometheus v0.67.0
@@ -57,6 +58,7 @@ require (
 	github.com/onsi/ginkgo/v2 v2.28.2 // indirect
 	github.com/onsi/gomega v1.39.1 // indirect
 	github.com/prometheus/otlptranslator v1.0.0 // indirect
+	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	golang.org/x/exp v0.0.0-20260611194520-c48552f49976 // indirect
 )
 

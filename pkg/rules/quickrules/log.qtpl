@@ -1,0 +1,28 @@
+# Copyright: This file is part of korrel8r, released under https://github.com/korrel8r/korrel8r/blob/main/LICENSE
+#
+
+{% package quickrules %}
+
+{% import "github.com/korrel8r/korrel8r/pkg/domains/log" %}
+{% import "github.com/korrel8r/korrel8r/pkg/rules" %}
+
+# LogToPod creates a k8s Pod query from the pod attributes of a log entry.
+name: LogToPod
+start:
+  domain: log
+  classes: [application, infrastructure, audit]
+goal:
+  domain: k8s
+  classes: [Pod]
+
+{% func LogToPod(o interface{}) %}
+{% code
+	l := o.(log.Object)
+	ns := l["kubernetes_namespace_name"]
+	name := l["kubernetes_pod_name"]
+	if ns == "" || name == "" {
+		rules.Fail("LogToPod: missing required pod attributes: %v", l)
+	}
+%}
+k8s:Pod:{"namespace":{%q= ns %},"name":{%q= name %}}
+{% endfunc %}

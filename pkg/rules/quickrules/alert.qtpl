@@ -1,0 +1,27 @@
+# Copyright: This file is part of korrel8r, released under https://github.com/korrel8r/korrel8r/blob/main/LICENSE
+#
+{% package quickrules %}
+
+{% import "github.com/korrel8r/korrel8r/pkg/domains/alert" %}
+{% import "github.com/korrel8r/korrel8r/pkg/rules" %}
+
+# AlertToDeployment creates a k8s Deployment query from the deployment labels of an alert.
+name: AlertToDeployment
+start:
+  domain: alert
+  classes: [alert]
+goal:
+  domain: k8s
+  classes: [Deployment.apps]
+
+{% func AlertToDeployment(o interface{}) %}
+{% code
+	a := o.(*alert.Object)
+	ns := a.Labels["namespace"]
+	name := a.Labels["deployment"]
+	if ns == "" || name == "" {
+		rules.Fail("AlertToDeployment: missing required deployment labels: %v", a.Labels)
+	}
+%}
+k8s:Deployment.apps:{"namespace":{%q= ns %},"name":{%q= name %}}
+{% endfunc %}

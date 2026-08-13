@@ -57,7 +57,8 @@ func TestMain_rules(t *testing.T) {
 	}{
 		{
 			args: []string{"rules"},
-			want: "foobar: [mock:foo] -> [mock:bar]\nbarfoo: [mock:bar] -> [mock:foo]",
+			want: `foobar: [mock:foo] -> [mock:bar]
+barfoo: [mock:bar] -> [mock:foo]`,
 		},
 		{
 			args: []string{"rules", "--start", "mock:foo"},
@@ -71,7 +72,7 @@ func TestMain_rules(t *testing.T) {
 		t.Run(strings.Join(x.args, " "), func(t *testing.T) {
 			out, err := cliCommand(t, x.args...).Output()
 			require.NoError(t, test.ExecError(err))
-			assert.Equal(t, x.want, strings.TrimSpace(string(out)))
+			assert.Contains(t, string(out), x.want)
 		})
 	}
 }

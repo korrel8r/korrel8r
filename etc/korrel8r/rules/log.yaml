@@ -1,14 +1,4 @@
 rules:
-  - name: LogToPod
-    start:
-      domain: log
-    goal:
-      domain: k8s
-      classes: [Pod]
-    result:
-      query: |-
-        k8s:Pod:{namespace: "{{index . "kubernetes_namespace_name" | required}}", name: "{{index . "kubernetes_pod_name" | required}}"}
-
   - name: SelectorToLogs
     start:
       domain: k8s

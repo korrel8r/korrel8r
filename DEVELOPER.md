@@ -19,14 +19,23 @@ Domains must implement these four core interfaces:
 - `Query`: Domain-specific query representation
 - `Object`: Individual data items from the domain
 
-### Rules (`etc/korrel8r/rules/`)
+### Rules (`etc/korrel8r/rules/` and `pkg/rules/`)
 
 A rule links a (set of) start classes to a (set of) goal classes.
 Each rule contains Go templates that define how to correlate data.
 - Start and goal classes may be in the same or different domains.
 - The template is applied to an `Object` of a start class, and generates a `Query` to return objects of a goal class.
-- Rules are defined in YAML files, new rules can be added without rebuilding korrel8r.
 - See [Configuration](https://korrel8r.github.io/korrel8r/docs/configuration/) for rule syntax and examples.
+
+There are two ways to define rules:
+
+- **Configuration rules** (`etc/korrel8r/rules/`): plain YAML files with the rule metadata and Go template.
+  New rules can be added without rebuilding korrel8r. Include new files in `all.yaml` to get them picked up by default configurations.
+  See [etc/korrel8r/rules/README.md](etc/korrel8r/rules/README.md).
+- **Compiled rules** (`pkg/rules/quickrules/`): quicktemplate `{% func %}` rules compiled into the binary.
+  Faster and type-safe, but require rebuilding when a rule changes. Edit only `*.qtpl`, then run `make generate`
+  (`qtc` compiles templates, `hack/gen-applyfuncs.sh` regenerates `applyfuncs.go`).
+  See [pkg/rules/quickrules/README.md](pkg/rules/quickrules/README.md).
 
 ### Engine (`pkg/engine/`)
 

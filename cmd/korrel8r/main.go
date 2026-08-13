@@ -15,6 +15,7 @@ import (
 	"github.com/korrel8r/korrel8r/pkg/domains"
 	"github.com/korrel8r/korrel8r/pkg/domains/k8s"
 	"github.com/korrel8r/korrel8r/pkg/engine"
+	"github.com/korrel8r/korrel8r/pkg/rules/quickrules"
 	"github.com/spf13/cobra"
 )
 
@@ -86,8 +87,9 @@ func main() {
 }
 
 func newEngineWithConfigs(c config.Configs) (*engine.Engine, error) {
-	return engine.Build().
-		Domains(append(domains.All, mock.NewDomain("mock"))...).
+	b := engine.Build()
+	return b.Domains(append(domains.All, mock.NewDomain("mock"))...).
+		Rules(quickrules.Rules(b.GetDomains())...).
 		Config(c).
 		Engine()
 }

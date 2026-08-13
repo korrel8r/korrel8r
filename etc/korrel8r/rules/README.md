@@ -49,6 +49,17 @@ This command will guide you through creating a new rule with the correct syntax 
 
 See the [User Guide - Configuration](https://korrel8r.github.io/korrel8r/#_configuration) for detailed rule syntax and examples.
 
+## Compiled Rules (Quick Rules)
+
+The rules in this directory are loaded from YAML at runtime. As an alternative, korrel8r also
+ships **quick rules**: rules compiled into the binary as Go code with
+[quicktemplate](https://github.com/valyala/quicktemplate). They are faster and type-safe, but
+require rebuilding the executable when they change.
+
+Quick rules live in `pkg/rules/quickrules/` (`*.qtpl` files) and use the same YAML rule schema
+shown above. See [Quick Rules](../../../pkg/rules/quickrules/README.md) for how to write and
+compile them.
+
 ## Testing Rules
 
 Each rule file has a corresponding `*_test.go` file. After creating a rule:
