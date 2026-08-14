@@ -35,10 +35,11 @@ type Builder struct {
 
 func Build() *Builder {
 	e := &Engine{
-		domains:      korrel8r.NewDomains(),
-		storeHolders: map[korrel8r.Domain]*storeHolders{},
-		rulesByName:  map[string]korrel8r.Rule{},
-		statuses:     map[string][]status.Rule{},
+		domains:          korrel8r.NewDomains(),
+		storeHolders:     map[korrel8r.Domain]*storeHolders{},
+		rulesByName:      map[string]korrel8r.Rule{},
+		statuses:         map[string][]status.Rule{},
+		storeMetricAttrs: map[string][2]metric.MeasurementOption{},
 	}
 	// Add template functions that are always available.
 	e.templateFuncs = e.TemplateFuncs()
@@ -56,6 +57,11 @@ func (b *Builder) Domains(domains ...korrel8r.Domain) *Builder {
 		case nil:
 			b.e.domains.Add(d)
 			b.e.storeHolders[d] = newStoreHolders(d)
+			name := d.Name()
+			b.e.storeMetricAttrs[name] = [2]metric.MeasurementOption{
+				metric.WithAttributes(attribute.String("domain", name), attribute.String("status", "ok")),
+				metric.WithAttributes(attribute.String("domain", name), attribute.String("status", "error")),
+			}
 			if tf, ok := d.(interface{ TemplateFuncs() map[string]any }); ok {
 				maps.Copy(b.e.templateFuncs, tf.TemplateFuncs())
 			}
@@ -189,14 +195,6 @@ func (b *Builder) Engine() (*Engine, error) {
 		log.V(1).Info("skipped rules with missing class", "class", class, "rules", rules)
 	}
 	b.e.data = graph.NewData(b.e.rules...)
-	b.e.storeMetricAttrs = map[string][2]metric.MeasurementOption{}
-	for _, d := range b.e.domains.List() {
-		name := d.Name()
-		b.e.storeMetricAttrs[name] = [2]metric.MeasurementOption{
-			metric.WithAttributes(attribute.String("domain", name), attribute.String("status", "ok")),
-			metric.WithAttributes(attribute.String("domain", name), attribute.String("status", "error")),
-		}
-	}
 	e, err := b.e, b.err
 	*b = *Build() // Reset the builder.
 	return e, err

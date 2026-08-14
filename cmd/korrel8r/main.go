@@ -49,10 +49,14 @@ func init() {
 		logging.Init(verboseFlag)
 		k8s.SetLogger(logging.Log())
 		profileStop = startProfile()
+		startMetrics()
 	})
 	cobra.OnFinalize(func() {
 		if profileStop != nil {
 			profileStop()
+		}
+		if metricsStop != nil {
+			metricsStop()
 		}
 	})
 }

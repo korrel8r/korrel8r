@@ -235,7 +235,8 @@ doc/content/docs/reference/mcp/index.md: $(shell find pkg/mcp) cmd/korrel8r-docg
 DOC_PUBLIC+=doc/content/docs/reference/template-functions.md
 CLEANFILES+=doc/content/docs/reference/template-functions.md
 doc/content/docs/reference/template-functions.md: pkg/engine/template_funcs.go $(MAKEFILE_LIST) $(FRONT) $(BIN)
-	@mkdir -p $(dir $@); rm $@
+	@mkdir -p $(dir $@)
+	echo > $@
 	gomarkdoc -u ./pkg/engine \
     -t 'package={{range .Types}}{{range .Methods}}{{if eq .Name "TemplateFuncs"}}{{template "doc" .Doc}}{{"\n\n"}}{{end}}{{end}}{{end}}' >> $@
 	gomarkdoc -u $(shell go list ./pkg/domains/...) \

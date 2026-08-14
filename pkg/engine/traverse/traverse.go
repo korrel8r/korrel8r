@@ -192,10 +192,11 @@ type traverser struct {
 	maxDepth   int // -1 for unlimited
 
 	// Read-only after init
-	nodes     map[korrel8r.Class]*node
-	rules     map[korrel8r.Class]unique.Set[korrel8r.Rule]
-	lines     map[lineKey]*graph.Line // immutable lines (for Rule access)
-	ruleAttrs map[korrel8r.Rule]metric.MeasurementOption
+	nodes      map[korrel8r.Class]*node
+	rules      map[korrel8r.Class]unique.Set[korrel8r.Rule]
+	lines      map[lineKey]*graph.Line // immutable lines (for Rule access)
+	lineMetric map[*graph.Line]metric.MeasurementOption
+	ruleMetric map[korrel8r.Rule]metric.MeasurementOption
 
 	// Concurrent state
 	lineQueries map[lineKey]graph.Queries // overlay: mutable line queries
@@ -216,29 +217,34 @@ func newTraverser(e *engine.Engine, data *graph.Data, scopeLines []*graph.Line, 
 		rules:       map[korrel8r.Class]unique.Set[korrel8r.Rule]{},
 		lines:       map[lineKey]*graph.Line{},
 		lineQueries: map[lineKey]graph.Queries{},
-		ruleAttrs:   map[korrel8r.Rule]metric.MeasurementOption{},
+		lineMetric:  map[*graph.Line]metric.MeasurementOption{},
+		ruleMetric:  map[korrel8r.Rule]metric.MeasurementOption{},
 		work:        newWorkQueue(),
 		seen:        map[korrel8r.Query]struct{}{},
 	}
 
 	for _, l := range scopeLines {
-		startClass := l.Start().Class
-		goalClass := l.Goal().Class
-		t.getOrCreateNode(startClass)
-		t.getOrCreateNode(goalClass)
-		if t.rules[startClass] == nil {
-			t.rules[startClass] = unique.NewSet[korrel8r.Rule]()
+		start := l.Start().Class
+		goal := l.Goal().Class
+		t.getOrCreateNode(start)
+		t.getOrCreateNode(goal)
+		if t.rules[start] == nil {
+			t.rules[start] = unique.NewSet[korrel8r.Rule]()
 		}
-		t.rules[startClass].Add(l.Rule)
-		key := lineKey{start: startClass, rule: l.Rule, goal: goalClass}
+		t.rules[start].Add(l.Rule)
+		key := lineKey{start: start, rule: l.Rule, goal: goal}
 		t.lines[key] = l
 		if _, ok := t.lineQueries[key]; !ok {
 			t.lineQueries[key] = graph.Queries{}
 		}
-		if _, ok := t.ruleAttrs[l.Rule]; !ok {
-			t.ruleAttrs[l.Rule] = metric.WithAttributes(
+		if _, ok := t.lineMetric[l]; !ok {
+			t.lineMetric[l] = metric.WithAttributes(
 				attribute.String("rule", l.Rule.Name()),
-				attribute.String("start", startClass.String()))
+				attribute.String("start", start.String()))
+		}
+		if _, ok := t.ruleMetric[l.Rule]; !ok {
+			t.ruleMetric[l.Rule] = metric.WithAttributes(
+				attribute.String("rule", l.Rule.Name()))
 		}
 	}
 
@@ -359,7 +365,7 @@ func (t *traverser) isDuplicate(ctx context.Context, ql queryLine) bool {
 	defer t.seenMu.Unlock()
 	if _, exists := t.seen[ql.Query]; exists {
 		if ql.Line != nil {
-			metricDuplicateQueries.Add(ctx, 1, t.ruleAttrs[ql.Line.Rule])
+			metricDuplicateQueries.Add(ctx, 1, t.lineMetric[ql.Line])
 		} else {
 			metricDuplicateQueries.Add(ctx, 1)
 		}
@@ -391,7 +397,7 @@ func (t *traverser) handleQuery(ctx context.Context, ql queryLine) {
 		results = append(results, objects...)
 	}))
 	if ql.Line != nil {
-		metricQueries.Add(ctx, 1, t.ruleAttrs[ql.Line.Rule])
+		metricQueries.Add(ctx, 1, t.lineMetric[ql.Line])
 	} else {
 		metricQueries.Add(ctx, 1)
 	}
@@ -473,7 +479,7 @@ func (t *traverser) applyRules(ctx context.Context, n *node, nextDepth int) {
 			}
 			queries, err := r.Apply(o)
 			log.V(4).Info("Rule applied", "name", r.Name(), "start", class, "error", err, "queries", len(queries))
-			metricRules.Add(ctx, 1, t.ruleAttrs[r])
+			metricRules.Add(ctx, 1, t.ruleMetric[r])
 			for _, q := range queries {
 				key := lineKey{start: class, rule: r, goal: q.Class()}
 				if line := t.lines[key]; line != nil {

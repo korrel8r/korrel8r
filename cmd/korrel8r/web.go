@@ -3,9 +3,13 @@
 package main
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -108,8 +112,6 @@ var webCmd = &cobra.Command{
 			router.Any(mcp.StreamablePath, gin.WrapH(mcpSrv.HTTPHandler()))
 			log.V(0).Info("MCP Streamable endpoint", "path", mcp.StreamablePath)
 		}
-		metricsHandler, metricsStop := startMetrics()
-		defer metricsStop()
 		router.GET("/metrics", gin.WrapH(metricsHandler))
 		log.V(0).Info("Metrics endpoint", "path", "/metrics")
 
@@ -117,14 +119,33 @@ var webCmd = &cobra.Command{
 		if *httpprofileFlag {
 			rest.WebProfile(router)
 		}
+
+		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+		defer stop()
+		done := make(chan struct{})
+		go func() {
+			defer close(done)
+			<-ctx.Done()
+			shutdownCtx, cancel := context.WithTimeout(context.Background(), time.Second)
+			defer cancel()
+			if err := s.Shutdown(shutdownCtx); err != nil {
+				log.Error(err, "Server shutdown")
+			}
+		}()
+
 		log := log.WithValues("addr", s.Addr, "version", build.Version, "configuration", *configFlag)
 		if *httpFlag != "" {
 			log.Info("Server: Listening for http")
-			must.Must(s.ListenAndServe())
+			if err := s.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+				must.Must(err)
+			}
 		} else {
 			log.Info("Server: Listening for https")
-			must.Must(s.ListenAndServeTLS(*certFlag, *keyFlag))
+			if err := s.ListenAndServeTLS(*certFlag, *keyFlag); err != nil && !errors.Is(err, http.ErrServerClosed) {
+				must.Must(err)
+			}
 		}
+		<-done
 	},
 }
 
@@ -153,5 +174,4 @@ func init() {
 	tlsCipherSuitesFlag = webCmd.Flags().StringSlice("tls-cipher-suites", nil, "Comma-separated list of TLS cipher suites for https (IANA or OpenSSL names)")
 	tlsCurvesFlag = webCmd.Flags().StringSlice("tls-curves", nil, "Comma-separated list of TLS curves for https (Go or OpenSSL names, e.g. CurveP256/prime256v1, X25519)")
 	tlsMinVersionFlag = webCmd.Flags().String("tls-min-version", "", "Minimum TLS version for https (e.g. VersionTLS12, VersionTLS13)")
-	otelCollectorFlag = webCmd.Flags().String("otel-collector", "", "URL of OTLP collector endpoint for pushing metrics (e.g. http://localhost:4318/v1/metrics)")
 }
