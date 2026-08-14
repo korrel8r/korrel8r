@@ -3,7 +3,10 @@
 package main_test
 
 import (
+	"encoding/json"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -108,4 +111,25 @@ func TestMain_stores_selected(t *testing.T) {
 }
 `
 	assert.Equal(t, strings.TrimSpace(want), strings.TrimSpace(string(out)))
+}
+
+func TestMain_metric_file(t *testing.T) {
+	f := filepath.Join(tmpDir, "metrics.json")
+	_, err := cliCommand(t, "list", "--metric-file", f).Output()
+	require.NoError(t, test.ExecError(err))
+	data, err := os.ReadFile(f)
+	require.NoError(t, err)
+	var m map[string]any
+	require.NoError(t, json.Unmarshal(data, &m))
+	assert.Contains(t, m, "Resource")
+	assert.Contains(t, m, "ScopeMetrics")
+}
+
+func TestMain_metric_file_not_written(t *testing.T) {
+	f := filepath.Join(tmpDir, "unused-metrics.json")
+	_ = os.Remove(f)
+	_, err := cliCommand(t, "list").Output()
+	require.NoError(t, test.ExecError(err))
+	_, err = os.Stat(f)
+	assert.ErrorIs(t, err, os.ErrNotExist)
 }
