@@ -89,8 +89,9 @@ func main() {
 func newEngineWithConfigs(c config.Configs) (*engine.Engine, error) {
 	b := engine.Build()
 	return b.Domains(append(domains.All, mock.NewDomain("mock"))...).
-		Rules(quickrules.Rules(b.GetDomains())...).
 		Config(c).
+		Rules(quickrules.Rules(b.GetDomains())...).
+		StatusRules(quickrules.StatusRules(b.GetDomains())...).
 		Engine()
 }
 

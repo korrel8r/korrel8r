@@ -7,6 +7,7 @@ import (
 	"testing"
 	"text/template"
 
+	"github.com/korrel8r/korrel8r/pkg/rules"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -14,8 +15,8 @@ import (
 func execTemplate(t *testing.T, tmplStr string, data any) (string, error) {
 	t.Helper()
 	funcs := template.FuncMap{
-		"assert":   templateAssert,
-		"required": templateRequired,
+		"requireAll": func(values ...any) string { rules.RequireAll(values...); return "" },
+		"require":    func(v any) any { return rules.Require(v) },
 	}
 	tmpl, err := template.New("test").Funcs(funcs).Parse(tmplStr)
 	require.NoError(t, err)
@@ -24,28 +25,26 @@ func execTemplate(t *testing.T, tmplStr string, data any) (string, error) {
 	return buf.String(), err
 }
 
-func TestAssert(t *testing.T) {
+func TestRequireAll(t *testing.T) {
 	for _, tc := range []struct {
 		name    string
 		tmpl    string
 		data    any
-		wantErr string
+		wantErr bool
 	}{
-		{name: "true", tmpl: `{{ assert true }}`},
-		{name: "false", tmpl: `{{ assert false }}`, wantErr: "assertion failed"},
-		{name: "message", tmpl: `{{ assert "bad value" false }}`, wantErr: "assertion failed: bad value"},
-		{name: "message_pass", tmpl: `{{ assert "bad value" true }}`},
-		{name: "expression", tmpl: `{{ assert (eq .X "yes") }}`, data: map[string]any{"X": "yes"}},
-		{name: "expression_fail", tmpl: `{{ assert (eq .X "yes") }}`, data: map[string]any{"X": "no"}, wantErr: "assertion failed"},
-		{name: "piped", tmpl: `{{ true | assert }}`},
-		{name: "piped_fail", tmpl: `{{ false | assert }}`, wantErr: "assertion failed"},
-		{name: "piped_message", tmpl: `{{ false | assert "oops" }}`, wantErr: "assertion failed: oops"},
+		{name: "true", tmpl: `{{ requireAll true }}`},
+		{name: "false", tmpl: `{{ requireAll false }}`, wantErr: true},
+		{name: "multiple_pass", tmpl: `{{ requireAll "a" 1 true }}`},
+		{name: "multiple_fail", tmpl: `{{ requireAll "a" 0 true }}`, wantErr: true},
+		{name: "expression", tmpl: `{{ requireAll (eq .X "yes") }}`, data: map[string]any{"X": "yes"}},
+		{name: "expression_fail", tmpl: `{{ requireAll (eq .X "yes") }}`, data: map[string]any{"X": "no"}, wantErr: true},
+		{name: "piped", tmpl: `{{ true | requireAll }}`},
+		{name: "piped_fail", tmpl: `{{ false | requireAll }}`, wantErr: true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			_, err := execTemplate(t, tc.tmpl, tc.data)
-			if tc.wantErr != "" {
+			if tc.wantErr {
 				require.Error(t, err)
-				assert.Contains(t, err.Error(), tc.wantErr)
 			} else {
 				require.NoError(t, err)
 			}
@@ -83,35 +82,31 @@ func TestIsEmpty(t *testing.T) {
 		{name: "nonzero_struct", v: s{X: 1}, want: false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			assert.Equal(t, tc.want, isEmpty(tc.v))
+			assert.Equal(t, tc.want, rules.Empty(tc.v))
 		})
 	}
 }
 
-func TestRequired(t *testing.T) {
+func TestRequire(t *testing.T) {
 	for _, tc := range []struct {
 		name    string
 		tmpl    string
 		data    any
 		want    string
-		wantErr string
+		wantErr bool
 	}{
-		{name: "string", tmpl: `{{ required .X }}`, data: map[string]any{"X": "hello"}, want: "hello"},
-		{name: "empty_string", tmpl: `{{ required .X }}`, data: map[string]any{"X": ""}, wantErr: "required value was not set"},
-		{name: "nil", tmpl: `{{ required .X }}`, data: map[string]any{"X": nil}, wantErr: "required value was not set"},
-		{name: "message", tmpl: `{{ required "need X" .X }}`, data: map[string]any{"X": ""}, wantErr: "need X"},
-		{name: "message_pass", tmpl: `{{ required "need X" .X }}`, data: map[string]any{"X": "val"}, want: "val"},
-		{name: "piped", tmpl: `{{ .X | required }}`, data: map[string]any{"X": "val"}, want: "val"},
-		{name: "piped_fail", tmpl: `{{ .X | required }}`, data: map[string]any{"X": ""}, wantErr: "required value was not set"},
-		{name: "piped_message", tmpl: `{{ .X | required "missing" }}`, data: map[string]any{"X": ""}, wantErr: "missing"},
-		{name: "zero_int", tmpl: `{{ required .X }}`, data: map[string]any{"X": 0}, wantErr: "required value was not set"},
-		{name: "nonzero_int", tmpl: `{{ required .X }}`, data: map[string]any{"X": 42}, want: "42"},
+		{name: "string", tmpl: `{{ require .X }}`, data: map[string]any{"X": "hello"}, want: "hello"},
+		{name: "empty_string", tmpl: `{{ require .X }}`, data: map[string]any{"X": ""}, wantErr: true},
+		{name: "nil", tmpl: `{{ require .X }}`, data: map[string]any{"X": nil}, wantErr: true},
+		{name: "piped", tmpl: `{{ .X | require }}`, data: map[string]any{"X": "val"}, want: "val"},
+		{name: "piped_fail", tmpl: `{{ .X | require }}`, data: map[string]any{"X": ""}, wantErr: true},
+		{name: "zero_int", tmpl: `{{ require .X }}`, data: map[string]any{"X": 0}, wantErr: true},
+		{name: "nonzero_int", tmpl: `{{ require .X }}`, data: map[string]any{"X": 42}, want: "42"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			got, err := execTemplate(t, tc.tmpl, tc.data)
-			if tc.wantErr != "" {
+			if tc.wantErr {
 				require.Error(t, err)
-				assert.Contains(t, err.Error(), tc.wantErr)
 			} else {
 				require.NoError(t, err)
 				assert.Equal(t, tc.want, got)

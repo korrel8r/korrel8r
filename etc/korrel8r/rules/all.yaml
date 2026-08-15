@@ -1,9 +1,2 @@
-include:
-  - k8s.yaml
-  - alert.yaml
-  - log.yaml
-  - netflow.yaml
-  - trace.yaml
-  - incident.yaml
-  - metric.yaml
-  - kubevirt.yaml
+# Empty: all rules previously in YAML are now compiled into the binary.
+# See pkg/rules/quickrules/ for the compiled rule sources.

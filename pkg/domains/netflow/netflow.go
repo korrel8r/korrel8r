@@ -84,19 +84,23 @@ func (domain) Store(s any) (korrel8r.Store, error) {
 	}
 }
 
+// TypeToK8s converts a netflow type string to a k8s class string.
+func TypeToK8s(netflowType string) string {
+	switch netflowType {
+	case "Deployment", "DaemonSet", "StatefulSet", "ReplicaSet":
+		return fmt.Sprintf("k8s:%v.v1.apps", netflowType)
+	default:
+		return fmt.Sprintf("k8s:%v.v1", netflowType)
+	}
+}
+
 // TemplateFuncs for the netflow domain.
 //
-//	netflowTypeToK8s typeString
-//	 Convert a netflow type field value to a k8s class.
+//	netflowTypeToK8s string
+//	  converts a netflow type string to a k8s class string.
 func (domain) TemplateFuncs() map[string]any {
 	return map[string]any{
-		"netflowTypeToK8s": func(t string) (string, error) {
-			if t == "Deployment" {
-				return "k8s:Deployment.v1.apps", nil
-			} else {
-				return fmt.Sprintf("k8s:%v.v1", t), nil
-			}
-		},
+		"netflowTypeToK8s": TypeToK8s,
 	}
 }
 

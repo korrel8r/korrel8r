@@ -51,7 +51,13 @@ func Build() *Builder {
 
 // GetDomains returns the domain registry used by the engine.
 // Domains are collected here before the engine is built.
-func (b *Builder) GetDomains() *korrel8r.Domains { return b.e.domains }
+func (b *Builder) GetDomains() *korrel8r.Domains {
+	ds := b.e.domains
+	if ds.Empty() {
+		panic("Builder: GetDomains called before any domains were added. ")
+	}
+	return ds
+}
 
 // Domains adds domains that will be recognized by the engine.
 func (b *Builder) Domains(domains ...korrel8r.Domain) *Builder {
@@ -131,6 +137,22 @@ func (b *Builder) store(sc config.Store, s korrel8r.Store) *storeHolder {
 func (b *Builder) Rules(rules ...korrel8r.Rule) *Builder {
 	// Delay adding rules after domains and stores are configured.
 	b.finally = append(b.finally, func() { b.rules(rules...) })
+	return b
+}
+
+// StatusRules adds pre-built status rules to the engine.
+func (b *Builder) StatusRules(rules ...status.Rule) *Builder {
+	b.finally = append(b.finally, func() {
+		if b.err != nil {
+			return
+		}
+		for _, r := range rules {
+			for _, c := range r.Start() {
+				key := c.String()
+				b.e.statuses[key] = append(b.e.statuses[key], r)
+			}
+		}
+	})
 	return b
 }
 

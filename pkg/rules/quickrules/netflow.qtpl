@@ -1,0 +1,83 @@
+{% package quickrules %}
+
+{% import "github.com/korrel8r/korrel8r/pkg/domains/netflow" %}
+
+# NetflowToSrcK8s finds the k8s source resource of a netflow.
+name: NetflowToSrcK8s
+start:
+  domain: netflow
+goal:
+  domain: k8s
+  classes: [Node, Pod, Service]
+
+{% func NetflowToSrcK8s(o interface{}) %}
+{% code
+	f := o.(netflow.Object)
+	typ := Require(f["SrcK8S_Type"].(string))
+	ns := f["SrcK8S_Namespace"].(string)
+	name := f["SrcK8S_Name"].(string)
+%}
+{%s= netflow.TypeToK8s(typ) %}:{"namespace":{%q= ns %},"name":{%q= name %}}
+{% endfunc %}
+
+# NetflowToSrcK8sOwner finds the k8s source owner resource of a netflow.
+name: NetflowToSrcK8sOwner
+start:
+  domain: netflow
+goal:
+  domain: k8s
+  classes:
+    - DaemonSet.apps
+    - Deployment.apps
+    - ReplicaSet.apps
+    - StatefulSet.apps
+
+{% func NetflowToSrcK8sOwner(o interface{}) %}
+{% code
+	f := o.(netflow.Object)
+	typ := Require(f["SrcK8S_OwnerType"].(string))
+	ns := f["SrcK8S_Namespace"].(string)
+	name := f["SrcK8S_OwnerName"].(string)
+%}
+{%s= netflow.TypeToK8s(typ) %}:{"namespace":{%q= ns %},"name":{%q= name %}}
+{% endfunc %}
+
+# NetflowToDstK8s finds the k8s destination resource of a netflow.
+name: NetflowToDstK8s
+start:
+  domain: netflow
+goal:
+  domain: k8s
+  classes: [Node, Pod, Service]
+
+{% func NetflowToDstK8s(o interface{}) %}
+{% code
+	f := o.(netflow.Object)
+	typ := Require(f["DstK8S_Type"].(string))
+	ns := f["DstK8S_Namespace"].(string)
+	name := f["DstK8S_Name"].(string)
+%}
+{%s= netflow.TypeToK8s(typ) %}:{"namespace":{%q= ns %},"name":{%q= name %}}
+{% endfunc %}
+
+# NetflowToDstK8sOwner finds the k8s destination owner resource of a netflow.
+name: NetflowToDstK8sOwner
+start:
+  domain: netflow
+goal:
+  domain: k8s
+  classes:
+    - DaemonSet.apps
+    - Deployment.apps
+    - ReplicaSet.apps
+    - StatefulSet.apps
+
+{% func NetflowToDstK8sOwner(o interface{}) %}
+{% code
+	f := o.(netflow.Object)
+	typ := Require(f["DstK8S_OwnerType"].(string))
+	ns := f["DstK8S_Namespace"].(string)
+	name := f["DstK8S_OwnerName"].(string)
+%}
+{%s= netflow.TypeToK8s(typ) %}:{"namespace":{%q= ns %},"name":{%q= name %}}
+{% endfunc %}

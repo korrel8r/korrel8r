@@ -1,0 +1,28 @@
+{% package quickrules %}
+
+{% import "github.com/korrel8r/korrel8r/pkg/domains/alert" %}
+{% import "github.com/korrel8r/korrel8r/pkg/domains/incident" %}
+
+# AlertToIncident finds incidents matching an alert's labels.
+name: AlertToIncident
+start:
+  domain: alert
+goal:
+  domain: incident
+
+{% func AlertToIncident(o interface{}) %}
+{% code l := o.(*alert.Object).Labels %}
+incident:incident:{"alertLabels":{%s= ToJSON(l) %}}
+{% endfunc %}
+
+# IncidentToAlert finds alerts associated with an incident.
+name: IncidentToAlert
+start:
+  domain: incident
+goal:
+  domain: alert
+
+{% func IncidentToAlert(o interface{}) %}
+{% code al := o.(*incident.Object).AlertsLabels; RequireAll(al) %}
+alert:alert:{%s= ToJSON(al) %}
+{% endfunc %}

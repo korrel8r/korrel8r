@@ -1,7 +1,6 @@
 {% package quickrules %}
 
 {% import "github.com/korrel8r/korrel8r/pkg/domains/metric" %}
-{% import "github.com/korrel8r/korrel8r/pkg/rules" %}
 
 # MetricToPod creates a k8s Pod query from the pod labels of a metric.
 name: MetricToPod
@@ -15,21 +14,12 @@ goal:
 {% func MetricToPod(o interface{}) %}
 {% code
 	m := o.(metric.Object)
-	ns := m.Labels["k8s_namespace_name"]
-	if ns == "" {
-		ns = m.Labels["namespace"]
-	}
-	name := m.Labels["k8s_pod_name"]
-	if name == "" {
-		name = m.Labels["pod"]
-	}
-	if ns == "" || name == "" {
-		rules.Fail("MetricToPod: missing required pod labels: %v", m.Labels)
-	}
+	ns := Default(m.Labels["namespace"], m.Labels["k8s_namespace_name"])
+	name := Default(m.Labels["pod"], m.Labels["k8s_pod_name"])
+	RequireAll(ns, name)
 %}
 k8s:Pod:{"namespace":{%q= ns %},"name":{%q= name %}}
 {% endfunc %}
-
 
 # MetricToDeployment creates a k8s Deployment query from the deployment labels of a metric.
 name: MetricToDeployment
@@ -43,17 +33,65 @@ goal:
 {% func MetricToDeployment(o interface{}) %}
 {% code
 	m := o.(metric.Object)
-	ns := m.Labels["k8s_namespace_name"]
-	if ns == "" {
-		ns = m.Labels["namespace"]
-	}
-	name := m.Labels["k8s_deployment_name"]
-	if name == "" {
-		name = m.Labels["deployment"]
-	}
-	if ns == "" || name == "" {
-		rules.Fail("MetricToDeployment: missing required deployment labels: %v", m.Labels)
-	}
+	ns := Default(m.Labels["namespace"], m.Labels["k8s_namespace_name"])
+	name := Default(m.Labels["deployment"], m.Labels["k8s_deployment_name"])
+	RequireAll(ns, name)
 %}
 k8s:Deployment.apps:{"namespace":{%q= ns %},"name":{%q= name %}}
+{% endfunc %}
+
+# MetricToDaemonSet creates a k8s DaemonSet query from the daemonset labels of a metric.
+name: MetricToDaemonSet
+start:
+  domain: metric
+  classes: [metric]
+goal:
+  domain: k8s
+  classes: [DaemonSet.apps]
+
+{% func MetricToDaemonSet(o interface{}) %}
+{% code
+	m := o.(metric.Object)
+	ns := Default(m.Labels["namespace"], m.Labels["k8s_namespace_name"])
+	name := Default(m.Labels["daemonset"], m.Labels["k8s_daemonset_name"])
+	RequireAll(ns, name)
+%}
+k8s:DaemonSet.apps:{"namespace":{%q= ns %},"name":{%q= name %}}
+{% endfunc %}
+
+# MetricToStatefulSet creates a k8s StatefulSet query from the statefulset labels of a metric.
+name: MetricToStatefulSet
+start:
+  domain: metric
+  classes: [metric]
+goal:
+  domain: k8s
+  classes: [StatefulSet.apps]
+
+{% func MetricToStatefulSet(o interface{}) %}
+{% code
+	m := o.(metric.Object)
+	ns := Default(m.Labels["namespace"], m.Labels["k8s_namespace_name"])
+	name := Default(m.Labels["statefulset"], m.Labels["k8s_statefulset_name"])
+	RequireAll(ns, name)
+%}
+k8s:StatefulSet.apps:{"namespace":{%q= ns %},"name":{%q= name %}}
+{% endfunc %}
+
+# MetricToNode creates a k8s Node query from the node labels of a metric.
+name: MetricToNode
+start:
+  domain: metric
+  classes: [metric]
+goal:
+  domain: k8s
+  classes: [Node]
+
+{% func MetricToNode(o interface{}) %}
+{% code
+	m := o.(metric.Object)
+	name := Default(m.Labels["node"], m.Labels["k8s_node_name"])
+	RequireAll(name)
+%}
+k8s:Node:{"name":{%q= name %}}
 {% endfunc %}

@@ -3,14 +3,15 @@
 package quickrules
 
 import (
-	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"testing"
 	"text/template"
 
 	"github.com/korrel8r/korrel8r/pkg/domains"
 	"github.com/korrel8r/korrel8r/pkg/domains/alert"
+	"github.com/korrel8r/korrel8r/pkg/domains/k8s"
 	"github.com/korrel8r/korrel8r/pkg/domains/metric"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"github.com/korrel8r/korrel8r/pkg/rules"
@@ -80,6 +81,94 @@ func TestRules(t *testing.T) {
 			start: &alert.Object{Labels: map[string]string{"namespace": "foo", "deployment": "bar"}},
 			want:  []string{`k8s:Deployment.v1.apps:{"namespace":"foo","name":"bar"}`},
 		},
+		{
+			name: "DependentToOwner",
+			start: k8s.Object{
+				"metadata": map[string]any{
+					"namespace": "test-ns",
+					"ownerReferences": []any{
+						map[string]any{
+							"apiVersion": "apps/v1",
+							"kind":       "ReplicaSet",
+							"name":       "my-rs",
+						},
+					},
+				},
+			},
+			want: []string{`k8s:ReplicaSet.v1.apps:{"namespace":"test-ns","name":"my-rs"}`},
+		},
+		{
+			name: "AllToEvent",
+			start: k8s.Object{
+				"apiVersion": "v1",
+				"kind":       "Pod",
+				"metadata":   map[string]any{"namespace": "ns1", "name": "pod1"},
+			},
+			want: []string{`k8s:Event.v1:{"namespace":"ns1","fields":{"involvedObject.apiVersion":"v1","involvedObject.kind":"Pod","involvedObject.name":"pod1","involvedObject.namespace":"ns1"}}`},
+		},
+		{
+			name: "AllToMetric",
+			start: k8s.Object{
+				"apiVersion": "v1",
+				"kind":       "Pod",
+				"metadata":   map[string]any{"namespace": "ns1", "name": "pod1"},
+			},
+			want: []string{`metric:metric:{namespace="ns1",pod="pod1"}`},
+		},
+		{
+			name: "SelectorToPods",
+			start: k8s.Object{
+				"apiVersion": "v1",
+				"kind":       "Deployment",
+				"metadata":   map[string]any{"namespace": "ns", "name": "x"},
+				"spec":       map[string]any{"selector": map[string]any{"matchLabels": map[string]any{"app": "web"}}},
+			},
+			want: []string{`k8s:Pod.v1:{"namespace":"ns","labels":{"app":"web"}}`},
+		},
+		{
+			name: "SelectorToLogs",
+			start: k8s.Object{
+				"metadata": map[string]any{"namespace": "ns", "name": "x"},
+				"spec":     map[string]any{"selector": map[string]any{"matchLabels": map[string]any{"app": "web"}}},
+			},
+			want: []string{`log:application:{"namespace":"ns","labels":{"app":"web"}}`},
+		},
+		{
+			name: "K8sSrcToNetflow",
+			start: k8s.Object{
+				"apiVersion": "v1",
+				"kind":       "Pod",
+				"metadata":   map[string]any{"namespace": "bar", "name": "foo"},
+			},
+			want: []string{`netflow:network:{SrcK8S_Type="Pod", SrcK8S_Namespace="bar"} | json | SrcK8S_Name="foo"`},
+		},
+		{
+			name: "K8sSrcOwnerToNetflow",
+			start: k8s.Object{
+				"apiVersion": "apps/v1",
+				"kind":       "Deployment",
+				"metadata":   map[string]any{"namespace": "bar", "name": "foo"},
+			},
+			want: []string{`netflow:network:{SrcK8S_Namespace="bar", SrcK8S_OwnerName="foo"}`},
+		},
+		{
+			name: "K8sDstToNetflow",
+			start: k8s.Object{
+				"apiVersion": "v1",
+				"kind":       "Pod",
+				"metadata":   map[string]any{"namespace": "bar", "name": "foo"},
+			},
+			want: []string{`netflow:network:{DstK8S_Type="Pod", DstK8S_Namespace="bar"} | json | DstK8S_Name="foo"`},
+		},
+		{
+			name: "K8sDstOwnerToNetflow",
+			start: k8s.Object{
+				"apiVersion": "apps/v1",
+				"kind":       "Deployment",
+				"metadata":   map[string]any{"namespace": "bar", "name": "foo"},
+			},
+			want: []string{`netflow:network:{DstK8S_Namespace="bar", DstK8S_OwnerName="foo"}`},
+		},
 	} {
 		t.Run(fmt.Sprintf("%v(%v)", x.name, x.start), func(t *testing.T) {
 			r := ruleByName(t, newRules(t), x.name)
@@ -101,6 +190,10 @@ func TestRulesRequired(t *testing.T) {
 		{name: "MetricToPod", start: metric.Object{Labels: map[string]string{"pod": "bar"}}},
 		{name: "MetricToDeployment", start: metric.Object{Labels: map[string]string{"namespace": "foo"}}},
 		{name: "AlertToDeployment", start: &alert.Object{Labels: map[string]string{}}},
+		{name: "DependentToOwner", start: k8s.Object{"metadata": map[string]any{}}},
+		{name: "DependentToOwner", start: k8s.Object{}},
+		{name: "AllToEvent", start: k8s.Object{}},
+		{name: "AllToMetric", start: k8s.Object{}},
 	} {
 		r := ruleByName(t, newRules(t), x.name)
 		queries, err := r.Apply(x.start)
@@ -117,6 +210,47 @@ func TestRuleInterfaces(t *testing.T) {
 	require.Len(t, r.Goal(), 1)
 	assert.Equal(t, "metric:metric", r.Start()[0].String())
 	assert.Equal(t, "k8s:Pod.v1", r.Goal()[0].String())
+}
+
+// TestRulesUnknownClasses verifies that rules referencing unknown classes (e.g. k8s
+// custom resources not present at startup) are handled like configuration rules: unknown
+// classes are skipped, and the rule is dropped only if start or goal have no known classes.
+func TestRulesUnknownClasses(t *testing.T) {
+	d := testDomains()
+	// Mixed known/unknown classes: rule is kept with only the known classes.
+	r, err := newRule(d, &ruleSpec{
+		Name:  "MetricToPod",
+		Start: classSpec{Domain: "metric", Classes: []string{"metric"}},
+		Goal:  classSpec{Domain: "k8s", Classes: []string{"Pod", "NoSuchResource", "Deployment.apps"}},
+	})
+	require.NoError(t, err)
+	require.NotNil(t, r)
+	goal := []string{}
+	for _, c := range r.Goal() {
+		goal = append(goal, c.String())
+	}
+	slices.Sort(goal)
+	if assert.Len(t, r.Goal(), 2) {
+		assert.Equal(t, []string{"k8s:Deployment.v1.apps", "k8s:Pod.v1"}, goal)
+	}
+
+	// Only unknown classes in goal: rule is dropped.
+	r, err = newRule(d, &ruleSpec{
+		Name:  "MetricToPod",
+		Start: classSpec{Domain: "metric", Classes: []string{"metric"}},
+		Goal:  classSpec{Domain: "k8s", Classes: []string{"NoSuchResource", "AlsoNoSuch"}},
+	})
+	require.NoError(t, err)
+	assert.Nil(t, r)
+
+	// Unknown domain: rule is dropped.
+	r, err = newRule(d, &ruleSpec{
+		Name:  "MetricToPod",
+		Start: classSpec{Domain: "nosuchdomain", Classes: []string{"x"}},
+		Goal:  classSpec{Domain: "k8s", Classes: []string{"Pod"}},
+	})
+	require.NoError(t, err)
+	assert.Nil(t, r)
 }
 
 // TestParseRuleAnnotations verifies the registry metadata is read from the *.qtpl annotations.
@@ -176,11 +310,6 @@ start: {classes: [metric]}
 goal: {domain: k8s, classes: [Pod]}
 
 {% func Foo(o interface{}) %}{% endfunc %}`, "start and goal domains"},
-		{"empty classes", `name: Foo
-start: {domain: metric, classes: [metric]}
-goal: {domain: k8s}
-
-{% func Foo(o interface{}) %}{% endfunc %}`, "start and goal classes"},
 		{"invalid yaml", `name: Foo
 start: {classes: [}
 goal: {domain: k8s, classes: [Pod]}
@@ -223,15 +352,10 @@ func newTemplateMetricToPod(b *testing.B, d *korrel8r.Domains) korrel8r.Rule {
 	goal, err := d.Class("k8s:Pod")
 	require.NoError(b, err)
 	tmpl := template.New("MetricToPod").Funcs(template.FuncMap{
-		"required": func(s string) (string, error) {
-			if s == "" {
-				return "", errors.New("required")
-			}
-			return s, nil
-		},
+		"require": func(v any) any { return rules.Require(v) },
 	})
 	r, err := rules.NewTemplateRule([]korrel8r.Class{start}, []korrel8r.Class{goal}, tmpl,
-		`k8s:Pod:{"namespace":"{{or (index .Labels "k8s_namespace_name") (index .Labels "namespace") | required}}","name":"{{or (index .Labels "k8s_pod_name") (index .Labels "pod") | required}}"}`,
+		`k8s:Pod:{"namespace":"{{or (index .Labels "k8s_namespace_name") (index .Labels "namespace") | require}}","name":"{{or (index .Labels "k8s_pod_name") (index .Labels "pod") | require}}"}`,
 		d)
 	require.NoError(b, err)
 	return r

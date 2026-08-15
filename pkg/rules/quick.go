@@ -3,7 +3,6 @@
 package rules
 
 import (
-	"bytes"
 	"fmt"
 
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
@@ -52,18 +51,10 @@ func (r *quickRule) Apply(start korrel8r.Object) (queries []korrel8r.Query, err 
 			queries, err = nil, fmt.Errorf("%v", p)
 		}
 	}()
-	b := bufPool.Get().(*bytes.Buffer)
-	b.Reset()
-	defer bufPool.Put(b)
-	qw := quicktemplate.AcquireWriter(b)
+	bb := quicktemplate.AcquireByteBuffer()
+	defer quicktemplate.ReleaseByteBuffer(bb)
+	qw := quicktemplate.AcquireWriter(bb)
+	defer quicktemplate.ReleaseWriter(qw)
 	r.apply(qw, start)
-	quicktemplate.ReleaseWriter(qw)
-	return parseQueries(r.domains, b.String())
-}
-
-// Fail aborts the current rule with an error.
-// It is intended for use in compiled quicktemplate rules where a condition is not met and the
-// rule should fail rather than not apply.
-func Fail(format string, args ...any) {
-	panic(fmt.Errorf(format, args...))
+	return parseQueries(r.domains, string(bb.B))
 }

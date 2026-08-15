@@ -1,12 +1,14 @@
 // Copyright: This file is part of korrel8r, released under https://github.com/korrel8r/korrel8r/blob/main/LICENSE
 
-package rules_test
+package quickrules_test
 
 import (
 	"testing"
 
 	"github.com/korrel8r/korrel8r/pkg/domains/k8s"
 	"github.com/korrel8r/korrel8r/pkg/domains/log"
+	slices2 "github.com/korrel8r/korrel8r/pkg/slices"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestK8sRules(t *testing.T) {
@@ -235,11 +237,6 @@ func TestK8sRules(t *testing.T) {
 			want:  []string{`k8s:EndpointSlice.v1.discovery.k8s.io:{"namespace":"ns","labels":{"kubernetes.io/service-name":"my-svc"}}`},
 		},
 		{
-			rule:  "ServiceToEndpoints",
-			start: newK8s("Service", "ns", "my-svc", nil),
-			want:  []string{`k8s:Endpoints.v1:{"namespace":"ns","name":"my-svc"}`},
-		},
-		{
 			rule: "EndpointSliceToService",
 			start: newK8s("EndpointSlice.discovery.k8s.io", "ns", "my-svc-abc12", k8s.Object{
 				"metadata": k8s.Object{
@@ -251,9 +248,17 @@ func TestK8sRules(t *testing.T) {
 			want: []string{`k8s:Service.v1:{"namespace":"ns","name":"my-svc"}`},
 		},
 		{
-			rule:  "CRToCRD",
-			start: newK8s("VirtualMachineInstance.kubevirt.io", "vm-ns", "vm-name", nil),
-			want:  []string{`k8s:CustomResourceDefinition.v1.apiextensions.k8s.io:{"name":"virtualmachineinstances.kubevirt.io"}`},
+			rule:  "CSVToPartOf",
+			start: newK8s("ClusterServiceVersion.operators.coreos.com", "operators", "my-operator.v1.2.3", nil),
+			want: []string{
+				`k8s:Deployment.v1.apps:{"namespace":"operators","labels":{"app.kubernetes.io/part-of":"my-operator"}}`,
+				`k8s:DaemonSet.v1.apps:{"namespace":"operators","labels":{"app.kubernetes.io/part-of":"my-operator"}}`,
+				`k8s:StatefulSet.v1.apps:{"namespace":"operators","labels":{"app.kubernetes.io/part-of":"my-operator"}}`,
+				`k8s:Service.v1:{"namespace":"operators","labels":{"app.kubernetes.io/part-of":"my-operator"}}`,
+				`k8s:ConfigMap.v1:{"namespace":"operators","labels":{"app.kubernetes.io/part-of":"my-operator"}}`,
+				`k8s:Secret.v1:{"namespace":"operators","labels":{"app.kubernetes.io/part-of":"my-operator"}}`,
+				`k8s:ServiceAccount.v1:{"namespace":"operators","labels":{"app.kubernetes.io/part-of":"my-operator"}}`,
+			},
 		},
 		{
 			rule: "CSVToCRD",
@@ -421,8 +426,102 @@ func TestK8sRules(t *testing.T) {
 			}),
 			want: []string{`k8s:ClusterServiceVersion.v1alpha1.operators.coreos.com:{"name":"blah"}`},
 		},
+		{
+			rule:  "InstanceToOperands",
+			start: newK8s("VirtualMachine.kubevirt.io", "my-ns", "my-vm", nil),
+			want: []string{
+				`k8s:Deployment.v1.apps:{"namespace":"my-ns","labels":{"app.kubernetes.io/instance":"my-vm"}}`,
+				`k8s:DaemonSet.v1.apps:{"namespace":"my-ns","labels":{"app.kubernetes.io/instance":"my-vm"}}`,
+				`k8s:StatefulSet.v1.apps:{"namespace":"my-ns","labels":{"app.kubernetes.io/instance":"my-vm"}}`,
+				`k8s:ReplicaSet.v1.apps:{"namespace":"my-ns","labels":{"app.kubernetes.io/instance":"my-vm"}}`,
+				`k8s:Service.v1:{"namespace":"my-ns","labels":{"app.kubernetes.io/instance":"my-vm"}}`,
+				`k8s:ConfigMap.v1:{"namespace":"my-ns","labels":{"app.kubernetes.io/instance":"my-vm"}}`,
+				`k8s:Secret.v1:{"namespace":"my-ns","labels":{"app.kubernetes.io/instance":"my-vm"}}`,
+				`k8s:ServiceAccount.v1:{"namespace":"my-ns","labels":{"app.kubernetes.io/instance":"my-vm"}}`,
+				`k8s:PersistentVolumeClaim.v1:{"namespace":"my-ns","labels":{"app.kubernetes.io/instance":"my-vm"}}`,
+				`k8s:Job.v1.batch:{"namespace":"my-ns","labels":{"app.kubernetes.io/instance":"my-vm"}}`,
+				`k8s:CronJob.v1.batch:{"namespace":"my-ns","labels":{"app.kubernetes.io/instance":"my-vm"}}`,
+				`k8s:Role.v1.rbac.authorization.k8s.io:{"namespace":"my-ns","labels":{"app.kubernetes.io/instance":"my-vm"}}`,
+				`k8s:RoleBinding.v1.rbac.authorization.k8s.io:{"namespace":"my-ns","labels":{"app.kubernetes.io/instance":"my-vm"}}`,
+				`k8s:Ingress.v1.networking.k8s.io:{"namespace":"my-ns","labels":{"app.kubernetes.io/instance":"my-vm"}}`,
+				`k8s:NetworkPolicy.v1.networking.k8s.io:{"namespace":"my-ns","labels":{"app.kubernetes.io/instance":"my-vm"}}`,
+				`k8s:Route.v1.route.openshift.io:{"namespace":"my-ns","labels":{"app.kubernetes.io/instance":"my-vm"}}`,
+			},
+		},
 	} {
 		x.Run(t)
+	}
+}
+
+func TestInstanceToOperands_clusterScoped(t *testing.T) {
+	const rule = "ClusterInstanceToOperands"
+	e := setup()
+	r := e.Rule(rule)
+	if !assert.NotNil(t, r) {
+		return
+	}
+
+	t.Run("positive", func(t *testing.T) {
+		start := newK8s("Operator.v1.operators.coreos.com", "", "my-operator", nil)
+		got, err := r.Apply(start)
+		if assert.NoError(t, err) && assert.NotNil(t, got) {
+			assert.Equal(t, []string{
+				`k8s:ClusterRole.v1.rbac.authorization.k8s.io:{"labels":{"app.kubernetes.io/instance":"my-operator"}}`,
+				`k8s:ClusterRoleBinding.v1.rbac.authorization.k8s.io:{"labels":{"app.kubernetes.io/instance":"my-operator"}}`,
+				`k8s:Deployment.v1.apps:{"labels":{"app.kubernetes.io/instance":"my-operator"}}`,
+				`k8s:DaemonSet.v1.apps:{"labels":{"app.kubernetes.io/instance":"my-operator"}}`,
+				`k8s:StatefulSet.v1.apps:{"labels":{"app.kubernetes.io/instance":"my-operator"}}`,
+				`k8s:ReplicaSet.v1.apps:{"labels":{"app.kubernetes.io/instance":"my-operator"}}`,
+				`k8s:Service.v1:{"labels":{"app.kubernetes.io/instance":"my-operator"}}`,
+				`k8s:ConfigMap.v1:{"labels":{"app.kubernetes.io/instance":"my-operator"}}`,
+				`k8s:Secret.v1:{"labels":{"app.kubernetes.io/instance":"my-operator"}}`,
+				`k8s:ServiceAccount.v1:{"labels":{"app.kubernetes.io/instance":"my-operator"}}`,
+				`k8s:PersistentVolumeClaim.v1:{"labels":{"app.kubernetes.io/instance":"my-operator"}}`,
+				`k8s:Job.v1.batch:{"labels":{"app.kubernetes.io/instance":"my-operator"}}`,
+				`k8s:CronJob.v1.batch:{"labels":{"app.kubernetes.io/instance":"my-operator"}}`,
+				`k8s:Role.v1.rbac.authorization.k8s.io:{"labels":{"app.kubernetes.io/instance":"my-operator"}}`,
+				`k8s:RoleBinding.v1.rbac.authorization.k8s.io:{"labels":{"app.kubernetes.io/instance":"my-operator"}}`,
+				`k8s:Ingress.v1.networking.k8s.io:{"labels":{"app.kubernetes.io/instance":"my-operator"}}`,
+				`k8s:NetworkPolicy.v1.networking.k8s.io:{"labels":{"app.kubernetes.io/instance":"my-operator"}}`,
+				`k8s:Route.v1.route.openshift.io:{"labels":{"app.kubernetes.io/instance":"my-operator"}}`,
+			}, slices2.Strings(got))
+		}
+	})
+
+	t.Run("non_CR", func(t *testing.T) {
+		got, err := r.Apply(newK8s("Node", "", "my-app", nil))
+		assert.Error(t, err)
+		assert.Nil(t, got)
+	})
+
+	t.Run("namespaced", func(t *testing.T) {
+		got, err := r.Apply(newK8s("VirtualMachine.kubevirt.io", "my-ns", "my-vm", nil))
+		assert.Error(t, err)
+		assert.Nil(t, got)
+	})
+
+	tested(rule)
+}
+
+func TestInstanceToOperands_skips_non_CR(t *testing.T) {
+	e := setup()
+	for _, x := range []struct {
+		rule  string
+		start k8s.Object
+	}{
+		{rule: "InstanceToOperands", start: newK8s("Pod", "ns", "my-app", nil)},
+		{rule: "InstanceToOperands", start: newK8s("Deployment.apps", "ns", "my-app", nil)},
+	} {
+		t.Run(x.rule+"/"+x.start["kind"].(string), func(t *testing.T) {
+			r := e.Rule(x.rule)
+			if !assert.NotNil(t, r) {
+				return
+			}
+			got, err := r.Apply(x.start)
+			assert.Error(t, err)
+			assert.Nil(t, got)
+			tested(x.rule)
+		})
 	}
 }
 
