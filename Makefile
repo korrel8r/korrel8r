@@ -30,7 +30,6 @@ $(BIN): tools/go.mod tools/go.sum
 	GOBIN=$(abspath $(BIN)) go -C tools install tool
 	@touch $@
 
-
 # Sources for generated files
 OPENAPI_SPEC=korrel8r-openapi.yaml
 DOMAINS=$(patsubst pkg/domains/%/doc.go,%,$(wildcard pkg/domains/*/doc.go))
@@ -42,14 +41,11 @@ GEN_OPENAPI_IMPL=pkg/rest/gen-openapi.go
 # These markdown files are embedded in the executable.
 GEN_DOMAIN_DOC=$(patsubst %.go,%.md,$(wildcard pkg/domains/*/doc.go))
 # Compiled quicktemplate rules, see pkg/rules/quickrules.
-QTPL_DIR=pkg/rules/quickrules
-QTPL_SRC=$(wildcard $(QTPL_DIR)/*.qtpl)
-QTPL_GEN=$(QTPL_SRC:.qtpl=.qtpl.go)
-GEN_APPLYFUNCS=$(QTPL_DIR)/applyfuncs.go
+GEN_QUICKRULES=pkg/rules/quickrules/applyfuncs.go
 
-GENERATED=$(VERSION_TXT) $(GEN_OPENAPI_IMPL) $(GEN_OPENAPI_API) $(GEN_DOMAIN_DOC) $(QTPL_GEN) $(GEN_APPLYFUNCS)
+GENERATED=$(VERSION_TXT) $(GEN_OPENAPI_IMPL) $(GEN_OPENAPI_API) $(GEN_DOMAIN_DOC) $(GEN_QUICKRULES)
 
-all: test doc image-build ## Build and test everything locally. Recommended before commit.
+all: doc test image-build ## Build and test everything locally. Recommended before commit.
 
 generate:  $(GENERATED)
 	hack/copyright.sh
@@ -81,17 +77,14 @@ $(GEN_OPENAPI_IMPL): $(OPENAPI_SPEC) $(BIN)
 	oapi-codegen -generate gin -package rest -import-mapping "$<:github.com/korrel8r/korrel8r/pkg/api" -alias-types -o $@ $<
 
 # Compile quicktemplate files to go.
-%.qtpl.go: %.qtpl $(BIN)
-	qtc -file $<
-
-# Generate the applyFuncs map for compiled rules from their {% func %} declarations.
-$(GEN_APPLYFUNCS): $(QTPL_SRC) hack/gen-applyfuncs.sh
-	hack/gen-applyfuncs.sh $(QTPL_DIR) | gofmt > $@
+$(GEN_QUICKRULES): $(wildcard $(dir $(GEN_QUICKRULES))*.qtpl)
+	go generate ./$(dir $@)
+	hack/gen-applyfuncs.sh $(dir $@) | gofmt > $@
 
 # Generate the pkg/domains/*/doc.md files that are embedded in the korrel8r executable.
 %/doc.md: %/doc.go $(shell find doc/gomarkdoc) $(BIN)
 	@mkdir -p $(dir $@)
-	gomarkdoc ./$(dir $@) --template-file file=doc/gomarkdoc/file.gotxt | sed -E 's/[Pp]ackage *[a-zA-Z0-9]+ *(is a)? *(korrel8r)? *(domain)? *(for)? *//' > $@
+	@gomarkdoc ./$(dir $@) --template-file file=doc/gomarkdoc/file.gotxt | sed -E 's/[Pp]ackage *[a-zA-Z0-9]+ *(is a)? *(korrel8r)? *(domain)? *(for)? *//' > $@
 
 SHELLCHECK:= $(BIN)/shellcheck
 $(SHELLCHECK):
@@ -113,7 +106,7 @@ endif
 TEST_FLAGS?=$(and $(NO_CLUSTER),-skip='Cluster|/Cluster')
 
 .PHONY: test
-test: lint											## Run all tests, no cache. Requires an openshift cluster.
+test: lint							 ## Run all tests, requires cluster. Set NO_CLUSTER=1 to skip cluster tests.
 	go test -fullpath -race ./... $(TEST_FLAGS)
 
 test-clean: ## Remove test namespaces from the cluster
@@ -208,6 +201,12 @@ doc/content/docs/reference/domains/%.md: pkg/domains/%/doc.md generate $(FRONT)
 	@cp $< $@
 	@$(FRONT) $@ 'title: $(basename $(notdir $@))' "description: $$(sed -n '/^[^#]/{/./p;q}' $@)"
 
+DOC_PUBLIC+=doc/content/docs/reference/quickrules.md
+doc/content/docs/reference/quickrules.md: pkg/rules/quickrules/doc.md $(FRONT)
+	@mkdir -p $(dir $@)
+	@mv -f $< $@
+	@$(FRONT) $@ 'title: Compiled Rules' "description: Writing compiled quicktemplate rules"
+
 DOC_PUBLIC+=doc/content/docs/reference/rest/index.md
 CLEANFILES+=doc/content/docs/reference/rest
 doc/content/docs/reference/rest/index.md: $(OPENAPI_SPEC) $(MAKEFILE_LIST) $(FRONT) $(BIN)
@@ -249,15 +248,15 @@ DOC_PUBLIC+=doc/content/docs/reference/template-functions.md
 CLEANFILES+=doc/content/docs/reference/template-functions.md
 doc/content/docs/reference/template-functions.md: pkg/engine/template_funcs.go $(MAKEFILE_LIST) $(FRONT) $(BIN)
 	@mkdir -p $(dir $@)
-	echo > $@
-	gomarkdoc -u ./pkg/engine \
+	@echo > $@
+	@gomarkdoc -u ./pkg/engine \
     -t 'package={{range .Types}}{{range .Methods}}{{if eq .Name "TemplateFuncs"}}{{template "doc" .Doc}}{{"\n\n"}}{{end}}{{end}}{{end}}' >> $@
-	gomarkdoc -u $(shell go list ./pkg/domains/...) \
+	@gomarkdoc -u $(shell go list ./pkg/domains/...) \
      -t 'package={{range .Types}}{{range .Methods}}{{if eq .Name "TemplateFuncs"}}## {{$$.Name}}{{"\n"}}{{template "doc" .Doc}}{{"\n\n"}}{{end}}{{end}}{{end}}' >> $@
 	@$(FRONT) $@ 'title: Template Functions' 'description: Functions available in rule templates' 'weight: 10'
 
 doc/public: $(DOC_PUBLIC) $(shell find doc/* -name public -prune -o -print) $(BIN)
-	hugo --source doc
+	hugo --quiet --source doc
 	@touch $@
 CLEANFILES+=doc/public
 CLEANFILES+=$(DOC_PUBLIC)

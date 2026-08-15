@@ -58,6 +58,12 @@ func (ds *Domains) List() []Domain {
 	return ret
 }
 
+func (ds *Domains) Empty() bool {
+	ds.mu.RLock()
+	defer ds.mu.RUnlock()
+	return len(ds.domains) == 0
+}
+
 func (ds *Domains) domainClass(domain, class string) (Class, error) {
 	d, err := ds.domain(domain)
 	if err != nil {

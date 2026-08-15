@@ -92,7 +92,7 @@ func init() {
 	rootCmd.AddCommand(neighborsCmd)
 	startFlags(neighborsCmd)
 	constraintFlags(neighborsCmd)
-	neighborsCmd.Flags().IntVarP(&depth, "depth", "d", 3, "Depth of neighborhood search.")
+	neighborsCmd.Flags().IntVarP(&depth, "depth", "d", 2, "Depth of neighborhood search.")
 }
 
 var (

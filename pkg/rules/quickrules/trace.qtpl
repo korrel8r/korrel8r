@@ -1,0 +1,33 @@
+{% package quickrules %}
+
+{% import "github.com/korrel8r/korrel8r/pkg/domains/trace" %}
+
+# TraceToPod finds the k8s Pod associated with a trace span.
+name: TraceToPod
+start:
+  domain: trace
+goal:
+  domain: k8s
+  classes: [Pod]
+
+{% func TraceToPod(o interface{}) %}
+{% code
+	a := o.(*trace.Span).Attributes
+	ns := Require(a["k8s.namespace.name"].(string))
+	name := Require(a["k8s.pod.name"].(string))
+%}
+k8s:Pod:{"namespace":{%q= ns %},"name":{%q= name %}}
+{% endfunc %}
+
+# PodToTrace finds trace spans for a k8s Pod.
+name: PodToTrace
+start:
+  domain: k8s
+  classes: [Pod]
+goal:
+  domain: trace
+
+{% func PodToTrace(o interface{}) %}
+{% code _, _, ns, name, _ := k8sMetadata(o); RequireAll(ns, name) %}
+trace:span:{resource.k8s.namespace.name={%q= ns %}&&resource.k8s.pod.name={%q= name %}}
+{% endfunc %}

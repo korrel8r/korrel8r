@@ -6,12 +6,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"reflect"
 	"text/template"
 
 	"github.com/korrel8r/korrel8r/pkg/domains/k8s"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"github.com/korrel8r/korrel8r/pkg/result"
+	"github.com/korrel8r/korrel8r/pkg/rules"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
@@ -22,16 +22,13 @@ import (
 //	currentRule
 //	  Returns the [korrel8r.Rule] currently being evaluated
 //
-//	assert [message] value
-//	    Fails if value is empty, optional message string is included in the error.
-//	    A value is "empty" if it is nil, false, zero, or a zero-length string, slice, or map.
-//	    Can be used to test multiple values at once:
-//	        {{assert "need namespace and name" (all .metadata.namespace .metadata.name)}}
+//	require value
+//	    Returns value if it is not nil, false, zero or empty, otherwise fails.
+//	        Name is: {{ .metadata.name | require }}.
 //
-//	required [message] value
-//	    Like assert, but returns the value if it is not empty.
-//	    Use to pass through a value:
-//	        Name is: {{ .metadata.name | required "name must not be empty" }}.
+//	requireAll values...
+//	    Fails if any value is nil, false, zero or empty.
+//	        {{requireAll .metadata.namespace .metadata.name}}
 //
 //	query queryString
 //	    Executes its argument as a korrel8r query string, returns the results as []any.
@@ -47,67 +44,8 @@ func (e *Engine) TemplateFuncs() template.FuncMap {
 	return template.FuncMap{
 		"query":        e.query,
 		"k8sRouteHost": e.k8sRouteHost,
-		"assert":       templateAssert,
-		"required":     templateRequired,
-	}
-}
-
-// templateAssert fails template generation if value is not true.
-// Usage: assert [message] value
-func templateAssert(args ...any) (string, error) {
-	switch len(args) {
-	case 1:
-		if !isEmpty(args[0]) {
-			return "", nil
-		}
-		return "", fmt.Errorf("assertion failed")
-	case 2:
-		msg, ok := args[0].(string)
-		if !ok {
-			return "", fmt.Errorf("assert: message must be a string")
-		}
-		if !isEmpty(args[1]) {
-			return "", nil
-		}
-		return "", fmt.Errorf("assertion failed: %s", msg)
-	default:
-		return "", fmt.Errorf("assert: expected 1 or 2 arguments, got %d", len(args))
-	}
-}
-
-// templateRequired passes through value if non-empty and non-nil, otherwise fails.
-// Usage: required [message] value
-func templateRequired(args ...any) (any, error) {
-	switch len(args) {
-	case 1:
-		if isEmpty(args[0]) {
-			return nil, fmt.Errorf("a required value was not set")
-		}
-		return args[0], nil
-	case 2:
-		msg, ok := args[0].(string)
-		if !ok {
-			return nil, fmt.Errorf("required: message must be a string")
-		}
-		if isEmpty(args[1]) {
-			return nil, fmt.Errorf("%s", msg)
-		}
-		return args[1], nil
-	default:
-		return nil, fmt.Errorf("required: expected 1 or 2 arguments, got %d", len(args))
-	}
-}
-
-func isEmpty(v any) bool {
-	if v == nil {
-		return true
-	}
-	rv := reflect.ValueOf(v)
-	switch rv.Kind() {
-	case reflect.Slice, reflect.Map:
-		return rv.Len() == 0
-	default:
-		return rv.IsZero()
+		"require":    func(v any) any { return rules.Require(v) },
+		"requireAll": func(values ...any) string { rules.RequireAll(values...); return "" },
 	}
 }
 

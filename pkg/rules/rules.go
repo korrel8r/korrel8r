@@ -1,12 +1,20 @@
 // Copyright: This file is part of korrel8r, released under https://github.com/korrel8r/korrel8r/blob/main/LICENSE
 
-// Package rules uses Go templates to generate goal queries from start objects.
+// Package rules implements [korrel8r.Rule] and provides helper functions shared by rule implementations.
 //
-// See [github.com/korrel8r/korrel8r/pkg/config.Rule] for details of configuring a rule.
+// Two rule types are provided:
+//   - [NewTemplateRule]: rules defined by Go [text/template] strings, parsed from YAML configuration at runtime.
+//   - [NewQuickRule]: rules using pre-compiled [quicktemplate] functions for type-safe, faster evaluation.
+//
+// Helper functions like [Empty], [Require], [Default], [Fail] and [ToJSON] are used by both
+// rule types and by the sub-package [github.com/korrel8r/korrel8r/pkg/rules/quickrules].
+//
+// [quicktemplate]: https://github.com/valyala/quicktemplate
 package rules
 
 import (
 	"bytes"
+	"fmt"
 	"strings"
 	"sync"
 	"text/template"
@@ -48,7 +56,12 @@ func (r *templateRule) Goal() []korrel8r.Class  { return r.goal }
 //
 // Returns (nil, err) if template execution returns a non-nil error.
 // Returns (nil, nil) if template result is blank (all spaces)
-func (r *templateRule) Apply(start korrel8r.Object) ([]korrel8r.Query, error) {
+func (r *templateRule) Apply(start korrel8r.Object) (queries []korrel8r.Query, err error) {
+	defer func() {
+		if p := recover(); p != nil {
+			queries, err = nil, fmt.Errorf("%v", p)
+		}
+	}()
 	b := bufPool.Get().(*bytes.Buffer)
 	b.Reset()
 	defer bufPool.Put(b)

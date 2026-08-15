@@ -4,7 +4,6 @@
 {% package quickrules %}
 
 {% import "github.com/korrel8r/korrel8r/pkg/domains/log" %}
-{% import "github.com/korrel8r/korrel8r/pkg/rules" %}
 
 # LogToPod creates a k8s Pod query from the pod attributes of a log entry.
 name: LogToPod
@@ -18,11 +17,39 @@ goal:
 {% func LogToPod(o interface{}) %}
 {% code
 	l := o.(log.Object)
-	ns := l["kubernetes_namespace_name"]
-	name := l["kubernetes_pod_name"]
-	if ns == "" || name == "" {
-		rules.Fail("LogToPod: missing required pod attributes: %v", l)
-	}
+	ns := Require(l["kubernetes_namespace_name"])
+	name := Require(l["kubernetes_pod_name"])
 %}
 k8s:Pod:{"namespace":{%q= ns %},"name":{%q= name %}}
+{% endfunc %}
+
+# PodToLogs finds logs for a pod.
+name: PodToLogs
+start:
+  domain: k8s
+  classes: [Pod]
+goal:
+  domain: log
+
+{% func PodToLogs(o interface{}) %}
+{% code _, _, ns, name, _ := k8sMetadata(o); RequireAll(ns, name) %}
+log:{%s= logTypeForNamespace(ns) %}:{"namespace":{%q= ns %},"name":{%q= name %}}
+{% endfunc %}
+
+# ServiceToLogs finds logs for pods selected by a service.
+name: ServiceToLogs
+start:
+  domain: k8s
+  classes: [Service]
+goal:
+  domain: log
+
+{% func ServiceToLogs(o interface{}) %}
+{% code
+	obj, _, ns, _, _ := k8sMetadata(o)
+	RequireAll(ns)
+	selector := obj["spec"].(map[string]any)["selector"]
+	RequireAll(selector)
+%}
+log:{%s= logTypeForNamespace(ns) %}:{"namespace":{%q= ns %},"labels":{%s= ToJSON(selector) %}}
 {% endfunc %}

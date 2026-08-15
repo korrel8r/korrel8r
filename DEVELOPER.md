@@ -22,20 +22,17 @@ Domains must implement these four core interfaces:
 ### Rules (`etc/korrel8r/rules/` and `pkg/rules/`)
 
 A rule links a (set of) start classes to a (set of) goal classes.
-Each rule contains Go templates that define how to correlate data.
+Each rule contains templates that define how to correlate data.
 - Start and goal classes may be in the same or different domains.
 - The template is applied to an `Object` of a start class, and generates a `Query` to return objects of a goal class.
-- See [Configuration](https://korrel8r.github.io/korrel8r/docs/configuration/) for rule syntax and examples.
 
 There are two ways to define rules:
 
-- **Configuration rules** (`etc/korrel8r/rules/`): plain YAML files with the rule metadata and Go template.
-  New rules can be added without rebuilding korrel8r. Include new files in `all.yaml` to get them picked up by default configurations.
-  See [etc/korrel8r/rules/README.md](etc/korrel8r/rules/README.md).
-- **Compiled rules** (`pkg/rules/quickrules/`): quicktemplate `{% func %}` rules compiled into the binary.
-  Faster and type-safe, but require rebuilding when a rule changes. Edit only `*.qtpl`, then run `make generate`
-  (`qtc` compiles templates, `hack/gen-applyfuncs.sh` regenerates `applyfuncs.go`).
-  See [pkg/rules/quickrules/README.md](pkg/rules/quickrules/README.md).
+- **Configuration rules** (`etc/korrel8r/rules/`): YAML files use Go `text/template` to generate queries, loaded at runtime.
+  See [Writing Rules](https://korrel8r.github.io/korrel8r/docs/writing-rules/).
+- **Compiled rules** (`pkg/rules/quickrules/`): [quicktemplate](https://github.com/valyala/quicktemplate) rules compiled into the binary.
+  Faster and type-safe. Edit only `*.qtpl`, then run `make generate`.
+  See [pkg/rules/quickrules/doc.go](pkg/rules/quickrules/doc.go).
 
 ### Engine (`pkg/engine/`)
 

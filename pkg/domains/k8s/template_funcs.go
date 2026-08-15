@@ -36,27 +36,31 @@ func (d *domain) TemplateFuncs() map[string]any {
 			kc, ok := c.(Class)
 			return ok && kc.Namespaced()
 		},
-		"k8sHealthStatus": k8sHealthStatus,
-		"k8sCRDName": func(apiVersion, kind string) string {
-			gvk := schema.FromAPIVersionAndKind(apiVersion, kind)
-			if gvk.Group == "" {
-				return "" // Core resources don't have CRDs.
-			}
-			c := Class(gvk)
-			d.m.Lock()
-			r := d.resources[c]
-			d.m.Unlock()
-			if r.Name == "" {
-				return "" // Unknown resource.
-			}
-			return r.Name + "." + gvk.Group
-		},
+		"k8sHealthStatus": HealthStatus,
+		"k8sCRDName":      func(apiVersion, kind string) string { return d.CRDName(apiVersion, kind) },
 	}
 }
 
-// k8sHealthStatus evaluates the health of a k8s object using the kube-health library.
+// CRDName returns the CustomResourceDefinition name (plural.group) for the resource
+// defined ab kind/apiVersion, or returns "" if unknown.
+func (d *domain) CRDName(apiVersion, kind string) string {
+	gvk := schema.FromAPIVersionAndKind(apiVersion, kind)
+	if gvk.Group == "" {
+		return "" // Core resources don't have CRDs.
+	}
+	c := Class(gvk)
+	d.m.Lock()
+	r := d.resources[c]
+	d.m.Unlock()
+	if r.Name == "" {
+		return "" // Unknown resource.
+	}
+	return r.Name + "." + gvk.Group
+}
+
+// HealthStatus evaluates the health of a k8s object using the kube-health library.
 // Returns "Error", "Warning", or "" for healthy/unknown objects.
-func k8sHealthStatus(o Object) string {
+func HealthStatus(o Object) string {
 	if _, ok := o["status"]; !ok {
 		return ""
 	}

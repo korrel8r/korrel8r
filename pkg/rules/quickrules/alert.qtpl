@@ -3,7 +3,6 @@
 {% package quickrules %}
 
 {% import "github.com/korrel8r/korrel8r/pkg/domains/alert" %}
-{% import "github.com/korrel8r/korrel8r/pkg/rules" %}
 
 # AlertToDeployment creates a k8s Deployment query from the deployment labels of an alert.
 name: AlertToDeployment
@@ -15,13 +14,199 @@ goal:
   classes: [Deployment.apps]
 
 {% func AlertToDeployment(o interface{}) %}
+{% code l := o.(*alert.Object).Labels %}
+k8s:Deployment.apps:{"namespace":{%q= Require(l["namespace"]) %},"name":{%q= Require(l["deployment"]) %}}
+{% endfunc %}
+
+# AlertToPod creates a k8s Pod query from the pod labels of an alert.
+name: AlertToPod
+start:
+  domain: alert
+  classes: [alert]
+goal:
+  domain: k8s
+  classes: [Pod.v1]
+
+{% func AlertToPod(o interface{}) %}
 {% code
-	a := o.(*alert.Object)
-	ns := a.Labels["namespace"]
-	name := a.Labels["deployment"]
-	if ns == "" || name == "" {
-		rules.Fail("AlertToDeployment: missing required deployment labels: %v", a.Labels)
-	}
+	l := o.(*alert.Object).Labels
+	ns := Default(l["namespace"], l["kubernetes_namespace_name"])
+	name := Default(l["pod"], l["kubernetes_pod_name"])
+	RequireAll(ns, name)
 %}
-k8s:Deployment.apps:{"namespace":{%q= ns %},"name":{%q= name %}}
+k8s:Pod.v1:{"namespace":{%q= ns %},"name":{%q= name %}}
+{% endfunc %}
+
+# AlertToPodDisruptionBudget creates a k8s PodDisruptionBudget query from alert labels.
+name: AlertToPodDisruptionBudget
+start:
+  domain: alert
+  classes: [alert]
+goal:
+  domain: k8s
+  classes: [PodDisruptionBudget.v1.policy]
+
+{% func AlertToPodDisruptionBudget(o interface{}) %}
+{% code l := o.(*alert.Object).Labels %}
+k8s:PodDisruptionBudget.v1.policy:{"namespace":{%q= Require(l["namespace"]) %},"name":{%q= Require(l["poddisruptionbudget"]) %}}
+{% endfunc %}
+
+# AlertToDaemonSet creates a k8s DaemonSet query from alert labels.
+name: AlertToDaemonSet
+start:
+  domain: alert
+  classes: [alert]
+goal:
+  domain: k8s
+  classes: [DaemonSet.apps]
+
+{% func AlertToDaemonSet(o interface{}) %}
+{% code l := o.(*alert.Object).Labels %}
+k8s:DaemonSet.apps:{"namespace":{%q= Require(l["namespace"]) %},"name":{%q= Require(l["daemonset"]) %}}
+{% endfunc %}
+
+# AlertToStatefulSet creates a k8s StatefulSet query from alert labels.
+name: AlertToStatefulSet
+start:
+  domain: alert
+  classes: [alert]
+goal:
+  domain: k8s
+  classes: [StatefulSet.apps]
+
+{% func AlertToStatefulSet(o interface{}) %}
+{% code l := o.(*alert.Object).Labels %}
+k8s:StatefulSet.apps:{"namespace":{%q= Require(l["namespace"]) %},"name":{%q= Require(l["statefulset"]) %}}
+{% endfunc %}
+
+# AlertToMetric creates a metric query from the alert's PromQL expression.
+name: AlertToMetric
+start:
+  domain: alert
+  classes: [alert]
+goal:
+  domain: metric
+
+{% func AlertToMetric(o interface{}) %}
+metric:metric:{%s= Require(o.(*alert.Object).Expression) %}
+{% endfunc %}
+
+# PodToAlert finds alerts related to a pod.
+name: PodToAlert
+start:
+  domain: k8s
+  classes: [Pod]
+goal:
+  domain: alert
+
+{% func PodToAlert(o interface{}) %}
+{% code _, _, ns, name, _ := k8sMetadata(o); RequireAll(ns, name) %}
+alert:alert:{"namespace":{%q= ns %},"pod":{%q= name %}}
+{% endfunc %}
+
+# PodToLokiAlert finds Loki-based alerts related to a pod.
+name: PodToLokiAlert
+start:
+  domain: k8s
+  classes: [Pod]
+goal:
+  domain: alert
+
+{% func PodToLokiAlert(o interface{}) %}
+{% code _, _, ns, name, _ := k8sMetadata(o); RequireAll(ns, name) %}
+alert:alert:{"namespace":{%q= ns %},"kubernetes_pod_name":{%q= name %}}
+{% endfunc %}
+
+# DeploymentToAlert finds alerts related to a deployment.
+name: DeploymentToAlert
+start:
+  domain: k8s
+  classes: [Deployment.apps]
+goal:
+  domain: alert
+
+{% func DeploymentToAlert(o interface{}) %}
+{% code _, _, ns, name, _ := k8sMetadata(o); RequireAll(ns, name) %}
+alert:alert:{"namespace":{%q= ns %},"deployment":{%q= name %}}
+{% endfunc %}
+
+# PodDisruptionBudgetToAlert finds alerts related to a PodDisruptionBudget.
+name: PodDisruptionBudgetToAlert
+start:
+  domain: k8s
+  classes: [PodDisruptionBudget.v1.policy]
+goal:
+  domain: alert
+
+{% func PodDisruptionBudgetToAlert(o interface{}) %}
+{% code _, _, ns, name, _ := k8sMetadata(o); RequireAll(ns, name) %}
+alert:alert:{"namespace":{%q= ns %},"poddisruptionbudget":{%q= name %}}
+{% endfunc %}
+
+# DaemonSetToAlert finds alerts related to a DaemonSet.
+name: DaemonSetToAlert
+start:
+  domain: k8s
+  classes: [DaemonSet.apps]
+goal:
+  domain: alert
+
+{% func DaemonSetToAlert(o interface{}) %}
+{% code _, _, ns, name, _ := k8sMetadata(o); RequireAll(ns, name) %}
+alert:alert:{"namespace":{%q= ns %},"daemonset":{%q= name %}}
+{% endfunc %}
+
+# StatefulSetToAlert finds alerts related to a StatefulSet.
+name: StatefulSetToAlert
+start:
+  domain: k8s
+  classes: [StatefulSet.apps]
+goal:
+  domain: alert
+
+{% func StatefulSetToAlert(o interface{}) %}
+{% code _, _, ns, name, _ := k8sMetadata(o); RequireAll(ns, name) %}
+alert:alert:{"namespace":{%q= ns %},"statefulset":{%q= name %}}
+{% endfunc %}
+
+# AlertToVM finds a VirtualMachine from alert labels.
+name: AlertToVM
+start:
+  domain: alert
+  classes: [alert]
+goal:
+  domain: k8s
+  classes: [VirtualMachine.kubevirt.io]
+
+{% func AlertToVM(o interface{}) %}
+{% code l := o.(*alert.Object).Labels %}
+k8s:VirtualMachine.kubevirt.io:{"namespace":{%q= Require(l["namespace"]) %},"name":{%q= Require(l["name"]) %}}
+{% endfunc %}
+
+# AlertToVMI finds a VirtualMachineInstance from alert labels.
+name: AlertToVMI
+start:
+  domain: alert
+  classes: [alert]
+goal:
+  domain: k8s
+  classes: [VirtualMachineInstance.kubevirt.io]
+
+{% func AlertToVMI(o interface{}) %}
+{% code l := o.(*alert.Object).Labels %}
+k8s:VirtualMachineInstance.kubevirt.io:{"namespace":{%q= Require(l["namespace"]) %},"name":{%q= Require(l["name"]) %}}
+{% endfunc %}
+
+# AlertToVmim finds a VirtualMachineInstanceMigration from alert labels.
+name: AlertToVmim
+start:
+  domain: alert
+  classes: [alert]
+goal:
+  domain: k8s
+  classes: [VirtualMachineInstanceMigration.kubevirt.io]
+
+{% func AlertToVmim(o interface{}) %}
+{% code l := o.(*alert.Object).Labels %}
+k8s:VirtualMachineInstanceMigration.kubevirt.io:{"namespace":{%q= Require(l["namespace"]) %},"name":{%q= Require(l["vmim"]) %}}
 {% endfunc %}

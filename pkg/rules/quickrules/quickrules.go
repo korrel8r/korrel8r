@@ -1,33 +1,7 @@
 // Copyright: This file is part of korrel8r, released under https://github.com/korrel8r/korrel8r/blob/main/LICENSE
 
-// Package quickrules contains pre-compiled quicktemplate rules linked into the korrel8r executable.
-//
-// Rules are written as quicktemplate templates in this directory (see *.qtpl) and compiled to
-// Go code by [github.com/valyala/quicktemplate/qtc] as part of the build. This is the compile-time
-// alternative to configuration-file rules that use Go templates, see [github.com/korrel8r/korrel8r/pkg/rules].
-//
-// Each rule template generates goal query strings from a start object. Rules are registered in
-// [Rules] and are added to an engine like any other rule.
-//
-// The rule registry metadata is kept in the *.qtpl source itself: the bare text between two
-// template-tag blocks is a single YAML description of the following rule, using the same schema
-// as a configuration-file rule (see [github.com/korrel8r/korrel8r/pkg/config]):
-//
-//	name: <rule name>
-//	start:
-//	  domain: <domain>
-//	  classes: [<class>]
-//	goal:
-//	  domain: <domain>
-//	  classes: [<class>]
-//
-// YAML comments (#) may be used anywhere in the metadata, e.g. to describe a rule. The rule name
-// must be unique and must match the {% func %} name. [Rules] parses the bare text from the
-// embedded *.qtpl source, so rule authors can see and edit the rule graph metadata without
-// reading Go code.
-//
-// See README.md in this directory for a full guide to writing, compiling, and testing quick
-// rules.
+//go:generate qtc --dir .
+
 package quickrules
 
 import (
@@ -37,10 +11,14 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/korrel8r/korrel8r/internal/pkg/logging"
 	"github.com/korrel8r/korrel8r/internal/pkg/yaml"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"github.com/korrel8r/korrel8r/pkg/rules"
+	"github.com/korrel8r/korrel8r/pkg/unique"
 )
+
+var logger = logging.Log()
 
 //go:embed *.qtpl
 var qtplFiles embed.FS
@@ -85,9 +63,12 @@ func Rules(d *korrel8r.Domains) []korrel8r.Rule {
 		for _, spec := range specs {
 			r, err := newRule(d, spec)
 			if err != nil {
-				panic(fmt.Errorf("compiled rules: rule %q: %w", spec.Name, err))
+				logger.V(1).Info("skipped compiled rule", "rule", spec.Name, "error", err)
+				continue
 			}
-			result = append(result, r)
+			if r != nil {
+				result = append(result, r)
+			}
 		}
 	}
 	return result
@@ -173,22 +154,19 @@ func parseRule(buf []string) (*ruleSpec, error) {
 	if spec.Start.Domain == "" || spec.Goal.Domain == "" {
 		return nil, fmt.Errorf("rule %q: annotation must specify start and goal domains", spec.Name)
 	}
-	if len(spec.Start.Classes) == 0 || len(spec.Goal.Classes) == 0 {
-		return nil, fmt.Errorf("rule %q: annotation must list start and goal classes", spec.Name)
-	}
 	return &spec, nil
 }
 
 // newRule constructs a korrel8r.Rule for a compiled rule, resolving its classes and applying the
 // generated stream function registered for it in applyFuncs.
+// It returns (nil, nil) if the rule has no usable start or goal classes, so the rule is skipped.
 func newRule(d *korrel8r.Domains, spec *ruleSpec) (korrel8r.Rule, error) {
-	start, err := classes(d, spec.Name, &spec.Start)
-	if err != nil {
-		return nil, err
-	}
-	goal, err := classes(d, spec.Name, &spec.Goal)
-	if err != nil {
-		return nil, err
+	start, missingStart := classes(d, spec.Name, &spec.Start)
+	goal, missingGoal := classes(d, spec.Name, &spec.Goal)
+	if len(start) == 0 || len(goal) == 0 {
+		logger.V(1).Info("skipped compiled rule: no known start or goal classes", "rule", spec.Name,
+			"missingClasses", append(missingStart, missingGoal...))
+		return nil, nil
 	}
 	apply, ok := applyFuncs[spec.Name]
 	if !ok {
@@ -198,14 +176,26 @@ func newRule(d *korrel8r.Domains, spec *ruleSpec) (korrel8r.Rule, error) {
 }
 
 // classes resolves the classes of a classSpec to korrel8r.Class.
-func classes(d *korrel8r.Domains, name string, spec *classSpec) ([]korrel8r.Class, error) {
-	result := make([]korrel8r.Class, 0, len(spec.Classes))
+// If no classes are listed, all classes in the domain are used.
+// Unknown classes are skipped and returned in the second result, so callers can report them;
+// an unknown domain reports all classes as missing.
+func classes(d *korrel8r.Domains, name string, spec *classSpec) (found []korrel8r.Class, missing []string) {
+	if len(spec.Classes) == 0 {
+		dom, err := d.Domain(spec.Domain)
+		if err != nil {
+			logger.V(1).Info("skipped class: unknown domain", "rule", name, "domain", spec.Domain)
+			return nil, nil
+		}
+		return dom.Classes(), nil
+	}
+	result := unique.Set[korrel8r.Class]{}
 	for _, c := range spec.Classes {
 		k, err := d.DomainClass(spec.Domain, c)
 		if err != nil {
-			return nil, fmt.Errorf("rule %q: %w", name, err)
+			missing = append(missing, spec.Domain+":"+c)
+			continue
 		}
-		result = append(result, k)
+		result.Add(k)
 	}
-	return result, nil
+	return result.List(), missing
 }

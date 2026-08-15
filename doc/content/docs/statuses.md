@@ -28,7 +28,7 @@ statusRules:
       template-that-outputs-statuses
 ```
 
-The `start` field works the same as in [correlation rules](../writing-rules/#rule-structure).
+The `start` field works the same as in [correlation rules](../reference/configuration-rules/#rule-structure).
 
 ## Built-in status rules
 

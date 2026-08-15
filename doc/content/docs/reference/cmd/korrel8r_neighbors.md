@@ -14,7 +14,7 @@ korrel8r neighbors [flags]
 
 ```
       --class string         Class for serialized start objects
-  -d, --depth int            Depth of neighborhood search. (default 3)
+  -d, --depth int            Depth of neighborhood search. (default 2)
       --errors               Include non-fatal errors in graph
   -h, --help                 help for neighbors
       --limit int            Limit total number of results.

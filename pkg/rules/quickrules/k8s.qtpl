@@ -1,0 +1,820 @@
+{% package quickrules %}
+
+{% import "github.com/korrel8r/korrel8r/pkg/domains/k8s" %}
+{% import "k8s.io/apimachinery/pkg/runtime/schema" %}
+{% import "strings" %}
+
+# DependentToOwner follows the first ownerReference of any k8s object to its owner.
+name: DependentToOwner
+start:
+  domain: k8s
+goal:
+  domain: k8s
+
+{% func DependentToOwner(o interface{}) %}
+{% code
+	obj := o.(map[string]any)
+	metadata := obj["metadata"].(map[string]any)
+	ref := mapSlice(metadata, "ownerReferences")[0].(map[string]any)
+	apiVersion := ref["apiVersion"].(string)
+	kind := ref["kind"].(string)
+	name := ref["name"].(string)
+	class := k8s.Class(schema.FromAPIVersionAndKind(apiVersion, kind))
+	ns, _ := metadata["namespace"].(string)
+%}
+{% if class.Namespaced() && ns != "" %}
+k8s:{%s= class.Name() %}:{"namespace":{%q= ns %},"name":{%q= name %}}
+{% else %}
+k8s:{%s= class.Name() %}:{"name":{%q= name %}}
+{% endif %}
+{% endfunc %}
+
+# AllToEvent creates a k8s Event query to find events related to any k8s object.
+name: AllToEvent
+start:
+  domain: k8s
+goal:
+  domain: k8s
+  classes: [Event.]
+
+{% func AllToEvent(o interface{}) %}
+{% code
+	_, _, ns, name, kind := k8sMetadata(o)
+	apiVersion, _ := o.(map[string]any)["apiVersion"].(string)
+	RequireAll(ns, name, kind, apiVersion)
+%}
+k8s:Event:{"namespace":{%q= ns %},"fields":{"involvedObject.apiVersion":{%q= apiVersion %},"involvedObject.kind":{%q= kind %},"involvedObject.name":{%q= name %},"involvedObject.namespace":{%q= ns %}}}
+{% endfunc %}
+
+# AllToMetric creates a metric query from any k8s object using namespace and kind.
+name: AllToMetric
+start:
+  domain: k8s
+goal:
+  domain: metric
+  classes: [metric]
+
+{% func AllToMetric(o interface{}) %}
+{% code
+	_, _, ns, name, kind := k8sMetadata(o)
+	RequireAll(ns, name, kind)
+%}
+metric:metric:{namespace={%q= ns %},{%s= strings.ToLower(kind) %}={%q= name %}}
+{% endfunc %}
+
+# SelectorToPods finds Pods matching the selector of a k8s workload resource.
+name: SelectorToPods
+start:
+  domain: k8s
+  classes:
+    - ReplicationController
+    - DaemonSet.apps
+    - Deployment.apps
+    - ReplicaSet.apps
+    - StatefulSet.apps
+    - Job.batch
+    - PodDisruptionBudget.policy
+goal:
+  domain: k8s
+  classes: [Pod]
+
+{% func SelectorToPods(o interface{}) %}
+{% code
+	obj, _, ns, _, _ := k8sMetadata(o)
+	RequireAll(ns)
+	matchLabels := obj["spec"].(map[string]any)["selector"].(map[string]any)["matchLabels"]
+	RequireAll(matchLabels)
+%}
+k8s:Pod:{"namespace":{%q= ns %},"labels":{%s= ToJSON(matchLabels) %}}
+{% endfunc %}
+
+# SelectorToLogs finds logs for pods matching the selector of a k8s workload resource.
+name: SelectorToLogs
+start:
+  domain: k8s
+  classes:
+    - ReplicationController
+    - DaemonSet.apps
+    - Deployment.apps
+    - ReplicaSet.apps
+    - StatefulSet.apps
+    - Job.batch
+    - PodDisruptionBudget.policy
+goal:
+  domain: log
+
+{% func SelectorToLogs(o interface{}) %}
+{% code
+	obj, _, ns, _, _ := k8sMetadata(o)
+	RequireAll(ns)
+	matchLabels := obj["spec"].(map[string]any)["selector"].(map[string]any)["matchLabels"]
+	RequireAll(matchLabels)
+%}
+log:{%s= logTypeForNamespace(ns) %}:{"namespace":{%q= ns %},"labels":{%s= ToJSON(matchLabels) %}}
+{% endfunc %}
+
+# K8sSrcToNetflow finds netflows where the k8s resource is the source.
+name: K8sSrcToNetflow
+start:
+  domain: k8s
+  classes: [Node, Pod, Service]
+goal:
+  domain: netflow
+  classes: [network]
+
+{% func K8sSrcToNetflow(o interface{}) %}
+{% code
+	_, _, ns, name, kind := k8sMetadata(o)
+	RequireAll(name, kind)
+%}
+netflow:network:{SrcK8S_Type={%q= kind %}, SrcK8S_Namespace={%q= ns %}} | json | SrcK8S_Name={%q= name %}
+{% endfunc %}
+
+# K8sSrcOwnerToNetflow finds netflows where the k8s owner resource is the source owner.
+name: K8sSrcOwnerToNetflow
+start:
+  domain: k8s
+  classes:
+    - DaemonSet.apps
+    - Deployment.apps
+    - ReplicaSet.apps
+    - StatefulSet.apps
+goal:
+  domain: netflow
+  classes: [network]
+
+{% func K8sSrcOwnerToNetflow(o interface{}) %}
+{% code
+	_, _, ns, name, _ := k8sMetadata(o)
+	RequireAll(ns, name)
+%}
+netflow:network:{SrcK8S_Namespace={%q= ns %}, SrcK8S_OwnerName={%q= name %}}
+{% endfunc %}
+
+# K8sDstToNetflow finds netflows where the k8s resource is the destination.
+name: K8sDstToNetflow
+start:
+  domain: k8s
+  classes: [Node, Pod, Service]
+goal:
+  domain: netflow
+  classes: [network]
+
+{% func K8sDstToNetflow(o interface{}) %}
+{% code
+	_, _, ns, name, kind := k8sMetadata(o)
+	RequireAll(name, kind)
+%}
+netflow:network:{DstK8S_Type={%q= kind %}, DstK8S_Namespace={%q= ns %}} | json | DstK8S_Name={%q= name %}
+{% endfunc %}
+
+# K8sDstOwnerToNetflow finds netflows where the k8s owner resource is the destination owner.
+name: K8sDstOwnerToNetflow
+start:
+  domain: k8s
+  classes:
+    - DaemonSet.apps
+    - Deployment.apps
+    - ReplicaSet.apps
+    - StatefulSet.apps
+goal:
+  domain: netflow
+  classes: [network]
+
+{% func K8sDstOwnerToNetflow(o interface{}) %}
+{% code
+	_, _, ns, name, _ := k8sMetadata(o)
+	RequireAll(ns, name)
+%}
+netflow:network:{DstK8S_Namespace={%q= ns %}, DstK8S_OwnerName={%q= name %}}
+{% endfunc %}
+
+# ServiceToPods finds Pods matching the selector of a k8s Service.
+name: ServiceToPods
+start:
+  domain: k8s
+  classes: [Service]
+goal:
+  domain: k8s
+  classes: [Pod]
+
+{% func ServiceToPods(o interface{}) %}
+{% code
+	obj, _, ns, _, _ := k8sMetadata(o)
+	RequireAll(ns)
+	selector := obj["spec"].(map[string]any)["selector"]
+	RequireAll(selector)
+%}
+k8s:Pod:{"namespace":{%q= ns %},"labels":{%s= ToJSON(selector) %}}
+{% endfunc %}
+
+# EventToAll correlates a core v1 Event to the resource it references.
+name: EventToAll
+start:
+  domain: k8s
+  classes: [Event.v1]
+goal:
+  domain: k8s
+
+{% func EventToAll(o interface{}) %}
+{% code
+	obj := o.(map[string]any)
+	inv := obj["involvedObject"].(map[string]any)
+	class := k8s.Class(schema.FromAPIVersionAndKind(inv["apiVersion"].(string), inv["kind"].(string)))
+	ns, _ := inv["namespace"].(string)
+	name := inv["name"].(string)
+	RequireAll(name)
+%}
+{% if ns != "" %}
+k8s:{%s= class.Name() %}:{"namespace":{%q= ns %},"name":{%q= name %}}
+{% else %}
+k8s:{%s= class.Name() %}:{"name":{%q= name %}}
+{% endif %}
+{% endfunc %}
+
+# Event2ToAll correlates a events.k8s.io/v1 Event to the resource it references.
+name: Event2ToAll
+start:
+  domain: k8s
+  classes: [Event.v1.events.k8s.io]
+goal:
+  domain: k8s
+
+{% func Event2ToAll(o interface{}) %}
+{% code
+	obj := o.(map[string]any)
+	reg := obj["regarding"].(map[string]any)
+	class := k8s.Class(schema.FromAPIVersionAndKind(reg["apiVersion"].(string), reg["kind"].(string)))
+	ns, _ := reg["namespace"].(string)
+	name := reg["name"].(string)
+	RequireAll(name)
+%}
+{% if ns != "" %}
+k8s:{%s= class.Name() %}:{"namespace":{%q= ns %},"name":{%q= name %}}
+{% else %}
+k8s:{%s= class.Name() %}:{"name":{%q= name %}}
+{% endif %}
+{% endfunc %}
+
+# PodToPVC finds PersistentVolumeClaims referenced by a Pod's volumes.
+name: PodToPVC
+start:
+  domain: k8s
+  classes: [Pod]
+goal:
+  domain: k8s
+  classes: [PersistentVolumeClaim]
+
+{% func PodToPVC(o interface{}) %}
+{% code
+	obj, _, ns, _, _ := k8sMetadata(o)
+	RequireAll(ns)
+	volumes := mapSlice(obj["spec"].(map[string]any), "volumes")
+%}
+{% for _, v := range volumes %}
+{% code vol := v.(map[string]any) %}
+{% if pvc, ok := vol["persistentVolumeClaim"].(map[string]any); ok %}
+k8s:PersistentVolumeClaim:{"namespace":{%q= ns %},"name":{%q= pvc["claimName"].(string) %}}
+{% endif %}
+{% endfor %}
+{% endfunc %}
+
+# PodToConfigMap finds ConfigMaps referenced by a Pod's volumes.
+name: PodToConfigMap
+start:
+  domain: k8s
+  classes: [Pod]
+goal:
+  domain: k8s
+  classes: [ConfigMap]
+
+{% func PodToConfigMap(o interface{}) %}
+{% code
+	obj, _, ns, _, _ := k8sMetadata(o)
+	RequireAll(ns)
+	volumes := mapSlice(obj["spec"].(map[string]any), "volumes")
+%}
+{% for _, v := range volumes %}
+{% code vol := v.(map[string]any) %}
+{% if cm, ok := vol["configMap"].(map[string]any); ok %}
+k8s:ConfigMap:{"namespace":{%q= ns %},"name":{%q= cm["name"].(string) %}}
+{% endif %}
+{% endfor %}
+{% endfunc %}
+
+# PodToSecret finds Secrets referenced by a Pod's volumes.
+name: PodToSecret
+start:
+  domain: k8s
+  classes: [Pod]
+goal:
+  domain: k8s
+  classes: [Secret]
+
+{% func PodToSecret(o interface{}) %}
+{% code
+	obj, _, ns, _, _ := k8sMetadata(o)
+	RequireAll(ns)
+	volumes := mapSlice(obj["spec"].(map[string]any), "volumes")
+%}
+{% for _, v := range volumes %}
+{% code vol := v.(map[string]any) %}
+{% if sec, ok := vol["secret"].(map[string]any); ok %}
+k8s:Secret:{"namespace":{%q= ns %},"name":{%q= sec["secretName"].(string) %}}
+{% endif %}
+{% endfor %}
+{% endfunc %}
+
+# PodToServiceAccount finds the ServiceAccount used by a Pod.
+name: PodToServiceAccount
+start:
+  domain: k8s
+  classes: [Pod]
+goal:
+  domain: k8s
+  classes: [ServiceAccount]
+
+{% func PodToServiceAccount(o interface{}) %}
+{% code
+	obj, _, ns, _, _ := k8sMetadata(o)
+	RequireAll(ns)
+	sa := Require(obj["spec"].(map[string]any)["serviceAccountName"].(string))
+%}
+k8s:ServiceAccount:{"namespace":{%q= ns %},"name":{%q= sa %}}
+{% endfunc %}
+
+# ServiceToEndpointSlice finds EndpointSlices for a Service.
+name: ServiceToEndpointSlice
+start:
+  domain: k8s
+  classes: [Service]
+goal:
+  domain: k8s
+  classes: [EndpointSlice.discovery.k8s.io]
+
+{% func ServiceToEndpointSlice(o interface{}) %}
+{% code _, _, ns, name, _ := k8sMetadata(o); RequireAll(ns, name) %}
+k8s:EndpointSlice.discovery.k8s.io:{"namespace":{%q= ns %},"labels":{"kubernetes.io/service-name":{%q= name %}}}
+{% endfunc %}
+
+# EndpointSliceToService finds the Service for an EndpointSlice.
+name: EndpointSliceToService
+start:
+  domain: k8s
+  classes: [EndpointSlice.discovery.k8s.io]
+goal:
+  domain: k8s
+  classes: [Service]
+
+{% func EndpointSliceToService(o interface{}) %}
+{% code
+	_, metadata, ns, _, _ := k8sMetadata(o)
+	RequireAll(ns)
+	labels := metadata["labels"].(map[string]any)
+	svcName := Require(labels["kubernetes.io/service-name"].(string))
+%}
+k8s:Service:{"namespace":{%q= ns %},"name":{%q= svcName %}}
+{% endfunc %}
+
+# PVCToPV finds the PersistentVolume bound to a PersistentVolumeClaim.
+name: PVCToPV
+start:
+  domain: k8s
+  classes: [PersistentVolumeClaim]
+goal:
+  domain: k8s
+  classes: [PersistentVolume]
+
+{% func PVCToPV(o interface{}) %}
+{% code
+	obj := o.(map[string]any)
+	volName := Require(obj["spec"].(map[string]any)["volumeName"].(string))
+%}
+k8s:PersistentVolume:{"name":{%q= volName %}}
+{% endfunc %}
+
+# PVToPVC finds the PersistentVolumeClaim bound to a PersistentVolume.
+name: PVToPVC
+start:
+  domain: k8s
+  classes: [PersistentVolume]
+goal:
+  domain: k8s
+  classes: [PersistentVolumeClaim]
+
+{% func PVToPVC(o interface{}) %}
+{% code
+	obj := o.(map[string]any)
+	ref := obj["spec"].(map[string]any)["claimRef"].(map[string]any)
+%}
+k8s:PersistentVolumeClaim:{"namespace":{%q= ref["namespace"].(string) %},"name":{%q= ref["name"].(string) %}}
+{% endfunc %}
+
+# PVToStorageClass finds the StorageClass for a PersistentVolume.
+name: PVToStorageClass
+start:
+  domain: k8s
+  classes: [PersistentVolume]
+goal:
+  domain: k8s
+  classes: [StorageClass.storage.k8s.io]
+
+{% func PVToStorageClass(o interface{}) %}
+{% code
+	obj := o.(map[string]any)
+	sc := Require(obj["spec"].(map[string]any)["storageClassName"].(string))
+%}
+k8s:StorageClass.storage.k8s.io:{"name":{%q= sc %}}
+{% endfunc %}
+
+# PVCToStorageClass finds the StorageClass for a PersistentVolumeClaim.
+name: PVCToStorageClass
+start:
+  domain: k8s
+  classes: [PersistentVolumeClaim]
+goal:
+  domain: k8s
+  classes: [StorageClass.storage.k8s.io]
+
+{% func PVCToStorageClass(o interface{}) %}
+{% code
+	obj := o.(map[string]any)
+	sc := Require(obj["spec"].(map[string]any)["storageClassName"].(string))
+%}
+k8s:StorageClass.storage.k8s.io:{"name":{%q= sc %}}
+{% endfunc %}
+
+# SubscriptionToCSV finds the ClusterServiceVersion for an OLM Subscription.
+name: SubscriptionToCSV
+start:
+  domain: k8s
+  classes: [Subscription.v1alpha1.operators.coreos.com]
+goal:
+  domain: k8s
+  classes: [ClusterServiceVersion.v1alpha1.operators.coreos.com]
+
+{% func SubscriptionToCSV(o interface{}) %}
+{% code
+	obj := o.(map[string]any)
+	csv := Require(obj["status"].(map[string]any)["currentCSV"].(string))
+%}
+k8s:ClusterServiceVersion.v1alpha1.operators.coreos.com:{"name":{%q= csv %}}
+{% endfunc %}
+
+# CSVToCRD finds CustomResourceDefinitions owned by a ClusterServiceVersion.
+name: CSVToCRD
+start:
+  domain: k8s
+  classes: [ClusterServiceVersion.v1alpha1.operators.coreos.com]
+goal:
+  domain: k8s
+  classes: [CustomResourceDefinition.v1.apiextensions.k8s.io]
+
+{% func CSVToCRD(o interface{}) %}
+{% code
+	obj := o.(map[string]any)
+	owned := mapSlice(obj["spec"].(map[string]any)["customresourcedefinitions"].(map[string]any), "owned")
+%}
+{% for _, item := range owned %}
+{% code crd := item.(map[string]any) %}
+k8s:CustomResourceDefinition.apiextensions.k8s.io:{"name":{%q= crd["name"].(string) %}}
+{% endfor %}
+{% endfunc %}
+
+# CRDToInstances finds instances of a CustomResourceDefinition.
+name: CRDToInstances
+start:
+  domain: k8s
+  classes: [CustomResourceDefinition.apiextensions.k8s.io]
+goal:
+  domain: k8s
+
+{% func CRDToInstances(o interface{}) %}
+{% code
+	obj := o.(map[string]any)
+	spec := obj["spec"].(map[string]any)
+	kind := spec["names"].(map[string]any)["kind"].(string)
+	version := mapSlice(spec, "versions")[0].(map[string]any)["name"].(string)
+	group := spec["group"].(string)
+%}
+k8s:{%s= kind %}.{%s= version %}.{%s= group %}:{}
+{% endfunc %}
+
+# CSVToDeployment finds Deployments installed by a ClusterServiceVersion.
+name: CSVToDeployment
+start:
+  domain: k8s
+  classes: [ClusterServiceVersion.v1alpha1.operators.coreos.com]
+goal:
+  domain: k8s
+  classes: [Deployment.apps]
+
+{% func CSVToDeployment(o interface{}) %}
+{% code
+	_, _, ns, _, _ := k8sMetadata(o)
+	RequireAll(ns)
+	obj := o.(map[string]any)
+	deployments := mapSlice(obj["spec"].(map[string]any)["install"].(map[string]any)["spec"].(map[string]any), "deployments")
+%}
+{% for _, d := range deployments %}
+{% code dep := d.(map[string]any) %}
+k8s:Deployment.apps:{"namespace":{%q= ns %},"name":{%q= dep["name"].(string) %}}
+{% endfor %}
+{% endfunc %}
+
+# SubscriptionToInstallPlan finds the InstallPlan for an OLM Subscription.
+name: SubscriptionToInstallPlan
+start:
+  domain: k8s
+  classes: [Subscription.v1alpha1.operators.coreos.com]
+goal:
+  domain: k8s
+  classes: [InstallPlan.v1alpha1.operators.coreos.com]
+
+{% func SubscriptionToInstallPlan(o interface{}) %}
+{% code
+	obj := o.(map[string]any)
+	ref := obj["status"].(map[string]any)["installPlanRef"].(map[string]any)
+%}
+k8s:InstallPlan.v1alpha1.operators.coreos.com:{"namespace":{%q= ref["namespace"].(string) %},"name":{%q= ref["name"].(string) %}}
+{% endfunc %}
+
+# InstallPlanToCSV finds ClusterServiceVersions from an InstallPlan.
+name: InstallPlanToCSV
+start:
+  domain: k8s
+  classes: [InstallPlan.v1alpha1.operators.coreos.com]
+goal:
+  domain: k8s
+  classes: [ClusterServiceVersion.v1alpha1.operators.coreos.com]
+
+{% func InstallPlanToCSV(o interface{}) %}
+{% code
+	_, _, ns, _, _ := k8sMetadata(o)
+	RequireAll(ns)
+	obj := o.(map[string]any)
+	names := mapSlice(obj["spec"].(map[string]any), "clusterServiceVersionNames")
+%}
+{% for _, n := range names %}
+k8s:ClusterServiceVersion.v1alpha1.operators.coreos.com:{"namespace":{%q= ns %},"name":{%q= n.(string) %}}
+{% endfor %}
+{% endfunc %}
+
+# SubscriptionToCatalogSource finds the CatalogSource for an OLM Subscription.
+name: SubscriptionToCatalogSource
+start:
+  domain: k8s
+  classes: [Subscription.v1alpha1.operators.coreos.com]
+goal:
+  domain: k8s
+  classes: [CatalogSource.v1alpha1.operators.coreos.com]
+
+{% func SubscriptionToCatalogSource(o interface{}) %}
+{% code
+	obj := o.(map[string]any)
+	spec := obj["spec"].(map[string]any)
+	srcNs := Require(spec["sourceNamespace"].(string))
+	src := Require(spec["source"].(string))
+%}
+k8s:CatalogSource.v1alpha1.operators.coreos.com:{"namespace":{%q= srcNs %},"name":{%q= src %}}
+{% endfunc %}
+
+# OperatorToCRD finds CRDs referenced by an OLM Operator.
+name: OperatorToCRD
+start:
+  domain: k8s
+  classes: [Operator.v1.operators.coreos.com]
+goal:
+  domain: k8s
+  classes: [CustomResourceDefinition.apiextensions.k8s.io]
+
+{% func OperatorToCRD(o interface{}) %}
+{% code
+	obj := o.(map[string]any)
+	refs := mapSlice(obj["status"].(map[string]any)["components"].(map[string]any), "refs")
+%}
+{% for _, r := range refs %}
+{% code ref := r.(map[string]any) %}
+{% if ref["kind"].(string) == "CustomResourceDefinition" %}
+k8s:CustomResourceDefinition.apiextensions.k8s.io:{"name":{%q= ref["name"].(string) %}}
+{% endif %}
+{% endfor %}
+{% endfunc %}
+
+# OperatorToCSV finds ClusterServiceVersions referenced by an OLM Operator.
+name: OperatorToCSV
+start:
+  domain: k8s
+  classes: [Operator.v1.operators.coreos.com]
+goal:
+  domain: k8s
+  classes: [ClusterServiceVersion.v1alpha1.operators.coreos.com]
+
+{% func OperatorToCSV(o interface{}) %}
+{% code
+	obj := o.(map[string]any)
+	refs := mapSlice(obj["status"].(map[string]any)["components"].(map[string]any), "refs")
+%}
+{% for _, r := range refs %}
+{% code ref := r.(map[string]any) %}
+{% if ref["kind"].(string) == "ClusterServiceVersion" %}
+k8s:ClusterServiceVersion.v1alpha1.operators.coreos.com:{"namespace":{%q= ref["namespace"].(string) %},"name":{%q= ref["name"].(string) %}}
+{% endif %}
+{% endfor %}
+{% endfunc %}
+
+# OperatorToSubscription finds Subscriptions referenced by an OLM Operator.
+name: OperatorToSubscription
+start:
+  domain: k8s
+  classes: [Operator.v1.operators.coreos.com]
+goal:
+  domain: k8s
+  classes: [Subscription.v1alpha1.operators.coreos.com]
+
+{% func OperatorToSubscription(o interface{}) %}
+{% code
+	obj := o.(map[string]any)
+	refs := mapSlice(obj["status"].(map[string]any)["components"].(map[string]any), "refs")
+%}
+{% for _, r := range refs %}
+{% code ref := r.(map[string]any) %}
+{% if ref["kind"].(string) == "Subscription" %}
+k8s:Subscription.v1alpha1.operators.coreos.com:{"namespace":{%q= ref["namespace"].(string) %},"name":{%q= ref["name"].(string) %}}
+{% endif %}
+{% endfor %}
+{% endfunc %}
+
+# IngressToService finds Services referenced by an Ingress.
+name: IngressToService
+start:
+  domain: k8s
+  classes: [Ingress.networking.k8s.io]
+goal:
+  domain: k8s
+  classes: [Service]
+
+{% func IngressToService(o interface{}) %}
+{% code
+	_, _, ns, _, _ := k8sMetadata(o)
+	RequireAll(ns)
+	svcNames := ingressServiceNames(o.(map[string]any))
+%}
+{% for _, name := range svcNames %}
+k8s:Service:{"namespace":{%q= ns %},"name":{%q= name %}}
+{% endfor %}
+{% endfunc %}
+
+# CSVToPartOf finds resources labeled app.kubernetes.io/part-of matching the CSV name (minus version).
+name: CSVToPartOf
+start:
+  domain: k8s
+  classes: [ClusterServiceVersion.v1alpha1.operators.coreos.com]
+goal:
+  domain: k8s
+  classes:
+    - Deployment.apps
+    - DaemonSet.apps
+    - StatefulSet.apps
+    - Service
+    - ConfigMap
+    - Secret
+    - ServiceAccount
+
+{% func CSVToPartOf(o interface{}) %}
+{% code
+	_, _, ns, name, _ := k8sMetadata(o)
+	RequireAll(ns, name)
+	partOf := Require(csvPartOfName(name))
+%}
+k8s:Deployment.apps:{"namespace":{%q= ns %},"labels":{"app.kubernetes.io/part-of":{%q= partOf %}}}
+k8s:DaemonSet.apps:{"namespace":{%q= ns %},"labels":{"app.kubernetes.io/part-of":{%q= partOf %}}}
+k8s:StatefulSet.apps:{"namespace":{%q= ns %},"labels":{"app.kubernetes.io/part-of":{%q= partOf %}}}
+k8s:Service:{"namespace":{%q= ns %},"labels":{"app.kubernetes.io/part-of":{%q= partOf %}}}
+k8s:ConfigMap:{"namespace":{%q= ns %},"labels":{"app.kubernetes.io/part-of":{%q= partOf %}}}
+k8s:Secret:{"namespace":{%q= ns %},"labels":{"app.kubernetes.io/part-of":{%q= partOf %}}}
+k8s:ServiceAccount:{"namespace":{%q= ns %},"labels":{"app.kubernetes.io/part-of":{%q= partOf %}}}
+{% endfunc %}
+
+# HPAToTarget finds the scale target of a HorizontalPodAutoscaler.
+name: HPAToTarget
+start:
+  domain: k8s
+  classes: [HorizontalPodAutoscaler.autoscaling]
+goal:
+  domain: k8s
+
+{% func HPAToTarget(o interface{}) %}
+{% code
+	_, _, ns, _, _ := k8sMetadata(o)
+	RequireAll(ns)
+	obj := o.(map[string]any)
+	ref := obj["spec"].(map[string]any)["scaleTargetRef"].(map[string]any)
+	apiVersion, _ := ref["apiVersion"].(string)
+	kind := ref["kind"].(string)
+	name := ref["name"].(string)
+	class := k8s.Class(schema.FromAPIVersionAndKind(apiVersion, kind))
+%}
+k8s:{%s= class.Name() %}:{"namespace":{%q= ns %},"name":{%q= name %}}
+{% endfunc %}
+
+# InstanceToOperands finds namespaced operand resources whose app.kubernetes.io/instance label matches the start object's name.
+name: InstanceToOperands
+start:
+  domain: k8s
+goal:
+  domain: k8s
+  classes:
+    - Deployment.apps
+    - DaemonSet.apps
+    - StatefulSet.apps
+    - ReplicaSet.apps
+    - Service
+    - ConfigMap
+    - Secret
+    - ServiceAccount
+    - PersistentVolumeClaim
+    - Job.batch
+    - CronJob.batch
+    - Role.rbac.authorization.k8s.io
+    - RoleBinding.rbac.authorization.k8s.io
+    - Ingress.networking.k8s.io
+    - NetworkPolicy.networking.k8s.io
+    - Route.v1.route.openshift.io
+
+{% func InstanceToOperands(o interface{}) %}
+{% code
+	obj, _, ns, name, _ := k8sMetadata(o)
+	RequireAll(ns, name)
+	if !isCustomResource(obj) { Fail("not a custom resource") }
+%}
+k8s:Deployment.apps:{"namespace":{%q= ns %},"labels":{"app.kubernetes.io/instance":{%q= name %}}}
+k8s:DaemonSet.apps:{"namespace":{%q= ns %},"labels":{"app.kubernetes.io/instance":{%q= name %}}}
+k8s:StatefulSet.apps:{"namespace":{%q= ns %},"labels":{"app.kubernetes.io/instance":{%q= name %}}}
+k8s:ReplicaSet.apps:{"namespace":{%q= ns %},"labels":{"app.kubernetes.io/instance":{%q= name %}}}
+k8s:Service:{"namespace":{%q= ns %},"labels":{"app.kubernetes.io/instance":{%q= name %}}}
+k8s:ConfigMap:{"namespace":{%q= ns %},"labels":{"app.kubernetes.io/instance":{%q= name %}}}
+k8s:Secret:{"namespace":{%q= ns %},"labels":{"app.kubernetes.io/instance":{%q= name %}}}
+k8s:ServiceAccount:{"namespace":{%q= ns %},"labels":{"app.kubernetes.io/instance":{%q= name %}}}
+k8s:PersistentVolumeClaim:{"namespace":{%q= ns %},"labels":{"app.kubernetes.io/instance":{%q= name %}}}
+k8s:Job.batch:{"namespace":{%q= ns %},"labels":{"app.kubernetes.io/instance":{%q= name %}}}
+k8s:CronJob.batch:{"namespace":{%q= ns %},"labels":{"app.kubernetes.io/instance":{%q= name %}}}
+k8s:Role.rbac.authorization.k8s.io:{"namespace":{%q= ns %},"labels":{"app.kubernetes.io/instance":{%q= name %}}}
+k8s:RoleBinding.rbac.authorization.k8s.io:{"namespace":{%q= ns %},"labels":{"app.kubernetes.io/instance":{%q= name %}}}
+k8s:Ingress.networking.k8s.io:{"namespace":{%q= ns %},"labels":{"app.kubernetes.io/instance":{%q= name %}}}
+k8s:NetworkPolicy.networking.k8s.io:{"namespace":{%q= ns %},"labels":{"app.kubernetes.io/instance":{%q= name %}}}
+k8s:Route.v1.route.openshift.io:{"namespace":{%q= ns %},"labels":{"app.kubernetes.io/instance":{%q= name %}}}
+{% endfunc %}
+
+# ClusterInstanceToOperands finds operands of cluster-scoped instances whose app.kubernetes.io/instance label matches the start object's name.
+name: ClusterInstanceToOperands
+start:
+  domain: k8s
+goal:
+  domain: k8s
+  classes:
+    - ClusterRole.rbac.authorization.k8s.io
+    - ClusterRoleBinding.rbac.authorization.k8s.io
+    - Deployment.apps
+    - DaemonSet.apps
+    - StatefulSet.apps
+    - ReplicaSet.apps
+    - Service
+    - ConfigMap
+    - Secret
+    - ServiceAccount
+    - PersistentVolumeClaim
+    - Job.batch
+    - CronJob.batch
+    - Role.rbac.authorization.k8s.io
+    - RoleBinding.rbac.authorization.k8s.io
+    - Ingress.networking.k8s.io
+    - NetworkPolicy.networking.k8s.io
+    - Route.v1.route.openshift.io
+
+{% func ClusterInstanceToOperands(o interface{}) %}
+{% code
+	obj, _, ns, name, _ := k8sMetadata(o)
+	if ns != "" { Fail("namespaced object") }
+	RequireAll(name)
+	if !isCustomResource(obj) { Fail("not a custom resource") }
+%}
+k8s:ClusterRole.rbac.authorization.k8s.io:{"labels":{"app.kubernetes.io/instance":{%q= name %}}}
+k8s:ClusterRoleBinding.rbac.authorization.k8s.io:{"labels":{"app.kubernetes.io/instance":{%q= name %}}}
+k8s:Deployment.apps:{"labels":{"app.kubernetes.io/instance":{%q= name %}}}
+k8s:DaemonSet.apps:{"labels":{"app.kubernetes.io/instance":{%q= name %}}}
+k8s:StatefulSet.apps:{"labels":{"app.kubernetes.io/instance":{%q= name %}}}
+k8s:ReplicaSet.apps:{"labels":{"app.kubernetes.io/instance":{%q= name %}}}
+k8s:Service:{"labels":{"app.kubernetes.io/instance":{%q= name %}}}
+k8s:ConfigMap:{"labels":{"app.kubernetes.io/instance":{%q= name %}}}
+k8s:Secret:{"labels":{"app.kubernetes.io/instance":{%q= name %}}}
+k8s:ServiceAccount:{"labels":{"app.kubernetes.io/instance":{%q= name %}}}
+k8s:PersistentVolumeClaim:{"labels":{"app.kubernetes.io/instance":{%q= name %}}}
+k8s:Job.batch:{"labels":{"app.kubernetes.io/instance":{%q= name %}}}
+k8s:CronJob.batch:{"labels":{"app.kubernetes.io/instance":{%q= name %}}}
+k8s:Role.rbac.authorization.k8s.io:{"labels":{"app.kubernetes.io/instance":{%q= name %}}}
+k8s:RoleBinding.rbac.authorization.k8s.io:{"labels":{"app.kubernetes.io/instance":{%q= name %}}}
+k8s:Ingress.networking.k8s.io:{"labels":{"app.kubernetes.io/instance":{%q= name %}}}
+k8s:NetworkPolicy.networking.k8s.io:{"labels":{"app.kubernetes.io/instance":{%q= name %}}}
+k8s:Route.v1.route.openshift.io:{"labels":{"app.kubernetes.io/instance":{%q= name %}}}
+{% endfunc %}

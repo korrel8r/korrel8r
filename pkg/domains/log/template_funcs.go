@@ -24,7 +24,7 @@ func (domain) TemplateFuncs() map[string]any {
 	return map[string]any{
 		"logSafeLabel":        SafeLabel,
 		"logSafeLabels":       SafeLabels,
-		"logTypeForNamespace": logTypeForNamespace,
+		"logTypeForNamespace": TypeForNamespace,
 	}
 }
 
@@ -47,7 +47,8 @@ func SafeLabels(labelMap any) (any, error) {
 	return out.Interface(), nil
 }
 
-func logTypeForNamespace(namespace string) string {
+// TypeForNamespace returns the log type ("application" or "infrastructure") for the given namespace.
+func TypeForNamespace(namespace string) string {
 	if infraNamespace.MatchString(namespace) {
 		return Infrastructure.Name()
 	}

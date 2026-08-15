@@ -1,0 +1,698 @@
+{% package quickrules %}
+
+{% import "strings" %}
+
+# VmToVmi finds the VirtualMachineInstance for a VirtualMachine.
+name: VmToVmi
+start:
+  domain: k8s
+  classes: [VirtualMachine.kubevirt.io]
+goal:
+  domain: k8s
+  classes: [VirtualMachineInstance.kubevirt.io]
+
+{% func VmToVmi(o interface{}) %}
+{% code _, _, ns, name, _ := k8sMetadata(o); RequireAll(ns, name) %}
+k8s:VirtualMachineInstance.kubevirt.io:{"namespace":{%q= ns %},"name":{%q= name %}}
+{% endfunc %}
+
+# VmiToPod finds the virt-launcher Pod for a VirtualMachineInstance.
+name: VmiToPod
+start:
+  domain: k8s
+  classes: [VirtualMachineInstance.kubevirt.io]
+goal:
+  domain: k8s
+  classes: [Pod]
+
+{% func VmiToPod(o interface{}) %}
+{% code _, _, ns, name, _ := k8sMetadata(o); RequireAll(ns, name) %}
+k8s:Pod:{"namespace":{%q= ns %},"labels":{"kubevirt.io":"virt-launcher","vm.kubevirt.io/name":{%q= name %}}}
+{% endfunc %}
+
+# VmiToNode finds the Node a VirtualMachineInstance is scheduled on.
+name: VmiToNode
+start:
+  domain: k8s
+  classes: [VirtualMachineInstance.kubevirt.io]
+goal:
+  domain: k8s
+  classes: [Node]
+
+{% func VmiToNode(o interface{}) %}
+{% code
+	obj := o.(map[string]any)
+	nodeName := Require(obj["status"].(map[string]any)["nodeName"].(string))
+%}
+k8s:Node:{"name":{%q= nodeName %}}
+{% endfunc %}
+
+# VmToPVC finds PersistentVolumeClaims referenced by a VirtualMachine.
+name: VmToPVC
+start:
+  domain: k8s
+  classes: [VirtualMachine.kubevirt.io]
+goal:
+  domain: k8s
+  classes: [PersistentVolumeClaim]
+
+{% func VmToPVC(o interface{}) %}
+{% code
+	obj, _, ns, _, _ := k8sMetadata(o)
+	RequireAll(ns)
+	spec := obj["spec"].(map[string]any)
+	dvTemplates := mapSlice(spec, "dataVolumeTemplates")
+	tmplSpec := spec["template"].(map[string]any)["spec"].(map[string]any)
+	volumes := mapSlice(tmplSpec, "volumes")
+%}
+{% for _, t := range dvTemplates %}
+{% code dvName := t.(map[string]any)["metadata"].(map[string]any)["name"].(string) %}
+k8s:PersistentVolumeClaim:{"namespace":{%q= ns %},"name":{%q= dvName %}}
+{% endfor %}
+{% for _, v := range volumes %}
+{% code vol := v.(map[string]any) %}
+{% if pvc, ok := vol["persistentVolumeClaim"].(map[string]any); ok %}
+k8s:PersistentVolumeClaim:{"namespace":{%q= ns %},"name":{%q= pvc["claimName"].(string) %}}
+{% endif %}
+{% if dv, ok := vol["dataVolume"].(map[string]any); ok %}
+k8s:PersistentVolumeClaim:{"namespace":{%q= ns %},"name":{%q= dv["name"].(string) %}}
+{% endif %}
+{% if eph, ok := vol["ephemeral"].(map[string]any); ok %}
+k8s:PersistentVolumeClaim:{"namespace":{%q= ns %},"name":{%q= eph["persistentVolumeClaim"].(map[string]any)["claimName"].(string) %}}
+{% endif %}
+{% if md, ok := vol["memoryDump"].(map[string]any); ok %}
+k8s:PersistentVolumeClaim:{"namespace":{%q= ns %},"name":{%q= md["claimName"].(string) %}}
+{% endif %}
+{% endfor %}
+{% endfunc %}
+
+# VmToAlert finds alerts related to a VirtualMachine.
+name: VmToAlert
+start:
+  domain: k8s
+  classes: [VirtualMachine.kubevirt.io]
+goal:
+  domain: alert
+
+{% func VmToAlert(o interface{}) %}
+{% code _, _, ns, name, _ := k8sMetadata(o); RequireAll(ns, name) %}
+alert:alert:{"namespace":{%q= ns %},"name":{%q= name %}}
+{% endfunc %}
+
+# VmiToAlert finds alerts related to a VirtualMachineInstance.
+name: VmiToAlert
+start:
+  domain: k8s
+  classes: [VirtualMachineInstance.kubevirt.io]
+goal:
+  domain: alert
+
+{% func VmiToAlert(o interface{}) %}
+{% code _, _, ns, name, _ := k8sMetadata(o); RequireAll(ns, name) %}
+alert:alert:{"namespace":{%q= ns %},"name":{%q= name %}}
+{% endfunc %}
+
+# VmimToAlert finds alerts related to a VirtualMachineInstanceMigration.
+name: VmimToAlert
+start:
+  domain: k8s
+  classes: [VirtualMachineInstanceMigration.kubevirt.io]
+goal:
+  domain: alert
+
+{% func VmimToAlert(o interface{}) %}
+{% code _, _, ns, name, _ := k8sMetadata(o); RequireAll(ns, name) %}
+alert:alert:{"namespace":{%q= ns %},"vmim":{%q= name %}}
+{% endfunc %}
+
+# VmToMetric finds metrics related to a VirtualMachine.
+name: VmToMetric
+start:
+  domain: k8s
+  classes: [VirtualMachine.kubevirt.io]
+goal:
+  domain: metric
+
+{% func VmToMetric(o interface{}) %}
+{% code _, _, ns, name, _ := k8sMetadata(o); RequireAll(ns, name) %}
+metric:metric:{namespace={%q= ns %},name={%q= name %}}
+{% endfunc %}
+
+# VmiToMetric finds metrics related to a VirtualMachineInstance.
+name: VmiToMetric
+start:
+  domain: k8s
+  classes: [VirtualMachineInstance.kubevirt.io]
+goal:
+  domain: metric
+
+{% func VmiToMetric(o interface{}) %}
+{% code _, _, ns, name, _ := k8sMetadata(o); RequireAll(ns, name) %}
+metric:metric:{namespace={%q= ns %},name={%q= name %}}
+{% endfunc %}
+
+# VmiToLogs finds virt-launcher pod logs for a VirtualMachineInstance.
+name: VmiToLogs
+start:
+  domain: k8s
+  classes: [VirtualMachineInstance.kubevirt.io]
+goal:
+  domain: log
+
+{% func VmiToLogs(o interface{}) %}
+{% code _, _, ns, name, _ := k8sMetadata(o); RequireAll(ns, name) %}
+log:{%s= logTypeForNamespace(ns) %}:{"namespace":{%q= ns %},"labels":{"kubevirt.io":"virt-launcher","vm.kubevirt.io/name":{%q= name %}}}
+{% endfunc %}
+
+# VmimToVmi finds the VirtualMachineInstance for a migration.
+name: VmimToVmi
+start:
+  domain: k8s
+  classes: [VirtualMachineInstanceMigration.kubevirt.io]
+goal:
+  domain: k8s
+  classes: [VirtualMachineInstance.kubevirt.io]
+
+{% func VmimToVmi(o interface{}) %}
+{% code
+	obj, _, ns, _, _ := k8sMetadata(o)
+	RequireAll(ns)
+	vmiName := Require(obj["spec"].(map[string]any)["vmiName"].(string))
+%}
+k8s:VirtualMachineInstance.kubevirt.io:{"namespace":{%q= ns %},"name":{%q= vmiName %}}
+{% endfunc %}
+
+# VmiToVmim finds migrations for a VirtualMachineInstance.
+name: VmiToVmim
+start:
+  domain: k8s
+  classes: [VirtualMachineInstance.kubevirt.io]
+goal:
+  domain: k8s
+  classes: [VirtualMachineInstanceMigration.kubevirt.io]
+
+{% func VmiToVmim(o interface{}) %}
+{% code _, _, ns, name, _ := k8sMetadata(o); RequireAll(ns, name) %}
+k8s:VirtualMachineInstanceMigration.kubevirt.io:{"namespace":{%q= ns %},"labels":{"kubevirt.io/vmi-name":{%q= name %}}}
+{% endfunc %}
+
+# DataVolumeToPVC finds the PVC for a DataVolume (they share namespace/name).
+name: DataVolumeToPVC
+start:
+  domain: k8s
+  classes: [DataVolume.cdi.kubevirt.io]
+goal:
+  domain: k8s
+  classes: [PersistentVolumeClaim]
+
+{% func DataVolumeToPVC(o interface{}) %}
+{% code _, _, ns, name, _ := k8sMetadata(o); RequireAll(ns, name) %}
+k8s:PersistentVolumeClaim:{"namespace":{%q= ns %},"name":{%q= name %}}
+{% endfunc %}
+
+# VmToDataVolume finds DataVolumes referenced by a VirtualMachine.
+name: VmToDataVolume
+start:
+  domain: k8s
+  classes: [VirtualMachine.kubevirt.io]
+goal:
+  domain: k8s
+  classes: [DataVolume.cdi.kubevirt.io]
+
+{% func VmToDataVolume(o interface{}) %}
+{% code
+	obj, _, ns, _, _ := k8sMetadata(o)
+	RequireAll(ns)
+	spec := obj["spec"].(map[string]any)
+	dvTemplates := mapSlice(spec, "dataVolumeTemplates")
+	tmplSpec := spec["template"].(map[string]any)["spec"].(map[string]any)
+	volumes := mapSlice(tmplSpec, "volumes")
+%}
+{% for _, t := range dvTemplates %}
+{% code dvName := t.(map[string]any)["metadata"].(map[string]any)["name"].(string) %}
+k8s:DataVolume.cdi.kubevirt.io:{"namespace":{%q= ns %},"name":{%q= dvName %}}
+{% endfor %}
+{% for _, v := range volumes %}
+{% code vol := v.(map[string]any) %}
+{% if dv, ok := vol["dataVolume"].(map[string]any); ok %}
+k8s:DataVolume.cdi.kubevirt.io:{"namespace":{%q= ns %},"name":{%q= dv["name"].(string) %}}
+{% endif %}
+{% endfor %}
+{% endfunc %}
+
+# VmiToPVC finds PersistentVolumeClaims referenced by a VirtualMachineInstance.
+name: VmiToPVC
+start:
+  domain: k8s
+  classes: [VirtualMachineInstance.kubevirt.io]
+goal:
+  domain: k8s
+  classes: [PersistentVolumeClaim]
+
+{% func VmiToPVC(o interface{}) %}
+{% code
+	obj, _, ns, _, _ := k8sMetadata(o)
+	RequireAll(ns)
+	volumes := mapSlice(obj["spec"].(map[string]any), "volumes")
+%}
+{% for _, v := range volumes %}
+{% code vol := v.(map[string]any) %}
+{% if pvc, ok := vol["persistentVolumeClaim"].(map[string]any); ok %}
+k8s:PersistentVolumeClaim:{"namespace":{%q= ns %},"name":{%q= pvc["claimName"].(string) %}}
+{% endif %}
+{% if dv, ok := vol["dataVolume"].(map[string]any); ok %}
+k8s:PersistentVolumeClaim:{"namespace":{%q= ns %},"name":{%q= dv["name"].(string) %}}
+{% endif %}
+{% if eph, ok := vol["ephemeral"].(map[string]any); ok %}
+k8s:PersistentVolumeClaim:{"namespace":{%q= ns %},"name":{%q= eph["persistentVolumeClaim"].(map[string]any)["claimName"].(string) %}}
+{% endif %}
+{% if md, ok := vol["memoryDump"].(map[string]any); ok %}
+k8s:PersistentVolumeClaim:{"namespace":{%q= ns %},"name":{%q= md["claimName"].(string) %}}
+{% endif %}
+{% endfor %}
+{% endfunc %}
+
+# VmiToDataVolume finds DataVolumes referenced by a VirtualMachineInstance.
+name: VmiToDataVolume
+start:
+  domain: k8s
+  classes: [VirtualMachineInstance.kubevirt.io]
+goal:
+  domain: k8s
+  classes: [DataVolume.cdi.kubevirt.io]
+
+{% func VmiToDataVolume(o interface{}) %}
+{% code
+	obj, _, ns, _, _ := k8sMetadata(o)
+	RequireAll(ns)
+	volumes := mapSlice(obj["spec"].(map[string]any), "volumes")
+%}
+{% for _, v := range volumes %}
+{% code vol := v.(map[string]any) %}
+{% if dv, ok := vol["dataVolume"].(map[string]any); ok %}
+k8s:DataVolume.cdi.kubevirt.io:{"namespace":{%q= ns %},"name":{%q= dv["name"].(string) %}}
+{% endif %}
+{% endfor %}
+{% endfunc %}
+
+# VmSnapshotToVm finds the source VirtualMachine of a snapshot.
+name: VmSnapshotToVm
+start:
+  domain: k8s
+  classes: [VirtualMachineSnapshot.snapshot.kubevirt.io]
+goal:
+  domain: k8s
+  classes: [VirtualMachine.kubevirt.io]
+
+{% func VmSnapshotToVm(o interface{}) %}
+{% code
+	obj, _, ns, _, _ := k8sMetadata(o)
+	RequireAll(ns)
+	srcName := Require(obj["spec"].(map[string]any)["source"].(map[string]any)["name"].(string))
+%}
+k8s:VirtualMachine.kubevirt.io:{"namespace":{%q= ns %},"name":{%q= srcName %}}
+{% endfunc %}
+
+# VmToVmSnapshot finds snapshots of a VirtualMachine.
+name: VmToVmSnapshot
+start:
+  domain: k8s
+  classes: [VirtualMachine.kubevirt.io]
+goal:
+  domain: k8s
+  classes: [VirtualMachineSnapshot.snapshot.kubevirt.io]
+
+{% func VmToVmSnapshot(o interface{}) %}
+{% code _, _, ns, name, _ := k8sMetadata(o); RequireAll(ns, name) %}
+k8s:VirtualMachineSnapshot.snapshot.kubevirt.io:{"namespace":{%q= ns %},"labels":{"vm.kubevirt.io/name":{%q= name %}}}
+{% endfunc %}
+
+# VmRestoreToVm finds the target VirtualMachine of a restore.
+name: VmRestoreToVm
+start:
+  domain: k8s
+  classes: [VirtualMachineRestore.snapshot.kubevirt.io]
+goal:
+  domain: k8s
+  classes: [VirtualMachine.kubevirt.io]
+
+{% func VmRestoreToVm(o interface{}) %}
+{% code
+	obj, _, ns, _, _ := k8sMetadata(o)
+	RequireAll(ns)
+	targetName := Require(obj["spec"].(map[string]any)["target"].(map[string]any)["name"].(string))
+%}
+k8s:VirtualMachine.kubevirt.io:{"namespace":{%q= ns %},"name":{%q= targetName %}}
+{% endfunc %}
+
+# VmToVmRestore finds restores targeting a VirtualMachine.
+name: VmToVmRestore
+start:
+  domain: k8s
+  classes: [VirtualMachine.kubevirt.io]
+goal:
+  domain: k8s
+  classes: [VirtualMachineRestore.snapshot.kubevirt.io]
+
+{% func VmToVmRestore(o interface{}) %}
+{% code _, _, ns, name, _ := k8sMetadata(o); RequireAll(ns, name) %}
+k8s:VirtualMachineRestore.snapshot.kubevirt.io:{"namespace":{%q= ns %},"labels":{"vm.kubevirt.io/name":{%q= name %}}}
+{% endfunc %}
+
+# VmRestoreToVmSnapshot finds the source snapshot of a restore.
+name: VmRestoreToVmSnapshot
+start:
+  domain: k8s
+  classes: [VirtualMachineRestore.snapshot.kubevirt.io]
+goal:
+  domain: k8s
+  classes: [VirtualMachineSnapshot.snapshot.kubevirt.io]
+
+{% func VmRestoreToVmSnapshot(o interface{}) %}
+{% code
+	obj, _, ns, _, _ := k8sMetadata(o)
+	RequireAll(ns)
+	snapName := Require(obj["spec"].(map[string]any)["virtualMachineSnapshotName"].(string))
+%}
+k8s:VirtualMachineSnapshot.snapshot.kubevirt.io:{"namespace":{%q= ns %},"name":{%q= snapName %}}
+{% endfunc %}
+
+# VmExportToVm finds the source VirtualMachine of an export.
+name: VmExportToVm
+start:
+  domain: k8s
+  classes: [VirtualMachineExport.export.kubevirt.io]
+goal:
+  domain: k8s
+  classes: [VirtualMachine.kubevirt.io]
+
+{% func VmExportToVm(o interface{}) %}
+{% code
+	obj, _, ns, _, _ := k8sMetadata(o)
+	RequireAll(ns)
+	src := obj["spec"].(map[string]any)["source"].(map[string]any)
+	if src["kind"].(string) != "VirtualMachine" { Fail("not a VirtualMachine export") }
+%}
+k8s:VirtualMachine.kubevirt.io:{"namespace":{%q= ns %},"name":{%q= src["name"].(string) %}}
+{% endfunc %}
+
+# VmExportToVmSnapshot finds the source VirtualMachineSnapshot of an export.
+name: VmExportToVmSnapshot
+start:
+  domain: k8s
+  classes: [VirtualMachineExport.export.kubevirt.io]
+goal:
+  domain: k8s
+  classes: [VirtualMachineSnapshot.snapshot.kubevirt.io]
+
+{% func VmExportToVmSnapshot(o interface{}) %}
+{% code
+	obj, _, ns, _, _ := k8sMetadata(o)
+	RequireAll(ns)
+	src := obj["spec"].(map[string]any)["source"].(map[string]any)
+	if src["kind"].(string) != "VirtualMachineSnapshot" { Fail("not a VirtualMachineSnapshot export") }
+%}
+k8s:VirtualMachineSnapshot.snapshot.kubevirt.io:{"namespace":{%q= ns %},"name":{%q= src["name"].(string) %}}
+{% endfunc %}
+
+# VmExportToPVC finds the source PVC of an export.
+name: VmExportToPVC
+start:
+  domain: k8s
+  classes: [VirtualMachineExport.export.kubevirt.io]
+goal:
+  domain: k8s
+  classes: [PersistentVolumeClaim]
+
+{% func VmExportToPVC(o interface{}) %}
+{% code
+	obj, _, ns, _, _ := k8sMetadata(o)
+	RequireAll(ns)
+	src := obj["spec"].(map[string]any)["source"].(map[string]any)
+	if src["kind"].(string) != "PersistentVolumeClaim" { Fail("not a PersistentVolumeClaim export") }
+%}
+k8s:PersistentVolumeClaim:{"namespace":{%q= ns %},"name":{%q= src["name"].(string) %}}
+{% endfunc %}
+
+# NodeToVmi finds VirtualMachineInstances running on a Node.
+name: NodeToVmi
+start:
+  domain: k8s
+  classes: [Node]
+goal:
+  domain: k8s
+  classes: [VirtualMachineInstance.kubevirt.io]
+
+{% func NodeToVmi(o interface{}) %}
+{% code _, _, _, name, _ := k8sMetadata(o); RequireAll(name) %}
+k8s:VirtualMachineInstance.kubevirt.io:{"labels":{"kubevirt.io/nodeName":{%q= name %}}}
+{% endfunc %}
+
+# DataVolumeToImporterPod finds the CDI importer Pod for a DataVolume.
+name: DataVolumeToImporterPod
+start:
+  domain: k8s
+  classes: [DataVolume.cdi.kubevirt.io]
+goal:
+  domain: k8s
+  classes: [Pod]
+
+{% func DataVolumeToImporterPod(o interface{}) %}
+{% code _, _, ns, name, _ := k8sMetadata(o); RequireAll(ns, name) %}
+k8s:Pod:{"namespace":{%q= ns %},"labels":{"cdi.kubevirt.io/storage.import.importPvcName":{%q= name %}}}
+{% endfunc %}
+
+# VmToNetAttachDef finds NetworkAttachmentDefinitions referenced by a VirtualMachine.
+name: VmToNetAttachDef
+start:
+  domain: k8s
+  classes: [VirtualMachine.kubevirt.io]
+goal:
+  domain: k8s
+  classes: [NetworkAttachmentDefinition.k8s.cni.cncf.io]
+
+{% func VmToNetAttachDef(o interface{}) %}
+{% code
+	obj, _, ns, _, _ := k8sMetadata(o)
+	RequireAll(ns)
+	networks := mapSlice(obj["spec"].(map[string]any)["template"].(map[string]any)["spec"].(map[string]any), "networks")
+%}
+{% for _, n := range networks %}
+{% code net := n.(map[string]any) %}
+{% if m, ok := net["multus"].(map[string]any); ok %}
+{% code netName := m["networkName"].(string) %}
+{% if !strings.Contains(netName, "/") %}
+k8s:NetworkAttachmentDefinition.k8s.cni.cncf.io:{"namespace":{%q= ns %},"name":{%q= netName %}}
+{% endif %}
+{% endif %}
+{% endfor %}
+{% endfunc %}
+
+# VmiToNetAttachDef finds NetworkAttachmentDefinitions referenced by a VirtualMachineInstance.
+name: VmiToNetAttachDef
+start:
+  domain: k8s
+  classes: [VirtualMachineInstance.kubevirt.io]
+goal:
+  domain: k8s
+  classes: [NetworkAttachmentDefinition.k8s.cni.cncf.io]
+
+{% func VmiToNetAttachDef(o interface{}) %}
+{% code
+	obj, _, ns, _, _ := k8sMetadata(o)
+	RequireAll(ns)
+	networks := mapSlice(obj["spec"].(map[string]any), "networks")
+%}
+{% for _, n := range networks %}
+{% code net := n.(map[string]any) %}
+{% if m, ok := net["multus"].(map[string]any); ok %}
+{% code netName := m["networkName"].(string) %}
+{% if !strings.Contains(netName, "/") %}
+k8s:NetworkAttachmentDefinition.k8s.cni.cncf.io:{"namespace":{%q= ns %},"name":{%q= netName %}}
+{% endif %}
+{% endif %}
+{% endfor %}
+{% endfunc %}
+
+# VmToSecret finds Secrets referenced by a VirtualMachine's volumes and accessCredentials.
+name: VmToSecret
+start:
+  domain: k8s
+  classes: [VirtualMachine.kubevirt.io]
+goal:
+  domain: k8s
+  classes: [Secret]
+
+{% func VmToSecret(o interface{}) %}
+{% code
+	obj, _, ns, _, _ := k8sMetadata(o)
+	RequireAll(ns)
+	tmplSpec := obj["spec"].(map[string]any)["template"].(map[string]any)["spec"].(map[string]any)
+	volumes := mapSlice(tmplSpec, "volumes")
+	creds := mapSlice(tmplSpec, "accessCredentials")
+	names := kvSecretNames(volumes, creds)
+	RequireAll(names)
+%}
+{% for _, n := range names %}
+k8s:Secret:{"namespace":{%q= ns %},"name":{%q= n %}}
+{% endfor %}
+{% endfunc %}
+
+# VmiToSecret finds Secrets referenced by a VirtualMachineInstance's volumes.
+name: VmiToSecret
+start:
+  domain: k8s
+  classes: [VirtualMachineInstance.kubevirt.io]
+goal:
+  domain: k8s
+  classes: [Secret]
+
+{% func VmiToSecret(o interface{}) %}
+{% code
+	obj, _, ns, _, _ := k8sMetadata(o)
+	RequireAll(ns)
+	volumes := mapSlice(obj["spec"].(map[string]any), "volumes")
+	creds := mapSlice(obj["spec"].(map[string]any), "accessCredentials")
+	names := kvSecretNames(volumes, creds)
+	RequireAll(names)
+%}
+{% for _, n := range names %}
+k8s:Secret:{"namespace":{%q= ns %},"name":{%q= n %}}
+{% endfor %}
+{% endfunc %}
+
+# VmToConfigMap finds ConfigMaps referenced by a VirtualMachine's volumes.
+name: VmToConfigMap
+start:
+  domain: k8s
+  classes: [VirtualMachine.kubevirt.io]
+goal:
+  domain: k8s
+  classes: [ConfigMap]
+
+{% func VmToConfigMap(o interface{}) %}
+{% code
+	obj, _, ns, _, _ := k8sMetadata(o)
+	RequireAll(ns)
+	volumes := mapSlice(obj["spec"].(map[string]any)["template"].(map[string]any)["spec"].(map[string]any), "volumes")
+	names := kvConfigMapNames(volumes)
+	RequireAll(names)
+%}
+{% for _, n := range names %}
+k8s:ConfigMap:{"namespace":{%q= ns %},"name":{%q= n %}}
+{% endfor %}
+{% endfunc %}
+
+# VmiToConfigMap finds ConfigMaps referenced by a VirtualMachineInstance's volumes.
+name: VmiToConfigMap
+start:
+  domain: k8s
+  classes: [VirtualMachineInstance.kubevirt.io]
+goal:
+  domain: k8s
+  classes: [ConfigMap]
+
+{% func VmiToConfigMap(o interface{}) %}
+{% code
+	obj, _, ns, _, _ := k8sMetadata(o)
+	RequireAll(ns)
+	volumes := mapSlice(obj["spec"].(map[string]any), "volumes")
+	names := kvConfigMapNames(volumes)
+	RequireAll(names)
+%}
+{% for _, n := range names %}
+k8s:ConfigMap:{"namespace":{%q= ns %},"name":{%q= n %}}
+{% endfor %}
+{% endfunc %}
+
+# VmToServiceAccount finds ServiceAccounts referenced by a VirtualMachine's volumes.
+name: VmToServiceAccount
+start:
+  domain: k8s
+  classes: [VirtualMachine.kubevirt.io]
+goal:
+  domain: k8s
+  classes: [ServiceAccount]
+
+{% func VmToServiceAccount(o interface{}) %}
+{% code
+	obj, _, ns, _, _ := k8sMetadata(o)
+	RequireAll(ns)
+	volumes := mapSlice(obj["spec"].(map[string]any)["template"].(map[string]any)["spec"].(map[string]any), "volumes")
+%}
+{% for _, v := range volumes %}
+{% code vol := v.(map[string]any) %}
+{% if sa, ok := vol["serviceAccount"].(map[string]any); ok %}
+k8s:ServiceAccount:{"namespace":{%q= ns %},"name":{%q= sa["serviceAccountName"].(string) %}}
+{% endif %}
+{% endfor %}
+{% endfunc %}
+
+# VmiToServiceAccount finds ServiceAccounts referenced by a VirtualMachineInstance's volumes.
+name: VmiToServiceAccount
+start:
+  domain: k8s
+  classes: [VirtualMachineInstance.kubevirt.io]
+goal:
+  domain: k8s
+  classes: [ServiceAccount]
+
+{% func VmiToServiceAccount(o interface{}) %}
+{% code
+	obj, _, ns, _, _ := k8sMetadata(o)
+	RequireAll(ns)
+	volumes := mapSlice(obj["spec"].(map[string]any), "volumes")
+%}
+{% for _, v := range volumes %}
+{% code vol := v.(map[string]any) %}
+{% if sa, ok := vol["serviceAccount"].(map[string]any); ok %}
+k8s:ServiceAccount:{"namespace":{%q= ns %},"name":{%q= sa["serviceAccountName"].(string) %}}
+{% endif %}
+{% endfor %}
+{% endfunc %}
+
+# VmToInstancetype finds the instancetype or cluster instancetype for a VirtualMachine.
+name: VmToInstancetype
+start:
+  domain: k8s
+  classes: [VirtualMachine.kubevirt.io]
+goal:
+  domain: k8s
+
+{% func VmToInstancetype(o interface{}) %}
+{% code
+	obj, _, ns, _, _ := k8sMetadata(o)
+	RequireAll(ns)
+	it := obj["spec"].(map[string]any)["instancetype"].(map[string]any)
+	name := Require(it["name"].(string))
+	kind, _ := it["kind"].(string)
+%}
+{% if kind == "VirtualMachineInstancetype" %}
+k8s:VirtualMachineInstancetype.instancetype.kubevirt.io:{"namespace":{%q= ns %},"name":{%q= name %}}
+{% else %}
+k8s:VirtualMachineClusterInstancetype.instancetype.kubevirt.io:{"name":{%q= name %}}
+{% endif %}
+{% endfunc %}
+
+# VmToPreference finds the preference or cluster preference for a VirtualMachine.
+name: VmToPreference
+start:
+  domain: k8s
+  classes: [VirtualMachine.kubevirt.io]
+goal:
+  domain: k8s
+
+{% func VmToPreference(o interface{}) %}
+{% code
+	obj, _, ns, _, _ := k8sMetadata(o)
+	RequireAll(ns)
+	pref := obj["spec"].(map[string]any)["preference"].(map[string]any)
+	name := Require(pref["name"].(string))
+	kind, _ := pref["kind"].(string)
+%}
+{% if kind == "VirtualMachinePreference" %}
+k8s:VirtualMachinePreference.instancetype.kubevirt.io:{"namespace":{%q= ns %},"name":{%q= name %}}
+{% else %}
+k8s:VirtualMachineClusterPreference.instancetype.kubevirt.io:{"name":{%q= name %}}
+{% endif %}
+{% endfunc %}

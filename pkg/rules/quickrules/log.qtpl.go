@@ -7,14 +7,11 @@
 // #
 //
 
-//line pkg/rules/quickrules/log.qtpl:4
+//line log.qtpl:4
 package quickrules
 
-//line pkg/rules/quickrules/log.qtpl:6
+//line log.qtpl:6
 import "github.com/korrel8r/korrel8r/pkg/domains/log"
-
-//line pkg/rules/quickrules/log.qtpl:7
-import "github.com/korrel8r/korrel8r/pkg/rules"
 
 // # LogToPod creates a k8s Pod query from the pod attributes of a log entry.
 // name: LogToPod
@@ -26,69 +23,194 @@ import "github.com/korrel8r/korrel8r/pkg/rules"
 //   classes: [Pod]
 //
 
-//line pkg/rules/quickrules/log.qtpl:18
+//line log.qtpl:17
 import (
 	qtio422016 "io"
 
 	qt422016 "github.com/valyala/quicktemplate"
 )
 
-//line pkg/rules/quickrules/log.qtpl:18
+//line log.qtpl:17
 var (
 	_ = qtio422016.Copy
 	_ = qt422016.AcquireByteBuffer
 )
 
-//line pkg/rules/quickrules/log.qtpl:18
+//line log.qtpl:17
 func StreamLogToPod(qw422016 *qt422016.Writer, o interface{}) {
-//line pkg/rules/quickrules/log.qtpl:18
+//line log.qtpl:17
 	qw422016.N().S(`
 `)
-//line pkg/rules/quickrules/log.qtpl:20
+//line log.qtpl:19
 	l := o.(log.Object)
-	ns := l["kubernetes_namespace_name"]
-	name := l["kubernetes_pod_name"]
-	if ns == "" || name == "" {
-		rules.Fail("LogToPod: missing required pod attributes: %v", l)
-	}
+	ns := Require(l["kubernetes_namespace_name"])
+	name := Require(l["kubernetes_pod_name"])
 
-//line pkg/rules/quickrules/log.qtpl:26
+//line log.qtpl:22
 	qw422016.N().S(`
 k8s:Pod:{"namespace":`)
-//line pkg/rules/quickrules/log.qtpl:27
+//line log.qtpl:23
 	qw422016.N().Q(ns)
-//line pkg/rules/quickrules/log.qtpl:27
+//line log.qtpl:23
 	qw422016.N().S(`,"name":`)
-//line pkg/rules/quickrules/log.qtpl:27
+//line log.qtpl:23
 	qw422016.N().Q(name)
-//line pkg/rules/quickrules/log.qtpl:27
+//line log.qtpl:23
 	qw422016.N().S(`}
 `)
-//line pkg/rules/quickrules/log.qtpl:28
+//line log.qtpl:24
 }
 
-//line pkg/rules/quickrules/log.qtpl:28
+//line log.qtpl:24
 func WriteLogToPod(qq422016 qtio422016.Writer, o interface{}) {
-//line pkg/rules/quickrules/log.qtpl:28
+//line log.qtpl:24
 	qw422016 := qt422016.AcquireWriter(qq422016)
-//line pkg/rules/quickrules/log.qtpl:28
+//line log.qtpl:24
 	StreamLogToPod(qw422016, o)
-//line pkg/rules/quickrules/log.qtpl:28
+//line log.qtpl:24
 	qt422016.ReleaseWriter(qw422016)
-//line pkg/rules/quickrules/log.qtpl:28
+//line log.qtpl:24
 }
 
-//line pkg/rules/quickrules/log.qtpl:28
+//line log.qtpl:24
 func LogToPod(o interface{}) string {
-//line pkg/rules/quickrules/log.qtpl:28
+//line log.qtpl:24
 	qb422016 := qt422016.AcquireByteBuffer()
-//line pkg/rules/quickrules/log.qtpl:28
+//line log.qtpl:24
 	WriteLogToPod(qb422016, o)
-//line pkg/rules/quickrules/log.qtpl:28
+//line log.qtpl:24
 	qs422016 := string(qb422016.B)
-//line pkg/rules/quickrules/log.qtpl:28
+//line log.qtpl:24
 	qt422016.ReleaseByteBuffer(qb422016)
-//line pkg/rules/quickrules/log.qtpl:28
+//line log.qtpl:24
 	return qs422016
-//line pkg/rules/quickrules/log.qtpl:28
+//line log.qtpl:24
+}
+
+// # PodToLogs finds logs for a pod.
+// name: PodToLogs
+// start:
+//   domain: k8s
+//   classes: [Pod]
+// goal:
+//   domain: log
+//
+
+//line log.qtpl:34
+func StreamPodToLogs(qw422016 *qt422016.Writer, o interface{}) {
+//line log.qtpl:34
+	qw422016.N().S(`
+`)
+//line log.qtpl:35
+	_, _, ns, name, _ := k8sMetadata(o)
+	RequireAll(ns, name)
+
+//line log.qtpl:35
+	qw422016.N().S(`
+log:`)
+//line log.qtpl:36
+	qw422016.N().S(logTypeForNamespace(ns))
+//line log.qtpl:36
+	qw422016.N().S(`:{"namespace":`)
+//line log.qtpl:36
+	qw422016.N().Q(ns)
+//line log.qtpl:36
+	qw422016.N().S(`,"name":`)
+//line log.qtpl:36
+	qw422016.N().Q(name)
+//line log.qtpl:36
+	qw422016.N().S(`}
+`)
+//line log.qtpl:37
+}
+
+//line log.qtpl:37
+func WritePodToLogs(qq422016 qtio422016.Writer, o interface{}) {
+//line log.qtpl:37
+	qw422016 := qt422016.AcquireWriter(qq422016)
+//line log.qtpl:37
+	StreamPodToLogs(qw422016, o)
+//line log.qtpl:37
+	qt422016.ReleaseWriter(qw422016)
+//line log.qtpl:37
+}
+
+//line log.qtpl:37
+func PodToLogs(o interface{}) string {
+//line log.qtpl:37
+	qb422016 := qt422016.AcquireByteBuffer()
+//line log.qtpl:37
+	WritePodToLogs(qb422016, o)
+//line log.qtpl:37
+	qs422016 := string(qb422016.B)
+//line log.qtpl:37
+	qt422016.ReleaseByteBuffer(qb422016)
+//line log.qtpl:37
+	return qs422016
+//line log.qtpl:37
+}
+
+// # ServiceToLogs finds logs for pods selected by a service.
+// name: ServiceToLogs
+// start:
+//   domain: k8s
+//   classes: [Service]
+// goal:
+//   domain: log
+//
+
+//line log.qtpl:47
+func StreamServiceToLogs(qw422016 *qt422016.Writer, o interface{}) {
+//line log.qtpl:47
+	qw422016.N().S(`
+`)
+//line log.qtpl:49
+	obj, _, ns, _, _ := k8sMetadata(o)
+	RequireAll(ns)
+	selector := obj["spec"].(map[string]any)["selector"]
+	RequireAll(selector)
+
+//line log.qtpl:53
+	qw422016.N().S(`
+log:`)
+//line log.qtpl:54
+	qw422016.N().S(logTypeForNamespace(ns))
+//line log.qtpl:54
+	qw422016.N().S(`:{"namespace":`)
+//line log.qtpl:54
+	qw422016.N().Q(ns)
+//line log.qtpl:54
+	qw422016.N().S(`,"labels":`)
+//line log.qtpl:54
+	qw422016.N().S(ToJSON(selector))
+//line log.qtpl:54
+	qw422016.N().S(`}
+`)
+//line log.qtpl:55
+}
+
+//line log.qtpl:55
+func WriteServiceToLogs(qq422016 qtio422016.Writer, o interface{}) {
+//line log.qtpl:55
+	qw422016 := qt422016.AcquireWriter(qq422016)
+//line log.qtpl:55
+	StreamServiceToLogs(qw422016, o)
+//line log.qtpl:55
+	qt422016.ReleaseWriter(qw422016)
+//line log.qtpl:55
+}
+
+//line log.qtpl:55
+func ServiceToLogs(o interface{}) string {
+//line log.qtpl:55
+	qb422016 := qt422016.AcquireByteBuffer()
+//line log.qtpl:55
+	WriteServiceToLogs(qb422016, o)
+//line log.qtpl:55
+	qs422016 := string(qb422016.B)
+//line log.qtpl:55
+	qt422016.ReleaseByteBuffer(qb422016)
+//line log.qtpl:55
+	return qs422016
+//line log.qtpl:55
 }

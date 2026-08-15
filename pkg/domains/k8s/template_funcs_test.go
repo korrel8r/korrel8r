@@ -80,7 +80,7 @@ func TestK8sHealthStatus(t *testing.T) {
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			got := k8sHealthStatus(tt.obj)
+			got := HealthStatus(tt.obj)
 			assert.Equal(t, tt.want, got)
 		})
 	}

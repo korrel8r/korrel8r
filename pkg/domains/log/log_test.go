@@ -391,7 +391,7 @@ func TestLogTypeForNamespace(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := logTypeForNamespace(tt.namespace)
+			result := TypeForNamespace(tt.namespace)
 			assert.Equal(t, tt.expected.Name(), result)
 		})
 	}

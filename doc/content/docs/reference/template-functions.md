@@ -15,16 +15,13 @@ The standard [Go template](<https://pkg.go.dev/text/template#hdr-Functions>) and
 currentRule
   Returns the [korrel8r.Rule] currently being evaluated
 
-assert [message] value
-    Fails if value is empty, optional message string is included in the error.
-    A value is "empty" if it is nil, false, zero, or a zero-length string, slice, or map.
-    Can be used to test multiple values at once:
-        {{assert "need namespace and name" (all .metadata.namespace .metadata.name)}}
+require value
+    Returns value if it is not nil, false, zero or empty, otherwise fails.
+        Name is: {{ .metadata.name | require }}.
 
-required [message] value
-    Like assert, but returns the value if it is not empty.
-    Use to pass through a value:
-        Name is: {{ .metadata.name | required "name must not be empty" }}.
+requireAll values...
+    Fails if any value is nil, false, zero or empty.
+        {{requireAll .metadata.namespace .metadata.name}}
 
 query queryString
     Executes its argument as a korrel8r query string, returns the results as []any.
@@ -92,8 +89,8 @@ logSafeLabels map[string]string
 TemplateFuncs for the netflow domain.
 
 ```
-netflowTypeToK8s typeString
- Convert a netflow type field value to a k8s class.
+netflowTypeToK8s string
+  converts a netflow type string to a k8s class string.
 ```
 
 

@@ -52,27 +52,35 @@ func TestMain_get(t *testing.T) {
 
 func TestMain_rules(t *testing.T) {
 	for _, x := range []struct {
-		args []string
-		want string
+		args    []string
+		want    []string
+		exclude []string
 	}{
 		{
-			args: []string{"rules"},
-			want: `foobar: [mock:foo] -> [mock:bar]
-barfoo: [mock:bar] -> [mock:foo]`,
+			args:    []string{"rules"},
+			want:    []string{"foobar: [mock:foo] -> [mock:bar]", "barfoo: [mock:bar] -> [mock:foo]"},
+			exclude: nil,
 		},
 		{
-			args: []string{"rules", "--start", "mock:foo"},
-			want: "foobar: [mock:foo] -> [mock:bar]",
+			args:    []string{"rules", "--start", "mock:foo"},
+			want:    []string{"foobar: [mock:foo] -> [mock:bar]"},
+			exclude: []string{"barfoo:"},
 		},
 		{
-			args: []string{"rules", "--goal", "mock:foo"},
-			want: "barfoo: [mock:bar] -> [mock:foo]",
+			args:    []string{"rules", "--goal", "mock:foo"},
+			want:    []string{"barfoo: [mock:bar] -> [mock:foo]"},
+			exclude: []string{"foobar:"},
 		},
 	} {
 		t.Run(strings.Join(x.args, " "), func(t *testing.T) {
 			out, err := cliCommand(t, x.args...).Output()
 			require.NoError(t, test.ExecError(err))
-			assert.Contains(t, string(out), x.want)
+			for _, w := range x.want {
+				assert.Contains(t, string(out), w)
+			}
+			for _, e := range x.exclude {
+				assert.NotContains(t, string(out), e)
+			}
 		})
 	}
 }

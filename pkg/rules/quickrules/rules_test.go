@@ -1,9 +1,6 @@
 // Copyright: This file is part of korrel8r, released under https://github.com/korrel8r/korrel8r/blob/main/LICENSE
 
-// package rules is a test-only package to unit test YAML rules.
-package rules_test
-
-// Test use of rules in graph traversal.
+package quickrules_test
 
 import (
 	"fmt"
@@ -15,7 +12,6 @@ import (
 	"testing"
 
 	"github.com/korrel8r/korrel8r/internal/pkg/test"
-	"github.com/korrel8r/korrel8r/pkg/config"
 	"github.com/korrel8r/korrel8r/pkg/domains"
 	"github.com/korrel8r/korrel8r/pkg/domains/k8s"
 	"github.com/korrel8r/korrel8r/pkg/engine"
@@ -121,6 +117,22 @@ var customResourcesForTests = []*metav1.APIResourceList{
 		GroupVersion: "networking.k8s.io/v1",
 		APIResources: []metav1.APIResource{
 			{Kind: "Ingress", Namespaced: true},
+			{Kind: "NetworkPolicy", Namespaced: true},
+		},
+	},
+	{
+		GroupVersion: "route.openshift.io/v1",
+		APIResources: []metav1.APIResource{
+			{Kind: "Route", Namespaced: true},
+		},
+	},
+	{
+		GroupVersion: "rbac.authorization.k8s.io/v1",
+		APIResources: []metav1.APIResource{
+			{Kind: "Role", Namespaced: true},
+			{Kind: "RoleBinding", Namespaced: true},
+			{Kind: "ClusterRole", Namespaced: false},
+			{Kind: "ClusterRoleBinding", Namespaced: false},
 		},
 	},
 	{
@@ -131,19 +143,10 @@ var customResourcesForTests = []*metav1.APIResourceList{
 	},
 }
 
-// setup an engine, add customResources to the k8s domain.
 func setup() *engine.Engine {
-	configs, err := config.Load("all.yaml")
-	if err != nil {
-		panic(err)
-	}
-	for i := range configs {
-		configs[i].Stores = nil // Use fake stores, not configured defaults.
-	}
 	c := fake.NewClientBuilder().
 		WithRESTMapper(testrestmapper.TestOnlyStaticRESTMapper(scheme.Scheme)).
 		Build()
-	// Create a store to add custom resources needed by the test. See customResourcesForTests above.
 	s, err := k8s.Domain.NewStoreWithDiscovery(
 		c,
 		&rest.Config{},
@@ -156,7 +159,8 @@ func setup() *engine.Engine {
 	b := engine.Build().Domains(domains.All...)
 	b.Stores(s)
 	b.Rules(quickrules.Rules(b.GetDomains())...)
-	e, err := b.Config(configs).Engine()
+	b.StatusRules(quickrules.StatusRules(b.GetDomains())...)
+	e, err := b.Engine()
 	if err != nil {
 		panic(err)
 	}
@@ -166,20 +170,18 @@ func setup() *engine.Engine {
 func TestMain(m *testing.M) {
 	e := setup()
 	for _, r := range e.Rules() {
-		rules.Add(r.Name())
+		untestedRules.Add(r.Name())
 	}
 	m.Run()
-	// Report if some rules were tested but not all.
-	if len(rules) < len(e.Rules()) && len(rules) > 0 {
-		fmt.Printf("FAIL: %v rules not tested:\n- %v\n", len(rules), strings.Join(slices.Collect(maps.Keys(rules)), "\n- "))
+	if len(untestedRules) < len(e.Rules()) && len(untestedRules) > 0 {
+		fmt.Printf("FAIL: %v rules not tested:\n- %v\n", len(untestedRules), strings.Join(slices.Collect(maps.Keys(untestedRules)), "\n- "))
 		os.Exit(1)
 	}
 }
 
-// tested marks a rule as having been tested.
-func tested(ruleName string) { rules.Remove(ruleName) }
+func tested(ruleName string) { untestedRules.Remove(ruleName) }
 
-var rules = unique.Set[string]{}
+var untestedRules = unique.Set[string]{}
 
 type ruleTest struct {
 	rule  string
@@ -261,7 +263,7 @@ func newK8s(class, namespace, name string, object k8s.Object) k8s.Object {
 func k8sEvent(o k8s.Object, name string) k8s.Object {
 	u := k8s.ToUnstructured(o)
 	gvk := u.GetObjectKind().GroupVersionKind()
-	e := newK8s("Event.v1", name, u.GetNamespace(), k8s.Object{
+	e := newK8s("Event.v1", u.GetNamespace(), name, k8s.Object{
 		"involvedObject": k8s.Object{
 			"kind":       gvk.Kind,
 			"namespace":  u.GetNamespace(),
@@ -274,7 +276,7 @@ func k8sEvent(o k8s.Object, name string) k8s.Object {
 func k8sEvent2(o k8s.Object, name string) k8s.Object {
 	u := k8s.ToUnstructured(o)
 	gvk := u.GetObjectKind().GroupVersionKind()
-	e := newK8s("Event.v1.events.k8s.io", name, u.GetNamespace(), k8s.Object{
+	e := newK8s("Event.v1.events.k8s.io", u.GetNamespace(), name, k8s.Object{
 		"regarding": k8s.Object{
 			"kind":       gvk.Kind,
 			"namespace":  u.GetNamespace(),
