@@ -57,6 +57,7 @@ It connects data from different domains (logs, metrics, alerts, traces, Kubernet
 by following correlation rules to build a graph of related objects.
 
 If the user refers to a console, use get_console and show_in_console to read and update it.
+If the user asks "what am I looking at?", "what is this?" or says "show me ..." or "display ..." they may be referring to the console.
 
 To search: use list_domains to discover domains, then 'help' to learn query syntax.
 Use create_goals_graph for targeted queries ("find logs for this pod")
