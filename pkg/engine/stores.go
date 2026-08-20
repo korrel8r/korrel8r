@@ -59,36 +59,55 @@ func wrap(e *Engine, sc config.Store, s korrel8r.Store) (*storeHolder, error) {
 
 func (s *storeHolder) Domain() korrel8r.Domain { return s.domain }
 
+const defaultStoreRetries = 3
+
+func (s *storeHolder) retryLimit() int {
+	if n := s.Engine.Tuning.StoreRetries; n > 0 {
+		return n
+	}
+	return defaultStoreRetries
+}
+
+// RecordError records a store error and resets the store for re-creation. Concurrent safe.
+// After [config.Tuning.StoreRetries] errors, the store is no longer reset to avoid expensive re-creation.
 func (s *storeHolder) RecordError(err error) {
-	if err != nil {
-		// Don't log same error twice in a row
-		if s.LastErr != nil && s.LastErr.Error() != err.Error() {
-			log.V(2).Info("Engine: Store error", "error", err, "domain", s.Domain().Name(), "config", s.Original)
+	if err == nil {
+		return
+	}
+	s.lock.Lock()
+	defer s.lock.Unlock()
+	if s.LastErr == nil || s.LastErr.Error() != err.Error() {
+		log.V(2).Info("Engine: Store error", "error", err, "domain", s.Domain().Name(), "config", s.Original)
+	}
+	s.LastErr = err
+	s.ErrCount++
+	if s.Original != nil && s.ErrCount < s.retryLimit() {
+		if c, ok := s.Store.(io.Closer); ok {
+			_ = c.Close()
 		}
-		s.LastErr = err
-		s.ErrCount++
+		s.Store = nil
 	}
 }
 
 // Get (re-)creates the store as required. Concurrent safe.
-func (s *storeHolder) Get(ctx context.Context, q korrel8r.Query, constraint *korrel8r.Constraint, result korrel8r.Appender) (err error) {
-	s.lock.Lock() // Lock for duration of Get() - serialize Get per store.
-	defer s.lock.Unlock()
-	if _, err := s.ensure(); err != nil {
+func (s *storeHolder) Get(ctx context.Context, q korrel8r.Query, constraint *korrel8r.Constraint, result korrel8r.Appender) error {
+	store, err := s.Ensure()
+	if err != nil {
 		return err
 	}
-	err = s.Store.Get(ctx, q, constraint, result)
+	err = store.Get(ctx, q, constraint, result)
 	if err != nil {
 		s.RecordError(err)
-		if s.Original != nil { // Only re-create if there is some configuration.
-			// Close the broken store if it is an io.Closer()
-			if c, ok := s.Store.(io.Closer); ok {
-				_ = c.Close()
-			}
-			s.Store = nil // Re-create on next use
-		}
+	} else {
+		s.resetErr()
 	}
 	return err
+}
+
+func (s *storeHolder) resetErr() {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+	s.ErrCount = 0
 }
 
 // Ensure the store is connected.
@@ -101,11 +120,15 @@ func (s *storeHolder) Ensure() (korrel8r.Store, error) {
 
 // ensure is unsafe, must be called with lock held, via Ensure()
 func (s *storeHolder) ensure() (korrel8r.Store, error) {
-	var err error
 	if s.Store != nil {
-		return s.Store, nil // Already exists.
+		return s.Store, nil
 	}
-	defer s.RecordError(err)
+	if s.Original == nil {
+		return nil, fmt.Errorf("no store configuration for domain %v", s.domain.Name())
+	}
+	if s.ErrCount >= s.retryLimit() {
+		return nil, s.LastErr
+	}
 
 	// Expand the store config each time - the results may change.
 	s.Expanded = config.Store{}
@@ -119,20 +142,25 @@ func (s *storeHolder) ensure() (korrel8r.Store, error) {
 					err = err2
 				}
 			}
+			s.LastErr = err
+			s.ErrCount++
 			return nil, err
 		}
 		s.Expanded[k] = expanded
 	}
 	// Create the store
+	var err error
 	if _, ok := s.Expanded[config.StoreKeyMock]; ok {
-		// Special case for mock store, any domain can have a mock store.
 		s.Store, err = mock.NewStoreConfig(s.domain, s.Expanded)
 	} else {
-		// Domain-specific store
 		s.Store, err = s.domain.Store(s.Expanded)
 	}
 	if err != nil {
 		s.Store = nil
+		s.LastErr = err
+		s.ErrCount++
+	} else {
+		s.ErrCount = 0
 	}
 	return s.Store, err
 }
