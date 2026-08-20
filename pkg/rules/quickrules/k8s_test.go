@@ -453,7 +453,7 @@ func TestK8sRules(t *testing.T) {
 	}
 }
 
-func TestInstanceToOperands_clusterScoped(t *testing.T) {
+func TestClusterInstanceToOperands(t *testing.T) {
 	const rule = "ClusterInstanceToOperands"
 	e := setup()
 	r := e.Rule(rule)

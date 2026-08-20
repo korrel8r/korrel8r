@@ -17,7 +17,7 @@ import (
 func (f *Fixture) Test(t *testing.T) {
 	t.Helper()
 	f.Init(t)
-	for _, f := range []func(*testing.T){f.TestGet, f.TestMarshalUnmashal, f.TestGetCluster} {
+	for _, f := range []func(*testing.T){f.TestGet, f.TestMarshalUnmashal, f.TestGet_cluster} {
 		t.Run(funcName(f), f)
 	}
 }
@@ -53,9 +53,9 @@ func (f *Fixture) TestMarshalUnmashal(t *testing.T) {
 	require.Equal(t, o, o2)
 }
 
-// TestGetCluster that query constraints work with real stores.
+// TestGet_cluster that query constraints work with real stores.
 // Requires a cluster with the relevant signal stores available.
-func (f *Fixture) TestGetCluster(t *testing.T) {
+func (f *Fixture) TestGet_cluster(t *testing.T) {
 	t.Helper()
 	e := f.ClusterEngine(t)
 	limit := 3

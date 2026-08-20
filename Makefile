@@ -103,7 +103,7 @@ lint: ## Linting skipped (NOLINT is set).
 endif
 
 # Setting NO_CLUSTER=1 skips cluster tests
-TEST_FLAGS?=$(and $(NO_CLUSTER),-skip='Cluster|/Cluster')
+TEST_FLAGS?=$(and $(NO_CLUSTER),-skip='_cluster(-fm)?$$|/_cluster(-fm)?$$')
 
 .PHONY: test
 test: lint							 ## Run all tests, requires cluster. Set NO_CLUSTER=1 to skip cluster tests.

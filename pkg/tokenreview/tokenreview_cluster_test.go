@@ -10,7 +10,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 )
 
-func TestTokenReviewCluster(t *testing.T) {
+func TestTokenReview_cluster(t *testing.T) {
 	cfg, err := config.GetConfig()
 	require.NoError(t, err)
 	require.NotEmpty(t, cfg.BearerToken, "cluster config must have a bearer token")
@@ -23,7 +23,7 @@ func TestTokenReviewCluster(t *testing.T) {
 	assert.NotEmpty(t, username, "should resolve bearer token to a username")
 }
 
-func TestTokenReviewCluster_InvalidToken(t *testing.T) {
+func TestTokenReview_InvalidToken_cluster(t *testing.T) {
 	_, err := config.GetConfig()
 	require.NoError(t, err)
 

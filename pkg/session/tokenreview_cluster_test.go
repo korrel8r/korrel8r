@@ -12,7 +12,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 )
 
-func TestTokenReviewCluster_SessionID(t *testing.T) {
+func TestTokenReview_SessionID_cluster(t *testing.T) {
 	cfg, err := config.GetConfig()
 	require.NoError(t, err)
 	require.NotEmpty(t, cfg.BearerToken, "cluster config must have a bearer token")
