@@ -61,6 +61,7 @@ var applyFuncs = map[string]func(qw *quicktemplate.Writer, start korrel8r.Object
 	"OperatorToSubscription":      StreamOperatorToSubscription,
 	"PodDisruptionBudgetToAlert":  StreamPodDisruptionBudgetToAlert,
 	"PodToAlert":                  StreamPodToAlert,
+	"PodToAlertOtel":              StreamPodToAlertOtel,
 	"PodToConfigMap":              StreamPodToConfigMap,
 	"PodToLogs":                   StreamPodToLogs,
 	"PodToLokiAlert":              StreamPodToLokiAlert,

@@ -30,8 +30,8 @@ goal:
 {% func AlertToPod(o interface{}) %}
 {% code
 	l := o.(*alert.Object).Labels
-	ns := Default(l["namespace"], l["kubernetes_namespace_name"])
-	name := Default(l["pod"], l["kubernetes_pod_name"])
+  ns := Default(Default(l["namespace"], l["kubernetes_namespace_name"]), l["k8s_namespace_name"])
+  name := Default(Default(l["pod"], l["kubernetes_pod_name"]), l["k8s_pod_name"])
 	RequireAll(ns, name)
 %}
 k8s:Pod.v1:{"namespace":{%q= ns %},"name":{%q= name %}}
@@ -115,6 +115,19 @@ goal:
 {% func PodToLokiAlert(o interface{}) %}
 {% code _, _, ns, name, _ := k8sMetadata(o); RequireAll(ns, name) %}
 alert:alert:{"namespace":{%q= ns %},"kubernetes_pod_name":{%q= name %}}
+{% endfunc %}
+
+# PodToAlertOtel finds OTEL-based alerts related to a pod.
+name: PodToAlertOtel
+start:
+  domain: k8s
+  classes: [Pod]
+goal:
+  domain: alert
+
+{% func PodToAlertOtel(o interface{}) %}
+{% code _, _, ns, name, _ := k8sMetadata(o); RequireAll(ns, name) %}
+alert:alert:{"k8s_namespace_name":{%q= ns %},"k8s_pod_name":{%q= name %}}
 {% endfunc %}
 
 # DeploymentToAlert finds alerts related to a deployment.
