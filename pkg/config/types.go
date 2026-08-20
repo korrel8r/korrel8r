@@ -144,4 +144,8 @@ type Tuning struct {
 	// UnsafeSharedSession skips authentication and uses a single shared session for all requests.
 	// WARNING: This disables per-user session isolation and should only be used for development or testing.
 	UnsafeSharedSession bool `json:"unsafeSharedSession,omitempty"`
+
+	// StoreRetries limits how many times a store connection can fail before giving up.
+	// Default is 3 if omitted or 0.
+	StoreRetries int `json:"storeRetries,omitempty"`
 }
