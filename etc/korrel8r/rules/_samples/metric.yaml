@@ -1,0 +1,39 @@
+rules:
+  - name: AllToMetric
+    start:
+      domain: k8s
+    goal:
+      domain: metric
+    result:
+      query: |-
+        metric:metric:{namespace="{{.metadata.namespace}}",{{lower .kind}}="{{.metadata.name}}"}
+
+  - name: MetricToDaemonSet
+    start:
+      domain: metric
+    goal:
+      domain: k8s
+      classes: [DaemonSet.apps]
+    result:
+      query: |-
+        k8s:DaemonSet.apps:{"namespace":"{{or (index .Labels "k8s_namespace_name") (index .Labels "namespace") | required}}","name":"{{or (index .Labels "k8s_daemonset_name") (index .Labels "daemonset") | required}}"}
+
+  - name: MetricToStatefulSet
+    start:
+      domain: metric
+    goal:
+      domain: k8s
+      classes: [StatefulSet.apps]
+    result:
+      query: |-
+        k8s:StatefulSet.apps:{"namespace":"{{or (index .Labels "k8s_namespace_name") (index .Labels "namespace") | required}}","name":"{{or (index .Labels "k8s_statefulset_name") (index .Labels "statefulset") | required}}"}
+
+  - name: MetricToNode
+    start:
+      domain: metric
+    goal:
+      domain: k8s
+      classes: [Node]
+    result:
+      query: |-
+        k8s:Node:{"name":"{{or (index .Labels "k8s_node_name") (index .Labels "node") | required}}"}

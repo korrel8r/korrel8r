@@ -1,0 +1,8 @@
+#!/bin/bash
+# Extract class k8s class names, filter out aliases starting with lowercase letter.
+yq eval-all '
+   [
+   (.aliases // [] | .[] | select(.domain == "k8s") | .classes // []),
+   (.rules // [] | .[] | select(.start.domain == "k8s") | .start.classes // []),
+   (.rules // [] | .[] | select(.goal.domain == "k8s") | .goal.classes // [])
+   ] | flatten | .[]'  *.yaml | grep -v '^[a-z]' | sort -u
