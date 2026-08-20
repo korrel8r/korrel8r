@@ -107,7 +107,7 @@ devspace dev
 See [CONTRIBUTING.md](CONTRIBUTING.md) for test commands. Test organization:
 
 - **Package tests**: Standard Go tests in every `pkg/` sub-directory.
-- **Cluster tests**: "Cluster" in the test name (e.g., `TestClusterConnection`) means the test requires a cluster.
+- **Cluster tests**: Test names ending with `_cluster` (e.g., `TestTokenReview_cluster`) require a cluster.
 - **Rule tests**: Tests in `etc/korrel8r/rules/*_test.go` test rules defined in YAML configuration.
 
 ## Debugging

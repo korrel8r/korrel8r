@@ -70,7 +70,7 @@ make help              # Show available targets and variables
 ### What Makes a Good PR
 
 - **Focused scope** - One logical change per PR. Separate refactoring from feature work.
-- **Tests included** - New features and bug fixes should include tests. Cluster tests should have "Cluster" in the test name.
+- **Tests included** - New features and bug fixes should include tests. Cluster test names must end with `_cluster` (e.g., `TestFoo_cluster`).
 - **Clear commit messages** - Describe what changed and why.
 
 ### Review Process

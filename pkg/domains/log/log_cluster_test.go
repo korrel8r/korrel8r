@@ -44,8 +44,8 @@ func routeHost(t *testing.T, c client.Client, namespace, name string) string {
 	return host
 }
 
-// TestPodQueriesCluster tests that pod-style queries work for direct and loki stores.
-func TestLogPodQueriesCluster(t *testing.T) {
+// TestLogPodQueries_cluster tests that pod-style queries work for direct and loki stores.
+func TestLogPodQueries_cluster(t *testing.T) {
 	// Set up pods to create logs.
 	c := test.RequireCluster(t)
 	const n = 10
