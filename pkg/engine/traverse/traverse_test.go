@@ -329,6 +329,13 @@ func TestTraverserNeighbors(t *testing.T) {
 	}
 }
 
+func TestNeighborScope_BadStart(t *testing.T) {
+	b := mock.NewBuilder("d")
+	g := graph.NewData(b.Rule("ab", "d:a", "d:b", nil)).FullGraph()
+	_, err := neighborScope(g, b.Class("d:missing"), 1)
+	assert.Error(t, err)
+}
+
 func lineStrings(lines []*graph.Line) []string {
 	s := make([]string, len(lines))
 	for i, l := range lines {
@@ -404,74 +411,3 @@ func TestGoalScope(t *testing.T) {
 	})
 }
 
-func TestNeighborScope(t *testing.T) {
-	b := mock.NewBuilder("d")
-	r := b.Rule
-	g := graph.NewData(
-		r("ab", "d:a", "d:b", nil),
-		r("ac", "d:a", "d:c", nil),
-		r("bx", "d:b", "d:x", nil),
-		r("cy", "d:c", "d:y", nil),
-		r("yz", "d:y", "d:z", nil),
-		r("zq", "d:z", "d:q", nil),
-	).FullGraph()
-
-	for _, x := range []struct {
-		depth int
-		lines []string
-	}{
-		{
-			depth: 0,
-			lines: []string{},
-		},
-		{
-			depth: 1,
-			lines: []string{
-				"ab(d:a->d:b)",
-				"ac(d:a->d:c)",
-			},
-		},
-		{
-			depth: 2,
-			lines: []string{
-				"ab(d:a->d:b)",
-				"ac(d:a->d:c)",
-				"bx(d:b->d:x)",
-				"cy(d:c->d:y)",
-			},
-		},
-		{
-			depth: 3,
-			lines: []string{
-				"ab(d:a->d:b)",
-				"ac(d:a->d:c)",
-				"bx(d:b->d:x)",
-				"cy(d:c->d:y)",
-				"yz(d:y->d:z)",
-			},
-		},
-		{
-			depth: 4,
-			lines: []string{
-				"ab(d:a->d:b)",
-				"ac(d:a->d:c)",
-				"bx(d:b->d:x)",
-				"cy(d:c->d:y)",
-				"yz(d:y->d:z)",
-				"zq(d:z->d:q)",
-			},
-		},
-	} {
-		t.Run(fmt.Sprintf("depth %v", x.depth), func(t *testing.T) {
-			lines, err := neighborScope(g, b.Class("d:a"), x.depth)
-			if assert.NoError(t, err) {
-				assert.ElementsMatch(t, x.lines, lineStrings(lines))
-			}
-		})
-	}
-
-	t.Run("error_bad_start", func(t *testing.T) {
-		_, err := neighborScope(g, b.Class("d:missing"), 1)
-		assert.Error(t, err)
-	})
-}

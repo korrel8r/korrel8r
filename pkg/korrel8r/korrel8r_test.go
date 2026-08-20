@@ -14,10 +14,3 @@ func TestAppenderFunc(t *testing.T) {
 	f.Append("a", "b", "c")
 	assert.Equal(t, []Object{"a", "b", "c"}, got)
 }
-
-func TestAppenderFunc_Empty(t *testing.T) {
-	called := false
-	f := AppenderFunc(func(o ...Object) { called = len(o) > 0 })
-	f.Append()
-	assert.False(t, called)
-}

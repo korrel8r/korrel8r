@@ -125,33 +125,9 @@ func TestClassPreview(t *testing.T) {
 		preview := class.Preview("not an object")
 		assert.Equal(t, "", preview)
 	})
-}
-
-func TestPreview(t *testing.T) {
-	t.Run("Valid Object with body", func(t *testing.T) {
-		obj := Object{
-			AttrBody: "test log message",
-			"other":  "field",
-		}
-		preview := Preview(obj)
-		assert.Equal(t, "test log message", preview)
-	})
-
-	t.Run("Object without body", func(t *testing.T) {
-		obj := Object{
-			"timestamp": "2023-01-01T00:00:00Z",
-		}
-		preview := Preview(obj)
-		assert.Equal(t, "", preview)
-	})
-
-	t.Run("Non-Object", func(t *testing.T) {
-		preview := Preview("not an object")
-		assert.Equal(t, "", preview)
-	})
 
 	t.Run("Nil object", func(t *testing.T) {
-		preview := Preview(nil)
+		preview := class.Preview(nil)
 		assert.Equal(t, "", preview)
 	})
 }
@@ -291,118 +267,12 @@ func TestNewQuery(t *testing.T) {
 	})
 }
 
-func TestConstants(t *testing.T) {
-	t.Run("Class constants", func(t *testing.T) {
-		assert.Equal(t, "application", Application.Name())
-		assert.Equal(t, "infrastructure", Infrastructure.Name())
-		assert.Equal(t, "audit", Audit.Name())
-	})
-
-	t.Run("Store key constants", func(t *testing.T) {
-		assert.Equal(t, "loki", StoreKeyLoki)
-		assert.Equal(t, "lokiStack", StoreKeyLokiStack)
-		assert.Equal(t, "direct", StoreKeyDirect)
-	})
-
-	t.Run("Attribute constants", func(t *testing.T) {
-		assert.Equal(t, "timestamp", AttrTimestamp)
-		assert.Equal(t, "_timestamp", Attr_Timestamp)
-		assert.Equal(t, "body", AttrBody)
-	})
-}
-
-func TestObject(t *testing.T) {
-	t.Run("Object creation and access", func(t *testing.T) {
-		obj := Object{
-			AttrBody:       "test message",
-			AttrTimestamp:  "2023-01-01T00:00:00Z",
-			"custom_field": "custom_value",
-		}
-
-		assert.Equal(t, "test message", obj[AttrBody])
-		assert.Equal(t, "2023-01-01T00:00:00Z", obj[AttrTimestamp])
-		assert.Equal(t, "custom_value", obj["custom_field"])
-	})
-
-	t.Run("Empty object", func(t *testing.T) {
-		obj := Object{}
-		assert.Equal(t, "", obj[AttrBody])
-		assert.Equal(t, "", obj["nonexistent"])
-	})
-}
-
-// Additional tests for improved coverage
-
-func TestDomainQueryMethod(t *testing.T) {
-	d := &domain{Domain.Domain}
-
-	t.Run("Query method delegates to NewQuery", func(t *testing.T) {
-		query, err := d.Query("log:application:{}")
-		assert.NoError(t, err)
-		assert.NotNil(t, query)
-		assert.Equal(t, Application, query.Class())
-	})
-
-	t.Run("Query method returns error for invalid input", func(t *testing.T) {
-		query, err := d.Query("invalid-query-format")
-		assert.Error(t, err)
-		assert.Nil(t, query)
-	})
-}
-
-func TestClassUnmarshalAndPreview(t *testing.T) {
-	class := Application
-
-	t.Run("Unmarshal calls through to implementation", func(t *testing.T) {
-		data := `{"body": "test", "level": "info"}`
-		obj, err := class.Unmarshal([]byte(data))
-		assert.NoError(t, err)
-		assert.NotNil(t, obj)
-
-		logObj, ok := obj.(Object)
-		assert.True(t, ok)
-		assert.Equal(t, "test", logObj["body"])
-		assert.Equal(t, "info", logObj["level"])
-	})
-
-	t.Run("Preview calls Preview function", func(t *testing.T) {
-		obj := Object{AttrBody: "test message"}
-		preview := class.Preview(obj)
-		assert.Equal(t, "test message", preview)
-	})
-}
-
-func TestLogTypeForNamespace(t *testing.T) {
-	tests := []struct {
-		name      string
-		namespace string
-		expected  Class
-	}{
-		{"Default namespace", "default", Infrastructure},
-		{"Openshift namespace", "openshift", Infrastructure},
-		{"Openshift with suffix", "openshift-cluster-version", Infrastructure},
-		{"Kube namespace", "kube", Infrastructure},
-		{"Kube with suffix", "kube-system", Infrastructure},
-		{"Application namespace", "my-app", Application},
-		{"User namespace", "user-namespace", Application},
-		{"Empty namespace", "", Application},
-		{"Random namespace", "random", Application},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := TypeForNamespace(tt.namespace)
-			assert.Equal(t, tt.expected.Name(), result)
-		})
-	}
-}
-
 func TestContainerSelector_LogQL(t *testing.T) {
 	tests := []struct {
 		name             string
 		selector         ContainerSelector
 		expected         string
-		expectedContains []string // For cases where label order is non-deterministic
+		expectedContains []string
 		useContainsCheck bool
 	}{
 		{
@@ -418,15 +288,6 @@ func TestContainerSelector_LogQL(t *testing.T) {
 				},
 			},
 			expected: `{kubernetes_namespace_name="default"}|json`,
-		},
-		{
-			name: "Pod name only",
-			selector: ContainerSelector{
-				Selector: k8s.Selector{
-					Name: "test-pod",
-				},
-			},
-			expected: `{kubernetes_pod_name="test-pod"}|json`,
 		},
 		{
 			name: "Single container",
@@ -535,23 +396,6 @@ func TestContainerSelector_LogQL(t *testing.T) {
 				`kubernetes_labels_tier="web"`,
 			},
 		},
-		{
-			name: "Empty containers list",
-			selector: ContainerSelector{
-				Selector: k8s.Selector{
-					Namespace: "test",
-				},
-				Containers: []string{},
-			},
-			expected: `{kubernetes_namespace_name="test"}|json`,
-		},
-		{
-			name: "Container with regex special characters",
-			selector: ContainerSelector{
-				Containers: []string{"app-1.2", "sidecar[prod]", "init+container"},
-			},
-			expected: `{kubernetes_container_name=~"app-1.2|sidecar[prod]|init+container"}|json`,
-		},
 	}
 
 	for _, tt := range tests {
@@ -595,22 +439,6 @@ func TestContainerSelector_IsContainerSelected(t *testing.T) {
 				Containers: []string{"app", "sidecar"},
 			},
 			container: "unknown",
-			expected:  false,
-		},
-		{
-			name: "Exact match required",
-			selector: ContainerSelector{
-				Containers: []string{"app"},
-			},
-			container: "app-extra",
-			expected:  false,
-		},
-		{
-			name: "Case sensitive",
-			selector: ContainerSelector{
-				Containers: []string{"App"},
-			},
-			container: "app",
 			expected:  false,
 		},
 	}

@@ -17,43 +17,33 @@ func TestParseQuery(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "foo", c.Name())
 	assert.Equal(t, "mydata", selector)
-}
 
-func TestParseQuery_WrongDomain(t *testing.T) {
-	d := mock.NewDomain("test", "foo")
-	_, _, err := ParseQuery(d, "other:foo:data")
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "wrong domain")
-}
-
-func TestParseQuery_BadClass(t *testing.T) {
-	d := mock.NewDomain("test", "foo")
-	_, _, err := ParseQuery(d, "test:nosuch:data")
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "class not found")
-}
-
-func TestParseQuery_Invalid(t *testing.T) {
-	d := mock.NewDomain("test", "foo")
-	_, _, err := ParseQuery(d, "invalid")
-	assert.Error(t, err)
+	for _, x := range []struct {
+		name, query, wantErr string
+	}{
+		{"wrong domain", "other:foo:data", "wrong domain"},
+		{"bad class", "test:nosuch:data", "class not found"},
+		{"invalid format", "invalid", ""},
+	} {
+		t.Run(x.name, func(t *testing.T) {
+			_, _, err := ParseQuery(d, x.query)
+			require.Error(t, err)
+			if x.wantErr != "" {
+				assert.ErrorContains(t, err, x.wantErr)
+			}
+		})
+	}
 }
 
 func TestUnmarshalQueryString(t *testing.T) {
 	d := mock.NewDomain("test", "foo")
-
 	type Data struct{ Name string }
+
 	c, data, err := UnmarshalQueryString[Data](d, `test:foo:{"name":"hello"}`)
 	require.NoError(t, err)
 	assert.Equal(t, "foo", c.Name())
 	assert.Equal(t, "hello", data.Name)
-}
 
-func TestUnmarshalQueryString_BadData(t *testing.T) {
-	d := mock.NewDomain("test", "foo")
-
-	type Data struct{ Name string }
-	_, _, err := UnmarshalQueryString[Data](d, `test:foo:not valid json or yaml`)
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "invalid query")
+	_, _, err = UnmarshalQueryString[Data](d, `test:foo:not valid json or yaml`)
+	assert.ErrorContains(t, err, "invalid query")
 }

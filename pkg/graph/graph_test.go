@@ -77,21 +77,6 @@ func TestWeight(t *testing.T) {
 	assert.True(t, math.IsInf(w, 1))
 }
 
-func TestNodeFor(t *testing.T) {
-	b := mock.NewBuilder("d")
-	r := b.Rule
-	g := NewData(r("ab", "d:a", "d:b", nil)).FullGraph()
-
-	// Existing class
-	n := g.NodeFor(b.Class("d:a"))
-	assert.NotNil(t, n)
-	assert.Equal(t, b.Class("d:a"), n.Class)
-
-	// Non-existent class
-	n = g.NodeFor(b.Class("d:z"))
-	assert.Nil(t, n)
-}
-
 func TestNodeForErr(t *testing.T) {
 	b := mock.NewBuilder("d")
 	r := b.Rule

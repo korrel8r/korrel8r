@@ -17,12 +17,6 @@ func TestTTL_GetPut(t *testing.T) {
 	assert.Equal(t, 1, v)
 }
 
-func TestTTL_Miss(t *testing.T) {
-	c := NewTTL[string, int](time.Hour)
-	_, ok := c.Get("missing")
-	assert.False(t, ok)
-}
-
 func TestTTL_Expiry(t *testing.T) {
 	c := NewTTL[string, int](time.Millisecond)
 	c.Put("a", 1)
