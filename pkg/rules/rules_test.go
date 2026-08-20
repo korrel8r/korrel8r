@@ -25,6 +25,10 @@ func TestTemplateRule_Apply(t *testing.T) {
 	rule, err := NewTemplateRule([]korrel8r.Class{a}, []korrel8r.Class{b}, tmpl, (`test:b:got-{{.}}`), testDomains(d))
 	require.NoError(t, err)
 
+	assert.Equal(t, "test-rule", rule.Name())
+	assert.Equal(t, []korrel8r.Class{a}, rule.Start())
+	assert.Equal(t, []korrel8r.Class{b}, rule.Goal())
+
 	queries, err := rule.Apply("hello")
 	require.NoError(t, err)
 	require.Len(t, queries, 1)
@@ -57,14 +61,3 @@ func TestTemplateRule_Apply_Blank(t *testing.T) {
 	assert.Empty(t, queries)
 }
 
-func TestTemplateRule_Accessors(t *testing.T) {
-	d := mock.NewDomain("test", "a", "b")
-	a, b := d.Class("a"), d.Class("b")
-	tmpl := template.New("myrule")
-	rule, err := NewTemplateRule([]korrel8r.Class{a}, []korrel8r.Class{b}, tmpl, ("test:b:x"), testDomains(d))
-	require.NoError(t, err)
-
-	assert.Equal(t, "myrule", rule.Name())
-	assert.Equal(t, []korrel8r.Class{a}, rule.Start())
-	assert.Equal(t, []korrel8r.Class{b}, rule.Goal())
-}

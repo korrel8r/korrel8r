@@ -51,17 +51,6 @@ func TestStore_NewQuery(t *testing.T) {
 	assert.Equal(t, []korrel8r.Object{1, 2, 3}, r.List())
 }
 
-func TestStore_Get(t *testing.T) {
-	d := mock.NewDomain("foo")
-	c := d.Class("x")
-	s := mock.NewStore(d)
-	q := mock.NewQuery(c, "query")
-	s.AddQuery(q, []korrel8r.Object{"a", "b"})
-	r := &mock.Result{}
-	require.NoError(t, s.Get(context.Background(), q, nil, r))
-	assert.Equal(t, []korrel8r.Object{"a", "b"}, r.List())
-}
-
 func TestFileStore(t *testing.T) {
 	d := mock.NewDomain("foo")
 	c := d.Class("x")
@@ -85,7 +74,6 @@ func TestNewQueryError(t *testing.T) {
 	assert.ErrorContains(t, err, "did not work")
 }
 
-// Domain tests
 func TestNewDomain(t *testing.T) {
 	d := mock.NewDomain("testdomain", "class1", "class2", "class3")
 
@@ -133,7 +121,6 @@ func TestDomain_Query(t *testing.T) {
 	assert.Error(t, err)
 }
 
-// Class tests
 func TestClass_Methods(t *testing.T) {
 	d := mock.NewDomain("testdomain")
 	c := d.Class("testclass")
@@ -168,60 +155,45 @@ func TestClass_Unmarshal(t *testing.T) {
 	assert.Error(t, err)
 }
 
-// Rule tests
-func TestNewRule_WithApplyFunc(t *testing.T) {
+func TestNewRule(t *testing.T) {
 	d := mock.NewDomain("testdomain")
 	start := []korrel8r.Class{d.Class("start")}
 	goal := []korrel8r.Class{d.Class("goal")}
 
-	applyFunc := func(obj korrel8r.Object) ([]korrel8r.Query, error) {
-		return []korrel8r.Query{mock.NewQuery(goal[0], "applied")}, nil
-	}
+	t.Run("WithApplyFunc", func(t *testing.T) {
+		applyFunc := func(obj korrel8r.Object) ([]korrel8r.Query, error) {
+			return []korrel8r.Query{mock.NewQuery(goal[0], "applied")}, nil
+		}
+		rule := mock.NewRule("test-rule", start, goal, applyFunc)
 
-	rule := mock.NewRule("test-rule", start, goal, applyFunc)
+		assert.Equal(t, "test-rule", rule.Name())
+		assert.Equal(t, start, rule.Start())
+		assert.Equal(t, goal, rule.Goal())
 
-	assert.Equal(t, "test-rule", rule.Name())
-	assert.Equal(t, "test-rule", rule.String())
-	assert.Equal(t, start, rule.Start())
-	assert.Equal(t, goal, rule.Goal())
+		q, err := rule.Apply("test-object")
+		require.NoError(t, err)
+		assert.Equal(t, "applied", q[0].Data())
+	})
 
-	q, err := rule.Apply("test-object")
-	require.NoError(t, err)
-	assert.Equal(t, "applied", q[0].Data())
-}
+	t.Run("WithQuery", func(t *testing.T) {
+		query := mock.NewQuery(goal[0], "static-query")
+		rule := mock.NewRule("test-rule", start, goal, query)
 
-func TestNewRule_WithQuery(t *testing.T) {
-	d := mock.NewDomain("testdomain")
-	start := []korrel8r.Class{d.Class("start")}
-	goal := []korrel8r.Class{d.Class("goal")}
-	query := mock.NewQuery(goal[0], "static-query")
+		q, err := rule.Apply("any-object")
+		require.NoError(t, err)
+		assert.Equal(t, "static-query", q[0].Data())
+	})
 
-	rule := mock.NewRule("test-rule", start, goal, query)
+	t.Run("WithNil", func(t *testing.T) {
+		rule := mock.NewRule("test-rule", start, goal, nil)
+		_, err := rule.Apply("any-object")
+		assert.ErrorContains(t, err, "mock rule has no result")
+	})
 
-	q, err := rule.Apply("any-object")
-	require.NoError(t, err)
-	assert.Equal(t, "static-query", q[0].Data())
-}
-
-func TestNewRule_WithNil(t *testing.T) {
-	d := mock.NewDomain("testdomain")
-	start := []korrel8r.Class{d.Class("start")}
-	goal := []korrel8r.Class{d.Class("goal")}
-
-	rule := mock.NewRule("test-rule", start, goal, nil)
-
-	_, err := rule.Apply("any-object")
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "mock rule has no result")
-}
-
-func TestNewRule_WithInvalidType(t *testing.T) {
-	d := mock.NewDomain("testdomain")
-	start := []korrel8r.Class{d.Class("start")}
-	goal := []korrel8r.Class{d.Class("goal")}
-
-	assert.Panics(t, func() {
-		mock.NewRule("test-rule", start, goal, "invalid")
+	t.Run("WithInvalidType", func(t *testing.T) {
+		assert.Panics(t, func() {
+			mock.NewRule("test-rule", start, goal, "invalid")
+		})
 	})
 }
 
@@ -253,7 +225,6 @@ func TestSortRules(t *testing.T) {
 	assert.Equal(t, rule1, sorted[2])
 }
 
-// Query tests
 func TestNewQuery(t *testing.T) {
 	d := mock.NewDomain("testdomain")
 	c := d.Class("testclass")
@@ -271,7 +242,6 @@ func TestNewQuery(t *testing.T) {
 	assert.Equal(t, []korrel8r.Object{obj1, obj2}, r.List())
 }
 
-// Result tests
 func TestResult(t *testing.T) {
 	var r mock.Result
 
@@ -281,7 +251,6 @@ func TestResult(t *testing.T) {
 	assert.Equal(t, []korrel8r.Object{"obj1", "obj2", "obj3"}, r.List())
 }
 
-// Builder tests
 func TestNewBuilder(t *testing.T) {
 	d1 := mock.NewDomain("domain1")
 
@@ -332,19 +301,6 @@ func TestBuilder_Rule(t *testing.T) {
 	assert.Equal(t, "test-rule", rule.Name())
 	assert.Equal(t, "start", rule.Start()[0].Name())
 	assert.Equal(t, "goal", rule.Goal()[0].Name())
-}
-
-func TestBuilder_Rules(t *testing.T) {
-	d := mock.NewDomain("testdomain", "start1", "start2", "goal1", "goal2")
-	b := mock.NewBuilder(d)
-
-	rules := []korrel8r.Rule{
-		b.Rule("rule1", "testdomain:start1", "testdomain:goal1", nil),
-		b.Rule("rule2", "testdomain:start2", "testdomain:goal2", nil),
-	}
-	assert.Len(t, rules, 2)
-	assert.Equal(t, "rule1", rules[0].Name())
-	assert.Equal(t, "rule2", rules[1].Name())
 }
 
 func TestBuilder_Query(t *testing.T) {

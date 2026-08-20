@@ -109,6 +109,7 @@ func TestLogType(t *testing.T) {
 		{"foo", "application"},
 		{"foo-kube", "application"},
 		{"foo-openshift", "application"},
+		{"", "application"},
 	} {
 		t.Run(x[0], func(t *testing.T) {
 			assert.Equal(t, x[1], TypeForNamespace(x[0]))

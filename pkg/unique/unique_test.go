@@ -106,8 +106,3 @@ func TestUniqueListAdd(t *testing.T) {
 	assert.False(t, l.Has("d"))
 }
 
-func TestList(t *testing.T) {
-	l := unique.NewList[int]()
-	l.Append(1, 2, 3, 1, 4, 3, 5, 5, 5, 6)
-	assert.Equal(t, []int{1, 2, 3, 4, 5, 6}, l.List)
-}

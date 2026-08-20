@@ -20,6 +20,7 @@ func (testDomain) Store(any) (korrel8r.Store, error)    { panic("Not Implemented
 func TestDomain(t *testing.T) {
 	d := NewDomain("x", "Its a mystery\n\na big mystery", testClass("a"), testClass("b"))
 	assert.Equal(t, "x", d.Name())
+	assert.Equal(t, "x", d.String())
 	desc := d.Description()
 	assert.Equal(t, "Its a mystery\n\na big mystery", desc)
 	assert.Equal(t, []korrel8r.Class{testClass("a"), testClass("b")}, d.Classes())
