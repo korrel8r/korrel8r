@@ -15,7 +15,10 @@ func TestMetricRules(t *testing.T) {
 		{
 			rule:  "AllToMetric",
 			start: newK8s("Pod", "aNamespace", "foo", nil),
-			want:  []string{`metric:metric:{namespace="aNamespace",pod="foo"}`},
+			want: []string{
+				`metric:metric:{namespace="aNamespace",pod="foo"}`,
+				`metric:metric:{k8s_namespace_name="aNamespace",k8s_pod_name="foo"}`,
+			},
 		},
 
 		// Standard Prometheus labels
@@ -82,7 +85,6 @@ func TestMetricRules(t *testing.T) {
 			start: metric.Object{Labels: map[string]string{"k8s_node_name": "worker-1"}, Fingerprint: "abc123"},
 			want:  []string{`k8s:Node.v1:{"name":"worker-1"}`},
 		},
-
 	} {
 		x.Run(t)
 	}
