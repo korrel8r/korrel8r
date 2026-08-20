@@ -16,6 +16,16 @@ func TestAlertTo(t *testing.T) {
 			want:  []string{`k8s:Pod.v1:{"namespace":"foo","name":"bar"}`},
 		},
 		{
+			rule:  "AlertToPod",
+			start: &alert.Object{Labels: map[string]string{"kubernetes_namespace_name": "foo", "kubernetes_pod_name": "bar"}},
+			want:  []string{`k8s:Pod.v1:{"namespace":"foo","name":"bar"}`},
+		},
+		{
+			rule:  "AlertToPod",
+			start: &alert.Object{Labels: map[string]string{"k8s_namespace_name": "foo", "k8s_pod_name": "bar"}},
+			want:  []string{`k8s:Pod.v1:{"namespace":"foo","name":"bar"}`},
+		},
+		{
 			rule:  "AlertToDeployment",
 			start: &alert.Object{Labels: map[string]string{"namespace": "foo", "deployment": "bar"}},
 			want:  []string{`k8s:Deployment.v1.apps:{"namespace":"foo","name":"bar"}`},
