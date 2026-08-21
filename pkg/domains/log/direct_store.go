@@ -174,8 +174,7 @@ func (s ContainerSelector) IsContainerSelected(container string) bool {
 	return len(s.Containers) == 0 || slices.Index(s.Containers, container) >= 0
 }
 
-// LogQL returns a log QL query that is equivalent to the podSelector.
-func (p *ContainerSelector) LogQL() string {
+func (p *ContainerSelector) buildLogQL(nsLabel, podLabel, containerLabel string, appendJSON bool) string {
 	w := &strings.Builder{}
 	add := func(k, v string) {
 		if v != "" {
@@ -187,14 +186,26 @@ func (p *ContainerSelector) LogQL() string {
 			fmt.Fprintf(w, "%v%q", k, v)
 		}
 	}
-	// FIXME OTEL vs. Viaq queries - need to handle OTEL after migration.
-	// Defer this till store, detect otel/viaq content using a loki labels query.
-	add("kubernetes_namespace_name=", p.Namespace)
-	add("kubernetes_pod_name=", p.Name)
-	add("kubernetes_container_name=~", strings.Join(p.Containers, "|"))
-	w.WriteString("}|json")
-	for k, v := range p.Labels {
-		fmt.Fprintf(w, "|kubernetes_labels_%v=%q", SafeLabel(k), v)
+	add(nsLabel+"=", p.Namespace)
+	add(podLabel+"=", p.Name)
+	add(containerLabel+"=~", strings.Join(p.Containers, "|"))
+	w.WriteString("}")
+	if appendJSON {
+		w.WriteString("|json")
+		for k, v := range p.Labels {
+			fmt.Fprintf(w, "|kubernetes_labels_%v=%q", SafeLabel(k), v)
+		}
 	}
 	return w.String()
 }
+
+// ViaqLogQL returns a Viaq-format LogQL query equivalent to this selector.
+func (p *ContainerSelector) ViaqLogQL() string {
+	return p.buildLogQL("kubernetes_namespace_name", "kubernetes_pod_name", "kubernetes_container_name", true)
+}
+
+// OtelLogQL returns an OTEL-format LogQL query equivalent to this selector.
+func (p *ContainerSelector) OtelLogQL() string {
+	return p.buildLogQL("k8s_namespace_name", "k8s_pod_name", "k8s_container_name", false)
+}
+

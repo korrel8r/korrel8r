@@ -101,8 +101,8 @@ func StreamAlertToPod(qw422016 *qt422016.Writer, o interface{}) {
 `)
 //line alert.qtpl:32
 	l := o.(*alert.Object).Labels
-	ns := Default(l["namespace"], l["kubernetes_namespace_name"])
-	name := Default(l["pod"], l["kubernetes_pod_name"])
+	ns := Default(Default(l["namespace"], l["kubernetes_namespace_name"]), l["k8s_namespace_name"])
+	name := Default(Default(l["pod"], l["kubernetes_pod_name"]), l["k8s_pod_name"])
 	RequireAll(ns, name)
 
 //line alert.qtpl:36
@@ -489,17 +489,17 @@ func PodToLokiAlert(o interface{}) string {
 //line alert.qtpl:118
 }
 
-// # DeploymentToAlert finds alerts related to a deployment.
-// name: DeploymentToAlert
+// # PodToAlertOtel finds OTEL-based alerts related to a pod.
+// name: PodToAlertOtel
 // start:
 //   domain: k8s
-//   classes: [Deployment.apps]
+//   classes: [Pod]
 // goal:
 //   domain: alert
 //
 
 //line alert.qtpl:128
-func StreamDeploymentToAlert(qw422016 *qt422016.Writer, o interface{}) {
+func StreamPodToAlertOtel(qw422016 *qt422016.Writer, o interface{}) {
 //line alert.qtpl:128
 	qw422016.N().S(`
 `)
@@ -509,11 +509,11 @@ func StreamDeploymentToAlert(qw422016 *qt422016.Writer, o interface{}) {
 
 //line alert.qtpl:129
 	qw422016.N().S(`
-alert:alert:{"namespace":`)
+alert:alert:{"k8s_namespace_name":`)
 //line alert.qtpl:130
 	qw422016.N().Q(ns)
 //line alert.qtpl:130
-	qw422016.N().S(`,"deployment":`)
+	qw422016.N().S(`,"k8s_pod_name":`)
 //line alert.qtpl:130
 	qw422016.N().Q(name)
 //line alert.qtpl:130
@@ -523,22 +523,22 @@ alert:alert:{"namespace":`)
 }
 
 //line alert.qtpl:131
-func WriteDeploymentToAlert(qq422016 qtio422016.Writer, o interface{}) {
+func WritePodToAlertOtel(qq422016 qtio422016.Writer, o interface{}) {
 //line alert.qtpl:131
 	qw422016 := qt422016.AcquireWriter(qq422016)
 //line alert.qtpl:131
-	StreamDeploymentToAlert(qw422016, o)
+	StreamPodToAlertOtel(qw422016, o)
 //line alert.qtpl:131
 	qt422016.ReleaseWriter(qw422016)
 //line alert.qtpl:131
 }
 
 //line alert.qtpl:131
-func DeploymentToAlert(o interface{}) string {
+func PodToAlertOtel(o interface{}) string {
 //line alert.qtpl:131
 	qb422016 := qt422016.AcquireByteBuffer()
 //line alert.qtpl:131
-	WriteDeploymentToAlert(qb422016, o)
+	WritePodToAlertOtel(qb422016, o)
 //line alert.qtpl:131
 	qs422016 := string(qb422016.B)
 //line alert.qtpl:131
@@ -546,6 +546,65 @@ func DeploymentToAlert(o interface{}) string {
 //line alert.qtpl:131
 	return qs422016
 //line alert.qtpl:131
+}
+
+// # DeploymentToAlert finds alerts related to a deployment.
+// name: DeploymentToAlert
+// start:
+//   domain: k8s
+//   classes: [Deployment.apps]
+// goal:
+//   domain: alert
+//
+
+//line alert.qtpl:141
+func StreamDeploymentToAlert(qw422016 *qt422016.Writer, o interface{}) {
+//line alert.qtpl:141
+	qw422016.N().S(`
+`)
+//line alert.qtpl:142
+	_, _, ns, name, _ := k8sMetadata(o)
+	RequireAll(ns, name)
+
+//line alert.qtpl:142
+	qw422016.N().S(`
+alert:alert:{"namespace":`)
+//line alert.qtpl:143
+	qw422016.N().Q(ns)
+//line alert.qtpl:143
+	qw422016.N().S(`,"deployment":`)
+//line alert.qtpl:143
+	qw422016.N().Q(name)
+//line alert.qtpl:143
+	qw422016.N().S(`}
+`)
+//line alert.qtpl:144
+}
+
+//line alert.qtpl:144
+func WriteDeploymentToAlert(qq422016 qtio422016.Writer, o interface{}) {
+//line alert.qtpl:144
+	qw422016 := qt422016.AcquireWriter(qq422016)
+//line alert.qtpl:144
+	StreamDeploymentToAlert(qw422016, o)
+//line alert.qtpl:144
+	qt422016.ReleaseWriter(qw422016)
+//line alert.qtpl:144
+}
+
+//line alert.qtpl:144
+func DeploymentToAlert(o interface{}) string {
+//line alert.qtpl:144
+	qb422016 := qt422016.AcquireByteBuffer()
+//line alert.qtpl:144
+	WriteDeploymentToAlert(qb422016, o)
+//line alert.qtpl:144
+	qs422016 := string(qb422016.B)
+//line alert.qtpl:144
+	qt422016.ReleaseByteBuffer(qb422016)
+//line alert.qtpl:144
+	return qs422016
+//line alert.qtpl:144
 }
 
 // # PodDisruptionBudgetToAlert finds alerts related to a PodDisruptionBudget.
@@ -557,54 +616,54 @@ func DeploymentToAlert(o interface{}) string {
 //   domain: alert
 //
 
-//line alert.qtpl:141
+//line alert.qtpl:154
 func StreamPodDisruptionBudgetToAlert(qw422016 *qt422016.Writer, o interface{}) {
-//line alert.qtpl:141
+//line alert.qtpl:154
 	qw422016.N().S(`
 `)
-//line alert.qtpl:142
+//line alert.qtpl:155
 	_, _, ns, name, _ := k8sMetadata(o)
 	RequireAll(ns, name)
 
-//line alert.qtpl:142
+//line alert.qtpl:155
 	qw422016.N().S(`
 alert:alert:{"namespace":`)
-//line alert.qtpl:143
+//line alert.qtpl:156
 	qw422016.N().Q(ns)
-//line alert.qtpl:143
+//line alert.qtpl:156
 	qw422016.N().S(`,"poddisruptionbudget":`)
-//line alert.qtpl:143
+//line alert.qtpl:156
 	qw422016.N().Q(name)
-//line alert.qtpl:143
+//line alert.qtpl:156
 	qw422016.N().S(`}
 `)
-//line alert.qtpl:144
+//line alert.qtpl:157
 }
 
-//line alert.qtpl:144
+//line alert.qtpl:157
 func WritePodDisruptionBudgetToAlert(qq422016 qtio422016.Writer, o interface{}) {
-//line alert.qtpl:144
+//line alert.qtpl:157
 	qw422016 := qt422016.AcquireWriter(qq422016)
-//line alert.qtpl:144
+//line alert.qtpl:157
 	StreamPodDisruptionBudgetToAlert(qw422016, o)
-//line alert.qtpl:144
+//line alert.qtpl:157
 	qt422016.ReleaseWriter(qw422016)
-//line alert.qtpl:144
+//line alert.qtpl:157
 }
 
-//line alert.qtpl:144
+//line alert.qtpl:157
 func PodDisruptionBudgetToAlert(o interface{}) string {
-//line alert.qtpl:144
+//line alert.qtpl:157
 	qb422016 := qt422016.AcquireByteBuffer()
-//line alert.qtpl:144
+//line alert.qtpl:157
 	WritePodDisruptionBudgetToAlert(qb422016, o)
-//line alert.qtpl:144
+//line alert.qtpl:157
 	qs422016 := string(qb422016.B)
-//line alert.qtpl:144
+//line alert.qtpl:157
 	qt422016.ReleaseByteBuffer(qb422016)
-//line alert.qtpl:144
+//line alert.qtpl:157
 	return qs422016
-//line alert.qtpl:144
+//line alert.qtpl:157
 }
 
 // # DaemonSetToAlert finds alerts related to a DaemonSet.
@@ -616,54 +675,54 @@ func PodDisruptionBudgetToAlert(o interface{}) string {
 //   domain: alert
 //
 
-//line alert.qtpl:154
+//line alert.qtpl:167
 func StreamDaemonSetToAlert(qw422016 *qt422016.Writer, o interface{}) {
-//line alert.qtpl:154
+//line alert.qtpl:167
 	qw422016.N().S(`
 `)
-//line alert.qtpl:155
+//line alert.qtpl:168
 	_, _, ns, name, _ := k8sMetadata(o)
 	RequireAll(ns, name)
 
-//line alert.qtpl:155
+//line alert.qtpl:168
 	qw422016.N().S(`
 alert:alert:{"namespace":`)
-//line alert.qtpl:156
+//line alert.qtpl:169
 	qw422016.N().Q(ns)
-//line alert.qtpl:156
+//line alert.qtpl:169
 	qw422016.N().S(`,"daemonset":`)
-//line alert.qtpl:156
+//line alert.qtpl:169
 	qw422016.N().Q(name)
-//line alert.qtpl:156
+//line alert.qtpl:169
 	qw422016.N().S(`}
 `)
-//line alert.qtpl:157
+//line alert.qtpl:170
 }
 
-//line alert.qtpl:157
+//line alert.qtpl:170
 func WriteDaemonSetToAlert(qq422016 qtio422016.Writer, o interface{}) {
-//line alert.qtpl:157
+//line alert.qtpl:170
 	qw422016 := qt422016.AcquireWriter(qq422016)
-//line alert.qtpl:157
+//line alert.qtpl:170
 	StreamDaemonSetToAlert(qw422016, o)
-//line alert.qtpl:157
+//line alert.qtpl:170
 	qt422016.ReleaseWriter(qw422016)
-//line alert.qtpl:157
+//line alert.qtpl:170
 }
 
-//line alert.qtpl:157
+//line alert.qtpl:170
 func DaemonSetToAlert(o interface{}) string {
-//line alert.qtpl:157
+//line alert.qtpl:170
 	qb422016 := qt422016.AcquireByteBuffer()
-//line alert.qtpl:157
+//line alert.qtpl:170
 	WriteDaemonSetToAlert(qb422016, o)
-//line alert.qtpl:157
+//line alert.qtpl:170
 	qs422016 := string(qb422016.B)
-//line alert.qtpl:157
+//line alert.qtpl:170
 	qt422016.ReleaseByteBuffer(qb422016)
-//line alert.qtpl:157
+//line alert.qtpl:170
 	return qs422016
-//line alert.qtpl:157
+//line alert.qtpl:170
 }
 
 // # StatefulSetToAlert finds alerts related to a StatefulSet.
@@ -675,54 +734,54 @@ func DaemonSetToAlert(o interface{}) string {
 //   domain: alert
 //
 
-//line alert.qtpl:167
+//line alert.qtpl:180
 func StreamStatefulSetToAlert(qw422016 *qt422016.Writer, o interface{}) {
-//line alert.qtpl:167
+//line alert.qtpl:180
 	qw422016.N().S(`
 `)
-//line alert.qtpl:168
+//line alert.qtpl:181
 	_, _, ns, name, _ := k8sMetadata(o)
 	RequireAll(ns, name)
 
-//line alert.qtpl:168
+//line alert.qtpl:181
 	qw422016.N().S(`
 alert:alert:{"namespace":`)
-//line alert.qtpl:169
+//line alert.qtpl:182
 	qw422016.N().Q(ns)
-//line alert.qtpl:169
+//line alert.qtpl:182
 	qw422016.N().S(`,"statefulset":`)
-//line alert.qtpl:169
+//line alert.qtpl:182
 	qw422016.N().Q(name)
-//line alert.qtpl:169
+//line alert.qtpl:182
 	qw422016.N().S(`}
 `)
-//line alert.qtpl:170
+//line alert.qtpl:183
 }
 
-//line alert.qtpl:170
+//line alert.qtpl:183
 func WriteStatefulSetToAlert(qq422016 qtio422016.Writer, o interface{}) {
-//line alert.qtpl:170
+//line alert.qtpl:183
 	qw422016 := qt422016.AcquireWriter(qq422016)
-//line alert.qtpl:170
+//line alert.qtpl:183
 	StreamStatefulSetToAlert(qw422016, o)
-//line alert.qtpl:170
+//line alert.qtpl:183
 	qt422016.ReleaseWriter(qw422016)
-//line alert.qtpl:170
+//line alert.qtpl:183
 }
 
-//line alert.qtpl:170
+//line alert.qtpl:183
 func StatefulSetToAlert(o interface{}) string {
-//line alert.qtpl:170
+//line alert.qtpl:183
 	qb422016 := qt422016.AcquireByteBuffer()
-//line alert.qtpl:170
+//line alert.qtpl:183
 	WriteStatefulSetToAlert(qb422016, o)
-//line alert.qtpl:170
+//line alert.qtpl:183
 	qs422016 := string(qb422016.B)
-//line alert.qtpl:170
+//line alert.qtpl:183
 	qt422016.ReleaseByteBuffer(qb422016)
-//line alert.qtpl:170
+//line alert.qtpl:183
 	return qs422016
-//line alert.qtpl:170
+//line alert.qtpl:183
 }
 
 // # AlertToVM finds a VirtualMachine from alert labels.
@@ -735,53 +794,53 @@ func StatefulSetToAlert(o interface{}) string {
 //   classes: [VirtualMachine.kubevirt.io]
 //
 
-//line alert.qtpl:181
+//line alert.qtpl:194
 func StreamAlertToVM(qw422016 *qt422016.Writer, o interface{}) {
-//line alert.qtpl:181
+//line alert.qtpl:194
 	qw422016.N().S(`
 `)
-//line alert.qtpl:182
+//line alert.qtpl:195
 	l := o.(*alert.Object).Labels
 
-//line alert.qtpl:182
+//line alert.qtpl:195
 	qw422016.N().S(`
 k8s:VirtualMachine.kubevirt.io:{"namespace":`)
-//line alert.qtpl:183
+//line alert.qtpl:196
 	qw422016.N().Q(Require(l["namespace"]))
-//line alert.qtpl:183
+//line alert.qtpl:196
 	qw422016.N().S(`,"name":`)
-//line alert.qtpl:183
+//line alert.qtpl:196
 	qw422016.N().Q(Require(l["name"]))
-//line alert.qtpl:183
+//line alert.qtpl:196
 	qw422016.N().S(`}
 `)
-//line alert.qtpl:184
+//line alert.qtpl:197
 }
 
-//line alert.qtpl:184
+//line alert.qtpl:197
 func WriteAlertToVM(qq422016 qtio422016.Writer, o interface{}) {
-//line alert.qtpl:184
+//line alert.qtpl:197
 	qw422016 := qt422016.AcquireWriter(qq422016)
-//line alert.qtpl:184
+//line alert.qtpl:197
 	StreamAlertToVM(qw422016, o)
-//line alert.qtpl:184
+//line alert.qtpl:197
 	qt422016.ReleaseWriter(qw422016)
-//line alert.qtpl:184
+//line alert.qtpl:197
 }
 
-//line alert.qtpl:184
+//line alert.qtpl:197
 func AlertToVM(o interface{}) string {
-//line alert.qtpl:184
+//line alert.qtpl:197
 	qb422016 := qt422016.AcquireByteBuffer()
-//line alert.qtpl:184
+//line alert.qtpl:197
 	WriteAlertToVM(qb422016, o)
-//line alert.qtpl:184
+//line alert.qtpl:197
 	qs422016 := string(qb422016.B)
-//line alert.qtpl:184
+//line alert.qtpl:197
 	qt422016.ReleaseByteBuffer(qb422016)
-//line alert.qtpl:184
+//line alert.qtpl:197
 	return qs422016
-//line alert.qtpl:184
+//line alert.qtpl:197
 }
 
 // # AlertToVMI finds a VirtualMachineInstance from alert labels.
@@ -794,53 +853,53 @@ func AlertToVM(o interface{}) string {
 //   classes: [VirtualMachineInstance.kubevirt.io]
 //
 
-//line alert.qtpl:195
+//line alert.qtpl:208
 func StreamAlertToVMI(qw422016 *qt422016.Writer, o interface{}) {
-//line alert.qtpl:195
+//line alert.qtpl:208
 	qw422016.N().S(`
 `)
-//line alert.qtpl:196
+//line alert.qtpl:209
 	l := o.(*alert.Object).Labels
 
-//line alert.qtpl:196
+//line alert.qtpl:209
 	qw422016.N().S(`
 k8s:VirtualMachineInstance.kubevirt.io:{"namespace":`)
-//line alert.qtpl:197
+//line alert.qtpl:210
 	qw422016.N().Q(Require(l["namespace"]))
-//line alert.qtpl:197
+//line alert.qtpl:210
 	qw422016.N().S(`,"name":`)
-//line alert.qtpl:197
+//line alert.qtpl:210
 	qw422016.N().Q(Require(l["name"]))
-//line alert.qtpl:197
+//line alert.qtpl:210
 	qw422016.N().S(`}
 `)
-//line alert.qtpl:198
+//line alert.qtpl:211
 }
 
-//line alert.qtpl:198
+//line alert.qtpl:211
 func WriteAlertToVMI(qq422016 qtio422016.Writer, o interface{}) {
-//line alert.qtpl:198
+//line alert.qtpl:211
 	qw422016 := qt422016.AcquireWriter(qq422016)
-//line alert.qtpl:198
+//line alert.qtpl:211
 	StreamAlertToVMI(qw422016, o)
-//line alert.qtpl:198
+//line alert.qtpl:211
 	qt422016.ReleaseWriter(qw422016)
-//line alert.qtpl:198
+//line alert.qtpl:211
 }
 
-//line alert.qtpl:198
+//line alert.qtpl:211
 func AlertToVMI(o interface{}) string {
-//line alert.qtpl:198
+//line alert.qtpl:211
 	qb422016 := qt422016.AcquireByteBuffer()
-//line alert.qtpl:198
+//line alert.qtpl:211
 	WriteAlertToVMI(qb422016, o)
-//line alert.qtpl:198
+//line alert.qtpl:211
 	qs422016 := string(qb422016.B)
-//line alert.qtpl:198
+//line alert.qtpl:211
 	qt422016.ReleaseByteBuffer(qb422016)
-//line alert.qtpl:198
+//line alert.qtpl:211
 	return qs422016
-//line alert.qtpl:198
+//line alert.qtpl:211
 }
 
 // # AlertToVmim finds a VirtualMachineInstanceMigration from alert labels.
@@ -853,51 +912,51 @@ func AlertToVMI(o interface{}) string {
 //   classes: [VirtualMachineInstanceMigration.kubevirt.io]
 //
 
-//line alert.qtpl:209
+//line alert.qtpl:222
 func StreamAlertToVmim(qw422016 *qt422016.Writer, o interface{}) {
-//line alert.qtpl:209
+//line alert.qtpl:222
 	qw422016.N().S(`
 `)
-//line alert.qtpl:210
+//line alert.qtpl:223
 	l := o.(*alert.Object).Labels
 
-//line alert.qtpl:210
+//line alert.qtpl:223
 	qw422016.N().S(`
 k8s:VirtualMachineInstanceMigration.kubevirt.io:{"namespace":`)
-//line alert.qtpl:211
+//line alert.qtpl:224
 	qw422016.N().Q(Require(l["namespace"]))
-//line alert.qtpl:211
+//line alert.qtpl:224
 	qw422016.N().S(`,"name":`)
-//line alert.qtpl:211
+//line alert.qtpl:224
 	qw422016.N().Q(Require(l["vmim"]))
-//line alert.qtpl:211
+//line alert.qtpl:224
 	qw422016.N().S(`}
 `)
-//line alert.qtpl:212
+//line alert.qtpl:225
 }
 
-//line alert.qtpl:212
+//line alert.qtpl:225
 func WriteAlertToVmim(qq422016 qtio422016.Writer, o interface{}) {
-//line alert.qtpl:212
+//line alert.qtpl:225
 	qw422016 := qt422016.AcquireWriter(qq422016)
-//line alert.qtpl:212
+//line alert.qtpl:225
 	StreamAlertToVmim(qw422016, o)
-//line alert.qtpl:212
+//line alert.qtpl:225
 	qt422016.ReleaseWriter(qw422016)
-//line alert.qtpl:212
+//line alert.qtpl:225
 }
 
-//line alert.qtpl:212
+//line alert.qtpl:225
 func AlertToVmim(o interface{}) string {
-//line alert.qtpl:212
+//line alert.qtpl:225
 	qb422016 := qt422016.AcquireByteBuffer()
-//line alert.qtpl:212
+//line alert.qtpl:225
 	WriteAlertToVmim(qb422016, o)
-//line alert.qtpl:212
+//line alert.qtpl:225
 	qs422016 := string(qb422016.B)
-//line alert.qtpl:212
+//line alert.qtpl:225
 	qt422016.ReleaseByteBuffer(qb422016)
-//line alert.qtpl:212
+//line alert.qtpl:225
 	return qs422016
-//line alert.qtpl:212
+//line alert.qtpl:225
 }
