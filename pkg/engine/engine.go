@@ -153,7 +153,7 @@ func (e *Engine) Get(ctx context.Context, query korrel8r.Query, constraint *korr
 		metricStoreQueries.Add(ctx, 1, attrs)
 		metricStoreQueryDuration.Record(ctx, latency.Seconds(), attrs)
 		if err != nil {
-			log.V(2).Info("Get failed", "error", err, "query", query, "constraint", constraint, "latency", latency)
+			log.V(5).Info("Get failed", "error", err, "query", query, "constraint", constraint, "latency", latency)
 		} else {
 			log.V(5).Info("Get", "count", count, "query", query, "constraint", constraint, "latency", latency)
 		}
