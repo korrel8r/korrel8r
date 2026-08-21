@@ -2,6 +2,8 @@
 
 package config
 
+import "time"
+
 // Config defines the configuration for an instance of korrel8r.
 // Configuration files may be JSON or YAML.
 type Config struct {
@@ -145,7 +147,16 @@ type Tuning struct {
 	// WARNING: This disables per-user session isolation and should only be used for development or testing.
 	UnsafeSharedSession bool `json:"unsafeSharedSession,omitempty"`
 
-	// StoreRetries limits how many times a store connection can fail before giving up.
-	// Default is 3 if omitted or 0.
-	StoreRetries int `json:"storeRetries,omitempty"`
+	// StoreRetryInterval is the minimum time between store re-creation attempts after an error.
+	// This prevents a storm of expensive re-creation (DNS lookups, API discovery) on every failed query.
+	// Default is 10s if omitted or 0.
+	StoreRetryInterval Duration `json:"storeRetryInterval,omitempty"`
+}
+
+// GetStoreRetryInterval applies the default value
+func (t *Tuning) GetStoreRetryInterval() time.Duration {
+	if d := time.Duration(t.StoreRetryInterval); d > 0 {
+		return d
+	}
+	return time.Second * 10
 }
