@@ -135,9 +135,10 @@ func newPrometheusClient(u *url.URL, hc *http.Client) (v1.API, error) {
 }
 
 func (s Store) Get(ctx context.Context, query korrel8r.Query, c *korrel8r.Constraint, result korrel8r.Appender) error {
-	q, err := impl.TypeAssert[*Query](query)
-	if err != nil {
-		return err
+	// Type assertion errors are not store errors, treat as "not found".
+	q, ok := query.(*Query)
+	if !ok {
+		return nil
 	}
 
 	promq, t, err := preparePromQL(q, c)

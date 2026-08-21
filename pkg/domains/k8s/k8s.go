@@ -20,6 +20,7 @@ import (
 	"github.com/korrel8r/korrel8r/pkg/unique"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -292,17 +293,23 @@ func (s *Store) Client() client.WithWatch { return s.c }
 func (s *Store) Config() *rest.Config     { return s.cfg }
 
 func (s *Store) Get(ctx context.Context, query korrel8r.Query, c *korrel8r.Constraint, result korrel8r.Appender) (err error) {
-	// Skip the call if the class is not known
-	class, err := impl.TypeAssert[Class](query.Class())
-	if err != nil {
-		return err
+	// "not found" is not an error, return nil for not found errors
+	defer func() {
+		if apierrors.IsNotFound(err) || meta.IsNoMatchError(err) {
+			err = nil
+		}
+	}()
+	// Type assertion errors are not store errors, treat as "not found".
+	q, ok := query.(*Query)
+	if !ok {
+		return nil
+	}
+	class, ok := query.Class().(Class)
+	if !ok {
+		return nil
 	}
 	gvk := class.GVK()
 	if _, err := s.c.RESTMapper().RESTMapping(gvk.GroupKind(), gvk.Version); err != nil {
-		return err
-	}
-	q, err := impl.TypeAssert[*Query](query)
-	if err != nil {
 		return err
 	}
 	appender := korrel8r.AppenderFunc(func(objs ...korrel8r.Object) {
@@ -317,9 +324,6 @@ func (s *Store) Get(ctx context.Context, query korrel8r.Query, c *korrel8r.Const
 		err = s.getObject(ctx, q, appender)
 	} else {
 		err = s.getList(ctx, q, appender, c)
-	}
-	if apierrors.IsNotFound(err) {
-		err = nil // Finding nothing is not an error.
 	}
 	return err
 }

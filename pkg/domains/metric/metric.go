@@ -146,9 +146,10 @@ type response struct {
 }
 
 func (s *Store) Get(ctx context.Context, kquery korrel8r.Query, c *korrel8r.Constraint, result korrel8r.Appender) error {
-	query, err := impl.TypeAssert[Query](kquery)
-	if err != nil {
-		return err
+	// Type assertion errors are not store errors, treat as "not found".
+	query, ok := kquery.(Query)
+	if !ok {
+		return nil
 	}
 
 	baseURL := prometheus.EffectiveURL(ctx, s.baseURL, s.k8sClient).JoinPath("/api/v1")

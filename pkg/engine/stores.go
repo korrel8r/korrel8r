@@ -84,15 +84,15 @@ func (s *storeHolder) Get(ctx context.Context, q korrel8r.Query, constraint *kor
 		defer s.lock.Lock()
 		err = store.Get(ctx, q, constraint, result)
 	}()
-	if err != nil {
+	// Only reset if s.Store is still the same instance that failed.
+	// Another goroutine may have already replaced it while the lock was released.
+	if err != nil && s.Store == store && s.Original != nil {
 		s.recordErrorLH(err)
-		if s.Store != nil && s.Original != nil {
-			if c, _ := s.Store.(io.Closer); c != nil {
-				_ = c.Close()
-			}
-			s.Store = nil
-			s.retryAfter = time.Now().Add(s.Engine.Tuning.GetStoreRetryInterval())
+		if c, _ := s.Store.(io.Closer); c != nil {
+			_ = c.Close()
 		}
+		s.Store = nil
+		s.retryAfter = time.Now().Add(s.Engine.Tuning.GetStoreRetryInterval())
 	}
 
 	return err

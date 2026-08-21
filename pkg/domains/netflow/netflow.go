@@ -168,9 +168,10 @@ type store struct {
 
 func (store) Domain() korrel8r.Domain { return Domain }
 func (s *store) Get(ctx context.Context, query korrel8r.Query, c *korrel8r.Constraint, result korrel8r.Appender) error {
-	q, err := impl.TypeAssert[Query](query)
-	if err != nil {
-		return err
+	// Type assertion errors are not store errors, treat as "not found".
+	q, ok := query.(Query)
+	if !ok {
+		return nil
 	}
 	return s.Client.Get(ctx, q.Data(), c, func(e *loki.Log) { result.Append(NewObject(e)) })
 }
@@ -179,9 +180,10 @@ type stackStore struct{ store }
 
 func (stackStore) Domain() korrel8r.Domain { return Domain }
 func (s *stackStore) Get(ctx context.Context, query korrel8r.Query, c *korrel8r.Constraint, result korrel8r.Appender) error {
-	q, err := impl.TypeAssert[Query](query)
-	if err != nil {
-		return err
+	// Type assertion errors are not store errors, treat as "not found".
+	q, ok := query.(Query)
+	if !ok {
+		return nil
 	}
 
 	return s.GetStack(ctx, q.Data(), "network", c, func(e *loki.Log) { result.Append(NewObject(e)) })

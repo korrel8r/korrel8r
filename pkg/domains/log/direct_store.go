@@ -16,10 +16,10 @@ import (
 	"github.com/korrel8r/korrel8r/pkg/domains/k8s"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r/impl"
-	"github.com/korrel8r/korrel8r/pkg/ptr"
 	"github.com/korrel8r/korrel8r/pkg/result"
 	"golang.org/x/sync/errgroup"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 )
@@ -39,9 +39,15 @@ func newDirectStore(k8sStore *k8s.Store) (*directStore, error) {
 }
 
 func (s *directStore) Get(ctx context.Context, query korrel8r.Query, constraint *korrel8r.Constraint, logResult korrel8r.Appender) (err error) {
-	q, err := impl.TypeAssert[*Query](query)
-	if err != nil {
-		return err
+	defer func() {
+		if errors.IsNotFound(err) {
+			err = nil // Finding nothing is not an error
+		}
+	}()
+	// Type assertion errors are not store errors, treat as "not found".
+	q, ok := query.(*Query)
+	if !ok {
+		return nil
 	}
 	if q.direct == nil {
 		return fmt.Errorf("direct log store cannot execute Loki query: %v", query)
@@ -77,7 +83,7 @@ func (s *directStore) Get(ctx context.Context, query korrel8r.Query, constraint 
 		}
 		var limit *int64
 		if constraint.GetLimit() > 0 {
-			limit = ptr.To(int64(constraint.GetLimit()))
+			limit = new(int64(constraint.GetLimit()))
 		}
 		for _, c := range pod.Spec.Containers {
 			if !q.direct.IsContainerSelected(c.Name) {
@@ -104,7 +110,10 @@ func (s *directStore) Get(ctx context.Context, query korrel8r.Query, constraint 
 					AttrKubernetesNamespaceName: pod.GetNamespace(),
 					AttrKubernetesContainerName: c.Name,
 				}
-				return s.readPodLogs(ctx, stream, out, attrs, constraint, count)
+				// Treat a failure as a "not found" condition, not an error.
+				// Don't fail the entire k8s store for a local pod problem.
+				_ = s.readPodLogs(ctx, stream, out, attrs, constraint, count)
+				return nil
 			})
 		}
 	}
@@ -129,12 +138,6 @@ func (s *directStore) readPodLogs(ctx context.Context, stream io.ReadCloser, out
 	// Scan the log lines, create log.Object
 	scanner := bufio.NewScanner(stream)
 	for scanner.Scan() {
-		if scanner.Err() != nil {
-			if scanner.Err() == io.EOF {
-				return ctx.Err()
-			}
-			return err
-		}
 		line := scanner.Text()
 		o := maps.Clone(attrs)
 		o[AttrBody] = line
@@ -160,7 +163,7 @@ func (s *directStore) readPodLogs(ctx context.Context, stream io.ReadCloser, out
 		}
 		out <- o
 	}
-	return nil
+	return scanner.Err()
 }
 
 type ContainerSelector struct {
