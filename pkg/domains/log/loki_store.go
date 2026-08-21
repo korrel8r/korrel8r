@@ -26,9 +26,10 @@ func NewLokiStore(base *url.URL, h *http.Client) korrel8r.Store {
 }
 
 func (s *lokiStore) Get(ctx context.Context, query korrel8r.Query, constraint *korrel8r.Constraint, r korrel8r.Appender) error {
-	q, err := impl.TypeAssert[*Query](query)
-	if err != nil {
-		return err
+	// Type assertion errors are not store errors, treat as "not found".
+	q, ok := query.(*Query)
+	if !ok {
+		return nil
 	}
 	return s.Client.Get(ctx, parseJSON(q.logQL), constraint, func(l *loki.Log) { r.Append(newObject(l)) })
 }
@@ -41,9 +42,10 @@ func NewLokiStackStore(base *url.URL, h *http.Client) korrel8r.Store {
 }
 
 func (s *lokiStackStore) Get(ctx context.Context, query korrel8r.Query, constraint *korrel8r.Constraint, r korrel8r.Appender) error {
-	q, err := impl.TypeAssert[*Query](query)
-	if err != nil {
-		return err
+	// Type assertion errors are not store errors, treat as "not found".
+	q, ok := query.(*Query)
+	if !ok {
+		return nil
 	}
 	return s.GetStack(ctx, parseJSON(q.logQL), string(q.class), constraint, func(l *loki.Log) { r.Append(newObject(l)) })
 }
