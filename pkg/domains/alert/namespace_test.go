@@ -85,6 +85,15 @@ func TestExtractNamespacesFromQuery(t *testing.T) {
 			expected: map[string]bool{"openshift-monitoring": true},
 		},
 		{
+			name: "otel k8s_namespace_name",
+			query: Query{
+				Parsed: []map[string]string{
+					{"k8s_namespace_name": "myreadings-dev", "k8s_pod_name": "foo"},
+				},
+			},
+			expected: map[string]bool{"myreadings-dev": true},
+		},
+		{
 			name: "empty query",
 			query: Query{
 				Parsed: []map[string]string{},
