@@ -134,8 +134,8 @@ func TestTraverserCycle(t *testing.T) {
 		start := Start{Class: b.Class("d:a"), Objects: []korrel8r.Object{0}}
 		g, err := Neighbors(context.Background(), e, start, 2)
 		require.NoError(t, err)
-		assert.ElementsMatch(t, []string{"ab(d:a->d:b)", "ba(d:b->d:a)"}, g.LineStrings())
-		assert.ElementsMatch(t, []string{"d:a[0,2]", "d:b[1]"}, g.NodeStrings(true))
+		assert.ElementsMatch(t, []string{"ab(d:a->d:b)"}, g.LineStrings())
+		assert.ElementsMatch(t, []string{"d:a[0]", "d:b[1]"}, g.NodeStrings(true))
 	})
 
 	t.Run("three_node_cycle", func(t *testing.T) {
@@ -151,8 +151,8 @@ func TestTraverserCycle(t *testing.T) {
 		start := Start{Class: b.Class("d:a"), Objects: []korrel8r.Object{0}}
 		g, err := Neighbors(context.Background(), e, start, 3)
 		require.NoError(t, err)
-		assert.ElementsMatch(t, []string{"ab(d:a->d:b)", "bc(d:b->d:c)", "ca(d:c->d:a)"}, g.LineStrings())
-		assert.ElementsMatch(t, []string{"d:a[0,3]", "d:b[1]", "d:c[2]"}, g.NodeStrings(true))
+		assert.ElementsMatch(t, []string{"ab(d:a->d:b)", "bc(d:b->d:c)"}, g.LineStrings())
+		assert.ElementsMatch(t, []string{"d:a[0]", "d:b[1]", "d:c[2]"}, g.NodeStrings(true))
 	})
 
 	t.Run("cycle_with_branch", func(t *testing.T) {
@@ -172,11 +172,10 @@ func TestTraverserCycle(t *testing.T) {
 		assert.ElementsMatch(t, []string{
 			"ab(d:a->d:b)",
 			"bc(d:b->d:c)",
-			"ca(d:c->d:a)",
 			"ad(d:a->d:d)",
 		}, g.LineStrings())
 		assert.ElementsMatch(t, []string{
-			"d:a[0,3]", "d:b[1]", "d:c[2]", "d:d[4]",
+			"d:a[0]", "d:b[1]", "d:c[2]", "d:d[4]",
 		}, g.NodeStrings(true))
 	})
 }
@@ -210,8 +209,10 @@ func TestTraverserCycleUniqueQueries(t *testing.T) {
 		defer cancel()
 		start := Start{Class: b.Class("d:a"), Objects: []korrel8r.Object{"start"}}
 		g, err := Neighbors(ctx, e, start, 5)
-		require.NoError(t, err, "should terminate at depth limit without context cancellation")
-		assert.NotEmpty(t, g.NodeStrings(true), "should have results")
+		require.NoError(t, err, "should terminate without context cancellation")
+		// ba rule is skipped because it returns to the start node.
+		assert.Len(t, g.LineStrings(), 1, "only ab line, ba is skipped")
+		assert.Len(t, g.NodeStrings(true), 2, "only start and one neighbor")
 		t.Logf("nodes: %v", g.NodeStrings(true))
 		t.Logf("lines: %v", g.LineStrings())
 	})
@@ -226,6 +227,57 @@ func TestTraverserCycleUniqueQueries(t *testing.T) {
 		assert.NotEmpty(t, g.NodeStrings(true), "should have results")
 		t.Logf("nodes: %v", g.NodeStrings(true))
 		t.Logf("lines: %v", g.LineStrings())
+	})
+}
+
+func TestTraverserNoStartCycle(t *testing.T) {
+	t.Run("Neighbors_skips_back_to_start", func(t *testing.T) {
+		b := mock.NewBuilder("d")
+		r := b.Rule
+		e, err := engine.Build().Rules(
+			r("ab", "d:a", "d:b", b.Query("d:b", "ab", 1)),
+			r("bc", "d:b", "d:c", b.Query("d:c", "bc", 2)),
+			r("ca", "d:c", "d:a", b.Query("d:a", "ca", 3)),
+			r("cd", "d:c", "d:d", b.Query("d:d", "cd", 4)),
+		).Stores(b.Store("d", nil)).Engine()
+		require.NoError(t, err)
+
+		start := Start{Class: b.Class("d:a"), Objects: []korrel8r.Object{0}}
+		g, err := Neighbors(context.Background(), e, start, 4)
+		require.NoError(t, err)
+		// ca rule is skipped: it returns to the start class.
+		// cd rule fires: it goes to a new class.
+		assert.ElementsMatch(t, []string{
+			"ab(d:a->d:b)",
+			"bc(d:b->d:c)",
+			"cd(d:c->d:d)",
+		}, g.LineStrings())
+		assert.ElementsMatch(t, []string{
+			"d:a[0]", "d:b[1]", "d:c[2]", "d:d[4]",
+		}, g.NodeStrings(true))
+	})
+
+	t.Run("Goals_skips_back_to_start", func(t *testing.T) {
+		b := mock.NewBuilder("d")
+		r := b.Rule
+		e, err := engine.Build().Rules(
+			r("ab", "d:a", "d:b", b.Query("d:b", "ab", 1)),
+			r("ba", "d:b", "d:a", b.Query("d:a", "ba", 2)),
+			r("bc", "d:b", "d:c", b.Query("d:c", "bc", 3)),
+		).Stores(b.Store("d", nil)).Engine()
+		require.NoError(t, err)
+
+		start := Start{Class: b.Class("d:a"), Objects: []korrel8r.Object{0}}
+		g, err := Goals(context.Background(), e, start, []korrel8r.Class{b.Class("d:c")})
+		require.NoError(t, err)
+		// ba rule is skipped: it returns to the start class.
+		assert.ElementsMatch(t, []string{
+			"ab(d:a->d:b)",
+			"bc(d:b->d:c)",
+		}, g.LineStrings())
+		assert.ElementsMatch(t, []string{
+			"d:a[0]", "d:b[1]", "d:c[3]",
+		}, g.NodeStrings(true))
 	})
 }
 

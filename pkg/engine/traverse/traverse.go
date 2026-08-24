@@ -61,7 +61,9 @@ func Neighbors(ctx context.Context, e *engine.Engine, start Start, depth int) (*
 	if err != nil {
 		return nil, err
 	}
-	return newTraverser(e, shared.Data, scope, start.Constraint, depth).run(ctx, start)
+	t := newTraverser(e, shared.Data, scope, start.Constraint, depth)
+	t.skipStartClass = start.Class
+	return t.run(ctx, start)
 }
 
 // neighborScope returns the lines reachable within maxDepth BFS hops from start.
@@ -190,6 +192,7 @@ type traverser struct {
 	data       *graph.Data
 	constraint *korrel8r.Constraint
 	maxDepth   int // -1 for unlimited
+	skipStartClass korrel8r.Class
 
 	// Read-only after init
 	nodes      map[korrel8r.Class]*node
@@ -481,6 +484,10 @@ func (t *traverser) applyRules(ctx context.Context, n *node, nextDepth int) {
 			log.V(4).Info("Rule applied", "name", r.Name(), "start", class, "error", err, "queries", len(queries))
 			metricRules.Add(ctx, 1, t.ruleMetric[r])
 			for _, q := range queries {
+				if t.skipStartClass != nil && q.Class() == t.skipStartClass {
+					log.V(5).Info("Skipping query to start class", "rule", r.Name(), "query", q)
+					continue
+				}
 				key := lineKey{start: class, rule: r, goal: q.Class()}
 				if line := t.lines[key]; line != nil {
 					t.dedupAndSend(ctx, queryLine{Query: q, Line: line, key: key, depth: nextDepth})
