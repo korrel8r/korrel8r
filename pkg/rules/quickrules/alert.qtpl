@@ -14,8 +14,13 @@ goal:
   classes: [Deployment.apps]
 
 {% func AlertToDeployment(o interface{}) %}
-{% code l := o.(*alert.Object).Labels %}
-k8s:Deployment.apps:{"namespace":{%q= Require(l["namespace"]) %},"name":{%q= Require(l["deployment"]) %}}
+{% code
+	l := o.(*alert.Object).Labels
+	ns := Default(l["namespace"], l["k8s_namespace_name"])
+	name := Default(l["deployment"], l["k8s_deployment_name"])
+	RequireAll(ns, name)
+%}
+k8s:Deployment.apps:{"namespace":{%q= ns %},"name":{%q= name %}}
 {% endfunc %}
 
 # AlertToPod creates a k8s Pod query from the pod labels of an alert.
@@ -61,8 +66,13 @@ goal:
   classes: [DaemonSet.apps]
 
 {% func AlertToDaemonSet(o interface{}) %}
-{% code l := o.(*alert.Object).Labels %}
-k8s:DaemonSet.apps:{"namespace":{%q= Require(l["namespace"]) %},"name":{%q= Require(l["daemonset"]) %}}
+{% code
+	l := o.(*alert.Object).Labels
+	ns := Default(l["namespace"], l["k8s_namespace_name"])
+	name := Default(l["daemonset"], l["k8s_daemonset_name"])
+	RequireAll(ns, name)
+%}
+k8s:DaemonSet.apps:{"namespace":{%q= ns %},"name":{%q= name %}}
 {% endfunc %}
 
 # AlertToStatefulSet creates a k8s StatefulSet query from alert labels.
@@ -75,8 +85,13 @@ goal:
   classes: [StatefulSet.apps]
 
 {% func AlertToStatefulSet(o interface{}) %}
-{% code l := o.(*alert.Object).Labels %}
-k8s:StatefulSet.apps:{"namespace":{%q= Require(l["namespace"]) %},"name":{%q= Require(l["statefulset"]) %}}
+{% code
+	l := o.(*alert.Object).Labels
+	ns := Default(l["namespace"], l["k8s_namespace_name"])
+	name := Default(l["statefulset"], l["k8s_statefulset_name"])
+	RequireAll(ns, name)
+%}
+k8s:StatefulSet.apps:{"namespace":{%q= ns %},"name":{%q= name %}}
 {% endfunc %}
 
 # AlertToMetric creates a metric query from the alert's PromQL expression.
@@ -143,6 +158,19 @@ goal:
 alert:alert:{"namespace":{%q= ns %},"deployment":{%q= name %}}
 {% endfunc %}
 
+# DeploymentToAlertOtel finds OTEL-based alerts related to a deployment.
+name: DeploymentToAlertOtel
+start:
+  domain: k8s
+  classes: [Deployment.apps]
+goal:
+  domain: alert
+
+{% func DeploymentToAlertOtel(o interface{}) %}
+{% code _, _, ns, name, _ := k8sMetadata(o); RequireAll(ns, name) %}
+alert:alert:{"k8s_namespace_name":{%q= ns %},"k8s_deployment_name":{%q= name %}}
+{% endfunc %}
+
 # PodDisruptionBudgetToAlert finds alerts related to a PodDisruptionBudget.
 name: PodDisruptionBudgetToAlert
 start:
@@ -169,6 +197,19 @@ goal:
 alert:alert:{"namespace":{%q= ns %},"daemonset":{%q= name %}}
 {% endfunc %}
 
+# DaemonSetToAlertOtel finds OTEL-based alerts related to a DaemonSet.
+name: DaemonSetToAlertOtel
+start:
+  domain: k8s
+  classes: [DaemonSet.apps]
+goal:
+  domain: alert
+
+{% func DaemonSetToAlertOtel(o interface{}) %}
+{% code _, _, ns, name, _ := k8sMetadata(o); RequireAll(ns, name) %}
+alert:alert:{"k8s_namespace_name":{%q= ns %},"k8s_daemonset_name":{%q= name %}}
+{% endfunc %}
+
 # StatefulSetToAlert finds alerts related to a StatefulSet.
 name: StatefulSetToAlert
 start:
@@ -180,6 +221,19 @@ goal:
 {% func StatefulSetToAlert(o interface{}) %}
 {% code _, _, ns, name, _ := k8sMetadata(o); RequireAll(ns, name) %}
 alert:alert:{"namespace":{%q= ns %},"statefulset":{%q= name %}}
+{% endfunc %}
+
+# StatefulSetToAlertOtel finds OTEL-based alerts related to a StatefulSet.
+name: StatefulSetToAlertOtel
+start:
+  domain: k8s
+  classes: [StatefulSet.apps]
+goal:
+  domain: alert
+
+{% func StatefulSetToAlertOtel(o interface{}) %}
+{% code _, _, ns, name, _ := k8sMetadata(o); RequireAll(ns, name) %}
+alert:alert:{"k8s_namespace_name":{%q= ns %},"k8s_statefulset_name":{%q= name %}}
 {% endfunc %}
 
 # AlertToVM finds a VirtualMachine from alert labels.

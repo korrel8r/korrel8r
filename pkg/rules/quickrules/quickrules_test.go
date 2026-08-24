@@ -82,6 +82,11 @@ func TestRules(t *testing.T) {
 			want:  []string{`k8s:Deployment.v1.apps:{"namespace":"foo","name":"bar"}`},
 		},
 		{
+			name:  "AlertToDeployment",
+			start: &alert.Object{Labels: map[string]string{"k8s_namespace_name": "foo", "k8s_deployment_name": "bar"}},
+			want:  []string{`k8s:Deployment.v1.apps:{"namespace":"foo","name":"bar"}`},
+		},
+		{
 			name: "DependentToOwner",
 			start: k8s.Object{
 				"metadata": map[string]any{
