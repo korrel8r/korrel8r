@@ -17,5 +17,5 @@ labels:
     app.kubernetes.io/name: korrel8r
 images:
 - name: korrel8r
-  newName: quay.io/alanconway/korrel8r
-  newTag: 0.12.1-dev
+  newName: quay.io/korrel8r/korrel8r
+  newTag: 0.12.1

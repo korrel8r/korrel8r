@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [0.12.1] - 2026-08-26
+
+### Added
+- Rules relating operators.
+- `currentRule` template function for access to rule metadata in templates.
+- `--metric-file` flag to dump metrics to file after run.
+- Compile rules with quicktemplate for faster, type-safe rule evaluation.
+
+### Fixed
+- Treat "invalid-query" as "not-found", not an error.
+- Don't revisit start node in neighbor graphs (#431).
+
+### Performance
+- Allow concurrent store calls, improve search performance.
+- Delayed store retry, avoid reconnect storms on broken store.
+
+### Changed
+- Moved all existing rules to quickrules.
+- Changed cluster test marker from `Cluster` to `_cluster`.
+
 ## [0.12.0] - 2026-08-06
 
 ### Added
