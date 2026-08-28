@@ -17,7 +17,7 @@ jobs:
     timeout-minutes: 30         # Container builds can take time
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           # Get history for reliable git operations
           fetch-depth: 0

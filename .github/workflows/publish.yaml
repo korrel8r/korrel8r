@@ -14,7 +14,7 @@ jobs:
     outputs:
       should-deploy: ${{ steps.status.outputs.changes != '0' }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           # Get full history for reliable git operations
           fetch-depth: 0
@@ -31,12 +31,12 @@ jobs:
              echo changes=1 >> $GITHUB_OUTPUT
           fi
 
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@v7
         if: steps.status.outputs.changes != '0'
         with:
           go-version: "1.26"
 
-      - uses: actions/cache@v5
+      - uses: actions/cache@v6
         if: steps.status.outputs.changes != '0'
         with:
           path: |
