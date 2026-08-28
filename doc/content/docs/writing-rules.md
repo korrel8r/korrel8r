@@ -4,7 +4,7 @@ description: Adding custom correlation rules
 weight: 8
 ---
 
-Korrel8r comes with a comprehensive set of [rules](../introduction/#rules-connect-data) for correlating
+Korrel8r comes with a comprehensive set of [rules](../introduction/#rules) for correlating
 Kubernetes resources and observability signals.
 You can add your own rules to handle custom relationships -- for example,
 correlating a custom resource with its logs or metrics.

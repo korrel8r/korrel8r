@@ -159,6 +159,26 @@ blockquote {
 
 blockquote p:last-child { margin-bottom: 0; }
 
+.alert {
+  border-left: 3px solid var(--border);
+  padding: 0.5rem 1rem;
+  background: var(--bg-alt);
+  border-radius: 0 var(--radius) var(--radius) 0;
+  margin-bottom: 1rem;
+}
+.alert p:last-child { margin-bottom: 0; }
+.alert-title { font-weight: 600; margin-bottom: 0.25rem; }
+.alert-note { border-left-color: var(--link); }
+.alert-note .alert-title { color: var(--link); }
+.alert-tip { border-left-color: #1a7f37; }
+.alert-tip .alert-title { color: #1a7f37; }
+.alert-important { border-left-color: #8250df; }
+.alert-important .alert-title { color: #8250df; }
+.alert-warning { border-left-color: #9a6700; }
+.alert-warning .alert-title { color: #9a6700; }
+.alert-caution { border-left-color: #cf222e; }
+.alert-caution .alert-title { color: #cf222e; }
+
 table {
   width: 100%;
   border-collapse: collapse;
