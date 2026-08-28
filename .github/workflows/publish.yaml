@@ -1,8 +1,8 @@
 name: Documentation
 
 on:
-  schedule:
-    - cron: "0 5 * * *" # Run daily at midnight EST (5 AM UTC)
+  push:
+    branches: ["main"]
   workflow_dispatch: # Allow manual triggers
 
 jobs:
@@ -23,10 +23,12 @@ jobs:
       - name: Check for changes
         id: status
         run: |
-          CHANGES="$(git log --since='24 hours ago' --oneline | wc -l)"
-          echo "changes=$CHANGES" >> $GITHUB_OUTPUT
-          if [ "$CHANGES" = '0' ]; then
-             echo "::notice::No changes in the last 24 hours, skipping build"
+          DIFF=$(git diff HEAD^ --name-only -- doc)
+          if [ -z "$DIFF" ]; then
+             echo changes=0 >> $GITHUB_OUTPUT
+             echo "::notice::No doc changes, skipping publish"
+          else
+             echo changes=1 >> $GITHUB_OUTPUT
           fi
 
       - uses: actions/setup-go@v6

@@ -23,4 +23,4 @@ RUN true
 
 # Create devspace workdir
 RUN mkdir -p /.devspace
-RUN chmod -R g+rw /.devspace /src
+RUN chmod -R ug+rw /.devspace /src
