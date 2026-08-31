@@ -13,6 +13,8 @@ pipelines:
 
 vars:
   REGISTRY_BASE:
+  DEVSPACE_IMAGE:
+    command: bash -c "cat .devspace/devimage 2>/dev/null || echo $REGISTRY_BASE/korrel8r:devspace"
 dev:
   # app container replaces the COO's korrel8r deployment with an auto-rebuild container.
   # Changes to the local source are synced and cause a rebuild and restart of the container.
@@ -20,7 +22,7 @@ dev:
     # Find the korrel8r container by label selector.
     labelSelector: { app.kubernetes.io/instance: korrel8r }
     container: korrel8r
-    devImage: ${REGISTRY_BASE}/korrel8r:devspace
+    devImage: ${DEVSPACE_IMAGE}
     command:
       - go
       - run

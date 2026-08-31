@@ -18,9 +18,6 @@ COPY internal internal
 
 RUN --mount=type=cache,target="/root/.cache/go-build" CGO_ENABLED=1 GOOS=linux GOFLAGS="-mod=readonly -tags=strictfipsruntime,openssl" GOEXPERIMENT=strictfipsruntime go build -tags netgo ./cmd/korrel8r
 
-# Commit build cache
-RUN true
-
 # Build a minimal runtime image
 FROM registry.access.redhat.com/ubi10-micro
 

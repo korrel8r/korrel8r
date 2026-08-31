@@ -172,10 +172,13 @@ release:
 	$(MAKE) image-latest
 	@echo Released $(VERSION) to $(REGISTRY_BASE)
 
-DEVSPACE_IMAGE?="$(REGISTRY_BASE)/korrel8r:devspace"
+DEVSPACE_TAG?=devspace-$(shell git rev-parse --short HEAD)-$(shell sha256sum go.sum | cut -c1-8)
+DEVSPACE_IMAGE?=$(REGISTRY_BASE)/korrel8r:$(DEVSPACE_TAG)
 devspace-image:	kustomize-edit ## Rebuild the devspace base image
-	$(IMGTOOL) build --tag=$(DEVSPACE_IMAGE) -f devspace.Containerfile
+	$(IMGTOOL) build --tag=$(DEVSPACE_IMAGE) -f devspace.Containerfile .
 	$(IMGTOOL) push $(DEVSPACE_IMAGE)
+	@mkdir -p .devspace
+	@echo $(DEVSPACE_IMAGE) > .devspace/devimage
 
 ## Documentation rules
 
