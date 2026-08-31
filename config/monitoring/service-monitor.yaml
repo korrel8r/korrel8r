@@ -1,0 +1,19 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: korrel8r
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: korrel8r
+  endpoints:
+    - port: https
+      path: /metrics
+      interval: 30s
+      scheme: https
+      tlsConfig:
+        ca:
+          configMap:
+            name: openshift-service-ca.crt
+            key: service-ca.crt
+        serverName: korrel8r.korrel8r.svc

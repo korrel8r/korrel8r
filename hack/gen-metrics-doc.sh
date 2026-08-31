@@ -7,8 +7,7 @@ set -euo pipefail
 cd "$(git rev-parse --show-toplevel)"
 
 cat <<'HEADER'
-Korrel8r exposes [Prometheus](https://prometheus.io/) metrics at `/metrics`.
-Scrape this endpoint or use the `--otel-collector` flag to push metrics via OTLP.
+Korrel8r automatically exposes a metrics scrape endpoint for [Prometheus](https://prometheus.io/) at `/metrics`. Alternatively, run with the `--otel-collector` flag to push metrics via OTLP.
 
 HEADER
 
@@ -63,3 +62,74 @@ find pkg internal/pkg -name metrics.go -print0 | sort -z | while IFS= read -r -d
 		echo
 	fi
 done
+
+cat <<'EXAMPLES'
+## Prometheus metric names
+
+OTel metric names are converted for Prometheus export:
+dots become underscores, counters get a `_total` suffix,
+and histogram units are appended (e.g. `_seconds` for unit `s`).
+
+For example `engine.store.get` becomes `engine_store_get_total`,
+and `engine.store.get.duration` becomes `engine_store_get_duration_seconds`.
+
+## Example PromQL queries
+
+Store get rate per second by domain:
+
+```promql
+rate(engine_store_get_total[5m])
+```
+
+Store get error ratio by domain:
+
+```promql
+  rate(engine_store_get_total{status="error"}[5m])
+/ rate(engine_store_get_total[5m])
+```
+
+Average store get latency by domain:
+
+```promql
+  rate(engine_store_get_duration_seconds_sum[5m])
+/ rate(engine_store_get_duration_seconds_count[5m])
+```
+
+P99 store get latency:
+
+```promql
+histogram_quantile(0.99, rate(engine_store_get_duration_seconds_bucket[5m]))
+```
+
+REST request rate by method and status:
+
+```promql
+rate(rest_requests_total[5m])
+```
+
+Average REST request latency:
+
+```promql
+  rate(rest_request_duration_seconds_sum[5m])
+/ rate(rest_request_duration_seconds_count[5m])
+```
+
+MCP tool call rate:
+
+```promql
+rate(mcp_tool_calls_total[5m])
+```
+
+Top 10 most-applied rules:
+
+```promql
+topk(10, increase(traverse_rules_total[1h]))
+```
+
+Graph traversal efficiency (duplicate queries as a fraction of total):
+
+```promql
+  rate(traverse_duplicate_queries_total[5m])
+/ rate(traverse_queries_total[5m])
+```
+EXAMPLES
