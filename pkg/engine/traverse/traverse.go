@@ -1,5 +1,4 @@
 // Copyright: This file is part of korrel8r, released under https://github.com/korrel8r/korrel8r/blob/main/LICENSE
-
 // Package traverse finds correlated objects by traversing a rule graph.
 //
 // The algorithm uses concurrent workers fed by a shared query channel:
@@ -143,11 +142,12 @@ type lineKey struct {
 
 // node holds mutable per-class state for the traversal overlay.
 type node struct {
-	mu        sync.Mutex
-	class     korrel8r.Class
-	result    result.Result
-	queries   graph.Queries
-	processed int // count of result objects already rule-applied
+	mu          sync.Mutex
+	class       korrel8r.Class
+	result      result.Result
+	queries     graph.Queries
+	processed   int // count of result objects already rule-applied
+	classMetric metric.MeasurementOption
 }
 
 // workQueue is an unbounded, mutex-protected FIFO queue.
@@ -203,7 +203,6 @@ type traverser struct {
 	nodes      map[korrel8r.Class]*node
 	rules      map[korrel8r.Class]unique.Set[korrel8r.Rule]
 	lines      map[lineKey]*graph.Line // immutable lines (for Rule access)
-	lineMetric map[*graph.Line]metric.MeasurementOption
 	ruleMetric map[korrel8r.Rule]metric.MeasurementOption
 
 	// Concurrent state
@@ -225,7 +224,6 @@ func newTraverser(e *engine.Engine, data *graph.Data, scopeLines []*graph.Line, 
 		rules:       map[korrel8r.Class]unique.Set[korrel8r.Rule]{},
 		lines:       map[lineKey]*graph.Line{},
 		lineQueries: map[lineKey]graph.Queries{},
-		lineMetric:  map[*graph.Line]metric.MeasurementOption{},
 		ruleMetric:  map[korrel8r.Rule]metric.MeasurementOption{},
 		work:        newWorkQueue(),
 		seen:        map[korrel8r.Query]struct{}{},
@@ -245,11 +243,6 @@ func newTraverser(e *engine.Engine, data *graph.Data, scopeLines []*graph.Line, 
 		if _, ok := t.lineQueries[key]; !ok {
 			t.lineQueries[key] = graph.Queries{}
 		}
-		if _, ok := t.lineMetric[l]; !ok {
-			t.lineMetric[l] = metric.WithAttributes(
-				attribute.String("rule", l.Rule.Name()),
-				attribute.String("start", start.String()))
-		}
 		if _, ok := t.ruleMetric[l.Rule]; !ok {
 			t.ruleMetric[l.Rule] = metric.WithAttributes(
 				attribute.String("rule", l.Rule.Name()))
@@ -266,6 +259,10 @@ func (t *traverser) getOrCreateNode(class korrel8r.Class) *node {
 			class:   class,
 			result:  result.New(class),
 			queries: graph.Queries{},
+			classMetric: metric.WithAttributes(
+				attribute.String("domain", class.Domain().Name()),
+				attribute.String("class", class.Name()),
+			),
 		}
 		t.nodes[class] = n
 	}
@@ -285,7 +282,7 @@ func (t *traverser) run(ctx context.Context, start Start) (*graph.Graph, error) 
 	for range numWorkers {
 		workerWg.Go(func() {
 			for ql, ok := t.work.get(); ok; ql, ok = t.work.get() {
-				t.handleQuery(ctx, ql)
+				t.handleQuery(ctx, &ql)
 			}
 		})
 	}
@@ -372,11 +369,7 @@ func (t *traverser) isDuplicate(ctx context.Context, ql queryLine) bool {
 	t.seenMu.Lock()
 	defer t.seenMu.Unlock()
 	if _, exists := t.seen[ql.Query]; exists {
-		if ql.Line != nil {
-			metricDuplicateQueries.Add(ctx, 1, t.lineMetric[ql.Line])
-		} else {
-			metricDuplicateQueries.Add(ctx, 1)
-		}
+		metricDuplicateQueries.Add(ctx, 1, t.nodes[ql.Query.Class()].classMetric)
 		return true
 	}
 	t.seen[ql.Query] = struct{}{}
@@ -384,7 +377,7 @@ func (t *traverser) isDuplicate(ctx context.Context, ql queryLine) bool {
 }
 
 // handleQuery processes a single queryLine: executes the query, adds results, applies rules.
-func (t *traverser) handleQuery(ctx context.Context, ql queryLine) {
+func (t *traverser) handleQuery(ctx context.Context, ql *queryLine) {
 	defer t.wg.Done()
 	if ctx.Err() != nil {
 		return
@@ -404,11 +397,7 @@ func (t *traverser) handleQuery(ctx context.Context, ql queryLine) {
 	_ = t.engine.Get(ctx, ql.Query, t.constraint, korrel8r.AppenderFunc(func(objects ...korrel8r.Object) {
 		results = append(results, objects...)
 	}))
-	if ql.Line != nil {
-		metricQueries.Add(ctx, 1, t.lineMetric[ql.Line])
-	} else {
-		metricQueries.Add(ctx, 1)
-	}
+	metricQueries.Add(ctx, 1, t.nodes[ql.Query.Class()].classMetric)
 
 	// Add unique new objects to node and record query.
 	// The captured resultList slice header is safe to read after unlock because:

@@ -8,6 +8,7 @@ resources:
 - namespace.yaml
 - service.yaml
 - serviceaccount.yaml
+- monitoring/service-monitor.yaml
 
 namespace: korrel8r
 

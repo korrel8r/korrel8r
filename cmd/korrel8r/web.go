@@ -96,7 +96,12 @@ var webCmd = &cobra.Command{
 			gin.SetMode(gin.ReleaseMode)
 		}
 		router := gin.New()
-		router.Use(gin.Recovery(), session.Middleware(sessions))
+		router.Use(gin.Recovery())
+
+		// metrics first, not subject to token-based auth
+		router.GET("/metrics", gin.WrapH(metricsHandler))
+		log.V(0).Info("Metrics endpoint", "path", "/metrics")
+		router.Use(session.Middleware(sessions))
 
 		if *restFlag {
 			must.Must1(rest.New(sessions, router))
@@ -112,9 +117,6 @@ var webCmd = &cobra.Command{
 			router.Any(mcp.StreamablePath, gin.WrapH(mcpSrv.HTTPHandler()))
 			log.V(0).Info("MCP Streamable endpoint", "path", mcp.StreamablePath)
 		}
-		router.GET("/metrics", gin.WrapH(metricsHandler))
-		log.V(0).Info("Metrics endpoint", "path", "/metrics")
-
 		s.Handler = router
 		if *httpprofileFlag {
 			rest.WebProfile(router)

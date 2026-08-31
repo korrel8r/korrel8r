@@ -33,7 +33,7 @@ spec:
               readOnly: true
               mountPath: /etc/secrets
           ports:
-            - containerPort: 8080
+            - containerPort: 8443
           securityContext:
             runAsNonRoot: true
             allowPrivilegeEscalation: false

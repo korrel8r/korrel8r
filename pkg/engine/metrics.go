@@ -10,8 +10,8 @@ import (
 var engineMeter = otel.Meter("korrel8r/engine")
 
 var (
-	metricStoreQueries, _       = engineMeter.Int64Counter("engine.store.queries", metric.WithDescription("Total store queries"))
-	metricStoreQueryDuration, _ = engineMeter.Float64Histogram("engine.store.query.duration",
-		metric.WithDescription("Store query duration in seconds"),
+	metricStoreQueries, _       = engineMeter.Int64Counter("engine.store.get", metric.WithDescription("Total store get calls"))
+	metricStoreQueryDuration, _ = engineMeter.Float64Histogram("engine.store.get.duration",
+		metric.WithDescription("Store get duration in seconds"),
 		metric.WithUnit("s"))
 )
