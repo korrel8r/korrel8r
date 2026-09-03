@@ -74,6 +74,7 @@ func (r *templateRule) Apply(start korrel8r.Object) (queries []korrel8r.Query, e
 // parseQueries converts a rule result string into a list of queries.
 // The string may be blank (all whitespace) meaning the rule does not apply, or a list of
 // query strings separated by newlines. Returns an error if any line is an invalid query.
+// If a query implements [korrel8r.Expander], it is expanded into multiple queries.
 func parseQueries(domains *korrel8r.Domains, result string) ([]korrel8r.Query, error) {
 	var queries []korrel8r.Query
 	for q := range strings.SplitSeq(result, "\n") {
@@ -84,6 +85,12 @@ func parseQueries(domains *korrel8r.Domains, result string) ([]korrel8r.Query, e
 		query, err := domains.Query(q)
 		if err != nil {
 			return nil, err
+		}
+		if expander, ok := query.(korrel8r.Expander); ok {
+			if expanded := expander.Expand(); len(expanded) > 0 {
+				queries = append(queries, expanded...)
+				continue
+			}
 		}
 		queries = append(queries, query)
 	}

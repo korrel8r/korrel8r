@@ -3,6 +3,7 @@
 package quickrules
 
 import (
+	"fmt"
 	"slices"
 	"strings"
 	"testing"
@@ -39,8 +40,156 @@ func ruleByName(t testing.TB, rules []korrel8r.Rule, name string) korrel8r.Rule 
 	return nil
 }
 
+func queriesToStrings(queries []korrel8r.Query) []string {
+	result := make([]string, 0, len(queries))
+	for _, q := range queries {
+		result = append(result, q.String())
+	}
+	return result
+}
+
+func TestRules(t *testing.T) {
+	for _, x := range []struct {
+		name  string
+		start korrel8r.Object
+		want  []string
+	}{
+		// Standard Prometheus labels
+		{
+			name:  "MetricToPod",
+			start: metric.Object{Labels: map[string]string{"namespace": "foo", "pod": "bar"}},
+			want:  []string{`k8s:Pod.v1:{"namespace":"foo","name":"bar"}`},
+		},
+		// OTel labels
+		{
+			name:  "MetricToPod",
+			start: metric.Object{Labels: map[string]string{"k8s_namespace_name": "foo", "k8s_pod_name": "bar"}},
+			want:  []string{`k8s:Pod.v1:{"namespace":"foo","name":"bar"}`},
+		},
+		{
+			name:  "MetricToDeployment",
+			start: metric.Object{Labels: map[string]string{"namespace": "foo", "deployment": "bar"}},
+			want:  []string{`k8s:Deployment.v1.apps:{"namespace":"foo","name":"bar"}`},
+		},
+		{
+			name:  "MetricToDeployment",
+			start: metric.Object{Labels: map[string]string{"k8s_namespace_name": "foo", "k8s_deployment_name": "bar"}},
+			want:  []string{`k8s:Deployment.v1.apps:{"namespace":"foo","name":"bar"}`},
+		},
+		{
+			name:  "AlertToDeployment",
+			start: &alert.Object{Labels: map[string]string{"namespace": "foo", "deployment": "bar"}},
+			want:  []string{`k8s:Deployment.v1.apps:{"namespace":"foo","name":"bar"}`},
+		},
+		{
+			name:  "AlertToDeployment",
+			start: &alert.Object{Labels: map[string]string{"k8s_namespace_name": "foo", "k8s_deployment_name": "bar"}},
+			want:  []string{`k8s:Deployment.v1.apps:{"namespace":"foo","name":"bar"}`},
+		},
+		{
+			name: "DependentToOwner",
+			start: k8s.Object{
+				"metadata": map[string]any{
+					"namespace": "test-ns",
+					"ownerReferences": []any{
+						map[string]any{
+							"apiVersion": "apps/v1",
+							"kind":       "ReplicaSet",
+							"name":       "my-rs",
+						},
+					},
+				},
+			},
+			want: []string{`k8s:ReplicaSet.v1.apps:{"namespace":"test-ns","name":"my-rs"}`},
+		},
+		{
+			name: "AllToEvent",
+			start: k8s.Object{
+				"apiVersion": "v1",
+				"kind":       "Pod",
+				"metadata":   map[string]any{"namespace": "ns1", "name": "pod1"},
+			},
+			want: []string{`k8s:Event.v1:{"namespace":"ns1","fields":{"involvedObject.apiVersion":"v1","involvedObject.kind":"Pod","involvedObject.name":"pod1","involvedObject.namespace":"ns1"}}`},
+		},
+		{
+			name: "AllToMetric",
+			start: k8s.Object{
+				"apiVersion": "v1",
+				"kind":       "Pod",
+				"metadata":   map[string]any{"namespace": "ns1", "name": "pod1"},
+			},
+			want: []string{
+				`metric:metric:{namespace="ns1",pod="pod1"}`,
+				`metric:metric:{k8s_namespace_name="ns1",k8s_pod_name="pod1"}`,
+			},
+		},
+		{
+			name: "SelectorToPods",
+			start: k8s.Object{
+				"apiVersion": "v1",
+				"kind":       "Deployment",
+				"metadata":   map[string]any{"namespace": "ns", "name": "x"},
+				"spec":       map[string]any{"selector": map[string]any{"matchLabels": map[string]any{"app": "web"}}},
+			},
+			want: []string{`k8s:Pod.v1:{"namespace":"ns","labels":{"app":"web"}}`},
+		},
+		{
+			name: "SelectorToLogs",
+			start: k8s.Object{
+				"metadata": map[string]any{"namespace": "ns", "name": "x"},
+				"spec":     map[string]any{"selector": map[string]any{"matchLabels": map[string]any{"app": "web"}}},
+			},
+			want: []string{
+				`log:application:{kubernetes_namespace_name="ns"}|json|kubernetes_labels_app="web"`,
+			},
+		},
+		{
+			name: "K8sSrcToNetflow",
+			start: k8s.Object{
+				"apiVersion": "v1",
+				"kind":       "Pod",
+				"metadata":   map[string]any{"namespace": "bar", "name": "foo"},
+			},
+			want: []string{`netflow:network:{SrcK8S_Type="Pod", SrcK8S_Namespace="bar"} | json | SrcK8S_Name="foo"`},
+		},
+		{
+			name: "K8sSrcOwnerToNetflow",
+			start: k8s.Object{
+				"apiVersion": "apps/v1",
+				"kind":       "Deployment",
+				"metadata":   map[string]any{"namespace": "bar", "name": "foo"},
+			},
+			want: []string{`netflow:network:{SrcK8S_Namespace="bar", SrcK8S_OwnerName="foo"}`},
+		},
+		{
+			name: "K8sDstToNetflow",
+			start: k8s.Object{
+				"apiVersion": "v1",
+				"kind":       "Pod",
+				"metadata":   map[string]any{"namespace": "bar", "name": "foo"},
+			},
+			want: []string{`netflow:network:{DstK8S_Type="Pod", DstK8S_Namespace="bar"} | json | DstK8S_Name="foo"`},
+		},
+		{
+			name: "K8sDstOwnerToNetflow",
+			start: k8s.Object{
+				"apiVersion": "apps/v1",
+				"kind":       "Deployment",
+				"metadata":   map[string]any{"namespace": "bar", "name": "foo"},
+			},
+			want: []string{`netflow:network:{DstK8S_Namespace="bar", DstK8S_OwnerName="foo"}`},
+		},
+	} {
+		t.Run(fmt.Sprintf("%v(%v)", x.name, x.start), func(t *testing.T) {
+			r := ruleByName(t, newRules(t), x.name)
+			got, err := r.Apply(x.start)
+			require.NoError(t, err)
+			assert.Equal(t, x.want, queriesToStrings(got))
+		})
+	}
+}
+
 // TestRulesRequired verifies that missing required fields produce an error.
-// Use existing rules to test it.
 func TestRulesRequired(t *testing.T) {
 	for _, x := range []struct {
 		name  string
