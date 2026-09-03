@@ -23,7 +23,7 @@ stores:
     certificateAuthority: /var/run/secrets/kubernetes.io/serviceaccount/service-ca.crt
 
   - domain: trace
-    tempoStack: https://tempo-platform-gateway.openshift-tracing.svc.cluster.local:8080/api/traces/v1/platform/tempo/api/search
+    tempoStack: https://tempo-platform-gateway.openshift-tracing.svc.cluster.local:8080/api/traces/v1/platform/tempo
     certificateAuthority: /var/run/secrets/kubernetes.io/serviceaccount/service-ca.crt
 
   - domain: incident

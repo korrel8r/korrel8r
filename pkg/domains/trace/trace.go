@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strings"
 	"time"
 
@@ -80,7 +81,7 @@ type Object = *Span
 // TraceID is a hex-encoded 16 byte identifier.
 type TraceID string
 
-// SpanID is a hex-encoded 16 byte identifier.
+// SpanID is a hex-encoded 8 byte identifier.
 type SpanID string
 
 // SpanContext identifies a span as part of a trace.
@@ -113,13 +114,13 @@ type Status struct {
 //
 // Span: [https://opentelemetry.io/docs/concepts/signals/traces]
 type Span struct {
-	Name       string         `json:"name"`             // Name of span.
-	Context    SpanContext    `json:"context"`          // Context identifying the span.
-	ParentID   *SpanID        `json:"spanID,omitempty"` // ParentID span ID of parent span, nil for root span.
-	StartTime  time.Time      `json:"startTime"`        // StartTime for span
-	EndTime    time.Time      `json:"endtime"`          // EndTime for span
-	Attributes map[string]any `json:"attributes"`       // Attribute map .
-	Status     Status         `json:"status"`
+	Name         string         `json:"name"`                   // Name of span.
+	Context      SpanContext    `json:"context"`                // Context identifying the span.
+	ParentSpanID *SpanID        `json:"parentSpanID,omitempty"` // ParentID span ID of parent span, nil for root span.
+	StartTime    time.Time      `json:"startTime"`              // StartTime for span
+	EndTime      time.Time      `json:"endtime"`                // EndTime for span
+	Attributes   map[string]any `json:"attributes"`             // Attribute map .
+	Status       Status         `json:"status"`
 
 	// TODO OTEL links, events not yet supported.
 }
@@ -138,6 +139,10 @@ func NewQuery(traceQL string) korrel8r.Query { return Query(strings.TrimSpace(tr
 func (q Query) Class() korrel8r.Class { return Class{} }
 func (q Query) Data() string          { return string(q) }
 func (q Query) String() string        { return korrel8r.QueryString(q) }
+
+func (q Query) isTrace() bool { return traceIDRE.MatchString(string(q)) }
+
+var traceIDRE = regexp.MustCompile("^[0-9a-f]{32}$")
 
 // NewTempoStackStore returns a store that uses a TempoStack observatorium-style URLs.
 func NewTempoStackStore(base *url.URL, h *http.Client) (korrel8r.Store, error) {
@@ -163,5 +168,5 @@ func (s *stackStore) Get(ctx context.Context, query korrel8r.Query, c *korrel8r.
 		return nil
 	}
 
-	return s.GetStack(ctx, q.Data(), c, func(s *Span) { result.Append(s) })
+	return s.GetStack(ctx, q, c, func(s *Span) { result.Append(s) })
 }

@@ -67,7 +67,7 @@ func (s *storeHolder) recordErrorLH(err error) {
 	if err != nil {
 		s.LastErr = err
 		s.ErrCount++
-		log.V(2).Info("Engine: Store failed", "domain", s.Domain().Name(), "error", err, "config", s.Original)
+		log.V(2).Info("Engine: Store error", "domain", s.Domain().Name(), "error", err, "config", s.Original)
 	}
 }
 
@@ -115,7 +115,7 @@ func (s *storeHolder) ensureLH() (_ korrel8r.Store, err error) {
 		return nil, fmt.Errorf("no store configuration for domain %v", s.domain.Name())
 	}
 	if time.Now().Before(s.retryAfter) {
-		return nil, s.LastErr
+		return nil, fmt.Errorf("store %v waiting to reconnect: %w", s.domain.Name(), s.LastErr)
 	}
 	defer func() {
 		if err != nil {
