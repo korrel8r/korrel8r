@@ -17,7 +17,7 @@ Represents a [span](<https://opentelemetry.io/docs/concepts/signals/traces/#span
 Selector has two forms:
 
 - [TraceQL](<https://grafana.com/docs/tempo/latest/traceql/>) query string
-- A list of trace IDs.
+- A hexadecimal trace\-ID.
 
 A [TraceQL](<https://grafana.com/docs/tempo/latest/traceql/>) query can select spans from many traces. Example:
 
@@ -25,10 +25,10 @@ A [TraceQL](<https://grafana.com/docs/tempo/latest/traceql/>) query can select s
 trace:span:{resource.k8s.namespace.name="korrel8r"}
 ```
 
-A trace\-id query is a list of hexadecimal trace IDs. It returns all the spans included by each trace. Example:
+A trace\-id query returns all the spans included in a trace. Example:
 
 ```
-trace:span:a7880cc221e84e0d07b15993358811b7,b7880cc221e84e0d07b15993358811b7
+trace:span:a7880cc221e84e0d07b15993358811b7
 ```
 
 ### Store

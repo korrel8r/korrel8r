@@ -17,18 +17,17 @@
 //
 // Selector has two forms:
 //   - [TraceQL] query string
-//   - A list of trace IDs.
+//   - A hexadecimal trace-ID.
 //
 // A [TraceQL] query can select spans from many traces.
 // Example:
 //
 //	trace:span:{resource.k8s.namespace.name="korrel8r"}
 //
-// A trace-id query is a list of hexadecimal trace IDs.
-// It returns all the spans included by each trace.
+// A trace-id query returns all the spans included in a trace.
 // Example:
 //
-//	trace:span:a7880cc221e84e0d07b15993358811b7,b7880cc221e84e0d07b15993358811b7
+//	trace:span:a7880cc221e84e0d07b15993358811b7
 //
 // # Store
 //

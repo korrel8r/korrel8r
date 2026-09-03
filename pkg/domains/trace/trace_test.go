@@ -9,10 +9,8 @@ import (
 	"github.com/korrel8r/korrel8r/pkg/domains/trace"
 )
 
-// TODO tempo limits number of traces, not spans. Remove ClusterSetup when fixed.
 var fixture = domain.Fixture{
-	Query:        trace.NewQuery(`{}`),
-	ClusterSetup: func(testing.TB) bool { return false },
+	Query: trace.NewQuery(`{}`),
 }
 
 func TestTraceDomain(t *testing.T)     { fixture.Test(t) }

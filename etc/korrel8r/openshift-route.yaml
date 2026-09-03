@@ -20,7 +20,7 @@ stores:
     lokiStack: 'https://{{k8sRouteHost "netobserv" "loki"}}'
 
   - domain: trace
-    tempoStack: 'https://{{k8sRouteHost "openshift-tracing" "tempo-platform-gateway"}}/api/traces/v1/platform/tempo/api/search'
+    tempoStack: 'https://{{k8sRouteHost "openshift-tracing" "tempo-platform-gateway"}}/api/traces/v1/platform/tempo'
 
   - domain: incident
     metrics: 'https://{{k8sRouteHost "openshift-monitoring" "thanos-querier"}}'
