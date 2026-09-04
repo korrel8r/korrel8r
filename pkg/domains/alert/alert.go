@@ -509,15 +509,24 @@ func (s *Store) Get(ctx context.Context, query korrel8r.Query, c *korrel8r.Const
 		log.V(5).Info("failed to get Alertmanager API", "error", amErr)
 	}
 
+	limit := c.GetLimit()
+	count := 0
 	for _, subquery := range q.Parsed {
+		if limit > 0 && count >= limit {
+			break
+		}
 		alerts, err := s.getSubquery(ctx, allRules, subquery, alertmanagerAPI)
 		if err != nil {
 			return err
 		}
 
 		for _, a := range alerts {
+			if limit > 0 && count >= limit {
+				break
+			}
 			if c.CompareTime(a.StartsAt) <= 0 && c.CompareTime(a.EndsAt) >= 0 {
 				result.Append(a)
+				count++
 			}
 		}
 	}
