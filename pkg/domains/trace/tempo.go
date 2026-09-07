@@ -128,14 +128,62 @@ type tracesScopeSpans struct {
 }
 
 type tracesSpan struct {
-	TraceID           []byte            `json:"trace_id"`
-	SpanID            []byte            `json:"span_id"`
-	ParentSpanID      []byte            `json:"parent_span_id"`
+	TraceID           []byte            `json:"-"`
+	SpanID            []byte            `json:"-"`
+	ParentSpanID      []byte            `json:"-"`
 	Name              string            `json:"name"`
-	StartTimeUnixNano json.Number       `json:"start_time_unix_nano"`
-	EndTimeUnixNano   json.Number       `json:"end_time_unix_nano"`
+	StartTimeUnixNano json.Number       `json:"-"`
+	EndTimeUnixNano   json.Number       `json:"-"`
 	Attributes        otel.KeyValueList `json:"attributes"`
 	Status            tracesStatus      `json:"status"`
+}
+
+func (r *tracesSpan) UnmarshalJSON(data []byte) error {
+	// Try camelCase first 
+	var camel struct {
+		TraceID           []byte            `json:"traceId"`
+		SpanID            []byte            `json:"spanId"`
+		ParentSpanID      []byte            `json:"parentSpanId"`
+		Name              string            `json:"name"`
+		StartTimeUnixNano json.Number       `json:"startTimeUnixNano"`
+		EndTimeUnixNano   json.Number       `json:"endTimeUnixNano"`
+		Attributes        otel.KeyValueList `json:"attributes"`
+		Status            tracesStatus      `json:"status"`
+	}
+	if err := json.Unmarshal(data, &camel); err == nil && len(camel.TraceID) > 0 {
+		r.TraceID = camel.TraceID
+		r.SpanID = camel.SpanID
+		r.ParentSpanID = camel.ParentSpanID
+		r.Name = camel.Name
+		r.StartTimeUnixNano = camel.StartTimeUnixNano
+		r.EndTimeUnixNano = camel.EndTimeUnixNano
+		r.Attributes = camel.Attributes
+		r.Status = camel.Status
+		return nil
+	}
+	// Try snake_case 
+	var snake struct {
+		TraceID           []byte            `json:"trace_id"`
+		SpanID            []byte            `json:"span_id"`
+		ParentSpanID      []byte            `json:"parent_span_id"`
+		Name              string            `json:"name"`
+		StartTimeUnixNano json.Number       `json:"start_time_unix_nano"`
+		EndTimeUnixNano   json.Number       `json:"end_time_unix_nano"`
+		Attributes        otel.KeyValueList `json:"attributes"`
+		Status            tracesStatus      `json:"status"`
+	}
+	if err := json.Unmarshal(data, &snake); err == nil {
+		r.TraceID = snake.TraceID
+		r.SpanID = snake.SpanID
+		r.ParentSpanID = snake.ParentSpanID
+		r.Name = snake.Name
+		r.StartTimeUnixNano = snake.StartTimeUnixNano
+		r.EndTimeUnixNano = snake.EndTimeUnixNano
+		r.Attributes = snake.Attributes
+		r.Status = snake.Status
+		return nil
+	}
+	return nil
 }
 
 type tracesStatus struct {
