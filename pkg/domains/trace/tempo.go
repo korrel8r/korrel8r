@@ -324,12 +324,15 @@ func (c *client) traces(ctx context.Context, traceID string, constraint *korrel8
 }
 
 // collect calls collect() on each *Span.
+// Prefer SpanSets (new format) over SpanSet (legacy) to avoid double-counting
+// when Tempo returns the same spans in both fields for backwards compatibility.
 func (r *searchResponse) collect(collect func(*Span)) {
 	for _, tt := range r.Traces {
-		for _, spanSet := range tt.SpanSets {
-			tt.collect(spanSet, collect)
-		}
-		if tt.SpanSet != nil {
+		if len(tt.SpanSets) > 0 {
+			for _, spanSet := range tt.SpanSets {
+				tt.collect(spanSet, collect)
+			}
+		} else if tt.SpanSet != nil {
 			tt.collect(*tt.SpanSet, collect)
 		}
 	}
