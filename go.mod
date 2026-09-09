@@ -52,7 +52,7 @@ require (
 require (
 	github.com/cenkalti/backoff/v5 v5.0.3 // indirect
 	github.com/dlclark/regexp2 v1.12.0 // indirect
-	github.com/getkin/kin-openapi v0.146.0 // indirect
+	github.com/getkin/kin-openapi v0.149.0 // indirect
 	github.com/go-openapi/swag/pools v0.28.0 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.30.0 // indirect
 	github.com/onsi/ginkgo/v2 v2.28.2 // indirect
