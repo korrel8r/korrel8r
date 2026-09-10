@@ -68,7 +68,7 @@ You can extend korrel8r in two ways without modifying the code:
 - **Add rules**: define new correlations between existing domains.
   See [Writing Rules](../writing-rules/).
 - **Add stores**: configure additional store connections for existing domains.
-  See [Configuration](../configuration/#stores).
+  See [Configuration](../reference/configuration/#stores).
 
 Adding entirely new domains (new signal types, query languages, or data stores)
 requires Go code changes.

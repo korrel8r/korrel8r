@@ -30,7 +30,7 @@ To connect to a netflow lokiStack store use this configuration:
 
 ```
 domain: netflow
-lokistack: URL_OF_LOKISTACK_PROXY
+lokiStack: URL_OF_LOKISTACK_PROXY
 ```
 
 To connect to plain loki store use:

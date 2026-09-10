@@ -61,7 +61,7 @@ Searches return a _correlation graph_ — not the data itself, but a map of what
 Each **node** is a class of data, containing:
 - **queries** to retrieve the actual objects from the store
 - **counts** of matching items
-- **[statuses](../statuses/)** like `Error` or `Warning`, with counts
+- **[status](../statuses/)** such as `Error` or `Warning`, with counts
 
 Each **edge** is a rule connecting one class to another.
 

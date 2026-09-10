@@ -1,111 +1,35 @@
 ---
-title: Statuses
-description: How status rules attach statuses to correlation graph nodes
+title: Status
+description: How status rules attach status to correlation graph nodes
 weight: 10
 ---
 
 A _status_ is an UpperCamelCase string (no spaces or punctuation) that summarizes
 the "interestingness" of data in a [correlation graph](../introduction/#correlation-graphs).
-Each node can carry statuses like `Error`, `Warning`, or `Finalizer`,
-with counts showing how many objects matched.
+A node can carry more than one status, such as `Error`, `Warning`, or `Finalizer`,
+each with a count showing how many objects matched.
 This lets you see which nodes have problems without retrieving the full data.
-
-## How statuses work
-
-_Status rules_ in YAML [configuration](../configuration/) files define how statuses are generated.
-A status rule applies a [Go template](../configuration/#about-templates) to each object retrieved during a search.
-The template outputs zero or more statuses (one per line); blank lines are ignored.
-Korrel8r counts how many objects produce each status and attaches the counts to the graph node.
-
-```yaml
-statusRules:
-  - name: RuleName
-    start:
-      domain: domain-name
-      classes:               # optional — omit to apply to all classes in the domain
-        - ClassName
-    status: |-
-      template-that-outputs-statuses
-```
-
-The `start` field works the same as in [correlation rules](../reference/configuration-rules/#rule-structure).
 
 ## Built-in status rules
 
-### Log severity
+Korrel8r ships with status rules that are compiled into the executable, for example:
 
-Classifies log entries as `Error` or `Warning` based on the `level` or `severity_text` field.
+- **Log severity**: mark log entries as `Error` or `Warning` based on their severity level.
+- **Alert severity**: mark alerts with their severity, for example `Critical` or `Warning`.
+- **Kubernetes event type**: mark events that are not of type `Normal` with their type, for example `Warning`.
+- **Kubernetes health**: mark unhealthy resources as `Error` or `Warning`, based on their conditions.
+- **Kubernetes finalizers**: mark resources that have finalizers with `Finalizer`.
 
-```yaml
-statusRules:
-  - name: LogSeverity
-    start:
-      domain: log
-    status: |-
-      {{- $s := or (index . "level") (index . "severity_text") ""}}
-      {{- if or (eq $s "error") (eq $s "err") (eq $s "ERROR") ...}}Error
-      {{- else if or (eq $s "warning") (eq $s "warn") ...}}Warning
-      {{- end}}
-```
+## How status rules work
 
-### Alert severity
-
-Extracts the severity from alerts (e.g. `Critical`, `Warning`).
-
-```yaml
-statusRules:
-  - name: AlertSeverity
-    start:
-      domain: alert
-    status: |-
-      {{with .Labels.severity}}{{if ne . "none"}}{{.}}{{end}}{{end}}
-```
-
-### Kubernetes event type
-
-Marks non-Normal Kubernetes events with their type (e.g. `Warning`).
-
-```yaml
-statusRules:
-  - name: EventType
-    start:
-      domain: k8s
-      classes: [Event.v1, Event.v1.events.k8s.io]
-    status: |-
-      {{- with index . "type"}}{{if ne . "Normal"}}{{.}}{{end}}{{end}}
-```
-
-### Kubernetes health status
-
-Evaluates the health of any Kubernetes resource using the [kube-health](https://github.com/rhobs/kube-health) library.
-Analyzes observed generation and standard Kubernetes conditions (e.g. `Ready`, `Available`, `MemoryPressure`)
-to produce `Error` or `Warning` statuses. Objects without a `status` field or with healthy conditions produce no status.
-
-```yaml
-statusRules:
-  - name: HealthStatus
-    start:
-      domain: k8s
-    status: |-
-      {{- k8sHealthStatus . -}}
-```
-
-### Kubernetes finalizers
-
-Marks any Kubernetes resource that has finalizers with `Finalizer`.
-
-```yaml
-statusRules:
-  - name: HasFinalizer
-    start:
-      domain: k8s
-    status: |-
-      {{- with index .metadata "finalizers"}}Finalizer{{end}}
-```
+_Status rules_ in YAML [configuration](../reference/configuration/) files define how status is generated.
+A status rule applies a [Go template](../reference/configuration/#about-templates) to each object retrieved during a search.
+The template outputs one status per line, or nothing at all; blank lines are ignored.
+Korrel8r counts how many objects produce each status and attaches the counts to the graph node.
 
 ## Custom status rules
 
-Add a `statusRules` section to any rule YAML file in your [configuration](../configuration/#statusrules).
+Add a `statusRules` section to any rule YAML file in your [configuration](../reference/configuration/#statusrules).
 For example, to mark Pods that are not in "Running" phase:
 
 ```yaml
@@ -118,17 +42,7 @@ statusRules:
       {{- with .status.phase}}{{if ne . "Running"}}{{.}}{{end}}{{end}}
 ```
 
-## Statuses in the API
+The `start` field works the same as in [correlation rules](../reference/configuration-rules/#rule-structure).
 
-In the [REST API](../reference/rest/) and MCP tools, statuses appear in `QueryCount` objects:
-
-```json
-{
-  "query": "log:application:{kubernetes_namespace_name=\"myapp\"}",
-  "count": 200,
-  "statuses": [
-    {"status": "Error", "count": 12},
-    {"status": "Warning", "count": 45}
-  ]
-}
-```
+Status rules can also be written as [compiled rules](../reference/quickrules/),
+which is how the built-in status rules are defined.

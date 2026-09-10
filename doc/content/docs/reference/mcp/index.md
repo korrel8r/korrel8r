@@ -1,7 +1,7 @@
 ---
 title: MCP API
 description: MCP tool reference
-weight: 60
+weight: 90
 ---
 <!-- Generated content, do not edit! -->
 Korrel8r provides an [MCP](https://modelcontextprotocol.io/) server with the following tools.
