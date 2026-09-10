@@ -20,7 +20,7 @@ require (
 	github.com/go-logr/logr v1.4.4
 	github.com/go-logr/stdr v1.2.2
 	github.com/go-openapi/runtime v0.33.2
-	github.com/go-openapi/strfmt v0.27.1
+	github.com/go-openapi/strfmt v0.27.2
 	github.com/korrel8r/korrel8r/pkg/api v0.12.0
 	github.com/korrel8r/korrel8r/pkg/mcp v0.12.0
 	github.com/modelcontextprotocol/go-sdk v1.7.0
