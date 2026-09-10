@@ -28,6 +28,7 @@ Correlate observability data in a cluster
 ### SEE ALSO
 
 * [korrel8r describe](korrel8r_describe.md)	 - Documentation for DOMAIN or for all domains.
+* [korrel8r domains](korrel8r_domains.md)	 - List all domains with their descriptions and store configurations.
 * [korrel8r goals](korrel8r_goals.md)	 - Execute QUERY, find all paths to GOAL classes.
 * [korrel8r list](korrel8r_list.md)	 - List domains or classes in DOMAIN.
 * [korrel8r mcp](korrel8r_mcp.md)	 - MCP stdio server
