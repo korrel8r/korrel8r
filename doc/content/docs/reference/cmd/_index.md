@@ -1,7 +1,7 @@
 ---
 title: Korrel8r Command
 description: Command line interface
-weight: 30
+weight: 60
 ---
 <!-- Generated content, do not edit! -->
 ## korrel8r

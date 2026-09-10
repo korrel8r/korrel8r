@@ -23,7 +23,7 @@ oc apply -k github.com/korrel8r/korrel8r/config/?version=main
 ```
 
 >[!NOTE]
-> This uses a default configuration designed for OpenShift, for other clusters you will need to modify the configuration. See [Configuration](../configuration/).
+> This uses a default configuration designed for OpenShift, for other clusters you will need to modify the configuration. See [Configuration](../reference/configuration/).
 
 ## Command Line
 

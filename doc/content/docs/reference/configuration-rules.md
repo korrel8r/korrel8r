@@ -1,10 +1,10 @@
 ---
 title: Configuration Rules
 description: Writing YAML configuration rules with Go templates
-weight: 10
+weight: 30
 ---
 
-Configuration rules are YAML files loaded at runtime from the [configuration](../../configuration/).
+Configuration rules are YAML files loaded at runtime from the [configuration](../configuration/).
 They use [Go template](https://pkg.go.dev/text/template) syntax to generate goal queries
 from start objects. No rebuild is required to add or change a configuration rule.
 

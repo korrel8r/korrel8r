@@ -122,6 +122,28 @@ func TestMain_stores_selected(t *testing.T) {
 	assert.Equal(t, strings.TrimSpace(want), strings.TrimSpace(string(out)))
 }
 
+func TestMain_domains(t *testing.T) {
+	out, err := cliCommand(t, "domains", "-o", "json-pretty").Output()
+	require.NoError(t, test.ExecError(err))
+	var domains []struct {
+		Name        string           `json:"name"`
+		Description string           `json:"description"`
+		Stores      []map[string]any `json:"stores"`
+	}
+	require.NoError(t, json.Unmarshal(out, &domains))
+	var names []string
+	for _, d := range domains {
+		names = append(names, d.Name)
+	}
+	assert.Equal(t, []string{"alert", "incident", "k8s", "log", "metric", "mock", "netflow", "trace"}, names)
+	for _, d := range domains {
+		if d.Name == "mock" {
+			assert.Equal(t, "Mock domain.", d.Description)
+			assert.Equal(t, []map[string]any{{"domain": "mock", "mockData": "testdata/mock_store.yaml"}}, d.Stores)
+		}
+	}
+}
+
 func TestMain_metric_file(t *testing.T) {
 	f := filepath.Join(tmpDir, "metrics.json")
 	_, err := cliCommand(t, "list", "--metric-file", f).Output()

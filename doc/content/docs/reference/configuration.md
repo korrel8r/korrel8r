@@ -1,7 +1,7 @@
 ---
 title: Configuration
 description: Config file format, stores, rules, and templates
-weight: 9
+weight: 15
 ---
 
 Korrel8r loads configuration from a file or URL specified by the `--config` option or the `KORREL8R_CONFIG` environment variable.
@@ -21,12 +21,7 @@ mirroring the [`etc/korrel8r/`](https://github.com/korrel8r/korrel8r/tree/main/e
 ├── openshift-svc.yaml     # In-cluster: connect to stores via service URLs
 └── rules/
     ├── all.yaml            # Includes all rule files below
-    ├── k8s.yaml
-    ├── alert.yaml
-    ├── log.yaml
-    ├── netflow.yaml
-    ├── trace.yaml
-    └── incident.yaml
+    └── ...                 # Rules definitions included by all.yaml
 ```
 
 [openshift-route.yaml](https://raw.githubusercontent.com/korrel8r/korrel8r/main/etc/korrel8r/openshift-route.yaml)
@@ -99,7 +94,7 @@ stores:
 ```
 
 Every entry in the `stores` section has a `domain` field to identify the domain.
-Other fields depend on the domain, see the [Domain Reference](../reference/domains/).
+Other fields depend on the domain, see the [Domain Reference](domains/).
 
 Store fields may contain [templates](#about-templates) that expand to URLs.
 
@@ -149,11 +144,11 @@ The query template should generate a string of the form:
 <domain-name>:<class-name>:<query-details>
 ```
 
-The _query-details_ part depends on the domain, see the [Domain Reference](../reference/domains/).
+The _query-details_ part depends on the domain, see the [Domain Reference](domains/).
 
 ## statusRules
 
-Rules that generate [statuses](../statuses/) for objects in a correlation graph:
+Rules that generate [status](../../statuses/) for objects in a correlation graph:
 
 ```yaml
 statusRules:
@@ -165,7 +160,7 @@ statusRules:
     status: "status_template"   # 3. Go template that outputs labels, one per line
 ```
 
-See [Statuses](../statuses/) for details and examples.
+See [Status](../../statuses/) for details and examples.
 
 ## aliases
 
@@ -213,8 +208,41 @@ rules:
 
 Named templates defined in any configuration file (including [included](#include) files) are available to all rules across all files.
 
+## tuning
+
+Limits and optimizations:
+
+```yaml
+tuning:
+  requestTimeout: 1m       # 1. Timeout for incoming and outgoing requests
+  sessionTimeout: 5m       # 2. Idle timeout for per-user sessions
+  storeRetryInterval: 10s  # 3. Minimum time between store re-creation attempts
+```
+
+Durations use Go [duration syntax](https://pkg.go.dev/time#ParseDuration), for example `30s`, `1m`, `2h`.
+
+`requestTimeout`
+: Cancels incoming or outgoing requests that take longer than this.
+  Long-lived SSE subscriptions are exempt. If omitted or 0, requests never time out.
+
+`sessionTimeout`
+: Idle timeout for sessions. In server mode each authenticated user gets a session with its own
+  engine, configuration and state -- see [Security](../security/).
+  If omitted or 0, sessions never time out.
+
+`storeRetryInterval`
+: Minimum time between attempts to re-create a store after an error.
+  Prevents a storm of expensive re-creation (DNS lookups, API discovery) on every failed query.
+  Defaults to `10s` if omitted or 0.
+
+`unsafeSharedSession`
+: Skips authentication and uses a single shared session for all requests.
+  {{< callout type="warning" >}}
+  This disables per-user session isolation. Use only for development or testing.
+  {{< /callout >}}
+
 ## About Templates
 
 Korrel8r rules and store configuration can include [Go templates](https://pkg.go.dev/text/template).
-Korrel8r provides additional [template functions](../reference/template-functions/), domains may provide additional functions -- see the [Domain Reference](../reference/domains/)
+Korrel8r provides additional [template functions](template-functions/), domains may provide additional functions -- see the [Domain Reference](domains/)
 

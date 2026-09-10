@@ -17,22 +17,16 @@ layout: hextra-home
 </div>
 
 <div class="hx:mb-6">
-{{< hextra/hero-button text="Get Started" link="docs/getting-started/" >}}
-{{< hextra/hero-button text="Introduction" link="docs/introduction/" style="background: transparent; color: inherit; border: 1px solid #e5e7eb;" >}}
+{{< hextra/hero-button text="Introduction" link="docs/introduction/" >}}
+{{< hextra/hero-button text="Get Started" link="docs/getting-started/" style="background: transparent; color: inherit; border: 1px solid #e5e7eb;" >}}
 </div>
 
 {{< hextra/feature-grid >}}
   {{< hextra/feature-card
-    title="Neighborhood Search"
-    subtitle="Find everything reachable within N steps. Show all logs, metrics, alerts, and resources related to any starting point."
-    icon="globe-alt"
-    link="docs/introduction/#neighborhood-search"
-  >}}
-  {{< hextra/feature-card
-    title="Goal Search"
-    subtitle="Find paths to a specific type of data. Connect an alert to its deployments, pods, and logs automatically."
+    title="Correlation Searches"
+    subtitle="Neighborhood search finds everything reachable within N steps. Goal search finds paths to a specific type of data &mdash; connecting an alert to its deployments, pods, and logs."
     icon="search-circle"
-    link="docs/introduction/#goal-search"
+    link="docs/introduction/#search-strategies"
   >}}
   {{< hextra/feature-card
     title="AI Agent Ready"
@@ -57,5 +51,11 @@ layout: hextra-home
     subtitle="The troubleshooting panel displays interactive correlation graphs. Click nodes to jump directly to related resources."
     icon="template"
     link="docs/troubleshooting-panel/"
+  >}}
+  {{< hextra/feature-card
+    title="Command Line & API"
+    subtitle="Run correlation searches from the korrel8r CLI, or drive the engine over its REST API from your own tools and scripts."
+    icon="terminal"
+    link="docs/command/"
   >}}
 {{< /hextra/feature-grid >}}

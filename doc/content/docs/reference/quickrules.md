@@ -1,6 +1,7 @@
 ---
 title: Compiled Rules
 description: Writing compiled quicktemplate rules
+weight: 20
 ---
 <!-- Generated content, do not edit! -->
 contains pre\-compiled [quicktemplate](<https://github.com/valyala/quicktemplate>) rules linked into the korrel8r executable.

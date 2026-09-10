@@ -1,7 +1,7 @@
 ---
 title: Template Functions
 description: Functions available in rule templates
-weight: 10
+weight: 40
 ---
 <!-- Generated content, do not edit! -->
 

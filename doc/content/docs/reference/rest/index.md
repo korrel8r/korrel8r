@@ -1,7 +1,7 @@
 ---
 title: REST API
 description: HTTP API reference
-weight: 50
+weight: 80
 ---
 <!-- Generated content, do not edit! -->
 

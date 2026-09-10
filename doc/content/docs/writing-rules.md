@@ -1,7 +1,7 @@
 ---
 title: Writing Rules
 description: Adding custom correlation rules
-weight: 8
+weight: 9
 ---
 
 Korrel8r comes with a comprehensive set of [rules](../introduction/#rules) for correlating
@@ -21,7 +21,7 @@ If a template returns a blank string or raises an error, korrel8r skips the rule
 
 ### Configuration Rules (YAML)
 
-Configuration rules are YAML files loaded at runtime from the [configuration](../configuration/).
+Configuration rules are YAML files loaded at runtime from the [configuration](../reference/configuration/).
 They use Go `text/template` syntax and can be added or changed without rebuilding korrel8r.
 
 See the [Configuration Rules Reference](../reference/configuration-rules/) for the full syntax,
