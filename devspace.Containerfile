@@ -15,8 +15,6 @@ ENV GOMODCACHE=/go/pkg/mod \
 
 # Download and cache go modules before building.
 COPY go.mod go.sum ./
-COPY pkg/api/go.mod pkg/api/go.sum pkg/api/
-COPY pkg/mcp/go.mod pkg/mcp/go.sum pkg/mcp/
 RUN go mod download
 
 # Copy go sources and pre-build to warm the build cache.
