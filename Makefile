@@ -30,6 +30,9 @@ $(BIN): tools/go.mod tools/go.sum
 	GOBIN=$(abspath $(BIN)) go -C tools install tool
 	@touch $@
 
+# Main and sub-modules
+GO_MODULES=. ./pkg/mcp ./pkg/api ./tools
+
 # Sources for generated files
 OPENAPI_SPEC=korrel8r-openapi.yaml
 DOMAINS=$(patsubst pkg/domains/%/doc.go,%,$(wildcard pkg/domains/*/doc.go))
@@ -91,10 +94,12 @@ $(SHELLCHECK):
 	@mkdir -p $(BIN)
 	./hack/install-shellcheck.sh $(BIN) 0.10.0
 
+.PHONY: mod
+mod:
+	$(foreach D,$(GO_MODULES),go -C $(D) mod tidy ; )
+
 ifndef NOLINT
-lint: generate $(SHELLCHECK) $(BIN) ## Run the linter to find and fix code style problems.
-	go mod tidy
-	go -C tools mod tidy
+lint: mod generate $(SHELLCHECK) $(BIN) ## Run the linter to find and fix code style problems.
 	golangci-lint run --fix
 	shfmt -l -w ./**/*.sh
 	$(SHELLCHECK) -x -S style hack/*.sh
