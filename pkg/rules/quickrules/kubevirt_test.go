@@ -130,7 +130,9 @@ func TestKubevirtRules(t *testing.T) {
 		{
 			rule:  "VmiToLogs",
 			start: newK8s("VirtualMachineInstance.kubevirt.io", "vm-ns", "my-vmi", nil),
-			want:  []string{`log:application:{"namespace":"vm-ns","labels":{"kubevirt.io":"virt-launcher","vm.kubevirt.io/name":"my-vmi"}}`},
+			want: []string{
+				`log:application:{kubernetes_namespace_name="vm-ns"}|json|kubernetes_labels_kubevirt_io="virt-launcher"|kubernetes_labels_vm_kubevirt_io_name="my-vmi"`,
+			},
 		},
 		{
 			rule: "VmimToVmi",

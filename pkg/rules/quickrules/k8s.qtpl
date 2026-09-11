@@ -60,6 +60,7 @@ goal:
 	RequireAll(ns, name, kind)
 %}
 metric:metric:{namespace={%q= ns %},{%s= strings.ToLower(kind) %}={%q= name %}}
+metric:metric:{k8s_namespace_name={%q= ns %},k8s_{%s= strings.ToLower(kind) %}_name={%q= name %}}
 {% endfunc %}
 
 # SelectorToPods finds Pods matching the selector of a k8s workload resource.

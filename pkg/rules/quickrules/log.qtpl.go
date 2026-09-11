@@ -43,48 +43,49 @@ func StreamLogToPod(qw422016 *qt422016.Writer, o interface{}) {
 `)
 //line log.qtpl:19
 	l := o.(log.Object)
-	ns := Require(l["kubernetes_namespace_name"])
-	name := Require(l["kubernetes_pod_name"])
+	ns := Default(l["kubernetes_namespace_name"], l["k8s_namespace_name"])
+	name := Default(l["kubernetes_pod_name"], l["k8s_pod_name"])
+	RequireAll(ns, name)
 
-//line log.qtpl:22
+//line log.qtpl:23
 	qw422016.N().S(`
 k8s:Pod:{"namespace":`)
-//line log.qtpl:23
+//line log.qtpl:24
 	qw422016.N().Q(ns)
-//line log.qtpl:23
+//line log.qtpl:24
 	qw422016.N().S(`,"name":`)
-//line log.qtpl:23
+//line log.qtpl:24
 	qw422016.N().Q(name)
-//line log.qtpl:23
+//line log.qtpl:24
 	qw422016.N().S(`}
 `)
-//line log.qtpl:24
+//line log.qtpl:25
 }
 
-//line log.qtpl:24
+//line log.qtpl:25
 func WriteLogToPod(qq422016 qtio422016.Writer, o interface{}) {
-//line log.qtpl:24
+//line log.qtpl:25
 	qw422016 := qt422016.AcquireWriter(qq422016)
-//line log.qtpl:24
+//line log.qtpl:25
 	StreamLogToPod(qw422016, o)
-//line log.qtpl:24
+//line log.qtpl:25
 	qt422016.ReleaseWriter(qw422016)
-//line log.qtpl:24
+//line log.qtpl:25
 }
 
-//line log.qtpl:24
+//line log.qtpl:25
 func LogToPod(o interface{}) string {
-//line log.qtpl:24
+//line log.qtpl:25
 	qb422016 := qt422016.AcquireByteBuffer()
-//line log.qtpl:24
+//line log.qtpl:25
 	WriteLogToPod(qb422016, o)
-//line log.qtpl:24
+//line log.qtpl:25
 	qs422016 := string(qb422016.B)
-//line log.qtpl:24
+//line log.qtpl:25
 	qt422016.ReleaseByteBuffer(qb422016)
-//line log.qtpl:24
+//line log.qtpl:25
 	return qs422016
-//line log.qtpl:24
+//line log.qtpl:25
 }
 
 // # PodToLogs finds logs for a pod.
@@ -96,58 +97,58 @@ func LogToPod(o interface{}) string {
 //   domain: log
 //
 
-//line log.qtpl:34
+//line log.qtpl:35
 func StreamPodToLogs(qw422016 *qt422016.Writer, o interface{}) {
-//line log.qtpl:34
+//line log.qtpl:35
 	qw422016.N().S(`
 `)
-//line log.qtpl:35
+//line log.qtpl:36
 	_, _, ns, name, _ := k8sMetadata(o)
 	RequireAll(ns, name)
 
-//line log.qtpl:35
+//line log.qtpl:36
 	qw422016.N().S(`
 log:`)
-//line log.qtpl:36
+//line log.qtpl:37
 	qw422016.N().S(logTypeForNamespace(ns))
-//line log.qtpl:36
+//line log.qtpl:37
 	qw422016.N().S(`:{"namespace":`)
-//line log.qtpl:36
+//line log.qtpl:37
 	qw422016.N().Q(ns)
-//line log.qtpl:36
+//line log.qtpl:37
 	qw422016.N().S(`,"name":`)
-//line log.qtpl:36
+//line log.qtpl:37
 	qw422016.N().Q(name)
-//line log.qtpl:36
+//line log.qtpl:37
 	qw422016.N().S(`}
 `)
-//line log.qtpl:37
+//line log.qtpl:38
 }
 
-//line log.qtpl:37
+//line log.qtpl:38
 func WritePodToLogs(qq422016 qtio422016.Writer, o interface{}) {
-//line log.qtpl:37
+//line log.qtpl:38
 	qw422016 := qt422016.AcquireWriter(qq422016)
-//line log.qtpl:37
+//line log.qtpl:38
 	StreamPodToLogs(qw422016, o)
-//line log.qtpl:37
+//line log.qtpl:38
 	qt422016.ReleaseWriter(qw422016)
-//line log.qtpl:37
+//line log.qtpl:38
 }
 
-//line log.qtpl:37
+//line log.qtpl:38
 func PodToLogs(o interface{}) string {
-//line log.qtpl:37
+//line log.qtpl:38
 	qb422016 := qt422016.AcquireByteBuffer()
-//line log.qtpl:37
+//line log.qtpl:38
 	WritePodToLogs(qb422016, o)
-//line log.qtpl:37
+//line log.qtpl:38
 	qs422016 := string(qb422016.B)
-//line log.qtpl:37
+//line log.qtpl:38
 	qt422016.ReleaseByteBuffer(qb422016)
-//line log.qtpl:37
+//line log.qtpl:38
 	return qs422016
-//line log.qtpl:37
+//line log.qtpl:38
 }
 
 // # ServiceToLogs finds logs for pods selected by a service.
@@ -159,58 +160,58 @@ func PodToLogs(o interface{}) string {
 //   domain: log
 //
 
-//line log.qtpl:47
+//line log.qtpl:48
 func StreamServiceToLogs(qw422016 *qt422016.Writer, o interface{}) {
-//line log.qtpl:47
+//line log.qtpl:48
 	qw422016.N().S(`
 `)
-//line log.qtpl:49
+//line log.qtpl:50
 	obj, _, ns, _, _ := k8sMetadata(o)
 	RequireAll(ns)
 	selector := obj["spec"].(map[string]any)["selector"]
 	RequireAll(selector)
 
-//line log.qtpl:53
+//line log.qtpl:54
 	qw422016.N().S(`
 log:`)
-//line log.qtpl:54
+//line log.qtpl:55
 	qw422016.N().S(logTypeForNamespace(ns))
-//line log.qtpl:54
+//line log.qtpl:55
 	qw422016.N().S(`:{"namespace":`)
-//line log.qtpl:54
+//line log.qtpl:55
 	qw422016.N().Q(ns)
-//line log.qtpl:54
+//line log.qtpl:55
 	qw422016.N().S(`,"labels":`)
-//line log.qtpl:54
+//line log.qtpl:55
 	qw422016.N().S(ToJSON(selector))
-//line log.qtpl:54
+//line log.qtpl:55
 	qw422016.N().S(`}
 `)
-//line log.qtpl:55
+//line log.qtpl:56
 }
 
-//line log.qtpl:55
+//line log.qtpl:56
 func WriteServiceToLogs(qq422016 qtio422016.Writer, o interface{}) {
-//line log.qtpl:55
+//line log.qtpl:56
 	qw422016 := qt422016.AcquireWriter(qq422016)
-//line log.qtpl:55
+//line log.qtpl:56
 	StreamServiceToLogs(qw422016, o)
-//line log.qtpl:55
+//line log.qtpl:56
 	qt422016.ReleaseWriter(qw422016)
-//line log.qtpl:55
+//line log.qtpl:56
 }
 
-//line log.qtpl:55
+//line log.qtpl:56
 func ServiceToLogs(o interface{}) string {
-//line log.qtpl:55
+//line log.qtpl:56
 	qb422016 := qt422016.AcquireByteBuffer()
-//line log.qtpl:55
+//line log.qtpl:56
 	WriteServiceToLogs(qb422016, o)
-//line log.qtpl:55
+//line log.qtpl:56
 	qs422016 := string(qb422016.B)
-//line log.qtpl:55
+//line log.qtpl:56
 	qt422016.ReleaseByteBuffer(qb422016)
-//line log.qtpl:55
+//line log.qtpl:56
 	return qs422016
-//line log.qtpl:55
+//line log.qtpl:56
 }
