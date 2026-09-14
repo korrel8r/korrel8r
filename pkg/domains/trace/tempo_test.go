@@ -87,6 +87,7 @@ func TestUnmarshal(t *testing.T) {
 	r.collect(func(s *Span) { spans = append(spans, s) })
 	require.NotEmpty(t, spans)
 	traceID := TraceID("2f3e0cee77ae5dc9c17ade3689eb2e54")
+	// Only spanSets spans are collected; spanSet (legacy) is ignored when spanSets is present.
 	want := []*Span{
 		{
 			Name:      "update-billing",
@@ -109,17 +110,41 @@ func TestUnmarshal(t *testing.T) {
 				"answer.float": float64(42),
 			},
 			Status: Status{Code: StatusUnset}},
-		{
-			Name:      "update-billing",
-			Context:   SpanContext{TraceID: traceID, SpanID: "563d623c76514f8e"},
-			StartTime: time.Unix(0, 2684778327735077898),
-			EndTime:   time.Unix(0, 2684778327735077898).Add(546979497 * time.Millisecond),
-			Attributes: map[string]any{
-				"service.name": "shop-backend",
-			},
-			Status: Status{Code: StatusUnset}},
 	}
 	assert.Equal(t, want, spans)
+}
+
+func TestSearchResponseSpanSetFallback(t *testing.T) {
+	// When spanSets is absent, spanSet (legacy) is used as fallback.
+	const response = `{
+      "traces": [
+        {
+          "traceID": "2f3e0cee77ae5dc9c17ade3689eb2e54",
+          "rootServiceName": "shop-backend",
+          "rootTraceName": "update-billing",
+          "startTimeUnixNano": "1684778327699392724",
+          "durationMs": 557,
+          "spanSet": {
+            "spans": [
+              {
+                "spanID": "563d623c76514f8e",
+                "startTimeUnixNano": "2684778327735077898",
+                "durationNanos": "546979497"
+              }
+            ],
+            "matched": 1
+          }
+        }
+      ]
+    }`
+	var (
+		r     searchResponse
+		spans []*Span
+	)
+	require.NoError(t, json.Unmarshal([]byte(response), &r))
+	r.collect(func(s *Span) { spans = append(spans, s) })
+	require.Len(t, spans, 1)
+	assert.Equal(t, SpanID("563d623c76514f8e"), spans[0].Context.SpanID)
 }
 
 func TestTracesResponseCollect(t *testing.T) {
