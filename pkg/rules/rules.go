@@ -86,12 +86,6 @@ func parseQueries(domains *korrel8r.Domains, result string) ([]korrel8r.Query, e
 		if err != nil {
 			return nil, err
 		}
-		if expander, ok := query.(korrel8r.Expander); ok {
-			if expanded := expander.Expand(); len(expanded) > 0 {
-				queries = append(queries, expanded...)
-				continue
-			}
-		}
 		queries = append(queries, query)
 	}
 	return queries, nil

@@ -484,85 +484,10 @@ func TestContainerSelector_OtelLogQL(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := tt.selector.OtelLogQL()
+			result := tt.selector.OTELLogQL()
 			assert.Equal(t, tt.expected, result)
 		})
 	}
-}
-
-func TestQueryExpand(t *testing.T) {
-	t.Run("Direct query expands to Viaq and OTEL", func(t *testing.T) {
-		q := &Query{
-			class: Application,
-			direct: &ContainerSelector{
-				Selector: k8s.Selector{
-					Namespace: "myapp",
-					Name:      "pod-1",
-				},
-			},
-		}
-		expanded := q.Expand()
-		assert.Len(t, expanded, 2)
-
-		viaq := expanded[0].(*Query)
-		assert.Equal(t, Application, viaq.class)
-		assert.Contains(t, viaq.logQL, "kubernetes_namespace_name")
-		assert.NotNil(t, viaq.direct, "Viaq query should retain direct selector")
-
-		otel := expanded[1].(*Query)
-		assert.Equal(t, Application, otel.class)
-		assert.Contains(t, otel.logQL, "k8s_namespace_name")
-		assert.Nil(t, otel.direct, "OTEL query should have nil direct selector")
-	})
-
-	t.Run("LogQL-only query does not expand", func(t *testing.T) {
-		q := &Query{
-			class: Application,
-			logQL: `{app="test"}`,
-		}
-		expanded := q.Expand()
-		assert.Nil(t, expanded)
-	})
-
-	t.Run("Label-only selector expands to Viaq only", func(t *testing.T) {
-		q := &Query{
-			class: Application,
-			direct: &ContainerSelector{
-				Selector: k8s.Selector{
-					Namespace: "ns",
-					Labels:    map[string]string{"app": "web"},
-				},
-			},
-		}
-		expanded := q.Expand()
-		assert.Len(t, expanded, 1, "label-only selector should not produce OTEL variant")
-
-		viaqData := expanded[0].Data()
-		assert.Contains(t, viaqData, `kubernetes_namespace_name="ns"`)
-		assert.Contains(t, viaqData, `kubernetes_labels_app="web"`)
-	})
-
-	t.Run("Named selector expands to Viaq and OTEL", func(t *testing.T) {
-		q := &Query{
-			class: Application,
-			direct: &ContainerSelector{
-				Selector: k8s.Selector{
-					Namespace: "ns",
-					Name:      "my-pod",
-				},
-			},
-		}
-		expanded := q.Expand()
-		assert.Len(t, expanded, 2, "named selector should produce both variants")
-
-		viaqData := expanded[0].Data()
-		assert.Contains(t, viaqData, `kubernetes_namespace_name="ns"`)
-		assert.Contains(t, viaqData, `kubernetes_pod_name="my-pod"`)
-
-		otelData := expanded[1].Data()
-		assert.Contains(t, otelData, `k8s_namespace_name="ns"`)
-		assert.Contains(t, otelData, `k8s_pod_name="my-pod"`)
-	})
 }
 
 func TestContainerSelector_IsContainerSelected(t *testing.T) {

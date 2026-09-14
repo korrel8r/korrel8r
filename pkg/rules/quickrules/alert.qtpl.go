@@ -42,8 +42,8 @@ func StreamAlertToDeployment(qw422016 *qt422016.Writer, o interface{}) {
 `)
 //line alert.qtpl:18
 	l := o.(*alert.Object).Labels
-	ns := Default(l["namespace"], l["k8s_namespace_name"])
-	name := Default(l["deployment"], l["k8s_deployment_name"])
+	ns := Coalesce(l["k8s_namespace_name"], l["namespace"])
+	name := Coalesce(l["k8s_deployment_name"], l["deployment"])
 	RequireAll(ns, name)
 
 //line alert.qtpl:22
@@ -104,8 +104,8 @@ func StreamAlertToPod(qw422016 *qt422016.Writer, o interface{}) {
 `)
 //line alert.qtpl:37
 	l := o.(*alert.Object).Labels
-	ns := Default(Default(l["namespace"], l["kubernetes_namespace_name"]), l["k8s_namespace_name"])
-	name := Default(Default(l["pod"], l["kubernetes_pod_name"]), l["k8s_pod_name"])
+	ns := Coalesce(l["k8s_namespace_name"], l["namespace"], l["kubernetes_namespace_name"])
+	name := Coalesce(l["k8s_pod_name"], l["pod"], l["kubernetes_pod_name"])
 	RequireAll(ns, name)
 
 //line alert.qtpl:41
@@ -225,8 +225,8 @@ func StreamAlertToDaemonSet(qw422016 *qt422016.Writer, o interface{}) {
 `)
 //line alert.qtpl:70
 	l := o.(*alert.Object).Labels
-	ns := Default(l["namespace"], l["k8s_namespace_name"])
-	name := Default(l["daemonset"], l["k8s_daemonset_name"])
+	ns := Coalesce(l["k8s_namespace_name"], l["namespace"])
+	name := Coalesce(l["k8s_daemonset_name"], l["daemonset"])
 	RequireAll(ns, name)
 
 //line alert.qtpl:74
@@ -287,8 +287,8 @@ func StreamAlertToStatefulSet(qw422016 *qt422016.Writer, o interface{}) {
 `)
 //line alert.qtpl:89
 	l := o.(*alert.Object).Labels
-	ns := Default(l["namespace"], l["k8s_namespace_name"])
-	name := Default(l["statefulset"], l["k8s_statefulset_name"])
+	ns := Coalesce(l["k8s_namespace_name"], l["namespace"])
+	name := Coalesce(l["k8s_statefulset_name"], l["statefulset"])
 	RequireAll(ns, name)
 
 //line alert.qtpl:93

@@ -195,8 +195,8 @@ func (p *ContainerSelector) buildLogQL(nsLabel, podLabel, containerLabel string,
 	w.WriteString("}")
 	if appendJSON {
 		w.WriteString("|json")
-		for k, v := range p.Labels {
-			fmt.Fprintf(w, "|kubernetes_labels_%v=%q", SafeLabel(k), v)
+		for _, k := range slices.Sorted(maps.Keys(p.Labels)) {
+			fmt.Fprintf(w, "|kubernetes_labels_%v=%q", SafeLabel(k), p.Labels[k])
 		}
 	}
 	return w.String()
@@ -207,8 +207,8 @@ func (p *ContainerSelector) ViaqLogQL() string {
 	return p.buildLogQL("kubernetes_namespace_name", "kubernetes_pod_name", "kubernetes_container_name", true)
 }
 
-// OtelLogQL returns an OTEL-format LogQL query equivalent to this selector.
-func (p *ContainerSelector) OtelLogQL() string {
+// OTELLogQL returns an OTEL-format LogQL query equivalent to this selector.
+func (p *ContainerSelector) OTELLogQL() string {
 	return p.buildLogQL("k8s_namespace_name", "k8s_pod_name", "k8s_container_name", false)
 }
 

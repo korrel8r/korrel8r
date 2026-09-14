@@ -61,7 +61,6 @@ func TestLogRules(t *testing.T) {
 			start: newK8s("Pod", "project", "application", nil),
 			want: []string{
 				`log:application:{kubernetes_namespace_name="project",kubernetes_pod_name="application"}|json`,
-				`log:application:{k8s_namespace_name="project",k8s_pod_name="application"}`,
 			},
 		},
 		{
@@ -69,7 +68,6 @@ func TestLogRules(t *testing.T) {
 			start: newK8s("Pod", "kube-something", "infrastructure", nil),
 			want: []string{
 				`log:infrastructure:{kubernetes_namespace_name="kube-something",kubernetes_pod_name="infrastructure"}|json`,
-				`log:infrastructure:{k8s_namespace_name="kube-something",k8s_pod_name="infrastructure"}`,
 			},
 		},
 	} {

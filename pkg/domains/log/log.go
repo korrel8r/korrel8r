@@ -151,28 +151,6 @@ func (q *Query) Data() string {
 	return ""
 }
 
-// Expand implements korrel8r.Expander. A query with a ContainerSelector expands
-// into separate Viaq and OTEL LogQL queries. The Viaq query retains the direct
-// selector (for directStore fallback), while the OTEL query has direct=nil (Loki-only).
-//
-// The OTEL variant is only emitted when the selector has a pod name.
-// Label-only selectors (from Deployments, Services) would produce an overly broad
-// OTEL query (namespace-only) because OTEL label naming is not standardized.
-//
-// Returns nil if the query has no ContainerSelector to expand.
-func (q *Query) Expand() []korrel8r.Query {
-	if q.direct == nil {
-		return nil
-	}
-	queries := []korrel8r.Query{
-		&Query{class: q.class, logQL: q.direct.ViaqLogQL(), direct: q.direct},
-	}
-	if q.direct.Name != "" {
-		queries = append(queries, &Query{class: q.class, logQL: q.direct.OtelLogQL(), direct: nil})
-	}
-	return queries
-}
-
 func NewQuery(query string) (*Query, error) {
 	class, selector, err := impl.ParseQuery(Domain, query)
 	if err != nil {

@@ -43,8 +43,8 @@ func StreamLogToPod(qw422016 *qt422016.Writer, o interface{}) {
 `)
 //line log.qtpl:19
 	l := o.(log.Object)
-	ns := Default(l["kubernetes_namespace_name"], l["k8s_namespace_name"])
-	name := Default(l["kubernetes_pod_name"], l["k8s_pod_name"])
+	ns := Coalesce(l["k8s_namespace_name"], l["kubernetes_namespace_name"])
+	name := Coalesce(l["k8s_pod_name"], l["kubernetes_pod_name"])
 	RequireAll(ns, name)
 
 //line log.qtpl:23
