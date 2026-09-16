@@ -20,9 +20,11 @@ mirroring the [`etc/korrel8r/`](https://github.com/korrel8r/korrel8r/tree/main/e
 ├── openshift-route.yaml   # Out-of-cluster: connect to stores via OpenShift routes
 ├── openshift-svc.yaml     # In-cluster: connect to stores via service URLs
 └── rules/
-    ├── all.yaml            # Includes all rule files below
-    └── ...                 # Rules definitions included by all.yaml
+    └── all.yaml           #  Placeholder for additional rules
 ```
+
+Korrel8r's built-in correlation and status rules are compiled into the executable from
+`pkg/rules/quickrules/`; they do not need to be included from configuration. 
 
 [openshift-route.yaml](https://raw.githubusercontent.com/korrel8r/korrel8r/main/etc/korrel8r/openshift-route.yaml)
 : Run korrel8r outside the cluster, connect to stores via routes.
@@ -34,45 +36,15 @@ The default deployment uses `--config=/etc/korrel8r/openshift-svc.yaml`.
 
 ## Custom configuration
 
-To provide your own configuration in a cluster deployment, create a ConfigMap with your configuration file and mount it at a path that does _not_ overwrite the built-in `/etc/korrel8r/` directory.
-For example, mount at `/etc/korrel8r/custom/`:
+Pass a local file or URL to `--config`, or set `KORREL8R_CONFIG`. For an in-cluster deployment,
+store custom configuration in a ConfigMap and mount it below `/etc/korrel8r` without replacing
+that directory. See [Configuring Stores](../../configuring-stores/#apply-a-custom-configuration-in-the-cluster)
+for a complete deployment example.
 
-```yaml
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: korrel8r-custom-config
-data:
-  korrel8r.yaml: |
-    stores:
-      - domain: k8s
-      - domain: metric
-        metric: https://my-prometheus:9090
-    include:
-      - /etc/korrel8r/rules/all.yaml  # Re-use all built-in rules
-```
+Custom rules can be defined directly or loaded with `include`. They supplement the compiled
+built-in rules; configuration does not select or disable built-in quickrules.
 
-Mount the ConfigMap and point `--config` to it:
-
-```yaml
-volumes:
-  - name: custom-config
-    configMap:
-      name: korrel8r-custom-config
-containers:
-  - name: korrel8r
-    command: ["korrel8r", "web", "--config=/etc/korrel8r/custom/korrel8r.yaml"]
-    volumeMounts:
-      - name: custom-config
-        mountPath: /etc/korrel8r/custom
-        readOnly: true
-```
-
-You can include individual built-in rule files (e.g. `/etc/korrel8r/rules/k8s.yaml`)
-instead of `all.yaml` if you only need a subset, or add your own rules directly in the
-custom configuration file.
-
-The configuration is a YAML file with the following sections:
+The configuration file supports the following sections:
 
 ## include
 
@@ -113,38 +85,10 @@ stores:
 
 ## rules
 
-Rules to relate different classes of data:
-
-```yaml
-rules:
-  - name: "rule_name"          # 1. Identifies the rule in graphs and for debugging
-    start:                      # 2. Start objects must belong to one of these classes
-      domain: "domain_name"
-      classes:
-        - "class_name"
-    goal:                       # 3. Goal queries retrieve one of these classes
-      domain: "domain_name"
-      classes:
-        - "class_name"
-    result:
-      query: "query_template"   # 4. Go template applied with start object as context
-```
-
-Korrel8r comes with a comprehensive set of rules by default, but you can modify them or add your own.
-
-A rule has the following key elements:
-
-- A set of _start_ classes. The rule can apply to objects belonging to one of these classes.
-- A set of _goal_ classes. The rule can generate queries for any of these classes.
-- A [Go template](#about-templates) to generate a goal query from a start object.
-
-The query template should generate a string of the form:
-
-```
-<domain-name>:<class-name>:<query-details>
-```
-
-The _query-details_ part depends on the domain, see the [Domain Reference](domains/).
+Runtime correlation rules use Go templates to turn start objects into goal queries. See
+[Configuration Rules](configuration-rules/) for the complete schema, examples, and template
+behavior. Built-in rules are compiled into the executable; this section is for additional
+user-defined rules.
 
 ## statusRules
 

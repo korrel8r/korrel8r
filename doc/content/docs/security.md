@@ -5,9 +5,10 @@ weight: 99
 ---
 
 Korrel8r has no user database, permission model, or access rules of its own.
-Clients authenticate with their normal Kubernetes bearer token, which korrel8r forwards to every
-back-end store. Each store applies its own RBAC, so a client can never see data through korrel8r
-that it could not retrieve from the store directly.
+Clients authenticate with their normal Kubernetes bearer token. Korrel8r uses that identity when
+creating store clients and relies on each configured back end to enforce its own authorization
+policy. With the standard OpenShift store configuration, requests use the client's credentials and
+are subject to that client's cluster permissions.
 
 ## Authentication and authorization
 
@@ -52,7 +53,7 @@ korrel8r web --https :8443 --cert tls.crt --key tls.key
 only, and incompatible with the TLS options above.
 The OpenShift deployment uses HTTPS with an automatically provisioned serving certificate.
 
-## Trusting store back-ends
+## Trusting store back ends
 
 Korrel8r's connection to each store is separate from the client's connection to korrel8r, and needs
 its own trust settings. By default korrel8r uses the ambient cluster CA; a store presenting a
@@ -66,7 +67,7 @@ stores:
     certificateAuthority: /etc/korrel8r/certs/my-ca.crt
 ```
 
-Trust is per-store, so each back-end can use a different CA. In-cluster stores normally use the
+Trust is per store, so each back end can use a different CA. In-cluster stores normally use the
 service CA bundle mounted into every pod,
 `/var/run/secrets/kubernetes.io/serviceaccount/service-ca.crt`.
 See [Configuring Stores](../configuring-stores/).

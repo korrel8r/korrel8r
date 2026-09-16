@@ -17,21 +17,24 @@ Both types of rule use the same YAML metadata schema to describe start and goal 
 
 If a template returns a blank string or raises an error, korrel8r skips the rule for that object.
 
-## Two Ways to Write Rules
+## Choose a rule type
 
-### Configuration Rules (YAML)
+| Use | Configuration rule | Compiled rule |
+| --- | --- | --- |
+| Intended audience | Users and operators | Korrel8r contributors |
+| Source | YAML configuration | `pkg/rules/quickrules/*.qtpl` |
+| Template language | Go `text/template` | Quicktemplate with type-checked Go |
+| Requires rebuilding | No | Yes |
+| Best for | Custom and rapidly changing relationships | Built-in, complex, or performance-sensitive relationships |
 
-Configuration rules are YAML files loaded at runtime from the [configuration](../reference/configuration/).
-They use Go `text/template` syntax and can be added or changed without rebuilding korrel8r.
+### Configuration rules
 
-See the [Configuration Rules Reference](../reference/configuration-rules/) for the full syntax,
-template patterns, and examples.
+Start here when adding a relationship for your environment. Configuration rules are loaded at
+runtime and can be changed without rebuilding Korrel8r. See [Configuration Rules](../reference/configuration-rules/)
+for the complete schema, examples, and template functions.
 
-### Compiled Rules (Quicktemplate)
+### Compiled rules
 
-Compiled rules are [quicktemplate](https://github.com/valyala/quicktemplate) functions
-compiled into the binary as Go code.
-They are faster and type-safe, but require rebuilding the executable.
-
-See the [Compiled Rules Reference](../reference/quickrules/) for the full guide to writing,
-compiling, and testing compiled rules.
+Compiled rules are a contributor-facing mechanism for rules shipped in the Korrel8r executable.
+They use [quicktemplate](https://github.com/valyala/quicktemplate) and require generation, compilation,
+and Go tests. See [Compiled Rules](../reference/quickrules/) for the development workflow.

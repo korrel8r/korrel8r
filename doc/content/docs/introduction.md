@@ -19,7 +19,8 @@ Available domains are described in the [Domain Reference](../reference/domains/)
 | `k8s` | Kubernetes resources | Kubernetes API |
 | `log` | Application and system logs | Loki |
 | `metric` | Prometheus metrics | Prometheus |
-| `alert` | Prometheus alerts | Alertmanager |
+| `alert` | Prometheus and Loki alerts | Prometheus, Alertmanager, and Loki Ruler |
+| `incident` | Cluster health incidents | Prometheus |
 | `trace` | Distributed traces | Tempo |
 | `netflow` | Network flows | Loki |
 
@@ -29,7 +30,7 @@ Object
 : An individual data item — a Pod, a log entry, a metric time series, a trace span.
 
 Store
-: A backend that holds objects.
+: A back end that holds objects.
 
 Class
 : A type of object, written as `domain:class`.

@@ -11,7 +11,7 @@ When you view a resource in the console, the panel shows related observability s
 as a clickable graph that lets you navigate between them.
 
 This is one important application of Korrel8r, but the [REST API](../reference/rest/) and
-[MCP tools](../ai-agents/#mcp-tools-reference) can power other integrations too.
+[MCP tools](../reference/mcp/) can power other integrations too.
 See [Other Uses](../other-uses/) for more ideas.
 
 ## How it works
@@ -40,7 +40,7 @@ see the [Troubleshooting Panel User Guide](https://github.com/openshift/troubles
 ## AI agent integration
 
 The troubleshooting panel can work together with an AI agent via Korrel8r's
-[agent-console navigation](../ai-agents/#agent-console-navigation).
+[agent-console navigation](../ai-agents/#openshift-console-navigation).
 In this mode, an AI agent can see what you are viewing in the console and update the display
 with its findings — enabling a conversational troubleshooting workflow.
 

@@ -4,7 +4,7 @@ description: Connecting korrel8r to the observability stores in your cluster
 weight: 8
 ---
 
-A _store_ is korrel8r's client connection to a back-end that holds observability data.
+A _store_ is Korrel8r's client connection to a back end that holds observability data.
 Korrel8r needs at least one store per [domain](../reference/domains/) it should search.
 If a domain has no store, korrel8r still knows its rules, but cannot retrieve any of its data.
 
@@ -49,8 +49,9 @@ whether the URL is wrong, the store is not installed, or the connection was refu
 
 ## Replace default stores
 
-To point a domain at a different back-end, write your own configuration file with a `stores` entry
-for that domain, and `include` the built-in rules so you keep all the correlation logic:
+To point a domain at a different back end, write your own configuration file with a `stores` entry
+for that domain, and `include` the any built-in YAML rules that are defined.
+Note: most built-in rules are compiled in to korrel8r don't have separate YAML file.
 
 ```yaml
 # my-korrel8r.yaml
@@ -71,15 +72,14 @@ korrel8r web --config my-korrel8r.yaml
 
 Only the domains you list get stores. The example above configures `k8s` and `metric` only, so
 searches in every other domain return nothing. To change one store but keep the rest, include a
-built-in configuration instead of `rules/all.yaml` — see
-[Add a store to the defaults](#add-a-store-to-the-defaults).
+built-in store configuration — see [Add a store to the defaults](#add-a-store-to-the-defaults).
 
 ## Add a store to the defaults
 
 A domain can have more than one store. Korrel8r queries **all** stores for a domain and combines
 the results, so adding an entry supplements the default rather than replacing it.
 
-Include a built-in configuration, then list the extra store:
+Include a built-in configuration, then list the extra store.
 
 ```yaml
 # my-korrel8r.yaml

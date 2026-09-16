@@ -1,138 +1,159 @@
 # Developer Guide
 
-**Architecture and development reference for korrel8r**
+Instructions for coding agents and contributors working in Korrel8r. Keep changes focused, follow existing patterns, and validate the smallest relevant scope before running repository-wide checks.
 
-> **First time?**
-> - [README.md](README.md) - Project overview
-> - [CONTRIBUTING.md](CONTRIBUTING.md) - How to contribute, build, and submit changes
-> - [User Guide](https://korrel8r.github.io/korrel8r) - How users interact with korrel8r (essential context)
+## Start Here
 
-## Architecture Overview
+- Read [README.md](README.md) for product context and [CONTRIBUTING.md](CONTRIBUTING.md) for contributor requirements.
+- User documentation under `doc` is published at https://korrel8r.github.io/korrel8r and can be previewed using `make preview`
+- Run `make help` for the authoritative list of build targets and variables.
+- Before editing, inspect nearby implementation and tests. Do not assume conventions from another domain or package apply unchanged.
+- Preserve unrelated working-tree changes. Never discard or rewrite files outside the requested scope.
 
-### Domains (`pkg/domains/`)
+## Repository Map
 
-A `Domain` implements one type of observability data and clients for the associated stores.
+| Path | Purpose |
+| --- | --- |
+| `cmd/korrel8r/` | CLI and server entry point |
+| `pkg/korrel8r/korrel8r.go` | Core `Domain`, `Class`, `Store`, `Query`, `Object`, and `Rule` contracts |
+| `pkg/domains/` | Alert, incident, Kubernetes, log, metric, netflow, and trace domain implementations |
+| `pkg/engine/` | Rule-graph construction and correlation searches |
+| `pkg/graph/`, `pkg/result/` | Graph and result data structures |
+| `pkg/rules/` | Runtime template-rule implementation |
+| `pkg/rules/quickrules/` | Compiled quicktemplate rules |
+| `pkg/config/` | Configuration loading and rule metadata |
+| `pkg/rest/`, `pkg/api/` | REST implementation and generated OpenAPI types |
+| `pkg/mcp/` | MCP interface |
+| `etc/korrel8r/` | Runtime configuration and configuration rules |
+| `korrel8r-openapi.yaml` | REST API source specification |
+| `doc/` | Documentation site sources and generators |
 
-Domains must implement these four core interfaces:
-- `Domain`: Collection of classes, factory for queries, stores and objects.
-- `Store`: Client connection to a data store (Prometheus, Loki, K8s API, etc.)
-- `Query`: Domain-specific query representation
-- `Object`: Individual data items from the domain
+## Architecture
 
-### Rules (`etc/korrel8r/rules/` and `pkg/rules/`)
+A domain represents one observability data type and its backing store. Domain implementations center on:
 
-A rule links a (set of) start classes to a (set of) goal classes.
-Each rule contains templates that define how to correlate data.
-- Start and goal classes may be in the same or different domains.
-- The template is applied to an `Object` of a start class, and generates a `Query` to return objects of a goal class.
+- `Domain`: classes and factories for queries and stores.
+- `Class`: schema/type metadata and object decoding.
+- `Store`: executes a domain query; a not-found condition returns an empty result, not an error.
+- `Query`: comparable, domain-specific selection with a fully qualified string form.
+- `Object`: the underlying JSON-compatible signal value.
 
-There are two ways to define rules:
+A rule connects start classes to goal classes. Applying a rule to a start object produces goal queries. The engine reduces the total rule graph for a search, applies rules, executes generated queries, and repeats as it builds the result graph.
 
-- **Configuration rules** (`etc/korrel8r/rules/`): YAML files use Go `text/template` to generate queries, loaded at runtime.
-  See [Writing Rules](https://korrel8r.github.io/korrel8r/docs/writing-rules/).
-- **Compiled rules** (`pkg/rules/quickrules/`): [quicktemplate](https://github.com/valyala/quicktemplate) rules compiled into the binary.
-  Faster and type-safe. Edit only `*.qtpl`, then run `make generate`.
-  See [pkg/rules/quickrules/doc.go](pkg/rules/quickrules/doc.go).
+- **Goal search:** find paths from a start object to a requested class.
+- **Neighborhood search:** find everything reachable within a maximum number of rules.
 
-### Engine (`pkg/engine/`)
+When adding a domain, use the closest existing package under `pkg/domains/` as a model and add package-local tests/testdata. Keep interface behavior consistent with `pkg/korrel8r/korrel8r.go`.
 
-The `Engine` is the heart of korrel8r.
-- Loads domains, stores, and a rule graph from configuration files.
-- Creates a *rule graph* with class nodes and rule edges.
-- Traverses the rule graph to create a live *correlation graph* including queries and results:
-  1. Reduce the total rule graph according to search parameters, to restrict the search space.
-  2. Apply rules to objects, which generates queries.
-  3. Call stores to evaluate queries, which generates more objects.
-  4. Repeat until search criteria are met.
-- **Goal search**: find paths from a start object to a specific class of related data.
-- **Neighborhood search**: find all data reachable in <= N rules from the start object.
+## Rules
 
-## Coding Guidelines
+There are two rule forms:
 
-Follow standard Go formatting rules, automatically enforced by `make lint`.
+### Compiled quickrules
+
+- Sources: `pkg/rules/quickrules/*.qtpl`
+- Tests: `pkg/rules/quickrules/*_test.go`
+- Detailed format: `pkg/rules/quickrules/doc.go`
+- Edit `.qtpl` sources, then run `make generate`.
+- Do **not** hand-edit generated `.qtpl.go` files or `pkg/rules/quickrules/applyfuncs.go`.
+
+Prefer quickrules for built-in, type-safe, performance-sensitive relationships. Add table-driven cases for generated queries and non-applicable inputs.
+
+### Configuration rules
+
+- Runtime rules: `etc/korrel8r/rules/`
+- Syntax guide: [Writing Rules](https://korrel8r.github.io/korrel8r/docs/writing-rules/)
+- YAML rules use Go `text/template` and require no binary rebuild.
+- Include new runtime rule files from `etc/korrel8r/rules/all.yaml` when they should load by default.
+
+Use configuration rules for user-installable or rapidly iterated rules. Preserve valid YAML and ensure generated query strings parse in the goal domain.
+
+## Generated Files
+
+`make generate` is the supported generation path. Generated artifacts include:
+
+- `pkg/api/gen-openapi.go`
+- `pkg/rest/gen-openapi.go`
+- `pkg/rules/quickrules/*.qtpl.go`
+- `pkg/rules/quickrules/applyfuncs.go`
+- `pkg/domains/*/doc.md`
+- `internal/pkg/build/version.txt`
+
+Edit their source specifications/templates instead. Commit regenerated outputs when the source change requires them. After generation or linting, inspect `git diff` because these targets may update tracked files.
+
+## Coding Conventions
+
+- Use standard Go style and package-local conventions.
+- Keep public API comments accurate and add tests for behavioral changes.
+- Wrap errors with useful operation/context information; preserve errors where callers need `errors.Is`/`errors.As`.
+- Pass `context.Context` through I/O and request paths; do not replace caller context with a background context.
+- Avoid broad refactors in bug fixes. Do not add dependencies unless necessary.
+- For shell changes, follow existing scripts; lint runs `shfmt` and `shellcheck`.
+- `make lint` is mutating: it runs generation, `go mod tidy`, `golangci-lint --fix`, and `shfmt -w`.
 
 ### Logging Levels
 
-Log at the correct level to make logs readable for operators and useful for debugging:
+Use the project verbosity levels consistently:
 
-- **0**: Always visible. Service startup, fatal errors, events requiring human intervention.
-- **1**: Low-volume info/warnings for service operators. Don't assume the reader understands the code.
-- **2**: Low-volume debugging (setup, occasional state changes).
-- **3**: Per-request debugging.
-- **4**: Per-rule-evaluation debugging (many per request).
-- **5**: Per-query-execution debugging (many per rule evaluation).
+- **0:** startup, fatal failures, or events requiring human action.
+- **1:** low-volume operator information/warnings; avoid code-internal language.
+- **2:** low-volume setup or state-change debugging.
+- **3:** per-request debugging.
+- **4:** per-rule-evaluation debugging.
+- **5:** per-query-execution debugging.
 
-## Development Workflows
+## Validation
 
-### Running Locally
+Start narrow, then expand according to the change:
 
-Korrel8r can run outside the cluster for development. See [Getting Started](https://korrel8r.github.io/korrel8r/docs/getting-started/#command-line) for setup.
+```bash
+# Fast package checks
+go test ./pkg/path/to/changed/package
+
+go test ./pkg/rules/quickrules/   # Quickrule changes
+make generate                     # Generated-source changes
+make lint                         # Full formatting/lint; modifies files
+make test NO_CLUSTER=1            # Repository tests without cluster cases
+make test                         # Full suite; requires cluster access
+make all                          # Pre-commit build/test/image/doc validation
+```
+
+Tests whose names end in `_cluster` (including `_cluster-fm`) require a configured Kubernetes/OpenShift environment. Do not claim full validation if those tests were skipped or infrastructure was unavailable. Report the exact commands run and any failures.
+
+For OpenAPI changes, edit `korrel8r-openapi.yaml`, regenerate, and test both `pkg/api` and `pkg/rest`. For documentation changes, use `make doc` and, when relevant, `make check-links`.
+
+## Local and Cluster Workflows
+
+Run locally with an appropriate configuration:
 
 ```bash
 export KORREL8R_CONFIG="$PWD/etc/korrel8r/openshift-route.yaml"
-
 korrel8r neighbors --query 'k8s:Deployment:{namespace: korrel8r}'
 korrel8r web --http :8080
 ```
 
-### Deploying to a Cluster
-
-Build a container image and deploy. The image includes `etc/korrel8r/openshift-svc.yaml` for in-cluster configuration.
-
-> **Important**: Use a _public_ image repository.
+Cluster tests and deployment need a valid `kubectl`/`oc` session and sufficient RBAC. Deployment images must use a public repository:
 
 ```bash
-export REGISTRY_BASE=quay.io/YOUR_ACCOUNT_HERE
-
+export REGISTRY_BASE=quay.io/YOUR_ACCOUNT
 make image deploy
-
-KORREL8R_URL=$(oc get route/korrel8r -n openshift-cluster-observability-operator -o template='https://{{.spec.host}}')
-TOKEN=$(oc whoami -t)
-curl --oauth2-bearer $TOKEN $KORREL8R_URL/api/v1alpha1/domains
 ```
 
-### Hot-Reload with Devspace
-
-For rapid development cycles, [devspace](https://www.devspace.sh/docs/getting-started/installation) syncs local changes directly to a cluster pod:
-
-```bash
-devspace use namespace korrel8r-dev
-export REGISTRY_BASE=quay.io/youraccount  # Must be public
-make devspace-image
-devspace dev
-```
-
-## Testing
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for test commands. Test organization:
-
-- **Package tests**: Standard Go tests in every `pkg/` sub-directory.
-- **Cluster tests**: Test names ending with `_cluster` (e.g., `TestTokenReview_cluster`) require a cluster.
-- **Rule tests**: Tests in `etc/korrel8r/rules/*_test.go` test rules defined in YAML configuration.
-
-## Debugging
-
-### Authentication
+Useful authentication checks:
 
 ```bash
 oc whoami
 oc auth can-i get pods
-export TOKEN=$(oc whoami -t)
-curl -H "Authorization: Bearer $TOKEN" $API_SERVER/api/v1/pods
 ```
 
-### Logging and Profiling
+For rapid in-cluster iteration, see the Devspace workflow in the project documentation and the `devspace-image` Make target.
 
-```bash
-korrel8r -v3 web                                          # Verbose logging
-go test -cpuprofile cpu.prof -memprofile mem.prof ./...    # Profile
-go tool pprof cpu.prof
-```
+## Completion Checklist
 
-## AI Agent Tips
+Before finishing:
 
-- Core abstractions: `pkg/korrel8r/korrel8r.go`
-- Follow existing domains in `pkg/domains/` as patterns for new domains.
-- Correlation rules: `etc/korrel8r/rules/` - see [Writing Rules](https://korrel8r.github.io/korrel8r/docs/writing-rules/).
-- REST API: `pkg/rest/`
-- Use `/generate-rule` to interactively create new correlation rules.
+1. Review `git diff` and `git status`; verify only intended changes are present.
+2. Confirm generated files match their sources and no generated file was edited directly.
+3. Run focused tests plus the broadest feasible lint/test command.
+4. Add or update tests and documentation for changed behavior.
+5. Summarize changed files, validation performed, and any skipped cluster-dependent checks.

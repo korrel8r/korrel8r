@@ -43,7 +43,7 @@ curl -o korrel8r.yaml https://raw.githubusercontent.com/korrel8r/korrel8r/main/e
 
 Set an environment variable to avoid repeating the configuration file:
 ``` bash
-export KORREL8R_CONFIG=$PWD/openshift-route.yaml
+export KORREL8R_CONFIG=$PWD/korrel8r.yaml
 ```
 
 You can use `korrel8r --config <file-location>` instead of the environment variable.

@@ -8,7 +8,7 @@ Korrel8r integrates with AI agents via the [Model Context Protocol](https://mode
 providing tools for correlation search, data retrieval, and OpenShift console navigation.
 See the [MCP reference](../reference/mcp/) for details of tools.
 
-## Openshift Console navigation
+## OpenShift Console navigation
 
 > [!WARNING]
 > **Dev Preview**: AI Agent navigation is a developer preview feature, subject to change without notice.
@@ -45,7 +45,7 @@ spec:
 
 ```bash
 oc create route reencrypt --service=korrel8r -n openshift-cluster-observability-operator
-export KORREL8R_URL=$(oc get routes/korrel8r -n openshift-cluster-observability-operator -o template='https://{{.spec.host}}')
+export KORREL8R_URL=$(oc get route/korrel8r -n openshift-cluster-observability-operator -o template='https://{{.spec.host}}')
 ```
 
 **3. Configure the agent** to connect via MCP Streamable HTTP, authenticating as the same user as the console session:
