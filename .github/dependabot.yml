@@ -18,24 +18,6 @@ updates:
         patterns:
           - "*"
 
-  - package-ecosystem: "gomod"
-    directory: "/pkg/api"
-    schedule:
-      interval: "daily"
-    groups:
-      api-dependencies:
-        patterns:
-          - "*"
-
-  - package-ecosystem: "gomod"
-    directory: "/pkg/mcp"
-    schedule:
-      interval: "daily"
-    groups:
-      mcp-dependencies:
-        patterns:
-          - "*"
-
   - package-ecosystem: "docker"
     directory: "/"
     schedule:

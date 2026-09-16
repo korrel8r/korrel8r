@@ -32,12 +32,16 @@ Updating the latest version to `X.Y.Z` is done on main to avoid needless branchi
 `make release` does the following:
 
 - `make clean` and re-build, verify nothing changes, working tree is clean.
-- Create and push git tags: `vX.Y.Z`, `pkg/api/vX.Y.Z`, `pkg/mcp/vX.Y.Z`
+- Create and push git tag: `vX.Y.Z`
 - Update the `latest` image tag to point to the new images.
 
-The `pkg/api` and `pkg/mcp` submodule tags are required so that external
-consumers can resolve these modules via `go get`. All three tags are
-created from the same commit to keep versions in sync.
+## Prepare for Next Development Version
+
+After releasing, bump `main` to the next development version so builds are clearly marked as pre-release:
+
+1. Edit Makefile and set `VERSION?=X.Y.Z-dev` for the next version (e.g. after releasing `0.12.2`, set `0.12.3-dev`).
+2. `make all REGISTRY_BASE=quay.io/korrel8r`
+3. Commit and push to `main` with commit message `Update version to X.Y.Z-dev`.
 
 ## Release Patch to Old Version
 

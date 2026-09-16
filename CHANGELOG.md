@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [0.12.2] - 2026-09-16
+
+### Added
+- `korrel8r domains` command to match `/domains` REST endpoint.
+
+### Fixed
+- Outward-only neighbor search algorithm.
+- Enable metric collection in cluster.
+- Client-side limits for alert domain.
+- Direct tempo lookup via `/api/traces/<trace-id>` (#185).
+- Span deduplication and double-counting in Tempo responses.
+
+### Changed
+- Removed unused go submodules, updated all dependencies and tools.
+- Documentation updates: hextra theme, AI section, store configuration, security.
+
 ## [0.12.1] - 2026-08-26
 
 ### Added

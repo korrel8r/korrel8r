@@ -8,7 +8,7 @@ help: ## Display this help.
 	@grep -hE '^## [A-Z0-9_]+: ' Makefile | sed 's/^## \([A-Z0-9_]*\): \(.*\)/\1#\2/' | column -s'#' -t
 
 ## VERSION: Semantic version for release, use -dev for development pre-release versions.
-VERSION?=0.12.2-dev
+VERSION?=0.12.3-dev
 ## REGISTRY_BASE: Image registry base, for example quay.io/somebody
 REGISTRY_BASE?=$(error REGISTRY_BASE must be set to push images)
 ## IMGTOOL: May be podman or docker.
@@ -46,7 +46,6 @@ GEN_QUICKRULES=pkg/rules/quickrules/applyfuncs.go
 GENERATED=$(VERSION_TXT) $(GEN_OPENAPI_IMPL) $(GEN_OPENAPI_API) $(GEN_DOMAIN_DOC) $(GEN_QUICKRULES)
 
 all: doc test image-build ## Build and test everything locally. Recommended before commit.
-
 generate:  $(GENERATED)
 	hack/copyright.sh
 

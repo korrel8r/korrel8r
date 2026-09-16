@@ -1,6 +1,0 @@
-[submodule "operator"]
-	path = operator
-	url = git@github.com:alanconway/operator.git
-[submodule "client"]
-	path = client
-	url = git@github.com:korrel8r/client.git
