@@ -180,11 +180,11 @@ devspace-image:	kustomize-edit ## Rebuild the devspace base image
 
 ## Documentation rules
 
-doc: doc/public
+doc: doc/public ## Generate documentation
 	$(MAKE) check-links
 
 .PHONY: preview
-preview: doc/public $(BIN)
+preview: doc/public $(BIN) ## Preview documentation in browser at http://localhost:1313
 	@rm -rf $<
 	hugo server --source doc --baseURL http://localhost:1313 --bind 0.0.0.0
 	@touch $<

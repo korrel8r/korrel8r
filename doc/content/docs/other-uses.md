@@ -8,10 +8,10 @@ Korrel8r is most commonly used for troubleshooting via the
 [OpenShift console](../troubleshooting-panel/) or [AI agents](../ai-agents/),
 but its correlation engine, data access, and APIs make it useful in other contexts too.
 
-## Uniform Data Access
+## Uniform data access
 
 Korrel8r can act as a single client for all the observability stores it connects to.
-Instead of using separate tools for each backend --
+Instead of using separate tools for each back end —
 `kubectl` for Kubernetes, `logcli` for Loki, `promcli` for Prometheus --
 you can use korrel8r with one consistent query format.
 
@@ -27,13 +27,13 @@ korrel8r objects --query 'metric:metric:{namespace="myapp"}'
 ```
 
 Each query uses the native query language of the underlying store (label selectors, LogQL, PromQL),
-prefixed with `domain:class:` to route it to the right backend.
+prefixed with `domain:class:` to route it to the right back end.
 See the [Domain Reference](../reference/domains/) for the query syntax of each domain.
 
 As a service, korrel8r provides token-forwarding so clients authenticate once
 and korrel8r handles per-store authentication on their behalf.
 
-## Scripting and Automation
+## Scripting and automation
 
 The [REST API](../reference/rest/) and [command line](../reference/cmd/) make it easy to
 integrate korrel8r into scripts and automation workflows.
@@ -50,7 +50,7 @@ For example, an automated incident response script might:
 korrel8r neighbors --query 'alert:alert:{alertname="HighErrorRate"}' --depth 3
 ```
 
-## Custom Integrations
+## Custom integrations
 
 Korrel8r's [REST API](../reference/rest/) serves as a building block for custom tools:
 
@@ -72,5 +72,5 @@ You can extend korrel8r in two ways without modifying the code:
 
 Adding entirely new domains (new signal types, query languages, or data stores)
 requires Go code changes.
-See the [developer guide](https://github.com/korrel8r/korrel8r/blob/main/CLAUDE.md) and
+See the [developer guide](https://github.com/korrel8r/korrel8r/blob/main/DEVELOPER.md) and
 existing domain implementations in `pkg/domains/` for patterns to follow.

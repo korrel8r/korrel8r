@@ -4,11 +4,19 @@ description: Understanding how admin and non-admin users access observability da
 weight: 70
 ---
 
-Korrel8r respects Kubernetes RBAC permissions when accessing observability data. This guide explains the differences between admin and non-admin user access patterns.
+Korrel8r respects Kubernetes RBAC permissions when accessing observability data. This guide explains the differences between cluster-wide and namespace-scoped access.
+
+> [!NOTE]
+> The port numbers, roles, and tenancy behavior on this page describe the standard OpenShift
+> monitoring services used by Korrel8r's built-in OpenShift configurations. Custom Prometheus,
+> Alertmanager, or Loki deployments may expose different endpoints and enforce different policies.
 
 ## Access Levels
 
-Korrel8r automatically detects user permissions using Kubernetes SubjectAccessReview and selects the appropriate backend ports and APIs. No configuration changes are needed.
+For Prometheus-backed stores, Korrel8r uses a Kubernetes `SelfSubjectAccessReview` to test whether
+the caller can access the full Prometheus API. It uses the configured cluster endpoint when access
+is allowed and the standard OpenShift namespace-tenancy endpoint otherwise. No configuration
+change is needed when using the built-in OpenShift configurations.
 
 ### Admin Users
 
@@ -27,7 +35,7 @@ oc adm policy add-cluster-role-to-user cluster-monitoring-metrics-api <username>
 - ✅ Query data from all namespaces
 - ✅ Access cluster-scoped resources (Nodes, PersistentVolumes, etc.)
 - ✅ Optional namespace filtering (can query with or without namespace)
-- ✅ Direct access to backend services (ports 9091, 9094)
+- ✅ Direct access to back-end services (ports 9091, 9094)
 
 ### Non-Admin Users
 
@@ -213,7 +221,7 @@ curl --oauth2-bearer $(oc whoami -t) -X PUT $KORREL8R_URL/api/v1alpha1/config?ve
 
 Check logs for port selection messages:
 ```bash
-oc logs -n korrel8r deployment/korrel8r | grep "using.*port"
+oc logs -n openshift-cluster-observability-operator deployment/korrel8r | grep "using.*port"
 ```
 
 Expected output:
