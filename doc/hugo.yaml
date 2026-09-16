@@ -13,6 +13,7 @@ markup:
       unsafe: true
   highlight:
     style: github
+    noClasses: false
 
 params:
   description: "Correlate observability signals and Kubernetes resources"
