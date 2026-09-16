@@ -19,4 +19,4 @@ labels:
 images:
 - name: korrel8r
   newName: quay.io/korrel8r/korrel8r
-  newTag: 0.12.2
+  newTag: 0.12.3-dev

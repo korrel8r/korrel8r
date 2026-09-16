@@ -35,6 +35,14 @@ Updating the latest version to `X.Y.Z` is done on main to avoid needless branchi
 - Create and push git tag: `vX.Y.Z`
 - Update the `latest` image tag to point to the new images.
 
+## Prepare for Next Development Version
+
+After releasing, bump `main` to the next development version so builds are clearly marked as pre-release:
+
+1. Edit Makefile and set `VERSION?=X.Y.Z-dev` for the next version (e.g. after releasing `0.12.2`, set `0.12.3-dev`).
+2. `make all REGISTRY_BASE=quay.io/korrel8r`
+3. Commit and push to `main` with commit message `Update version to X.Y.Z-dev`.
+
 ## Release Patch to Old Version
 
 Version branches are created only when needed.
