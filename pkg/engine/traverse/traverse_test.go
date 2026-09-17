@@ -381,10 +381,68 @@ func TestTraverserNeighbors(t *testing.T) {
 	}
 }
 
+func TestNewTraverser_LazyNodeState(t *testing.T) {
+	b := mock.NewBuilder("d")
+	e, err := engine.Build().Rules(
+		b.Rule("ab", "d:a", "d:b", nil),
+		b.Rule("bc", "d:b", "d:c", nil),
+	).Engine()
+	require.NoError(t, err)
+
+	tr := newTraverser(e, e.GraphData(), e.GraphData().Lines, nil, 2)
+	for id, state := range tr.nodeState {
+		assert.Nil(t, state, "node %d state must be lazy", id)
+	}
+	for id, static := range tr.nodeStatic {
+		assert.NotNil(t, static.class, "node %d static metadata", id)
+	}
+
+	a := e.GraphData().NodeFor(b.Class("d:a"))
+	state := tr.getOrCreateNodeState(a.ID())
+	require.NotNil(t, state)
+	assert.Same(t, state, tr.getOrCreateNodeState(a.ID()))
+	assert.NotNil(t, tr.nodeState[a.ID()])
+}
+
+func TestNeighborScope(t *testing.T) {
+	b := mock.NewBuilder("d")
+	r := b.Rule
+	d := graph.NewData(
+		r("aa", "d:a", "d:a", nil),
+		r("ab1", "d:a", "d:b", nil),
+		r("ab2", "d:a", "d:b", nil),
+		r("ac", "d:a", "d:c", nil),
+		r("ba", "d:b", "d:a", nil), // Back edge to a shallower node.
+		r("bc", "d:b", "d:c", nil), // Cross edge at the same depth.
+		r("cd", "d:c", "d:d", nil),
+		r("de", "d:d", "d:e", nil),
+	)
+
+	for _, tt := range []struct {
+		depth int
+		want  []string
+	}{
+		{depth: 0, want: []string{}},
+		{depth: 1, want: []string{
+			"aa(d:a->d:a)", "ab1(d:a->d:b)", "ab2(d:a->d:b)", "ac(d:a->d:c)",
+		}},
+		{depth: 2, want: []string{
+			"aa(d:a->d:a)", "ab1(d:a->d:b)", "ab2(d:a->d:b)", "ac(d:a->d:c)",
+			"bc(d:b->d:c)", "cd(d:c->d:d)",
+		}},
+	} {
+		t.Run(fmt.Sprintf("depth_%d", tt.depth), func(t *testing.T) {
+			lines, err := neighborScope(d, b.Class("d:a"), tt.depth)
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, lineStrings(lines))
+		})
+	}
+}
+
 func TestNeighborScope_BadStart(t *testing.T) {
 	b := mock.NewBuilder("d")
-	g := graph.NewData(b.Rule("ab", "d:a", "d:b", nil)).FullGraph()
-	_, err := neighborScope(g, b.Class("d:missing"), 1)
+	d := graph.NewData(b.Rule("ab", "d:a", "d:b", nil))
+	_, err := neighborScope(d, b.Class("d:missing"), 1)
 	assert.Error(t, err)
 }
 
@@ -462,4 +520,3 @@ func TestGoalScope(t *testing.T) {
 		assert.Error(t, err)
 	})
 }
-

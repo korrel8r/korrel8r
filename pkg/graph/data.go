@@ -22,9 +22,14 @@ import (
 //
 // Concurrency: Data is immutable once created. The topology graph is built lazily and shared.
 type Data struct {
-	Nodes  []*Node          // Nodes, index == Node.ID()
-	Lines  []*Line          // Lines, index == Line.ID()
-	nodeID map[string]int64 // Map by full class name
+	Nodes  []*Node                  // Nodes, index == Node.ID()
+	Lines  []*Line                  // Lines, index == Line.ID()
+	nodeID map[korrel8r.Class]int64 // Stable node ID by comparable class value.
+
+	// Immutable adjacency indexes in line creation order. Node IDs are dense and
+	// index these slices directly.
+	outgoingByNodeID [][]*Line
+	incomingByNodeID [][]*Line
 
 	shared     *Graph    // Lazy read-only graph with immutable nodes/lines.
 	sharedOnce sync.Once // Guards shared graph construction.
@@ -34,7 +39,7 @@ type Data struct {
 //
 // Concurrency: Data is immutable once created.
 func NewData(rules ...korrel8r.Rule) *Data {
-	d := Data{nodeID: make(map[string]int64)}
+	d := Data{nodeID: make(map[korrel8r.Class]int64)}
 	for _, r := range rules {
 		d.addRule(r)
 	}
@@ -50,6 +55,8 @@ func (d *Data) addRule(r korrel8r.Rule) {
 				Rule: r,
 			}
 			d.Lines = append(d.Lines, l)
+			d.outgoingByNodeID[l.F.ID()] = append(d.outgoingByNodeID[l.F.ID()], l)
+			d.incomingByNodeID[l.T.ID()] = append(d.incomingByNodeID[l.T.ID()], l)
 		}
 	}
 }
@@ -65,16 +72,40 @@ func (d *Data) addClass(c korrel8r.Class) *Node {
 		Class: c,
 	}
 	d.Nodes = append(d.Nodes, n)
-	d.nodeID[c.String()] = id
+	d.outgoingByNodeID = append(d.outgoingByNodeID, nil)
+	d.incomingByNodeID = append(d.incomingByNodeID, nil)
+	d.nodeID[c] = id
 	return n
 }
 
 // NodeFor returns the Node for class c, or nil if absent.
 func (d *Data) NodeFor(c korrel8r.Class) *Node {
-	if id, ok := d.nodeID[c.String()]; ok {
+	if id, ok := d.nodeID[c]; ok {
 		return d.Nodes[id]
 	}
 	return nil
+}
+
+// EachLineFromID calls visit for each line starting at node id, in line creation order.
+// It does nothing if id is not a node in d.
+func (d *Data) EachLineFromID(id int64, visit func(*Line)) {
+	if id < 0 || id >= int64(len(d.outgoingByNodeID)) {
+		return
+	}
+	for _, l := range d.outgoingByNodeID[id] {
+		visit(l)
+	}
+}
+
+// EachLineToID calls visit for each line ending at node id, in line creation order.
+// It does nothing if id is not a node in d.
+func (d *Data) EachLineToID(id int64, visit func(*Line)) {
+	if id < 0 || id >= int64(len(d.incomingByNodeID)) {
+		return
+	}
+	for _, l := range d.incomingByNodeID[id] {
+		visit(l)
+	}
 }
 
 // EmptyGraph returns a new emptpy graph.

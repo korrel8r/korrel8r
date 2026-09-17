@@ -36,12 +36,24 @@ type Engine struct {
 	// Tuning parameters
 	Tuning config.Tuning
 
-	// Pre-calculated metric attributes per domain, indexed by [domain][status=="error"]
+	// Pre-calculated metric attributes, shared by all traversals.
 	storeMetricAttrs map[string][2]metric.MeasurementOption
+	classMetricAttrs map[korrel8r.Class]metric.MeasurementOption
+	ruleMetricAttrs  map[korrel8r.Rule]metric.MeasurementOption
 }
 
 func (e *Engine) Domain(name string) (korrel8r.Domain, error) { return e.domains.Domain(name) }
 func (e *Engine) Domains() []korrel8r.Domain                  { return e.domains.List() }
+
+// ClassMetricAttrs returns the immutable metric attributes for a class.
+func (e *Engine) ClassMetricAttrs(c korrel8r.Class) metric.MeasurementOption {
+	return e.classMetricAttrs[c]
+}
+
+// RuleMetricAttrs returns the immutable metric attributes for a rule.
+func (e *Engine) RuleMetricAttrs(r korrel8r.Rule) metric.MeasurementOption {
+	return e.ruleMetricAttrs[r]
+}
 
 // StoreFor returns the aggregated store for a domain, nil if there is none.
 func (e *Engine) StoreFor(d korrel8r.Domain) korrel8r.Store {
@@ -128,6 +140,9 @@ func (e *Engine) Rule(name string) korrel8r.Rule { return e.rulesByName[name] }
 
 // StatusRulesFor returns the status rules for the given class.
 func (e *Engine) StatusRulesFor(c korrel8r.Class) []status.Rule { return e.statuses[c.String()] }
+
+// GraphData returns the immutable rule graph data.
+func (e *Engine) GraphData() *graph.Data { return e.data }
 
 // Graph returns the read-only topology graph. Callers use GoalPaths/Neighbors/Select
 // to create mutable subgraphs for traversal.

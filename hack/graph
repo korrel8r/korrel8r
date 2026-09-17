@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+usage() {
+    echo "Usage: graph {nodes|edges|queries} [FILE]" >&2
+    exit 2
+}
+
+command=${1:-}
+file=${2:--}
+
+[[ $# -le 2 ]] || usage
+
+case "$command" in
+nodes | edges)
+    yq -p yaml -o yaml ".$command | length" "$file"
+    ;;
+queries)
+    yq -p yaml -o yaml '[.nodes[].queries[]] | length' "$file"
+    ;;
+*)
+    usage
+    ;;
+esac
