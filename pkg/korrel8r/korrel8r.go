@@ -49,7 +49,7 @@ type Domain interface {
 // In the k8s domain there is a separate class for each Kind of resource,
 // because there is a separate Go type to decode each kind of resource (Pod, Deployment etc.)
 //
-// Must be implemented by a korrel8r domain.
+// Must be implemented by a korrel8r domain. Class values must be comparable.
 type Class interface {
 	// Domain of this class.
 	Domain() Domain

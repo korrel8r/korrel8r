@@ -40,6 +40,8 @@ func Build() *Builder {
 		rulesByName:      map[string]korrel8r.Rule{},
 		statuses:         map[string][]status.Rule{},
 		storeMetricAttrs: map[string][2]metric.MeasurementOption{},
+		classMetricAttrs: map[korrel8r.Class]metric.MeasurementOption{},
+		ruleMetricAttrs:  map[korrel8r.Rule]metric.MeasurementOption{},
 	}
 	// Add template functions that are always available.
 	e.templateFuncs = e.TemplateFuncs()
@@ -221,6 +223,16 @@ func (b *Builder) Engine() (*Engine, error) {
 		log.V(1).Info("skipped rules with missing class", "class", class, "rules", rules)
 	}
 	b.e.data = graph.NewData(b.e.rules...)
+	for _, n := range b.e.data.Nodes {
+		class := n.Class
+		b.e.classMetricAttrs[class] = metric.WithAttributes(
+			attribute.String("domain", class.Domain().Name()),
+			attribute.String("class", class.Name()),
+		)
+	}
+	for _, rule := range b.e.rules {
+		b.e.ruleMetricAttrs[rule] = metric.WithAttributes(attribute.String("rule", rule.Name()))
+	}
 	e, err := b.e, b.err
 	*b = *Build() // Reset the builder.
 	return e, err

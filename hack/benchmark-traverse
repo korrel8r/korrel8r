@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
+output=${1:-"$root/pkg/engine/traverse/benchmark-results.txt"}
+count=${COUNT:-10}
+benchmark='Benchmark(Neighbors|NeighborScope|DataNodeFor|DataLinesFrom|NewTraverser|RuleGraph)$'
+
+mkdir -p "$(dirname "$output")"
+
+{
+    printf '# Traversal memory benchmark\n'
+    printf '# Date: %s\n' "$(date --iso-8601=seconds)"
+    printf '# Git revision: %s\n' "$(git -C "$root" rev-parse HEAD)"
+    printf '# Go: %s\n' "$(go version)"
+    printf '# Command: go test ./pkg/engine/traverse -run ^$ -bench %s -benchmem -count=%s\n\n' "$benchmark" "$count"
+
+    cd "$root"
+    go test ./pkg/engine/traverse \
+        -run '^$' \
+        -bench "$benchmark" \
+        -benchmem \
+        -count="$count"
+} | tee "$output"

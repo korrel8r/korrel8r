@@ -15,6 +15,7 @@ package traverse
 
 import (
 	"context"
+	"fmt"
 	"math"
 	"runtime"
 	"slices"
@@ -25,14 +26,9 @@ import (
 	"github.com/korrel8r/korrel8r/pkg/graph"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"github.com/korrel8r/korrel8r/pkg/result"
-	"github.com/korrel8r/korrel8r/pkg/unique"
-	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
 	"gonum.org/v1/gonum/graph/multi"
 	"gonum.org/v1/gonum/graph/path"
-	gonumTraverse "gonum.org/v1/gonum/graph/traverse"
-
-	gonumGraph "gonum.org/v1/gonum/graph"
 )
 
 // Goals traverses all paths from start objects to all goal classes.
@@ -55,41 +51,49 @@ func Goals(ctx context.Context, e *engine.Engine, start Start, goals []korrel8r.
 // Neighbors traverses to all neighbors of the start objects, traversing links up to the given depth.
 func Neighbors(ctx context.Context, e *engine.Engine, start Start, depth int) (*graph.Graph, error) {
 	log.V(2).Info("Neighbourhood search", "start", start, "depth", depth, "constraint", start.Constraint)
-	shared := e.Graph()
-	scope, err := neighborScope(shared, start.Class, depth)
+	data := e.GraphData()
+	scope, err := neighborScope(data, start.Class, depth)
 	if err != nil {
 		return nil, err
 	}
-	return newTraverser(e, shared.Data, scope, start.Constraint, depth).run(ctx, start)
+	return newTraverser(e, data, scope, start.Constraint, depth).run(ctx, start)
 }
 
 // neighborScope returns the lines reachable within maxDepth BFS hops from start.
-func neighborScope(shared *graph.Graph, start korrel8r.Class, maxDepth int) ([]*graph.Line, error) {
-	u, err := shared.NodeForErr(start)
-	if err != nil {
-		return nil, err
+func neighborScope(data *graph.Data, start korrel8r.Class, maxDepth int) ([]*graph.Line, error) {
+	u := data.NodeFor(start)
+	if u == nil {
+		return nil, fmt.Errorf("class not found in graph: %v", start)
 	}
-	nodeDepth := map[int64]int{}
+
+	nodeDepth := map[int64]int{u.ID(): 0}
+	queue := []int64{u.ID()}
 	var lines []*graph.Line
-	depth := 0
-	bf := gonumTraverse.BreadthFirst{
-		Traverse: func(e gonumGraph.Edge) bool {
-			ok := depth < maxDepth
-			if ok {
-				graph.EdgeFor(e).EachLine(func(l *graph.Line) { lines = append(lines, l) })
+	for len(queue) > 0 {
+		id := queue[0]
+		queue = queue[1:]
+		depth := nodeDepth[id]
+		if depth >= maxDepth {
+			continue
+		}
+		data.EachLineFromID(id, func(l *graph.Line) {
+			lines = append(lines, l)
+			goalID := l.To().ID()
+			if _, seen := nodeDepth[goalID]; !seen {
+				nodeDepth[goalID] = depth + 1
+				queue = append(queue, goalID)
 			}
-			return ok
-		},
+		})
 	}
-	_ = bf.Walk(shared, u, func(n gonumGraph.Node, d int) bool {
-		depth = d
-		nodeDepth[n.ID()] = d
-		return d > maxDepth
-	})
-	lines = slices.DeleteFunc(lines, func(l *graph.Line) bool {
-		return nodeDepth[l.From().ID()] > nodeDepth[l.To().ID()]
-	})
-	return lines, nil
+
+	// Exclude lines that point toward a node at a shallower BFS depth.
+	kept := lines[:0]
+	for _, l := range lines {
+		if nodeDepth[l.From().ID()] <= nodeDepth[l.To().ID()] {
+			kept = append(kept, l)
+		}
+	}
+	return kept, nil
 }
 
 // goalScope returns the lines on shortest/near-shortest paths from start to each goal.
@@ -129,25 +133,35 @@ var log = logging.Log()
 
 // queryLine is a query, the graph line that generated it, and its traversal depth.
 type queryLine struct {
-	Query korrel8r.Query
-	Line  *graph.Line // immutable line (for Rule, String, metric attrs)
-	key   lineKey     // overlay state key
-	depth int
+	Query     korrel8r.Query
+	lineIndex int // index into traverser.lineStates; -1 for a start query
+	depth     int
 }
 
 type lineKey struct {
-	start, goal korrel8r.Class
+	start, goal int64
 	rule        korrel8r.Rule
 }
 
+type lineState struct {
+	line    *graph.Line
+	queries graph.Queries // Allocated lazily when the line produces a query result.
+}
+
 // node holds mutable per-class state for the traversal overlay.
-type node struct {
-	mu          sync.Mutex
+// nodeStatic is immutable topology and routing metadata, indexed by graph node ID.
+type nodeStatic struct {
 	class       korrel8r.Class
-	result      result.Result
-	queries     graph.Queries
-	processed   int // count of result objects already rule-applied
+	rules       []korrel8r.Rule
 	classMetric metric.MeasurementOption
+}
+
+// nodeState is mutable traversal state, allocated only when a node becomes active.
+type nodeState struct {
+	mu        sync.Mutex
+	result    result.Result
+	queries   graph.Queries
+	processed int // count of result objects already rule-applied
 }
 
 // workQueue is an unbounded, mutex-protected FIFO queue.
@@ -200,81 +214,81 @@ type traverser struct {
 	maxDepth   int // -1 for unlimited
 
 	// Read-only after init
-	nodes      map[korrel8r.Class]*node
-	rules      map[korrel8r.Class]unique.Set[korrel8r.Rule]
-	lines      map[lineKey]*graph.Line // immutable lines (for Rule access)
-	ruleMetric map[korrel8r.Rule]metric.MeasurementOption
+	nodeStatic []nodeStatic // Immutable routing, indexed by graph node ID.
+	lineIndex  map[lineKey]int
+	lineStates []lineState
 
 	// Concurrent state
-	lineQueries map[lineKey]graph.Queries // overlay: mutable line queries
-	work        *workQueue
-	wg          sync.WaitGroup
-	seenMu      sync.Mutex
-	seen        map[korrel8r.Query]struct{}
-	lineMu      sync.Mutex
+	nodeMu    sync.Mutex
+	nodeState []*nodeState // Lazy mutable overlays, indexed by graph node ID.
+	work      *workQueue
+	wg        sync.WaitGroup
+	seenMu    sync.Mutex
+	seen      map[korrel8r.Query]struct{}
+	lineMu    sync.Mutex
 }
 
 func newTraverser(e *engine.Engine, data *graph.Data, scopeLines []*graph.Line, c *korrel8r.Constraint, maxDepth int) *traverser {
 	t := &traverser{
-		engine:      e,
-		data:        data,
-		constraint:  c,
-		maxDepth:    maxDepth,
-		nodes:       map[korrel8r.Class]*node{},
-		rules:       map[korrel8r.Class]unique.Set[korrel8r.Rule]{},
-		lines:       map[lineKey]*graph.Line{},
-		lineQueries: map[lineKey]graph.Queries{},
-		ruleMetric:  map[korrel8r.Rule]metric.MeasurementOption{},
-		work:        newWorkQueue(),
-		seen:        map[korrel8r.Query]struct{}{},
+		engine:     e,
+		data:       data,
+		constraint: c,
+		maxDepth:   maxDepth,
+		nodeStatic: make([]nodeStatic, len(data.Nodes)),
+		nodeState:  make([]*nodeState, len(data.Nodes)),
+		lineIndex:  make(map[lineKey]int, len(scopeLines)),
+		lineStates: make([]lineState, 0, len(scopeLines)),
+		work:       newWorkQueue(),
+		seen:       map[korrel8r.Query]struct{}{},
 	}
 
 	for _, l := range scopeLines {
-		start := l.Start().Class
-		goal := l.Goal().Class
-		t.getOrCreateNode(start)
-		t.getOrCreateNode(goal)
-		if t.rules[start] == nil {
-			t.rules[start] = unique.NewSet[korrel8r.Rule]()
+		startID, goalID := l.From().ID(), l.To().ID()
+		t.initNodeStatic(startID, l.Start().Class)
+		t.initNodeStatic(goalID, l.Goal().Class)
+		start := &t.nodeStatic[startID]
+		if !slices.Contains(start.rules, l.Rule) {
+			start.rules = append(start.rules, l.Rule)
 		}
-		t.rules[start].Add(l.Rule)
-		key := lineKey{start: start, rule: l.Rule, goal: goal}
-		t.lines[key] = l
-		if _, ok := t.lineQueries[key]; !ok {
-			t.lineQueries[key] = graph.Queries{}
-		}
-		if _, ok := t.ruleMetric[l.Rule]; !ok {
-			t.ruleMetric[l.Rule] = metric.WithAttributes(
-				attribute.String("rule", l.Rule.Name()))
+		key := lineKey{start: startID, rule: l.Rule, goal: goalID}
+		if index, ok := t.lineIndex[key]; ok {
+			t.lineStates[index].line = l
+		} else {
+			t.lineIndex[key] = len(t.lineStates)
+			t.lineStates = append(t.lineStates, lineState{line: l})
 		}
 	}
 
 	return t
 }
 
-func (t *traverser) getOrCreateNode(class korrel8r.Class) *node {
-	n := t.nodes[class]
+func (t *traverser) initNodeStatic(id int64, class korrel8r.Class) {
+	n := &t.nodeStatic[id]
+	if n.class == nil {
+		n.class = class
+		n.classMetric = t.engine.ClassMetricAttrs(class)
+	}
+}
+
+func (t *traverser) getOrCreateNodeState(id int64) *nodeState {
+	t.nodeMu.Lock()
+	defer t.nodeMu.Unlock()
+	n := t.nodeState[id]
 	if n == nil {
-		n = &node{
-			class:   class,
-			result:  result.New(class),
+		n = &nodeState{
+			result:  result.New(t.nodeStatic[id].class),
 			queries: graph.Queries{},
-			classMetric: metric.WithAttributes(
-				attribute.String("domain", class.Domain().Name()),
-				attribute.String("class", class.Name()),
-			),
 		}
-		t.nodes[class] = n
+		t.nodeState[id] = n
 	}
 	return n
 }
 
 // run launches the worker pool, primes start data, and waits for completion.
 func (t *traverser) run(ctx context.Context, start Start) (*graph.Graph, error) {
-	startNode := t.nodes[start.Class]
-	if startNode == nil {
-		startNode = t.getOrCreateNode(start.Class)
-	}
+	startDataNode := t.data.NodeFor(start.Class)
+	t.initNodeStatic(startDataNode.ID(), start.Class)
+	startNode := t.getOrCreateNodeState(startDataNode.ID())
 
 	// Launch worker pool — workers block on the empty queue until work arrives.
 	numWorkers := runtime.GOMAXPROCS(0)
@@ -295,10 +309,10 @@ func (t *traverser) run(ctx context.Context, start Start) (*graph.Graph, error) 
 	startNode.mu.Unlock()
 
 	for _, q := range start.Queries {
-		t.dedupAndSend(ctx, queryLine{Query: q, depth: 0})
+		t.dedupAndSend(ctx, queryLine{Query: q, lineIndex: -1, depth: 0})
 	}
 
-	t.applyRules(ctx, startNode, 1)
+	t.applyRules(ctx, startDataNode.ID(), startNode, 1)
 
 	t.wg.Done() // Release sentinel.
 	t.wg.Wait()
@@ -311,39 +325,35 @@ func (t *traverser) run(ctx context.Context, start Start) (*graph.Graph, error) 
 // buildGraph creates a result graph containing only nodes and lines that produced results.
 func (t *traverser) buildGraph() *graph.Graph {
 	g := graph.New(t.data)
-	nodeMap := map[korrel8r.Class]*graph.Node{}
-	for _, n := range t.nodes {
-		if len(n.result.List()) == 0 {
+	nodeMap := make([]*graph.Node, len(t.nodeState))
+	for id, n := range t.nodeState {
+		if n == nil || len(n.result.List()) == 0 {
 			continue
 		}
-		dn := t.data.NodeFor(n.class)
-		if dn == nil {
-			continue
-		}
+		dn := t.data.Nodes[id]
 		gn := &graph.Node{
 			Node:    dn.Node,
-			Class:   n.class,
+			Class:   t.nodeStatic[id].class,
 			Attrs:   graph.Attrs{},
 			Result:  n.result,
 			Queries: n.queries,
 		}
 		g.AddNode(gn)
-		nodeMap[n.class] = gn
+		nodeMap[id] = gn
 	}
-	for key, queries := range t.lineQueries {
-		if queries.Total() == 0 {
+	for _, state := range t.lineStates {
+		if state.queries.Total() == 0 {
 			continue
 		}
-		from, to := nodeMap[key.start], nodeMap[key.goal]
+		from, to := nodeMap[state.line.From().ID()], nodeMap[state.line.To().ID()]
 		if from == nil || to == nil {
 			continue
 		}
-		topoLine := t.lines[key]
 		l := &graph.Line{
-			Line:    multi.Line{F: from, T: to, UID: topoLine.UID},
-			Rule:    topoLine.Rule,
+			Line:    multi.Line{F: from, T: to, UID: state.line.UID},
+			Rule:    state.line.Rule,
 			Attrs:   graph.Attrs{},
-			Queries: queries,
+			Queries: state.queries,
 		}
 		g.AddLine(l)
 	}
@@ -369,7 +379,8 @@ func (t *traverser) isDuplicate(ctx context.Context, ql queryLine) bool {
 	t.seenMu.Lock()
 	defer t.seenMu.Unlock()
 	if _, exists := t.seen[ql.Query]; exists {
-		metricDuplicateQueries.Add(ctx, 1, t.nodes[ql.Query.Class()].classMetric)
+		id := t.data.NodeFor(ql.Query.Class()).ID()
+		metricDuplicateQueries.Add(ctx, 1, t.nodeStatic[id].classMetric)
 		return true
 	}
 	t.seen[ql.Query] = struct{}{}
@@ -384,11 +395,12 @@ func (t *traverser) handleQuery(ctx context.Context, ql *queryLine) {
 	}
 
 	goalClass := ql.Query.Class()
-	n := t.nodes[goalClass]
+	goalID := t.data.NodeFor(goalClass).ID()
+	n := t.getOrCreateNodeState(goalID)
 	if n == nil {
 		return
 	}
-	if n.overLimit(t.constraint.GetQueryLimit()) {
+	if n.overLimit(t.constraint.GetQueryLimit(), goalClass) {
 		return
 	}
 
@@ -397,7 +409,7 @@ func (t *traverser) handleQuery(ctx context.Context, ql *queryLine) {
 	_ = t.engine.Get(ctx, ql.Query, t.constraint, korrel8r.AppenderFunc(func(objects ...korrel8r.Object) {
 		results = append(results, objects...)
 	}))
-	metricQueries.Add(ctx, 1, t.nodes[ql.Query.Class()].classMetric)
+	metricQueries.Add(ctx, 1, t.nodeStatic[goalID].classMetric)
 
 	// Add unique new objects to node and record query.
 	// The captured resultList slice header is safe to read after unlock because:
@@ -414,9 +426,13 @@ func (t *traverser) handleQuery(ctx context.Context, ql *queryLine) {
 	n.queries.Set(ql.Query, resultCount)
 	n.mu.Unlock()
 
-	if ql.Line != nil {
+	if ql.lineIndex >= 0 {
 		t.lineMu.Lock()
-		t.lineQueries[ql.key].Set(ql.Query, resultCount)
+		state := &t.lineStates[ql.lineIndex]
+		if state.queries == nil {
+			state.queries = graph.Queries{}
+		}
+		state.queries.Set(ql.Query, resultCount)
 		t.lineMu.Unlock()
 	}
 
@@ -439,14 +455,14 @@ func (t *traverser) handleQuery(ctx context.Context, ql *queryLine) {
 		}
 	}
 
-	t.applyRules(ctx, n, ql.depth+1)
+	t.applyRules(ctx, goalID, n, ql.depth+1)
 }
 
-func (n *node) overLimit(limit int) bool {
+func (n *nodeState) overLimit(limit int, class korrel8r.Class) bool {
 	n.mu.Lock()
 	defer n.mu.Unlock()
 	if limit > 0 && len(n.queries) > limit {
-		log.V(5).Info("Query limit reached", "class", n.class, "queries", len(n.queries))
+		log.V(5).Info("Query limit reached", "class", class, "queries", len(n.queries))
 		return true
 	}
 	return false
@@ -455,32 +471,37 @@ func (n *node) overLimit(limit int) bool {
 // applyRules applies outgoing correlation rules to unprocessed objects in a node.
 // The processed counter ensures each object is rule-applied exactly once,
 // even when multiple goroutines call this concurrently for the same node.
-func (t *traverser) applyRules(ctx context.Context, n *node, nextDepth int) {
+func (t *traverser) applyRules(ctx context.Context, nodeID int64, n *nodeState, nextDepth int) {
 	// Snapshot the objects, update processed, release the lock
 	n.mu.Lock()
 	objects := n.result.List()
 	start := n.processed
 	n.processed = len(objects)
-	class := n.class
+	static := &t.nodeStatic[nodeID]
+	class := static.class
 	n.mu.Unlock()
 
 	if start >= len(objects) {
 		return
 	}
 
-	rules := t.rules[class]
+	rules := static.rules
 	for _, o := range objects[start:] {
-		for r := range rules {
+		for _, r := range rules {
 			if ctx.Err() != nil {
 				return
 			}
 			queries, err := r.Apply(o)
 			log.V(4).Info("Rule applied", "name", r.Name(), "start", class, "error", err, "queries", len(queries))
-			metricRules.Add(ctx, 1, t.ruleMetric[r])
+			metricRules.Add(ctx, 1, t.engine.RuleMetricAttrs(r))
 			for _, q := range queries {
-				key := lineKey{start: class, rule: r, goal: q.Class()}
-				if line := t.lines[key]; line != nil {
-					t.dedupAndSend(ctx, queryLine{Query: q, Line: line, key: key, depth: nextDepth})
+				goal := t.data.NodeFor(q.Class())
+				if goal == nil {
+					continue
+				}
+				key := lineKey{start: nodeID, rule: r, goal: goal.ID()}
+				if index, ok := t.lineIndex[key]; ok {
+					t.dedupAndSend(ctx, queryLine{Query: q, lineIndex: index, depth: nextDepth})
 				}
 			}
 		}

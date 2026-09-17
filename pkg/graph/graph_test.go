@@ -102,6 +102,39 @@ func TestEachNode(t *testing.T) {
 	assert.Equal(t, []string{"d:a", "d:b", "d:c"}, classes)
 }
 
+func TestDataAdjacencyIndexes(t *testing.T) {
+	b := mock.NewBuilder("d")
+	r := b.Rule
+	d := NewData(
+		r("ab1", "d:a", "d:b", nil),
+		r("bc", "d:b", "d:c", nil),
+		r("ab2", "d:a", "d:b", nil),
+		r("ca", "d:c", "d:a", nil),
+	)
+
+	lineNames := func(each func(func(*Line))) (names []string) {
+		each(func(l *Line) { names = append(names, l.Rule.Name()) })
+		return names
+	}
+	a, bNode := d.NodeFor(b.Class("d:a")), d.NodeFor(b.Class("d:b"))
+
+	assert.Equal(t, []string{"ab1", "ab2"}, lineNames(func(visit func(*Line)) {
+		d.EachLineFromID(a.ID(), visit)
+	}))
+	assert.Equal(t, []string{"ca"}, lineNames(func(visit func(*Line)) {
+		d.EachLineToID(a.ID(), visit)
+	}))
+	assert.Equal(t, []string{"ab1", "ab2"}, lineNames(func(visit func(*Line)) {
+		d.EachLineToID(bNode.ID(), visit)
+	}))
+
+	// Invalid IDs are treated as empty adjacency lists.
+	for _, id := range []int64{-1, int64(len(d.Nodes))} {
+		d.EachLineFromID(id, func(*Line) { t.Fatalf("unexpected outgoing line for ID %d", id) })
+		d.EachLineToID(id, func(*Line) { t.Fatalf("unexpected incoming line for ID %d", id) })
+	}
+}
+
 func TestEachEdge(t *testing.T) {
 	b := mock.NewBuilder("d")
 	r := b.Rule
