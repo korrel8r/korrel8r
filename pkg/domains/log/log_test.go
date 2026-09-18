@@ -174,6 +174,23 @@ func TestNewObject(t *testing.T) {
 	})
 }
 
+func BenchmarkNewObject(b *testing.B) {
+	entry := &loki.Log{
+		Time: time.Unix(0, 1672574400123456789),
+		Body: "test log body",
+		Labels: map[string]string{
+			"app": "test-app", "namespace": "default", "stream": "stdout",
+		},
+		Metadata: map[string]string{
+			"source": "container", "level": "info", Attr_Timestamp: "2023-01-01T00:00:00Z",
+		},
+	}
+	b.ReportAllocs()
+	for b.Loop() {
+		_ = newObject(entry)
+	}
+}
+
 func TestQuery(t *testing.T) {
 	t.Run("LogQL query", func(t *testing.T) {
 		class := Application

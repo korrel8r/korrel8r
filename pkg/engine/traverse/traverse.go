@@ -15,11 +15,13 @@ package traverse
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math"
 	"runtime"
 	"slices"
 	"sync"
+	"sync/atomic"
 
 	"github.com/korrel8r/korrel8r/internal/pkg/logging"
 	"github.com/korrel8r/korrel8r/pkg/engine"
@@ -40,12 +42,9 @@ func Goals(ctx context.Context, e *engine.Engine, start Start, goals []korrel8r.
 		return nil, err
 	}
 	g, err := newTraverser(e, shared.Data, scope, start.Constraint, -1).run(ctx, start)
-	if err != nil {
-		return nil, err
-	}
-	// Remove dead-end paths that don't reach a goal.
+	// Remove dead-end paths that don't reach a goal, including in partial results.
 	g.RemoveEmptyGoalPaths(goals)
-	return g, nil
+	return g, err
 }
 
 // Neighbors traverses to all neighbors of the start objects, traversing links up to the given depth.
@@ -143,6 +142,16 @@ type lineKey struct {
 	rule        korrel8r.Rule
 }
 
+// LimitError reports that a traversal returned a partial graph after exhausting a total budget.
+type LimitError struct {
+	Name  string
+	Limit int
+}
+
+func (e *LimitError) Error() string {
+	return fmt.Sprintf("traversal %s exceeded: limit %d", e.Name, e.Limit)
+}
+
 type lineState struct {
 	line    *graph.Line
 	queries graph.Queries // Allocated lazily when the line produces a query result.
@@ -214,32 +223,41 @@ type traverser struct {
 	maxDepth   int // -1 for unlimited
 
 	// Read-only after init
-	nodeStatic []nodeStatic // Immutable routing, indexed by graph node ID.
-	lineIndex  map[lineKey]int
-	lineStates []lineState
+	nodeStatic      []nodeStatic // Immutable routing, indexed by graph node ID.
+	lineIndex       map[lineKey]int
+	lineStates      []lineState
+	totalLimit      int
+	totalQueryLimit int
 
 	// Concurrent state
-	nodeMu    sync.Mutex
-	nodeState []*nodeState // Lazy mutable overlays, indexed by graph node ID.
-	work      *workQueue
-	wg        sync.WaitGroup
-	seenMu    sync.Mutex
-	seen      map[korrel8r.Query]struct{}
-	lineMu    sync.Mutex
+	nodeMu       sync.Mutex
+	nodeState    []*nodeState // Lazy mutable overlays, indexed by graph node ID.
+	work         *workQueue
+	wg           sync.WaitGroup
+	budgetMu     sync.Mutex
+	totalObjects int
+	limitOnce    sync.Once
+	limitErr     *LimitError
+	stopped      atomic.Bool
+	seenMu       sync.Mutex
+	seen         map[korrel8r.Query]struct{}
+	lineMu       sync.Mutex
 }
 
 func newTraverser(e *engine.Engine, data *graph.Data, scopeLines []*graph.Line, c *korrel8r.Constraint, maxDepth int) *traverser {
 	t := &traverser{
-		engine:     e,
-		data:       data,
-		constraint: c,
-		maxDepth:   maxDepth,
-		nodeStatic: make([]nodeStatic, len(data.Nodes)),
-		nodeState:  make([]*nodeState, len(data.Nodes)),
-		lineIndex:  make(map[lineKey]int, len(scopeLines)),
-		lineStates: make([]lineState, 0, len(scopeLines)),
-		work:       newWorkQueue(),
-		seen:       map[korrel8r.Query]struct{}{},
+		engine:          e,
+		data:            data,
+		constraint:      c,
+		maxDepth:        maxDepth,
+		nodeStatic:      make([]nodeStatic, len(data.Nodes)),
+		nodeState:       make([]*nodeState, len(data.Nodes)),
+		lineIndex:       make(map[lineKey]int, len(scopeLines)),
+		lineStates:      make([]lineState, 0, len(scopeLines)),
+		work:            newWorkQueue(),
+		seen:            map[korrel8r.Query]struct{}{},
+		totalLimit:      effectiveLimit(e.Tuning.TotalLimit, c.GetTotalLimit()),
+		totalQueryLimit: effectiveLimit(e.Tuning.TotalQueryLimit, c.GetTotalQueryLimit()),
 	}
 
 	for _, l := range scopeLines {
@@ -260,6 +278,24 @@ func newTraverser(e *engine.Engine, data *graph.Data, scopeLines []*graph.Line, 
 	}
 
 	return t
+}
+
+func effectiveLimit(server, request int) int {
+	if server <= 0 {
+		return request
+	}
+	if request <= 0 {
+		return server
+	}
+	return min(server, request)
+}
+
+func (t *traverser) exceed(ctx context.Context, name string, limit int, attrs metric.MeasurementOption) {
+	t.limitOnce.Do(func() {
+		metricLimitExceeded.Add(ctx, 1, attrs)
+		t.limitErr = &LimitError{Name: name, Limit: limit}
+		t.stopped.Store(true)
+	})
 }
 
 func (t *traverser) initNodeStatic(id int64, class korrel8r.Class) {
@@ -305,7 +341,11 @@ func (t *traverser) run(ctx context.Context, start Start) (*graph.Graph, error) 
 	t.wg.Add(1)
 
 	startNode.mu.Lock()
-	startNode.result.Append(start.Objects...)
+	for _, object := range start.Objects {
+		if !t.addObject(ctx, startNode, object) {
+			break
+		}
+	}
 	startNode.mu.Unlock()
 
 	for _, q := range start.Queries {
@@ -319,7 +359,17 @@ func (t *traverser) run(ctx context.Context, start Start) (*graph.Graph, error) 
 	t.work.close()
 	workerWg.Wait()
 
-	return t.buildGraph(), ctx.Err()
+	g := t.buildGraph()
+	cause := context.Cause(ctx)
+	if cause == nil && t.limitErr != nil {
+		cause = t.limitErr
+	}
+	if limitErr, ok := errors.AsType[*LimitError](cause); ok {
+		g.GraphAttrs["truncated"] = "true"
+		g.GraphAttrs["truncatedBy"] = limitErr.Name
+		g.GraphAttrs["truncatedLimit"] = fmt.Sprint(limitErr.Limit)
+	}
+	return g, cause
 }
 
 // buildGraph creates a result graph containing only nodes and lines that produced results.
@@ -365,7 +415,7 @@ func (t *traverser) dedupAndSend(ctx context.Context, ql queryLine) {
 	if t.maxDepth >= 0 && ql.depth > t.maxDepth {
 		return
 	}
-	if ctx.Err() != nil {
+	if ctx.Err() != nil || t.stopped.Load() {
 		return
 	}
 	if t.isDuplicate(ctx, ql) {
@@ -373,6 +423,23 @@ func (t *traverser) dedupAndSend(ctx context.Context, ql queryLine) {
 	}
 	t.wg.Add(1)
 	t.work.put(ql)
+}
+
+func (t *traverser) addObject(ctx context.Context, n *nodeState, object korrel8r.Object) bool {
+	t.budgetMu.Lock()
+	defer t.budgetMu.Unlock()
+	if n.result.Contains(object) {
+		return true
+	}
+	if t.totalLimit > 0 && t.totalObjects >= t.totalLimit {
+		t.exceed(ctx, "totalLimit", t.totalLimit, metricTotalLimit)
+		return false
+	}
+	if n.result.Add(object) {
+		t.totalObjects++
+		metricRetainedObjects.Add(ctx, 1)
+	}
+	return true
 }
 
 func (t *traverser) isDuplicate(ctx context.Context, ql queryLine) bool {
@@ -383,7 +450,12 @@ func (t *traverser) isDuplicate(ctx context.Context, ql queryLine) bool {
 		metricDuplicateQueries.Add(ctx, 1, t.nodeStatic[id].classMetric)
 		return true
 	}
+	if t.totalQueryLimit > 0 && len(t.seen) >= t.totalQueryLimit {
+		t.exceed(ctx, "totalQueryLimit", t.totalQueryLimit, metricTotalQueryLimit)
+		return true
+	}
 	t.seen[ql.Query] = struct{}{}
+	metricAcceptedQueries.Add(ctx, 1)
 	return false
 }
 
@@ -419,7 +491,9 @@ func (t *traverser) handleQuery(ctx context.Context, ql *queryLine) {
 	n.mu.Lock()
 	before := len(n.result.List())
 	for _, o := range results {
-		n.result.Add(o)
+		if !t.addObject(ctx, n, o) {
+			break
+		}
 	}
 	resultList := n.result.List()
 	resultCount := len(resultList) - before

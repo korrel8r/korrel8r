@@ -12,8 +12,13 @@ import (
 type Constraint struct {
 	// Limit number of objects returned per query
 	Limit *int `json:"limit,omitempty"`
-	// QueryLimit limits the number of queries per class during traversal
+	// QueryLimit limits the number of queries per class during traversal.
 	QueryLimit *int `json:"queryLimit,omitempty"`
+	// TotalLimit limits unique result objects retained across the traversal.
+	TotalLimit *int `json:"totalLimit,omitempty"`
+	// TotalQueryLimit limits unique queries accepted across the traversal.
+	// It includes queries with no results that do not appear in the result graph.
+	TotalQueryLimit *int `json:"totalQueryLimit,omitempty"`
 	// Start ignore data before this time (RFC 3339)
 	Start *time.Time `json:"start,omitempty"`
 	// End ignore data after this time (RFC 3339)
@@ -77,6 +82,20 @@ func (c *Constraint) GetLimit() int {
 }
 
 // GetQueryLimit returns query limit or 0, safe to call with c == nil
+func (c *Constraint) GetTotalLimit() int {
+	if c != nil && c.TotalLimit != nil {
+		return *c.TotalLimit
+	}
+	return 0
+}
+
+func (c *Constraint) GetTotalQueryLimit() int {
+	if c != nil && c.TotalQueryLimit != nil {
+		return *c.TotalQueryLimit
+	}
+	return 0
+}
+
 func (c *Constraint) GetQueryLimit() int {
 	if c != nil && c.QueryLimit != nil {
 		return *c.QueryLimit

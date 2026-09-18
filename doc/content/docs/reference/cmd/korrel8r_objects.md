@@ -13,11 +13,14 @@ korrel8r objects QUERY [flags]
 ### Options
 
 ```
-  -h, --help               help for objects
-      --limit int          Limit total number of results.
-      --since duration     Only get results since this long ago.
-      --timeout duration   Timeout for store requests.
-      --until duration     Only get results until this long ago.
+  -h, --help                    help for objects
+      --limit int               Limit number of results per query.
+      --query-limit int         Limit number of queries per class during traversal.
+      --since duration          Only get results since this long ago.
+      --timeout duration        Timeout for store requests.
+      --total-limit int         Limit unique results retained across the traversal.
+      --total-query-limit int   Limit unique queries accepted across the traversal.
+      --until duration          Only get results until this long ago.
 ```
 
 ### Options inherited from parent commands

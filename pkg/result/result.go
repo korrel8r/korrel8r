@@ -11,8 +11,9 @@ import (
 // Result is an Appender that stores objects in order.
 type Result interface {
 	korrel8r.Appender
-	Add(korrel8r.Object) bool // Add returns true if the object was added.
-	List() []korrel8r.Object  // List returns the objects in order added/appended.
+	Add(korrel8r.Object) bool      // Add returns true if the object was added.
+	Contains(korrel8r.Object) bool // Contains reports whether Add would reject the object as a duplicate.
+	List() []korrel8r.Object       // List returns the objects in order added/appended.
 }
 
 // New returns a [Set] if class implements IDer, a [List] otherwise.
@@ -30,6 +31,7 @@ func NewList() *List                              { return &List{} }
 func (r *List) Append(objects ...korrel8r.Object) { *r = append(*r, objects...) }
 func (r *List) List() []korrel8r.Object           { return []korrel8r.Object(*r) }
 func (r *List) Add(o korrel8r.Object) bool        { r.Append(o); return true }
+func (r *List) Contains(korrel8r.Object) bool     { return false }
 
 // Set implements [Result] and de-duplicates results using an IDer.
 // It ignores second and subsequent objects with the same ID.
@@ -48,6 +50,7 @@ func (r *Set) Append(objects ...korrel8r.Object) {
 		r.Add(o)
 	}
 }
+func (r *Set) Contains(o korrel8r.Object) bool { return r.dedup.Has(o) }
 func (r *Set) Add(o korrel8r.Object) bool {
 	ok := r.dedup.Unique(o)
 	if ok {

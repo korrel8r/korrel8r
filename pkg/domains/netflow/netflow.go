@@ -7,7 +7,6 @@ import (
 	_ "embed"
 	"fmt"
 	"hash/fnv"
-	"maps"
 	"net/http"
 	"net/url"
 	"strings"
@@ -129,15 +128,16 @@ func (c Class) ID(ko korrel8r.Object) any {
 type Object map[string]any
 
 func NewObject(entry *loki.Log) Object {
-	var label_object, o Object
-	o = make(map[string]any)
-	_ = json.Unmarshal([]byte(entry.Body), &o)
-	if entry.Labels != nil {
-		label_object = make(map[string]any)
-		for k, v := range entry.Labels {
-			label_object[k] = v
-		}
-		maps.Copy(o, label_object)
+	// Netflow records are flat JSON objects. Pre-size the map to avoid repeated
+	// growth while decoding; commas in nested values only cause harmless over-allocation.
+	capacity := len(entry.Labels)
+	if len(entry.Body) > 2 {
+		capacity += strings.Count(entry.Body, ",") + 1
+	}
+	o := make(Object, capacity)
+	_ = json.UnmarshalString(entry.Body, &o)
+	for k, v := range entry.Labels {
+		o[k] = v
 	}
 	return o
 }

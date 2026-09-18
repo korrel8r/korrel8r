@@ -71,6 +71,8 @@ func validateNeighborGraph(b *testing.B, g *graph.Graph) {
 	require.Positive(b, queries)
 }
 
+// BenchmarkNeighbors measures a complete depth-limited neighborhood traversal.
+// The mock scenario is warmed up and checked for non-empty results before timing.
 func BenchmarkNeighbors(b *testing.B) {
 	e := makeEngine(b)
 	start := benchmarkStart(b, e)
@@ -88,6 +90,7 @@ func BenchmarkNeighbors(b *testing.B) {
 	}
 }
 
+// BenchmarkNeighborScope measures direct BFS selection of the depth-limited rule scope.
 func BenchmarkNeighborScope(b *testing.B) {
 	e := makeEngine(b)
 	start := benchmarkStart(b, e)
@@ -106,6 +109,7 @@ var (
 	benchmarkNode      *graph.Node
 )
 
+// BenchmarkDataNodeFor measures lookup of a rule-graph node by stable class identity.
 func BenchmarkDataNodeFor(b *testing.B) {
 	e := makeEngine(b)
 	start := benchmarkStart(b, e)
@@ -118,6 +122,7 @@ func BenchmarkDataNodeFor(b *testing.B) {
 	}
 }
 
+// BenchmarkDataLinesFrom measures allocation-free iteration over outgoing adjacency.
 func BenchmarkDataLinesFrom(b *testing.B) {
 	e := makeEngine(b)
 	start := benchmarkStart(b, e)
@@ -134,6 +139,7 @@ func BenchmarkDataLinesFrom(b *testing.B) {
 	}
 }
 
+// BenchmarkNewTraverser measures construction of mutable state for a selected scope.
 func BenchmarkNewTraverser(b *testing.B) {
 	e := makeEngine(b)
 	start := benchmarkStart(b, e)
@@ -148,6 +154,8 @@ func BenchmarkNewTraverser(b *testing.B) {
 	}
 }
 
+// BenchmarkRuleGraph measures immutable rule topology construction. The Data subbenchmark
+// excludes Gonum; SharedGraph includes creation of its compatible shared Gonum graph.
 func BenchmarkRuleGraph(b *testing.B) {
 	rules := makeEngine(b).Rules()
 
@@ -165,6 +173,7 @@ func BenchmarkRuleGraph(b *testing.B) {
 	})
 }
 
+// BenchmarkGoals measures a complete goal-directed traversal to the infrastructure log class.
 func BenchmarkGoals(b *testing.B) {
 	e := makeEngine(b)
 	goals := []korrel8r.Class{logdomain.Infrastructure}

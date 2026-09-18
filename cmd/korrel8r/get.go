@@ -4,6 +4,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"time"
@@ -19,11 +20,14 @@ import (
 
 // Common flags for neighbors and goals
 var (
-	class        string
-	queries      []string
-	objects      []string
-	limit        int
-	graphOptions = api.GraphOptions{
+	class           string
+	queries         []string
+	objects         []string
+	limit           int
+	queryLimit      int
+	totalLimit      int
+	totalQueryLimit int
+	graphOptions    = api.GraphOptions{
 		Rules:   new(false),
 		Errors:  new(false),
 		Results: new(false),
@@ -42,7 +46,10 @@ func startFlags(cmd *cobra.Command) {
 }
 
 func constraintFlags(cmd *cobra.Command) {
-	cmd.Flags().IntVar(&limit, "limit", 0, "Limit total number of results.")
+	cmd.Flags().IntVar(&limit, "limit", 0, "Limit number of results per query.")
+	cmd.Flags().IntVar(&queryLimit, "query-limit", 0, "Limit number of queries per class during traversal.")
+	cmd.Flags().IntVar(&totalLimit, "total-limit", 0, "Limit unique results retained across the traversal.")
+	cmd.Flags().IntVar(&totalQueryLimit, "total-query-limit", 0, "Limit unique queries accepted across the traversal.")
 	cmd.Flags().DurationVar(&timeout, "timeout", 0, "Timeout for store requests.")
 	cmd.Flags().DurationVar(&since, "since", 0, "Only get results since this long ago.")
 	cmd.Flags().DurationVar(&until, "until", 0, "Only get results until this long ago.")
@@ -81,7 +88,7 @@ var (
 			ctx, cancel := e.WithTimeout(context.Background(), timeout)
 			defer cancel()
 			g, err := traverse.Neighbors(ctx, e, start(e), depth)
-			must.Must(err)
+			mustTraverse(err)
 			newPrinter(os.Stdout).Print(rest.NewGraph(g, &graphOptions))
 		},
 	}
@@ -109,7 +116,7 @@ var (
 			ctx, cancel := e.WithTimeout(context.Background(), timeout)
 			defer cancel()
 			g, err := traverse.Goals(ctx, e, start(e), goals)
-			must.Must(err)
+			mustTraverse(err)
 			newPrinter(os.Stdout).Print(rest.NewGraph(g, &graphOptions))
 		},
 	}
@@ -126,6 +133,15 @@ func constraint() *korrel8r.Constraint {
 	if limit > 0 {
 		c.Limit = new(limit)
 	}
+	if queryLimit > 0 {
+		c.QueryLimit = new(queryLimit)
+	}
+	if totalLimit > 0 {
+		c.TotalLimit = new(totalLimit)
+	}
+	if totalQueryLimit > 0 {
+		c.TotalQueryLimit = new(totalQueryLimit)
+	}
 	now := time.Now()
 	if since > 0 {
 		c.Start = new(now.Add(-since))
@@ -134,6 +150,12 @@ func constraint() *korrel8r.Constraint {
 		c.End = new(now.Add(-until))
 	}
 	return c
+}
+
+func mustTraverse(err error) {
+	if _, ok := errors.AsType[*traverse.LimitError](err); err != nil && !ok {
+		must.Must(err)
+	}
 }
 
 func start(e *engine.Engine) traverse.Start {

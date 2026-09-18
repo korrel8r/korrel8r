@@ -16,6 +16,9 @@ func NewDeduplicator[K comparable, V any](key func(V) K) *Deduplicator[K, V] {
 	return &Deduplicator[K, V]{key: key, seen: Set[K]{}}
 }
 
+// Has reports whether the key for v has already been seen.
+func (d *Deduplicator[K, V]) Has(v V) bool { return d.seen.Has(d.key(v)) }
+
 // Unique returns true if the key of v has not been seen before.
 // Unique will return false for future values with the same key.
 func (d *Deduplicator[K, V]) Unique(v V) bool {

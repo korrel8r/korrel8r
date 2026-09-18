@@ -3,7 +3,7 @@
 set -euo pipefail
 
 usage() {
-    echo "Usage: graph {nodes|edges|queries} [FILE]" >&2
+    echo "Usage: graph {nodes|edges|queries|objects} [FILE]" >&2
     exit 2
 }
 
@@ -18,6 +18,9 @@ nodes | edges)
     ;;
 queries)
     yq -p yaml -o yaml '[.nodes[].queries[]] | length' "$file"
+    ;;
+objects)
+    yq -p yaml -o yaml '.nodes[].queries[].count as $count ireduce (0; . + $count)' "$file"
     ;;
 *)
     usage

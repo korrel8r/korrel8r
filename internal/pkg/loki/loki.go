@@ -42,24 +42,23 @@ type Labels = map[string]string
 
 // UnmarshalJSON from loki's mixed-type JSON array [time, body, metadata]
 func (r *Log) UnmarshalJSON(b []byte) error {
-	var tuple []json.RawMessage
+	var tuple [3]json.RawMessage
 	if err := json.Unmarshal(b, &tuple); err != nil {
 		return err
 	}
-	if len(tuple) > 0 {
+	if tuple[0] != nil {
 		var ts types.UnixNanoTime
 		if err := json.Unmarshal(tuple[0], &ts); err != nil {
 			return err
 		}
 		r.Time = ts.Time
 	}
-	if len(tuple) > 1 {
+	if tuple[1] != nil {
 		if err := json.Unmarshal(tuple[1], &r.Body); err != nil {
 			return err
 		}
-
 	}
-	if len(tuple) > 2 {
+	if tuple[2] != nil {
 		if err := json.Unmarshal(tuple[2], &r.Metadata); err != nil {
 			return err
 		}
@@ -68,6 +67,8 @@ func (r *Log) UnmarshalJSON(b []byte) error {
 }
 
 // CollectFunc is called for each entry returned by a query.
+// The Log is valid only for the duration of the call; collectors must copy any
+// data they need to retain.
 type CollectFunc func(*Log)
 
 // Client for loki HTTP API
@@ -137,24 +138,82 @@ func (c *Client) get(ctx context.Context, u *url.URL, collect CollectFunc) error
 }
 
 // Visit each log record in the streams in timestamp order.
-// NOTE: assumes query direction is default "backward" (newest first)
+// NOTE: assumes query direction is default "backward" (newest first).
 func collectSorted(streams []stream, collect CollectFunc) {
-	ts := func(i int) time.Time { return streams[i].Values[0].Time }
+	cursors := make(streamCursorHeap, 0, len(streams))
+	for i := range streams {
+		if len(streams[i].Values) > 0 {
+			cursors = append(cursors, streamCursor{stream: &streams[i], streamIndex: i})
+		}
+	}
+	cursors.init()
+	for len(cursors) > 0 {
+		cursor := &cursors[0]
+		entry := &cursor.stream.Values[cursor.index]
+		entry.Labels = cursor.stream.Stream
+		collect(entry)
+
+		// Collectors are synchronous and must copy retained data. Clear the
+		// decoded entry promptly so its body and metadata can be reclaimed while
+		// the remainder of a large Loki response is still being processed.
+		*entry = Log{}
+		cursor.index++
+		if cursor.index == len(cursor.stream.Values) {
+			cursors.removeRoot()
+		} else {
+			cursors.fixRoot()
+		}
+	}
+}
+
+type streamCursor struct {
+	stream      *stream
+	streamIndex int // Tie-break equal timestamps in original stream order.
+	index       int
+}
+
+type streamCursorHeap []streamCursor
+
+func (h streamCursorHeap) less(i, j int) bool {
+	a, b := h[i], h[j]
+	at, bt := a.stream.Values[a.index].Time, b.stream.Values[b.index].Time
+	return at.After(bt) || (at.Equal(bt) && a.streamIndex < b.streamIndex)
+}
+
+func (h streamCursorHeap) init() {
+	for i := len(h)/2 - 1; i >= 0; i-- {
+		h.down(i)
+	}
+}
+
+func (h streamCursorHeap) fixRoot() { h.down(0) }
+
+func (h *streamCursorHeap) removeRoot() {
+	last := len(*h) - 1
+	(*h)[0] = (*h)[last]
+	(*h)[last] = streamCursor{}
+	*h = (*h)[:last]
+	if last > 0 {
+		h.down(0)
+	}
+}
+
+func (h streamCursorHeap) down(parent int) {
 	for {
-		// Find the stream with the latest timestamp on its first value.
-		i := -1
-		for j, s := range streams {
-			if len(s.Values) > 0 && (i < 0 || ts(j).After(ts(i))) {
-				i = j
-			}
+		left := 2*parent + 1
+		if left >= len(h) {
+			return
 		}
-		if i == -1 {
-			return // All streams are empty
+		best := left
+		right := left + 1
+		if right < len(h) && h.less(right, left) {
+			best = right
 		}
-		v := &streams[i].Values[0]
-		v.Labels = streams[i].Stream
-		collect(v)
-		streams[i].Values = streams[i].Values[1:] // Advance the stream
+		if !h.less(best, parent) {
+			return
+		}
+		h[parent], h[best] = h[best], h[parent]
+		parent = best
 	}
 }
 

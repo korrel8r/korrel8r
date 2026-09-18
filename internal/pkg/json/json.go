@@ -14,19 +14,22 @@ import (
 
 // Type aliases from encoding/json for compatibility.
 type (
-	RawMessage           = stdjson.RawMessage
-	Number               = stdjson.Number
-	Marshaler            = stdjson.Marshaler
-	Unmarshaler          = stdjson.Unmarshaler
+	RawMessage            = stdjson.RawMessage
+	Number                = stdjson.Number
+	Marshaler             = stdjson.Marshaler
+	Unmarshaler           = stdjson.Unmarshaler
 	InvalidUnmarshalError = stdjson.InvalidUnmarshalError
 )
 
 var std = sonic.ConfigStd
 
-func Marshal(v any) ([]byte, error)                           { return std.Marshal(v) }
-func MarshalIndent(v any, prefix, indent string) ([]byte, error) { return std.MarshalIndent(v, prefix, indent) }
-func Unmarshal(data []byte, v any) error                      { return std.Unmarshal(data, v) }
-func Valid(data []byte) bool                                  { return std.Valid(data) }
+func Marshal(v any) ([]byte, error) { return std.Marshal(v) }
+func MarshalIndent(v any, prefix, indent string) ([]byte, error) {
+	return std.MarshalIndent(v, prefix, indent)
+}
+func Unmarshal(data []byte, v any) error       { return std.Unmarshal(data, v) }
+func UnmarshalString(data string, v any) error { return std.UnmarshalFromString(data, v) }
+func Valid(data []byte) bool                   { return std.Valid(data) }
 
 // Encoder writes JSON to an output stream.
 type Encoder struct{ sonic.Encoder }

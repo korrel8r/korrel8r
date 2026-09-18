@@ -4,6 +4,7 @@ package traverse
 
 import (
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
 )
 
@@ -13,4 +14,10 @@ var (
 	metricRules, _            = meter.Int64Counter("traverse.rules", metric.WithDescription("Number of rule applications"))
 	metricQueries, _          = meter.Int64Counter("traverse.queries", metric.WithDescription("Number of query executions"))
 	metricDuplicateQueries, _ = meter.Int64Counter("traverse.duplicate_queries", metric.WithDescription("Number of duplicate queries ignored"))
+	metricAcceptedQueries, _  = meter.Int64Counter("traverse.accepted_queries", metric.WithDescription("Number of unique queries accepted"))
+	metricRetainedObjects, _  = meter.Int64Counter("traverse.retained_objects", metric.WithDescription("Number of unique result objects retained"))
+	metricLimitExceeded, _    = meter.Int64Counter("traverse.limit_exceeded", metric.WithDescription("Number of traversal total-limit exhaustion events"))
+
+	metricTotalLimit      = metric.WithAttributes(attribute.String("limit", "totalLimit"))
+	metricTotalQueryLimit = metric.WithAttributes(attribute.String("limit", "totalQueryLimit"))
 )

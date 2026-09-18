@@ -158,12 +158,29 @@ Limits and optimizations:
 
 ```yaml
 tuning:
-  requestTimeout: 1m       # 1. Timeout for incoming and outgoing requests
-  sessionTimeout: 5m       # 2. Idle timeout for per-user sessions
-  storeRetryInterval: 10s  # 3. Minimum time between store re-creation attempts
+  totalLimit: 10000        # 1. Unique result objects retained per traversal
+  totalQueryLimit: 5000    # 2. Unique queries accepted per traversal
+  requestTimeout: 1m       # 3. Timeout for incoming and outgoing requests
+  sessionTimeout: 5m       # 4. Idle timeout for per-user sessions
+  storeRetryInterval: 10s  # 5. Minimum time between store re-creation attempts
 ```
 
 Durations use Go [duration syntax](https://pkg.go.dev/time#ParseDuration), for example `30s`, `1m`, `2h`.
+
+`totalLimit`
+: Maximum number of unique result objects retained across a traversal. This complements the
+  per-query `limit`. A request may specify a lower `totalLimit`, but cannot raise this server
+  limit. If omitted or 0, there is no traversal-wide object limit.
+
+`totalQueryLimit`
+: Maximum number of unique queries accepted across a traversal. This complements the per-class
+  `queryLimit`. A request may specify a lower `totalQueryLimit`, but cannot raise this server
+  limit. If omitted or 0, there is no traversal-wide query limit.
+
+When either total limit is exceeded, traversal stops and returns a successful partial graph.
+REST and MCP graph responses include `truncation` metadata naming the exhausted condition and
+its effective limit. REST responses also include `X-Korrel8r-Truncated`,
+`X-Korrel8r-Truncated-By`, and `X-Korrel8r-Truncated-Limit` headers.
 
 `requestTimeout`
 : Cancels incoming or outgoing requests that take longer than this.
@@ -184,6 +201,30 @@ Durations use Go [duration syntax](https://pkg.go.dev/time#ParseDuration), for e
   {{< callout type="warning" >}}
   This disables per-user session isolation. Use only for development or testing.
   {{< /callout >}}
+
+### Sizing the total limits for a memory limit
+
+As a starting point, for a container memory limit `M` and at most `N` concurrent traversals:
+
+```text
+totalLimit      = (0.8 × M - 95MiB) / (N × 11KiB)
+totalQueryLimit = totalLimit / 10
+```
+
+| Memory limit | Concurrency | `totalLimit` | `totalQueryLimit` |
+| --- | --- | --- | --- |
+| 256 MiB | 1 | 10000 | 1000 |
+| 512 MiB | 1 | 29000 | 2900 |
+| 512 MiB | 2 | 14000 | 1400 |
+| 1 GiB | 1 | 67000 | 6700 |
+| 2 GiB | 1 | 143000 | 14000 |
+
+The 95MiB term is the baseline server footprint before any traversal state, and the 11KiB term
+is the measured peak RSS per retained object; both come from OpenShift Kubernetes and log
+workloads with a single session. A server with many concurrent user sessions holds one engine
+per session, so measure your own baseline in that case. These are sizing heuristics, not memory
+guarantees: verify peak container memory with your own workloads and re-check after changing
+stores, rules, or payload sizes.
 
 ## About Templates
 

@@ -5,7 +5,8 @@ Instructions for coding agents and contributors working in Korrel8r. Keep change
 ## Start Here
 
 - Read [README.md](README.md) for product context and [CONTRIBUTING.md](CONTRIBUTING.md) for contributor requirements.
-- User documentation under `doc` is published at https://korrel8r.github.io/korrel8r and can be previewed using `make preview`
+- See [developer notes and documentation](doc/dev/README.md) for technical procedures and measurement workflows.
+- User documentation under `doc/content` is published at https://korrel8r.github.io/korrel8r and can be previewed using `make preview`
 - Run `make help` for the authoritative list of build targets and variables.
 - Before editing, inspect nearby implementation and tests. Do not assume conventions from another domain or package apply unchanged.
 - Preserve unrelated working-tree changes. Never discard or rewrite files outside the requested scope.

@@ -129,7 +129,7 @@ func (a *API) GraphNeighbors(c *gin.Context, params GraphNeighborsParams) {
 		return
 	}
 	g, err := traverse.Neighbors(c.Request.Context(), e, start, r.Depth)
-	if !check(c, http.StatusNotFound, err) {
+	if !checkTraversal(c, err) {
 		return
 	}
 	gr := NewGraph(g, params.Options)
@@ -193,8 +193,23 @@ func (a *API) goals(c *gin.Context) (*graph.Graph, []korrel8r.Class) {
 		return nil, nil
 	}
 	g, err := traverse.Goals(c.Request.Context(), e, start, goals)
-	check(c, http.StatusNotFound, err)
+	checkTraversal(c, err)
 	return g, goals
+}
+
+func checkTraversal(c *gin.Context, err error) bool {
+	if err == nil {
+		return true
+	}
+	if limitErr, ok := errors.AsType[*traverse.LimitError](err); ok {
+		// Truncation is a successful partial result. Headers also expose the
+		// condition for endpoints whose response body is not a graph.
+		c.Header("X-Korrel8r-Truncated", "true")
+		c.Header("X-Korrel8r-Truncated-By", limitErr.Name)
+		c.Header("X-Korrel8r-Truncated-Limit", fmt.Sprint(limitErr.Limit))
+		return true
+	}
+	return check(c, http.StatusNotFound, err)
 }
 
 func check(c *gin.Context, code int, err error, format ...any) (ok bool) {
