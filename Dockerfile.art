@@ -1,0 +1,38 @@
+FROM brew.registry.redhat.io/rh-osbs/openshift-golang-builder:rhel_9_1.25 as builder
+
+WORKDIR /workspace
+
+COPY . .
+
+ENV GOFLAGS='-mod=mod'
+ENV CGO_ENABLED=1
+ENV GOEXPERIMENT=strictfipsruntime
+
+RUN go build -tags strictfipsruntime,openssl ./cmd/korrel8r
+
+FROM registry.redhat.io/ubi9/ubi-minimal:latest@sha256:8eb2830d0936237fc13a1f2f7e45aecf90d69043380ad167fad0343632937f41
+WORKDIR /
+
+COPY --from=builder /workspace/korrel8r /bin/korrel8r
+COPY --from=builder /workspace/etc/korrel8r /etc/korrel8r
+COPY --from=builder /workspace/LICENSE      /licenses/.
+USER 1000
+
+ENTRYPOINT [ "/bin/korrel8r", "web" ]
+
+ARG VERSION=release-coo-1.5
+LABEL com.redhat.component="coo-korrel8r-container" \
+      name="cluster-observability-operator/korrel8r-rhel9" \
+      cpe="cpe:/a:redhat:cluster_observability_operator:1.5::el9" \
+      version="${VERSION}" \
+      release="${VERSION}" \
+      vendor="Red Hat, Inc." \
+      distribution-scope="public" \
+      url="https://github.com/korrel8r/korrel8r" \
+      summary="Korrel8r for Cluster Observability Operator" \
+      io.openshift.expose-services="" \
+      io.openshift.tags="monitoring" \
+      io.k8s.display-name="COO Korrel8r" \
+      io.k8s.description="Korrel8r is an observability tool for correlating observable signals and resources in a kubernetes cluster" \
+      maintainer="team-monitoring@redhat.com" \
+      description="Korrel8r for Cluster Observability Operator"
