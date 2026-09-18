@@ -288,6 +288,25 @@ func TestAPIGraphNeighbors(t *testing.T) {
 		})
 }
 
+func TestAPIGraphNeighbors_truncated(t *testing.T) {
+	limit := 1
+	a := newTestAPI(t, testEngine(t))
+	w := a.do(t, "POST", "/api/v1alpha1/graphs/neighbors", api.Neighbors{
+		Start: api.Start{
+			Queries:    []string{"mock:a:x"},
+			Constraint: &api.Constraint{TotalLimit: &limit},
+		},
+		Depth: 5,
+	})
+	require.Equal(t, http.StatusOK, w.Code)
+	assert.Equal(t, "true", w.Header().Get("X-Korrel8r-Truncated"))
+	assert.Equal(t, "totalLimit", w.Header().Get("X-Korrel8r-Truncated-By"))
+	var got api.Graph
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &got))
+	require.NotNil(t, got.Truncation)
+	assert.Equal(t, api.Truncation{Condition: "totalLimit", Limit: 1}, *got.Truncation)
+}
+
 func TestAPIGraphNeighbors_badRequest(t *testing.T) {
 	a := newTestAPI(t, testEngine(t))
 	w := a.do(t, "POST", "/api/v1alpha1/graphs/neighbors", `not json`)

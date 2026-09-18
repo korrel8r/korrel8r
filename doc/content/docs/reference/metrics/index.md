@@ -27,6 +27,9 @@ Korrel8r automatically exposes a metrics scrape endpoint for [Prometheus](https:
 | `traverse.rules` | counter |  | Number of rule applications |
 | `traverse.queries` | counter |  | Number of query executions |
 | `traverse.duplicate_queries` | counter |  | Number of duplicate queries ignored |
+| `traverse.accepted_queries` | counter |  | Number of unique queries accepted |
+| `traverse.retained_objects` | counter |  | Number of unique result objects retained |
+| `traverse.limit_exceeded` | counter |  | Number of traversal total-limit exhaustion events |
 
 ## korrel8r/rest
 

@@ -60,7 +60,8 @@ func parseJSON(logql string) string {
 }
 
 func newObject(l *loki.Log) Object {
-	o := Object{}
+	// Reserve room for labels, metadata, body, and synthesized timestamps.
+	o := make(Object, len(l.Metadata)+len(l.Labels)+3)
 	maps.Copy(o, l.Metadata)
 	maps.Copy(o, l.Labels)
 	if o[AttrMessage] != "" && o[Attr_Timestamp] != "" { // This is a ViaQ log

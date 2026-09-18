@@ -4,6 +4,7 @@ package traverse
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync/atomic"
 	"testing"
@@ -16,6 +17,54 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func TestEffectiveLimit(t *testing.T) {
+	assert.Equal(t, 0, effectiveLimit(0, 0))
+	assert.Equal(t, 5, effectiveLimit(5, 0))
+	assert.Equal(t, 3, effectiveLimit(0, 3))
+	assert.Equal(t, 3, effectiveLimit(5, 3))
+	assert.Equal(t, 5, effectiveLimit(5, 8))
+}
+
+func TestTraverserTotalQueryLimit(t *testing.T) {
+	b := mock.NewBuilder("d")
+	e, err := engine.Build().Rules(b.Rule("ab", "d:a", "d:b", nil)).Engine()
+	require.NoError(t, err)
+	limit := 1
+	tr := newTraverser(e, e.GraphData(), e.GraphData().Lines,
+		&korrel8r.Constraint{TotalQueryLimit: &limit}, 1)
+	ctx := context.Background()
+	q1 := queryLine{Query: b.Query("d:b", "one")}
+	q2 := queryLine{Query: b.Query("d:b", "two")}
+	assert.False(t, tr.isDuplicate(ctx, q1))
+	assert.True(t, tr.isDuplicate(ctx, q1), "duplicate must not consume budget")
+	assert.True(t, tr.isDuplicate(ctx, q2))
+	limitErr, ok := errors.AsType[*LimitError](tr.limitErr)
+	require.True(t, ok)
+	assert.Equal(t, "totalQueryLimit", limitErr.Name)
+}
+
+func TestTraverserTotalLimit(t *testing.T) {
+	b := mock.NewBuilder("d")
+	e, err := engine.Build().Rules(
+		b.Rule("ab", "d:a", "d:b", b.Query("d:b", "ab", 1, 2, 3)),
+	).Stores(b.Store("d", nil)).Engine()
+	require.NoError(t, err)
+	limit := 2
+	g, err := Neighbors(context.Background(), e, Start{
+		Class: b.Class("d:a"), Objects: []korrel8r.Object{0},
+		Constraint: &korrel8r.Constraint{TotalLimit: &limit},
+	}, 1)
+	require.Error(t, err)
+	limitErr, ok := errors.AsType[*LimitError](err)
+	require.True(t, ok)
+	assert.Equal(t, "totalLimit", limitErr.Name)
+	require.NotNil(t, g)
+	assert.Equal(t, "true", g.GraphAttrs["truncated"])
+	assert.Equal(t, "totalLimit", g.GraphAttrs["truncatedBy"])
+	assert.Equal(t, "2", g.GraphAttrs["truncatedLimit"])
+	assert.ElementsMatch(t, []string{"d:a[0]", "d:b[1]"}, g.NodeStrings(true))
+}
 
 func TestTraverserGoals(t *testing.T) {
 	b := mock.NewBuilder("d")

@@ -131,6 +131,12 @@ type StatusRule struct {
 
 // Tuning section for limits and optimizations.
 type Tuning struct {
+	// TotalLimit limits unique result objects retained by a traversal. Zero is unlimited.
+	TotalLimit int `json:"totalLimit,omitempty"`
+
+	// TotalQueryLimit limits unique queries accepted by a traversal. Zero is unlimited.
+	TotalQueryLimit int `json:"totalQueryLimit,omitempty"`
+
 	// RequestTimeout cancels incoming or outgoing requests that last longer than this timeout.
 	// If omitted or 0, requests never time out.
 	// Long-lived SSE subscriptions are exempt from this timeout.

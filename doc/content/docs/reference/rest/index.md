@@ -77,7 +77,9 @@ OK
                "end": "2017-07-21T17:32:28.1341231Z",
                "limit": 100,
                "queryLimit": 10,
-               "start": "2024-01-15T10:30:00Z"
+               "start": "2024-01-15T10:30:00Z",
+               "totalLimit": 49,
+               "totalQueryLimit": 70
             },
             "objects": [],
             "queries": [
@@ -86,14 +88,16 @@ OK
          }
       },
       "neighbors": {
-         "depth": 46,
+         "depth": 54,
          "start": {
             "class": {},
             "constraint": {
                "end": "2017-07-21T17:32:28.1341231Z",
                "limit": 100,
                "queryLimit": 10,
-               "start": "2024-01-15T10:30:00Z"
+               "start": "2024-01-15T10:30:00Z",
+               "totalLimit": 6,
+               "totalQueryLimit": 91
             },
             "objects": [],
             "queries": [
@@ -142,7 +146,9 @@ Store console state so an agent can read it via MCP tool get_console. The MCP cl
                "end": "2017-07-21T17:32:28.1341231Z",
                "limit": 100,
                "queryLimit": 10,
-               "start": "2024-01-15T10:30:00Z"
+               "start": "2024-01-15T10:30:00Z",
+               "totalLimit": 49,
+               "totalQueryLimit": 70
             },
             "objects": [],
             "queries": [
@@ -151,14 +157,16 @@ Store console state so an agent can read it via MCP tool get_console. The MCP cl
          }
       },
       "neighbors": {
-         "depth": 46,
+         "depth": 54,
          "start": {
             "class": {},
             "constraint": {
                "end": "2017-07-21T17:32:28.1341231Z",
                "limit": 100,
                "queryLimit": 10,
-               "start": "2024-01-15T10:30:00Z"
+               "start": "2024-01-15T10:30:00Z",
+               "totalLimit": 6,
+               "totalQueryLimit": 91
             },
             "objects": [],
             "queries": [
@@ -219,7 +227,9 @@ Push a console display update to the SSE event stream. The update is delivered t
                "end": "2017-07-21T17:32:28.1341231Z",
                "limit": 100,
                "queryLimit": 10,
-               "start": "2024-01-15T10:30:00Z"
+               "start": "2024-01-15T10:30:00Z",
+               "totalLimit": 49,
+               "totalQueryLimit": 70
             },
             "objects": [],
             "queries": [
@@ -228,14 +238,16 @@ Push a console display update to the SSE event stream. The update is delivered t
          }
       },
       "neighbors": {
-         "depth": 46,
+         "depth": 54,
          "start": {
             "class": {},
             "constraint": {
                "end": "2017-07-21T17:32:28.1341231Z",
                "limit": 100,
                "queryLimit": 10,
-               "start": "2024-01-15T10:30:00Z"
+               "start": "2024-01-15T10:30:00Z",
+               "totalLimit": 6,
+               "totalQueryLimit": 91
             },
             "objects": [],
             "queries": [
@@ -322,7 +334,9 @@ Specify a set of start objects, as queries or serialized objects, and a goal cla
          "end": "2017-07-21T17:32:28.1341231Z",
          "limit": 100,
          "queryLimit": 10,
-         "start": "2024-01-15T10:30:00Z"
+         "start": "2024-01-15T10:30:00Z",
+         "totalLimit": 88,
+         "totalQueryLimit": 81
       },
       "objects": [
          {}
@@ -353,7 +367,7 @@ OK
          "goal": {},
          "rules": [
             {
-               "name": "3gDk8Bg7W9",
+               "name": "7gYekwHUMG",
                "queries": []
             }
          ],
@@ -362,11 +376,11 @@ OK
    ],
    "nodes": [
       {
-         "class": "LLxq2zGNO6",
-         "count": 32,
+         "class": "hWzGpld7aF",
+         "count": 62,
          "queries": [
             {
-               "count": 99,
+               "count": 44,
                "query": {},
                "statuses": []
             }
@@ -375,12 +389,17 @@ OK
             {}
          ]
       }
-   ]
+   ],
+   "truncation": {
+      "condition": "zGNO6q1Xh3",
+      "limit": 41
+   }
 }
 ```
 
 #### Field Definitions
 
+- `truncation` Present when traversal stopped after reaching a configured total limit.
 - `edges` *(array of Edge)* List of graph edges.
 - `nodes` *(array of Node)* List of graph nodes.
 
@@ -450,14 +469,16 @@ Specify a set of start objects, as queries or serialized objects, and a depth fo
 
 ```json
 {
-   "depth": 8,
+   "depth": 79,
    "start": {
       "class": {},
       "constraint": {
          "end": "2017-07-21T17:32:28.1341231Z",
          "limit": 100,
          "queryLimit": 10,
-         "start": "2024-01-15T10:30:00Z"
+         "start": "2024-01-15T10:30:00Z",
+         "totalLimit": 14,
+         "totalQueryLimit": 23
       },
       "objects": [
          {}
@@ -488,7 +509,7 @@ OK
          "goal": {},
          "rules": [
             {
-               "name": "3gDk8Bg7W9",
+               "name": "7gYekwHUMG",
                "queries": []
             }
          ],
@@ -497,11 +518,11 @@ OK
    ],
    "nodes": [
       {
-         "class": "LLxq2zGNO6",
-         "count": 32,
+         "class": "hWzGpld7aF",
+         "count": 62,
          "queries": [
             {
-               "count": 99,
+               "count": 44,
                "query": {},
                "statuses": []
             }
@@ -510,12 +531,17 @@ OK
             {}
          ]
       }
-   ]
+   ],
+   "truncation": {
+      "condition": "zGNO6q1Xh3",
+      "limit": 41
+   }
 }
 ```
 
 #### Field Definitions
 
+- `truncation` Present when traversal stopped after reaching a configured total limit.
 - `edges` *(array of Edge)* List of graph edges.
 - `nodes` *(array of Node)* List of graph nodes.
 
@@ -585,14 +611,16 @@ Specify a set of start objects, as queries or serialized objects, and a depth fo
 
 ```json
 {
-   "depth": 8,
+   "depth": 79,
    "start": {
       "class": {},
       "constraint": {
          "end": "2017-07-21T17:32:28.1341231Z",
          "limit": 100,
          "queryLimit": 10,
-         "start": "2024-01-15T10:30:00Z"
+         "start": "2024-01-15T10:30:00Z",
+         "totalLimit": 14,
+         "totalQueryLimit": 23
       },
       "objects": [
          {}
@@ -623,7 +651,7 @@ OK
          "goal": {},
          "rules": [
             {
-               "name": "3gDk8Bg7W9",
+               "name": "7gYekwHUMG",
                "queries": []
             }
          ],
@@ -632,11 +660,11 @@ OK
    ],
    "nodes": [
       {
-         "class": "LLxq2zGNO6",
-         "count": 32,
+         "class": "hWzGpld7aF",
+         "count": 62,
          "queries": [
             {
-               "count": 99,
+               "count": 44,
                "query": {},
                "statuses": []
             }
@@ -645,12 +673,17 @@ OK
             {}
          ]
       }
-   ]
+   ],
+   "truncation": {
+      "condition": "zGNO6q1Xh3",
+      "limit": 41
+   }
 }
 ```
 
 #### Field Definitions
 
+- `truncation` Present when traversal stopped after reaching a configured total limit.
 - `edges` *(array of Edge)* List of graph edges.
 - `nodes` *(array of Node)* List of graph nodes.
 
@@ -726,7 +759,9 @@ Specify a set of start objects, as queries or serialized objects, and a goal cla
          "end": "2017-07-21T17:32:28.1341231Z",
          "limit": 100,
          "queryLimit": 10,
-         "start": "2024-01-15T10:30:00Z"
+         "start": "2024-01-15T10:30:00Z",
+         "totalLimit": 88,
+         "totalQueryLimit": 81
       },
       "objects": [
          {}
@@ -753,11 +788,11 @@ OK
 ```json
 [
    {
-      "class": "h3S7gYekwH",
-      "count": 79,
+      "class": "6SV75azeoT",
+      "count": 64,
       "queries": [
          {
-            "count": 99,
+            "count": 15,
             "query": {},
             "statuses": []
          }
@@ -807,8 +842,8 @@ OK
 ```json
 [
    {
-      "description": "GyAVmNkB33",
-      "name": "Z5zQu9MxNm",
+      "description": "AVmNkB33io",
+      "name": "zQu9MxNmGy",
       "stores": [
          {}
       ]
@@ -941,7 +976,7 @@ OK
 
 ```json
 {
-   "documentation": "gObD0iOtQN"
+   "documentation": "bD0iOtQNQs"
 }
 ```
 
@@ -966,7 +1001,7 @@ OK
 
 ```json
 {
-   "documentation": "gObD0iOtQN"
+   "documentation": "bD0iOtQNQs"
 }
 ```
 

@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"slices"
+	"strconv"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -152,7 +153,15 @@ func NewGraph(g *graph.Graph, optsPtr *api.GraphOptions) *api.Graph {
 		return &api.Graph{}
 	}
 	opts := ptr.Deref(optsPtr)
-	return &api.Graph{Nodes: nodes(g, opts), Edges: edges(g, opts)}
+	result := &api.Graph{Nodes: nodes(g, opts), Edges: edges(g, opts)}
+	if g.GraphAttrs["truncated"] == "true" {
+		limit, _ := strconv.Atoi(g.GraphAttrs["truncatedLimit"])
+		result.Truncation = &api.Truncation{
+			Condition: g.GraphAttrs["truncatedBy"],
+			Limit:     limit,
+		}
+	}
+	return result
 }
 
 func copyBody(r *http.Request) string {
@@ -237,7 +246,11 @@ func Constraint(c *api.Constraint) *korrel8r.Constraint {
 	if c == nil {
 		return nil
 	}
-	return &korrel8r.Constraint{Limit: c.Limit, QueryLimit: c.QueryLimit, Start: c.Start, End: c.End}
+	return &korrel8r.Constraint{
+		Limit: c.Limit, QueryLimit: c.QueryLimit,
+		TotalLimit: c.TotalLimit, TotalQueryLimit: c.TotalQueryLimit,
+		Start: c.Start, End: c.End,
+	}
 }
 
 // DomainHelp returns the full description text for domains.

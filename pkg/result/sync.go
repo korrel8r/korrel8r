@@ -35,6 +35,12 @@ func (r *SyncResult) Add(o korrel8r.Object) bool {
 	return ok
 }
 
+func (r *SyncResult) Contains(o korrel8r.Object) bool {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return r.inner.Contains(o)
+}
+
 func (r *SyncResult) Append(objects ...korrel8r.Object) {
 	r.mu.Lock()
 	defer r.mu.Unlock()

@@ -13,17 +13,20 @@ korrel8r goals GOAL [GOAL...] [flags]
 ### Options
 
 ```
-      --class string         Class for serialized start objects
-      --errors               Include non-fatal errors in graph
-  -h, --help                 help for goals
-      --limit int            Limit total number of results.
-      --object stringArray   Serialized start object, can be multiple.
-  -q, --query stringArray    Query string for start objects, can be multiple.
-      --results              Include complete query results in graph
-      --rules                Include rule names in returned graph
-      --since duration       Only get results since this long ago.
-      --timeout duration     Timeout for store requests.
-      --until duration       Only get results until this long ago.
+      --class string            Class for serialized start objects
+      --errors                  Include non-fatal errors in graph
+  -h, --help                    help for goals
+      --limit int               Limit number of results per query.
+      --object stringArray      Serialized start object, can be multiple.
+  -q, --query stringArray       Query string for start objects, can be multiple.
+      --query-limit int         Limit number of queries per class during traversal.
+      --results                 Include complete query results in graph
+      --rules                   Include rule names in returned graph
+      --since duration          Only get results since this long ago.
+      --timeout duration        Timeout for store requests.
+      --total-limit int         Limit unique results retained across the traversal.
+      --total-query-limit int   Limit unique queries accepted across the traversal.
+      --until duration          Only get results until this long ago.
 ```
 
 ### Options inherited from parent commands

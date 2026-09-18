@@ -1,0 +1,85 @@
+#!/usr/bin/env python3
+"""Run local neighborhood traversals at depths 1–5 and record counts and heap totals.
+
+Usage: hack/profile-traversal-local OUTPUT-DIRECTORY [korrel8r flags...]
+Requires korrel8r and go on PATH, plus GNU /usr/bin/time (Linux).
+Use a new output directory for each run.
+"""
+
+import csv
+import json
+import pathlib
+import re
+import subprocess
+import sys
+
+
+def profile_totals(raw):
+    """Sum unrounded sample values from go tool pprof -raw output."""
+    samples = raw.split("Samples:", 1)[1].split("Locations", 1)[0]
+    lines = samples.strip().splitlines()
+    columns = [column.removesuffix("[dflt]") for column in lines[0].split()]
+    totals = [0] * len(columns)
+    for line in lines[1:]:
+        match = re.match(r"^\s*((?:-?\d+\s+)*-?\d+)\s*:", line)
+        if match:
+            values = [int(v) for v in match[1].split()]
+            if len(values) != len(columns):
+                raise ValueError("unexpected pprof sample column count")
+            totals = [a + b for a, b in zip(totals, values)]
+    return dict(zip(columns, totals))
+
+
+def capture(output, depth, flags):
+    output.mkdir()
+    profile = output / "heap.prof"
+    rss = output / "peak-rss-kib.txt"
+    command = ["/usr/bin/time", "-f", "%M", "-o", str(rss),
+               "korrel8r", "neighbors", *flags, f"--depth={depth}",
+               "--output=json", f"--memprofile={profile}"]
+    # Arguments may contain sensitive queries or objects; preserve them separately.
+    with (output / "stderr.log").open("w") as log:
+        with (output / "graph.json").open("w") as graph_file:
+            subprocess.run(command, stdout=graph_file, stderr=log, check=True)
+    graph = json.loads((output / "graph.json").read_text())
+    raw = subprocess.check_output(["go", "tool", "pprof", "-raw", str(profile)], text=True)
+    (output / "profile.txt").write_text(raw)
+    totals = profile_totals(raw)
+    nodes = graph.get("nodes", [])
+    queries = [q for n in nodes for q in n.get("queries", [])]
+    return {
+        "depth": depth,
+        "nodes": len(nodes),
+        "query_count_entries": len(queries),
+        "query_results": sum(q.get("count", 0) for q in queries),
+        "node_results": sum(n.get("count", 0) for n in nodes),
+        "peak_rss_bytes": int(rss.read_text().strip()) * 1024,
+        "inuse_bytes": totals["inuse_space/bytes"],
+        "allocated_bytes": totals["alloc_space/bytes"],
+        "truncated": bool(graph.get("truncation")),
+    }
+
+
+def main():
+    if len(sys.argv) < 2:
+        sys.exit(__doc__)
+    output = pathlib.Path(sys.argv[1]).resolve()
+    output.mkdir(parents=True, exist_ok=False)
+    with (output / "summary.csv").open("w", newline="") as summary:
+        writer = None
+        for depth in range(1, 6):
+            print(f"Capturing depth {depth}...", file=sys.stderr)
+            row = capture(output / f"depth-{depth}", depth, sys.argv[2:])
+            if writer is None:
+                writer = csv.DictWriter(summary, fieldnames=list(row))
+                writer.writeheader()
+            writer.writerow(row)
+            summary.flush()
+    print((output / "summary.csv").read_text(), end="")
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except (OSError, ValueError, KeyError, IndexError, subprocess.CalledProcessError) as error:
+        sys.exit(str(error))

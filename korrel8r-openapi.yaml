@@ -536,6 +536,20 @@ components:
           default: 10
           x-oapi-codegen-extra-tags:
             jsonschema: "Limit total number of queries per class during traversal. Default: 10."
+        totalLimit:
+          type: integer
+          description: Limit unique result objects retained across the traversal. Zero is unlimited.
+          x-oapi-codegen-extra-tags:
+            jsonschema: "Limit unique result objects retained across the traversal. Zero is unlimited."
+        totalQueryLimit:
+          type: integer
+          description: >
+            Limit unique queries accepted across the traversal. This includes queries with no
+            results, which do not appear in the result graph. The number of queries in the result
+            may therefore be lower than this limit.
+            Zero is unlimited.
+          x-oapi-codegen-extra-tags:
+            jsonschema: "Limit unique queries accepted across the traversal. This includes queries with no results, which do not appear in the result graph. The number queries of in the result may therefore be lower than this limit. Zero is unlimited."
 
     Domains:
       description: List of Korrel8r domains and configured stores.
@@ -637,9 +651,25 @@ components:
           x-oapi-codegen-extra-tags:
             jsonschema: "Starting point for the search."
 
+    Truncation:
+      type: object
+      required: [condition, limit]
+      properties:
+        condition:
+          type: string
+          description: Traversal budget that stopped the search.
+        limit:
+          type: integer
+          description: Effective value of the exhausted traversal budget.
+      description: Metadata indicating that a graph contains partial traversal results.
+
     Graph:
       type: object
       properties:
+        truncation:
+          description: Present when traversal stopped after reaching a configured total limit.
+          allOf:
+            - $ref: "#/components/schemas/Truncation"
         edges:
           description: List of graph edges.
           type: array
@@ -656,7 +686,7 @@ components:
             $ref: "#/components/schemas/Node"
           x-oapi-codegen-extra-tags:
             jsonschema: "List of graph nodes."
-      description: Graph resulting from a correlation search.
+      description: Graph resulting from a correlation search. A partial graph has a 'truncation' property indicating why it was truncated.
 
     Neighbors:
       description: >

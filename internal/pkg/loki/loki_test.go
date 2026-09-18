@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strconv"
 	"testing"
 	"time"
 
@@ -62,6 +63,17 @@ func TestValue_UnmarshalJSON(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func BenchmarkLogUnmarshalJSON(b *testing.B) {
+	data := []byte(`["1672574400123456789","test log line with useful content",{"trace_id":"0123456789abcdef","level":"info","k8s_namespace_name":"default"}]`)
+	b.ReportAllocs()
+	for b.Loop() {
+		var log Log
+		if err := log.UnmarshalJSON(data); err != nil {
+			b.Fatal(err)
+		}
 	}
 }
 
@@ -273,8 +285,46 @@ func TestCollectSorted(t *testing.T) {
 			var collected []Log
 			collectFunc := func(entry *Log) { collected = append(collected, *entry) }
 			collectSorted(tt.streams, collectFunc)
-			assert.Equal(t, collected, tt.expected)
+			assert.Equal(t, tt.expected, collected)
+			for _, stream := range tt.streams {
+				for _, entry := range stream.Values {
+					assert.Equal(t, Log{}, entry, "consumed entries must be released")
+				}
+			}
 		})
+	}
+}
+
+func BenchmarkCollectSorted(b *testing.B) {
+	const streamCount, logsPerStream = 64, 128
+	template := make([]stream, streamCount)
+	streams := make([]stream, streamCount)
+	buffers := make([][]Log, streamCount)
+	for i := range template {
+		template[i].Stream = Labels{"stream": strconv.Itoa(i)}
+		template[i].Values = make([]Log, logsPerStream)
+		streams[i].Stream = template[i].Stream
+		buffers[i] = make([]Log, logsPerStream)
+		streams[i].Values = buffers[i]
+		for j := range template[i].Values {
+			// Each stream is newest-first, with timestamps interleaved across streams.
+			template[i].Values[j] = Log{
+				Time:     time.Unix(int64((logsPerStream-j)*streamCount-i), 0),
+				Body:     "representative log body",
+				Metadata: Labels{"level": "info"},
+			}
+		}
+	}
+
+	b.ReportAllocs()
+	for b.Loop() {
+		b.StopTimer()
+		for i := range streams {
+			streams[i].Values = buffers[i]
+			copy(streams[i].Values, template[i].Values)
+		}
+		b.StartTimer()
+		collectSorted(streams, func(*Log) {})
 	}
 }
 
