@@ -95,6 +95,13 @@ type Query interface {
 	String() string
 }
 
+// Expander is optionally implemented by Query types that can expand into multiple concrete queries.
+// This is used by the log domain to produce both Viaq and OTEL variants of a query
+// from a single structured ContainerSelector.
+type Expander interface {
+	Expand() []Query
+}
+
 // Object represents an instance of a signal.
 //
 // Object can be any Go type that supports JSON marshal/unmarshal.

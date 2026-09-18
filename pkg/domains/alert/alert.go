@@ -385,11 +385,17 @@ func matchesSubquery(q map[string]string, a *v1.Alert) bool {
 func extractNamespacesFromQuery(q *Query) map[string]bool {
 	namespaces := make(map[string]bool)
 	for _, subq := range q.Parsed {
-		if ns, ok := subq["namespace"]; ok && ns != "" {
+		if ns := namespaceFromSubquery(subq); ns != "" {
 			namespaces[ns] = true
 		}
 	}
 	return namespaces
+}
+func namespaceFromSubquery(subq map[string]string) string {
+	if ns := subq["namespace"]; ns != "" {
+		return ns
+	}
+	return subq["k8s_namespace_name"]
 }
 
 // getRulesWithNamespaceFilter queries the Rules API with namespace filtering.

@@ -41,7 +41,9 @@ func TestLogRules(t *testing.T) {
 				"spec": k8s.Object{
 					"selector": k8s.Object{"matchLabels": map[string]string{"a.b/c": "x"}},
 				}},
-			want: []string{`log:application:{"namespace":"ns","labels":{"a.b/c":"x"}}`},
+			want: []string{
+				`log:application:{kubernetes_namespace_name="ns"}|json|kubernetes_labels_a_b_c="x"`,
+			},
 		},
 		{
 			rule: "ServiceToLogs",
@@ -50,17 +52,25 @@ func TestLogRules(t *testing.T) {
 					"selector": k8s.Object{"app": "web"},
 				},
 			}),
-			want: []string{`log:application:{"namespace":"ns","labels":{"app":"web"}}`},
+			want: []string{
+				`log:application:{kubernetes_namespace_name="ns"}|json|kubernetes_labels_app="web"`,
+			},
 		},
 		{
 			rule:  "PodToLogs",
 			start: newK8s("Pod", "project", "application", nil),
-			want:  []string{`log:application:{"namespace":"project","name":"application"}`},
+			want: []string{
+				`log:application:{kubernetes_namespace_name="project",kubernetes_pod_name="application"}|json`,
+				`log:application:{k8s_namespace_name="project",k8s_pod_name="application"}`,
+			},
 		},
 		{
 			rule:  "PodToLogs",
 			start: newK8s("Pod", "kube-something", "infrastructure", nil),
-			want:  []string{`log:infrastructure:{"namespace":"kube-something","name":"infrastructure"}`},
+			want: []string{
+				`log:infrastructure:{kubernetes_namespace_name="kube-something",kubernetes_pod_name="infrastructure"}|json`,
+				`log:infrastructure:{k8s_namespace_name="kube-something",k8s_pod_name="infrastructure"}`,
+			},
 		},
 	} {
 		x.Run(t)

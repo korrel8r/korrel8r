@@ -17,8 +17,9 @@ goal:
 {% func LogToPod(o interface{}) %}
 {% code
 	l := o.(log.Object)
-	ns := Require(l["kubernetes_namespace_name"])
-	name := Require(l["kubernetes_pod_name"])
+	ns := Default(l["kubernetes_namespace_name"], l["k8s_namespace_name"])
+  name := Default(l["kubernetes_pod_name"], l["k8s_pod_name"])
+	RequireAll(ns, name)
 %}
 k8s:Pod:{"namespace":{%q= ns %},"name":{%q= name %}}
 {% endfunc %}

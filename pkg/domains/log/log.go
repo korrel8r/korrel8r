@@ -141,11 +141,36 @@ type Query struct {
 func (q *Query) Class() korrel8r.Class { return q.class }
 func (q *Query) String() string        { return korrel8r.QueryString(q) }
 func (q *Query) Data() string {
+	if q.logQL != "" {
+		return q.logQL
+	}
 	if q.direct != nil {
 		d, _ := json.Marshal(q.direct)
 		return string(d)
 	}
-	return q.logQL
+	return ""
+}
+
+// Expand implements korrel8r.Expander. A query with a ContainerSelector expands
+// into separate Viaq and OTEL LogQL queries. The Viaq query retains the direct
+// selector (for directStore fallback), while the OTEL query has direct=nil (Loki-only).
+//
+// The OTEL variant is only emitted when the selector has a pod name.
+// Label-only selectors (from Deployments, Services) would produce an overly broad
+// OTEL query (namespace-only) because OTEL label naming is not standardized.
+//
+// Returns nil if the query has no ContainerSelector to expand.
+func (q *Query) Expand() []korrel8r.Query {
+	if q.direct == nil {
+		return nil
+	}
+	queries := []korrel8r.Query{
+		&Query{class: q.class, logQL: q.direct.ViaqLogQL(), direct: q.direct},
+	}
+	if q.direct.Name != "" {
+		queries = append(queries, &Query{class: q.class, logQL: q.direct.OtelLogQL(), direct: nil})
+	}
+	return queries
 }
 
 func NewQuery(query string) (*Query, error) {
@@ -158,8 +183,7 @@ func NewQuery(query string) (*Query, error) {
 	var direct ContainerSelector
 	if err := impl.Unmarshal([]byte(selector), &direct); err == nil {
 		q.direct = &direct
-		// FIXME defer LogQL conversion to store, when we know the label sets in use.
-		q.logQL = q.direct.LogQL()
+		q.logQL = q.direct.ViaqLogQL()
 	} else { // Otherwise assume LogQL
 		q.logQL = selector
 	}

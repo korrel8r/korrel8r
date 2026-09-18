@@ -225,34 +225,47 @@ metric:metric:{namespace=`)
 	qw422016.N().Q(name)
 //line k8s.qtpl:62
 	qw422016.N().S(`}
+metric:metric:{k8s_namespace_name=`)
+//line k8s.qtpl:63
+	qw422016.N().Q(ns)
+//line k8s.qtpl:63
+	qw422016.N().S(`,k8s_`)
+//line k8s.qtpl:63
+	qw422016.N().S(strings.ToLower(kind))
+//line k8s.qtpl:63
+	qw422016.N().S(`_name=`)
+//line k8s.qtpl:63
+	qw422016.N().Q(name)
+//line k8s.qtpl:63
+	qw422016.N().S(`}
 `)
-//line k8s.qtpl:63
+//line k8s.qtpl:64
 }
 
-//line k8s.qtpl:63
+//line k8s.qtpl:64
 func WriteAllToMetric(qq422016 qtio422016.Writer, o interface{}) {
-//line k8s.qtpl:63
+//line k8s.qtpl:64
 	qw422016 := qt422016.AcquireWriter(qq422016)
-//line k8s.qtpl:63
+//line k8s.qtpl:64
 	StreamAllToMetric(qw422016, o)
-//line k8s.qtpl:63
+//line k8s.qtpl:64
 	qt422016.ReleaseWriter(qw422016)
-//line k8s.qtpl:63
+//line k8s.qtpl:64
 }
 
-//line k8s.qtpl:63
+//line k8s.qtpl:64
 func AllToMetric(o interface{}) string {
-//line k8s.qtpl:63
+//line k8s.qtpl:64
 	qb422016 := qt422016.AcquireByteBuffer()
-//line k8s.qtpl:63
+//line k8s.qtpl:64
 	WriteAllToMetric(qb422016, o)
-//line k8s.qtpl:63
+//line k8s.qtpl:64
 	qs422016 := string(qb422016.B)
-//line k8s.qtpl:63
+//line k8s.qtpl:64
 	qt422016.ReleaseByteBuffer(qb422016)
-//line k8s.qtpl:63
+//line k8s.qtpl:64
 	return qs422016
-//line k8s.qtpl:63
+//line k8s.qtpl:64
 }
 
 // # SelectorToPods finds Pods matching the selector of a k8s workload resource.
@@ -272,56 +285,56 @@ func AllToMetric(o interface{}) string {
 //   classes: [Pod]
 //
 
-//line k8s.qtpl:81
+//line k8s.qtpl:82
 func StreamSelectorToPods(qw422016 *qt422016.Writer, o interface{}) {
-//line k8s.qtpl:81
+//line k8s.qtpl:82
 	qw422016.N().S(`
 `)
-//line k8s.qtpl:83
+//line k8s.qtpl:84
 	obj, _, ns, _, _ := k8sMetadata(o)
 	RequireAll(ns)
 	matchLabels := obj["spec"].(map[string]any)["selector"].(map[string]any)["matchLabels"]
 	RequireAll(matchLabels)
 
-//line k8s.qtpl:87
+//line k8s.qtpl:88
 	qw422016.N().S(`
 k8s:Pod:{"namespace":`)
-//line k8s.qtpl:88
+//line k8s.qtpl:89
 	qw422016.N().Q(ns)
-//line k8s.qtpl:88
+//line k8s.qtpl:89
 	qw422016.N().S(`,"labels":`)
-//line k8s.qtpl:88
+//line k8s.qtpl:89
 	qw422016.N().S(ToJSON(matchLabels))
-//line k8s.qtpl:88
+//line k8s.qtpl:89
 	qw422016.N().S(`}
 `)
-//line k8s.qtpl:89
+//line k8s.qtpl:90
 }
 
-//line k8s.qtpl:89
+//line k8s.qtpl:90
 func WriteSelectorToPods(qq422016 qtio422016.Writer, o interface{}) {
-//line k8s.qtpl:89
+//line k8s.qtpl:90
 	qw422016 := qt422016.AcquireWriter(qq422016)
-//line k8s.qtpl:89
+//line k8s.qtpl:90
 	StreamSelectorToPods(qw422016, o)
-//line k8s.qtpl:89
+//line k8s.qtpl:90
 	qt422016.ReleaseWriter(qw422016)
-//line k8s.qtpl:89
+//line k8s.qtpl:90
 }
 
-//line k8s.qtpl:89
+//line k8s.qtpl:90
 func SelectorToPods(o interface{}) string {
-//line k8s.qtpl:89
+//line k8s.qtpl:90
 	qb422016 := qt422016.AcquireByteBuffer()
-//line k8s.qtpl:89
+//line k8s.qtpl:90
 	WriteSelectorToPods(qb422016, o)
-//line k8s.qtpl:89
+//line k8s.qtpl:90
 	qs422016 := string(qb422016.B)
-//line k8s.qtpl:89
+//line k8s.qtpl:90
 	qt422016.ReleaseByteBuffer(qb422016)
-//line k8s.qtpl:89
+//line k8s.qtpl:90
 	return qs422016
-//line k8s.qtpl:89
+//line k8s.qtpl:90
 }
 
 // # SelectorToLogs finds logs for pods matching the selector of a k8s workload resource.
@@ -340,60 +353,60 @@ func SelectorToPods(o interface{}) string {
 //   domain: log
 //
 
-//line k8s.qtpl:106
+//line k8s.qtpl:107
 func StreamSelectorToLogs(qw422016 *qt422016.Writer, o interface{}) {
-//line k8s.qtpl:106
+//line k8s.qtpl:107
 	qw422016.N().S(`
 `)
-//line k8s.qtpl:108
+//line k8s.qtpl:109
 	obj, _, ns, _, _ := k8sMetadata(o)
 	RequireAll(ns)
 	matchLabels := obj["spec"].(map[string]any)["selector"].(map[string]any)["matchLabels"]
 	RequireAll(matchLabels)
 
-//line k8s.qtpl:112
+//line k8s.qtpl:113
 	qw422016.N().S(`
 log:`)
-//line k8s.qtpl:113
+//line k8s.qtpl:114
 	qw422016.N().S(logTypeForNamespace(ns))
-//line k8s.qtpl:113
+//line k8s.qtpl:114
 	qw422016.N().S(`:{"namespace":`)
-//line k8s.qtpl:113
+//line k8s.qtpl:114
 	qw422016.N().Q(ns)
-//line k8s.qtpl:113
+//line k8s.qtpl:114
 	qw422016.N().S(`,"labels":`)
-//line k8s.qtpl:113
+//line k8s.qtpl:114
 	qw422016.N().S(ToJSON(matchLabels))
-//line k8s.qtpl:113
+//line k8s.qtpl:114
 	qw422016.N().S(`}
 `)
-//line k8s.qtpl:114
+//line k8s.qtpl:115
 }
 
-//line k8s.qtpl:114
+//line k8s.qtpl:115
 func WriteSelectorToLogs(qq422016 qtio422016.Writer, o interface{}) {
-//line k8s.qtpl:114
+//line k8s.qtpl:115
 	qw422016 := qt422016.AcquireWriter(qq422016)
-//line k8s.qtpl:114
+//line k8s.qtpl:115
 	StreamSelectorToLogs(qw422016, o)
-//line k8s.qtpl:114
+//line k8s.qtpl:115
 	qt422016.ReleaseWriter(qw422016)
-//line k8s.qtpl:114
+//line k8s.qtpl:115
 }
 
-//line k8s.qtpl:114
+//line k8s.qtpl:115
 func SelectorToLogs(o interface{}) string {
-//line k8s.qtpl:114
+//line k8s.qtpl:115
 	qb422016 := qt422016.AcquireByteBuffer()
-//line k8s.qtpl:114
+//line k8s.qtpl:115
 	WriteSelectorToLogs(qb422016, o)
-//line k8s.qtpl:114
+//line k8s.qtpl:115
 	qs422016 := string(qb422016.B)
-//line k8s.qtpl:114
+//line k8s.qtpl:115
 	qt422016.ReleaseByteBuffer(qb422016)
-//line k8s.qtpl:114
+//line k8s.qtpl:115
 	return qs422016
-//line k8s.qtpl:114
+//line k8s.qtpl:115
 }
 
 // # K8sSrcToNetflow finds netflows where the k8s resource is the source.
@@ -406,58 +419,58 @@ func SelectorToLogs(o interface{}) string {
 //   classes: [network]
 //
 
-//line k8s.qtpl:125
+//line k8s.qtpl:126
 func StreamK8sSrcToNetflow(qw422016 *qt422016.Writer, o interface{}) {
-//line k8s.qtpl:125
+//line k8s.qtpl:126
 	qw422016.N().S(`
 `)
-//line k8s.qtpl:127
+//line k8s.qtpl:128
 	_, _, ns, name, kind := k8sMetadata(o)
 	RequireAll(name, kind)
 
-//line k8s.qtpl:129
+//line k8s.qtpl:130
 	qw422016.N().S(`
 netflow:network:{SrcK8S_Type=`)
-//line k8s.qtpl:130
+//line k8s.qtpl:131
 	qw422016.N().Q(kind)
-//line k8s.qtpl:130
+//line k8s.qtpl:131
 	qw422016.N().S(`, SrcK8S_Namespace=`)
-//line k8s.qtpl:130
+//line k8s.qtpl:131
 	qw422016.N().Q(ns)
-//line k8s.qtpl:130
+//line k8s.qtpl:131
 	qw422016.N().S(`} | json | SrcK8S_Name=`)
-//line k8s.qtpl:130
+//line k8s.qtpl:131
 	qw422016.N().Q(name)
-//line k8s.qtpl:130
+//line k8s.qtpl:131
 	qw422016.N().S(`
 `)
-//line k8s.qtpl:131
+//line k8s.qtpl:132
 }
 
-//line k8s.qtpl:131
+//line k8s.qtpl:132
 func WriteK8sSrcToNetflow(qq422016 qtio422016.Writer, o interface{}) {
-//line k8s.qtpl:131
+//line k8s.qtpl:132
 	qw422016 := qt422016.AcquireWriter(qq422016)
-//line k8s.qtpl:131
+//line k8s.qtpl:132
 	StreamK8sSrcToNetflow(qw422016, o)
-//line k8s.qtpl:131
+//line k8s.qtpl:132
 	qt422016.ReleaseWriter(qw422016)
-//line k8s.qtpl:131
+//line k8s.qtpl:132
 }
 
-//line k8s.qtpl:131
+//line k8s.qtpl:132
 func K8sSrcToNetflow(o interface{}) string {
-//line k8s.qtpl:131
+//line k8s.qtpl:132
 	qb422016 := qt422016.AcquireByteBuffer()
-//line k8s.qtpl:131
+//line k8s.qtpl:132
 	WriteK8sSrcToNetflow(qb422016, o)
-//line k8s.qtpl:131
+//line k8s.qtpl:132
 	qs422016 := string(qb422016.B)
-//line k8s.qtpl:131
+//line k8s.qtpl:132
 	qt422016.ReleaseByteBuffer(qb422016)
-//line k8s.qtpl:131
+//line k8s.qtpl:132
 	return qs422016
-//line k8s.qtpl:131
+//line k8s.qtpl:132
 }
 
 // # K8sSrcOwnerToNetflow finds netflows where the k8s owner resource is the source owner.
@@ -474,54 +487,54 @@ func K8sSrcToNetflow(o interface{}) string {
 //   classes: [network]
 //
 
-//line k8s.qtpl:146
+//line k8s.qtpl:147
 func StreamK8sSrcOwnerToNetflow(qw422016 *qt422016.Writer, o interface{}) {
-//line k8s.qtpl:146
+//line k8s.qtpl:147
 	qw422016.N().S(`
 `)
-//line k8s.qtpl:148
+//line k8s.qtpl:149
 	_, _, ns, name, _ := k8sMetadata(o)
 	RequireAll(ns, name)
 
-//line k8s.qtpl:150
+//line k8s.qtpl:151
 	qw422016.N().S(`
 netflow:network:{SrcK8S_Namespace=`)
-//line k8s.qtpl:151
+//line k8s.qtpl:152
 	qw422016.N().Q(ns)
-//line k8s.qtpl:151
+//line k8s.qtpl:152
 	qw422016.N().S(`, SrcK8S_OwnerName=`)
-//line k8s.qtpl:151
+//line k8s.qtpl:152
 	qw422016.N().Q(name)
-//line k8s.qtpl:151
+//line k8s.qtpl:152
 	qw422016.N().S(`}
 `)
-//line k8s.qtpl:152
+//line k8s.qtpl:153
 }
 
-//line k8s.qtpl:152
+//line k8s.qtpl:153
 func WriteK8sSrcOwnerToNetflow(qq422016 qtio422016.Writer, o interface{}) {
-//line k8s.qtpl:152
+//line k8s.qtpl:153
 	qw422016 := qt422016.AcquireWriter(qq422016)
-//line k8s.qtpl:152
+//line k8s.qtpl:153
 	StreamK8sSrcOwnerToNetflow(qw422016, o)
-//line k8s.qtpl:152
+//line k8s.qtpl:153
 	qt422016.ReleaseWriter(qw422016)
-//line k8s.qtpl:152
+//line k8s.qtpl:153
 }
 
-//line k8s.qtpl:152
+//line k8s.qtpl:153
 func K8sSrcOwnerToNetflow(o interface{}) string {
-//line k8s.qtpl:152
+//line k8s.qtpl:153
 	qb422016 := qt422016.AcquireByteBuffer()
-//line k8s.qtpl:152
+//line k8s.qtpl:153
 	WriteK8sSrcOwnerToNetflow(qb422016, o)
-//line k8s.qtpl:152
+//line k8s.qtpl:153
 	qs422016 := string(qb422016.B)
-//line k8s.qtpl:152
+//line k8s.qtpl:153
 	qt422016.ReleaseByteBuffer(qb422016)
-//line k8s.qtpl:152
+//line k8s.qtpl:153
 	return qs422016
-//line k8s.qtpl:152
+//line k8s.qtpl:153
 }
 
 // # K8sDstToNetflow finds netflows where the k8s resource is the destination.
@@ -534,58 +547,58 @@ func K8sSrcOwnerToNetflow(o interface{}) string {
 //   classes: [network]
 //
 
-//line k8s.qtpl:163
+//line k8s.qtpl:164
 func StreamK8sDstToNetflow(qw422016 *qt422016.Writer, o interface{}) {
-//line k8s.qtpl:163
+//line k8s.qtpl:164
 	qw422016.N().S(`
 `)
-//line k8s.qtpl:165
+//line k8s.qtpl:166
 	_, _, ns, name, kind := k8sMetadata(o)
 	RequireAll(name, kind)
 
-//line k8s.qtpl:167
+//line k8s.qtpl:168
 	qw422016.N().S(`
 netflow:network:{DstK8S_Type=`)
-//line k8s.qtpl:168
+//line k8s.qtpl:169
 	qw422016.N().Q(kind)
-//line k8s.qtpl:168
+//line k8s.qtpl:169
 	qw422016.N().S(`, DstK8S_Namespace=`)
-//line k8s.qtpl:168
+//line k8s.qtpl:169
 	qw422016.N().Q(ns)
-//line k8s.qtpl:168
+//line k8s.qtpl:169
 	qw422016.N().S(`} | json | DstK8S_Name=`)
-//line k8s.qtpl:168
+//line k8s.qtpl:169
 	qw422016.N().Q(name)
-//line k8s.qtpl:168
+//line k8s.qtpl:169
 	qw422016.N().S(`
 `)
-//line k8s.qtpl:169
+//line k8s.qtpl:170
 }
 
-//line k8s.qtpl:169
+//line k8s.qtpl:170
 func WriteK8sDstToNetflow(qq422016 qtio422016.Writer, o interface{}) {
-//line k8s.qtpl:169
+//line k8s.qtpl:170
 	qw422016 := qt422016.AcquireWriter(qq422016)
-//line k8s.qtpl:169
+//line k8s.qtpl:170
 	StreamK8sDstToNetflow(qw422016, o)
-//line k8s.qtpl:169
+//line k8s.qtpl:170
 	qt422016.ReleaseWriter(qw422016)
-//line k8s.qtpl:169
+//line k8s.qtpl:170
 }
 
-//line k8s.qtpl:169
+//line k8s.qtpl:170
 func K8sDstToNetflow(o interface{}) string {
-//line k8s.qtpl:169
+//line k8s.qtpl:170
 	qb422016 := qt422016.AcquireByteBuffer()
-//line k8s.qtpl:169
+//line k8s.qtpl:170
 	WriteK8sDstToNetflow(qb422016, o)
-//line k8s.qtpl:169
+//line k8s.qtpl:170
 	qs422016 := string(qb422016.B)
-//line k8s.qtpl:169
+//line k8s.qtpl:170
 	qt422016.ReleaseByteBuffer(qb422016)
-//line k8s.qtpl:169
+//line k8s.qtpl:170
 	return qs422016
-//line k8s.qtpl:169
+//line k8s.qtpl:170
 }
 
 // # K8sDstOwnerToNetflow finds netflows where the k8s owner resource is the destination owner.
@@ -602,54 +615,54 @@ func K8sDstToNetflow(o interface{}) string {
 //   classes: [network]
 //
 
-//line k8s.qtpl:184
+//line k8s.qtpl:185
 func StreamK8sDstOwnerToNetflow(qw422016 *qt422016.Writer, o interface{}) {
-//line k8s.qtpl:184
+//line k8s.qtpl:185
 	qw422016.N().S(`
 `)
-//line k8s.qtpl:186
+//line k8s.qtpl:187
 	_, _, ns, name, _ := k8sMetadata(o)
 	RequireAll(ns, name)
 
-//line k8s.qtpl:188
+//line k8s.qtpl:189
 	qw422016.N().S(`
 netflow:network:{DstK8S_Namespace=`)
-//line k8s.qtpl:189
+//line k8s.qtpl:190
 	qw422016.N().Q(ns)
-//line k8s.qtpl:189
+//line k8s.qtpl:190
 	qw422016.N().S(`, DstK8S_OwnerName=`)
-//line k8s.qtpl:189
+//line k8s.qtpl:190
 	qw422016.N().Q(name)
-//line k8s.qtpl:189
+//line k8s.qtpl:190
 	qw422016.N().S(`}
 `)
-//line k8s.qtpl:190
+//line k8s.qtpl:191
 }
 
-//line k8s.qtpl:190
+//line k8s.qtpl:191
 func WriteK8sDstOwnerToNetflow(qq422016 qtio422016.Writer, o interface{}) {
-//line k8s.qtpl:190
+//line k8s.qtpl:191
 	qw422016 := qt422016.AcquireWriter(qq422016)
-//line k8s.qtpl:190
+//line k8s.qtpl:191
 	StreamK8sDstOwnerToNetflow(qw422016, o)
-//line k8s.qtpl:190
+//line k8s.qtpl:191
 	qt422016.ReleaseWriter(qw422016)
-//line k8s.qtpl:190
+//line k8s.qtpl:191
 }
 
-//line k8s.qtpl:190
+//line k8s.qtpl:191
 func K8sDstOwnerToNetflow(o interface{}) string {
-//line k8s.qtpl:190
+//line k8s.qtpl:191
 	qb422016 := qt422016.AcquireByteBuffer()
-//line k8s.qtpl:190
+//line k8s.qtpl:191
 	WriteK8sDstOwnerToNetflow(qb422016, o)
-//line k8s.qtpl:190
+//line k8s.qtpl:191
 	qs422016 := string(qb422016.B)
-//line k8s.qtpl:190
+//line k8s.qtpl:191
 	qt422016.ReleaseByteBuffer(qb422016)
-//line k8s.qtpl:190
+//line k8s.qtpl:191
 	return qs422016
-//line k8s.qtpl:190
+//line k8s.qtpl:191
 }
 
 // # ServiceToPods finds Pods matching the selector of a k8s Service.
@@ -662,56 +675,56 @@ func K8sDstOwnerToNetflow(o interface{}) string {
 //   classes: [Pod]
 //
 
-//line k8s.qtpl:201
+//line k8s.qtpl:202
 func StreamServiceToPods(qw422016 *qt422016.Writer, o interface{}) {
-//line k8s.qtpl:201
+//line k8s.qtpl:202
 	qw422016.N().S(`
 `)
-//line k8s.qtpl:203
+//line k8s.qtpl:204
 	obj, _, ns, _, _ := k8sMetadata(o)
 	RequireAll(ns)
 	selector := obj["spec"].(map[string]any)["selector"]
 	RequireAll(selector)
 
-//line k8s.qtpl:207
+//line k8s.qtpl:208
 	qw422016.N().S(`
 k8s:Pod:{"namespace":`)
-//line k8s.qtpl:208
+//line k8s.qtpl:209
 	qw422016.N().Q(ns)
-//line k8s.qtpl:208
+//line k8s.qtpl:209
 	qw422016.N().S(`,"labels":`)
-//line k8s.qtpl:208
+//line k8s.qtpl:209
 	qw422016.N().S(ToJSON(selector))
-//line k8s.qtpl:208
+//line k8s.qtpl:209
 	qw422016.N().S(`}
 `)
-//line k8s.qtpl:209
+//line k8s.qtpl:210
 }
 
-//line k8s.qtpl:209
+//line k8s.qtpl:210
 func WriteServiceToPods(qq422016 qtio422016.Writer, o interface{}) {
-//line k8s.qtpl:209
+//line k8s.qtpl:210
 	qw422016 := qt422016.AcquireWriter(qq422016)
-//line k8s.qtpl:209
+//line k8s.qtpl:210
 	StreamServiceToPods(qw422016, o)
-//line k8s.qtpl:209
+//line k8s.qtpl:210
 	qt422016.ReleaseWriter(qw422016)
-//line k8s.qtpl:209
+//line k8s.qtpl:210
 }
 
-//line k8s.qtpl:209
+//line k8s.qtpl:210
 func ServiceToPods(o interface{}) string {
-//line k8s.qtpl:209
+//line k8s.qtpl:210
 	qb422016 := qt422016.AcquireByteBuffer()
-//line k8s.qtpl:209
+//line k8s.qtpl:210
 	WriteServiceToPods(qb422016, o)
-//line k8s.qtpl:209
+//line k8s.qtpl:210
 	qs422016 := string(qb422016.B)
-//line k8s.qtpl:209
+//line k8s.qtpl:210
 	qt422016.ReleaseByteBuffer(qb422016)
-//line k8s.qtpl:209
+//line k8s.qtpl:210
 	return qs422016
-//line k8s.qtpl:209
+//line k8s.qtpl:210
 }
 
 // # EventToAll correlates a core v1 Event to the resource it references.
@@ -723,12 +736,12 @@ func ServiceToPods(o interface{}) string {
 //   domain: k8s
 //
 
-//line k8s.qtpl:219
+//line k8s.qtpl:220
 func StreamEventToAll(qw422016 *qt422016.Writer, o interface{}) {
-//line k8s.qtpl:219
+//line k8s.qtpl:220
 	qw422016.N().S(`
 `)
-//line k8s.qtpl:221
+//line k8s.qtpl:222
 	obj := o.(map[string]any)
 	inv := obj["involvedObject"].(map[string]any)
 	class := k8s.Class(schema.FromAPIVersionAndKind(inv["apiVersion"].(string), inv["kind"].(string)))
@@ -736,73 +749,73 @@ func StreamEventToAll(qw422016 *qt422016.Writer, o interface{}) {
 	name := inv["name"].(string)
 	RequireAll(name)
 
-//line k8s.qtpl:227
+//line k8s.qtpl:228
 	qw422016.N().S(`
 `)
-//line k8s.qtpl:228
+//line k8s.qtpl:229
 	if ns != "" {
-//line k8s.qtpl:228
+//line k8s.qtpl:229
 		qw422016.N().S(`
 k8s:`)
-//line k8s.qtpl:229
+//line k8s.qtpl:230
 		qw422016.N().S(class.Name())
-//line k8s.qtpl:229
+//line k8s.qtpl:230
 		qw422016.N().S(`:{"namespace":`)
-//line k8s.qtpl:229
+//line k8s.qtpl:230
 		qw422016.N().Q(ns)
-//line k8s.qtpl:229
+//line k8s.qtpl:230
 		qw422016.N().S(`,"name":`)
-//line k8s.qtpl:229
+//line k8s.qtpl:230
 		qw422016.N().Q(name)
-//line k8s.qtpl:229
+//line k8s.qtpl:230
 		qw422016.N().S(`}
 `)
-//line k8s.qtpl:230
+//line k8s.qtpl:231
 	} else {
-//line k8s.qtpl:230
+//line k8s.qtpl:231
 		qw422016.N().S(`
 k8s:`)
-//line k8s.qtpl:231
+//line k8s.qtpl:232
 		qw422016.N().S(class.Name())
-//line k8s.qtpl:231
+//line k8s.qtpl:232
 		qw422016.N().S(`:{"name":`)
-//line k8s.qtpl:231
+//line k8s.qtpl:232
 		qw422016.N().Q(name)
-//line k8s.qtpl:231
+//line k8s.qtpl:232
 		qw422016.N().S(`}
 `)
-//line k8s.qtpl:232
+//line k8s.qtpl:233
 	}
-//line k8s.qtpl:232
+//line k8s.qtpl:233
 	qw422016.N().S(`
 `)
-//line k8s.qtpl:233
+//line k8s.qtpl:234
 }
 
-//line k8s.qtpl:233
+//line k8s.qtpl:234
 func WriteEventToAll(qq422016 qtio422016.Writer, o interface{}) {
-//line k8s.qtpl:233
+//line k8s.qtpl:234
 	qw422016 := qt422016.AcquireWriter(qq422016)
-//line k8s.qtpl:233
+//line k8s.qtpl:234
 	StreamEventToAll(qw422016, o)
-//line k8s.qtpl:233
+//line k8s.qtpl:234
 	qt422016.ReleaseWriter(qw422016)
-//line k8s.qtpl:233
+//line k8s.qtpl:234
 }
 
-//line k8s.qtpl:233
+//line k8s.qtpl:234
 func EventToAll(o interface{}) string {
-//line k8s.qtpl:233
+//line k8s.qtpl:234
 	qb422016 := qt422016.AcquireByteBuffer()
-//line k8s.qtpl:233
+//line k8s.qtpl:234
 	WriteEventToAll(qb422016, o)
-//line k8s.qtpl:233
+//line k8s.qtpl:234
 	qs422016 := string(qb422016.B)
-//line k8s.qtpl:233
+//line k8s.qtpl:234
 	qt422016.ReleaseByteBuffer(qb422016)
-//line k8s.qtpl:233
+//line k8s.qtpl:234
 	return qs422016
-//line k8s.qtpl:233
+//line k8s.qtpl:234
 }
 
 // # Event2ToAll correlates a events.k8s.io/v1 Event to the resource it references.
@@ -814,12 +827,12 @@ func EventToAll(o interface{}) string {
 //   domain: k8s
 //
 
-//line k8s.qtpl:243
+//line k8s.qtpl:244
 func StreamEvent2ToAll(qw422016 *qt422016.Writer, o interface{}) {
-//line k8s.qtpl:243
+//line k8s.qtpl:244
 	qw422016.N().S(`
 `)
-//line k8s.qtpl:245
+//line k8s.qtpl:246
 	obj := o.(map[string]any)
 	reg := obj["regarding"].(map[string]any)
 	class := k8s.Class(schema.FromAPIVersionAndKind(reg["apiVersion"].(string), reg["kind"].(string)))
@@ -827,73 +840,73 @@ func StreamEvent2ToAll(qw422016 *qt422016.Writer, o interface{}) {
 	name := reg["name"].(string)
 	RequireAll(name)
 
-//line k8s.qtpl:251
+//line k8s.qtpl:252
 	qw422016.N().S(`
 `)
-//line k8s.qtpl:252
+//line k8s.qtpl:253
 	if ns != "" {
-//line k8s.qtpl:252
+//line k8s.qtpl:253
 		qw422016.N().S(`
 k8s:`)
-//line k8s.qtpl:253
+//line k8s.qtpl:254
 		qw422016.N().S(class.Name())
-//line k8s.qtpl:253
+//line k8s.qtpl:254
 		qw422016.N().S(`:{"namespace":`)
-//line k8s.qtpl:253
+//line k8s.qtpl:254
 		qw422016.N().Q(ns)
-//line k8s.qtpl:253
+//line k8s.qtpl:254
 		qw422016.N().S(`,"name":`)
-//line k8s.qtpl:253
+//line k8s.qtpl:254
 		qw422016.N().Q(name)
-//line k8s.qtpl:253
+//line k8s.qtpl:254
 		qw422016.N().S(`}
 `)
-//line k8s.qtpl:254
+//line k8s.qtpl:255
 	} else {
-//line k8s.qtpl:254
+//line k8s.qtpl:255
 		qw422016.N().S(`
 k8s:`)
-//line k8s.qtpl:255
+//line k8s.qtpl:256
 		qw422016.N().S(class.Name())
-//line k8s.qtpl:255
+//line k8s.qtpl:256
 		qw422016.N().S(`:{"name":`)
-//line k8s.qtpl:255
+//line k8s.qtpl:256
 		qw422016.N().Q(name)
-//line k8s.qtpl:255
+//line k8s.qtpl:256
 		qw422016.N().S(`}
 `)
-//line k8s.qtpl:256
+//line k8s.qtpl:257
 	}
-//line k8s.qtpl:256
+//line k8s.qtpl:257
 	qw422016.N().S(`
 `)
-//line k8s.qtpl:257
+//line k8s.qtpl:258
 }
 
-//line k8s.qtpl:257
+//line k8s.qtpl:258
 func WriteEvent2ToAll(qq422016 qtio422016.Writer, o interface{}) {
-//line k8s.qtpl:257
+//line k8s.qtpl:258
 	qw422016 := qt422016.AcquireWriter(qq422016)
-//line k8s.qtpl:257
+//line k8s.qtpl:258
 	StreamEvent2ToAll(qw422016, o)
-//line k8s.qtpl:257
+//line k8s.qtpl:258
 	qt422016.ReleaseWriter(qw422016)
-//line k8s.qtpl:257
+//line k8s.qtpl:258
 }
 
-//line k8s.qtpl:257
+//line k8s.qtpl:258
 func Event2ToAll(o interface{}) string {
-//line k8s.qtpl:257
+//line k8s.qtpl:258
 	qb422016 := qt422016.AcquireByteBuffer()
-//line k8s.qtpl:257
+//line k8s.qtpl:258
 	WriteEvent2ToAll(qb422016, o)
-//line k8s.qtpl:257
+//line k8s.qtpl:258
 	qs422016 := string(qb422016.B)
-//line k8s.qtpl:257
+//line k8s.qtpl:258
 	qt422016.ReleaseByteBuffer(qb422016)
-//line k8s.qtpl:257
+//line k8s.qtpl:258
 	return qs422016
-//line k8s.qtpl:257
+//line k8s.qtpl:258
 }
 
 // # PodToPVC finds PersistentVolumeClaims referenced by a Pod's volumes.
@@ -906,81 +919,81 @@ func Event2ToAll(o interface{}) string {
 //   classes: [PersistentVolumeClaim]
 //
 
-//line k8s.qtpl:268
+//line k8s.qtpl:269
 func StreamPodToPVC(qw422016 *qt422016.Writer, o interface{}) {
-//line k8s.qtpl:268
+//line k8s.qtpl:269
 	qw422016.N().S(`
 `)
-//line k8s.qtpl:270
+//line k8s.qtpl:271
 	obj, _, ns, _, _ := k8sMetadata(o)
 	RequireAll(ns)
 	volumes := mapSlice(obj["spec"].(map[string]any), "volumes")
 
-//line k8s.qtpl:273
+//line k8s.qtpl:274
 	qw422016.N().S(`
 `)
-//line k8s.qtpl:274
+//line k8s.qtpl:275
 	for _, v := range volumes {
-//line k8s.qtpl:274
+//line k8s.qtpl:275
 		qw422016.N().S(`
 `)
-//line k8s.qtpl:275
+//line k8s.qtpl:276
 		vol := v.(map[string]any)
 
-//line k8s.qtpl:275
+//line k8s.qtpl:276
 		qw422016.N().S(`
 `)
-//line k8s.qtpl:276
+//line k8s.qtpl:277
 		if pvc, ok := vol["persistentVolumeClaim"].(map[string]any); ok {
-//line k8s.qtpl:276
+//line k8s.qtpl:277
 			qw422016.N().S(`
 k8s:PersistentVolumeClaim:{"namespace":`)
-//line k8s.qtpl:277
+//line k8s.qtpl:278
 			qw422016.N().Q(ns)
-//line k8s.qtpl:277
+//line k8s.qtpl:278
 			qw422016.N().S(`,"name":`)
-//line k8s.qtpl:277
+//line k8s.qtpl:278
 			qw422016.N().Q(pvc["claimName"].(string))
-//line k8s.qtpl:277
+//line k8s.qtpl:278
 			qw422016.N().S(`}
 `)
-//line k8s.qtpl:278
+//line k8s.qtpl:279
 		}
-//line k8s.qtpl:278
+//line k8s.qtpl:279
 		qw422016.N().S(`
 `)
-//line k8s.qtpl:279
+//line k8s.qtpl:280
 	}
-//line k8s.qtpl:279
+//line k8s.qtpl:280
 	qw422016.N().S(`
 `)
-//line k8s.qtpl:280
+//line k8s.qtpl:281
 }
 
-//line k8s.qtpl:280
+//line k8s.qtpl:281
 func WritePodToPVC(qq422016 qtio422016.Writer, o interface{}) {
-//line k8s.qtpl:280
+//line k8s.qtpl:281
 	qw422016 := qt422016.AcquireWriter(qq422016)
-//line k8s.qtpl:280
+//line k8s.qtpl:281
 	StreamPodToPVC(qw422016, o)
-//line k8s.qtpl:280
+//line k8s.qtpl:281
 	qt422016.ReleaseWriter(qw422016)
-//line k8s.qtpl:280
+//line k8s.qtpl:281
 }
 
-//line k8s.qtpl:280
+//line k8s.qtpl:281
 func PodToPVC(o interface{}) string {
-//line k8s.qtpl:280
+//line k8s.qtpl:281
 	qb422016 := qt422016.AcquireByteBuffer()
-//line k8s.qtpl:280
+//line k8s.qtpl:281
 	WritePodToPVC(qb422016, o)
-//line k8s.qtpl:280
+//line k8s.qtpl:281
 	qs422016 := string(qb422016.B)
-//line k8s.qtpl:280
+//line k8s.qtpl:281
 	qt422016.ReleaseByteBuffer(qb422016)
-//line k8s.qtpl:280
+//line k8s.qtpl:281
 	return qs422016
-//line k8s.qtpl:280
+//line k8s.qtpl:281
 }
 
 // # PodToConfigMap finds ConfigMaps referenced by a Pod's volumes.
@@ -993,81 +1006,81 @@ func PodToPVC(o interface{}) string {
 //   classes: [ConfigMap]
 //
 
-//line k8s.qtpl:291
+//line k8s.qtpl:292
 func StreamPodToConfigMap(qw422016 *qt422016.Writer, o interface{}) {
-//line k8s.qtpl:291
+//line k8s.qtpl:292
 	qw422016.N().S(`
 `)
-//line k8s.qtpl:293
+//line k8s.qtpl:294
 	obj, _, ns, _, _ := k8sMetadata(o)
 	RequireAll(ns)
 	volumes := mapSlice(obj["spec"].(map[string]any), "volumes")
 
-//line k8s.qtpl:296
+//line k8s.qtpl:297
 	qw422016.N().S(`
 `)
-//line k8s.qtpl:297
+//line k8s.qtpl:298
 	for _, v := range volumes {
-//line k8s.qtpl:297
+//line k8s.qtpl:298
 		qw422016.N().S(`
 `)
-//line k8s.qtpl:298
+//line k8s.qtpl:299
 		vol := v.(map[string]any)
 
-//line k8s.qtpl:298
+//line k8s.qtpl:299
 		qw422016.N().S(`
 `)
-//line k8s.qtpl:299
+//line k8s.qtpl:300
 		if cm, ok := vol["configMap"].(map[string]any); ok {
-//line k8s.qtpl:299
+//line k8s.qtpl:300
 			qw422016.N().S(`
 k8s:ConfigMap:{"namespace":`)
-//line k8s.qtpl:300
+//line k8s.qtpl:301
 			qw422016.N().Q(ns)
-//line k8s.qtpl:300
+//line k8s.qtpl:301
 			qw422016.N().S(`,"name":`)
-//line k8s.qtpl:300
+//line k8s.qtpl:301
 			qw422016.N().Q(cm["name"].(string))
-//line k8s.qtpl:300
+//line k8s.qtpl:301
 			qw422016.N().S(`}
 `)
-//line k8s.qtpl:301
+//line k8s.qtpl:302
 		}
-//line k8s.qtpl:301
+//line k8s.qtpl:302
 		qw422016.N().S(`
 `)
-//line k8s.qtpl:302
+//line k8s.qtpl:303
 	}
-//line k8s.qtpl:302
+//line k8s.qtpl:303
 	qw422016.N().S(`
 `)
-//line k8s.qtpl:303
+//line k8s.qtpl:304
 }
 
-//line k8s.qtpl:303
+//line k8s.qtpl:304
 func WritePodToConfigMap(qq422016 qtio422016.Writer, o interface{}) {
-//line k8s.qtpl:303
+//line k8s.qtpl:304
 	qw422016 := qt422016.AcquireWriter(qq422016)
-//line k8s.qtpl:303
+//line k8s.qtpl:304
 	StreamPodToConfigMap(qw422016, o)
-//line k8s.qtpl:303
+//line k8s.qtpl:304
 	qt422016.ReleaseWriter(qw422016)
-//line k8s.qtpl:303
+//line k8s.qtpl:304
 }
 
-//line k8s.qtpl:303
+//line k8s.qtpl:304
 func PodToConfigMap(o interface{}) string {
-//line k8s.qtpl:303
+//line k8s.qtpl:304
 	qb422016 := qt422016.AcquireByteBuffer()
-//line k8s.qtpl:303
+//line k8s.qtpl:304
 	WritePodToConfigMap(qb422016, o)
-//line k8s.qtpl:303
+//line k8s.qtpl:304
 	qs422016 := string(qb422016.B)
-//line k8s.qtpl:303
+//line k8s.qtpl:304
 	qt422016.ReleaseByteBuffer(qb422016)
-//line k8s.qtpl:303
+//line k8s.qtpl:304
 	return qs422016
-//line k8s.qtpl:303
+//line k8s.qtpl:304
 }
 
 // # PodToSecret finds Secrets referenced by a Pod's volumes.
@@ -1080,81 +1093,81 @@ func PodToConfigMap(o interface{}) string {
 //   classes: [Secret]
 //
 
-//line k8s.qtpl:314
+//line k8s.qtpl:315
 func StreamPodToSecret(qw422016 *qt422016.Writer, o interface{}) {
-//line k8s.qtpl:314
+//line k8s.qtpl:315
 	qw422016.N().S(`
 `)
-//line k8s.qtpl:316
+//line k8s.qtpl:317
 	obj, _, ns, _, _ := k8sMetadata(o)
 	RequireAll(ns)
 	volumes := mapSlice(obj["spec"].(map[string]any), "volumes")
 
-//line k8s.qtpl:319
+//line k8s.qtpl:320
 	qw422016.N().S(`
 `)
-//line k8s.qtpl:320
+//line k8s.qtpl:321
 	for _, v := range volumes {
-//line k8s.qtpl:320
+//line k8s.qtpl:321
 		qw422016.N().S(`
 `)
-//line k8s.qtpl:321
+//line k8s.qtpl:322
 		vol := v.(map[string]any)
 
-//line k8s.qtpl:321
+//line k8s.qtpl:322
 		qw422016.N().S(`
 `)
-//line k8s.qtpl:322
+//line k8s.qtpl:323
 		if sec, ok := vol["secret"].(map[string]any); ok {
-//line k8s.qtpl:322
+//line k8s.qtpl:323
 			qw422016.N().S(`
 k8s:Secret:{"namespace":`)
-//line k8s.qtpl:323
+//line k8s.qtpl:324
 			qw422016.N().Q(ns)
-//line k8s.qtpl:323
+//line k8s.qtpl:324
 			qw422016.N().S(`,"name":`)
-//line k8s.qtpl:323
+//line k8s.qtpl:324
 			qw422016.N().Q(sec["secretName"].(string))
-//line k8s.qtpl:323
+//line k8s.qtpl:324
 			qw422016.N().S(`}
 `)
-//line k8s.qtpl:324
+//line k8s.qtpl:325
 		}
-//line k8s.qtpl:324
+//line k8s.qtpl:325
 		qw422016.N().S(`
 `)
-//line k8s.qtpl:325
+//line k8s.qtpl:326
 	}
-//line k8s.qtpl:325
+//line k8s.qtpl:326
 	qw422016.N().S(`
 `)
-//line k8s.qtpl:326
+//line k8s.qtpl:327
 }
 
-//line k8s.qtpl:326
+//line k8s.qtpl:327
 func WritePodToSecret(qq422016 qtio422016.Writer, o interface{}) {
-//line k8s.qtpl:326
+//line k8s.qtpl:327
 	qw422016 := qt422016.AcquireWriter(qq422016)
-//line k8s.qtpl:326
+//line k8s.qtpl:327
 	StreamPodToSecret(qw422016, o)
-//line k8s.qtpl:326
+//line k8s.qtpl:327
 	qt422016.ReleaseWriter(qw422016)
-//line k8s.qtpl:326
+//line k8s.qtpl:327
 }
 
-//line k8s.qtpl:326
+//line k8s.qtpl:327
 func PodToSecret(o interface{}) string {
-//line k8s.qtpl:326
+//line k8s.qtpl:327
 	qb422016 := qt422016.AcquireByteBuffer()
-//line k8s.qtpl:326
+//line k8s.qtpl:327
 	WritePodToSecret(qb422016, o)
-//line k8s.qtpl:326
+//line k8s.qtpl:327
 	qs422016 := string(qb422016.B)
-//line k8s.qtpl:326
+//line k8s.qtpl:327
 	qt422016.ReleaseByteBuffer(qb422016)
-//line k8s.qtpl:326
+//line k8s.qtpl:327
 	return qs422016
-//line k8s.qtpl:326
+//line k8s.qtpl:327
 }
 
 // # PodToServiceAccount finds the ServiceAccount used by a Pod.
@@ -1167,55 +1180,55 @@ func PodToSecret(o interface{}) string {
 //   classes: [ServiceAccount]
 //
 
-//line k8s.qtpl:337
+//line k8s.qtpl:338
 func StreamPodToServiceAccount(qw422016 *qt422016.Writer, o interface{}) {
-//line k8s.qtpl:337
+//line k8s.qtpl:338
 	qw422016.N().S(`
 `)
-//line k8s.qtpl:339
+//line k8s.qtpl:340
 	obj, _, ns, _, _ := k8sMetadata(o)
 	RequireAll(ns)
 	sa := Require(obj["spec"].(map[string]any)["serviceAccountName"].(string))
 
-//line k8s.qtpl:342
+//line k8s.qtpl:343
 	qw422016.N().S(`
 k8s:ServiceAccount:{"namespace":`)
-//line k8s.qtpl:343
+//line k8s.qtpl:344
 	qw422016.N().Q(ns)
-//line k8s.qtpl:343
+//line k8s.qtpl:344
 	qw422016.N().S(`,"name":`)
-//line k8s.qtpl:343
+//line k8s.qtpl:344
 	qw422016.N().Q(sa)
-//line k8s.qtpl:343
+//line k8s.qtpl:344
 	qw422016.N().S(`}
 `)
-//line k8s.qtpl:344
+//line k8s.qtpl:345
 }
 
-//line k8s.qtpl:344
+//line k8s.qtpl:345
 func WritePodToServiceAccount(qq422016 qtio422016.Writer, o interface{}) {
-//line k8s.qtpl:344
+//line k8s.qtpl:345
 	qw422016 := qt422016.AcquireWriter(qq422016)
-//line k8s.qtpl:344
+//line k8s.qtpl:345
 	StreamPodToServiceAccount(qw422016, o)
-//line k8s.qtpl:344
+//line k8s.qtpl:345
 	qt422016.ReleaseWriter(qw422016)
-//line k8s.qtpl:344
+//line k8s.qtpl:345
 }
 
-//line k8s.qtpl:344
+//line k8s.qtpl:345
 func PodToServiceAccount(o interface{}) string {
-//line k8s.qtpl:344
+//line k8s.qtpl:345
 	qb422016 := qt422016.AcquireByteBuffer()
-//line k8s.qtpl:344
+//line k8s.qtpl:345
 	WritePodToServiceAccount(qb422016, o)
-//line k8s.qtpl:344
+//line k8s.qtpl:345
 	qs422016 := string(qb422016.B)
-//line k8s.qtpl:344
+//line k8s.qtpl:345
 	qt422016.ReleaseByteBuffer(qb422016)
-//line k8s.qtpl:344
+//line k8s.qtpl:345
 	return qs422016
-//line k8s.qtpl:344
+//line k8s.qtpl:345
 }
 
 // # ServiceToEndpointSlice finds EndpointSlices for a Service.
@@ -1228,54 +1241,54 @@ func PodToServiceAccount(o interface{}) string {
 //   classes: [EndpointSlice.discovery.k8s.io]
 //
 
-//line k8s.qtpl:355
+//line k8s.qtpl:356
 func StreamServiceToEndpointSlice(qw422016 *qt422016.Writer, o interface{}) {
-//line k8s.qtpl:355
+//line k8s.qtpl:356
 	qw422016.N().S(`
 `)
-//line k8s.qtpl:356
+//line k8s.qtpl:357
 	_, _, ns, name, _ := k8sMetadata(o)
 	RequireAll(ns, name)
 
-//line k8s.qtpl:356
+//line k8s.qtpl:357
 	qw422016.N().S(`
 k8s:EndpointSlice.discovery.k8s.io:{"namespace":`)
-//line k8s.qtpl:357
+//line k8s.qtpl:358
 	qw422016.N().Q(ns)
-//line k8s.qtpl:357
+//line k8s.qtpl:358
 	qw422016.N().S(`,"labels":{"kubernetes.io/service-name":`)
-//line k8s.qtpl:357
+//line k8s.qtpl:358
 	qw422016.N().Q(name)
-//line k8s.qtpl:357
+//line k8s.qtpl:358
 	qw422016.N().S(`}}
 `)
-//line k8s.qtpl:358
+//line k8s.qtpl:359
 }
 
-//line k8s.qtpl:358
+//line k8s.qtpl:359
 func WriteServiceToEndpointSlice(qq422016 qtio422016.Writer, o interface{}) {
-//line k8s.qtpl:358
+//line k8s.qtpl:359
 	qw422016 := qt422016.AcquireWriter(qq422016)
-//line k8s.qtpl:358
+//line k8s.qtpl:359
 	StreamServiceToEndpointSlice(qw422016, o)
-//line k8s.qtpl:358
+//line k8s.qtpl:359
 	qt422016.ReleaseWriter(qw422016)
-//line k8s.qtpl:358
+//line k8s.qtpl:359
 }
 
-//line k8s.qtpl:358
+//line k8s.qtpl:359
 func ServiceToEndpointSlice(o interface{}) string {
-//line k8s.qtpl:358
+//line k8s.qtpl:359
 	qb422016 := qt422016.AcquireByteBuffer()
-//line k8s.qtpl:358
+//line k8s.qtpl:359
 	WriteServiceToEndpointSlice(qb422016, o)
-//line k8s.qtpl:358
+//line k8s.qtpl:359
 	qs422016 := string(qb422016.B)
-//line k8s.qtpl:358
+//line k8s.qtpl:359
 	qt422016.ReleaseByteBuffer(qb422016)
-//line k8s.qtpl:358
+//line k8s.qtpl:359
 	return qs422016
-//line k8s.qtpl:358
+//line k8s.qtpl:359
 }
 
 // # EndpointSliceToService finds the Service for an EndpointSlice.
@@ -1288,56 +1301,56 @@ func ServiceToEndpointSlice(o interface{}) string {
 //   classes: [Service]
 //
 
-//line k8s.qtpl:369
+//line k8s.qtpl:370
 func StreamEndpointSliceToService(qw422016 *qt422016.Writer, o interface{}) {
-//line k8s.qtpl:369
+//line k8s.qtpl:370
 	qw422016.N().S(`
 `)
-//line k8s.qtpl:371
+//line k8s.qtpl:372
 	_, metadata, ns, _, _ := k8sMetadata(o)
 	RequireAll(ns)
 	labels := metadata["labels"].(map[string]any)
 	svcName := Require(labels["kubernetes.io/service-name"].(string))
 
-//line k8s.qtpl:375
+//line k8s.qtpl:376
 	qw422016.N().S(`
 k8s:Service:{"namespace":`)
-//line k8s.qtpl:376
+//line k8s.qtpl:377
 	qw422016.N().Q(ns)
-//line k8s.qtpl:376
+//line k8s.qtpl:377
 	qw422016.N().S(`,"name":`)
-//line k8s.qtpl:376
+//line k8s.qtpl:377
 	qw422016.N().Q(svcName)
-//line k8s.qtpl:376
+//line k8s.qtpl:377
 	qw422016.N().S(`}
 `)
-//line k8s.qtpl:377
+//line k8s.qtpl:378
 }
 
-//line k8s.qtpl:377
+//line k8s.qtpl:378
 func WriteEndpointSliceToService(qq422016 qtio422016.Writer, o interface{}) {
-//line k8s.qtpl:377
+//line k8s.qtpl:378
 	qw422016 := qt422016.AcquireWriter(qq422016)
-//line k8s.qtpl:377
+//line k8s.qtpl:378
 	StreamEndpointSliceToService(qw422016, o)
-//line k8s.qtpl:377
+//line k8s.qtpl:378
 	qt422016.ReleaseWriter(qw422016)
-//line k8s.qtpl:377
+//line k8s.qtpl:378
 }
 
-//line k8s.qtpl:377
+//line k8s.qtpl:378
 func EndpointSliceToService(o interface{}) string {
-//line k8s.qtpl:377
+//line k8s.qtpl:378
 	qb422016 := qt422016.AcquireByteBuffer()
-//line k8s.qtpl:377
+//line k8s.qtpl:378
 	WriteEndpointSliceToService(qb422016, o)
-//line k8s.qtpl:377
+//line k8s.qtpl:378
 	qs422016 := string(qb422016.B)
-//line k8s.qtpl:377
+//line k8s.qtpl:378
 	qt422016.ReleaseByteBuffer(qb422016)
-//line k8s.qtpl:377
+//line k8s.qtpl:378
 	return qs422016
-//line k8s.qtpl:377
+//line k8s.qtpl:378
 }
 
 // # PVCToPV finds the PersistentVolume bound to a PersistentVolumeClaim.
@@ -1350,50 +1363,50 @@ func EndpointSliceToService(o interface{}) string {
 //   classes: [PersistentVolume]
 //
 
-//line k8s.qtpl:388
+//line k8s.qtpl:389
 func StreamPVCToPV(qw422016 *qt422016.Writer, o interface{}) {
-//line k8s.qtpl:388
+//line k8s.qtpl:389
 	qw422016.N().S(`
 `)
-//line k8s.qtpl:390
+//line k8s.qtpl:391
 	obj := o.(map[string]any)
 	volName := Require(obj["spec"].(map[string]any)["volumeName"].(string))
 
-//line k8s.qtpl:392
+//line k8s.qtpl:393
 	qw422016.N().S(`
 k8s:PersistentVolume:{"name":`)
-//line k8s.qtpl:393
+//line k8s.qtpl:394
 	qw422016.N().Q(volName)
-//line k8s.qtpl:393
+//line k8s.qtpl:394
 	qw422016.N().S(`}
 `)
-//line k8s.qtpl:394
+//line k8s.qtpl:395
 }
 
-//line k8s.qtpl:394
+//line k8s.qtpl:395
 func WritePVCToPV(qq422016 qtio422016.Writer, o interface{}) {
-//line k8s.qtpl:394
+//line k8s.qtpl:395
 	qw422016 := qt422016.AcquireWriter(qq422016)
-//line k8s.qtpl:394
+//line k8s.qtpl:395
 	StreamPVCToPV(qw422016, o)
-//line k8s.qtpl:394
+//line k8s.qtpl:395
 	qt422016.ReleaseWriter(qw422016)
-//line k8s.qtpl:394
+//line k8s.qtpl:395
 }
 
-//line k8s.qtpl:394
+//line k8s.qtpl:395
 func PVCToPV(o interface{}) string {
-//line k8s.qtpl:394
+//line k8s.qtpl:395
 	qb422016 := qt422016.AcquireByteBuffer()
-//line k8s.qtpl:394
+//line k8s.qtpl:395
 	WritePVCToPV(qb422016, o)
-//line k8s.qtpl:394
+//line k8s.qtpl:395
 	qs422016 := string(qb422016.B)
-//line k8s.qtpl:394
+//line k8s.qtpl:395
 	qt422016.ReleaseByteBuffer(qb422016)
-//line k8s.qtpl:394
+//line k8s.qtpl:395
 	return qs422016
-//line k8s.qtpl:394
+//line k8s.qtpl:395
 }
 
 // # PVToPVC finds the PersistentVolumeClaim bound to a PersistentVolume.
@@ -1406,54 +1419,54 @@ func PVCToPV(o interface{}) string {
 //   classes: [PersistentVolumeClaim]
 //
 
-//line k8s.qtpl:405
+//line k8s.qtpl:406
 func StreamPVToPVC(qw422016 *qt422016.Writer, o interface{}) {
-//line k8s.qtpl:405
+//line k8s.qtpl:406
 	qw422016.N().S(`
 `)
-//line k8s.qtpl:407
+//line k8s.qtpl:408
 	obj := o.(map[string]any)
 	ref := obj["spec"].(map[string]any)["claimRef"].(map[string]any)
 
-//line k8s.qtpl:409
+//line k8s.qtpl:410
 	qw422016.N().S(`
 k8s:PersistentVolumeClaim:{"namespace":`)
-//line k8s.qtpl:410
+//line k8s.qtpl:411
 	qw422016.N().Q(ref["namespace"].(string))
-//line k8s.qtpl:410
+//line k8s.qtpl:411
 	qw422016.N().S(`,"name":`)
-//line k8s.qtpl:410
+//line k8s.qtpl:411
 	qw422016.N().Q(ref["name"].(string))
-//line k8s.qtpl:410
+//line k8s.qtpl:411
 	qw422016.N().S(`}
 `)
-//line k8s.qtpl:411
+//line k8s.qtpl:412
 }
 
-//line k8s.qtpl:411
+//line k8s.qtpl:412
 func WritePVToPVC(qq422016 qtio422016.Writer, o interface{}) {
-//line k8s.qtpl:411
+//line k8s.qtpl:412
 	qw422016 := qt422016.AcquireWriter(qq422016)
-//line k8s.qtpl:411
+//line k8s.qtpl:412
 	StreamPVToPVC(qw422016, o)
-//line k8s.qtpl:411
+//line k8s.qtpl:412
 	qt422016.ReleaseWriter(qw422016)
-//line k8s.qtpl:411
+//line k8s.qtpl:412
 }
 
-//line k8s.qtpl:411
+//line k8s.qtpl:412
 func PVToPVC(o interface{}) string {
-//line k8s.qtpl:411
+//line k8s.qtpl:412
 	qb422016 := qt422016.AcquireByteBuffer()
-//line k8s.qtpl:411
+//line k8s.qtpl:412
 	WritePVToPVC(qb422016, o)
-//line k8s.qtpl:411
+//line k8s.qtpl:412
 	qs422016 := string(qb422016.B)
-//line k8s.qtpl:411
+//line k8s.qtpl:412
 	qt422016.ReleaseByteBuffer(qb422016)
-//line k8s.qtpl:411
+//line k8s.qtpl:412
 	return qs422016
-//line k8s.qtpl:411
+//line k8s.qtpl:412
 }
 
 // # PVToStorageClass finds the StorageClass for a PersistentVolume.
@@ -1466,50 +1479,50 @@ func PVToPVC(o interface{}) string {
 //   classes: [StorageClass.storage.k8s.io]
 //
 
-//line k8s.qtpl:422
+//line k8s.qtpl:423
 func StreamPVToStorageClass(qw422016 *qt422016.Writer, o interface{}) {
-//line k8s.qtpl:422
+//line k8s.qtpl:423
 	qw422016.N().S(`
 `)
-//line k8s.qtpl:424
+//line k8s.qtpl:425
 	obj := o.(map[string]any)
 	sc := Require(obj["spec"].(map[string]any)["storageClassName"].(string))
 
-//line k8s.qtpl:426
+//line k8s.qtpl:427
 	qw422016.N().S(`
 k8s:StorageClass.storage.k8s.io:{"name":`)
-//line k8s.qtpl:427
+//line k8s.qtpl:428
 	qw422016.N().Q(sc)
-//line k8s.qtpl:427
+//line k8s.qtpl:428
 	qw422016.N().S(`}
 `)
-//line k8s.qtpl:428
+//line k8s.qtpl:429
 }
 
-//line k8s.qtpl:428
+//line k8s.qtpl:429
 func WritePVToStorageClass(qq422016 qtio422016.Writer, o interface{}) {
-//line k8s.qtpl:428
+//line k8s.qtpl:429
 	qw422016 := qt422016.AcquireWriter(qq422016)
-//line k8s.qtpl:428
+//line k8s.qtpl:429
 	StreamPVToStorageClass(qw422016, o)
-//line k8s.qtpl:428
+//line k8s.qtpl:429
 	qt422016.ReleaseWriter(qw422016)
-//line k8s.qtpl:428
+//line k8s.qtpl:429
 }
 
-//line k8s.qtpl:428
+//line k8s.qtpl:429
 func PVToStorageClass(o interface{}) string {
-//line k8s.qtpl:428
+//line k8s.qtpl:429
 	qb422016 := qt422016.AcquireByteBuffer()
-//line k8s.qtpl:428
+//line k8s.qtpl:429
 	WritePVToStorageClass(qb422016, o)
-//line k8s.qtpl:428
+//line k8s.qtpl:429
 	qs422016 := string(qb422016.B)
-//line k8s.qtpl:428
+//line k8s.qtpl:429
 	qt422016.ReleaseByteBuffer(qb422016)
-//line k8s.qtpl:428
+//line k8s.qtpl:429
 	return qs422016
-//line k8s.qtpl:428
+//line k8s.qtpl:429
 }
 
 // # PVCToStorageClass finds the StorageClass for a PersistentVolumeClaim.
@@ -1522,50 +1535,50 @@ func PVToStorageClass(o interface{}) string {
 //   classes: [StorageClass.storage.k8s.io]
 //
 
-//line k8s.qtpl:439
+//line k8s.qtpl:440
 func StreamPVCToStorageClass(qw422016 *qt422016.Writer, o interface{}) {
-//line k8s.qtpl:439
+//line k8s.qtpl:440
 	qw422016.N().S(`
 `)
-//line k8s.qtpl:441
+//line k8s.qtpl:442
 	obj := o.(map[string]any)
 	sc := Require(obj["spec"].(map[string]any)["storageClassName"].(string))
 
-//line k8s.qtpl:443
+//line k8s.qtpl:444
 	qw422016.N().S(`
 k8s:StorageClass.storage.k8s.io:{"name":`)
-//line k8s.qtpl:444
+//line k8s.qtpl:445
 	qw422016.N().Q(sc)
-//line k8s.qtpl:444
+//line k8s.qtpl:445
 	qw422016.N().S(`}
 `)
-//line k8s.qtpl:445
+//line k8s.qtpl:446
 }
 
-//line k8s.qtpl:445
+//line k8s.qtpl:446
 func WritePVCToStorageClass(qq422016 qtio422016.Writer, o interface{}) {
-//line k8s.qtpl:445
+//line k8s.qtpl:446
 	qw422016 := qt422016.AcquireWriter(qq422016)
-//line k8s.qtpl:445
+//line k8s.qtpl:446
 	StreamPVCToStorageClass(qw422016, o)
-//line k8s.qtpl:445
+//line k8s.qtpl:446
 	qt422016.ReleaseWriter(qw422016)
-//line k8s.qtpl:445
+//line k8s.qtpl:446
 }
 
-//line k8s.qtpl:445
+//line k8s.qtpl:446
 func PVCToStorageClass(o interface{}) string {
-//line k8s.qtpl:445
+//line k8s.qtpl:446
 	qb422016 := qt422016.AcquireByteBuffer()
-//line k8s.qtpl:445
+//line k8s.qtpl:446
 	WritePVCToStorageClass(qb422016, o)
-//line k8s.qtpl:445
+//line k8s.qtpl:446
 	qs422016 := string(qb422016.B)
-//line k8s.qtpl:445
+//line k8s.qtpl:446
 	qt422016.ReleaseByteBuffer(qb422016)
-//line k8s.qtpl:445
+//line k8s.qtpl:446
 	return qs422016
-//line k8s.qtpl:445
+//line k8s.qtpl:446
 }
 
 // # SubscriptionToCSV finds the ClusterServiceVersion for an OLM Subscription.
@@ -1578,50 +1591,50 @@ func PVCToStorageClass(o interface{}) string {
 //   classes: [ClusterServiceVersion.v1alpha1.operators.coreos.com]
 //
 
-//line k8s.qtpl:456
+//line k8s.qtpl:457
 func StreamSubscriptionToCSV(qw422016 *qt422016.Writer, o interface{}) {
-//line k8s.qtpl:456
+//line k8s.qtpl:457
 	qw422016.N().S(`
 `)
-//line k8s.qtpl:458
+//line k8s.qtpl:459
 	obj := o.(map[string]any)
 	csv := Require(obj["status"].(map[string]any)["currentCSV"].(string))
 
-//line k8s.qtpl:460
+//line k8s.qtpl:461
 	qw422016.N().S(`
 k8s:ClusterServiceVersion.v1alpha1.operators.coreos.com:{"name":`)
-//line k8s.qtpl:461
+//line k8s.qtpl:462
 	qw422016.N().Q(csv)
-//line k8s.qtpl:461
+//line k8s.qtpl:462
 	qw422016.N().S(`}
 `)
-//line k8s.qtpl:462
+//line k8s.qtpl:463
 }
 
-//line k8s.qtpl:462
+//line k8s.qtpl:463
 func WriteSubscriptionToCSV(qq422016 qtio422016.Writer, o interface{}) {
-//line k8s.qtpl:462
+//line k8s.qtpl:463
 	qw422016 := qt422016.AcquireWriter(qq422016)
-//line k8s.qtpl:462
+//line k8s.qtpl:463
 	StreamSubscriptionToCSV(qw422016, o)
-//line k8s.qtpl:462
+//line k8s.qtpl:463
 	qt422016.ReleaseWriter(qw422016)
-//line k8s.qtpl:462
+//line k8s.qtpl:463
 }
 
-//line k8s.qtpl:462
+//line k8s.qtpl:463
 func SubscriptionToCSV(o interface{}) string {
-//line k8s.qtpl:462
+//line k8s.qtpl:463
 	qb422016 := qt422016.AcquireByteBuffer()
-//line k8s.qtpl:462
+//line k8s.qtpl:463
 	WriteSubscriptionToCSV(qb422016, o)
-//line k8s.qtpl:462
+//line k8s.qtpl:463
 	qs422016 := string(qb422016.B)
-//line k8s.qtpl:462
+//line k8s.qtpl:463
 	qt422016.ReleaseByteBuffer(qb422016)
-//line k8s.qtpl:462
+//line k8s.qtpl:463
 	return qs422016
-//line k8s.qtpl:462
+//line k8s.qtpl:463
 }
 
 // # CSVToCRD finds CustomResourceDefinitions owned by a ClusterServiceVersion.
@@ -1634,66 +1647,66 @@ func SubscriptionToCSV(o interface{}) string {
 //   classes: [CustomResourceDefinition.v1.apiextensions.k8s.io]
 //
 
-//line k8s.qtpl:473
+//line k8s.qtpl:474
 func StreamCSVToCRD(qw422016 *qt422016.Writer, o interface{}) {
-//line k8s.qtpl:473
+//line k8s.qtpl:474
 	qw422016.N().S(`
 `)
-//line k8s.qtpl:475
+//line k8s.qtpl:476
 	obj := o.(map[string]any)
 	owned := mapSlice(obj["spec"].(map[string]any)["customresourcedefinitions"].(map[string]any), "owned")
 
-//line k8s.qtpl:477
+//line k8s.qtpl:478
 	qw422016.N().S(`
 `)
-//line k8s.qtpl:478
+//line k8s.qtpl:479
 	for _, item := range owned {
-//line k8s.qtpl:478
+//line k8s.qtpl:479
 		qw422016.N().S(`
 `)
-//line k8s.qtpl:479
+//line k8s.qtpl:480
 		crd := item.(map[string]any)
 
-//line k8s.qtpl:479
+//line k8s.qtpl:480
 		qw422016.N().S(`
 k8s:CustomResourceDefinition.apiextensions.k8s.io:{"name":`)
-//line k8s.qtpl:480
+//line k8s.qtpl:481
 		qw422016.N().Q(crd["name"].(string))
-//line k8s.qtpl:480
+//line k8s.qtpl:481
 		qw422016.N().S(`}
 `)
-//line k8s.qtpl:481
+//line k8s.qtpl:482
 	}
-//line k8s.qtpl:481
+//line k8s.qtpl:482
 	qw422016.N().S(`
 `)
-//line k8s.qtpl:482
+//line k8s.qtpl:483
 }
 
-//line k8s.qtpl:482
+//line k8s.qtpl:483
 func WriteCSVToCRD(qq422016 qtio422016.Writer, o interface{}) {
-//line k8s.qtpl:482
+//line k8s.qtpl:483
 	qw422016 := qt422016.AcquireWriter(qq422016)
-//line k8s.qtpl:482
+//line k8s.qtpl:483
 	StreamCSVToCRD(qw422016, o)
-//line k8s.qtpl:482
+//line k8s.qtpl:483
 	qt422016.ReleaseWriter(qw422016)
-//line k8s.qtpl:482
+//line k8s.qtpl:483
 }
 
-//line k8s.qtpl:482
+//line k8s.qtpl:483
 func CSVToCRD(o interface{}) string {
-//line k8s.qtpl:482
+//line k8s.qtpl:483
 	qb422016 := qt422016.AcquireByteBuffer()
-//line k8s.qtpl:482
+//line k8s.qtpl:483
 	WriteCSVToCRD(qb422016, o)
-//line k8s.qtpl:482
+//line k8s.qtpl:483
 	qs422016 := string(qb422016.B)
-//line k8s.qtpl:482
+//line k8s.qtpl:483
 	qt422016.ReleaseByteBuffer(qb422016)
-//line k8s.qtpl:482
+//line k8s.qtpl:483
 	return qs422016
-//line k8s.qtpl:482
+//line k8s.qtpl:483
 }
 
 // # CRDToInstances finds instances of a CustomResourceDefinition.
@@ -1705,61 +1718,61 @@ func CSVToCRD(o interface{}) string {
 //   domain: k8s
 //
 
-//line k8s.qtpl:492
+//line k8s.qtpl:493
 func StreamCRDToInstances(qw422016 *qt422016.Writer, o interface{}) {
-//line k8s.qtpl:492
+//line k8s.qtpl:493
 	qw422016.N().S(`
 `)
-//line k8s.qtpl:494
+//line k8s.qtpl:495
 	obj := o.(map[string]any)
 	spec := obj["spec"].(map[string]any)
 	kind := spec["names"].(map[string]any)["kind"].(string)
 	version := mapSlice(spec, "versions")[0].(map[string]any)["name"].(string)
 	group := spec["group"].(string)
 
-//line k8s.qtpl:499
+//line k8s.qtpl:500
 	qw422016.N().S(`
 k8s:`)
-//line k8s.qtpl:500
+//line k8s.qtpl:501
 	qw422016.N().S(kind)
-//line k8s.qtpl:500
+//line k8s.qtpl:501
 	qw422016.N().S(`.`)
-//line k8s.qtpl:500
+//line k8s.qtpl:501
 	qw422016.N().S(version)
-//line k8s.qtpl:500
+//line k8s.qtpl:501
 	qw422016.N().S(`.`)
-//line k8s.qtpl:500
+//line k8s.qtpl:501
 	qw422016.N().S(group)
-//line k8s.qtpl:500
+//line k8s.qtpl:501
 	qw422016.N().S(`:{}
 `)
-//line k8s.qtpl:501
+//line k8s.qtpl:502
 }
 
-//line k8s.qtpl:501
+//line k8s.qtpl:502
 func WriteCRDToInstances(qq422016 qtio422016.Writer, o interface{}) {
-//line k8s.qtpl:501
+//line k8s.qtpl:502
 	qw422016 := qt422016.AcquireWriter(qq422016)
-//line k8s.qtpl:501
+//line k8s.qtpl:502
 	StreamCRDToInstances(qw422016, o)
-//line k8s.qtpl:501
+//line k8s.qtpl:502
 	qt422016.ReleaseWriter(qw422016)
-//line k8s.qtpl:501
+//line k8s.qtpl:502
 }
 
-//line k8s.qtpl:501
+//line k8s.qtpl:502
 func CRDToInstances(o interface{}) string {
-//line k8s.qtpl:501
+//line k8s.qtpl:502
 	qb422016 := qt422016.AcquireByteBuffer()
-//line k8s.qtpl:501
+//line k8s.qtpl:502
 	WriteCRDToInstances(qb422016, o)
-//line k8s.qtpl:501
+//line k8s.qtpl:502
 	qs422016 := string(qb422016.B)
-//line k8s.qtpl:501
+//line k8s.qtpl:502
 	qt422016.ReleaseByteBuffer(qb422016)
-//line k8s.qtpl:501
+//line k8s.qtpl:502
 	return qs422016
-//line k8s.qtpl:501
+//line k8s.qtpl:502
 }
 
 // # CSVToDeployment finds Deployments installed by a ClusterServiceVersion.
@@ -1772,72 +1785,72 @@ func CRDToInstances(o interface{}) string {
 //   classes: [Deployment.apps]
 //
 
-//line k8s.qtpl:512
+//line k8s.qtpl:513
 func StreamCSVToDeployment(qw422016 *qt422016.Writer, o interface{}) {
-//line k8s.qtpl:512
+//line k8s.qtpl:513
 	qw422016.N().S(`
 `)
-//line k8s.qtpl:514
+//line k8s.qtpl:515
 	_, _, ns, _, _ := k8sMetadata(o)
 	RequireAll(ns)
 	obj := o.(map[string]any)
 	deployments := mapSlice(obj["spec"].(map[string]any)["install"].(map[string]any)["spec"].(map[string]any), "deployments")
 
-//line k8s.qtpl:518
+//line k8s.qtpl:519
 	qw422016.N().S(`
 `)
-//line k8s.qtpl:519
+//line k8s.qtpl:520
 	for _, d := range deployments {
-//line k8s.qtpl:519
+//line k8s.qtpl:520
 		qw422016.N().S(`
 `)
-//line k8s.qtpl:520
+//line k8s.qtpl:521
 		dep := d.(map[string]any)
 
-//line k8s.qtpl:520
+//line k8s.qtpl:521
 		qw422016.N().S(`
 k8s:Deployment.apps:{"namespace":`)
-//line k8s.qtpl:521
+//line k8s.qtpl:522
 		qw422016.N().Q(ns)
-//line k8s.qtpl:521
+//line k8s.qtpl:522
 		qw422016.N().S(`,"name":`)
-//line k8s.qtpl:521
+//line k8s.qtpl:522
 		qw422016.N().Q(dep["name"].(string))
-//line k8s.qtpl:521
+//line k8s.qtpl:522
 		qw422016.N().S(`}
 `)
-//line k8s.qtpl:522
+//line k8s.qtpl:523
 	}
-//line k8s.qtpl:522
+//line k8s.qtpl:523
 	qw422016.N().S(`
 `)
-//line k8s.qtpl:523
+//line k8s.qtpl:524
 }
 
-//line k8s.qtpl:523
+//line k8s.qtpl:524
 func WriteCSVToDeployment(qq422016 qtio422016.Writer, o interface{}) {
-//line k8s.qtpl:523
+//line k8s.qtpl:524
 	qw422016 := qt422016.AcquireWriter(qq422016)
-//line k8s.qtpl:523
+//line k8s.qtpl:524
 	StreamCSVToDeployment(qw422016, o)
-//line k8s.qtpl:523
+//line k8s.qtpl:524
 	qt422016.ReleaseWriter(qw422016)
-//line k8s.qtpl:523
+//line k8s.qtpl:524
 }
 
-//line k8s.qtpl:523
+//line k8s.qtpl:524
 func CSVToDeployment(o interface{}) string {
-//line k8s.qtpl:523
+//line k8s.qtpl:524
 	qb422016 := qt422016.AcquireByteBuffer()
-//line k8s.qtpl:523
+//line k8s.qtpl:524
 	WriteCSVToDeployment(qb422016, o)
-//line k8s.qtpl:523
+//line k8s.qtpl:524
 	qs422016 := string(qb422016.B)
-//line k8s.qtpl:523
+//line k8s.qtpl:524
 	qt422016.ReleaseByteBuffer(qb422016)
-//line k8s.qtpl:523
+//line k8s.qtpl:524
 	return qs422016
-//line k8s.qtpl:523
+//line k8s.qtpl:524
 }
 
 // # SubscriptionToInstallPlan finds the InstallPlan for an OLM Subscription.
@@ -1850,54 +1863,54 @@ func CSVToDeployment(o interface{}) string {
 //   classes: [InstallPlan.v1alpha1.operators.coreos.com]
 //
 
-//line k8s.qtpl:534
+//line k8s.qtpl:535
 func StreamSubscriptionToInstallPlan(qw422016 *qt422016.Writer, o interface{}) {
-//line k8s.qtpl:534
+//line k8s.qtpl:535
 	qw422016.N().S(`
 `)
-//line k8s.qtpl:536
+//line k8s.qtpl:537
 	obj := o.(map[string]any)
 	ref := obj["status"].(map[string]any)["installPlanRef"].(map[string]any)
 
-//line k8s.qtpl:538
+//line k8s.qtpl:539
 	qw422016.N().S(`
 k8s:InstallPlan.v1alpha1.operators.coreos.com:{"namespace":`)
-//line k8s.qtpl:539
+//line k8s.qtpl:540
 	qw422016.N().Q(ref["namespace"].(string))
-//line k8s.qtpl:539
+//line k8s.qtpl:540
 	qw422016.N().S(`,"name":`)
-//line k8s.qtpl:539
+//line k8s.qtpl:540
 	qw422016.N().Q(ref["name"].(string))
-//line k8s.qtpl:539
+//line k8s.qtpl:540
 	qw422016.N().S(`}
 `)
-//line k8s.qtpl:540
+//line k8s.qtpl:541
 }
 
-//line k8s.qtpl:540
+//line k8s.qtpl:541
 func WriteSubscriptionToInstallPlan(qq422016 qtio422016.Writer, o interface{}) {
-//line k8s.qtpl:540
+//line k8s.qtpl:541
 	qw422016 := qt422016.AcquireWriter(qq422016)
-//line k8s.qtpl:540
+//line k8s.qtpl:541
 	StreamSubscriptionToInstallPlan(qw422016, o)
-//line k8s.qtpl:540
+//line k8s.qtpl:541
 	qt422016.ReleaseWriter(qw422016)
-//line k8s.qtpl:540
+//line k8s.qtpl:541
 }
 
-//line k8s.qtpl:540
+//line k8s.qtpl:541
 func SubscriptionToInstallPlan(o interface{}) string {
-//line k8s.qtpl:540
+//line k8s.qtpl:541
 	qb422016 := qt422016.AcquireByteBuffer()
-//line k8s.qtpl:540
+//line k8s.qtpl:541
 	WriteSubscriptionToInstallPlan(qb422016, o)
-//line k8s.qtpl:540
+//line k8s.qtpl:541
 	qs422016 := string(qb422016.B)
-//line k8s.qtpl:540
+//line k8s.qtpl:541
 	qt422016.ReleaseByteBuffer(qb422016)
-//line k8s.qtpl:540
+//line k8s.qtpl:541
 	return qs422016
-//line k8s.qtpl:540
+//line k8s.qtpl:541
 }
 
 // # InstallPlanToCSV finds ClusterServiceVersions from an InstallPlan.
@@ -1910,66 +1923,66 @@ func SubscriptionToInstallPlan(o interface{}) string {
 //   classes: [ClusterServiceVersion.v1alpha1.operators.coreos.com]
 //
 
-//line k8s.qtpl:551
+//line k8s.qtpl:552
 func StreamInstallPlanToCSV(qw422016 *qt422016.Writer, o interface{}) {
-//line k8s.qtpl:551
+//line k8s.qtpl:552
 	qw422016.N().S(`
 `)
-//line k8s.qtpl:553
+//line k8s.qtpl:554
 	_, _, ns, _, _ := k8sMetadata(o)
 	RequireAll(ns)
 	obj := o.(map[string]any)
 	names := mapSlice(obj["spec"].(map[string]any), "clusterServiceVersionNames")
 
-//line k8s.qtpl:557
+//line k8s.qtpl:558
 	qw422016.N().S(`
 `)
-//line k8s.qtpl:558
+//line k8s.qtpl:559
 	for _, n := range names {
-//line k8s.qtpl:558
+//line k8s.qtpl:559
 		qw422016.N().S(`
 k8s:ClusterServiceVersion.v1alpha1.operators.coreos.com:{"namespace":`)
-//line k8s.qtpl:559
+//line k8s.qtpl:560
 		qw422016.N().Q(ns)
-//line k8s.qtpl:559
+//line k8s.qtpl:560
 		qw422016.N().S(`,"name":`)
-//line k8s.qtpl:559
+//line k8s.qtpl:560
 		qw422016.N().Q(n.(string))
-//line k8s.qtpl:559
+//line k8s.qtpl:560
 		qw422016.N().S(`}
 `)
-//line k8s.qtpl:560
+//line k8s.qtpl:561
 	}
-//line k8s.qtpl:560
+//line k8s.qtpl:561
 	qw422016.N().S(`
 `)
-//line k8s.qtpl:561
+//line k8s.qtpl:562
 }
 
-//line k8s.qtpl:561
+//line k8s.qtpl:562
 func WriteInstallPlanToCSV(qq422016 qtio422016.Writer, o interface{}) {
-//line k8s.qtpl:561
+//line k8s.qtpl:562
 	qw422016 := qt422016.AcquireWriter(qq422016)
-//line k8s.qtpl:561
+//line k8s.qtpl:562
 	StreamInstallPlanToCSV(qw422016, o)
-//line k8s.qtpl:561
+//line k8s.qtpl:562
 	qt422016.ReleaseWriter(qw422016)
-//line k8s.qtpl:561
+//line k8s.qtpl:562
 }
 
-//line k8s.qtpl:561
+//line k8s.qtpl:562
 func InstallPlanToCSV(o interface{}) string {
-//line k8s.qtpl:561
+//line k8s.qtpl:562
 	qb422016 := qt422016.AcquireByteBuffer()
-//line k8s.qtpl:561
+//line k8s.qtpl:562
 	WriteInstallPlanToCSV(qb422016, o)
-//line k8s.qtpl:561
+//line k8s.qtpl:562
 	qs422016 := string(qb422016.B)
-//line k8s.qtpl:561
+//line k8s.qtpl:562
 	qt422016.ReleaseByteBuffer(qb422016)
-//line k8s.qtpl:561
+//line k8s.qtpl:562
 	return qs422016
-//line k8s.qtpl:561
+//line k8s.qtpl:562
 }
 
 // # SubscriptionToCatalogSource finds the CatalogSource for an OLM Subscription.
@@ -1982,56 +1995,56 @@ func InstallPlanToCSV(o interface{}) string {
 //   classes: [CatalogSource.v1alpha1.operators.coreos.com]
 //
 
-//line k8s.qtpl:572
+//line k8s.qtpl:573
 func StreamSubscriptionToCatalogSource(qw422016 *qt422016.Writer, o interface{}) {
-//line k8s.qtpl:572
+//line k8s.qtpl:573
 	qw422016.N().S(`
 `)
-//line k8s.qtpl:574
+//line k8s.qtpl:575
 	obj := o.(map[string]any)
 	spec := obj["spec"].(map[string]any)
 	srcNs := Require(spec["sourceNamespace"].(string))
 	src := Require(spec["source"].(string))
 
-//line k8s.qtpl:578
+//line k8s.qtpl:579
 	qw422016.N().S(`
 k8s:CatalogSource.v1alpha1.operators.coreos.com:{"namespace":`)
-//line k8s.qtpl:579
+//line k8s.qtpl:580
 	qw422016.N().Q(srcNs)
-//line k8s.qtpl:579
+//line k8s.qtpl:580
 	qw422016.N().S(`,"name":`)
-//line k8s.qtpl:579
+//line k8s.qtpl:580
 	qw422016.N().Q(src)
-//line k8s.qtpl:579
+//line k8s.qtpl:580
 	qw422016.N().S(`}
 `)
-//line k8s.qtpl:580
+//line k8s.qtpl:581
 }
 
-//line k8s.qtpl:580
+//line k8s.qtpl:581
 func WriteSubscriptionToCatalogSource(qq422016 qtio422016.Writer, o interface{}) {
-//line k8s.qtpl:580
+//line k8s.qtpl:581
 	qw422016 := qt422016.AcquireWriter(qq422016)
-//line k8s.qtpl:580
+//line k8s.qtpl:581
 	StreamSubscriptionToCatalogSource(qw422016, o)
-//line k8s.qtpl:580
+//line k8s.qtpl:581
 	qt422016.ReleaseWriter(qw422016)
-//line k8s.qtpl:580
+//line k8s.qtpl:581
 }
 
-//line k8s.qtpl:580
+//line k8s.qtpl:581
 func SubscriptionToCatalogSource(o interface{}) string {
-//line k8s.qtpl:580
+//line k8s.qtpl:581
 	qb422016 := qt422016.AcquireByteBuffer()
-//line k8s.qtpl:580
+//line k8s.qtpl:581
 	WriteSubscriptionToCatalogSource(qb422016, o)
-//line k8s.qtpl:580
+//line k8s.qtpl:581
 	qs422016 := string(qb422016.B)
-//line k8s.qtpl:580
+//line k8s.qtpl:581
 	qt422016.ReleaseByteBuffer(qb422016)
-//line k8s.qtpl:580
+//line k8s.qtpl:581
 	return qs422016
-//line k8s.qtpl:580
+//line k8s.qtpl:581
 }
 
 // # OperatorToCRD finds CRDs referenced by an OLM Operator.
@@ -2044,76 +2057,76 @@ func SubscriptionToCatalogSource(o interface{}) string {
 //   classes: [CustomResourceDefinition.apiextensions.k8s.io]
 //
 
-//line k8s.qtpl:591
+//line k8s.qtpl:592
 func StreamOperatorToCRD(qw422016 *qt422016.Writer, o interface{}) {
-//line k8s.qtpl:591
+//line k8s.qtpl:592
 	qw422016.N().S(`
 `)
-//line k8s.qtpl:593
+//line k8s.qtpl:594
 	obj := o.(map[string]any)
 	refs := mapSlice(obj["status"].(map[string]any)["components"].(map[string]any), "refs")
 
-//line k8s.qtpl:595
+//line k8s.qtpl:596
 	qw422016.N().S(`
 `)
-//line k8s.qtpl:596
+//line k8s.qtpl:597
 	for _, r := range refs {
-//line k8s.qtpl:596
+//line k8s.qtpl:597
 		qw422016.N().S(`
 `)
-//line k8s.qtpl:597
+//line k8s.qtpl:598
 		ref := r.(map[string]any)
 
-//line k8s.qtpl:597
+//line k8s.qtpl:598
 		qw422016.N().S(`
 `)
-//line k8s.qtpl:598
+//line k8s.qtpl:599
 		if ref["kind"].(string) == "CustomResourceDefinition" {
-//line k8s.qtpl:598
+//line k8s.qtpl:599
 			qw422016.N().S(`
 k8s:CustomResourceDefinition.apiextensions.k8s.io:{"name":`)
-//line k8s.qtpl:599
+//line k8s.qtpl:600
 			qw422016.N().Q(ref["name"].(string))
-//line k8s.qtpl:599
+//line k8s.qtpl:600
 			qw422016.N().S(`}
 `)
-//line k8s.qtpl:600
+//line k8s.qtpl:601
 		}
-//line k8s.qtpl:600
+//line k8s.qtpl:601
 		qw422016.N().S(`
 `)
-//line k8s.qtpl:601
+//line k8s.qtpl:602
 	}
-//line k8s.qtpl:601
+//line k8s.qtpl:602
 	qw422016.N().S(`
 `)
-//line k8s.qtpl:602
+//line k8s.qtpl:603
 }
 
-//line k8s.qtpl:602
+//line k8s.qtpl:603
 func WriteOperatorToCRD(qq422016 qtio422016.Writer, o interface{}) {
-//line k8s.qtpl:602
+//line k8s.qtpl:603
 	qw422016 := qt422016.AcquireWriter(qq422016)
-//line k8s.qtpl:602
+//line k8s.qtpl:603
 	StreamOperatorToCRD(qw422016, o)
-//line k8s.qtpl:602
+//line k8s.qtpl:603
 	qt422016.ReleaseWriter(qw422016)
-//line k8s.qtpl:602
+//line k8s.qtpl:603
 }
 
-//line k8s.qtpl:602
+//line k8s.qtpl:603
 func OperatorToCRD(o interface{}) string {
-//line k8s.qtpl:602
+//line k8s.qtpl:603
 	qb422016 := qt422016.AcquireByteBuffer()
-//line k8s.qtpl:602
+//line k8s.qtpl:603
 	WriteOperatorToCRD(qb422016, o)
-//line k8s.qtpl:602
+//line k8s.qtpl:603
 	qs422016 := string(qb422016.B)
-//line k8s.qtpl:602
+//line k8s.qtpl:603
 	qt422016.ReleaseByteBuffer(qb422016)
-//line k8s.qtpl:602
+//line k8s.qtpl:603
 	return qs422016
-//line k8s.qtpl:602
+//line k8s.qtpl:603
 }
 
 // # OperatorToCSV finds ClusterServiceVersions referenced by an OLM Operator.
@@ -2126,80 +2139,80 @@ func OperatorToCRD(o interface{}) string {
 //   classes: [ClusterServiceVersion.v1alpha1.operators.coreos.com]
 //
 
-//line k8s.qtpl:613
+//line k8s.qtpl:614
 func StreamOperatorToCSV(qw422016 *qt422016.Writer, o interface{}) {
-//line k8s.qtpl:613
+//line k8s.qtpl:614
 	qw422016.N().S(`
 `)
-//line k8s.qtpl:615
+//line k8s.qtpl:616
 	obj := o.(map[string]any)
 	refs := mapSlice(obj["status"].(map[string]any)["components"].(map[string]any), "refs")
 
-//line k8s.qtpl:617
+//line k8s.qtpl:618
 	qw422016.N().S(`
 `)
-//line k8s.qtpl:618
+//line k8s.qtpl:619
 	for _, r := range refs {
-//line k8s.qtpl:618
+//line k8s.qtpl:619
 		qw422016.N().S(`
 `)
-//line k8s.qtpl:619
+//line k8s.qtpl:620
 		ref := r.(map[string]any)
 
-//line k8s.qtpl:619
+//line k8s.qtpl:620
 		qw422016.N().S(`
 `)
-//line k8s.qtpl:620
+//line k8s.qtpl:621
 		if ref["kind"].(string) == "ClusterServiceVersion" {
-//line k8s.qtpl:620
+//line k8s.qtpl:621
 			qw422016.N().S(`
 k8s:ClusterServiceVersion.v1alpha1.operators.coreos.com:{"namespace":`)
-//line k8s.qtpl:621
+//line k8s.qtpl:622
 			qw422016.N().Q(ref["namespace"].(string))
-//line k8s.qtpl:621
+//line k8s.qtpl:622
 			qw422016.N().S(`,"name":`)
-//line k8s.qtpl:621
+//line k8s.qtpl:622
 			qw422016.N().Q(ref["name"].(string))
-//line k8s.qtpl:621
+//line k8s.qtpl:622
 			qw422016.N().S(`}
 `)
-//line k8s.qtpl:622
+//line k8s.qtpl:623
 		}
-//line k8s.qtpl:622
+//line k8s.qtpl:623
 		qw422016.N().S(`
 `)
-//line k8s.qtpl:623
+//line k8s.qtpl:624
 	}
-//line k8s.qtpl:623
+//line k8s.qtpl:624
 	qw422016.N().S(`
 `)
-//line k8s.qtpl:624
+//line k8s.qtpl:625
 }
 
-//line k8s.qtpl:624
+//line k8s.qtpl:625
 func WriteOperatorToCSV(qq422016 qtio422016.Writer, o interface{}) {
-//line k8s.qtpl:624
+//line k8s.qtpl:625
 	qw422016 := qt422016.AcquireWriter(qq422016)
-//line k8s.qtpl:624
+//line k8s.qtpl:625
 	StreamOperatorToCSV(qw422016, o)
-//line k8s.qtpl:624
+//line k8s.qtpl:625
 	qt422016.ReleaseWriter(qw422016)
-//line k8s.qtpl:624
+//line k8s.qtpl:625
 }
 
-//line k8s.qtpl:624
+//line k8s.qtpl:625
 func OperatorToCSV(o interface{}) string {
-//line k8s.qtpl:624
+//line k8s.qtpl:625
 	qb422016 := qt422016.AcquireByteBuffer()
-//line k8s.qtpl:624
+//line k8s.qtpl:625
 	WriteOperatorToCSV(qb422016, o)
-//line k8s.qtpl:624
+//line k8s.qtpl:625
 	qs422016 := string(qb422016.B)
-//line k8s.qtpl:624
+//line k8s.qtpl:625
 	qt422016.ReleaseByteBuffer(qb422016)
-//line k8s.qtpl:624
+//line k8s.qtpl:625
 	return qs422016
-//line k8s.qtpl:624
+//line k8s.qtpl:625
 }
 
 // # OperatorToSubscription finds Subscriptions referenced by an OLM Operator.
@@ -2212,80 +2225,80 @@ func OperatorToCSV(o interface{}) string {
 //   classes: [Subscription.v1alpha1.operators.coreos.com]
 //
 
-//line k8s.qtpl:635
+//line k8s.qtpl:636
 func StreamOperatorToSubscription(qw422016 *qt422016.Writer, o interface{}) {
-//line k8s.qtpl:635
+//line k8s.qtpl:636
 	qw422016.N().S(`
 `)
-//line k8s.qtpl:637
+//line k8s.qtpl:638
 	obj := o.(map[string]any)
 	refs := mapSlice(obj["status"].(map[string]any)["components"].(map[string]any), "refs")
 
-//line k8s.qtpl:639
+//line k8s.qtpl:640
 	qw422016.N().S(`
 `)
-//line k8s.qtpl:640
+//line k8s.qtpl:641
 	for _, r := range refs {
-//line k8s.qtpl:640
+//line k8s.qtpl:641
 		qw422016.N().S(`
 `)
-//line k8s.qtpl:641
+//line k8s.qtpl:642
 		ref := r.(map[string]any)
 
-//line k8s.qtpl:641
+//line k8s.qtpl:642
 		qw422016.N().S(`
 `)
-//line k8s.qtpl:642
+//line k8s.qtpl:643
 		if ref["kind"].(string) == "Subscription" {
-//line k8s.qtpl:642
+//line k8s.qtpl:643
 			qw422016.N().S(`
 k8s:Subscription.v1alpha1.operators.coreos.com:{"namespace":`)
-//line k8s.qtpl:643
+//line k8s.qtpl:644
 			qw422016.N().Q(ref["namespace"].(string))
-//line k8s.qtpl:643
+//line k8s.qtpl:644
 			qw422016.N().S(`,"name":`)
-//line k8s.qtpl:643
+//line k8s.qtpl:644
 			qw422016.N().Q(ref["name"].(string))
-//line k8s.qtpl:643
+//line k8s.qtpl:644
 			qw422016.N().S(`}
 `)
-//line k8s.qtpl:644
+//line k8s.qtpl:645
 		}
-//line k8s.qtpl:644
+//line k8s.qtpl:645
 		qw422016.N().S(`
 `)
-//line k8s.qtpl:645
+//line k8s.qtpl:646
 	}
-//line k8s.qtpl:645
+//line k8s.qtpl:646
 	qw422016.N().S(`
 `)
-//line k8s.qtpl:646
+//line k8s.qtpl:647
 }
 
-//line k8s.qtpl:646
+//line k8s.qtpl:647
 func WriteOperatorToSubscription(qq422016 qtio422016.Writer, o interface{}) {
-//line k8s.qtpl:646
+//line k8s.qtpl:647
 	qw422016 := qt422016.AcquireWriter(qq422016)
-//line k8s.qtpl:646
+//line k8s.qtpl:647
 	StreamOperatorToSubscription(qw422016, o)
-//line k8s.qtpl:646
+//line k8s.qtpl:647
 	qt422016.ReleaseWriter(qw422016)
-//line k8s.qtpl:646
+//line k8s.qtpl:647
 }
 
-//line k8s.qtpl:646
+//line k8s.qtpl:647
 func OperatorToSubscription(o interface{}) string {
-//line k8s.qtpl:646
+//line k8s.qtpl:647
 	qb422016 := qt422016.AcquireByteBuffer()
-//line k8s.qtpl:646
+//line k8s.qtpl:647
 	WriteOperatorToSubscription(qb422016, o)
-//line k8s.qtpl:646
+//line k8s.qtpl:647
 	qs422016 := string(qb422016.B)
-//line k8s.qtpl:646
+//line k8s.qtpl:647
 	qt422016.ReleaseByteBuffer(qb422016)
-//line k8s.qtpl:646
+//line k8s.qtpl:647
 	return qs422016
-//line k8s.qtpl:646
+//line k8s.qtpl:647
 }
 
 // # IngressToService finds Services referenced by an Ingress.
@@ -2298,65 +2311,65 @@ func OperatorToSubscription(o interface{}) string {
 //   classes: [Service]
 //
 
-//line k8s.qtpl:657
+//line k8s.qtpl:658
 func StreamIngressToService(qw422016 *qt422016.Writer, o interface{}) {
-//line k8s.qtpl:657
+//line k8s.qtpl:658
 	qw422016.N().S(`
 `)
-//line k8s.qtpl:659
+//line k8s.qtpl:660
 	_, _, ns, _, _ := k8sMetadata(o)
 	RequireAll(ns)
 	svcNames := ingressServiceNames(o.(map[string]any))
 
-//line k8s.qtpl:662
+//line k8s.qtpl:663
 	qw422016.N().S(`
 `)
-//line k8s.qtpl:663
+//line k8s.qtpl:664
 	for _, name := range svcNames {
-//line k8s.qtpl:663
+//line k8s.qtpl:664
 		qw422016.N().S(`
 k8s:Service:{"namespace":`)
-//line k8s.qtpl:664
+//line k8s.qtpl:665
 		qw422016.N().Q(ns)
-//line k8s.qtpl:664
+//line k8s.qtpl:665
 		qw422016.N().S(`,"name":`)
-//line k8s.qtpl:664
+//line k8s.qtpl:665
 		qw422016.N().Q(name)
-//line k8s.qtpl:664
+//line k8s.qtpl:665
 		qw422016.N().S(`}
 `)
-//line k8s.qtpl:665
+//line k8s.qtpl:666
 	}
-//line k8s.qtpl:665
+//line k8s.qtpl:666
 	qw422016.N().S(`
 `)
-//line k8s.qtpl:666
+//line k8s.qtpl:667
 }
 
-//line k8s.qtpl:666
+//line k8s.qtpl:667
 func WriteIngressToService(qq422016 qtio422016.Writer, o interface{}) {
-//line k8s.qtpl:666
+//line k8s.qtpl:667
 	qw422016 := qt422016.AcquireWriter(qq422016)
-//line k8s.qtpl:666
+//line k8s.qtpl:667
 	StreamIngressToService(qw422016, o)
-//line k8s.qtpl:666
+//line k8s.qtpl:667
 	qt422016.ReleaseWriter(qw422016)
-//line k8s.qtpl:666
+//line k8s.qtpl:667
 }
 
-//line k8s.qtpl:666
+//line k8s.qtpl:667
 func IngressToService(o interface{}) string {
-//line k8s.qtpl:666
+//line k8s.qtpl:667
 	qb422016 := qt422016.AcquireByteBuffer()
-//line k8s.qtpl:666
+//line k8s.qtpl:667
 	WriteIngressToService(qb422016, o)
-//line k8s.qtpl:666
+//line k8s.qtpl:667
 	qs422016 := string(qb422016.B)
-//line k8s.qtpl:666
+//line k8s.qtpl:667
 	qt422016.ReleaseByteBuffer(qb422016)
-//line k8s.qtpl:666
+//line k8s.qtpl:667
 	return qs422016
-//line k8s.qtpl:666
+//line k8s.qtpl:667
 }
 
 // # CSVToPartOf finds resources labeled app.kubernetes.io/part-of matching the CSV name (minus version).
@@ -2376,109 +2389,109 @@ func IngressToService(o interface{}) string {
 //     - ServiceAccount
 //
 
-//line k8s.qtpl:684
+//line k8s.qtpl:685
 func StreamCSVToPartOf(qw422016 *qt422016.Writer, o interface{}) {
-//line k8s.qtpl:684
+//line k8s.qtpl:685
 	qw422016.N().S(`
 `)
-//line k8s.qtpl:686
+//line k8s.qtpl:687
 	_, _, ns, name, _ := k8sMetadata(o)
 	RequireAll(ns, name)
 	partOf := Require(csvPartOfName(name))
 
-//line k8s.qtpl:689
+//line k8s.qtpl:690
 	qw422016.N().S(`
 k8s:Deployment.apps:{"namespace":`)
-//line k8s.qtpl:690
+//line k8s.qtpl:691
 	qw422016.N().Q(ns)
-//line k8s.qtpl:690
+//line k8s.qtpl:691
 	qw422016.N().S(`,"labels":{"app.kubernetes.io/part-of":`)
-//line k8s.qtpl:690
+//line k8s.qtpl:691
 	qw422016.N().Q(partOf)
-//line k8s.qtpl:690
+//line k8s.qtpl:691
 	qw422016.N().S(`}}
 k8s:DaemonSet.apps:{"namespace":`)
-//line k8s.qtpl:691
+//line k8s.qtpl:692
 	qw422016.N().Q(ns)
-//line k8s.qtpl:691
+//line k8s.qtpl:692
 	qw422016.N().S(`,"labels":{"app.kubernetes.io/part-of":`)
-//line k8s.qtpl:691
+//line k8s.qtpl:692
 	qw422016.N().Q(partOf)
-//line k8s.qtpl:691
+//line k8s.qtpl:692
 	qw422016.N().S(`}}
 k8s:StatefulSet.apps:{"namespace":`)
-//line k8s.qtpl:692
+//line k8s.qtpl:693
 	qw422016.N().Q(ns)
-//line k8s.qtpl:692
+//line k8s.qtpl:693
 	qw422016.N().S(`,"labels":{"app.kubernetes.io/part-of":`)
-//line k8s.qtpl:692
+//line k8s.qtpl:693
 	qw422016.N().Q(partOf)
-//line k8s.qtpl:692
+//line k8s.qtpl:693
 	qw422016.N().S(`}}
 k8s:Service:{"namespace":`)
-//line k8s.qtpl:693
+//line k8s.qtpl:694
 	qw422016.N().Q(ns)
-//line k8s.qtpl:693
+//line k8s.qtpl:694
 	qw422016.N().S(`,"labels":{"app.kubernetes.io/part-of":`)
-//line k8s.qtpl:693
+//line k8s.qtpl:694
 	qw422016.N().Q(partOf)
-//line k8s.qtpl:693
+//line k8s.qtpl:694
 	qw422016.N().S(`}}
 k8s:ConfigMap:{"namespace":`)
-//line k8s.qtpl:694
+//line k8s.qtpl:695
 	qw422016.N().Q(ns)
-//line k8s.qtpl:694
+//line k8s.qtpl:695
 	qw422016.N().S(`,"labels":{"app.kubernetes.io/part-of":`)
-//line k8s.qtpl:694
+//line k8s.qtpl:695
 	qw422016.N().Q(partOf)
-//line k8s.qtpl:694
+//line k8s.qtpl:695
 	qw422016.N().S(`}}
 k8s:Secret:{"namespace":`)
-//line k8s.qtpl:695
+//line k8s.qtpl:696
 	qw422016.N().Q(ns)
-//line k8s.qtpl:695
+//line k8s.qtpl:696
 	qw422016.N().S(`,"labels":{"app.kubernetes.io/part-of":`)
-//line k8s.qtpl:695
+//line k8s.qtpl:696
 	qw422016.N().Q(partOf)
-//line k8s.qtpl:695
+//line k8s.qtpl:696
 	qw422016.N().S(`}}
 k8s:ServiceAccount:{"namespace":`)
-//line k8s.qtpl:696
+//line k8s.qtpl:697
 	qw422016.N().Q(ns)
-//line k8s.qtpl:696
+//line k8s.qtpl:697
 	qw422016.N().S(`,"labels":{"app.kubernetes.io/part-of":`)
-//line k8s.qtpl:696
+//line k8s.qtpl:697
 	qw422016.N().Q(partOf)
-//line k8s.qtpl:696
+//line k8s.qtpl:697
 	qw422016.N().S(`}}
 `)
-//line k8s.qtpl:697
+//line k8s.qtpl:698
 }
 
-//line k8s.qtpl:697
+//line k8s.qtpl:698
 func WriteCSVToPartOf(qq422016 qtio422016.Writer, o interface{}) {
-//line k8s.qtpl:697
+//line k8s.qtpl:698
 	qw422016 := qt422016.AcquireWriter(qq422016)
-//line k8s.qtpl:697
+//line k8s.qtpl:698
 	StreamCSVToPartOf(qw422016, o)
-//line k8s.qtpl:697
+//line k8s.qtpl:698
 	qt422016.ReleaseWriter(qw422016)
-//line k8s.qtpl:697
+//line k8s.qtpl:698
 }
 
-//line k8s.qtpl:697
+//line k8s.qtpl:698
 func CSVToPartOf(o interface{}) string {
-//line k8s.qtpl:697
+//line k8s.qtpl:698
 	qb422016 := qt422016.AcquireByteBuffer()
-//line k8s.qtpl:697
+//line k8s.qtpl:698
 	WriteCSVToPartOf(qb422016, o)
-//line k8s.qtpl:697
+//line k8s.qtpl:698
 	qs422016 := string(qb422016.B)
-//line k8s.qtpl:697
+//line k8s.qtpl:698
 	qt422016.ReleaseByteBuffer(qb422016)
-//line k8s.qtpl:697
+//line k8s.qtpl:698
 	return qs422016
-//line k8s.qtpl:697
+//line k8s.qtpl:698
 }
 
 // # HPAToTarget finds the scale target of a HorizontalPodAutoscaler.
@@ -2490,12 +2503,12 @@ func CSVToPartOf(o interface{}) string {
 //   domain: k8s
 //
 
-//line k8s.qtpl:707
+//line k8s.qtpl:708
 func StreamHPAToTarget(qw422016 *qt422016.Writer, o interface{}) {
-//line k8s.qtpl:707
+//line k8s.qtpl:708
 	qw422016.N().S(`
 `)
-//line k8s.qtpl:709
+//line k8s.qtpl:710
 	_, _, ns, _, _ := k8sMetadata(o)
 	RequireAll(ns)
 	obj := o.(map[string]any)
@@ -2505,49 +2518,49 @@ func StreamHPAToTarget(qw422016 *qt422016.Writer, o interface{}) {
 	name := ref["name"].(string)
 	class := k8s.Class(schema.FromAPIVersionAndKind(apiVersion, kind))
 
-//line k8s.qtpl:717
+//line k8s.qtpl:718
 	qw422016.N().S(`
 k8s:`)
-//line k8s.qtpl:718
+//line k8s.qtpl:719
 	qw422016.N().S(class.Name())
-//line k8s.qtpl:718
+//line k8s.qtpl:719
 	qw422016.N().S(`:{"namespace":`)
-//line k8s.qtpl:718
+//line k8s.qtpl:719
 	qw422016.N().Q(ns)
-//line k8s.qtpl:718
+//line k8s.qtpl:719
 	qw422016.N().S(`,"name":`)
-//line k8s.qtpl:718
+//line k8s.qtpl:719
 	qw422016.N().Q(name)
-//line k8s.qtpl:718
+//line k8s.qtpl:719
 	qw422016.N().S(`}
 `)
-//line k8s.qtpl:719
+//line k8s.qtpl:720
 }
 
-//line k8s.qtpl:719
+//line k8s.qtpl:720
 func WriteHPAToTarget(qq422016 qtio422016.Writer, o interface{}) {
-//line k8s.qtpl:719
+//line k8s.qtpl:720
 	qw422016 := qt422016.AcquireWriter(qq422016)
-//line k8s.qtpl:719
+//line k8s.qtpl:720
 	StreamHPAToTarget(qw422016, o)
-//line k8s.qtpl:719
+//line k8s.qtpl:720
 	qt422016.ReleaseWriter(qw422016)
-//line k8s.qtpl:719
+//line k8s.qtpl:720
 }
 
-//line k8s.qtpl:719
+//line k8s.qtpl:720
 func HPAToTarget(o interface{}) string {
-//line k8s.qtpl:719
+//line k8s.qtpl:720
 	qb422016 := qt422016.AcquireByteBuffer()
-//line k8s.qtpl:719
+//line k8s.qtpl:720
 	WriteHPAToTarget(qb422016, o)
-//line k8s.qtpl:719
+//line k8s.qtpl:720
 	qs422016 := string(qb422016.B)
-//line k8s.qtpl:719
+//line k8s.qtpl:720
 	qt422016.ReleaseByteBuffer(qb422016)
-//line k8s.qtpl:719
+//line k8s.qtpl:720
 	return qs422016
-//line k8s.qtpl:719
+//line k8s.qtpl:720
 }
 
 // # InstanceToOperands finds namespaced operand resources whose app.kubernetes.io/instance label matches the start object's name.
@@ -2575,192 +2588,192 @@ func HPAToTarget(o interface{}) string {
 //     - Route.v1.route.openshift.io
 //
 
-//line k8s.qtpl:745
+//line k8s.qtpl:746
 func StreamInstanceToOperands(qw422016 *qt422016.Writer, o interface{}) {
-//line k8s.qtpl:745
+//line k8s.qtpl:746
 	qw422016.N().S(`
 `)
-//line k8s.qtpl:747
+//line k8s.qtpl:748
 	obj, _, ns, name, _ := k8sMetadata(o)
 	RequireAll(ns, name)
 	if !isCustomResource(obj) {
 		Fail("not a custom resource")
 	}
 
-//line k8s.qtpl:750
+//line k8s.qtpl:751
 	qw422016.N().S(`
 k8s:Deployment.apps:{"namespace":`)
-//line k8s.qtpl:751
+//line k8s.qtpl:752
 	qw422016.N().Q(ns)
-//line k8s.qtpl:751
+//line k8s.qtpl:752
 	qw422016.N().S(`,"labels":{"app.kubernetes.io/instance":`)
-//line k8s.qtpl:751
+//line k8s.qtpl:752
 	qw422016.N().Q(name)
-//line k8s.qtpl:751
+//line k8s.qtpl:752
 	qw422016.N().S(`}}
 k8s:DaemonSet.apps:{"namespace":`)
-//line k8s.qtpl:752
+//line k8s.qtpl:753
 	qw422016.N().Q(ns)
-//line k8s.qtpl:752
+//line k8s.qtpl:753
 	qw422016.N().S(`,"labels":{"app.kubernetes.io/instance":`)
-//line k8s.qtpl:752
+//line k8s.qtpl:753
 	qw422016.N().Q(name)
-//line k8s.qtpl:752
+//line k8s.qtpl:753
 	qw422016.N().S(`}}
 k8s:StatefulSet.apps:{"namespace":`)
-//line k8s.qtpl:753
+//line k8s.qtpl:754
 	qw422016.N().Q(ns)
-//line k8s.qtpl:753
+//line k8s.qtpl:754
 	qw422016.N().S(`,"labels":{"app.kubernetes.io/instance":`)
-//line k8s.qtpl:753
+//line k8s.qtpl:754
 	qw422016.N().Q(name)
-//line k8s.qtpl:753
+//line k8s.qtpl:754
 	qw422016.N().S(`}}
 k8s:ReplicaSet.apps:{"namespace":`)
-//line k8s.qtpl:754
+//line k8s.qtpl:755
 	qw422016.N().Q(ns)
-//line k8s.qtpl:754
+//line k8s.qtpl:755
 	qw422016.N().S(`,"labels":{"app.kubernetes.io/instance":`)
-//line k8s.qtpl:754
+//line k8s.qtpl:755
 	qw422016.N().Q(name)
-//line k8s.qtpl:754
+//line k8s.qtpl:755
 	qw422016.N().S(`}}
 k8s:Service:{"namespace":`)
-//line k8s.qtpl:755
+//line k8s.qtpl:756
 	qw422016.N().Q(ns)
-//line k8s.qtpl:755
+//line k8s.qtpl:756
 	qw422016.N().S(`,"labels":{"app.kubernetes.io/instance":`)
-//line k8s.qtpl:755
+//line k8s.qtpl:756
 	qw422016.N().Q(name)
-//line k8s.qtpl:755
+//line k8s.qtpl:756
 	qw422016.N().S(`}}
 k8s:ConfigMap:{"namespace":`)
-//line k8s.qtpl:756
+//line k8s.qtpl:757
 	qw422016.N().Q(ns)
-//line k8s.qtpl:756
+//line k8s.qtpl:757
 	qw422016.N().S(`,"labels":{"app.kubernetes.io/instance":`)
-//line k8s.qtpl:756
+//line k8s.qtpl:757
 	qw422016.N().Q(name)
-//line k8s.qtpl:756
+//line k8s.qtpl:757
 	qw422016.N().S(`}}
 k8s:Secret:{"namespace":`)
-//line k8s.qtpl:757
+//line k8s.qtpl:758
 	qw422016.N().Q(ns)
-//line k8s.qtpl:757
+//line k8s.qtpl:758
 	qw422016.N().S(`,"labels":{"app.kubernetes.io/instance":`)
-//line k8s.qtpl:757
+//line k8s.qtpl:758
 	qw422016.N().Q(name)
-//line k8s.qtpl:757
+//line k8s.qtpl:758
 	qw422016.N().S(`}}
 k8s:ServiceAccount:{"namespace":`)
-//line k8s.qtpl:758
+//line k8s.qtpl:759
 	qw422016.N().Q(ns)
-//line k8s.qtpl:758
+//line k8s.qtpl:759
 	qw422016.N().S(`,"labels":{"app.kubernetes.io/instance":`)
-//line k8s.qtpl:758
+//line k8s.qtpl:759
 	qw422016.N().Q(name)
-//line k8s.qtpl:758
+//line k8s.qtpl:759
 	qw422016.N().S(`}}
 k8s:PersistentVolumeClaim:{"namespace":`)
-//line k8s.qtpl:759
+//line k8s.qtpl:760
 	qw422016.N().Q(ns)
-//line k8s.qtpl:759
+//line k8s.qtpl:760
 	qw422016.N().S(`,"labels":{"app.kubernetes.io/instance":`)
-//line k8s.qtpl:759
+//line k8s.qtpl:760
 	qw422016.N().Q(name)
-//line k8s.qtpl:759
+//line k8s.qtpl:760
 	qw422016.N().S(`}}
 k8s:Job.batch:{"namespace":`)
-//line k8s.qtpl:760
+//line k8s.qtpl:761
 	qw422016.N().Q(ns)
-//line k8s.qtpl:760
+//line k8s.qtpl:761
 	qw422016.N().S(`,"labels":{"app.kubernetes.io/instance":`)
-//line k8s.qtpl:760
+//line k8s.qtpl:761
 	qw422016.N().Q(name)
-//line k8s.qtpl:760
+//line k8s.qtpl:761
 	qw422016.N().S(`}}
 k8s:CronJob.batch:{"namespace":`)
-//line k8s.qtpl:761
+//line k8s.qtpl:762
 	qw422016.N().Q(ns)
-//line k8s.qtpl:761
+//line k8s.qtpl:762
 	qw422016.N().S(`,"labels":{"app.kubernetes.io/instance":`)
-//line k8s.qtpl:761
+//line k8s.qtpl:762
 	qw422016.N().Q(name)
-//line k8s.qtpl:761
+//line k8s.qtpl:762
 	qw422016.N().S(`}}
 k8s:Role.rbac.authorization.k8s.io:{"namespace":`)
-//line k8s.qtpl:762
+//line k8s.qtpl:763
 	qw422016.N().Q(ns)
-//line k8s.qtpl:762
+//line k8s.qtpl:763
 	qw422016.N().S(`,"labels":{"app.kubernetes.io/instance":`)
-//line k8s.qtpl:762
+//line k8s.qtpl:763
 	qw422016.N().Q(name)
-//line k8s.qtpl:762
+//line k8s.qtpl:763
 	qw422016.N().S(`}}
 k8s:RoleBinding.rbac.authorization.k8s.io:{"namespace":`)
-//line k8s.qtpl:763
+//line k8s.qtpl:764
 	qw422016.N().Q(ns)
-//line k8s.qtpl:763
+//line k8s.qtpl:764
 	qw422016.N().S(`,"labels":{"app.kubernetes.io/instance":`)
-//line k8s.qtpl:763
+//line k8s.qtpl:764
 	qw422016.N().Q(name)
-//line k8s.qtpl:763
+//line k8s.qtpl:764
 	qw422016.N().S(`}}
 k8s:Ingress.networking.k8s.io:{"namespace":`)
-//line k8s.qtpl:764
+//line k8s.qtpl:765
 	qw422016.N().Q(ns)
-//line k8s.qtpl:764
+//line k8s.qtpl:765
 	qw422016.N().S(`,"labels":{"app.kubernetes.io/instance":`)
-//line k8s.qtpl:764
+//line k8s.qtpl:765
 	qw422016.N().Q(name)
-//line k8s.qtpl:764
+//line k8s.qtpl:765
 	qw422016.N().S(`}}
 k8s:NetworkPolicy.networking.k8s.io:{"namespace":`)
-//line k8s.qtpl:765
+//line k8s.qtpl:766
 	qw422016.N().Q(ns)
-//line k8s.qtpl:765
+//line k8s.qtpl:766
 	qw422016.N().S(`,"labels":{"app.kubernetes.io/instance":`)
-//line k8s.qtpl:765
+//line k8s.qtpl:766
 	qw422016.N().Q(name)
-//line k8s.qtpl:765
+//line k8s.qtpl:766
 	qw422016.N().S(`}}
 k8s:Route.v1.route.openshift.io:{"namespace":`)
-//line k8s.qtpl:766
+//line k8s.qtpl:767
 	qw422016.N().Q(ns)
-//line k8s.qtpl:766
+//line k8s.qtpl:767
 	qw422016.N().S(`,"labels":{"app.kubernetes.io/instance":`)
-//line k8s.qtpl:766
+//line k8s.qtpl:767
 	qw422016.N().Q(name)
-//line k8s.qtpl:766
+//line k8s.qtpl:767
 	qw422016.N().S(`}}
 `)
-//line k8s.qtpl:767
+//line k8s.qtpl:768
 }
 
-//line k8s.qtpl:767
+//line k8s.qtpl:768
 func WriteInstanceToOperands(qq422016 qtio422016.Writer, o interface{}) {
-//line k8s.qtpl:767
+//line k8s.qtpl:768
 	qw422016 := qt422016.AcquireWriter(qq422016)
-//line k8s.qtpl:767
+//line k8s.qtpl:768
 	StreamInstanceToOperands(qw422016, o)
-//line k8s.qtpl:767
+//line k8s.qtpl:768
 	qt422016.ReleaseWriter(qw422016)
-//line k8s.qtpl:767
+//line k8s.qtpl:768
 }
 
-//line k8s.qtpl:767
+//line k8s.qtpl:768
 func InstanceToOperands(o interface{}) string {
-//line k8s.qtpl:767
+//line k8s.qtpl:768
 	qb422016 := qt422016.AcquireByteBuffer()
-//line k8s.qtpl:767
+//line k8s.qtpl:768
 	WriteInstanceToOperands(qb422016, o)
-//line k8s.qtpl:767
+//line k8s.qtpl:768
 	qs422016 := string(qb422016.B)
-//line k8s.qtpl:767
+//line k8s.qtpl:768
 	qt422016.ReleaseByteBuffer(qb422016)
-//line k8s.qtpl:767
+//line k8s.qtpl:768
 	return qs422016
-//line k8s.qtpl:767
+//line k8s.qtpl:768
 }
 
 // # ClusterInstanceToOperands finds operands of cluster-scoped instances whose app.kubernetes.io/instance label matches the start object's name.
@@ -2790,12 +2803,12 @@ func InstanceToOperands(o interface{}) string {
 //     - Route.v1.route.openshift.io
 //
 
-//line k8s.qtpl:795
+//line k8s.qtpl:796
 func StreamClusterInstanceToOperands(qw422016 *qt422016.Writer, o interface{}) {
-//line k8s.qtpl:795
+//line k8s.qtpl:796
 	qw422016.N().S(`
 `)
-//line k8s.qtpl:797
+//line k8s.qtpl:798
 	obj, _, ns, name, _ := k8sMetadata(o)
 	if ns != "" {
 		Fail("namespaced object")
@@ -2805,124 +2818,124 @@ func StreamClusterInstanceToOperands(qw422016 *qt422016.Writer, o interface{}) {
 		Fail("not a custom resource")
 	}
 
-//line k8s.qtpl:801
+//line k8s.qtpl:802
 	qw422016.N().S(`
 k8s:ClusterRole.rbac.authorization.k8s.io:{"labels":{"app.kubernetes.io/instance":`)
-//line k8s.qtpl:802
+//line k8s.qtpl:803
 	qw422016.N().Q(name)
-//line k8s.qtpl:802
+//line k8s.qtpl:803
 	qw422016.N().S(`}}
 k8s:ClusterRoleBinding.rbac.authorization.k8s.io:{"labels":{"app.kubernetes.io/instance":`)
-//line k8s.qtpl:803
+//line k8s.qtpl:804
 	qw422016.N().Q(name)
-//line k8s.qtpl:803
+//line k8s.qtpl:804
 	qw422016.N().S(`}}
 k8s:Deployment.apps:{"labels":{"app.kubernetes.io/instance":`)
-//line k8s.qtpl:804
+//line k8s.qtpl:805
 	qw422016.N().Q(name)
-//line k8s.qtpl:804
+//line k8s.qtpl:805
 	qw422016.N().S(`}}
 k8s:DaemonSet.apps:{"labels":{"app.kubernetes.io/instance":`)
-//line k8s.qtpl:805
+//line k8s.qtpl:806
 	qw422016.N().Q(name)
-//line k8s.qtpl:805
+//line k8s.qtpl:806
 	qw422016.N().S(`}}
 k8s:StatefulSet.apps:{"labels":{"app.kubernetes.io/instance":`)
-//line k8s.qtpl:806
+//line k8s.qtpl:807
 	qw422016.N().Q(name)
-//line k8s.qtpl:806
+//line k8s.qtpl:807
 	qw422016.N().S(`}}
 k8s:ReplicaSet.apps:{"labels":{"app.kubernetes.io/instance":`)
-//line k8s.qtpl:807
+//line k8s.qtpl:808
 	qw422016.N().Q(name)
-//line k8s.qtpl:807
+//line k8s.qtpl:808
 	qw422016.N().S(`}}
 k8s:Service:{"labels":{"app.kubernetes.io/instance":`)
-//line k8s.qtpl:808
+//line k8s.qtpl:809
 	qw422016.N().Q(name)
-//line k8s.qtpl:808
+//line k8s.qtpl:809
 	qw422016.N().S(`}}
 k8s:ConfigMap:{"labels":{"app.kubernetes.io/instance":`)
-//line k8s.qtpl:809
+//line k8s.qtpl:810
 	qw422016.N().Q(name)
-//line k8s.qtpl:809
+//line k8s.qtpl:810
 	qw422016.N().S(`}}
 k8s:Secret:{"labels":{"app.kubernetes.io/instance":`)
-//line k8s.qtpl:810
+//line k8s.qtpl:811
 	qw422016.N().Q(name)
-//line k8s.qtpl:810
+//line k8s.qtpl:811
 	qw422016.N().S(`}}
 k8s:ServiceAccount:{"labels":{"app.kubernetes.io/instance":`)
-//line k8s.qtpl:811
+//line k8s.qtpl:812
 	qw422016.N().Q(name)
-//line k8s.qtpl:811
+//line k8s.qtpl:812
 	qw422016.N().S(`}}
 k8s:PersistentVolumeClaim:{"labels":{"app.kubernetes.io/instance":`)
-//line k8s.qtpl:812
+//line k8s.qtpl:813
 	qw422016.N().Q(name)
-//line k8s.qtpl:812
+//line k8s.qtpl:813
 	qw422016.N().S(`}}
 k8s:Job.batch:{"labels":{"app.kubernetes.io/instance":`)
-//line k8s.qtpl:813
+//line k8s.qtpl:814
 	qw422016.N().Q(name)
-//line k8s.qtpl:813
+//line k8s.qtpl:814
 	qw422016.N().S(`}}
 k8s:CronJob.batch:{"labels":{"app.kubernetes.io/instance":`)
-//line k8s.qtpl:814
+//line k8s.qtpl:815
 	qw422016.N().Q(name)
-//line k8s.qtpl:814
+//line k8s.qtpl:815
 	qw422016.N().S(`}}
 k8s:Role.rbac.authorization.k8s.io:{"labels":{"app.kubernetes.io/instance":`)
-//line k8s.qtpl:815
+//line k8s.qtpl:816
 	qw422016.N().Q(name)
-//line k8s.qtpl:815
+//line k8s.qtpl:816
 	qw422016.N().S(`}}
 k8s:RoleBinding.rbac.authorization.k8s.io:{"labels":{"app.kubernetes.io/instance":`)
-//line k8s.qtpl:816
+//line k8s.qtpl:817
 	qw422016.N().Q(name)
-//line k8s.qtpl:816
+//line k8s.qtpl:817
 	qw422016.N().S(`}}
 k8s:Ingress.networking.k8s.io:{"labels":{"app.kubernetes.io/instance":`)
-//line k8s.qtpl:817
+//line k8s.qtpl:818
 	qw422016.N().Q(name)
-//line k8s.qtpl:817
+//line k8s.qtpl:818
 	qw422016.N().S(`}}
 k8s:NetworkPolicy.networking.k8s.io:{"labels":{"app.kubernetes.io/instance":`)
-//line k8s.qtpl:818
+//line k8s.qtpl:819
 	qw422016.N().Q(name)
-//line k8s.qtpl:818
+//line k8s.qtpl:819
 	qw422016.N().S(`}}
 k8s:Route.v1.route.openshift.io:{"labels":{"app.kubernetes.io/instance":`)
-//line k8s.qtpl:819
+//line k8s.qtpl:820
 	qw422016.N().Q(name)
-//line k8s.qtpl:819
+//line k8s.qtpl:820
 	qw422016.N().S(`}}
 `)
-//line k8s.qtpl:820
+//line k8s.qtpl:821
 }
 
-//line k8s.qtpl:820
+//line k8s.qtpl:821
 func WriteClusterInstanceToOperands(qq422016 qtio422016.Writer, o interface{}) {
-//line k8s.qtpl:820
+//line k8s.qtpl:821
 	qw422016 := qt422016.AcquireWriter(qq422016)
-//line k8s.qtpl:820
+//line k8s.qtpl:821
 	StreamClusterInstanceToOperands(qw422016, o)
-//line k8s.qtpl:820
+//line k8s.qtpl:821
 	qt422016.ReleaseWriter(qw422016)
-//line k8s.qtpl:820
+//line k8s.qtpl:821
 }
 
-//line k8s.qtpl:820
+//line k8s.qtpl:821
 func ClusterInstanceToOperands(o interface{}) string {
-//line k8s.qtpl:820
+//line k8s.qtpl:821
 	qb422016 := qt422016.AcquireByteBuffer()
-//line k8s.qtpl:820
+//line k8s.qtpl:821
 	WriteClusterInstanceToOperands(qb422016, o)
-//line k8s.qtpl:820
+//line k8s.qtpl:821
 	qs422016 := string(qb422016.B)
-//line k8s.qtpl:820
+//line k8s.qtpl:821
 	qt422016.ReleaseByteBuffer(qb422016)
-//line k8s.qtpl:820
+//line k8s.qtpl:821
 	return qs422016
-//line k8s.qtpl:820
+//line k8s.qtpl:821
 }
