@@ -20,7 +20,7 @@ require (
 	github.com/google/jsonschema-go v0.4.3
 	github.com/modelcontextprotocol/go-sdk v1.8.0
 	github.com/oapi-codegen/runtime v1.7.0
-	github.com/prometheus/alertmanager v0.34.0
+	github.com/prometheus/alertmanager v0.34.1
 	github.com/prometheus/client_golang v1.24.1
 	github.com/prometheus/common v0.71.0
 	github.com/prometheus/prometheus v0.314.0
