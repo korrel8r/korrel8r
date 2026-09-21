@@ -1,9 +1,17 @@
 // Copyright: This file is part of korrel8r, released under https://github.com/korrel8r/korrel8r/blob/main/LICENSE
 
-// Package graph provides a directed multi-graph with class nodes and rule lines.
+// Package graph separates shared rule definitions from mutable search results.
 //
-// Functions in this package manipulate rule graphs, e.g. finding paths or minimizing the graphs.
-// They do not interrogate stores to find live correlations, for that see the [engine.Engine]
+// Data owns class/rule identity and compact integer topology. Node IDs identify
+// classes; line IDs identify expanded (start class, goal class, rule) records.
+// A Graph contains Node and Line objects for Gonum algorithms, rendering or
+// results. It may contain only a subset of Data's topology. An Edge groups all
+// parallel lines between two nodes; it has no separate identity in Data.
+//
+// Searches can use Data's ID-based adjacency without constructing a Graph.
+// Mutable Nodes, Lines and Queries belong to a search/result, not to Data.
+// View adapts Data directly to Gonum algorithms without result-bearing objects.
+// This package does not query stores; the engine does that.
 package graph
 
 import (
@@ -19,19 +27,22 @@ import (
 	"gonum.org/v1/gonum/graph/path"
 )
 
-// Graph is a directed multigraph with [korrel8r.Class] nodes and [korrel8r.Rule] lines.
-// Nodes and lines carry attributes for rendering by GraphViz.
+// Graph is a Gonum directed multigraph built from a Data definition.
+// Nodes and Lines carry results, query accounting and GraphViz attributes. Graphs
+// sharing Data use the same IDs, but normally own independent mutable objects.
 //
-// Concurrency: Graph is mutable, normal concurrency rules apply regarding read/write operations.
-// The underlying [Data] is immutable, but the lines and nodes included in the Graph can change.
+// Graph is not safe for concurrent mutation. For concurrent read-only topology
+// access, use Data.Graph's View instead. Use AddLine (not the embedded SetLine)
+// to maintain the ordered line index.
 type Graph struct {
 	*multi.DirectedGraph
 	GraphAttrs, NodeAttrs, EdgeAttrs Attrs
 	Data                             *Data
-	allLines                         []*Line // Cached lines; nil = use gonum iterators.
+	allLines                         []*Line // Insertion-order index for allocation-free EachLine.
 }
 
-// New empty graph based on Data
+// New creates an empty mutable Graph using data's identity space.
+// It does not add any nodes or lines.
 func New(data *Data) *Graph {
 	return &Graph{
 		DirectedGraph: multi.NewDirectedGraph(),
@@ -55,6 +66,20 @@ func New(data *Data) *Graph {
 	}
 }
 
+// FullGraph creates an independent mutable Graph containing all of Data.
+// Nodes and lines have fresh, empty result/query/attribute state.
+func (d *Data) FullGraph() *Graph {
+	g := New(d)
+	for id := range d.classes {
+		g.AddNode(d.NewNode(int64(id)))
+	}
+	for id := range d.topology.lines {
+		from, to := d.Endpoints(id)
+		g.AddLine(d.NewLine(id, g.Node(from).(*Node), g.Node(to).(*Node)))
+	}
+	return g
+}
+
 // Weight an edge by the "spread" of its rules.
 //
 // Wildcard rules in domains with many classes (e.g. k8s, DependentToOwner)
@@ -75,12 +100,14 @@ func (g *Graph) Weight(u, v int64) (w float64, ok bool) {
 	return w, ok
 }
 
+// NodeFor returns this Graph's node for c, or nil if it is not in this Graph.
+// Data.NodeID instead looks up topology membership without creating a Node.
 func (g *Graph) NodeFor(c korrel8r.Class) *Node {
-	n := g.Data.NodeFor(c)
-	if n == nil {
+	id, ok := g.Data.NodeID(c)
+	if !ok {
 		return nil
 	}
-	gn := g.Node(n.ID())
+	gn := g.Node(id)
 	if gn == nil {
 		return nil
 	}
@@ -110,6 +137,7 @@ func (g *Graph) EachEdge(visit func(*Edge)) {
 	}
 }
 
+// EachLine visits the graph's line objects in insertion order without allocating.
 func (g *Graph) EachLine(visit func(*Line)) {
 	for _, l := range g.allLines {
 		visit(l)
@@ -127,11 +155,10 @@ func (g *Graph) copyNode(n *Node) *Node {
 }
 
 // copyLine copies l into g with fresh mutable state, copying endpoint nodes if needed.
-// Appends the copy to allLines and returns it.
+// Like Node.Copy and Line.Copy, this copies identity, not accumulated results.
 func (g *Graph) copyLine(l *Line) *Line {
 	c := l.Copy(g.copyNode(l.Start()), g.copyNode(l.Goal()))
-	g.SetLine(c)
-	g.allLines = append(g.allLines, c)
+	g.AddLine(c)
 	return c
 }
 
@@ -163,7 +190,7 @@ func (g *Graph) EachLineTo(goal *Node, visit func(*Line)) {
 
 // Select creates a mutable sub-graph of all lines where keep(line) is true.
 func (g *Graph) Select(keep func(*Line) bool) *Graph {
-	sub := g.Data.EmptyGraph()
+	sub := New(g.Data)
 	g.EachLine(func(l *Line) {
 		if keep(l) {
 			sub.copyLine(l)
@@ -193,7 +220,9 @@ func (g *Graph) FindLine(start, goal korrel8r.Class, rule korrel8r.Rule) *Line {
 	return nil
 }
 
-// AddLine adds a line to the graph and the allLines cache.
+// AddLine inserts a previously absent line into Gonum and the ordered line index.
+// It retains l itself (including Queries), rather than copying it. Its endpoints
+// must be the nodes owned by this Graph. Use copyLine for fresh mutable copies.
 func (g *Graph) AddLine(l *Line) {
 	g.SetLine(l)
 	g.allLines = append(g.allLines, l)

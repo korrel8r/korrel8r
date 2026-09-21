@@ -223,8 +223,8 @@ func (b *Builder) Engine() (*Engine, error) {
 		log.V(1).Info("skipped rules with missing class", "class", class, "rules", rules)
 	}
 	b.e.data = graph.NewData(b.e.rules...)
-	for _, n := range b.e.data.Nodes {
-		class := n.Class
+	for id := range b.e.data.NodeCount() {
+		class := b.e.data.Class(int64(id))
 		b.e.classMetricAttrs[class] = metric.WithAttributes(
 			attribute.String("domain", class.Domain().Name()),
 			attribute.String("class", class.Name()),

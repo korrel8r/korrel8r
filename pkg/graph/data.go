@@ -3,278 +3,109 @@
 package graph
 
 import (
-	"fmt"
 	"slices"
-	"strings"
-	"sync"
-	"unique"
 
-	"github.com/korrel8r/korrel8r/internal/pkg/cache"
-	"github.com/korrel8r/korrel8r/internal/pkg/json"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
-	"github.com/korrel8r/korrel8r/pkg/result"
-	"gonum.org/v1/gonum/graph"
 	"gonum.org/v1/gonum/graph/multi"
 )
 
-// Data contains a set of class nodes and rule lines to be used in rule/class graphs.
-// Graphs based on the same Data have consistent node and line IDs.
+// Data is the shared, immutable graph of all rules.
+// It assigns immutable integer IDs to nodes (classes), rules, and lines,
+// and provides fast, allocation-free iteration via an adjacency list.
 //
-// Concurrency: Data is immutable once created. The topology graph is built lazily and shared.
+// Mutable [Node] and [Line] values are created and managed separately to hold
+// results and queries.
+// A [View] provides a fast read-only Gonum graph of the Data.
 type Data struct {
-	Nodes  []*Node                  // Nodes, index == Node.ID()
-	Lines  []*Line                  // Lines, index == Line.ID()
-	nodeID map[korrel8r.Class]int64 // Stable node ID by comparable class value.
-
-	// Immutable adjacency indexes in line creation order. Node IDs are dense and
-	// index these slices directly.
-	outgoingByNodeID [][]*Line
-	incomingByNodeID [][]*Line
-
-	shared     *Graph    // Lazy read-only graph with immutable nodes/lines.
-	sharedOnce sync.Once // Guards shared graph construction.
+	classes  []korrel8r.Class // Immutable class table, indexed by node ID.
+	nodeID   map[korrel8r.Class]int64
+	rules    []korrel8r.Rule // One reference per input rule, not per expanded line.
+	topology topology
 }
 
-// NewData creates a new data set from a list of rules.
-//
-// Concurrency: Data is immutable once created.
+// NewData builds a rule graph definition. Input order determines node and line
+// IDs; parallel lines, self-loops and repeated input rules are preserved.
 func NewData(rules ...korrel8r.Rule) *Data {
-	d := Data{nodeID: make(map[korrel8r.Class]int64)}
-	for _, r := range rules {
-		d.addRule(r)
-	}
-	return &d
-}
-
-func (d *Data) addRule(r korrel8r.Rule) {
-	for _, start := range r.Start() {
-		for _, goal := range r.Goal() {
-			id := int64(len(d.Lines))
-			l := &Line{
-				Line: multi.Line{F: d.addClass(start), T: d.addClass(goal), UID: id},
-				Rule: r,
+	d := &Data{nodeID: make(map[korrel8r.Class]int64), rules: slices.Clone(rules)}
+	var lines []topologyLine
+	for ruleID, r := range rules {
+		starts, goals := r.Start(), r.Goal()
+		for _, start := range starts {
+			for _, goal := range goals {
+				from, to := d.classID(start), d.classID(goal)
+				lines = append(lines, topologyLine{
+					from: checkedTopologyID(int(from), "nodes"),
+					to:   checkedTopologyID(int(to), "nodes"),
+					rule: checkedTopologyID(ruleID, "rules"),
+				})
 			}
-			d.Lines = append(d.Lines, l)
-			d.outgoingByNodeID[l.F.ID()] = append(d.outgoingByNodeID[l.F.ID()], l)
-			d.incomingByNodeID[l.T.ID()] = append(d.incomingByNodeID[l.T.ID()], l)
 		}
 	}
+	d.topology = newTopology(len(d.classes), lines)
+	return d
 }
 
-// addClass creates a node for c or returns the existing node.
-func (d *Data) addClass(c korrel8r.Class) *Node {
-	if n := d.NodeFor(c); n != nil {
-		return n
+// classID returns the existing class ID or assigns a new one.
+func (d *Data) classID(c korrel8r.Class) int64 {
+	if id, ok := d.NodeID(c); ok {
+		return id
 	}
-	id := int64(len(d.Nodes))
-	n := &Node{
-		Node:  multi.Node(id),
-		Class: c,
-	}
-	d.Nodes = append(d.Nodes, n)
-	d.outgoingByNodeID = append(d.outgoingByNodeID, nil)
-	d.incomingByNodeID = append(d.incomingByNodeID, nil)
+	id := int64(len(d.classes))
+	d.classes = append(d.classes, c)
 	d.nodeID[c] = id
-	return n
+	return id
 }
 
-// NodeFor returns the Node for class c, or nil if absent.
-func (d *Data) NodeFor(c korrel8r.Class) *Node {
-	if id, ok := d.nodeID[c]; ok {
-		return d.Nodes[id]
-	}
-	return nil
+// NodeID returns the class's node ID and whether it exists in the topology.
+func (d *Data) NodeID(c korrel8r.Class) (int64, bool) { id, ok := d.nodeID[c]; return id, ok }
+
+// NodeCount returns the number of topology classes.
+func (d *Data) NodeCount() int { return len(d.classes) }
+
+// Class returns the class associated with a node ID. Invalid IDs panic.
+func (d *Data) Class(id int64) korrel8r.Class { return d.classes[id] }
+
+// NewNode creates a search-owned or graph-owned mutable node for a class identity.
+// Each call creates independent state; Data retains no reference to the node.
+func (d *Data) NewNode(id int64) *Node {
+	return (&Node{Node: multi.Node(id), Class: d.Class(id)}).Copy()
 }
 
-// EachLineFromID calls visit for each line starting at node id, in line creation order.
-// It does nothing if id is not a node in d.
-func (d *Data) EachLineFromID(id int64, visit func(*Line)) {
-	if id < 0 || id >= int64(len(d.outgoingByNodeID)) {
-		return
-	}
-	for _, l := range d.outgoingByNodeID[id] {
-		visit(l)
-	}
+// LineCount returns the number of expanded topology lines.
+func (d *Data) LineCount() int { return len(d.topology.lines) }
+
+// Endpoints returns the start and goal node IDs of a line. Invalid IDs panic.
+func (d *Data) Endpoints(id int) (int64, int64) {
+	l := d.topology.lines[id]
+	return int64(l.from), int64(l.to)
 }
 
-// EachLineToID calls visit for each line ending at node id, in line creation order.
-// It does nothing if id is not a node in d.
-func (d *Data) EachLineToID(id int64, visit func(*Line)) {
-	if id < 0 || id >= int64(len(d.incomingByNodeID)) {
-		return
+// RuleForLine returns the rule associated with a line. Invalid IDs panic.
+func (d *Data) RuleForLine(id int) korrel8r.Rule { return d.rules[int(d.topology.lines[id].rule)] }
+
+// EachLineIDFrom visits outgoing line IDs in creation order without allocating.
+// Invalid node IDs are treated as empty adjacency lists.
+func (d *Data) EachLineIDFrom(node int64, visit func(int)) { d.topology.out.each(node, visit) }
+
+// EachLineIDTo visits incoming line IDs in creation order without allocating.
+// Invalid node IDs are treated as empty adjacency lists.
+func (d *Data) EachLineIDTo(node int64, visit func(int)) { d.topology.in.each(node, visit) }
+
+// NewLine creates independently owned mutable line state between explicit
+// search/graph-owned nodes. Endpoint IDs must match the topology line or it panics.
+// Retain the returned pointer to accumulate Queries; each call creates fresh state.
+func (d *Data) NewLine(id int, from, to *Node) *Line {
+	l := d.topology.lines[id]
+	if from == nil || to == nil || from.ID() != int64(l.from) || to.ID() != int64(l.to) {
+		panic("graph: line endpoints do not match topology")
 	}
-	for _, l := range d.incomingByNodeID[id] {
-		visit(l)
-	}
+	return &Line{Line: multi.Line{F: from, T: to, UID: int64(id)}, Rule: d.rules[int(l.rule)], Queries: Queries{}, Attrs: Attrs{}}
 }
 
-// EmptyGraph returns a new emptpy graph.
-func (d *Data) EmptyGraph() *Graph { return New(d) }
+// Rules returns a copy of the input rule list, in input order. Each input entry
+// appears once, regardless of how many topology lines it generates. Rules with
+// empty start/goal sets and explicitly repeated input entries are preserved.
+func (d *Data) Rules() []korrel8r.Rule { return slices.Clone(d.rules) }
 
-// FullGraph returns a new graph with fresh mutable copies of all nodes and lines.
-func (d *Data) FullGraph() *Graph {
-	g := New(d)
-	for _, l := range d.Lines {
-		g.copyLine(l)
-	}
-	for _, n := range d.Nodes {
-		g.copyNode(n)
-	}
-	return g
-}
-
-// SharedGraph returns a read-only graph backed by Data's nodes and lines.
-// It is built once and shared by all callers.
-// Use to build mutable sub-graphs for traversal.
-func (d *Data) SharedGraph() *Graph {
-	d.sharedOnce.Do(func() {
-		d.shared = New(d)
-		d.shared.allLines = d.Lines
-		for _, n := range d.Nodes {
-			d.shared.AddNode(n)
-		}
-		for _, l := range d.Lines {
-			d.shared.SetLine(l)
-		}
-	})
-	return d.shared
-}
-
-// Rules returns a copy of the complete list of rules.
-func (d *Data) Rules() []korrel8r.Rule {
-	var rules []korrel8r.Rule
-	for _, l := range d.Lines {
-		rules = append(rules, l.Rule)
-	}
-	return rules
-}
-
-// Classes returns a copy of the complete list of classes.
-func (d *Data) Classes() []korrel8r.Class {
-	var classs []korrel8r.Class
-	for _, n := range d.Nodes {
-		classs = append(classs, n.Class)
-	}
-	return classs
-}
-
-// Node is a graph Node, contains a Class and search results.
-type Node struct {
-	multi.Node
-	Attrs   // GraphViz Attributer
-	Class   korrel8r.Class
-	Result  result.Result // Accumulate incoming query results.
-	Queries Queries       // All queries leading to this node.
-}
-
-// Copy returns a new Node with the same identity but fresh mutable state.
-func (n *Node) Copy() *Node {
-	return &Node{
-		Node:    n.Node,
-		Class:   n.Class,
-		Attrs:   Attrs{},
-		Result:  result.New(n.Class),
-		Queries: Queries{},
-	}
-}
-
-func (n *Node) String(sorted bool) string {
-	var result []string
-	for _, o := range n.Result.List() {
-		b, _ := json.Marshal(o)
-		result = append(result, string(b))
-	}
-	if len(result) == 0 {
-		return n.Class.String()
-	}
-	if sorted {
-		slices.Sort(result)
-	}
-	return fmt.Sprintf("%v[%v]", n.Class, strings.Join(result, ","))
-}
-func (n *Node) DOTID() string { return n.Class.String() }
-func (n *Node) Empty() bool   { return n.Result == nil || len(n.Result.List()) == 0 }
-
-// QueryCount records count of objects resulting from a query.
-// Count == -1 means the query has not been evaluated.
-type QueryCount struct {
-	Query        korrel8r.Query
-	Count        int
-	StatusCounts map[string]int
-}
-
-// Queries is a map of QueryCount by Query name.
-type Queries map[korrel8r.Query]QueryCount
-
-func (qs Queries) Has(q korrel8r.Query) bool { _, ok := qs[q]; return ok }
-func (qs Queries) Set(q korrel8r.Query, n int) {
-	qs[q] = QueryCount{Query: q, Count: n}
-}
-func (qs Queries) Get(q korrel8r.Query) int {
-	if qc, ok := qs[q]; ok {
-		return qc.Count
-	}
-	return -1
-}
-
-// AddStatuses merges status counts into the QueryCount for q.
-func (qs Queries) AddStatuses(q korrel8r.Query, statuses map[string]int) {
-	qc := qs[q]
-	if qc.StatusCounts == nil {
-		qc.StatusCounts = map[string]int{}
-	}
-	for k, v := range statuses {
-		qc.StatusCounts[k] += v
-	}
-	qs[q] = qc
-}
-
-// Total of the counts
-func (qs Queries) Total() (total int) {
-	for _, qc := range qs {
-		if qc.Count > 0 { // Don't count -1 (unevaluated)
-			total += qc.Count
-		}
-	}
-	return total
-}
-
-// Line is a line in a directed multi-graph corresponding to a korrel8r rule.
-type Line struct {
-	multi.Line
-	Attrs   // GraphViz Attributer
-	Rule    korrel8r.Rule
-	Queries Queries // Queries generated by Rule
-}
-
-func (l *Line) String() string { return lineString(l) }
-
-var lineString = cache.FuncWeakKey(func(l *Line) string {
-	return unique.Make(fmt.Sprintf("%v(%v->%v)", l.Rule.Name(), l.Start().Class, l.Goal().Class)).Value()
-})
-
-// Copy returns a new Line with the same rule but fresh mutable state, pointing to the given nodes.
-func (l *Line) Copy(from, to *Node) *Line {
-	return &Line{
-		Line:    multi.Line{F: from, T: to, UID: l.UID},
-		Rule:    l.Rule,
-		Attrs:   Attrs{},
-		Queries: Queries{},
-	}
-}
-
-func (l *Line) DOTID() string { return l.Rule.Name() }
-func (l *Line) Start() *Node  { return l.From().(*Node) }
-func (l *Line) Goal() *Node   { return l.To().(*Node) }
-
-type Edge struct{ multi.Edge }
-
-func EdgeFor(e graph.Edge) Edge { return Edge{e.(multi.Edge)} }
-func (e Edge) Start() *Node     { return e.F.(*Node) }
-func (e Edge) Goal() *Node      { return e.T.(*Node) }
-func (e Edge) EachLine(visit func(*Line)) {
-	lines := e.Lines
-	for lines.Next() {
-		visit(lines.Line().(*Line))
-	}
-}
+// Classes returns the classes in node-ID order, in an independent slice.
+func (d *Data) Classes() []korrel8r.Class { return slices.Clone(d.classes) }

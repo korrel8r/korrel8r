@@ -31,7 +31,7 @@ func TestTraverserTotalQueryLimit(t *testing.T) {
 	e, err := engine.Build().Rules(b.Rule("ab", "d:a", "d:b", nil)).Engine()
 	require.NoError(t, err)
 	limit := 1
-	tr := newTraverser(e, e.GraphData(), e.GraphData().Lines,
+	tr := newTraverser(e, e.GraphData(), allLineIDs(e.GraphData()),
 		&korrel8r.Constraint{TotalQueryLimit: &limit}, 1)
 	ctx := context.Background()
 	q1 := queryLine{Query: b.Query("d:b", "one")}
@@ -438,7 +438,7 @@ func TestNewTraverser_LazyNodeState(t *testing.T) {
 	).Engine()
 	require.NoError(t, err)
 
-	tr := newTraverser(e, e.GraphData(), e.GraphData().Lines, nil, 2)
+	tr := newTraverser(e, e.GraphData(), allLineIDs(e.GraphData()), nil, 2)
 	for id, state := range tr.nodeState {
 		assert.Nil(t, state, "node %d state must be lazy", id)
 	}
@@ -446,11 +446,76 @@ func TestNewTraverser_LazyNodeState(t *testing.T) {
 		assert.NotNil(t, static.class, "node %d static metadata", id)
 	}
 
-	a := e.GraphData().NodeFor(b.Class("d:a"))
-	state := tr.getOrCreateNodeState(a.ID())
+	a, ok := e.GraphData().NodeID(b.Class("d:a"))
+	require.True(t, ok)
+	state := tr.getOrCreateNodeState(a)
 	require.NotNil(t, state)
-	assert.Same(t, state, tr.getOrCreateNodeState(a.ID()))
-	assert.NotNil(t, tr.nodeState[a.ID()])
+	assert.Same(t, state, tr.getOrCreateNodeState(a))
+	assert.NotNil(t, tr.nodeState[a])
+}
+
+func TestTraverser_SearchOwnedLines(t *testing.T) {
+	b := mock.NewBuilder("d")
+	e, err := engine.Build().Rules(b.Rule("ab", "d:a", "d:b", nil)).Engine()
+	require.NoError(t, err)
+	data := e.GraphData()
+	first := newTraverser(e, data, []int{0}, nil, 1)
+	second := newTraverser(e, data, []int{0}, nil, 1)
+	require.Nil(t, first.lines)
+	require.Nil(t, second.lines)
+	line := first.initLine(0)
+	query := b.Query("d:b", "ab")
+	line.Queries.Set(query, 1)
+	assert.Same(t, line, first.initLine(0))
+	assert.Equal(t, 1, first.initLine(0).Queries.Get(query))
+	other := second.initLine(0)
+	assert.NotSame(t, line, other)
+	assert.NotSame(t, line.Start(), other.Start())
+	assert.NotSame(t, line.Goal(), other.Goal())
+	assert.Empty(t, other.Queries)
+	assert.Empty(t, data.NewLine(0, line.Start(), line.Goal()).Queries)
+
+	first.getOrCreateNodeState(line.From().ID()).Result.Append(1)
+	first.getOrCreateNodeState(line.To().ID()).Result.Append(2)
+	assert.True(t, other.Start().Empty())
+	assert.True(t, other.Goal().Empty())
+	g := first.buildGraph()
+	stored := g.FindLine(b.Class("d:a"), b.Class("d:b"), line.Rule)
+	require.Same(t, line, stored)
+	assert.Equal(t, 1, stored.Queries.Get(query))
+	assert.Same(t, g.NodeFor(b.Class("d:a")), stored.Start())
+	assert.Same(t, g.NodeFor(b.Class("d:b")), stored.Goal())
+}
+
+func TestTraverser_ScopedLineIdentity(t *testing.T) {
+	b := mock.NewBuilder("d")
+	rule := b.Rule("ab", "d:a", "d:b", nil)
+	parallel := b.Rule("parallel", "d:a", "d:b", nil)
+	e, err := engine.Build().Rules(rule, parallel).Engine()
+	require.NoError(t, err)
+	data := graph.NewData(rule, parallel, rule)
+	a, _ := data.NodeID(b.Class("d:a"))
+	z, _ := data.NodeID(b.Class("d:b"))
+	for _, tc := range []struct {
+		scope []int
+		want  int
+	}{
+		{nil, -1}, {[]int{0}, 0}, {[]int{0, 2}, 2},
+		{[]int{2, 0}, 0}, {[]int{2, 0, 2}, 2},
+	} {
+		tr := newTraverser(e, data, tc.scope, nil, 1)
+		assert.Equal(t, tc.want, tr.scopedLine(a, z, rule), "scope %v", tc.scope)
+		assert.Equal(t, -1, tr.scopedLine(a, z, parallel))
+		assert.Equal(t, -1, tr.scopedLine(z, a, rule))
+		assert.Nil(t, tr.lines, "routing must not allocate mutable lines")
+	}
+	tr := newTraverser(e, data, []int{0, 1, 2}, nil, 1)
+	assert.Equal(t, 2, tr.scopedLine(a, z, rule))
+	assert.Equal(t, 1, tr.scopedLine(a, z, parallel))
+	first, second := tr.initLine(2), tr.initLine(1)
+	assert.NotSame(t, first, second)
+	assert.Same(t, first, tr.initLine(tr.scopedLine(a, z, rule)))
+	assert.Len(t, tr.lines, 2)
 }
 
 func TestNeighborScope(t *testing.T) {
@@ -471,6 +536,7 @@ func TestNeighborScope(t *testing.T) {
 		depth int
 		want  []string
 	}{
+		{depth: -1, want: []string{}},
 		{depth: 0, want: []string{}},
 		{depth: 1, want: []string{
 			"aa(d:a->d:a)", "ab1(d:a->d:b)", "ab2(d:a->d:b)", "ac(d:a->d:c)",
@@ -483,7 +549,7 @@ func TestNeighborScope(t *testing.T) {
 		t.Run(fmt.Sprintf("depth_%d", tt.depth), func(t *testing.T) {
 			lines, err := neighborScope(d, b.Class("d:a"), tt.depth)
 			require.NoError(t, err)
-			assert.Equal(t, tt.want, lineStrings(lines))
+			assert.Equal(t, tt.want, lineStrings(d, lines))
 		})
 	}
 }
@@ -495,10 +561,19 @@ func TestNeighborScope_BadStart(t *testing.T) {
 	assert.Error(t, err)
 }
 
-func lineStrings(lines []*graph.Line) []string {
+func allLineIDs(data *graph.Data) []int {
+	ids := make([]int, data.LineCount())
+	for i := range ids {
+		ids[i] = i
+	}
+	return ids
+}
+
+func lineStrings(data *graph.Data, lines []int) []string {
 	s := make([]string, len(lines))
-	for i, l := range lines {
-		s[i] = l.String()
+	for i, id := range lines {
+		from, to := data.Endpoints(id)
+		s[i] = data.NewLine(id, data.NewNode(from), data.NewNode(to)).String()
 	}
 	return s
 }
@@ -552,20 +627,20 @@ func TestGoalScope(t *testing.T) {
 		},
 	} {
 		t.Run(x.name, func(t *testing.T) {
-			lines, err := goalScope(g, x.start, x.goals)
+			lines, err := goalScope(g.Data, x.start, x.goals)
 			if assert.NoError(t, err) {
-				assert.ElementsMatch(t, x.lines, lineStrings(lines))
+				assert.ElementsMatch(t, x.lines, lineStrings(g.Data, lines))
 			}
 		})
 	}
 
 	t.Run("error_bad_start", func(t *testing.T) {
-		_, err := goalScope(g, b.Class("d:missing"), b.Classes("d:b"))
+		_, err := goalScope(g.Data, b.Class("d:missing"), b.Classes("d:b"))
 		assert.Error(t, err)
 	})
 
 	t.Run("error_bad_goal", func(t *testing.T) {
-		_, err := goalScope(g, b.Class("d:a"), b.Classes("d:missing"))
+		_, err := goalScope(g.Data, b.Class("d:a"), b.Classes("d:missing"))
 		assert.Error(t, err)
 	})
 }
