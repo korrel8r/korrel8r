@@ -36,22 +36,20 @@ var rulesCmd = &cobra.Command{
 				(goal == nil || slices.Contains(r.Goal(), goal)) &&
 				name.MatchString(r.Name())
 		}
+		rules := slices.DeleteFunc(e.GraphData().Rules(), func(r korrel8r.Rule) bool { return !test(r) })
 		if *ruleGraph {
-			g := e.Graph().Select(func(l *graph.Line) bool { return test(l.Rule) })
+			g := graph.NewData(rules...).FullGraph()
 			b := must.Must1(dot.MarshalMulti(g, "", "", "  "))
 			_, _ = os.Stdout.Write(b)
 		} else { // Print rules as text
-			for _, r := range e.Rules() {
-				if test(r) {
-					summarize := func(classes []korrel8r.Class) string {
-						if len(classes) > 1 && !*ruleLong {
-							return fmt.Sprintf("[%v, ...]", classes[0])
-						} else {
-							return fmt.Sprintf("%v", classes)
-						}
+			for _, r := range rules {
+				summarize := func(classes []korrel8r.Class) string {
+					if len(classes) > 1 && !*ruleLong {
+						return fmt.Sprintf("[%v, ...]", classes[0])
 					}
-					fmt.Fprintf(w, "%v: %v -> %v\n", r.Name(), summarize(r.Start()), summarize(r.Goal()))
+					return fmt.Sprintf("%v", classes)
 				}
+				fmt.Fprintf(w, "%v: %v -> %v\n", r.Name(), summarize(r.Start()), summarize(r.Goal()))
 			}
 		}
 		_ = w.Flush()

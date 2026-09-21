@@ -144,9 +144,9 @@ func (e *Engine) StatusRulesFor(c korrel8r.Class) []status.Rule { return e.statu
 // GraphData returns the immutable rule graph data.
 func (e *Engine) GraphData() *graph.Data { return e.data }
 
-// Graph returns the read-only topology graph. Callers use GoalPaths/Neighbors/Select
-// to create mutable subgraphs for traversal.
-func (e *Engine) Graph() *graph.Graph { return e.data.SharedGraph() }
+// Graph returns a read-only Gonum view directly over the immutable topology.
+// It does not allocate or cache a mutable graph. Use GraphData for rule/line IDs.
+func (e *Engine) Graph() graph.View { return e.data.Graph() }
 
 // Get results for query from all stores for the query domain.
 func (e *Engine) Get(ctx context.Context, query korrel8r.Query, constraint *korrel8r.Constraint, result korrel8r.Appender) (err error) {

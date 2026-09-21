@@ -3,6 +3,7 @@
 package traverse
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
@@ -106,11 +107,11 @@ func BenchmarkNeighborScope(b *testing.B) {
 
 var (
 	benchmarkLineCount int
-	benchmarkNode      *graph.Node
+	benchmarkNodeID    int64
 )
 
-// BenchmarkDataNodeFor measures lookup of a rule-graph node by stable class identity.
-func BenchmarkDataNodeFor(b *testing.B) {
+// BenchmarkDataNodeID measures ID lookup by stable class identity.
+func BenchmarkDataNodeID(b *testing.B) {
 	e := makeEngine(b)
 	start := benchmarkStart(b, e)
 	data := e.GraphData()
@@ -118,7 +119,7 @@ func BenchmarkDataNodeFor(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 	for b.Loop() {
-		benchmarkNode = data.NodeFor(start.Class)
+		benchmarkNodeID, _ = data.NodeID(start.Class)
 	}
 }
 
@@ -127,14 +128,14 @@ func BenchmarkDataLinesFrom(b *testing.B) {
 	e := makeEngine(b)
 	start := benchmarkStart(b, e)
 	data := e.GraphData()
-	node := data.NodeFor(start.Class)
-	require.NotNil(b, node)
+	nodeID, ok := data.NodeID(start.Class)
+	require.True(b, ok)
 
 	b.ReportAllocs()
 	b.ResetTimer()
 	for b.Loop() {
 		count := 0
-		data.EachLineFromID(node.ID(), func(*graph.Line) { count++ })
+		data.EachLineIDFrom(nodeID, func(int) { count++ })
 		benchmarkLineCount = count
 	}
 }
@@ -155,7 +156,7 @@ func BenchmarkNewTraverser(b *testing.B) {
 }
 
 // BenchmarkRuleGraph measures immutable rule topology construction. The Data subbenchmark
-// excludes Gonum; SharedGraph includes creation of its compatible shared Gonum graph.
+// excludes the Gonum adapter; View includes creation of its read-only view.
 func BenchmarkRuleGraph(b *testing.B) {
 	rules := makeEngine(b).Rules()
 
@@ -165,12 +166,62 @@ func BenchmarkRuleGraph(b *testing.B) {
 			_ = graph.NewData(rules...)
 		}
 	})
-	b.Run("SharedGraph", func(b *testing.B) {
+	b.Run("View", func(b *testing.B) {
 		b.ReportAllocs()
 		for b.Loop() {
-			graph.NewData(rules...).SharedGraph()
+			benchmarkView = graph.NewData(rules...).Graph()
 		}
 	})
+}
+
+var (
+	benchmarkView        graph.View
+	benchmarkDenseLines  []*graph.Line
+	benchmarkSparseLines map[int]*graph.Line
+)
+
+// BenchmarkLineStorage compares complete mutable-line storage lifecycles with
+// identical topology and active lines. Include zero, sparse and fully active
+// searches; these numbers do not include scope selection or query execution.
+func BenchmarkLineStorage(b *testing.B) {
+	data := makeEngine(b).GraphData()
+	nodes := make([]*graph.Node, data.NodeCount())
+	for id := range nodes {
+		nodes[id] = data.NewNode(int64(id))
+	}
+	newLine := func(id int) *graph.Line {
+		from, to := data.Endpoints(id)
+		return data.NewLine(id, nodes[from], nodes[to])
+	}
+	for _, active := range []int{0, 8, 64, data.LineCount()} {
+		b.Run(fmt.Sprintf("active=%d", active), func(b *testing.B) {
+			b.Run("Dense", func(b *testing.B) {
+				b.ReportAllocs()
+				for b.Loop() {
+					lines := make([]*graph.Line, data.LineCount())
+					for id := 0; id < active; id++ {
+						lines[id] = newLine(id)
+					}
+					benchmarkDenseLines = lines
+				}
+				benchmarkDenseLines = nil
+			})
+			b.Run("Sparse", func(b *testing.B) {
+				b.ReportAllocs()
+				for b.Loop() {
+					var lines map[int]*graph.Line
+					for id := 0; id < active; id++ {
+						if lines == nil {
+							lines = make(map[int]*graph.Line)
+						}
+						lines[id] = newLine(id)
+					}
+					benchmarkSparseLines = lines
+				}
+				benchmarkSparseLines = nil
+			})
+		})
+	}
 }
 
 // BenchmarkGoals measures a complete goal-directed traversal to the infrastructure log class.

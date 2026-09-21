@@ -112,26 +112,27 @@ func TestDataAdjacencyIndexes(t *testing.T) {
 		r("ca", "d:c", "d:a", nil),
 	)
 
-	lineNames := func(each func(func(*Line))) (names []string) {
-		each(func(l *Line) { names = append(names, l.Rule.Name()) })
+	lineNames := func(each func(func(int))) (names []string) {
+		each(func(id int) { names = append(names, d.RuleForLine(id).Name()) })
 		return names
 	}
-	a, bNode := d.NodeFor(b.Class("d:a")), d.NodeFor(b.Class("d:b"))
+	a, _ := d.NodeID(b.Class("d:a"))
+	bNode, _ := d.NodeID(b.Class("d:b"))
 
-	assert.Equal(t, []string{"ab1", "ab2"}, lineNames(func(visit func(*Line)) {
-		d.EachLineFromID(a.ID(), visit)
+	assert.Equal(t, []string{"ab1", "ab2"}, lineNames(func(visit func(int)) {
+		d.EachLineIDFrom(a, visit)
 	}))
-	assert.Equal(t, []string{"ca"}, lineNames(func(visit func(*Line)) {
-		d.EachLineToID(a.ID(), visit)
+	assert.Equal(t, []string{"ca"}, lineNames(func(visit func(int)) {
+		d.EachLineIDTo(a, visit)
 	}))
-	assert.Equal(t, []string{"ab1", "ab2"}, lineNames(func(visit func(*Line)) {
-		d.EachLineToID(bNode.ID(), visit)
+	assert.Equal(t, []string{"ab1", "ab2"}, lineNames(func(visit func(int)) {
+		d.EachLineIDTo(bNode, visit)
 	}))
 
 	// Invalid IDs are treated as empty adjacency lists.
-	for _, id := range []int64{-1, int64(len(d.Nodes))} {
-		d.EachLineFromID(id, func(*Line) { t.Fatalf("unexpected outgoing line for ID %d", id) })
-		d.EachLineToID(id, func(*Line) { t.Fatalf("unexpected incoming line for ID %d", id) })
+	for _, id := range []int64{-1, int64(d.NodeCount())} {
+		d.EachLineIDFrom(id, func(int) { t.Fatalf("unexpected outgoing line for ID %d", id) })
+		d.EachLineIDTo(id, func(int) { t.Fatalf("unexpected incoming line for ID %d", id) })
 	}
 }
 
