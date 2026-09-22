@@ -13,8 +13,6 @@ import (
 	"strings"
 	"time"
 
-	openapiclient "github.com/go-openapi/runtime/client"
-	"github.com/go-openapi/strfmt"
 	"github.com/korrel8r/korrel8r/internal/pkg/json"
 	"github.com/korrel8r/korrel8r/internal/pkg/logging"
 	"github.com/korrel8r/korrel8r/internal/pkg/prometheus"
@@ -23,8 +21,6 @@ import (
 	"github.com/korrel8r/korrel8r/pkg/domains/k8s"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r/impl"
-	"github.com/prometheus/alertmanager/api/v2/client"
-	"github.com/prometheus/alertmanager/api/v2/client/alert"
 	"github.com/prometheus/client_golang/api"
 	v1 "github.com/prometheus/client_golang/api/prometheus/v1"
 	"github.com/prometheus/common/model"
@@ -155,7 +151,7 @@ func (q *Query) String() string        { return korrel8r.QueryString(q) }
 
 // Store is a client of Prometheus, AlertManager, and Loki Ruler.
 type Store struct {
-	alertmanagerAPI        *client.AlertmanagerAPI
+	alertmanagerAPI        *alertmanagerClient
 	prometheusAPI          v1.API
 	prometheusURL          *url.URL         // Original URL from configuration
 	prometheusConfigPort   string           // Port from configuration (e.g., "9091")
@@ -199,17 +195,87 @@ func NewStore(alertmanagerURL *url.URL, prometheusURL *url.URL, lokiRulerURL *ur
 	}, nil
 }
 
-func newAlertmanagerClient(u *url.URL, hc *http.Client) (*client.AlertmanagerAPI, error) {
-	transport := openapiclient.NewWithClient(u.Host, client.DefaultBasePath, []string{u.Scheme}, hc)
+// alertmanagerBasePath is the base path of the Alertmanager v2 API.
+const alertmanagerBasePath = "/api/v2"
 
+// alertmanagerGetAlertsTimeout matches the default timeout of generated Alertmanager API clients.
+const alertmanagerGetAlertsTimeout = 30 * time.Second
+
+// alertmanagerClient is a minimal client for the single Alertmanager endpoint we use,
+// GET /api/v2/alerts.
+//
+// This is deliberately hand-written rather than using the generated client from
+// github.com/prometheus/alertmanager. That module pulls in the whole go-openapi
+// runtime (and Alertmanager's own server-side dependency tree) for what amounts to
+// one HTTP GET returning a JSON array, which dominated korrel8r's dependency graph
+// and binary size. Keep this type small: if more of the Alertmanager API is ever
+// needed, weigh adding endpoints here against reintroducing that dependency.
+type alertmanagerClient struct {
+	url *url.URL
+	hc  *http.Client
+}
+
+// amAlert is the subset of the Alertmanager gettableAlert schema that we consume.
+type amAlert struct {
+	Labels       map[string]string `json:"labels"`
+	Annotations  map[string]string `json:"annotations"`
+	StartsAt     time.Time         `json:"startsAt"`
+	EndsAt       time.Time         `json:"endsAt"`
+	GeneratorURL string            `json:"generatorURL"`
+	Receivers    []struct {
+		Name string `json:"name"`
+	} `json:"receivers"`
+	Status struct {
+		State       string   `json:"state"`
+		SilencedBy  []string `json:"silencedBy"`
+		InhibitedBy []string `json:"inhibitedBy"`
+	} `json:"status"`
+}
+
+// getAlerts calls GET /api/v2/alerts with the given label filters.
+// Boolean parameters (active, silenced, inhibited, unprocessed) are omitted so the
+// Alertmanager server applies its own defaults, as the generated client did.
+func (c *alertmanagerClient) getAlerts(ctx context.Context, filters []string) ([]amAlert, error) {
+	ctx, cancel := context.WithTimeout(ctx, alertmanagerGetAlertsTimeout)
+	defer cancel()
+
+	u := c.url.JoinPath("alerts")
+	q := u.Query()
+	for _, f := range filters {
+		q.Add("filter", f)
+	}
+	u.RawQuery = q.Encode()
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
+	if err != nil {
+		return nil, fmt.Errorf("alert: GET Alertmanager alerts failed: %w: %v", err, u)
+	}
+	req.Header.Set("Accept", "application/json")
+	resp, err := c.hc.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("alert: GET Alertmanager alerts failed: %w: %v", err, u)
+	}
+	defer func() { _ = resp.Body.Close() }()
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
+		return nil, fmt.Errorf("alert: GET Alertmanager alerts failed: %v: %v: %v", resp.Status, u, strings.TrimSpace(string(body)))
+	}
+	var alerts []amAlert
+	if err := json.NewDecoder(resp.Body).Decode(&alerts); err != nil {
+		return nil, fmt.Errorf("alert: decoding Alertmanager alerts failed: %w: %v", err, u)
+	}
+	return alerts, nil
+}
+
+func newAlertmanagerClient(u *url.URL, hc *http.Client) (*alertmanagerClient, error) {
 	// Append the "/api/v2" path if not already present.
-	path, err := url.JoinPath(strings.TrimSuffix(u.Path, client.DefaultBasePath), client.DefaultBasePath)
+	path, err := url.JoinPath(strings.TrimSuffix(u.Path, alertmanagerBasePath), alertmanagerBasePath)
 	if err != nil {
 		return nil, err
 	}
 	u.Path = path
 
-	return client.New(transport, strfmt.Default), nil
+	return &alertmanagerClient{url: u, hc: hc}, nil
 }
 
 func newPrometheusClient(u *url.URL, hc *http.Client) (v1.API, error) {
@@ -309,7 +375,7 @@ func (s *Store) getLokiRules(ctx context.Context, namespaces map[string]bool) (v
 }
 
 // alertmanagerAPIForAccess returns an Alertmanager API client with the appropriate port.
-func (s *Store) alertmanagerAPIForAccess(ctx context.Context, namespaces map[string]bool) (*client.AlertmanagerAPI, error) {
+func (s *Store) alertmanagerAPIForAccess(ctx context.Context, namespaces map[string]bool) (*alertmanagerClient, error) {
 	u := prometheus.EffectiveURL(ctx, s.alertmanagerURL, s.k8sClient)
 
 	// If using tenancy port (9092), wrap HTTP client to inject namespace query parameters
@@ -534,7 +600,7 @@ func (s *Store) Get(ctx context.Context, query korrel8r.Query, c *korrel8r.Const
 	return nil
 }
 
-func (s *Store) getSubquery(ctx context.Context, prometheusRules v1.RulesResult, subQuery map[string]string, alertmanagerAPI *client.AlertmanagerAPI) ([]*Object, error) {
+func (s *Store) getSubquery(ctx context.Context, prometheusRules v1.RulesResult, subQuery map[string]string, alertmanagerAPI *alertmanagerClient) ([]*Object, error) {
 	var alerts []*Object
 	for _, rg := range prometheusRules.Groups {
 		for _, r := range rg.Rules {
@@ -570,12 +636,12 @@ func (s *Store) getSubquery(ctx context.Context, prometheusRules v1.RulesResult,
 	if len(alerts) == 0 {
 		// FALLBACK: Rules API returned no alerts, try Alertmanager
 		log.V(5).Info("no alerts from Rules API, trying Alertmanager fallback")
-		alertManagerAlerts, err := alertmanagerAPI.Alert.GetAlerts(alert.NewGetAlertsParamsWithContext(ctx).WithFilter(filters))
+		alertManagerAlerts, err := alertmanagerAPI.getAlerts(ctx, filters)
 		if err != nil {
 			log.V(5).Info("failed to query Alertmanager for fallback", "error", err)
 			return alerts, nil
 		}
-		for _, ama := range alertManagerAlerts.Payload {
+		for _, ama := range alertManagerAlerts {
 			matches := true
 			for k, v := range subQuery {
 				if ama.Labels[k] != v {
@@ -598,7 +664,7 @@ func (s *Store) getSubquery(ctx context.Context, prometheusRules v1.RulesResult,
 		}
 	} else {
 		// AUGMENT: enrich Rules API alerts with Alertmanager timing data
-		alertManagerAlerts, err := alertmanagerAPI.Alert.GetAlerts(alert.NewGetAlertsParamsWithContext(ctx).WithFilter(filters))
+		alertManagerAlerts, err := alertmanagerAPI.getAlerts(ctx, filters)
 		if err != nil {
 			log.V(5).Info("failed to augment alerts from Alertmanager", "error", err)
 		} else {
@@ -611,34 +677,34 @@ func (s *Store) getSubquery(ctx context.Context, prometheusRules v1.RulesResult,
 }
 
 // augmentAlert augment a prometheus alert using the matching alertManager alert if there is one.
-func (*Store) augmentAlert(pa *Object, alertManagerAlerts *alert.GetAlertsOK) {
+func (*Store) augmentAlert(pa *Object, alertManagerAlerts []amAlert) {
 	// We can't perform an exact label comparison because alerts from
 	// Alertmanager may have more labels than Prometheus alerts (due to
 	// external labels for instance).
 	// We consider an Alertmanager alert to be the same as a Prometheus
 	// alert if the Alertmanager labels are a super-set of the Prometheus
 	// labels.
-	for _, ama := range alertManagerAlerts.Payload {
+	for _, ama := range alertManagerAlerts {
 		for k, v := range pa.Labels {
 			if ama.Labels[k] != v {
 				continue
 			}
-			pa.StartsAt = time.Time(*ama.StartsAt)
-			pa.EndsAt = time.Time(*ama.EndsAt)
-			pa.GeneratorURL = ama.GeneratorURL.String()
+			pa.StartsAt = ama.StartsAt
+			pa.EndsAt = ama.EndsAt
+			pa.GeneratorURL = ama.GeneratorURL
 			for _, r := range ama.Receivers {
-				pa.Receivers = append(pa.Receivers, Receiver{Name: *r.Name})
+				pa.Receivers = append(pa.Receivers, Receiver{Name: r.Name})
 			}
 			pa.SilencedBy = ama.Status.SilencedBy
 			pa.InhibitedBy = ama.Status.InhibitedBy
 
 			if pa.Status == "" {
-				pa.Status = *ama.Status.State
+				pa.Status = ama.Status.State
 				if pa.Status != "suppressed" {
 					pa.Status = "firing"
 				}
-			} else if *ama.Status.State == "suppressed" {
-				pa.Status = *ama.Status.State
+			} else if ama.Status.State == "suppressed" {
+				pa.Status = ama.Status.State
 			}
 		}
 	}
