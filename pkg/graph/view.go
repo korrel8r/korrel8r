@@ -61,13 +61,12 @@ func (g View) neighbors(id int64, incoming bool) graph.Nodes {
 	return &viewNodes{ids: ids, count: len(ids), current: -1}
 }
 
+// Edge lookups use Data's pre-computed edge index, so they do not scan the
+// source node's adjacency. Shortest-path searches relax every edge repeatedly,
+// so a scan here would cost O(out-degree) per relaxation.
 func (g View) HasEdgeFromTo(from, to int64) bool {
-	found := false
-	g.data.EachLineIDFrom(from, func(id int) {
-		_, goal := g.data.Endpoints(id)
-		found = found || goal == to
-	})
-	return found
+	_, ok := g.data.EdgeWeight(from, to)
+	return ok
 }
 func (g View) HasEdgeBetween(x, y int64) bool { return g.HasEdgeFromTo(x, y) || g.HasEdgeFromTo(y, x) }
 func (g View) Edge(from, to int64) graph.Edge { return g.WeightedEdge(from, to) }
@@ -75,7 +74,7 @@ func (g View) WeightedEdge(from, to int64) graph.WeightedEdge {
 	if !g.HasEdgeFromTo(from, to) {
 		return nil
 	}
-	w, _ := g.Weight(from, to)
+	w, _ := g.Weight(from, to) // Not EdgeWeight: self-loops keep Graph.Weight's zero weight.
 	return simple.WeightedEdge{F: multi.Node(from), T: multi.Node(to), W: w}
 }
 
@@ -85,15 +84,10 @@ func (g View) Weight(from, to int64) (float64, bool) {
 	if from == to {
 		return 0, true
 	}
-	w, found := math.Inf(1), false
-	g.data.EachLineIDFrom(from, func(id int) {
-		_, goal := g.data.Endpoints(id)
-		if goal == to {
-			found = true
-			w = math.Min(w, float64(len(g.data.RuleForLine(id).Goal())))
-		}
-	})
-	return w, found
+	if w, ok := g.data.EdgeWeight(from, to); ok {
+		return w, true
+	}
+	return math.Inf(1), false
 }
 
 // viewNodes iterates either explicit neighbor IDs or the dense node-ID range.

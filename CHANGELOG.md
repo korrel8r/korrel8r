@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+- `korrel8r.Class` implementations must be comparable; the rule graph now indexes
+  classes by value rather than by `String()`. Domains whose `Class` is a
+  non-comparable type, or which return equal `String()` values for unequal
+  classes, must be updated.
+
 ## [0.12.2] - 2026-09-16
 
 ### Added
