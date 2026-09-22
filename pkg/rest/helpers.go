@@ -9,7 +9,6 @@ import (
 	"io"
 	"net/http"
 	"slices"
-	"strconv"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -154,11 +153,10 @@ func NewGraph(g *graph.Graph, optsPtr *api.GraphOptions) *api.Graph {
 	}
 	opts := ptr.Deref(optsPtr)
 	result := &api.Graph{Nodes: nodes(g, opts), Edges: edges(g, opts)}
-	if g.GraphAttrs["truncated"] == "true" {
-		limit, _ := strconv.Atoi(g.GraphAttrs["truncatedLimit"])
+	if g.Truncation != nil {
 		result.Truncation = &api.Truncation{
-			Condition: g.GraphAttrs["truncatedBy"],
-			Limit:     limit,
+			Condition: g.Truncation.Condition,
+			Limit:     g.Truncation.Limit,
 		}
 	}
 	return result

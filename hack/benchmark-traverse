@@ -5,7 +5,7 @@ set -euo pipefail
 root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 output=${1:-"$root/pkg/engine/traverse/benchmark-results.txt"}
 count=${COUNT:-10}
-benchmark='Benchmark(Neighbors|NeighborScope|DataNodeFor|DataLinesFrom|NewTraverser|RuleGraph)$'
+benchmark='Benchmark(Neighbors|NeighborScope|NewTraverser|RuleGraph)$'
 
 mkdir -p "$(dirname "$output")"
 

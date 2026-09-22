@@ -60,9 +60,9 @@ func TestTraverserTotalLimit(t *testing.T) {
 	require.True(t, ok)
 	assert.Equal(t, "totalLimit", limitErr.Name)
 	require.NotNil(t, g)
-	assert.Equal(t, "true", g.GraphAttrs["truncated"])
-	assert.Equal(t, "totalLimit", g.GraphAttrs["truncatedBy"])
-	assert.Equal(t, "2", g.GraphAttrs["truncatedLimit"])
+	require.NotNil(t, g.Truncation)
+	assert.Equal(t, "totalLimit", g.Truncation.Condition)
+	assert.Equal(t, 2, g.Truncation.Limit)
 	assert.ElementsMatch(t, []string{"d:a[0]", "d:b[1]"}, g.NodeStrings(true))
 }
 

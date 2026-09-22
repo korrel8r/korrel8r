@@ -41,8 +41,19 @@ func NewData(rules ...korrel8r.Rule) *Data {
 			}
 		}
 	}
-	d.topology = newTopology(len(d.classes), lines)
+	d.topology = newTopology(len(d.classes), lines, d.ruleWeight)
 	return d
+}
+
+// ruleWeight is a rule's edge weight: its spread, the number of goal classes.
+func (d *Data) ruleWeight(ruleID uint32) uint32 {
+	return checkedTopologyID(len(d.rules[ruleID].Goal()), "goals")
+}
+
+// EdgeWeight returns the least weight of any line from->to, and whether the edge exists.
+func (d *Data) EdgeWeight(from, to int64) (float64, bool) {
+	w, ok := d.topology.edges.find(from, to)
+	return float64(w), ok
 }
 
 // classID returns the existing class ID or assigns a new one.

@@ -38,7 +38,16 @@ type Graph struct {
 	*multi.DirectedGraph
 	GraphAttrs, NodeAttrs, EdgeAttrs Attrs
 	Data                             *Data
-	allLines                         []*Line // Insertion-order index for allocation-free EachLine.
+	// Truncation is set if the search returned a partial graph. It is a field
+	// rather than a GraphAttrs entry, which GraphViz would reject on render.
+	Truncation *Truncation
+	allLines   []*Line // Insertion-order index for allocation-free EachLine.
+}
+
+// Truncation records why a search stopped before exploring the whole graph.
+type Truncation struct {
+	Condition string // Name of the exceeded limit.
+	Limit     int    // Value of the exceeded limit.
 }
 
 // New creates an empty mutable Graph using data's identity space.

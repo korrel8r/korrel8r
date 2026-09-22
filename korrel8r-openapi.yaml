@@ -549,7 +549,7 @@ components:
             may therefore be lower than this limit.
             Zero is unlimited.
           x-oapi-codegen-extra-tags:
-            jsonschema: "Limit unique queries accepted across the traversal. This includes queries with no results, which do not appear in the result graph. The number queries of in the result may therefore be lower than this limit. Zero is unlimited."
+            jsonschema: "Limit unique queries accepted across the traversal. This includes queries with no results, which do not appear in the result graph. The number of queries in the result may therefore be lower than this limit. Zero is unlimited."
 
     Domains:
       description: List of Korrel8r domains and configured stores.
