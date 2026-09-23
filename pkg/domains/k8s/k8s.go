@@ -265,7 +265,7 @@ func (c Class) Name() string {
 func (c Class) Unmarshal(b []byte) (korrel8r.Object, error) {
 	o := c.New()
 	err := json.Unmarshal(b, &o)
-	return o, err
+	return stripUnused(o), err
 }
 
 func (c Class) New() Object {
@@ -316,7 +316,7 @@ func (s *Store) Get(ctx context.Context, query korrel8r.Query, c *korrel8r.Const
 		for _, o := range objs {
 			// Include only objects created before or during the constraint interval.
 			if c.CompareTime(ToUnstructured(o.(Object)).GetCreationTimestamp().Time) <= 0 {
-				result.Append(o)
+				result.Append(stripUnused(o.(Object)))
 			}
 		}
 	})
@@ -374,6 +374,17 @@ func ToUnstructured(o Object) *unstructured.Unstructured {
 
 func FromUnstructured(u *unstructured.Unstructured) Object {
 	return Object(u.Object)
+}
+
+// stripUnused removes object content that korrel8r never reads, to reduce the memory
+// retained by a traversal. metadata.managedFields is around half of the decoded size of
+// a typical resource, and no rule, template function or API response field uses it.
+// The object is modified in place and returned.
+func stripUnused(o Object) Object {
+	if m, ok := o["metadata"].(map[string]any); ok {
+		delete(m, "managedFields")
+	}
+	return o
 }
 
 func ToStructured(o Object, target any) error {

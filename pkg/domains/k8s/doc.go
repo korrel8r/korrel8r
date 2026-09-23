@@ -25,6 +25,10 @@
 // A map of JSON kubernetes field names and Go values.
 // Rule templates should use the JSON (lowerCase) field names, not the UpperCase Go field names.
 //
+// The metadata.managedFields field is removed from objects returned by this domain.
+// Korrel8r never reads it, and it accounts for a large part of the memory used to hold
+// a correlation result.
+//
 // # Query
 //
 // JSON selector with the following fields:

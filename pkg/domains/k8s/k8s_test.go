@@ -152,6 +152,79 @@ func TestStore_Get(t *testing.T) {
 	// Need to validate labels and all get variations on fake client or env test...
 }
 
+func TestStripUnused(t *testing.T) {
+	for _, x := range []struct {
+		name string
+		o    Object
+		want Object
+	}{
+		{
+			name: "managedFields removed, rest untouched",
+			o:    Object{"kind": "Pod", "metadata": map[string]any{"name": "fred", "managedFields": []any{"junk"}}},
+			want: Object{"kind": "Pod", "metadata": map[string]any{"name": "fred"}},
+		},
+		{
+			name: "no managedFields",
+			o:    Object{"metadata": map[string]any{"name": "fred"}},
+			want: Object{"metadata": map[string]any{"name": "fred"}},
+		},
+		{
+			name: "no metadata",
+			o:    pod.New(),
+			want: pod.New(),
+		},
+		{
+			name: "metadata is not a map",
+			o:    Object{"metadata": "nonsense"},
+			want: Object{"metadata": "nonsense"},
+		},
+	} {
+		t.Run(x.name, func(t *testing.T) {
+			assert.Equal(t, x.want, stripUnused(x.o))
+		})
+	}
+}
+
+// managedFields is large and korrel8r never reads it, so the store must not retain it.
+func TestStore_Get_StripsManagedFields(t *testing.T) {
+	managed := []metav1.ManagedFieldsEntry{{
+		Manager:    "kubectl",
+		Operation:  metav1.ManagedFieldsOperationApply,
+		APIVersion: "v1",
+		FieldsType: "FieldsV1",
+		FieldsV1:   &metav1.FieldsV1{Raw: []byte(`{"f:metadata":{"f:labels":{}}}`)},
+	}}
+	c := fake.NewClientBuilder().
+		WithRESTMapper(testrestmapper.TestOnlyStaticRESTMapper(scheme.Scheme)).
+		WithObjects(&corev1.Pod{
+			ObjectMeta: metav1.ObjectMeta{Name: "fred", Namespace: "x", ManagedFields: managed},
+		}).Build()
+	store, err := Domain.NewStore(c, &rest.Config{})
+	require.NoError(t, err)
+
+	// Cover both the single-object and the list paths.
+	for _, q := range []korrel8r.Query{
+		newQuery(pod, "x", "fred", nil, nil),
+		newQuery(pod, "x", "", nil, nil),
+	} {
+		t.Run(fmt.Sprintf("%v", q), func(t *testing.T) {
+			var result mock.Result
+			require.NoError(t, store.Get(context.Background(), q, nil, &result))
+			require.Len(t, result, 1)
+			o := result[0].(Object)
+			assert.Equal(t, "fred", ToUnstructured(o).GetName(), "wrong object")
+			assert.NotContains(t, o["metadata"], "managedFields")
+		})
+	}
+}
+
+func TestClass_Unmarshal_StripsManagedFields(t *testing.T) {
+	o, err := pod.Unmarshal([]byte(`{"kind":"Pod","metadata":{"name":"fred","managedFields":[{"manager":"kubectl"}]}}`))
+	require.NoError(t, err)
+	assert.NotContains(t, o.(Object)["metadata"], "managedFields")
+	assert.Equal(t, "fred", ToUnstructured(o.(Object)).GetName())
+}
+
 func TestStore_Get_Constraint(t *testing.T) {
 	// Time range [start,end] and some time points.
 	start := time.Now()
