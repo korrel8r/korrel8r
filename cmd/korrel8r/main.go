@@ -3,6 +3,7 @@
 package main
 
 import (
+	"context"
 	_ "embed"
 	"fmt"
 	"os"
@@ -15,6 +16,7 @@ import (
 	"github.com/korrel8r/korrel8r/pkg/domains"
 	"github.com/korrel8r/korrel8r/pkg/domains/k8s"
 	"github.com/korrel8r/korrel8r/pkg/engine"
+	"github.com/korrel8r/korrel8r/pkg/memory"
 	"github.com/korrel8r/korrel8r/pkg/rules/quickrules"
 	"github.com/spf13/cobra"
 )
@@ -86,15 +88,27 @@ func main() {
 	must.Must(rootCmd.Execute())
 }
 
-func newEngineWithConfigs(c config.Configs) (*engine.Engine, error) {
+func newEngineWithConfigsAndGuard(c config.Configs, guard engine.SearchGuard) (*engine.Engine, error) {
 	b := engine.Build()
 	return b.Domains(append(domains.All, mock.NewDomain("mock"))...).
 		Config(c).
+		SearchGuard(guard).
 		Rules(quickrules.Rules(b.GetDomains())...).
 		StatusRules(quickrules.StatusRules(b.GetDomains())...).
 		Engine()
 }
 
+func newMemoryGuard(c config.Configs) (*memory.Guard, error) {
+	var tuning *config.Tuning
+	if len(c) > 0 && c[0].Tuning != nil {
+		tuning = c[0].Tuning
+	}
+	return memory.NewFromTuning(tuning)
+}
+
 func newEngine() *engine.Engine {
-	return must.Must1(newEngineWithConfigs(must.Must1(config.Load(*configFlag))))
+	configs := must.Must1(config.Load(*configFlag))
+	guard := must.Must1(newMemoryGuard(configs))
+	go guard.Run(context.Background())
+	return must.Must1(newEngineWithConfigsAndGuard(configs, guard))
 }

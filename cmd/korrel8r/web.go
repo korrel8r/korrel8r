@@ -70,21 +70,28 @@ var webCmd = &cobra.Command{
 			panic(fmt.Errorf("--tls-min-version, --tls-cipher-suites, and --tls-curves are not allowed with --http"))
 		}
 
-		// Get session values from from top-level configuration
+		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+		defer stop()
+
+		// Get session values from top-level configuration.
 		var timeout time.Duration
 		configs := must.Must1(config.Load(*configFlag))
+		var tuning config.Tuning
 		if len(configs) > 0 && configs[0].Tuning != nil {
-			timeout = time.Duration(configs[0].Tuning.SessionTimeout)
-			if configs[0].Tuning.UnsafeSharedSession {
+			tuning = *configs[0].Tuning
+			timeout = time.Duration(tuning.SessionTimeout)
+			if tuning.UnsafeSharedSession {
 				*unsafeSharedSessionFlag = true
 			}
 		}
+		guard := must.Must1(newMemoryGuard(configs))
+		go guard.Run(ctx)
 		var sessions session.Manager
 		if *unsafeSharedSessionFlag {
-			e := must.Must1(newEngineWithConfigs(configs))
+			e := must.Must1(newEngineWithConfigsAndGuard(configs, guard))
 			sessions = session.NewSingleManager(e)
 		} else {
-			factory := func() (*engine.Engine, error) { return newEngineWithConfigs(configs) }
+			factory := func() (*engine.Engine, error) { return newEngineWithConfigsAndGuard(configs, guard) }
 			tokenReview, err := tokenreview.New()
 			if err != nil {
 				panic(fmt.Errorf("authentication unavailable: %w\nUse the --unsafe-shared-session flag if you want an unauthenticated server", err))
@@ -122,8 +129,6 @@ var webCmd = &cobra.Command{
 			rest.WebProfile(router)
 		}
 
-		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-		defer stop()
 		done := make(chan struct{})
 		go func() {
 			defer close(done)

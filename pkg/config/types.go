@@ -137,6 +137,18 @@ type Tuning struct {
 	// TotalQueryLimit limits unique queries accepted by a traversal. Zero is unlimited.
 	TotalQueryLimit int `json:"totalQueryLimit,omitempty"`
 
+	// MemoryLimit overrides the automatically discovered memory-pressure limit.
+	// Zero (the default) uses discovered limits; a negative value disables memory-pressure cancellation.
+	MemoryLimit Bytes `json:"memoryLimit,omitempty"`
+
+	// MemoryPressureLimit cancels active traversals at this percentage of available memory.
+	// Zero (the default) uses 80%.
+	MemoryPressureLimit int `json:"memoryPressureLimit,omitempty"`
+
+	// MemoryPressureReset is the percentage below which memory pressure clears.
+	// Zero (the default) uses 10 percentage points below MemoryPressureLimit, at least 1%.
+	MemoryPressureReset int `json:"memoryPressureReset,omitempty"`
+
 	// RequestTimeout cancels incoming or outgoing requests that last longer than this timeout.
 	// If omitted or 0, requests never time out.
 	// Long-lived SSE subscriptions are exempt from this timeout.
@@ -157,6 +169,23 @@ type Tuning struct {
 	// This prevents a storm of expensive re-creation (DNS lookups, API discovery) on every failed query.
 	// Default is 10s if omitted or 0.
 	StoreRetryInterval Duration `json:"storeRetryInterval,omitempty"`
+}
+
+// GetMemoryPressureLimit applies the default percentage.
+func (t *Tuning) GetMemoryPressureLimit() int {
+	if t != nil && t.MemoryPressureLimit > 0 {
+		return t.MemoryPressureLimit
+	}
+	return 80
+}
+
+// GetMemoryPressureReset applies the default hysteresis.
+func (t *Tuning) GetMemoryPressureReset() int {
+	high := t.GetMemoryPressureLimit()
+	if t != nil && t.MemoryPressureReset > 0 {
+		return t.MemoryPressureReset
+	}
+	return max(1, high-10)
 }
 
 // GetStoreRetryInterval applies the default value

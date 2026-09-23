@@ -40,6 +40,28 @@ type Engine struct {
 	storeMetricAttrs map[string][2]metric.MeasurementOption
 	classMetricAttrs map[korrel8r.Class]metric.MeasurementOption
 	ruleMetricAttrs  map[korrel8r.Rule]metric.MeasurementOption
+	searchGuard      SearchGuard
+}
+
+// SearchGuard registers active searches for cancellation by a process-wide guard.
+type SearchGuard interface {
+	Register(cancel func()) (unregister func())
+}
+
+// RegisterSearch registers a search with the configured guard.
+func (e *Engine) RegisterSearch(cancel func()) func() {
+	if e.searchGuard == nil {
+		return func() {}
+	}
+	return e.searchGuard.Register(cancel)
+}
+
+// MemoryPressureLimitValue returns the configured value reported in a memory-pressure limit error.
+func (e *Engine) MemoryPressureLimitValue() int {
+	if e.Tuning.MemoryLimit > 0 {
+		return int(e.Tuning.MemoryLimit)
+	}
+	return e.Tuning.GetMemoryPressureLimit()
 }
 
 func (e *Engine) Domain(name string) (korrel8r.Domain, error) { return e.domains.Domain(name) }

@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/korrel8r/korrel8r/internal/pkg/test/mock"
+	"github.com/korrel8r/korrel8r/pkg/config"
 	"github.com/korrel8r/korrel8r/pkg/engine"
 	"github.com/korrel8r/korrel8r/pkg/graph"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
@@ -64,6 +65,78 @@ func TestTraverserTotalLimit(t *testing.T) {
 	assert.Equal(t, "totalLimit", g.Truncation.Condition)
 	assert.Equal(t, 2, g.Truncation.Limit)
 	assert.ElementsMatch(t, []string{"d:a[0]", "d:b[1]"}, g.NodeStrings(true))
+}
+
+type immediateGuard struct{}
+
+func (immediateGuard) Register(cancel func()) func() {
+	cancel()
+	return func() {}
+}
+
+func TestMemoryPressureLimit(t *testing.T) {
+	b := mock.NewBuilder("d")
+	e, err := engine.Build().
+		Tuning(&config.Tuning{MemoryPressureLimit: 90}).
+		SearchGuard(immediateGuard{}).
+		Rules(b.Rule("ab", "d:a", "d:b", nil)).
+		Engine()
+	require.NoError(t, err)
+
+	g, err := Neighbors(context.Background(), e, Start{
+		Class: b.Class("d:a"), Objects: []korrel8r.Object{0},
+	}, 1)
+	limitErr, ok := errors.AsType[*LimitError](err)
+	require.True(t, ok)
+	assert.Equal(t, "memoryPressure", limitErr.Name)
+	assert.Equal(t, 90, limitErr.Limit)
+	require.NotNil(t, g.Truncation)
+	assert.Equal(t, "memoryPressure", g.Truncation.Condition)
+}
+
+type contextStore struct {
+	domain   korrel8r.Domain
+	started  chan struct{}
+	canceled atomic.Bool
+}
+
+func (s *contextStore) Domain() korrel8r.Domain { return s.domain }
+
+func (s *contextStore) Get(ctx context.Context, _ korrel8r.Query, _ *korrel8r.Constraint, _ korrel8r.Appender) error {
+	close(s.started)
+	<-ctx.Done()
+	s.canceled.Store(true)
+	return context.Cause(ctx)
+}
+
+type queryStartedGuard struct{ started <-chan struct{} }
+
+func (g queryStartedGuard) Register(cancel func()) func() {
+	go func() {
+		<-g.started
+		cancel()
+	}()
+	return func() {}
+}
+
+func TestMemoryPressureCancelsStoreQuery(t *testing.T) {
+	b := mock.NewBuilder("d")
+	store := &contextStore{domain: b.Domain("d"), started: make(chan struct{})}
+	e, err := engine.Build().
+		Tuning(&config.Tuning{MemoryPressureLimit: 80}).
+		SearchGuard(queryStartedGuard{started: store.started}).
+		Rules(b.Rule("ab", "d:a", "d:b", b.Query("d:b", "ab"))).
+		Stores(store).
+		Engine()
+	require.NoError(t, err)
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	_, err = Neighbors(ctx, e, Start{Class: b.Class("d:a"), Objects: []korrel8r.Object{0}}, 1)
+	limitErr, ok := errors.AsType[*LimitError](err)
+	require.True(t, ok, "expected memory-pressure LimitError, got %v", err)
+	assert.Equal(t, "memoryPressure", limitErr.Name)
+	assert.True(t, store.canceled.Load(), "store query did not observe cancellation")
 }
 
 func TestTraverserGoals(t *testing.T) {

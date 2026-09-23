@@ -197,6 +197,12 @@ func (b *Builder) Tuning(t *config.Tuning) *Builder {
 	return b
 }
 
+// SearchGuard sets the process-wide guard used to cancel active searches.
+func (b *Builder) SearchGuard(guard SearchGuard) *Builder {
+	b.e.searchGuard = guard
+	return b
+}
+
 func (b *Builder) ConfigFile(file string) *Builder {
 	cfg, err := config.Load(file)
 	if err != nil {
