@@ -12,6 +12,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   classes by value rather than by `String()`. Domains whose `Class` is a
   non-comparable type, or which return equal `String()` values for unequal
   classes, must be updated.
+- `k8s` domain objects no longer include `metadata.managedFields`. Korrel8r never reads
+  it and it is a large part of the memory held by a correlation result. The field is
+  absent from CLI object output and from REST responses with `?results=true`.
 
 ## [0.12.2] - 2026-09-16
 
