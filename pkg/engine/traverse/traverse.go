@@ -34,6 +34,8 @@ import (
 
 // Goals traverses all paths from start objects to all goal classes.
 func Goals(ctx context.Context, e *engine.Engine, start Start, goals []korrel8r.Class) (*graph.Graph, error) {
+	ctx, done := guardSearch(ctx, e)
+	defer done()
 	log.V(2).Info("Goal directed search", "start", start, "goals", goals, "constraint", start.Constraint)
 	data := e.GraphData()
 	scope, err := goalScope(data, start.Class, goals)
@@ -48,6 +50,8 @@ func Goals(ctx context.Context, e *engine.Engine, start Start, goals []korrel8r.
 
 // Neighbors traverses to all neighbors of the start objects, traversing links up to the given depth.
 func Neighbors(ctx context.Context, e *engine.Engine, start Start, depth int) (*graph.Graph, error) {
+	ctx, done := guardSearch(ctx, e)
+	defer done()
 	log.V(2).Info("Neighbourhood search", "start", start, "depth", depth, "constraint", start.Constraint)
 	data := e.GraphData()
 	scope, err := neighborScope(data, start.Class, depth)
@@ -55,6 +59,15 @@ func Neighbors(ctx context.Context, e *engine.Engine, start Start, depth int) (*
 		return nil, err
 	}
 	return newTraverser(e, data, scope, start.Constraint, depth).run(ctx, start)
+}
+
+// guardSearch registers a traversal for memory-pressure cancellation.
+func guardSearch(ctx context.Context, e *engine.Engine) (context.Context, func()) {
+	ctx, cancel := context.WithCancelCause(ctx)
+	unregister := e.RegisterSearch(func() {
+		cancel(&LimitError{Name: "memoryPressure", Limit: e.MemoryPressureLimitValue()})
+	})
+	return ctx, func() { unregister(); cancel(nil) }
 }
 
 // neighborScope returns line IDs reachable within maxDepth BFS hops from start.
@@ -246,6 +259,7 @@ func (q *workQueue) get() (queryLine, bool) {
 		return queryLine{}, false
 	}
 	ql := q.items[0]
+	q.items[0] = queryLine{}
 	q.items = q.items[1:]
 	return ql, true
 }
@@ -421,6 +435,9 @@ func (t *traverser) run(ctx context.Context, start Start) (*graph.Graph, error) 
 		cause = t.limitErr
 	}
 	if limitErr, ok := errors.AsType[*LimitError](cause); ok {
+		if limitErr.Name == "memoryPressure" {
+			metricLimitExceeded.Add(ctx, 1, metricMemoryPressure)
+		}
 		g.Truncation = &graph.Truncation{Condition: limitErr.Name, Limit: limitErr.Limit}
 	}
 	return g, cause
@@ -534,6 +551,9 @@ func (t *traverser) handleQuery(ctx context.Context, ql *queryLine) {
 		results = append(results, objects...)
 	}))
 	metricQueries.Add(ctx, 1, t.nodeStatic[goalID].classMetric)
+	if ctx.Err() != nil {
+		return
+	}
 
 	// Add unique new objects to node and record query.
 	// The captured resultList slice header is safe to read after unlock because:

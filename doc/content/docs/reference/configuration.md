@@ -160,9 +160,12 @@ Limits and optimizations:
 tuning:
   totalLimit: 10000        # 1. Unique result objects retained per traversal
   totalQueryLimit: 5000    # 2. Unique queries accepted per traversal
-  requestTimeout: 1m       # 3. Timeout for incoming and outgoing requests
-  sessionTimeout: 5m       # 4. Idle timeout for per-user sessions
-  storeRetryInterval: 10s  # 5. Minimum time between store re-creation attempts
+  # memoryLimit: 768Mi     # 3. Optional absolute memory-pressure override
+  memoryPressureLimit: 80  # 4. Cancel searches at this percentage of available memory
+  memoryPressureReset: 70  # 5. Clear memory pressure below this percentage
+  requestTimeout: 1m       # Timeout for incoming and outgoing requests
+  sessionTimeout: 5m       # Idle timeout for per-user sessions
+  storeRetryInterval: 10s  # Minimum time between store re-creation attempts
 ```
 
 Durations use Go [duration syntax](https://pkg.go.dev/time#ParseDuration), for example `30s`, `1m`, `2h`.
@@ -185,6 +188,28 @@ its effective limit. REST responses also include `X-Korrel8r-Truncated`,
 `requestTimeout`
 : Cancels incoming or outgoing requests that take longer than this.
   Long-lived SSE subscriptions are exempt. If omitted or 0, requests never time out.
+
+`memoryPressureLimit`
+: Cancels active searches when process cgroup or Go runtime memory reaches this percentage of its
+  finite limit, whichever is under greater pressure.
+  Searches are still admitted, but are canceled immediately while pressure remains high. Cancellation
+  returns a successful partial graph with truncation condition `memoryPressure`. Defaults to `80`.
+
+`memoryLimit`
+: Overrides percentage-based detection with an absolute byte quantity such as `768Mi`. The guard still
+  uses cgroup usage when available and Go runtime usage otherwise. Set to `-1` to disable the guard.
+
+`memoryPressureReset`
+: Clears memory pressure at this lower percentage, providing hysteresis. It must be lower than
+  `memoryPressureLimit`. If omitted, it defaults to 10 percentage points below the limit.
+
+Memory is sampled every `200ms`, with the first sample occurring immediately.
+
+Set Go's `GOMEMLIMIT` below the container memory limit as an additional safeguard. The guard monitors
+it when finite, but it remains a soft garbage-collection target rather than an OOM cap.
+
+Library embedders can create the same guard with `memory.NewFromTuning`, run it with an
+application-lifetime context, and install it using `engine.Builder.SearchGuard`.
 
 `sessionTimeout`
 : Idle timeout for sessions. In server mode each authenticated user gets a session with its own
@@ -230,4 +255,3 @@ stores, rules, or payload sizes.
 
 Korrel8r rules and store configuration can include [Go templates](https://pkg.go.dev/text/template).
 Korrel8r provides additional [template functions](template-functions/), domains may provide additional functions -- see the [Domain Reference](domains/)
-

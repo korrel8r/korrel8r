@@ -20,4 +20,5 @@ var (
 
 	metricTotalLimit      = metric.WithAttributes(attribute.String("limit", "totalLimit"))
 	metricTotalQueryLimit = metric.WithAttributes(attribute.String("limit", "totalQueryLimit"))
+	metricMemoryPressure  = metric.WithAttributes(attribute.String("limit", "memoryPressure"))
 )
