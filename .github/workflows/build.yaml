@@ -30,6 +30,9 @@ jobs:
         env:
           NOLINT: 1
 
+      - name: vulnerability check
+        run: make vuln
+
       - name: Upload test results
         uses: actions/upload-artifact@v7
         if: always()
