@@ -45,7 +45,7 @@ GEN_QUICKRULES=pkg/rules/quickrules/applyfuncs.go
 
 GENERATED=$(VERSION_TXT) $(GEN_OPENAPI_IMPL) $(GEN_OPENAPI_API) $(GEN_DOMAIN_DOC) $(GEN_QUICKRULES)
 
-all: doc test image-build ## Build and test everything locally. Recommended before commit.
+all: test doc vuln image-build ## Build and test everything locally. Recommended before commit.
 generate:  $(GENERATED)
 	hack/copyright.sh
 
@@ -106,6 +106,10 @@ TEST_FLAGS?=$(and $(NO_CLUSTER),-skip='_cluster(-fm)?$$|/_cluster(-fm)?$$')
 .PHONY: test
 test: lint							 ## Run all tests, requires cluster. Set NO_CLUSTER=1 to skip cluster tests.
 	go test -fullpath -race ./... $(TEST_FLAGS)
+
+.PHONY: vuln
+vuln: $(BIN) ## Check Go dependencies for known vulnerabilities.
+	govulncheck $(VULN_FLAGS) ./...
 
 test-clean: ## Remove test namespaces from the cluster
 	kubectl delete ns -l test=korrel8r
