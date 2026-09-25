@@ -69,9 +69,19 @@ func TestK8sRules(t *testing.T) {
 			want:  []string{`alert:alert:{"namespace":"aNamespace","kubernetes_pod_name":"foo"}`},
 		},
 		{
+			rule:  "PodToAlertOtel",
+			start: newK8s("Pod", "aNamespace", "foo", nil),
+			want:  []string{`alert:alert:{"k8s_namespace_name":"aNamespace","k8s_pod_name":"foo"}`},
+		},
+		{
 			rule:  "DeploymentToAlert",
 			start: newK8s("Deployment.apps", "aNamespace", "foo", nil),
 			want:  []string{`alert:alert:{"namespace":"aNamespace","deployment":"foo"}`},
+		},
+		{
+			rule:  "DeploymentToAlertOtel",
+			start: newK8s("Deployment.apps", "aNamespace", "foo", nil),
+			want:  []string{`alert:alert:{"k8s_namespace_name":"aNamespace","k8s_deployment_name":"foo"}`},
 		},
 		{
 			rule:  "DaemonSetToAlert",
@@ -79,9 +89,19 @@ func TestK8sRules(t *testing.T) {
 			want:  []string{`alert:alert:{"namespace":"aNamespace","daemonset":"foo"}`},
 		},
 		{
+			rule:  "DaemonSetToAlertOtel",
+			start: newK8s("DaemonSet.apps", "aNamespace", "foo", nil),
+			want:  []string{`alert:alert:{"k8s_namespace_name":"aNamespace","k8s_daemonset_name":"foo"}`},
+		},
+		{
 			rule:  "StatefulSetToAlert",
 			start: newK8s("StatefulSet.apps", "aNamespace", "foo", nil),
 			want:  []string{`alert:alert:{"namespace":"aNamespace","statefulset":"foo"}`},
+		},
+		{
+			rule:  "StatefulSetToAlertOtel",
+			start: newK8s("StatefulSet.apps", "aNamespace", "foo", nil),
+			want:  []string{`alert:alert:{"k8s_namespace_name":"aNamespace","k8s_statefulset_name":"foo"}`},
 		},
 		{
 			rule:  "PodDisruptionBudgetToAlert",

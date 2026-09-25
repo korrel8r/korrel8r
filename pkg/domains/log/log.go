@@ -141,11 +141,14 @@ type Query struct {
 func (q *Query) Class() korrel8r.Class { return q.class }
 func (q *Query) String() string        { return korrel8r.QueryString(q) }
 func (q *Query) Data() string {
+	if q.logQL != "" {
+		return q.logQL
+	}
 	if q.direct != nil {
 		d, _ := json.Marshal(q.direct)
 		return string(d)
 	}
-	return q.logQL
+	return ""
 }
 
 func NewQuery(query string) (*Query, error) {
@@ -158,8 +161,7 @@ func NewQuery(query string) (*Query, error) {
 	var direct ContainerSelector
 	if err := impl.Unmarshal([]byte(selector), &direct); err == nil {
 		q.direct = &direct
-		// FIXME defer LogQL conversion to store, when we know the label sets in use.
-		q.logQL = q.direct.LogQL()
+		q.logQL = q.direct.ViaqLogQL()
 	} else { // Otherwise assume LogQL
 		q.logQL = selector
 	}

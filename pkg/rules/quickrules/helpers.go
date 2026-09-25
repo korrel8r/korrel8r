@@ -12,5 +12,6 @@ var (
 	ToJSON     = rules.ToJSON
 )
 
-func Require[T any](v T) T      { return rules.Require(v) }
-func Default[T any](dflt, v T) T { return rules.Default(dflt, v) }
+func Require[T any](v T) T         { return rules.Require(v) }
+func Default[T any](dflt, v T) T   { return rules.Default(dflt, v) }
+func Coalesce[T any](values ...T) T { return rules.Coalesce(values...) }
