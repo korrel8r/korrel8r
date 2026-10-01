@@ -32,6 +32,7 @@ Follow correlation paths from start objects to specific goal classes. Returns a 
 |-----------|------|----------|-------------|
 | `edges` | object[] |  | List of graph edges. |
 | `nodes` | object[] |  | List of graph nodes. |
+| `truncation` | object |  |  |
 
 ## create_neighbors_graph
 
@@ -50,6 +51,7 @@ Follow correlation rules outward from start objects up to a given depth. Returns
 |-----------|------|----------|-------------|
 | `edges` | object[] |  | List of graph edges. |
 | `nodes` | object[] |  | List of graph nodes. |
+| `truncation` | object |  |  |
 
 ## get_console
 

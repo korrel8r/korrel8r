@@ -7,14 +7,26 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [0.12.3] - 2026-10-01
+
+### Added
+- Traversal budgets to limit the total number of objects and queries.
+- Cancel searches under memory pressure.
+- Add `govulncheck` to `make all` and CI.
+
+### Performance
+- Improve traversal performance and memory use with a compact immutable topology
+  indexed by integer IDs.
+
 ### Changed
+- Kubernetes objects no longer include the unused `metadata.managedFields` field,
+  reducing memory use in correlation results and omitting it from CLI output and
+  REST responses with `?results=true`.
 - `korrel8r.Class` implementations must be comparable; the rule graph now indexes
   classes by value rather than by `String()`. Domains whose `Class` is a
   non-comparable type, or which return equal `String()` values for unequal
   classes, must be updated.
-- `k8s` domain objects no longer include `metadata.managedFields`. Korrel8r never reads
-  it and it is a large part of the memory held by a correlation result. The field is
-  absent from CLI object output and from REST responses with `?results=true`.
+- Remove the Prometheus Alertmanager dependency; update dependencies and docs.
 
 ## [0.12.2] - 2026-09-16
 
