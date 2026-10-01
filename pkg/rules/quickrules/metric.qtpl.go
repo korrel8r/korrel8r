@@ -39,8 +39,8 @@ func StreamMetricToPod(qw422016 *qt422016.Writer, o interface{}) {
 `)
 //line metric.qtpl:16
 	m := o.(metric.Object)
-	ns := Default(m.Labels["namespace"], m.Labels["k8s_namespace_name"])
-	name := Default(m.Labels["pod"], m.Labels["k8s_pod_name"])
+	ns := Coalesce(m.Labels["k8s_namespace_name"], m.Labels["namespace"])
+	name := Coalesce(m.Labels["k8s_pod_name"], m.Labels["pod"])
 	RequireAll(ns, name)
 
 //line metric.qtpl:20
@@ -101,8 +101,8 @@ func StreamMetricToDeployment(qw422016 *qt422016.Writer, o interface{}) {
 `)
 //line metric.qtpl:35
 	m := o.(metric.Object)
-	ns := Default(m.Labels["namespace"], m.Labels["k8s_namespace_name"])
-	name := Default(m.Labels["deployment"], m.Labels["k8s_deployment_name"])
+	ns := Coalesce(m.Labels["k8s_namespace_name"], m.Labels["namespace"])
+	name := Coalesce(m.Labels["k8s_deployment_name"], m.Labels["deployment"])
 	RequireAll(ns, name)
 
 //line metric.qtpl:39
@@ -163,8 +163,8 @@ func StreamMetricToDaemonSet(qw422016 *qt422016.Writer, o interface{}) {
 `)
 //line metric.qtpl:54
 	m := o.(metric.Object)
-	ns := Default(m.Labels["namespace"], m.Labels["k8s_namespace_name"])
-	name := Default(m.Labels["daemonset"], m.Labels["k8s_daemonset_name"])
+	ns := Coalesce(m.Labels["k8s_namespace_name"], m.Labels["namespace"])
+	name := Coalesce(m.Labels["k8s_daemonset_name"], m.Labels["daemonset"])
 	RequireAll(ns, name)
 
 //line metric.qtpl:58
@@ -225,8 +225,8 @@ func StreamMetricToStatefulSet(qw422016 *qt422016.Writer, o interface{}) {
 `)
 //line metric.qtpl:73
 	m := o.(metric.Object)
-	ns := Default(m.Labels["namespace"], m.Labels["k8s_namespace_name"])
-	name := Default(m.Labels["statefulset"], m.Labels["k8s_statefulset_name"])
+	ns := Coalesce(m.Labels["k8s_namespace_name"], m.Labels["namespace"])
+	name := Coalesce(m.Labels["k8s_statefulset_name"], m.Labels["statefulset"])
 	RequireAll(ns, name)
 
 //line metric.qtpl:77
@@ -287,7 +287,7 @@ func StreamMetricToNode(qw422016 *qt422016.Writer, o interface{}) {
 `)
 //line metric.qtpl:92
 	m := o.(metric.Object)
-	name := Default(m.Labels["node"], m.Labels["k8s_node_name"])
+	name := Coalesce(m.Labels["k8s_node_name"], m.Labels["node"])
 	RequireAll(name)
 
 //line metric.qtpl:95

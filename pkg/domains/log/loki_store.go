@@ -4,6 +4,7 @@ package log
 
 import (
 	"context"
+	"errors"
 	"maps"
 	"net/http"
 	"net/url"
@@ -25,13 +26,32 @@ func NewLokiStore(base *url.URL, h *http.Client) korrel8r.Store {
 	return &lokiStore{Client: loki.New(h, base), Store: impl.NewStore(Domain)}
 }
 
+// fetchFunc executes a LogQL query and appends results.
+type fetchFunc func(ctx context.Context, logQL string, constraint *korrel8r.Constraint, cb loki.CollectFunc) error
+
+// getWithQuery handles ContainerSelector expansion (Viaq + OTel) or plain LogQL dispatch.
+func getWithQuery(ctx context.Context, q *Query, constraint *korrel8r.Constraint, r korrel8r.Appender, fetch fetchFunc) error {
+	cb := func(l *loki.Log) { r.Append(newObject(l)) }
+	if q.direct != nil {
+		viaqErr := fetch(ctx, parseJSON(q.direct.ViaqLogQL()), constraint, cb)
+		if q.direct.Name != "" {
+			otelErr := fetch(ctx, parseJSON(q.direct.OTELLogQL()), constraint, cb)
+			if viaqErr != nil && otelErr != nil {
+				return errors.Join(viaqErr, otelErr)
+			}
+			return nil
+		}
+		return viaqErr
+	}
+	return fetch(ctx, parseJSON(q.logQL), constraint, cb)
+}
+
 func (s *lokiStore) Get(ctx context.Context, query korrel8r.Query, constraint *korrel8r.Constraint, r korrel8r.Appender) error {
-	// Type assertion errors are not store errors, treat as "not found".
 	q, ok := query.(*Query)
 	if !ok {
 		return nil
 	}
-	return s.Client.Get(ctx, parseJSON(q.logQL), constraint, func(l *loki.Log) { r.Append(newObject(l)) })
+	return getWithQuery(ctx, q, constraint, r, s.Client.Get)
 }
 
 type lokiStackStore struct{ *lokiStore }
@@ -42,12 +62,14 @@ func NewLokiStackStore(base *url.URL, h *http.Client) korrel8r.Store {
 }
 
 func (s *lokiStackStore) Get(ctx context.Context, query korrel8r.Query, constraint *korrel8r.Constraint, r korrel8r.Appender) error {
-	// Type assertion errors are not store errors, treat as "not found".
 	q, ok := query.(*Query)
 	if !ok {
 		return nil
 	}
-	return s.GetStack(ctx, parseJSON(q.logQL), string(q.class), constraint, func(l *loki.Log) { r.Append(newObject(l)) })
+	return getWithQuery(ctx, q, constraint, r,
+		func(ctx context.Context, logQL string, constraint *korrel8r.Constraint, cb loki.CollectFunc) error {
+			return s.GetStack(ctx, logQL, string(q.class), constraint, cb)
+		})
 }
 
 var jsonRE = regexp.MustCompile(`\|\s*json\b`)

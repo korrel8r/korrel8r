@@ -14,8 +14,8 @@ goal:
 {% func MetricToPod(o interface{}) %}
 {% code
 	m := o.(metric.Object)
-	ns := Default(m.Labels["namespace"], m.Labels["k8s_namespace_name"])
-	name := Default(m.Labels["pod"], m.Labels["k8s_pod_name"])
+	ns := Coalesce(m.Labels["k8s_namespace_name"], m.Labels["namespace"])
+	name := Coalesce(m.Labels["k8s_pod_name"], m.Labels["pod"])
 	RequireAll(ns, name)
 %}
 k8s:Pod:{"namespace":{%q= ns %},"name":{%q= name %}}
@@ -33,8 +33,8 @@ goal:
 {% func MetricToDeployment(o interface{}) %}
 {% code
 	m := o.(metric.Object)
-	ns := Default(m.Labels["namespace"], m.Labels["k8s_namespace_name"])
-	name := Default(m.Labels["deployment"], m.Labels["k8s_deployment_name"])
+	ns := Coalesce(m.Labels["k8s_namespace_name"], m.Labels["namespace"])
+	name := Coalesce(m.Labels["k8s_deployment_name"], m.Labels["deployment"])
 	RequireAll(ns, name)
 %}
 k8s:Deployment.apps:{"namespace":{%q= ns %},"name":{%q= name %}}
@@ -52,8 +52,8 @@ goal:
 {% func MetricToDaemonSet(o interface{}) %}
 {% code
 	m := o.(metric.Object)
-	ns := Default(m.Labels["namespace"], m.Labels["k8s_namespace_name"])
-	name := Default(m.Labels["daemonset"], m.Labels["k8s_daemonset_name"])
+	ns := Coalesce(m.Labels["k8s_namespace_name"], m.Labels["namespace"])
+	name := Coalesce(m.Labels["k8s_daemonset_name"], m.Labels["daemonset"])
 	RequireAll(ns, name)
 %}
 k8s:DaemonSet.apps:{"namespace":{%q= ns %},"name":{%q= name %}}
@@ -71,8 +71,8 @@ goal:
 {% func MetricToStatefulSet(o interface{}) %}
 {% code
 	m := o.(metric.Object)
-	ns := Default(m.Labels["namespace"], m.Labels["k8s_namespace_name"])
-	name := Default(m.Labels["statefulset"], m.Labels["k8s_statefulset_name"])
+	ns := Coalesce(m.Labels["k8s_namespace_name"], m.Labels["namespace"])
+	name := Coalesce(m.Labels["k8s_statefulset_name"], m.Labels["statefulset"])
 	RequireAll(ns, name)
 %}
 k8s:StatefulSet.apps:{"namespace":{%q= ns %},"name":{%q= name %}}
@@ -90,7 +90,7 @@ goal:
 {% func MetricToNode(o interface{}) %}
 {% code
 	m := o.(metric.Object)
-	name := Default(m.Labels["node"], m.Labels["k8s_node_name"])
+	name := Coalesce(m.Labels["k8s_node_name"], m.Labels["node"])
 	RequireAll(name)
 %}
 k8s:Node:{"name":{%q= name %}}

@@ -16,8 +16,23 @@ func TestAlertTo(t *testing.T) {
 			want:  []string{`k8s:Pod.v1:{"namespace":"foo","name":"bar"}`},
 		},
 		{
+			rule:  "AlertToPod",
+			start: &alert.Object{Labels: map[string]string{"kubernetes_namespace_name": "foo", "kubernetes_pod_name": "bar"}},
+			want:  []string{`k8s:Pod.v1:{"namespace":"foo","name":"bar"}`},
+		},
+		{
+			rule:  "AlertToPod",
+			start: &alert.Object{Labels: map[string]string{"k8s_namespace_name": "foo", "k8s_pod_name": "bar"}},
+			want:  []string{`k8s:Pod.v1:{"namespace":"foo","name":"bar"}`},
+		},
+		{
 			rule:  "AlertToDeployment",
 			start: &alert.Object{Labels: map[string]string{"namespace": "foo", "deployment": "bar"}},
+			want:  []string{`k8s:Deployment.v1.apps:{"namespace":"foo","name":"bar"}`},
+		},
+		{
+			rule:  "AlertToDeployment",
+			start: &alert.Object{Labels: map[string]string{"k8s_namespace_name": "foo", "k8s_deployment_name": "bar"}},
 			want:  []string{`k8s:Deployment.v1.apps:{"namespace":"foo","name":"bar"}`},
 		},
 		{
@@ -26,8 +41,18 @@ func TestAlertTo(t *testing.T) {
 			want:  []string{`k8s:DaemonSet.v1.apps:{"namespace":"foo","name":"bar"}`},
 		},
 		{
+			rule:  "AlertToDaemonSet",
+			start: &alert.Object{Labels: map[string]string{"k8s_namespace_name": "foo", "k8s_daemonset_name": "bar"}},
+			want:  []string{`k8s:DaemonSet.v1.apps:{"namespace":"foo","name":"bar"}`},
+		},
+		{
 			rule:  "AlertToStatefulSet",
 			start: &alert.Object{Labels: map[string]string{"namespace": "foo", "statefulset": "bar"}},
+			want:  []string{`k8s:StatefulSet.v1.apps:{"namespace":"foo","name":"bar"}`},
+		},
+		{
+			rule:  "AlertToStatefulSet",
+			start: &alert.Object{Labels: map[string]string{"k8s_namespace_name": "foo", "k8s_statefulset_name": "bar"}},
 			want:  []string{`k8s:StatefulSet.v1.apps:{"namespace":"foo","name":"bar"}`},
 		},
 		{

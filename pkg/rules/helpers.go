@@ -65,3 +65,14 @@ func Default[T any](dflt, v T) T {
 	}
 	return v
 }
+
+// Coalesce returns the first non-[Empty] value, or the zero value of T if all are empty.
+func Coalesce[T any](values ...T) T {
+	for _, v := range values {
+		if !Empty(v) {
+			return v
+		}
+	}
+	var zero T
+	return zero
+}
