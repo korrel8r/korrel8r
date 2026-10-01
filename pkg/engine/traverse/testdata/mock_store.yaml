@@ -80874,7 +80874,7 @@
   openshift_log_type: infrastructure
   openshift_sequence: "1768230119725659573"
   timestamp: "2026-01-12T15:01:52.502415381Z"
-"metric:metric:{namespace=\"openshift-apiserver\",deployment=\"apiserver\"}":
+"metric:metric:{deployment=\"apiserver\"}?namespace=openshift-apiserver":
 - __name__: kube_deployment_metadata_generation
   container: kube-rbac-proxy-main
   deployment: apiserver
@@ -81023,7 +81023,7 @@
   namespace: openshift-apiserver
   prometheus: openshift-monitoring/k8s
   service: kube-state-metrics
-"metric:metric:{namespace=\"tracing-app-k6\",pod=\"k6-tracing-564cf6dc8b-hpxd2\"}":
+"metric:metric:{pod=\"k6-tracing-564cf6dc8b-hpxd2\"}?namespace=tracing-app-k6":
 - __name__: container_blkio_device_usage_total
   device: /dev/vda
   endpoint: https-metrics

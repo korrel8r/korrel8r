@@ -135,7 +135,7 @@ goal:
 
 {% func VmToMetric(o interface{}) %}
 {% code _, _, ns, name, _ := k8sMetadata(o); RequireAll(ns, name) %}
-metric:metric:{namespace={%q= ns %},name={%q= name %}}
+metric:metric:{namespace={%q= ns %},name={%q= name %}}?namespace={%s= ns %}
 {% endfunc %}
 
 # VmiToMetric finds metrics related to a VirtualMachineInstance.
@@ -148,7 +148,7 @@ goal:
 
 {% func VmiToMetric(o interface{}) %}
 {% code _, _, ns, name, _ := k8sMetadata(o); RequireAll(ns, name) %}
-metric:metric:{namespace={%q= ns %},name={%q= name %}}
+metric:metric:{namespace={%q= ns %},name={%q= name %}}?namespace={%s= ns %}
 {% endfunc %}
 
 # VmiToLogs finds virt-launcher pod logs for a VirtualMachineInstance.

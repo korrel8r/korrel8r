@@ -15,7 +15,7 @@ func TestMetricRules(t *testing.T) {
 		{
 			rule:  "AllToMetric",
 			start: newK8s("Pod", "aNamespace", "foo", nil),
-			want:  []string{`metric:metric:{namespace="aNamespace",pod="foo"}`},
+			want:  []string{`metric:metric:{namespace="aNamespace",pod="foo"}?namespace=aNamespace`},
 		},
 
 		// Standard Prometheus labels

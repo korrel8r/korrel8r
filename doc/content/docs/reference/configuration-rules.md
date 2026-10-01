@@ -87,11 +87,14 @@ rules:
       domain: metric
     result:
       query: |-
-        metric:metric:{namespace="{{.metadata.namespace}}",{{lower .kind}}="{{.metadata.name}}"}
+        metric:metric:{namespace="{{.metadata.namespace}}",{{lower .kind}}="{{.metadata.name}}"}?namespace={{.metadata.namespace}}
 ```
 
 Since `start` has no `classes` field, this rule applies to _all_ classes in the `k8s` domain.
 The `lower` function converts the Kind (e.g. "Pod") to lowercase for the PromQL label name.
+The PromQL namespace selector filters matching series. The `?namespace=` suffix specifies
+which namespace to query and uses the namespace-scoped endpoint when configured
+(see the [metric domain reference](../domains/metric/)).
 
 ## Template Basics
 

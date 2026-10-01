@@ -120,12 +120,12 @@ func TestKubevirtRules(t *testing.T) {
 		{
 			rule:  "VmToMetric",
 			start: newK8s("VirtualMachine.kubevirt.io", "vm-ns", "my-vm", nil),
-			want:  []string{`metric:metric:{namespace="vm-ns",name="my-vm"}`},
+			want:  []string{`metric:metric:{namespace="vm-ns",name="my-vm"}?namespace=vm-ns`},
 		},
 		{
 			rule:  "VmiToMetric",
 			start: newK8s("VirtualMachineInstance.kubevirt.io", "vm-ns", "my-vmi", nil),
-			want:  []string{`metric:metric:{namespace="vm-ns",name="my-vmi"}`},
+			want:  []string{`metric:metric:{namespace="vm-ns",name="my-vmi"}?namespace=vm-ns`},
 		},
 		{
 			rule:  "VmiToLogs",
