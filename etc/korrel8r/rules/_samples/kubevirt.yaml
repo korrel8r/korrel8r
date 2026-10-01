@@ -216,7 +216,7 @@ rules:
       domain: metric
     result:
       query: |-
-        metric:metric:{namespace="{{.metadata.namespace}}",name="{{.metadata.name}}"}
+        metric:metric:{namespace="{{.metadata.namespace}}",name="{{.metadata.name}}"}?namespace={{.metadata.namespace}}
 
   - name: VmiToMetric
     start:
@@ -226,7 +226,7 @@ rules:
       domain: metric
     result:
       query: |-
-        metric:metric:{namespace="{{.metadata.namespace}}",name="{{.metadata.name}}"}
+        metric:metric:{namespace="{{.metadata.namespace}}",name="{{.metadata.name}}"}?namespace={{.metadata.namespace}}
 
   # ─── VMI → Logs (shortcut: finds virt-launcher pod logs for a VMI) ────────
 

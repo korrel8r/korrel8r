@@ -575,7 +575,11 @@ metric:metric:{namespace=`)
 //line kubevirt.qtpl:138
 	qw422016.N().Q(name)
 //line kubevirt.qtpl:138
-	qw422016.N().S(`}
+	qw422016.N().S(`}?namespace=`)
+//line kubevirt.qtpl:138
+	qw422016.N().S(ns)
+//line kubevirt.qtpl:138
+	qw422016.N().S(`
 `)
 //line kubevirt.qtpl:139
 }
@@ -634,7 +638,11 @@ metric:metric:{namespace=`)
 //line kubevirt.qtpl:151
 	qw422016.N().Q(name)
 //line kubevirt.qtpl:151
-	qw422016.N().S(`}
+	qw422016.N().S(`}?namespace=`)
+//line kubevirt.qtpl:151
+	qw422016.N().S(ns)
+//line kubevirt.qtpl:151
+	qw422016.N().S(`
 `)
 //line kubevirt.qtpl:152
 }
