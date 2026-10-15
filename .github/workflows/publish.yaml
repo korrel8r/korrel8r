@@ -15,7 +15,7 @@ jobs:
     outputs:
       should-deploy: ${{ steps.status.outputs.changes != '0' }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           # Get full history for reliable git operations
           fetch-depth: 0
@@ -32,12 +32,12 @@ jobs:
              echo changes=1 >> $GITHUB_OUTPUT
           fi
 
-      - uses: actions/setup-go@v7
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         if: steps.status.outputs.changes != '0'
         with:
           go-version: "1.26"
 
-      - uses: actions/cache@v6
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         if: steps.status.outputs.changes != '0'
         with:
           path: |
@@ -53,7 +53,7 @@ jobs:
 
       - name: Upload web site
         if: steps.status.outputs.changes != '0'
-        uses: actions/upload-pages-artifact@v5
+        uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
         with:
           path: doc/public
 
@@ -74,4 +74,4 @@ jobs:
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v5
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
