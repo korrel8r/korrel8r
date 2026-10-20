@@ -146,7 +146,7 @@ func (s Store) Get(ctx context.Context, query korrel8r.Query, c *korrel8r.Constr
 		return err
 	}
 
-	resp, _, err := s.prometheusAPI.Query(ctx, promq, t)
+	resp, _, _, err := s.prometheusAPI.Query(ctx, promq, t)
 	if err != nil {
 		return fmt.Errorf("failed to query incidents from Prometheus API: %w", err)
 	}
