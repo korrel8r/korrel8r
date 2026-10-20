@@ -1,9 +1,9 @@
 name: Build
 
 on:
-  push:
-    branches: ["main", "release-coo-*"]
+  # Run workflow on all pull requests.
   pull_request:
+  push:
     branches: ["main", "release-coo-*"]
   workflow_dispatch: # Allow manual triggers
 
