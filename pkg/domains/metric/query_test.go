@@ -16,10 +16,19 @@ func TestQuery_Selectors(t *testing.T) {
 		query Query
 		want  []string
 	}{
+		{`up`, []string{`up`}},
 		{`{namespace="foo"}`, []string{`{namespace="foo"}`}},
 		{`blah{namespace="foo"}`, []string{`blah{namespace="foo"}`}},
-		{`{__name__="fred",namespace="foo"}`, []string{`{__name__="fred",namespace="foo"}`}},
+		// MetricsQL canonicalizes __name__ equality as a metric name.
+		{`{__name__="fred",namespace="foo"}`, []string{`fred{namespace="foo"}`}},
+		// Prometheus match[] requires non-identifier metric names to remain label matchers.
+		{`{__name__="foo-bar"}`, []string{`{__name__="foo-bar"}`}},
+		{`{__name__="foo.bar",namespace="foo"}`, []string{`{__name__="foo.bar",namespace="foo"}`}},
+		{`{__name__="0foo",job="api"}`, []string{`{__name__="0foo",job="api"}`}},
+		{`{__name__="foo bar"}`, []string{`{__name__="foo bar"}`}},
 		{`count(fred{namespace="foo"}) + count(barney{name="bar"})`, []string{`fred{namespace="foo"}`, `barney{name="bar"}`}},
+		{`foo{job="api"} or foo{job="web"}`, []string{`foo{job="api"}`, `foo{job="web"}`}},
+		{`rate(http_requests_total{job=~"api|web"}[5m])`, []string{`http_requests_total{job=~"api|web"}`}},
 		{`sum by(namespace, app) (rate(received_bytes_total{component_kind="source", component_type!="internal_metrics"}[5m]))`,
 			[]string{"received_bytes_total{component_kind=\"source\",component_type!=\"internal_metrics\"}"}},
 
@@ -33,6 +42,23 @@ func TestQuery_Selectors(t *testing.T) {
 			if assert.NoError(t, err) {
 				assert.Equal(t, x.want, got)
 			}
+		})
+	}
+}
+
+func TestQuery_RejectMetricsQLSelector(t *testing.T) {
+	// MetricsQL accepts OR inside a selector, but Prometheus /api/v1/series
+	// accepts only PromQL selectors in match[]. A top-level OR is valid PromQL.
+	for _, q := range []Query{
+		`foo{job="api" or job="web"}`,
+		`sum(foo{job="api" or job="web"})?namespace=ns`,
+	} {
+		t.Run(q.Data(), func(t *testing.T) {
+			_, err := q.Selectors()
+			require.ErrorContains(t, err, "OR-separated label filters")
+			assert.NotErrorIs(t, err, errSuffix)
+			_, err = Domain.Query(q.String()) // Expression errors are deferred.
+			require.NoError(t, err)
 		})
 	}
 }
