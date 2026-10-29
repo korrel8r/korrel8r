@@ -8,9 +8,9 @@ import (
 	"net/url"
 	"regexp"
 
+	"github.com/VictoriaMetrics/metricsql"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r/impl"
-	"github.com/prometheus/prometheus/promql/parser"
 )
 
 // Query is a [PromQL] expression with optional trailing namespace parameters.
@@ -53,11 +53,12 @@ func (q Query) Selectors() ([]string, error) {
 		return nil, err
 	}
 	var selectors []string
-	parser.Inspect(e, func(node parser.Node, path []parser.Node) error {
-		if vs, ok := node.(*parser.VectorSelector); ok {
-			selectors = append(selectors, vs.String())
+	// MetricExpr represents a vector selector; AppendString serializes it for match[].
+	// This may canonicalize equivalent forms (e.g. __name__="up" becomes up).
+	metricsql.VisitAll(e, func(node metricsql.Expr) {
+		if vs, ok := node.(*metricsql.MetricExpr); ok {
+			selectors = append(selectors, promSelector(vs))
 		}
-		return nil
 	})
 	return selectors, nil
 }
@@ -70,6 +71,7 @@ var errSuffix = errors.New("invalid metric query suffix")
 const namespaceParam = "namespace"
 
 var namespaceRE = regexp.MustCompile(`\A[a-zA-Z0-9.-]+\z`) // decoded non-empty namespace value
+var promMetricNameRE = regexp.MustCompile(`\A[a-zA-Z_:][a-zA-Z0-9_:]*\z`)
 
 // splitQuery first gives the complete string to PromQL, so question marks inside
 // strings and comments remain part of the expression. If it is not valid PromQL,
@@ -115,6 +117,45 @@ func validateParams(params url.Values) error {
 	return nil
 }
 
-func parseExpr(s string) (parser.Expr, error) {
-	return parser.NewParser(parser.Options{}).ParseExpr(s)
+// promSelector avoids MetricsQL's escaped identifier syntax in Prometheus match[].
+// Prometheus accepts arbitrary metric names as __name__ label values, but not as
+// bare metric identifiers (e.g. MetricsQL escapes the hyphen in foo-bar).
+func promSelector(vs *metricsql.MetricExpr) string {
+	if len(vs.LabelFilterss) == 1 && len(vs.LabelFilterss[0]) > 0 {
+		filters := vs.LabelFilterss[0]
+		name := filters[0]
+		if name.Label == "__name__" && !name.IsNegative && !name.IsRegexp &&
+			name.Value != "" && !promMetricNameRE.MatchString(name.Value) {
+			b := []byte{'{'}
+			for i := range filters {
+				if i > 0 {
+					b = append(b, ',')
+				}
+				b = filters[i].AppendString(b)
+			}
+			return string(append(b, '}'))
+		}
+	}
+	return string(vs.AppendString(nil))
+}
+
+func parseExpr(s string) (metricsql.Expr, error) {
+	// Use MetricsQL instead of the Prometheus server parser to avoid pulling its
+	// large dependency graph into this module. We only extract selectors, not
+	// evaluate the expression. MetricsQL also accepts OR-separated label filter
+	// groups, which Prometheus cannot use as match[].
+	e, err := metricsql.Parse(s)
+	if err != nil {
+		return nil, err
+	}
+	var unsupported error
+	metricsql.VisitAll(e, func(node metricsql.Expr) {
+		if vs, ok := node.(*metricsql.MetricExpr); ok && len(vs.LabelFilterss) > 1 {
+			unsupported = fmt.Errorf("PromQL does not support OR-separated label filters in %s", vs.AppendString(nil))
+		}
+	})
+	if unsupported != nil {
+		return nil, unsupported
+	}
+	return e, nil
 }
