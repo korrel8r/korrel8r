@@ -2,7 +2,8 @@ module github.com/korrel8r/korrel8r
 
 // Note: The Go version here should match the one in the following files:
 // - Containerfile
-// - doc.go.mod
+// - tools/go.mod
+// - doc/go.mod
 // - .github/workflows/build.yaml
 // - .github/workflows/publish.yaml
 go 1.26.0
