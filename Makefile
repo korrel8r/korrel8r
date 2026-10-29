@@ -109,6 +109,7 @@ test: lint							 ## Run all tests, requires cluster. Set NO_CLUSTER=1 to skip c
 
 .PHONY: vuln
 vuln: $(BIN) ## Check Go dependencies for known vulnerabilities.
+	go version
 	govulncheck $(VULN_FLAGS) ./...
 
 test-clean: ## Remove test namespaces from the cluster
