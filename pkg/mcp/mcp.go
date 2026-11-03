@@ -6,6 +6,7 @@ package mcp
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"reflect"
 	"time"
@@ -78,12 +79,8 @@ const (
 
 type Server struct {
 	*mcp.Server
-	client *Client
-	log    logr.Logger
-	tools  []*mcp.Tool
+	log logr.Logger
 }
-
-func (s *Server) AllTools() []*mcp.Tool { return s.tools }
 
 // NewServer creates a new MCP server that proxies to a korrel8r REST API via the given client.
 func NewServer(client *Client, version string, log logr.Logger) *Server {
@@ -93,135 +90,201 @@ func NewServer(client *Client, version string, log logr.Logger) *Server {
 			&mcp.ServerOptions{
 				Instructions: Instructions,
 			}),
-		client: client,
-		log:    log,
+		log: log,
 	}
-	s.tools = AddTools(s.Server, s.client)
+	for _, r := range Registrations(client) {
+		s.AddTool(r.Tool, r.Handler)
+	}
 	s.AddReceivingMiddleware(s.logger)
 	return s
 }
 
-func addTool[In, Out any](tools *[]*mcp.Tool, server *mcp.Server, t *mcp.Tool, h mcp.ToolHandlerFor[In, Out]) {
-	if t.InputSchema == nil {
-		if s, err := jsonschema.ForType(reflect.TypeFor[In](), nil); err == nil {
-			t.InputSchema = s
-		}
+// schemaFor returns the JSON schema for type T, treating a pointer like its element type.
+func schemaFor[T any]() *jsonschema.Schema {
+	t := reflect.TypeFor[T]()
+	if t.Kind() == reflect.Pointer {
+		t = t.Elem()
 	}
-	*tools = append(*tools, t)
-	if server != nil {
-		mcp.AddTool(server, t, h)
+	s, err := jsonschema.ForType(t, nil)
+	if err != nil {
+		panic(err) // Tool types are fixed at compile time, a failure here is a bug.
 	}
+	return s
 }
 
-// AddTools adds korrel8r tools to server using client, and returns the list of tools added.
-// If server is nil, returns the tool list without registering them.
-func AddTools(server *mcp.Server, client *Client) []*mcp.Tool {
-	var tools []*mcp.Tool
-
-	addTool(&tools, server, &mcp.Tool{
-		Name:        ListDomains,
-		Description: `List available domains with descriptions. A domain groups signals or resources that share a query syntax and data store. Use 'list_domain_classes' or 'help' to explore a domain further.`,
-	},
-		func(ctx context.Context, req *mcp.CallToolRequest, input struct{}) (_ *mcp.CallToolResult, out ListDomainsResult, err error) {
-			domains, err := client.ListDomains(ctx)
+// newTool returns a registration for tool t, implemented by f.
+// Schemas are derived from the In and Out types, arguments are validated against the input schema.
+// An Out type of 'any' means the tool has no output schema or structured content.
+func newTool[In, Out any](t *mcp.Tool, f func(context.Context, In) (Out, error)) Registration {
+	if t.Annotations == nil {
+		t.Annotations = &mcp.ToolAnnotations{ReadOnlyHint: true}
+	}
+	inputSchema := schemaFor[In]()
+	t.InputSchema = inputSchema
+	resolved, err := inputSchema.Resolve(nil)
+	if err != nil {
+		panic(err) // Schemas come from Go types, a failure here is a bug.
+	}
+	structured := reflect.TypeFor[Out]() != reflect.TypeFor[any]()
+	var outputSchema *jsonschema.Resolved
+	if structured {
+		schema := schemaFor[Out]()
+		t.OutputSchema = schema
+		outputSchema, err = schema.Resolve(nil)
+		if err != nil {
+			panic(err) // Schemas come from Go types, a failure here is a bug.
+		}
+	}
+	handler := func(ctx context.Context, req *mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		raw := req.Params.Arguments
+		if len(raw) == 0 {
+			raw = json.RawMessage(`{}`) // Absent arguments are an empty object.
+		}
+		args := map[string]any{}
+		if err := json.Unmarshal(raw, &args); err != nil {
+			return toolError(err), nil
+		}
+		if err := resolved.Validate(args); err != nil {
+			return toolError(fmt.Errorf("invalid arguments: %w", err)), nil
+		}
+		var input In
+		if err := json.Unmarshal(raw, &input); err != nil {
+			return toolError(err), nil
+		}
+		out, err := f(ctx, input)
+		if err != nil {
+			return toolError(err), nil
+		}
+		result := &mcp.CallToolResult{Content: []mcp.Content{}} // Empty, not nil, as on the wire.
+		if structured {
+			b, err := json.Marshal(out)
 			if err != nil {
-				return nil, ListDomainsResult{}, err
+				return nil, fmt.Errorf("marshal %v result: %w", t.Name, err)
 			}
-			return nil, ListDomainsResult{Domains: domains}, nil
-		})
+			var value any
+			if err := json.Unmarshal(b, &value); err != nil {
+				return nil, fmt.Errorf("decode %v result: %w", t.Name, err)
+			}
+			if err := outputSchema.Validate(value); err != nil {
+				return nil, fmt.Errorf("invalid %v result: %w", t.Name, err)
+			}
+			result.StructuredContent = out
+			result.Content = []mcp.Content{&mcp.TextContent{Text: string(b)}}
+		}
+		return result, nil
+	}
+	return Registration{Tool: t, Handler: handler}
+}
 
-	addTool(&tools, server, &mcp.Tool{
-		Name:        ListDomainClasses,
-		Description: `List classes in a domain. A class represents objects with a specific structure. Full class names have the form "domain:class" and are used in queries and as goal parameters. Use 'help' for details on class and query syntax.`,
-	},
-		func(ctx context.Context, req *mcp.CallToolRequest, input DomainParams) (*mcp.CallToolResult, *ListDomainClassesResult, error) {
-			classes, err := client.ListDomainClasses(ctx, input.Domain)
-			if err != nil {
-				return nil, nil, err
-			}
-			return nil, &ListDomainClassesResult{Domain: input.Domain, Classes: classes}, nil
-		})
+func toolError(err error) *mcp.CallToolResult {
+	result := &mcp.CallToolResult{}
+	result.SetError(err)
+	return result
+}
 
-	addTool(&tools, server, &mcp.Tool{
-		Name:        Help,
-		Description: `Get help on domains, classes, and query syntax. Omit the domain parameter for help on all domains. Class names have the form "domain:class". Query strings have the form "domain:class:selector". Use this before constructing queries for other tools.`,
-	},
-		func(ctx context.Context, req *mcp.CallToolRequest, input HelpParams) (*mcp.CallToolResult, *HelpResult, error) {
-			doc, err := client.Help(ctx, input.Domain)
-			if err != nil {
-				return nil, nil, err
-			}
-			return nil, &HelpResult{Documentation: doc}, nil
-		})
+// Registration pairs a tool definition with its callable handler.
+// Construct registrations with the client for the current caller.
+type Registration struct {
+	Tool    *mcp.Tool
+	Handler mcp.ToolHandler
+}
 
-	addTool(&tools, server, &mcp.Tool{
-		Name:        CreateNeighborsGraph,
-		Description: `Follow correlation rules outward from start objects up to a given depth. Returns a graph of correlated classes with queries and result counts. Use for open-ended exploration like "what is related to this pod?" Depth 1 = direct correlations; depth 2-3 typically reaches logs, metrics, and alerts. Start queries use "domain:class:selector" format; see 'help' for syntax.`,
-	},
-		func(ctx context.Context, req *mcp.CallToolRequest, input NeighborParams) (*mcp.CallToolResult, *api.Graph, error) {
-			g, err := client.GraphNeighbors(ctx, input)
-			if err != nil {
-				return nil, nil, err
-			}
-			return nil, g, nil
-		})
-
-	addTool(&tools, server, &mcp.Tool{
-		Name:        CreateGoalsGraph,
-		Description: `Follow correlation paths from start objects to specific goal classes. Returns a graph of correlated classes with queries and result counts. Use for targeted queries like "find logs for this pod" or "what alerts fired for this deployment?" Start queries use "domain:class:selector" format; goals are class names like ["log:application"]. See 'help' for syntax.`,
-	},
-		func(ctx context.Context, req *mcp.CallToolRequest, input GoalParams) (*mcp.CallToolResult, *api.Graph, error) {
-			g, err := client.GraphGoals(ctx, input)
-			if err != nil {
-				return nil, nil, err
-			}
-			return nil, g, nil
-		})
-
-	addTool(&tools, server, &mcp.Tool{
-		Name:        GetObjects,
-		Description: `Execute a query and return matching objects as self-contained JSON (all labels/fields included per object). Query format is "domain:class:selector"; see 'help' for syntax. Use the constraint parameter (limit number of objects, start/end time as RFC 3339) to control result size, especially for high-volume domains like logs, metrics, and traces.`,
-	},
-		func(ctx context.Context, req *mcp.CallToolRequest, input ObjectsParams) (*mcp.CallToolResult, *ObjectsResult, error) {
-			raw, err := client.GetObjects(ctx, input.Query, input.Constraint)
-			if err != nil {
-				return nil, nil, err
-			}
-			objects := make([]any, len(raw))
-			for i, r := range raw {
-				var v any
-				if err := json.Unmarshal(r, &v); err != nil {
-					return nil, nil, err
+// Registrations returns the Korrel8r tool definitions, each with a handler bound to client.
+// A nil client can be used to inspect tool metadata, but the handlers cannot be called.
+// The client carries the caller's identity, do not share registrations between callers.
+func Registrations(client *Client) []Registration {
+	return []Registration{
+		newTool(&mcp.Tool{
+			Name:        ListDomains,
+			Description: `List available domains with descriptions. A domain groups signals or resources that share a query syntax and data store. Use 'list_domain_classes' or 'help' to explore a domain further.`,
+		},
+			func(ctx context.Context, _ struct{}) (ListDomainsResult, error) {
+				domains, err := client.ListDomains(ctx)
+				if domains == nil {
+					domains = []api.Domain{}
 				}
-				objects[i] = v
-			}
-			return nil, &ObjectsResult{Objects: objects}, nil
-		})
+				return ListDomainsResult{Domains: domains}, err
+			}),
 
-	addTool(&tools, server, &mcp.Tool{
-		Name:        GetConsole,
-		Description: `Get what the user is looking at in the console. Returns a view query (main console view) and/or search parameters (troubleshooting panel), either may be absent. Use these as context for further actions.`,
-	},
-		func(ctx context.Context, req *mcp.CallToolRequest, input struct{}) (*mcp.CallToolResult, *api.Console, error) {
-			console, err := client.GetConsole(ctx)
-			if err != nil {
-				return nil, nil, err
-			}
-			return nil, console, nil
-		})
+		newTool(&mcp.Tool{
+			Name:        ListDomainClasses,
+			Description: `List classes in a domain. A class represents objects with a specific structure. Full class names have the form "domain:class" and are used in queries and as goal parameters. Use 'help' for details on class and query syntax.`,
+		},
+			func(ctx context.Context, input DomainParams) (*ListDomainClassesResult, error) {
+				classes, err := client.ListDomainClasses(ctx, input.Domain)
+				if err != nil {
+					return nil, err
+				}
+				if classes == nil {
+					classes = []string{}
+				}
+				return &ListDomainClassesResult{Domain: input.Domain, Classes: classes}, nil
+			}),
 
-	addTool(&tools, server, &mcp.Tool{
-		Name:        ShowInConsole,
-		Description: `Update the console to display new data. Set 'view' to a query to update the main view, and/or set 'search' to display a correlation graph in the troubleshooting panel. See 'help' for query syntax.`,
-	},
-		func(ctx context.Context, req *mcp.CallToolRequest, update ShowInConsoleParams) (*mcp.CallToolResult, any, error) {
-			if err := client.ShowInConsole(ctx, &update); err != nil {
-				return nil, nil, err
-			}
-			return nil, nil, nil
-		})
+		newTool(&mcp.Tool{
+			Name:        Help,
+			Description: `Get help on domains, classes, and query syntax. Omit the domain parameter for help on all domains. Class names have the form "domain:class". Query strings have the form "domain:class:selector". Use this before constructing queries for other tools.`,
+		},
+			func(ctx context.Context, input HelpParams) (*HelpResult, error) {
+				doc, err := client.Help(ctx, input.Domain)
+				if err != nil {
+					return nil, err
+				}
+				return &HelpResult{Documentation: doc}, nil
+			}),
 
-	return tools
+		newTool(&mcp.Tool{
+			Name:        CreateNeighborsGraph,
+			Description: `Follow correlation rules outward from start objects up to a given depth. Returns a graph of correlated classes with queries and result counts. Use for open-ended exploration like "what is related to this pod?" Depth 1 = direct correlations; depth 2-3 typically reaches logs, metrics, and alerts. Start queries use "domain:class:selector" format; see 'help' for syntax.`,
+		},
+			func(ctx context.Context, input NeighborParams) (*api.Graph, error) {
+				return client.GraphNeighbors(ctx, input)
+			}),
+
+		newTool(&mcp.Tool{
+			Name:        CreateGoalsGraph,
+			Description: `Follow correlation paths from start objects to specific goal classes. Returns a graph of correlated classes with queries and result counts. Use for targeted queries like "find logs for this pod" or "what alerts fired for this deployment?" Start queries use "domain:class:selector" format; goals are class names like ["log:application"]. See 'help' for syntax.`,
+		},
+			func(ctx context.Context, input GoalParams) (*api.Graph, error) {
+				return client.GraphGoals(ctx, input)
+			}),
+
+		newTool(&mcp.Tool{
+			Name:        GetObjects,
+			Description: `Execute a query and return matching objects as self-contained JSON (all labels/fields included per object). Query format is "domain:class:selector"; see 'help' for syntax. Use the constraint parameter (limit number of objects, start/end time as RFC 3339) to control result size, especially for high-volume domains like logs, metrics, and traces.`,
+		},
+			func(ctx context.Context, input ObjectsParams) (*ObjectsResult, error) {
+				raw, err := client.GetObjects(ctx, input.Query, input.Constraint)
+				if err != nil {
+					return nil, err
+				}
+				objects := make([]any, len(raw))
+				for i, r := range raw {
+					if err := json.Unmarshal(r, &objects[i]); err != nil {
+						return nil, err
+					}
+				}
+				return &ObjectsResult{Objects: objects}, nil
+			}),
+
+		newTool(&mcp.Tool{
+			Name:        GetConsole,
+			Description: `Get what the user is looking at in the console. Returns a view query (main console view) and/or search parameters (troubleshooting panel), either may be absent. Use these as context for further actions.`,
+		},
+			func(ctx context.Context, _ struct{}) (*api.Console, error) {
+				return client.GetConsole(ctx)
+			}),
+
+		newTool(&mcp.Tool{
+			Name: ShowInConsole,
+			// Unlike the other tools, this one changes the state of the user's console.
+			Annotations: &mcp.ToolAnnotations{DestructiveHint: func() *bool { v := true; return &v }()},
+			Description: `Update the console to display new data. Set 'view' to a query to update the main view, and/or set 'search' to display a correlation graph in the troubleshooting panel. See 'help' for query syntax.`,
+		},
+			func(ctx context.Context, update ShowInConsoleParams) (any, error) {
+				return nil, client.ShowInConsole(ctx, &update)
+			}),
+	}
 }
 
 // ServeStdio runs an MCP server, it returns when the client disconnects or the context is canceled.

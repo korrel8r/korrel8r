@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- `mcp.Registrations` returns MCP tool definitions with callable handlers, so other
+  MCP servers can host the korrel8r tools without re-implementing them.
+- `mcp.Client.MaxResponseBytes` limits the size of a REST response.
+- MCP tool annotations: all tools are read-only except `show_in_console`.
+
+### Changed
+- Replaced `mcp.AddTools` and `mcp.Server.AllTools` with `mcp.Registrations`.
+
 ## [0.12.3] - 2026-10-01
 
 ### Added
