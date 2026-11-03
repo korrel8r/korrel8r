@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/korrel8r/korrel8r/pkg/api/auth"
+	"github.com/korrel8r/korrel8r/pkg/unique"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	authv1 "k8s.io/api/authorization/v1"
@@ -62,22 +63,22 @@ func TestReplacePort(t *testing.T) {
 func TestAddNamespaceParams(t *testing.T) {
 	tests := []struct {
 		name       string
-		namespaces map[string]bool
+		namespaces unique.Set[string]
 		expected   []string
 	}{
 		{
 			name:       "single namespace",
-			namespaces: map[string]bool{"default": true},
+			namespaces: unique.NewSet("default"),
 			expected:   []string{"default"},
 		},
 		{
 			name:       "multiple namespaces",
-			namespaces: map[string]bool{"ns1": true, "ns2": true, "ns3": true},
+			namespaces: unique.NewSet("ns1", "ns2", "ns3"),
 			expected:   []string{"ns1", "ns2", "ns3"},
 		},
 		{
 			name:       "empty namespaces",
-			namespaces: map[string]bool{},
+			namespaces: unique.Set[string]{},
 			expected:   []string{},
 		},
 	}
