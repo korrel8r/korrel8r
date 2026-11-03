@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -16,13 +17,24 @@ import (
 	"github.com/korrel8r/korrel8r/pkg/api/auth"
 )
 
+// DefaultMaxResponseBytes is the default value of [Client.MaxResponseBytes].
+const DefaultMaxResponseBytes int64 = 8 << 20
+
+// ErrResponseTooLarge is returned if a response exceeds [Client.MaxResponseBytes].
+var ErrResponseTooLarge = errors.New("korrel8r REST response too large")
+
 // Client is an HTTP client for the korrel8r REST API.
 type Client struct {
+	// MaxResponseBytes limits the size of a response, 0 means [DefaultMaxResponseBytes].
+	MaxResponseBytes int64
+
 	baseURL    string
 	httpClient *http.Client
 }
 
 // NewClient creates a REST client that calls the korrel8r API at baseURL.
+// Supply a per-caller HTTP client/transport to forward the caller's identity.
+// Console endpoints use the REST server's session for that identity.
 func NewClient(baseURL string, httpClient *http.Client) *Client {
 	if httpClient == nil {
 		httpClient = http.DefaultClient
@@ -116,6 +128,8 @@ func (c *Client) GetObjects(ctx context.Context, query string, constraint *api.C
 	return objects, nil
 }
 
+// GetConsole returns the state of the console connected to the caller's session.
+// It is an error if no console is connected for the caller's identity.
 func (c *Client) GetConsole(ctx context.Context) (*api.Console, error) {
 	var console api.Console
 	if err := c.get(ctx, "/console", &console); err != nil {
@@ -124,6 +138,8 @@ func (c *Client) GetConsole(ctx context.Context) (*api.Console, error) {
 	return &console, nil
 }
 
+// ShowInConsole updates the console connected to the caller's session.
+// It is an error if no console is connected for the caller's identity.
 func (c *Client) ShowInConsole(ctx context.Context, update *api.Console) error {
 	return c.put(ctx, "/console/events", update, nil)
 }
@@ -163,9 +179,16 @@ func (c *Client) do(req *http.Request, result any) error {
 		return err
 	}
 	defer func() { _ = resp.Body.Close() }()
-	body, err := io.ReadAll(resp.Body)
+	limit := c.MaxResponseBytes
+	if limit <= 0 {
+		limit = DefaultMaxResponseBytes
+	}
+	body, err := io.ReadAll(io.LimitReader(resp.Body, limit+1))
 	if err != nil {
 		return err
+	}
+	if int64(len(body)) > limit {
+		return fmt.Errorf("%w: %v %v: limit %v bytes", ErrResponseTooLarge, req.Method, req.URL.Path, limit)
 	}
 	if resp.StatusCode >= 400 {
 		return fmt.Errorf("korrel8r: %s %s: %s: %s", req.Method, req.URL.Path, resp.Status, body)
