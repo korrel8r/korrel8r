@@ -5,13 +5,13 @@ module github.com/korrel8r/korrel8r
 // - doc.go.mod
 // - .github/workflows/build.yaml
 // - .github/workflows/publish.yaml
-go 1.26.0
+go 1.26.10
 
 require (
 	github.com/Masterminds/sprig/v3 v3.3.0
 	github.com/bytedance/sonic v1.15.5
 	github.com/getkin/kin-openapi v0.152.0
-	github.com/gin-contrib/pprof v1.5.6
+	github.com/gin-contrib/pprof v1.5.7
 	github.com/gin-gonic/gin v1.12.0
 	github.com/go-logr/logr v1.4.4
 	github.com/go-logr/stdr v1.2.2
