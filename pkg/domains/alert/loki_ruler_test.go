@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"testing"
 
+	"github.com/korrel8r/korrel8r/pkg/unique"
 	v1 "github.com/prometheus/client_golang/api/prometheus/v1"
 	"github.com/prometheus/common/model"
 	"github.com/stretchr/testify/assert"
@@ -107,7 +108,7 @@ func TestGetLokiRulesForTenant_WithNamespaceFilter(t *testing.T) {
 		httpClient:   server.Client(),
 	}
 
-	namespaces := map[string]bool{"test-ns-1": true, "test-ns-2": true}
+	namespaces := unique.NewSet("test-ns-1", "test-ns-2")
 	_, err := store.getLokiRulesForTenant(context.Background(), "application", namespaces)
 	require.NoError(t, err)
 }
@@ -254,12 +255,12 @@ func TestGetLokiRules(t *testing.T) {
 	// Verify results were merged (should have 2 groups: app-alerts and infra-alerts)
 	assert.Len(t, result.Groups, 2)
 
-	groupNames := make(map[string]bool)
+	groupNames := unique.Set[string]{}
 	for _, group := range result.Groups {
-		groupNames[group.Name] = true
+		groupNames.Add(group.Name)
 	}
-	assert.True(t, groupNames["app-alerts"])
-	assert.True(t, groupNames["infra-alerts"])
+	assert.True(t, groupNames.Has("app-alerts"))
+	assert.True(t, groupNames.Has("infra-alerts"))
 }
 
 // TestGetLokiRules_NoURL tests handling when Loki Ruler URL is not configured

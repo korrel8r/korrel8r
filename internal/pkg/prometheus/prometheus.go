@@ -10,6 +10,7 @@ import (
 
 	"github.com/korrel8r/korrel8r/internal/pkg/cache"
 	"github.com/korrel8r/korrel8r/pkg/api/auth"
+	"github.com/korrel8r/korrel8r/pkg/unique"
 	authv1 "k8s.io/api/authorization/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -31,7 +32,7 @@ func ReplacePort(host, newPort string) string {
 
 // AddNamespaceParams adds namespace query parameters to the provided url.Values.
 // This is required by prom-label-proxy on ports 9092 and 9093 for namespace scoping.
-func AddNamespaceParams(params url.Values, namespaces map[string]bool) {
+func AddNamespaceParams(params url.Values, namespaces unique.Set[string]) {
 	for ns := range namespaces {
 		params.Add("namespace", ns)
 	}
