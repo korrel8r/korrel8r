@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [0.13.0] - 2026-11-04
+
 ### Added
 - Metric queries support `?namespace=NS` suffixes for namespace-scoped
   Prometheus access; multiple namespaces are supported.
