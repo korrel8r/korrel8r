@@ -1,53 +1,64 @@
 # Releasing a New Version
 
-Steps to release a new version X.Y.Z, for maintainers.
+Release version `X.Y.Z` from `main`, or a patch from a `vX.Y` branch.
+The root module, `pkg/api`, and `pkg/mcp` modules share the same version and commit.
 
-- latest version, use branch `main`
-- update for an old version use branch `vX.Y`
+## Prepare
 
-## Update CHANGELOG
+1. On branch `main` or `vX.Y`, update the `Unreleased` section of `CHANGELOG.md`.
+   Commit and push, you must have a clean tree to run the next step.
 
-Update CHANGELOG.md to reflect changes since last release, add the new release header.
-Follow [these guidelines](http://keepachangelog.com).
-You can list git changes with:
+2. With test cluster and image registry access, unset any local `REGISTRY_BASE`
+   setting so the release uses the default `quay.io/korrel8r`:
 
-    git log --oneline $(git describe --abbrev=0).. --reverse
+   ```sh
+   unset REGISTRY_BASE
+   VERSION=X.Y.Z make pre-release
+   ```
 
-## Prepare for Release
+   - Sets the Makefile and module versions to `X.Y.Z` and dates the changelog.
+   - Tidies modules, regenerates sources, and runs the full tests.
+   - Builds the image, updates manifests
+   - Creates a release commit `Release X.Y.Z`, but does not push it.
 
-Edit Makefile and set `VERSION?=X.Y.Z` for the new release.
-Make sure you are logged in to `quay.io/korrel8r` to push images.
+   **Note:**
+   - If this fails, review and clear any partial changes before rerunning; the script requires a clean tree.
+   - Do not use `NO_CLUSTER=1` a release must pass all tests.
 
-    make clean; make pre-release REGISTRY_BASE=quay.io/korrel8r
+3. Review the release commit; it should contain only release-related changes:
 
-Use `git status` to verify that all changes are related to the version number change.
+## Publish tags and images
 
-## Release Latest Version
+In a clean tree, after a successful `make pre-release`, run:
 
-Updating the latest version to `X.Y.Z` is done on main to avoid needless branching.
+```sh
+unset REGISTRY_BASE; make push-release
+```
 
-1. Commit and push your changes to `main` with commit message `Release X.Y.Z`
-2. `make release REGISTRY_BASE=quay.io/korrel8r`
+This requires a `Release X.Y.Z` commit at HEAD and matching module versions and
+`CHANGELOG` entry. `hack/push-release.sh` pushes the commit if needed, publishes
+versioned and `latest` images, then atomically pushes three tags:
 
-`make release` does the following:
+- `vX.Y.Z` (root module)
+- `pkg/api/vX.Y.Z`
+- `pkg/mcp/vX.Y.Z`
 
-- `make clean` and re-build, verify nothing changes, working tree is clean.
-- Create and push git tag: `vX.Y.Z`
-- Update the `latest` image tag to point to the new images.
+Go ignores local `replace` directives in published modules, so required module
+versions must match the tags.
 
-## Prepare for Next Development Version
+## Post-release
 
-After releasing, bump `main` to the next development version so builds are clearly marked as pre-release:
+On `main` or `vX.Y`, run:
 
-1. Edit Makefile and set `VERSION?=X.Y.Z-dev` for the next version (e.g. after releasing `0.12.2`, set `0.12.3-dev`).
-2. `make all REGISTRY_BASE=quay.io/korrel8r`
-3. Commit and push to `main` with commit message `Update version to X.Y.Z-dev`.
+```sh
+make post-release
+```
 
-## Release Patch to Old Version
+This checks the release tags, bumps `VERSION?=` to `X.Y.(Z+1)` (no `-dev`),
+runs `make all`, and commits and pushes the version bump. Leave Go module
+requirements at the last released version until preparing the next release.
 
-Version branches are created only when needed.
-To release a patch `X.Y.Z` to an old X.Y version:
+## Patch an Older Version
 
-1. Create branch `vX.Y`, if it does not already exist, starting from tag `vX.Y.0`
-2. Commit and push your changes to branch `vX.Y` with message `Release X.Y.Z`
-3. `make release REGISTRY_BASE=quay.io/korrel8r`
+Create branch `vX.Y` from tag `vX.Y.0` if it does not already exist. Follow the
+same preparation and publication steps on that branch.

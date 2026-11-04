@@ -9,8 +9,8 @@ help: ## Display this help.
 
 ## VERSION: Semantic version for release, use -dev for development pre-release versions.
 VERSION?=0.12.4-dev
-## REGISTRY_BASE: Image registry base, for example quay.io/somebody
-REGISTRY_BASE?=$(error REGISTRY_BASE must be set to push images)
+## REGISTRY_BASE: Image registry base, defaults to quay.io/korrel8r.
+REGISTRY_BASE?=quay.io/korrel8r
 ## IMGTOOL: May be podman or docker.
 IMGTOOL?=$(or $(shell which podman 2>/dev/null),$(shell which docker 2>/dev/null),$(error Cannot find podman or docker in PATH))
 ## NAMESPACE: Namespace for `make deploy`
@@ -29,6 +29,9 @@ $(shell mkdir -p $(GOCOVERDIR))
 $(BIN): tools/go.mod tools/go.sum
 	GOBIN=$(abspath $(BIN)) go -C tools install tool
 	@touch $@
+
+# Main and sub-modules
+GO_MODULES=. ./pkg/mcp ./pkg/api ./tools
 
 # Sources for generated files
 OPENAPI_SPEC=korrel8r-openapi.yaml
@@ -90,9 +93,13 @@ $(SHELLCHECK):
 	@mkdir -p $(BIN)
 	./hack/install-shellcheck.sh $(BIN) 0.10.0
 
+.PHONY: go-mod-tidy
+# Generated Go files must exist before tidy, especially after make clean.
+go-mod-tidy: generate ## Tidy dependencies in the main and submodules.
+	@set -e; for d in $(GO_MODULES); do go -C "$$d" mod tidy; done
+
 ifndef NOLINT
-lint: generate $(SHELLCHECK) $(BIN) ## Run the linter to find and fix code style problems.
-	go mod tidy
+lint: go-mod-tidy generate $(SHELLCHECK) $(BIN) ## Run the linter to find and fix code style problems.
 	golangci-lint run --fix
 	shfmt -l -w ./**/*.sh
 	$(SHELLCHECK) -x -S style hack/*.sh
@@ -106,6 +113,8 @@ TEST_FLAGS?=$(and $(NO_CLUSTER),-skip='_cluster(-fm)?$$|/_cluster(-fm)?$$')
 .PHONY: test
 test: lint							 ## Run all tests, requires cluster. Set NO_CLUSTER=1 to skip cluster tests.
 	go test -fullpath -race ./... $(TEST_FLAGS)
+	go -C pkg/api test -fullpath -race ./... $(TEST_FLAGS)
+	go -C pkg/mcp test -fullpath -race ./... $(TEST_FLAGS)
 
 .PHONY: vuln
 vuln: $(BIN) ## Check Go dependencies for known vulnerabilities.
@@ -160,20 +169,16 @@ undeploy:			## Delete resources created by `make deploy`
 	@kubectl delete -k config/route || true
 	@kubectl delete -k config || true
 
-# See RELEASE.md
-pre-release:
-	@branch=$$(git rev-parse --abbrev-ref HEAD); \
-	case "$$branch" in main|v[0-9]*.[0-9]*) ;; *) echo "error: releases must be from main or vX.Y branch, not $$branch" >&2; exit 1;; esac
-	$(MAKE) all image kustomize-edit
-	@echo Ready to release $(VERSION) to $(REGISTRY_BASE)
+pre-release:										## Prepare a release, see RELEASE.md
+	$(if $(filter file,$(origin VERSION)),$(error set VERSION explicitly for pre-release))
+	$(if $(filter file,$(origin REGISTRY_BASE)),,$(error REGISTRY_BASE must use the Makefile default))
+	hack/pre-release.sh $(VERSION)
 
-# See RELEASE.md
-release:
-	$(MAKE) clean
-	$(MAKE) pre-release
-	hack/tag-release.sh $(VERSION)
-	$(MAKE) image-latest
-	@echo Released $(VERSION) to $(REGISTRY_BASE)
+push-release:									## Publish a release, see RELEASE.md
+	hack/push-release.sh $(VERSION)
+
+post-release:									## Bump the dev or patch version after release, see RELEASE.md
+	hack/post-release.sh $(VERSION)
 
 DEVSPACE_TAG?=devspace-$(shell git rev-parse --short HEAD)-$(shell sha256sum go.sum | cut -c1-8)
 DEVSPACE_IMAGE?=$(REGISTRY_BASE)/korrel8r:$(DEVSPACE_TAG)
