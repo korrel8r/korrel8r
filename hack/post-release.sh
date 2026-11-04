@@ -5,12 +5,12 @@ set -euo pipefail
 previous_version=${1:?usage: post-release.sh X.Y.Z}
 export previous_version # For make
 [[ "$previous_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || {
-  echo "expected version X.Y.Z: $previous_version" >&2
-  exit 1
+	echo "expected version X.Y.Z: $previous_version" >&2
+	exit 1
 }
 [ -z "$(git status --porcelain)" ] || {
-  echo "working directory not clean" >&2
-  exit 1
+	echo "working directory not clean" >&2
+	exit 1
 }
 
 IFS=. read -r major minor patch <<<"$previous_version"
