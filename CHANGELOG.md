@@ -8,13 +8,21 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ## [Unreleased]
 
 ### Added
-- `mcp.Registrations` returns MCP tool definitions with callable handlers, so other
-  MCP servers can host the korrel8r tools without re-implementing them.
-- `mcp.Client.MaxResponseBytes` limits the size of a REST response.
-- MCP tool annotations: all tools are read-only except `show_in_console`.
+- Metric queries support `?namespace=NS` suffixes for namespace-scoped
+  Prometheus access; multiple namespaces are supported.
+- `mcp.Registrations` exposes tool definitions and handlers for embedding in
+  other MCP servers. `mcp.Client.MaxResponseBytes` bounds REST responses.
+- MCP annotations identify `show_in_console` as state-changing and the other
+  tools as read-only.
 
 ### Changed
-- Replaced `mcp.AddTools` and `mcp.Server.AllTools` with `mcp.Registrations`.
+- **Breaking:** Removed `mcp.AddTools` and `mcp.Server.AllTools` in favor of
+  `mcp.Registrations`. `pkg/api` and `pkg/mcp` are now separate Go modules.
+- Release automation tags the root, API, and MCP modules with the same version.
+- Updated Go dependencies and CI to use Go 1.26.
+
+### Fixed
+- Metric store errors now report when namespace parameters were ignored.
 
 ## [0.12.3] - 2026-10-01
 
