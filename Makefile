@@ -8,7 +8,7 @@ help: ## Display this help.
 	@grep -hE '^## [A-Z0-9_]+: ' Makefile | sed 's/^## \([A-Z0-9_]*\): \(.*\)/\1#\2/' | column -s'#' -t
 
 ## VERSION: Semantic version for release, use -dev for development pre-release versions.
-VERSION?=0.13.0
+VERSION?=0.13.1
 ## REGISTRY_BASE: Image registry base, defaults to quay.io/korrel8r.
 REGISTRY_BASE?=quay.io/korrel8r
 ## IMGTOOL: May be podman or docker.
