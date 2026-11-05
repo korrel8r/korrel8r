@@ -75,11 +75,11 @@ OK
             "class": {},
             "constraint": {
                "end": "2017-07-21T17:32:28.1341231Z",
-               "limit": 100,
+               "limit": 91,
                "queryLimit": 10,
                "start": "2024-01-15T10:30:00Z",
-               "totalLimit": 49,
-               "totalQueryLimit": 70
+               "totalLimit": 40,
+               "totalQueryLimit": 29
             },
             "objects": [],
             "queries": [
@@ -88,16 +88,16 @@ OK
          }
       },
       "neighbors": {
-         "depth": 54,
+         "depth": 93,
          "start": {
             "class": {},
             "constraint": {
                "end": "2017-07-21T17:32:28.1341231Z",
-               "limit": 100,
+               "limit": 46,
                "queryLimit": 10,
                "start": "2024-01-15T10:30:00Z",
-               "totalLimit": 6,
-               "totalQueryLimit": 91
+               "totalLimit": 83,
+               "totalQueryLimit": 46
             },
             "objects": [],
             "queries": [
@@ -144,11 +144,11 @@ Store console state so an agent can read it via MCP tool get_console. The MCP cl
             "class": {},
             "constraint": {
                "end": "2017-07-21T17:32:28.1341231Z",
-               "limit": 100,
+               "limit": 91,
                "queryLimit": 10,
                "start": "2024-01-15T10:30:00Z",
-               "totalLimit": 49,
-               "totalQueryLimit": 70
+               "totalLimit": 40,
+               "totalQueryLimit": 29
             },
             "objects": [],
             "queries": [
@@ -157,16 +157,16 @@ Store console state so an agent can read it via MCP tool get_console. The MCP cl
          }
       },
       "neighbors": {
-         "depth": 54,
+         "depth": 93,
          "start": {
             "class": {},
             "constraint": {
                "end": "2017-07-21T17:32:28.1341231Z",
-               "limit": 100,
+               "limit": 46,
                "queryLimit": 10,
                "start": "2024-01-15T10:30:00Z",
-               "totalLimit": 6,
-               "totalQueryLimit": 91
+               "totalLimit": 83,
+               "totalQueryLimit": 46
             },
             "objects": [],
             "queries": [
@@ -225,11 +225,11 @@ Push a console display update to the SSE event stream. The update is delivered t
             "class": {},
             "constraint": {
                "end": "2017-07-21T17:32:28.1341231Z",
-               "limit": 100,
+               "limit": 91,
                "queryLimit": 10,
                "start": "2024-01-15T10:30:00Z",
-               "totalLimit": 49,
-               "totalQueryLimit": 70
+               "totalLimit": 40,
+               "totalQueryLimit": 29
             },
             "objects": [],
             "queries": [
@@ -238,16 +238,16 @@ Push a console display update to the SSE event stream. The update is delivered t
          }
       },
       "neighbors": {
-         "depth": 54,
+         "depth": 93,
          "start": {
             "class": {},
             "constraint": {
                "end": "2017-07-21T17:32:28.1341231Z",
-               "limit": 100,
+               "limit": 46,
                "queryLimit": 10,
                "start": "2024-01-15T10:30:00Z",
-               "totalLimit": 6,
-               "totalQueryLimit": 91
+               "totalLimit": 83,
+               "totalQueryLimit": 46
             },
             "objects": [],
             "queries": [
@@ -332,11 +332,11 @@ Specify a set of start objects, as queries or serialized objects, and a goal cla
       "class": {},
       "constraint": {
          "end": "2017-07-21T17:32:28.1341231Z",
-         "limit": 100,
+         "limit": 81,
          "queryLimit": 10,
          "start": "2024-01-15T10:30:00Z",
-         "totalLimit": 88,
-         "totalQueryLimit": 81
+         "totalLimit": 5,
+         "totalQueryLimit": 2
       },
       "objects": [
          {}
@@ -367,7 +367,7 @@ OK
          "goal": {},
          "rules": [
             {
-               "name": "7gYekwHUMG",
+               "name": "YekwHUMGhW",
                "queries": []
             }
          ],
@@ -376,11 +376,11 @@ OK
    ],
    "nodes": [
       {
-         "class": "hWzGpld7aF",
-         "count": 62,
+         "class": "zGpld7aFPf",
+         "count": 14,
          "queries": [
             {
-               "count": 44,
+               "count": 79,
                "query": {},
                "statuses": []
             }
@@ -391,8 +391,8 @@ OK
       }
    ],
    "truncation": {
-      "condition": "zGNO6q1Xh3",
-      "limit": 41
+      "condition": "NO6q1Xh3S7",
+      "limit": 57
    }
 }
 ```
@@ -469,16 +469,16 @@ Specify a set of start objects, as queries or serialized objects, and a depth fo
 
 ```json
 {
-   "depth": 79,
+   "depth": 23,
    "start": {
       "class": {},
       "constraint": {
          "end": "2017-07-21T17:32:28.1341231Z",
-         "limit": 100,
+         "limit": 11,
          "queryLimit": 10,
          "start": "2024-01-15T10:30:00Z",
-         "totalLimit": 14,
-         "totalQueryLimit": 23
+         "totalLimit": 49,
+         "totalQueryLimit": 84
       },
       "objects": [
          {}
@@ -509,7 +509,7 @@ OK
          "goal": {},
          "rules": [
             {
-               "name": "7gYekwHUMG",
+               "name": "YekwHUMGhW",
                "queries": []
             }
          ],
@@ -518,11 +518,11 @@ OK
    ],
    "nodes": [
       {
-         "class": "hWzGpld7aF",
-         "count": 62,
+         "class": "zGpld7aFPf",
+         "count": 14,
          "queries": [
             {
-               "count": 44,
+               "count": 79,
                "query": {},
                "statuses": []
             }
@@ -533,8 +533,8 @@ OK
       }
    ],
    "truncation": {
-      "condition": "zGNO6q1Xh3",
-      "limit": 41
+      "condition": "NO6q1Xh3S7",
+      "limit": 57
    }
 }
 ```
@@ -611,16 +611,16 @@ Specify a set of start objects, as queries or serialized objects, and a depth fo
 
 ```json
 {
-   "depth": 79,
+   "depth": 23,
    "start": {
       "class": {},
       "constraint": {
          "end": "2017-07-21T17:32:28.1341231Z",
-         "limit": 100,
+         "limit": 11,
          "queryLimit": 10,
          "start": "2024-01-15T10:30:00Z",
-         "totalLimit": 14,
-         "totalQueryLimit": 23
+         "totalLimit": 49,
+         "totalQueryLimit": 84
       },
       "objects": [
          {}
@@ -651,7 +651,7 @@ OK
          "goal": {},
          "rules": [
             {
-               "name": "7gYekwHUMG",
+               "name": "YekwHUMGhW",
                "queries": []
             }
          ],
@@ -660,11 +660,11 @@ OK
    ],
    "nodes": [
       {
-         "class": "hWzGpld7aF",
-         "count": 62,
+         "class": "zGpld7aFPf",
+         "count": 14,
          "queries": [
             {
-               "count": 44,
+               "count": 79,
                "query": {},
                "statuses": []
             }
@@ -675,8 +675,8 @@ OK
       }
    ],
    "truncation": {
-      "condition": "zGNO6q1Xh3",
-      "limit": 41
+      "condition": "NO6q1Xh3S7",
+      "limit": 57
    }
 }
 ```
@@ -757,11 +757,11 @@ Specify a set of start objects, as queries or serialized objects, and a goal cla
       "class": {},
       "constraint": {
          "end": "2017-07-21T17:32:28.1341231Z",
-         "limit": 100,
+         "limit": 81,
          "queryLimit": 10,
          "start": "2024-01-15T10:30:00Z",
-         "totalLimit": 88,
-         "totalQueryLimit": 81
+         "totalLimit": 5,
+         "totalQueryLimit": 2
       },
       "objects": [
          {}
@@ -788,11 +788,11 @@ OK
 ```json
 [
    {
-      "class": "6SV75azeoT",
-      "count": 64,
+      "class": "75azeoT0L8",
+      "count": 95,
       "queries": [
          {
-            "count": 15,
+            "count": 88,
             "query": {},
             "statuses": []
          }
@@ -842,8 +842,8 @@ OK
 ```json
 [
    {
-      "description": "AVmNkB33io",
-      "name": "zQu9MxNmGy",
+      "description": "VmNkB33ion",
+      "name": "Qu9MxNmGyA",
       "stores": [
          {}
       ]
@@ -976,7 +976,7 @@ OK
 
 ```json
 {
-   "documentation": "bD0iOtQNQs"
+   "documentation": "D0iOtQNQsL"
 }
 ```
 
@@ -1001,7 +1001,7 @@ OK
 
 ```json
 {
-   "documentation": "bD0iOtQNQs"
+   "documentation": "D0iOtQNQsL"
 }
 ```
 
