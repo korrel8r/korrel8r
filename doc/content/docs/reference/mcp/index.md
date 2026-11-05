@@ -11,6 +11,7 @@ Korrel8r provides an [MCP](https://modelcontextprotocol.io/) server with the fol
 - [get_console](#get_console)
 - [get_objects](#get_objects)
 - [help](#help)
+- [instructions](#instructions)
 - [list_domain_classes](#list_domain_classes)
 - [list_domains](#list_domains)
 - [show_in_console](#show_in_console)
@@ -90,6 +91,16 @@ Get help on domains, classes, and query syntax. Omit the domain parameter for he
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `documentation` | string | yes | Domain documentation including query syntax and examples |
+
+## instructions
+
+Return the Korrel8r MCP server instructions. Use this tool if your client does not expose or use the instructions provided during MCP initialization; it returns the same guidance for using Korrel8r tools.
+
+### Output parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `instructions` | string | yes | Korrel8r MCP server instructions |
 
 ## list_domain_classes
 

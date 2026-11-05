@@ -35,6 +35,10 @@ type HelpResult struct {
 	Documentation string `json:"documentation" jsonschema:"Domain documentation including query syntax and examples"`
 }
 
+type InstructionsResult struct {
+	Instructions string `json:"instructions" jsonschema:"Korrel8r MCP server instructions"`
+}
+
 type ListDomainClassesResult struct {
 	Domain  string   `json:"domain" jsonschema:"Domain name"`
 	Classes []string `json:"classes" jsonschema:"List of classes in the domain"`
@@ -66,6 +70,7 @@ and create_neighbors_graph for open-ended exploration ("what is related to this 
 `
 
 const (
+	InstructionsTool     = "instructions"
 	Help                 = "help"
 	ListDomains          = "list_domains"
 	ListDomainClasses    = "list_domain_classes"
@@ -194,6 +199,14 @@ type Registration struct {
 // The client carries the caller's identity, do not share registrations between callers.
 func Registrations(client *Client) []Registration {
 	return []Registration{
+		newTool(&mcp.Tool{
+			Name:        InstructionsTool,
+			Description: `Return the Korrel8r MCP server instructions. Use this tool if your client does not expose or use the instructions provided during MCP initialization; it returns the same guidance for using Korrel8r tools.`,
+		},
+			func(context.Context, struct{}) (InstructionsResult, error) {
+				return InstructionsResult{Instructions: Instructions}, nil
+			}),
+
 		newTool(&mcp.Tool{
 			Name:        ListDomains,
 			Description: `List available domains with descriptions. A domain groups signals or resources that share a query syntax and data store. Use 'list_domain_classes' or 'help' to explore a domain further.`,
