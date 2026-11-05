@@ -97,7 +97,7 @@ func NewServer(client *Client, version string, log logr.Logger) *Server {
 			}),
 		log: log,
 	}
-	for _, r := range Registrations(client) {
+	for _, r := range Bindings(client) {
 		s.AddTool(r.Tool, r.Handler)
 	}
 	s.AddReceivingMiddleware(s.logger)
@@ -117,10 +117,10 @@ func schemaFor[T any]() *jsonschema.Schema {
 	return s
 }
 
-// newTool returns a registration for tool t, implemented by f.
+// newTool returns a binding for tool t, implemented by f.
 // Schemas are derived from the In and Out types, arguments are validated against the input schema.
 // An Out type of 'any' means the tool has no output schema or structured content.
-func newTool[In, Out any](t *mcp.Tool, f func(context.Context, In) (Out, error)) Registration {
+func newTool[In, Out any](t *mcp.Tool, f func(context.Context, In) (Out, error)) Binding {
 	if t.Annotations == nil {
 		t.Annotations = &mcp.ToolAnnotations{ReadOnlyHint: true}
 	}
@@ -178,7 +178,7 @@ func newTool[In, Out any](t *mcp.Tool, f func(context.Context, In) (Out, error))
 		}
 		return result, nil
 	}
-	return Registration{Tool: t, Handler: handler}
+	return Binding{Tool: t, Handler: handler}
 }
 
 func toolError(err error) *mcp.CallToolResult {
@@ -187,27 +187,29 @@ func toolError(err error) *mcp.CallToolResult {
 	return result
 }
 
-// Registration pairs a tool definition with its callable handler.
-// Construct registrations with the client for the current caller.
-type Registration struct {
+// Binding pairs a tool definition with its callable handler.
+// Construct bindings with the client for the current caller.
+type Binding struct {
 	Tool    *mcp.Tool
 	Handler mcp.ToolHandler
 }
 
-// Registrations returns the Korrel8r tool definitions, each with a handler bound to client.
-// A nil client can be used to inspect tool metadata, but the handlers cannot be called.
-// The client carries the caller's identity, do not share registrations between callers.
-func Registrations(client *Client) []Registration {
-	return []Registration{
-		newTool(&mcp.Tool{
+// BindTool returns one tool and its handler bound to client, without constructing
+// the other tools. A nil client can be used to inspect metadata, but the handler
+// cannot be called (except for instructions). Do not share across callers.
+func BindTool(client *Client, name string) (Binding, bool) {
+	switch name {
+	case InstructionsTool:
+		return newTool(&mcp.Tool{
 			Name:        InstructionsTool,
 			Description: `Return the Korrel8r MCP server instructions. Use this tool if your client does not expose or use the instructions provided during MCP initialization; it returns the same guidance for using Korrel8r tools.`,
 		},
 			func(context.Context, struct{}) (InstructionsResult, error) {
 				return InstructionsResult{Instructions: Instructions}, nil
-			}),
+			}), true
 
-		newTool(&mcp.Tool{
+	case ListDomains:
+		return newTool(&mcp.Tool{
 			Name:        ListDomains,
 			Description: `List available domains with descriptions. A domain groups signals or resources that share a query syntax and data store. Use 'list_domain_classes' or 'help' to explore a domain further.`,
 		},
@@ -217,9 +219,10 @@ func Registrations(client *Client) []Registration {
 					domains = []api.Domain{}
 				}
 				return ListDomainsResult{Domains: domains}, err
-			}),
+			}), true
 
-		newTool(&mcp.Tool{
+	case ListDomainClasses:
+		return newTool(&mcp.Tool{
 			Name:        ListDomainClasses,
 			Description: `List classes in a domain. A class represents objects with a specific structure. Full class names have the form "domain:class" and are used in queries and as goal parameters. Use 'help' for details on class and query syntax.`,
 		},
@@ -232,9 +235,10 @@ func Registrations(client *Client) []Registration {
 					classes = []string{}
 				}
 				return &ListDomainClassesResult{Domain: input.Domain, Classes: classes}, nil
-			}),
+			}), true
 
-		newTool(&mcp.Tool{
+	case Help:
+		return newTool(&mcp.Tool{
 			Name:        Help,
 			Description: `Get help on domains, classes, and query syntax. Omit the domain parameter for help on all domains. Class names have the form "domain:class". Query strings have the form "domain:class:selector". Use this before constructing queries for other tools.`,
 		},
@@ -244,25 +248,28 @@ func Registrations(client *Client) []Registration {
 					return nil, err
 				}
 				return &HelpResult{Documentation: doc}, nil
-			}),
+			}), true
 
-		newTool(&mcp.Tool{
+	case CreateNeighborsGraph:
+		return newTool(&mcp.Tool{
 			Name:        CreateNeighborsGraph,
 			Description: `Follow correlation rules outward from start objects up to a given depth. Returns a graph of correlated classes with queries and result counts. Use for open-ended exploration like "what is related to this pod?" Depth 1 = direct correlations; depth 2-3 typically reaches logs, metrics, and alerts. Start queries use "domain:class:selector" format; see 'help' for syntax.`,
 		},
 			func(ctx context.Context, input NeighborParams) (*api.Graph, error) {
 				return client.GraphNeighbors(ctx, input)
-			}),
+			}), true
 
-		newTool(&mcp.Tool{
+	case CreateGoalsGraph:
+		return newTool(&mcp.Tool{
 			Name:        CreateGoalsGraph,
 			Description: `Follow correlation paths from start objects to specific goal classes. Returns a graph of correlated classes with queries and result counts. Use for targeted queries like "find logs for this pod" or "what alerts fired for this deployment?" Start queries use "domain:class:selector" format; goals are class names like ["log:application"]. See 'help' for syntax.`,
 		},
 			func(ctx context.Context, input GoalParams) (*api.Graph, error) {
 				return client.GraphGoals(ctx, input)
-			}),
+			}), true
 
-		newTool(&mcp.Tool{
+	case GetObjects:
+		return newTool(&mcp.Tool{
 			Name:        GetObjects,
 			Description: `Execute a query and return matching objects as self-contained JSON (all labels/fields included per object). Query format is "domain:class:selector"; see 'help' for syntax. Use the constraint parameter (limit number of objects, start/end time as RFC 3339) to control result size, especially for high-volume domains like logs, metrics, and traces.`,
 		},
@@ -278,17 +285,19 @@ func Registrations(client *Client) []Registration {
 					}
 				}
 				return &ObjectsResult{Objects: objects}, nil
-			}),
+			}), true
 
-		newTool(&mcp.Tool{
+	case GetConsole:
+		return newTool(&mcp.Tool{
 			Name:        GetConsole,
 			Description: `Get what the user is looking at in the console. Returns a view query (main console view) and/or search parameters (troubleshooting panel), either may be absent. Use these as context for further actions.`,
 		},
 			func(ctx context.Context, _ struct{}) (*api.Console, error) {
 				return client.GetConsole(ctx)
-			}),
+			}), true
 
-		newTool(&mcp.Tool{
+	case ShowInConsole:
+		return newTool(&mcp.Tool{
 			Name: ShowInConsole,
 			// Unlike the other tools, this one changes the state of the user's console.
 			Annotations: &mcp.ToolAnnotations{DestructiveHint: func() *bool { v := true; return &v }()},
@@ -296,8 +305,27 @@ func Registrations(client *Client) []Registration {
 		},
 			func(ctx context.Context, update ShowInConsoleParams) (any, error) {
 				return nil, client.ShowInConsole(ctx, &update)
-			}),
+			}), true
+	default:
+		return Binding{}, false
 	}
+}
+
+// Bindings returns all tool definitions with handlers bound to client.
+// A nil client can be used to inspect metadata, but handlers (except instructions)
+// cannot be called. The client carries the caller's identity; do not share across callers.
+func Bindings(client *Client) []Binding {
+	bindings := make([]Binding, 0, len(toolNames))
+	for _, name := range toolNames {
+		b, _ := BindTool(client, name)
+		bindings = append(bindings, b)
+	}
+	return bindings
+}
+
+var toolNames = [...]string{
+	InstructionsTool, ListDomains, ListDomainClasses, Help, CreateNeighborsGraph,
+	CreateGoalsGraph, GetObjects, GetConsole, ShowInConsole,
 }
 
 // ServeStdio runs an MCP server, it returns when the client disconnects or the context is canceled.

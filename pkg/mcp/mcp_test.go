@@ -196,7 +196,7 @@ func asJSON(t *testing.T, v any) any {
 	return result
 }
 
-func callTool(t *testing.T, r Registration, args any) *mcp.CallToolResult {
+func callTool(t *testing.T, r Binding, args any) *mcp.CallToolResult {
 	t.Helper()
 	raw, err := json.Marshal(args)
 	require.NoError(t, err)
@@ -212,12 +212,25 @@ func resultValues(t *testing.T, r *mcp.CallToolResult) any {
 	return asJSON(t, map[string]any{"content": r.Content, "structured": r.StructuredContent, "isError": r.IsError})
 }
 
-// Registrations must advertise and behave exactly like the tools of the standalone server.
-func TestRegistrations(t *testing.T) {
+func TestBindTool(t *testing.T) {
 	c, _ := testClient(t)
-	registrations := Registrations(c)
-	names := make([]string, len(registrations))
-	for i, r := range registrations {
+	for _, name := range slices.Collect(maps.Keys(testArgs)) {
+		r, ok := BindTool(c, name)
+		require.True(t, ok, name)
+		assert.Equal(t, name, r.Tool.Name)
+		assert.NotNil(t, r.Handler)
+		assert.NotNil(t, callTool(t, r, testArgs[name]))
+	}
+	_, ok := BindTool(c, "unknown")
+	assert.False(t, ok)
+}
+
+// Bindings must advertise and behave exactly like the tools of the standalone server.
+func TestBindings(t *testing.T) {
+	c, _ := testClient(t)
+	bindings := Bindings(c)
+	names := make([]string, len(bindings))
+	for i, r := range bindings {
 		names[i] = r.Tool.Name
 	}
 	require.ElementsMatch(t, slices.Collect(maps.Keys(testArgs)), names)
@@ -232,13 +245,13 @@ func TestRegistrations(t *testing.T) {
 	defer func() { _ = cs.Close() }()
 	list, err := cs.ListTools(ctx, nil)
 	require.NoError(t, err)
-	require.Len(t, list.Tools, len(registrations))
+	require.Len(t, list.Tools, len(bindings))
 	listed := map[string]*mcp.Tool{}
 	for _, tool := range list.Tools {
 		listed[tool.Name] = tool
 	}
 
-	for _, r := range registrations {
+	for _, r := range bindings {
 		t.Run(r.Tool.Name, func(t *testing.T) {
 			require.Contains(t, listed, r.Tool.Name, "tool not advertised by server")
 			assert.Equal(t, asJSON(t, r.Tool), asJSON(t, listed[r.Tool.Name]), "tool definition")
@@ -251,22 +264,22 @@ func TestRegistrations(t *testing.T) {
 	}
 }
 
-func TestRegistrations_instructions(t *testing.T) {
-	var registration *Registration
-	for _, r := range Registrations(nil) {
+func TestBindings_instructions(t *testing.T) {
+	var binding *Binding
+	for _, r := range Bindings(nil) {
 		if r.Tool.Name == InstructionsTool {
-			registration = &r
+			binding = &r
 			break
 		}
 	}
-	require.NotNil(t, registration)
-	assert.Contains(t, registration.Tool.Description, "client does not expose or use the instructions")
+	require.NotNil(t, binding)
+	assert.Contains(t, binding.Tool.Description, "client does not expose or use the instructions")
 	for _, name := range []string{GetConsole, ShowInConsole, ListDomains, Help, CreateGoalsGraph, CreateNeighborsGraph} {
 		assert.Contains(t, Instructions, "'"+name+"'")
 	}
 
 	// No REST client is needed to retrieve the instructions.
-	direct := callTool(t, *registration, map[string]any{})
+	direct := callTool(t, *binding, map[string]any{})
 	require.False(t, direct.IsError)
 	assert.Equal(t, InstructionsResult{Instructions: Instructions}, direct.StructuredContent)
 
@@ -292,11 +305,11 @@ func TestRegistrations_instructions(t *testing.T) {
 	assert.Equal(t, want, body.Instructions)
 }
 
-func TestRegistrations_emptyLists(t *testing.T) {
+func TestBindings_emptyLists(t *testing.T) {
 	c := NewClientForHandler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, nil) // The REST API may return null for empty lists.
 	}))
-	for _, r := range Registrations(c) {
+	for _, r := range Bindings(c) {
 		switch r.Tool.Name {
 		case ListDomains, ListDomainClasses:
 			args := map[string]any{}
@@ -330,8 +343,8 @@ func TestNewTool_validatesOutput(t *testing.T) {
 	require.ErrorContains(t, err, "invalid invalid_output result")
 }
 
-func TestRegistrations_annotations(t *testing.T) {
-	for _, r := range Registrations(nil) {
+func TestBindings_annotations(t *testing.T) {
+	for _, r := range Bindings(nil) {
 		if r.Tool.Name == ShowInConsole { // The only tool that changes state.
 			require.NotNil(t, r.Tool.Annotations.DestructiveHint)
 			assert.True(t, *r.Tool.Annotations.DestructiveHint)
@@ -341,11 +354,11 @@ func TestRegistrations_annotations(t *testing.T) {
 	}
 }
 
-func TestRegistrations_errors(t *testing.T) {
+func TestBindings_errors(t *testing.T) {
 	c, _ := testClient(t)
-	registrations := map[string]Registration{}
-	for _, r := range Registrations(c) {
-		registrations[r.Tool.Name] = r
+	bindings := map[string]Binding{}
+	for _, r := range Bindings(c) {
+		bindings[r.Tool.Name] = r
 	}
 	for _, x := range []struct{ tool, args, want string }{
 		{ListDomainClasses, `{"domain":"nonexistent"}`, "404"}, // Error from the REST API.
@@ -353,7 +366,7 @@ func TestRegistrations_errors(t *testing.T) {
 		{GetObjects, `{"query":123}`, "invalid arguments"},     // Wrong argument type.
 	} {
 		t.Run(x.tool+x.args, func(t *testing.T) {
-			result := callTool(t, registrations[x.tool], json.RawMessage(x.args))
+			result := callTool(t, bindings[x.tool], json.RawMessage(x.args))
 			assert.True(t, result.IsError)
 			assert.Contains(t, result.Content[0].(*mcp.TextContent).Text, x.want)
 		})

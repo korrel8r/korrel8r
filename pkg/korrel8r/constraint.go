@@ -10,7 +10,7 @@ import (
 
 // Constraint included in a store Get operation to restrict the resulting objects.
 type Constraint struct {
-	// Limit number of objects returned per query
+	// Limit number of objects returned per query. Nil or zero means unlimited.
 	Limit *int `json:"limit,omitempty"`
 	// QueryLimit limits the number of queries per class during traversal.
 	QueryLimit *int `json:"queryLimit,omitempty"`
@@ -52,14 +52,10 @@ func (c *Constraint) CompareTime(when time.Time) int {
 func (c *Constraint) Default() *Constraint {
 	// Hard-wired fallback defaults
 	const defaultDuration = time.Hour
-	const defaultLimit = 100
 	const defaultQueryLimit = 10
 
 	if c == nil {
 		return (&Constraint{}).Default()
-	}
-	if c.Limit == nil {
-		c.Limit = new(defaultLimit)
 	}
 	if c.QueryLimit == nil {
 		c.QueryLimit = new(defaultQueryLimit)

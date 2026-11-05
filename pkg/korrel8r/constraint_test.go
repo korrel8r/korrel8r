@@ -39,8 +39,8 @@ func TestConstraint_String(t *testing.T) {
 
 func TestConstraint_Default(t *testing.T) {
 	c := (*Constraint)(nil).Default()
-	assert.NotNil(t, c.Limit)
-	assert.Equal(t, 100, *c.Limit)
+	assert.Nil(t, c.Limit)
+	assert.Zero(t, c.GetLimit())
 	assert.NotNil(t, c.Start)
 	assert.NotNil(t, c.End)
 	assert.True(t, c.Start.Before(*c.End))
@@ -51,8 +51,17 @@ func TestConstraint_Default_PreservesExisting(t *testing.T) {
 	start := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 	c := (&Constraint{Limit: &limit, Start: &start}).Default()
 	assert.Equal(t, 5, *c.Limit)
+	assert.Same(t, &limit, c.Limit)
 	assert.Equal(t, start, *c.Start)
 	assert.NotNil(t, c.End) // filled in
+}
+
+func TestConstraint_Default_ExplicitLimits(t *testing.T) {
+	for _, limit := range []int{0, 1, 1000000} {
+		c := (&Constraint{Limit: &limit}).Default()
+		assert.Same(t, &limit, c.Limit)
+		assert.Equal(t, limit, c.GetLimit())
+	}
 }
 
 func TestConstraint_Getters(t *testing.T) {

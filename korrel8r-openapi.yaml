@@ -523,11 +523,9 @@ components:
         limit:
           type: integer
           description: >
-            Limit total number of objects per query.
-            Default: 100.
-          default: 100
+            Limit total number of objects per query. Omit or set to zero for no limit.
           x-oapi-codegen-extra-tags:
-            jsonschema: "Limit total number of objects per query. Default: 100."
+            jsonschema: "Limit total number of objects per query. Omit or set to zero for no limit."
         queryLimit:
           type: integer
           description: >
