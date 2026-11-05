@@ -175,6 +175,7 @@ func TestNewClient_DefaultHTTPClient(t *testing.T) {
 
 // testArgs are valid arguments for each tool, for use with mockAPI.
 var testArgs = map[string]any{
+	InstructionsTool:     map[string]any{},
 	ListDomains:          map[string]any{},
 	ListDomainClasses:    map[string]any{"domain": "k8s"},
 	Help:                 map[string]any{"domain": "k8s"},
@@ -248,6 +249,44 @@ func TestRegistrations(t *testing.T) {
 			assert.Equal(t, resultValues(t, viaServer), resultValues(t, callTool(t, r, args)), "tool result")
 		})
 	}
+}
+
+func TestRegistrations_instructions(t *testing.T) {
+	var registration *Registration
+	for _, r := range Registrations(nil) {
+		if r.Tool.Name == InstructionsTool {
+			registration = &r
+			break
+		}
+	}
+	require.NotNil(t, registration)
+	assert.Contains(t, registration.Tool.Description, "client does not expose or use the instructions")
+
+	// No REST client is needed to retrieve the instructions.
+	direct := callTool(t, *registration, map[string]any{})
+	require.False(t, direct.IsError)
+	assert.Equal(t, InstructionsResult{Instructions: Instructions}, direct.StructuredContent)
+
+	ctx := t.Context()
+	clientTransport, serverTransport := mcp.NewInMemoryTransports()
+	_, err := NewServer(nil, "test", logr.Discard()).Connect(ctx, serverTransport, nil)
+	require.NoError(t, err)
+	cs, err := mcp.NewClient(&mcp.Implementation{Name: "test"}, nil).Connect(ctx, clientTransport, nil)
+	require.NoError(t, err)
+	defer func() { _ = cs.Close() }()
+
+	result, err := cs.CallTool(ctx, &mcp.CallToolParams{Name: InstructionsTool, Arguments: map[string]any{}})
+	require.NoError(t, err)
+	require.False(t, result.IsError)
+	want := cs.InitializeResult().Instructions
+	require.Equal(t, Instructions, want)
+	assert.Equal(t, map[string]any{"instructions": want}, asJSON(t, result.StructuredContent))
+	require.Len(t, result.Content, 1)
+	text, ok := result.Content[0].(*mcp.TextContent)
+	require.True(t, ok)
+	var body InstructionsResult
+	require.NoError(t, json.Unmarshal([]byte(text.Text), &body))
+	assert.Equal(t, want, body.Instructions)
 }
 
 func TestRegistrations_emptyLists(t *testing.T) {
