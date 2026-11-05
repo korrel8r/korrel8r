@@ -97,11 +97,18 @@ func NewServer(client *Client, version string, log logr.Logger) *Server {
 			}),
 		log: log,
 	}
-	for _, r := range Bindings(client) {
-		s.AddTool(r.Tool, r.Handler)
+	for _, name := range ToolNames {
+		binding, _ := BindTool(client, name)
+		s.AddTool(binding.Tool, binding.Handler)
 	}
 	s.AddReceivingMiddleware(s.logger)
 	return s
+}
+
+// ToolNames lists all Korrel8r tools in server registration order.
+var ToolNames = []string{
+	InstructionsTool, ListDomains, ListDomainClasses, Help, CreateNeighborsGraph,
+	CreateGoalsGraph, GetObjects, GetConsole, ShowInConsole,
 }
 
 // schemaFor returns the JSON schema for type T, treating a pointer like its element type.
@@ -194,9 +201,8 @@ type Binding struct {
 	Handler mcp.ToolHandler
 }
 
-// BindTool returns one tool and its handler bound to client, without constructing
-// the other tools. A nil client can be used to inspect metadata, but the handler
-// cannot be called (except for instructions). Do not share across callers.
+// BindTool returns one tool and its handler bound to client.
+// A nil client can be used to inspect metadata, but the handler cannot be called.
 func BindTool(client *Client, name string) (Binding, bool) {
 	switch name {
 	case InstructionsTool:
@@ -309,23 +315,6 @@ func BindTool(client *Client, name string) (Binding, bool) {
 	default:
 		return Binding{}, false
 	}
-}
-
-// Bindings returns all tool definitions with handlers bound to client.
-// A nil client can be used to inspect metadata, but handlers (except instructions)
-// cannot be called. The client carries the caller's identity; do not share across callers.
-func Bindings(client *Client) []Binding {
-	bindings := make([]Binding, 0, len(toolNames))
-	for _, name := range toolNames {
-		b, _ := BindTool(client, name)
-		bindings = append(bindings, b)
-	}
-	return bindings
-}
-
-var toolNames = [...]string{
-	InstructionsTool, ListDomains, ListDomainClasses, Help, CreateNeighborsGraph,
-	CreateGoalsGraph, GetObjects, GetConsole, ShowInConsole,
 }
 
 // ServeStdio runs an MCP server, it returns when the client disconnects or the context is canceled.

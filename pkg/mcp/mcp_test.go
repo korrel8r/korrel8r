@@ -225,15 +225,12 @@ func TestBindTool(t *testing.T) {
 	assert.False(t, ok)
 }
 
-// Bindings must advertise and behave exactly like the tools of the standalone server.
-func TestBindings(t *testing.T) {
+// ToolNames must advertise and behave exactly like the tools of the standalone server.
+func TestToolNames(t *testing.T) {
 	c, _ := testClient(t)
-	bindings := Bindings(c)
-	names := make([]string, len(bindings))
-	for i, r := range bindings {
-		names[i] = r.Tool.Name
-	}
+	names := ToolNames
 	require.ElementsMatch(t, slices.Collect(maps.Keys(testArgs)), names)
+	require.Equal(t, InstructionsTool, names[0])
 
 	// Connect an MCP client to the standalone server.
 	ctx := t.Context()
@@ -245,41 +242,37 @@ func TestBindings(t *testing.T) {
 	defer func() { _ = cs.Close() }()
 	list, err := cs.ListTools(ctx, nil)
 	require.NoError(t, err)
-	require.Len(t, list.Tools, len(bindings))
+	require.Len(t, list.Tools, len(names))
 	listed := map[string]*mcp.Tool{}
 	for _, tool := range list.Tools {
 		listed[tool.Name] = tool
 	}
 
-	for _, r := range bindings {
-		t.Run(r.Tool.Name, func(t *testing.T) {
-			require.Contains(t, listed, r.Tool.Name, "tool not advertised by server")
-			assert.Equal(t, asJSON(t, r.Tool), asJSON(t, listed[r.Tool.Name]), "tool definition")
+	for _, name := range names {
+		t.Run(name, func(t *testing.T) {
+			r, ok := BindTool(c, name)
+			require.True(t, ok)
+			require.Contains(t, listed, name, "tool not advertised by server")
+			assert.Equal(t, asJSON(t, r.Tool), asJSON(t, listed[name]), "tool definition")
 
-			args := testArgs[r.Tool.Name]
-			viaServer, err := cs.CallTool(ctx, &mcp.CallToolParams{Name: r.Tool.Name, Arguments: args})
+			args := testArgs[name]
+			viaServer, err := cs.CallTool(ctx, &mcp.CallToolParams{Name: name, Arguments: args})
 			require.NoError(t, err)
 			assert.Equal(t, resultValues(t, viaServer), resultValues(t, callTool(t, r, args)), "tool result")
 		})
 	}
 }
 
-func TestBindings_instructions(t *testing.T) {
-	var binding *Binding
-	for _, r := range Bindings(nil) {
-		if r.Tool.Name == InstructionsTool {
-			binding = &r
-			break
-		}
-	}
-	require.NotNil(t, binding)
+func TestBindTool_instructions(t *testing.T) {
+	binding, ok := BindTool(nil, InstructionsTool)
+	require.True(t, ok)
 	assert.Contains(t, binding.Tool.Description, "client does not expose or use the instructions")
 	for _, name := range []string{GetConsole, ShowInConsole, ListDomains, Help, CreateGoalsGraph, CreateNeighborsGraph} {
 		assert.Contains(t, Instructions, "'"+name+"'")
 	}
 
 	// No REST client is needed to retrieve the instructions.
-	direct := callTool(t, *binding, map[string]any{})
+	direct := callTool(t, binding, map[string]any{})
 	require.False(t, direct.IsError)
 	assert.Equal(t, InstructionsResult{Instructions: Instructions}, direct.StructuredContent)
 
@@ -305,27 +298,24 @@ func TestBindings_instructions(t *testing.T) {
 	assert.Equal(t, want, body.Instructions)
 }
 
-func TestBindings_emptyLists(t *testing.T) {
+func TestBindTool_emptyLists(t *testing.T) {
 	c := NewClientForHandler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, nil) // The REST API may return null for empty lists.
 	}))
-	for _, r := range Bindings(c) {
-		switch r.Tool.Name {
-		case ListDomains, ListDomainClasses:
-			args := map[string]any{}
-			if r.Tool.Name == ListDomainClasses {
-				args["domain"] = "empty"
-			}
-			result := callTool(t, r, args)
-			require.False(t, result.IsError, r.Tool.Name)
-			var body map[string]any
-			require.NoError(t, json.Unmarshal([]byte(result.Content[0].(*mcp.TextContent).Text), &body))
-			key := "domains"
-			if r.Tool.Name == ListDomainClasses {
-				key = "classes"
-			}
-			assert.Equal(t, []any{}, body[key], r.Tool.Name)
+	for _, name := range []string{ListDomains, ListDomainClasses} {
+		r, ok := BindTool(c, name)
+		require.True(t, ok)
+		args := map[string]any{}
+		key := "domains"
+		if name == ListDomainClasses {
+			args["domain"] = "empty"
+			key = "classes"
 		}
+		result := callTool(t, r, args)
+		require.False(t, result.IsError, name)
+		var body map[string]any
+		require.NoError(t, json.Unmarshal([]byte(result.Content[0].(*mcp.TextContent).Text), &body))
+		assert.Equal(t, []any{}, body[key], name)
 	}
 }
 
@@ -343,8 +333,10 @@ func TestNewTool_validatesOutput(t *testing.T) {
 	require.ErrorContains(t, err, "invalid invalid_output result")
 }
 
-func TestBindings_annotations(t *testing.T) {
-	for _, r := range Bindings(nil) {
+func TestBindTool_annotations(t *testing.T) {
+	for _, name := range ToolNames {
+		r, ok := BindTool(nil, name)
+		require.True(t, ok)
 		if r.Tool.Name == ShowInConsole { // The only tool that changes state.
 			require.NotNil(t, r.Tool.Annotations.DestructiveHint)
 			assert.True(t, *r.Tool.Annotations.DestructiveHint)
@@ -354,19 +346,17 @@ func TestBindings_annotations(t *testing.T) {
 	}
 }
 
-func TestBindings_errors(t *testing.T) {
+func TestBindTool_errors(t *testing.T) {
 	c, _ := testClient(t)
-	bindings := map[string]Binding{}
-	for _, r := range Bindings(c) {
-		bindings[r.Tool.Name] = r
-	}
 	for _, x := range []struct{ tool, args, want string }{
 		{ListDomainClasses, `{"domain":"nonexistent"}`, "404"}, // Error from the REST API.
 		{GetObjects, `{"constraint":{}}`, "invalid arguments"}, // Missing required argument.
 		{GetObjects, `{"query":123}`, "invalid arguments"},     // Wrong argument type.
 	} {
 		t.Run(x.tool+x.args, func(t *testing.T) {
-			result := callTool(t, bindings[x.tool], json.RawMessage(x.args))
+			binding, ok := BindTool(c, x.tool)
+			require.True(t, ok)
+			result := callTool(t, binding, json.RawMessage(x.args))
 			assert.True(t, result.IsError)
 			assert.Contains(t, result.Content[0].(*mcp.TextContent).Text, x.want)
 		})
