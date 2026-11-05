@@ -261,6 +261,9 @@ func TestRegistrations_instructions(t *testing.T) {
 	}
 	require.NotNil(t, registration)
 	assert.Contains(t, registration.Tool.Description, "client does not expose or use the instructions")
+	for _, name := range []string{GetConsole, ShowInConsole, ListDomains, Help, CreateGoalsGraph, CreateNeighborsGraph} {
+		assert.Contains(t, Instructions, "'"+name+"'")
+	}
 
 	// No REST client is needed to retrieve the instructions.
 	direct := callTool(t, *registration, map[string]any{})
