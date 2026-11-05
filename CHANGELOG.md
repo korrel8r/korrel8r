@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [0.13.1] - 2026-11-05
+
 ### Added
 - MCP `instructions` tool returns the server instructions for clients that do not use
   the instructions provided during MCP initialization.
