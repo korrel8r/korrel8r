@@ -298,6 +298,30 @@ func TestBindTool_instructions(t *testing.T) {
 	assert.Equal(t, want, body.Instructions)
 }
 
+func TestBindTool_rawJSONObjects(t *testing.T) {
+	c, _ := testClient(t)
+	for _, name := range []string{CreateGoalsGraph, CreateNeighborsGraph} {
+		t.Run(name, func(t *testing.T) {
+			binding, ok := BindTool(c, name)
+			require.True(t, ok)
+			for _, object := range []json.RawMessage{
+				json.RawMessage(`{"name":"pod"}`), json.RawMessage(`[1,"value"]`),
+				json.RawMessage(`"value"`), json.RawMessage(`42`), json.RawMessage(`null`),
+			} {
+				t.Run(string(object), func(t *testing.T) {
+					args := map[string]any{"start": api.Start{Class: "k8s:Pod.v1", Objects: []api.Object{object}}}
+					if name == CreateGoalsGraph {
+						args["goals"] = []string{"log:application"}
+					} else {
+						args["depth"] = 2
+					}
+					assert.False(t, callTool(t, binding, args).IsError)
+				})
+			}
+		})
+	}
+}
+
 func TestBindTool_emptyLists(t *testing.T) {
 	c := NewClientForHandler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, nil) // The REST API may return null for empty lists.
