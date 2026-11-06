@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [0.13.3] - 2026-11-06
+
 ### Fixed
 - MCP schemas and argument validation now accept any JSON value for serialized start objects and graph results, rather than treating `json.RawMessage` as an array of bytes.
 

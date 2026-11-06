@@ -7,7 +7,7 @@ replace github.com/korrel8r/korrel8r/pkg/api => ../api
 require (
 	github.com/go-logr/logr v1.4.4
 	github.com/google/jsonschema-go v0.4.3
-	github.com/korrel8r/korrel8r/pkg/api v0.13.2
+	github.com/korrel8r/korrel8r/pkg/api v0.13.3
 	github.com/modelcontextprotocol/go-sdk v1.7.0
 	github.com/stretchr/testify v1.12.1
 )

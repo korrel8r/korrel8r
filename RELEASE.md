@@ -12,8 +12,7 @@ The root module, `pkg/api`, and `pkg/mcp` modules share the same version and com
    setting so the release uses the default `quay.io/korrel8r`:
 
    ```sh
-   unset REGISTRY_BASE
-   VERSION=X.Y.Z make pre-release
+   unset REGISTRY_BASE; make pre-release VERSION=X.Y.Z 
    ```
 
    - Sets the Makefile and module versions to `X.Y.Z` and dates the changelog.
