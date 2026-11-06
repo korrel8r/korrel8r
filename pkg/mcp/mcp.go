@@ -117,7 +117,9 @@ func schemaFor[T any]() *jsonschema.Schema {
 	if t.Kind() == reflect.Pointer {
 		t = t.Elem()
 	}
-	s, err := jsonschema.ForType(t, nil)
+	s, err := jsonschema.ForType(t, &jsonschema.ForOptions{TypeSchemas: map[reflect.Type]*jsonschema.Schema{
+		reflect.TypeFor[json.RawMessage](): {}, // Raw JSON is not a byte array.
+	}})
 	if err != nil {
 		panic(err) // Tool types are fixed at compile time, a failure here is a bug.
 	}
