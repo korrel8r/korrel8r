@@ -50,7 +50,7 @@ versions must match the tags.
 On `main` or `vX.Y`, run:
 
 ```sh
-make post-release
+unset REGISTRY_BASE; make post-release
 ```
 
 This checks the release tags, bumps `VERSION?=` to `X.Y.(Z+1)` (no `-dev`),

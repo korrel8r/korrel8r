@@ -175,9 +175,13 @@ pre-release:										## Prepare a release, see RELEASE.md
 	hack/pre-release.sh $(VERSION)
 
 push-release:									## Publish a release, see RELEASE.md
+	$(if $(filter file,$(origin VERSION)),,$(error VERSION must come from the Makefile for push-release))
+	$(if $(filter file,$(origin REGISTRY_BASE)),,$(error REGISTRY_BASE must use the Makefile default))
 	hack/push-release.sh $(VERSION)
 
 post-release:									## Bump the dev or patch version after release, see RELEASE.md
+	$(if $(filter file,$(origin VERSION)),,$(error VERSION must come from the Makefile for post-release))
+	$(if $(filter file,$(origin REGISTRY_BASE)),,$(error REGISTRY_BASE must use the Makefile default))
 	hack/post-release.sh $(VERSION)
 
 DEVSPACE_TAG?=devspace-$(shell git rev-parse --short HEAD)-$(shell sha256sum go.sum | cut -c1-8)
