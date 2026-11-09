@@ -20,7 +20,7 @@ import (
 const StreamablePath = "/mcp"
 
 type ListDomainsResult struct {
-	Domains []api.Domain `json:"domains" jsonschema:"List of domains"`
+	Domains []api.Domain `json:"domains" jsonschema:"Known domains and configured stores."`
 }
 
 type DomainParams struct {
@@ -28,15 +28,11 @@ type DomainParams struct {
 }
 
 type HelpParams struct {
-	Domain string `json:"domain,omitempty" jsonschema:"If specified, get help for this domain only."`
+	Domain string `json:"domain" jsonschema:"Name of the domain to get help for."`
 }
 
 type HelpResult struct {
 	Documentation string `json:"documentation" jsonschema:"Domain documentation including query syntax and examples"`
-}
-
-type InstructionsResult struct {
-	Instructions string `json:"instructions" jsonschema:"Korrel8r MCP server instructions"`
 }
 
 type ListDomainClassesResult struct {
@@ -49,28 +45,23 @@ type GoalParams = api.Goals
 type ShowInConsoleParams = api.Console
 
 type ObjectsParams struct {
-	Query      string          `json:"query" jsonschema:"Query string in the form 'domain:class:selector'. Use 'help' to learn query syntax for each domain."`
-	Constraint *api.Constraint `json:"constraint,omitempty" jsonschema:"Optional constraint to limit results by time range and/or count."`
+	Query      string          `json:"query" jsonschema:"Query string 'domain:class:selector'. Use 'help' for unfamiliar query syntax."`
+	Constraint *api.Constraint `json:"constraint,omitempty" jsonschema:"Set limit to bound results; start/end (RFC 3339) for time ranges."`
 }
 
 type ObjectsResult struct {
 	Objects []any `json:"objects" jsonschema:"List of objects matching the query"`
 }
 
-const Instructions = `Korrel8r finds correlations between observability signals and resources in a Kubernetes cluster.
-It connects data from different domains (logs, metrics, alerts, traces, Kubernetes resources, etc.)
-by following correlation rules to build a graph of related objects.
-
-If the user refers to a console, use 'get_console' and 'show_in_console' to read and update it.
-If the user asks "what am I looking at?", "what is this?" or says "show me ..." or "display ..." they may be referring to the console.
-
-To search: use 'list_domains' to discover domains, then 'help' to learn query syntax.
-Use 'create_goals_graph' for targeted queries ("find logs for this pod")
-and 'create_neighbors_graph' for open-ended exploration ("what is related to this pod?").
+const Instructions = `Korrel8r finds rule-based relationships between Kubernetes resources and
+observability signals; relationships are not proof of cause. Explore broadly with
+'create_neighbors_graph', or use 'create_goals_graph' when you know what kind of data
+you want. Inspect the graph before fetching full data with 'get_objects'. Use
+'get_console' and 'show_in_console' when working with the user's OpenShift console;
+see their descriptions for prerequisites.
 `
 
 const (
-	InstructionsTool     = "instructions"
 	Help                 = "help"
 	ListDomains          = "list_domains"
 	ListDomainClasses    = "list_domain_classes"
@@ -107,7 +98,7 @@ func NewServer(client *Client, version string, log logr.Logger) *Server {
 
 // ToolNames lists all Korrel8r tools in server registration order.
 var ToolNames = []string{
-	InstructionsTool, ListDomains, ListDomainClasses, Help, CreateNeighborsGraph,
+	ListDomains, ListDomainClasses, Help, CreateNeighborsGraph,
 	CreateGoalsGraph, GetObjects, GetConsole, ShowInConsole,
 }
 
@@ -207,19 +198,10 @@ type Binding struct {
 // A nil client can be used to inspect metadata, but the handler cannot be called.
 func BindTool(client *Client, name string) (Binding, bool) {
 	switch name {
-	case InstructionsTool:
-		return newTool(&mcp.Tool{
-			Name:        InstructionsTool,
-			Description: `Return the Korrel8r MCP server instructions. Use this tool if your client does not expose or use the instructions provided during MCP initialization; it returns the same guidance for using Korrel8r tools.`,
-		},
-			func(context.Context, struct{}) (InstructionsResult, error) {
-				return InstructionsResult{Instructions: Instructions}, nil
-			}), true
-
 	case ListDomains:
 		return newTool(&mcp.Tool{
 			Name:        ListDomains,
-			Description: `List available domains with descriptions. A domain groups signals or resources that share a query syntax and data store. Use 'list_domain_classes' or 'help' to explore a domain further.`,
+			Description: `Use this when you need to find known domains and configured stores. Use 'list_domain_classes' to find classes for a domain.`,
 		},
 			func(ctx context.Context, _ struct{}) (ListDomainsResult, error) {
 				domains, err := client.ListDomains(ctx)
@@ -232,7 +214,7 @@ func BindTool(client *Client, name string) (Binding, bool) {
 	case ListDomainClasses:
 		return newTool(&mcp.Tool{
 			Name:        ListDomainClasses,
-			Description: `List classes in a domain. A class represents objects with a specific structure. Full class names have the form "domain:class" and are used in queries and as goal parameters. Use 'help' for details on class and query syntax.`,
+			Description: `Use this when you need a domain's classes for queries or graph goals (domain:class). Use 'help' for unfamiliar selectors.`,
 		},
 			func(ctx context.Context, input DomainParams) (*ListDomainClassesResult, error) {
 				classes, err := client.ListDomainClasses(ctx, input.Domain)
@@ -248,7 +230,7 @@ func BindTool(client *Client, name string) (Binding, bool) {
 	case Help:
 		return newTool(&mcp.Tool{
 			Name:        Help,
-			Description: `Get help on domains, classes, and query syntax. Omit the domain parameter for help on all domains. Class names have the form "domain:class". Query strings have the form "domain:class:selector". Use this before constructing queries for other tools.`,
+			Description: `Use this when you need query syntax or examples for a specified domain.`,
 		},
 			func(ctx context.Context, input HelpParams) (*HelpResult, error) {
 				doc, err := client.Help(ctx, input.Domain)
@@ -261,7 +243,7 @@ func BindTool(client *Client, name string) (Binding, bool) {
 	case CreateNeighborsGraph:
 		return newTool(&mcp.Tool{
 			Name:        CreateNeighborsGraph,
-			Description: `Follow correlation rules outward from start objects up to a given depth. Returns a graph of correlated classes with queries and result counts. Use for open-ended exploration like "what is related to this pod?" Depth 1 = direct correlations; depth 2-3 typically reaches logs, metrics, and alerts. Start queries use "domain:class:selector" format; see 'help' for syntax.`,
+			Description: `Explore what is related to a failing workload or other resource or signal. Use first for open-ended investigations across Kubernetes resources and observability signals instead of guessing related object names. Example: {"start":{"queries":["k8s:Deployment.v1.apps:{\"namespace\":\"default\",\"name\":\"my-deployment\"}"]},"depth":2}. The selector is JSON text inside the query string; depth 1 finds direct neighbors, 2 follows one more hop. Verify relevant graph queries with 'get_objects'; correlation is not proof of cause.`,
 		},
 			func(ctx context.Context, input NeighborParams) (*api.Graph, error) {
 				return client.GraphNeighbors(ctx, input)
@@ -270,7 +252,7 @@ func BindTool(client *Client, name string) (Binding, bool) {
 	case CreateGoalsGraph:
 		return newTool(&mcp.Tool{
 			Name:        CreateGoalsGraph,
-			Description: `Follow correlation paths from start objects to specific goal classes. Returns a graph of correlated classes with queries and result counts. Use for targeted queries like "find logs for this pod" or "what alerts fired for this deployment?" Start queries use "domain:class:selector" format; goals are class names like ["log:application"]. See 'help' for syntax.`,
+			Description: `Find a specific class of data related to a resource or signal, such as application logs for a Deployment. Use for targeted investigations: {"start":{"queries":["k8s:Deployment.v1.apps:{\"namespace\":\"default\",\"name\":\"my-deployment\"}"]},"goals":["log:application"]}. The selector is JSON text inside the query string. For unfamiliar classes or selectors, use 'list_domains', 'list_domain_classes', and 'help' with a domain. Application logs work via the Kubernetes API without a separate log store; Events are k8s resources (k8s:Event.v1), not a separate domain. Verify graph queries with 'get_objects'.`,
 		},
 			func(ctx context.Context, input GoalParams) (*api.Graph, error) {
 				return client.GraphGoals(ctx, input)
@@ -279,7 +261,7 @@ func BindTool(client *Client, name string) (Binding, bool) {
 	case GetObjects:
 		return newTool(&mcp.Tool{
 			Name:        GetObjects,
-			Description: `Execute a query and return matching objects as self-contained JSON (all labels/fields included per object). Query format is "domain:class:selector"; see 'help' for syntax. Use the constraint parameter (limit number of objects, start/end time as RFC 3339) to control result size, especially for high-volume domains like logs, metrics, and traces.`,
+			Description: `Fetch full objects to verify graph results. Pass a graph node's queries[].query (domain:class:selector), or a known query. Use 'help' with a domain if constructing an unfamiliar query. Bound results with constraint.limit or constraint.start/end (RFC 3339).`,
 		},
 			func(ctx context.Context, input ObjectsParams) (*ObjectsResult, error) {
 				raw, err := client.GetObjects(ctx, input.Query, input.Constraint)
@@ -298,7 +280,7 @@ func BindTool(client *Client, name string) (Binding, bool) {
 	case GetConsole:
 		return newTool(&mcp.Tool{
 			Name:        GetConsole,
-			Description: `Get what the user is looking at in the console. Returns a view query (main console view) and/or search parameters (troubleshooting panel), either may be absent. Use these as context for further actions.`,
+			Description: `Read the user's OpenShift console view/search when asked "what am I looking at?". Only works when the user is logged in to the OpenShift console and has enabled AI navigation for their session. Report if the console is unavailable.`,
 		},
 			func(ctx context.Context, _ struct{}) (*api.Console, error) {
 				return client.GetConsole(ctx)
@@ -309,7 +291,7 @@ func BindTool(client *Client, name string) (Binding, bool) {
 			Name: ShowInConsole,
 			// Unlike the other tools, this one changes the state of the user's console.
 			Annotations: &mcp.ToolAnnotations{DestructiveHint: func() *bool { v := true; return &v }()},
-			Description: `Update the console to display new data. Set 'view' to a query to update the main view, and/or set 'search' to display a correlation graph in the troubleshooting panel. See 'help' for query syntax.`,
+			Description: `Display a query (view) and/or graph (search) in the user's OpenShift console. Only works when the user is logged in to the OpenShift console and has enabled AI navigation for their session. Report if the console is unavailable.`,
 		},
 			func(ctx context.Context, update ShowInConsoleParams) (any, error) {
 				return nil, client.ShowInConsole(ctx, &update)

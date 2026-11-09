@@ -509,8 +509,9 @@ components:
             Ignore objects with timestamps before this start time.
             Default: 1 hour before end.
           format: date-time
+          example: "2017-07-21T17:32:28.1341231Z"
           x-oapi-codegen-extra-tags:
-            jsonschema: "Ignore objects with timestamps before this start time. Default: 1 hour before end."
+            jsonschema: "Ignore objects with timestamps before this start time (RFC-3339 format). Default: 1 hour before end."
         end:
           type: string
           description: >
@@ -519,7 +520,7 @@ components:
           format: date-time
           example: "2017-07-21T17:32:28.1341231Z"
           x-oapi-codegen-extra-tags:
-            jsonschema: "Ignore objects with timestamps after this end time. Default: now."
+            jsonschema: "Ignore objects with timestamps after this end time (RFC-3339 format). Default: now."
         limit:
           type: integer
           description: >

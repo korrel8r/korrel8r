@@ -175,7 +175,6 @@ func TestNewClient_DefaultHTTPClient(t *testing.T) {
 
 // testArgs are valid arguments for each tool, for use with mockAPI.
 var testArgs = map[string]any{
-	InstructionsTool:     map[string]any{},
 	ListDomains:          map[string]any{},
 	ListDomainClasses:    map[string]any{"domain": "k8s"},
 	Help:                 map[string]any{"domain": "k8s"},
@@ -230,7 +229,7 @@ func TestToolNames(t *testing.T) {
 	c, _ := testClient(t)
 	names := ToolNames
 	require.ElementsMatch(t, slices.Collect(maps.Keys(testArgs)), names)
-	require.Equal(t, InstructionsTool, names[0])
+	require.Equal(t, ListDomains, names[0])
 
 	// Connect an MCP client to the standalone server.
 	ctx := t.Context()
@@ -263,19 +262,7 @@ func TestToolNames(t *testing.T) {
 	}
 }
 
-func TestBindTool_instructions(t *testing.T) {
-	binding, ok := BindTool(nil, InstructionsTool)
-	require.True(t, ok)
-	assert.Contains(t, binding.Tool.Description, "client does not expose or use the instructions")
-	for _, name := range []string{GetConsole, ShowInConsole, ListDomains, Help, CreateGoalsGraph, CreateNeighborsGraph} {
-		assert.Contains(t, Instructions, "'"+name+"'")
-	}
-
-	// No REST client is needed to retrieve the instructions.
-	direct := callTool(t, binding, map[string]any{})
-	require.False(t, direct.IsError)
-	assert.Equal(t, InstructionsResult{Instructions: Instructions}, direct.StructuredContent)
-
+func TestServerInstructions(t *testing.T) {
 	ctx := t.Context()
 	clientTransport, serverTransport := mcp.NewInMemoryTransports()
 	_, err := NewServer(nil, "test", logr.Discard()).Connect(ctx, serverTransport, nil)
@@ -284,18 +271,29 @@ func TestBindTool_instructions(t *testing.T) {
 	require.NoError(t, err)
 	defer func() { _ = cs.Close() }()
 
-	result, err := cs.CallTool(ctx, &mcp.CallToolParams{Name: InstructionsTool, Arguments: map[string]any{}})
-	require.NoError(t, err)
-	require.False(t, result.IsError)
-	want := cs.InitializeResult().Instructions
-	require.Equal(t, Instructions, want)
-	assert.Equal(t, map[string]any{"instructions": want}, asJSON(t, result.StructuredContent))
-	require.Len(t, result.Content, 1)
-	text, ok := result.Content[0].(*mcp.TextContent)
-	require.True(t, ok)
-	var body InstructionsResult
-	require.NoError(t, json.Unmarshal([]byte(text.Text), &body))
-	assert.Equal(t, want, body.Instructions)
+	assert.Equal(t, Instructions, cs.InitializeResult().Instructions)
+}
+
+// Exercise a realistic pod selector through both graph tool schemas and handlers.
+// Tool prose may change without changing this API contract.
+func TestGraphToolPodQueries(t *testing.T) {
+	c, _ := testClient(t)
+	start := api.Start{Queries: []string{`k8s:Pod:{"namespace":"default","name":"my-pod"}`}}
+	for _, tc := range []struct {
+		name string
+		args any
+	}{
+		{CreateNeighborsGraph, api.Neighbors{Start: start, Depth: 2}},
+		{CreateGoalsGraph, api.Goals{Start: start, Goals: []string{"log:application"}}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			binding, ok := BindTool(c, tc.name)
+			require.True(t, ok)
+			result := callTool(t, binding, tc.args)
+			require.False(t, result.IsError)
+			assert.NotNil(t, result.StructuredContent)
+		})
+	}
 }
 
 func TestBindTool_rawJSONObjects(t *testing.T) {
@@ -374,6 +372,7 @@ func TestBindTool_errors(t *testing.T) {
 	c, _ := testClient(t)
 	for _, x := range []struct{ tool, args, want string }{
 		{ListDomainClasses, `{"domain":"nonexistent"}`, "404"}, // Error from the REST API.
+		{Help, `{}`, "invalid arguments"},                      // Domain is required.
 		{GetObjects, `{"constraint":{}}`, "invalid arguments"}, // Missing required argument.
 		{GetObjects, `{"query":123}`, "invalid arguments"},     // Wrong argument type.
 	} {
