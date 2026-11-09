@@ -77,7 +77,7 @@ OK
                "end": "2017-07-21T17:32:28.1341231Z",
                "limit": 91,
                "queryLimit": 10,
-               "start": "2024-01-15T10:30:00Z",
+               "start": "2017-07-21T17:32:28.1341231Z",
                "totalLimit": 40,
                "totalQueryLimit": 29
             },
@@ -95,7 +95,7 @@ OK
                "end": "2017-07-21T17:32:28.1341231Z",
                "limit": 46,
                "queryLimit": 10,
-               "start": "2024-01-15T10:30:00Z",
+               "start": "2017-07-21T17:32:28.1341231Z",
                "totalLimit": 83,
                "totalQueryLimit": 46
             },
@@ -146,7 +146,7 @@ Store console state so an agent can read it via MCP tool get_console. The MCP cl
                "end": "2017-07-21T17:32:28.1341231Z",
                "limit": 91,
                "queryLimit": 10,
-               "start": "2024-01-15T10:30:00Z",
+               "start": "2017-07-21T17:32:28.1341231Z",
                "totalLimit": 40,
                "totalQueryLimit": 29
             },
@@ -164,7 +164,7 @@ Store console state so an agent can read it via MCP tool get_console. The MCP cl
                "end": "2017-07-21T17:32:28.1341231Z",
                "limit": 46,
                "queryLimit": 10,
-               "start": "2024-01-15T10:30:00Z",
+               "start": "2017-07-21T17:32:28.1341231Z",
                "totalLimit": 83,
                "totalQueryLimit": 46
             },
@@ -227,7 +227,7 @@ Push a console display update to the SSE event stream. The update is delivered t
                "end": "2017-07-21T17:32:28.1341231Z",
                "limit": 91,
                "queryLimit": 10,
-               "start": "2024-01-15T10:30:00Z",
+               "start": "2017-07-21T17:32:28.1341231Z",
                "totalLimit": 40,
                "totalQueryLimit": 29
             },
@@ -245,7 +245,7 @@ Push a console display update to the SSE event stream. The update is delivered t
                "end": "2017-07-21T17:32:28.1341231Z",
                "limit": 46,
                "queryLimit": 10,
-               "start": "2024-01-15T10:30:00Z",
+               "start": "2017-07-21T17:32:28.1341231Z",
                "totalLimit": 83,
                "totalQueryLimit": 46
             },
@@ -334,7 +334,7 @@ Specify a set of start objects, as queries or serialized objects, and a goal cla
          "end": "2017-07-21T17:32:28.1341231Z",
          "limit": 81,
          "queryLimit": 10,
-         "start": "2024-01-15T10:30:00Z",
+         "start": "2017-07-21T17:32:28.1341231Z",
          "totalLimit": 5,
          "totalQueryLimit": 2
       },
@@ -476,7 +476,7 @@ Specify a set of start objects, as queries or serialized objects, and a depth fo
          "end": "2017-07-21T17:32:28.1341231Z",
          "limit": 11,
          "queryLimit": 10,
-         "start": "2024-01-15T10:30:00Z",
+         "start": "2017-07-21T17:32:28.1341231Z",
          "totalLimit": 49,
          "totalQueryLimit": 84
       },
@@ -618,7 +618,7 @@ Specify a set of start objects, as queries or serialized objects, and a depth fo
          "end": "2017-07-21T17:32:28.1341231Z",
          "limit": 11,
          "queryLimit": 10,
-         "start": "2024-01-15T10:30:00Z",
+         "start": "2017-07-21T17:32:28.1341231Z",
          "totalLimit": 49,
          "totalQueryLimit": 84
       },
@@ -759,7 +759,7 @@ Specify a set of start objects, as queries or serialized objects, and a goal cla
          "end": "2017-07-21T17:32:28.1341231Z",
          "limit": 81,
          "queryLimit": 10,
-         "start": "2024-01-15T10:30:00Z",
+         "start": "2017-07-21T17:32:28.1341231Z",
          "totalLimit": 5,
          "totalQueryLimit": 2
       },

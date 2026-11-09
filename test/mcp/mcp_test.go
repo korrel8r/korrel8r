@@ -43,7 +43,6 @@ func TestListTools(t *testing.T) {
 	}
 	assert.ElementsMatch(t, names,
 		[]string{
-			mcpserver.InstructionsTool,
 			mcpserver.GetConsole,
 			mcpserver.ShowInConsole,
 			mcpserver.CreateNeighborsGraph,

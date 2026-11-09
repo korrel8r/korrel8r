@@ -11,14 +11,13 @@ Korrel8r provides an [MCP](https://modelcontextprotocol.io/) server with the fol
 - [get_console](#get_console)
 - [get_objects](#get_objects)
 - [help](#help)
-- [instructions](#instructions)
 - [list_domain_classes](#list_domain_classes)
 - [list_domains](#list_domains)
 - [show_in_console](#show_in_console)
 
 ## create_goals_graph
 
-Follow correlation paths from start objects to specific goal classes. Returns a graph of correlated classes with queries and result counts. Use for targeted queries like "find logs for this pod" or "what alerts fired for this deployment?" Start queries use "domain:class:selector" format; goals are class names like ["log:application"]. See 'help' for syntax.
+Find a specific class of data related to a resource or signal, such as application logs for a Deployment. Use for targeted investigations: {"start":{"queries":["k8s:Deployment.v1.apps:{\"namespace\":\"default\",\"name\":\"my-deployment\"}"]},"goals":["log:application"]}. The selector is JSON text inside the query string. For unfamiliar classes or selectors, use 'list_domains', 'list_domain_classes', and 'help' with a domain. Application logs work via the Kubernetes API without a separate log store; Events are k8s resources (k8s:Event.v1), not a separate domain. Verify graph queries with 'get_objects'.
 
 ### Input parameters
 
@@ -37,7 +36,7 @@ Follow correlation paths from start objects to specific goal classes. Returns a 
 
 ## create_neighbors_graph
 
-Follow correlation rules outward from start objects up to a given depth. Returns a graph of correlated classes with queries and result counts. Use for open-ended exploration like "what is related to this pod?" Depth 1 = direct correlations; depth 2-3 typically reaches logs, metrics, and alerts. Start queries use "domain:class:selector" format; see 'help' for syntax.
+Explore what is related to a failing workload or other resource or signal. Use first for open-ended investigations across Kubernetes resources and observability signals instead of guessing related object names. Example: {"start":{"queries":["k8s:Deployment.v1.apps:{\"namespace\":\"default\",\"name\":\"my-deployment\"}"]},"depth":2}. The selector is JSON text inside the query string; depth 1 finds direct neighbors, 2 follows one more hop. Verify relevant graph queries with 'get_objects'; correlation is not proof of cause.
 
 ### Input parameters
 
@@ -56,7 +55,7 @@ Follow correlation rules outward from start objects up to a given depth. Returns
 
 ## get_console
 
-Get what the user is looking at in the console. Returns a view query (main console view) and/or search parameters (troubleshooting panel), either may be absent. Use these as context for further actions.
+Read the user's OpenShift console view/search when asked "what am I looking at?". Only works when the user is logged in to the OpenShift console and has enabled AI navigation for their session. Report if the console is unavailable.
 
 ### Output parameters
 
@@ -67,24 +66,24 @@ Get what the user is looking at in the console. Returns a view query (main conso
 
 ## get_objects
 
-Execute a query and return matching objects as self-contained JSON (all labels/fields included per object). Query format is "domain:class:selector"; see 'help' for syntax. Use the constraint parameter (limit number of objects, start/end time as RFC 3339) to control result size, especially for high-volume domains like logs, metrics, and traces.
+Fetch full objects to verify graph results. Pass a graph node's queries[].query (domain:class:selector), or a known query. Use 'help' with a domain if constructing an unfamiliar query. Bound results with constraint.limit or constraint.start/end (RFC 3339).
 
 ### Input parameters
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `constraint` | object |  | Optional constraint to limit results by time range and/or count. |
-| `query` | string | yes | Query string in the form 'domain:class:selector'. Use 'help' to learn query syntax for each domain. |
+| `constraint` | object |  | Set limit to bound results; start/end (RFC 3339) for time ranges. |
+| `query` | string | yes | Query string 'domain:class:selector'. Use 'help' for unfamiliar query syntax. |
 
 ## help
 
-Get help on domains, classes, and query syntax. Omit the domain parameter for help on all domains. Class names have the form "domain:class". Query strings have the form "domain:class:selector". Use this before constructing queries for other tools.
+Use this when you need query syntax or examples for a specified domain.
 
 ### Input parameters
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `domain` | string |  | If specified, get help for this domain only. |
+| `domain` | string | yes | Name of the domain to get help for. |
 
 ### Output parameters
 
@@ -92,19 +91,9 @@ Get help on domains, classes, and query syntax. Omit the domain parameter for he
 |-----------|------|----------|-------------|
 | `documentation` | string | yes | Domain documentation including query syntax and examples |
 
-## instructions
-
-Return the Korrel8r MCP server instructions. Use this tool if your client does not expose or use the instructions provided during MCP initialization; it returns the same guidance for using Korrel8r tools.
-
-### Output parameters
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| `instructions` | string | yes | Korrel8r MCP server instructions |
-
 ## list_domain_classes
 
-List classes in a domain. A class represents objects with a specific structure. Full class names have the form "domain:class" and are used in queries and as goal parameters. Use 'help' for details on class and query syntax.
+Use this when you need a domain's classes for queries or graph goals (domain:class). Use 'help' for unfamiliar selectors.
 
 ### Input parameters
 
@@ -121,17 +110,17 @@ List classes in a domain. A class represents objects with a specific structure. 
 
 ## list_domains
 
-List available domains with descriptions. A domain groups signals or resources that share a query syntax and data store. Use 'list_domain_classes' or 'help' to explore a domain further.
+Use this when you need to find known domains and configured stores. Use 'list_domain_classes' to find classes for a domain.
 
 ### Output parameters
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `domains` | object[] | yes | List of domains |
+| `domains` | object[] | yes | Known domains and configured stores. |
 
 ## show_in_console
 
-Update the console to display new data. Set 'view' to a query to update the main view, and/or set 'search' to display a correlation graph in the troubleshooting panel. See 'help' for query syntax.
+Display a query (view) and/or graph (search) in the user's OpenShift console. Only works when the user is logged in to the OpenShift console and has enabled AI navigation for their session. Report if the console is unavailable.
 
 ### Input parameters
 
