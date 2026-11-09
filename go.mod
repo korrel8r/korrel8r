@@ -37,7 +37,7 @@ require (
 	go.opentelemetry.io/otel/exporters/stdout/stdoutmetric v1.47.0
 	go.opentelemetry.io/otel/metric v1.47.0
 	go.opentelemetry.io/proto/otlp v1.11.1
-	golang.org/x/sync v0.24.0
+	golang.org/x/sync v0.25.0
 	gonum.org/v1/gonum v0.17.0
 	google.golang.org/protobuf v1.36.12
 	k8s.io/api v0.37.2
