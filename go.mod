@@ -13,7 +13,7 @@ require (
 	github.com/VictoriaMetrics/metricsql v0.87.6
 	github.com/bytedance/sonic v1.15.5
 	github.com/getkin/kin-openapi v0.153.0
-	github.com/gin-contrib/pprof v1.5.7
+	github.com/gin-contrib/pprof v1.5.8
 	github.com/gin-gonic/gin v1.12.0
 	github.com/go-logr/logr v1.4.4
 	github.com/go-logr/stdr v1.2.2
