@@ -917,6 +917,67 @@ func DataVolumeToPVC(o interface{}) string {
 //line kubevirt.qtpl:211
 }
 
+// # PvcToDataVolume finds the DataVolume for a PersistentVolumeClaim
+// # (they share namespace/name, the reverse of DataVolumeToPVC).
+// name: PvcToDataVolume
+// start:
+//   domain: k8s
+//   classes: [PersistentVolumeClaim]
+// goal:
+//   domain: k8s
+//   classes: [DataVolume.cdi.kubevirt.io]
+//
+
+//line kubevirt.qtpl:223
+func StreamPvcToDataVolume(qw422016 *qt422016.Writer, o interface{}) {
+//line kubevirt.qtpl:223
+	qw422016.N().S(`
+`)
+//line kubevirt.qtpl:224
+	_, _, ns, name, _ := k8sMetadata(o)
+	RequireAll(ns, name)
+
+//line kubevirt.qtpl:224
+	qw422016.N().S(`
+k8s:DataVolume.cdi.kubevirt.io:{"namespace":`)
+//line kubevirt.qtpl:225
+	qw422016.N().Q(ns)
+//line kubevirt.qtpl:225
+	qw422016.N().S(`,"name":`)
+//line kubevirt.qtpl:225
+	qw422016.N().Q(name)
+//line kubevirt.qtpl:225
+	qw422016.N().S(`}
+`)
+//line kubevirt.qtpl:226
+}
+
+//line kubevirt.qtpl:226
+func WritePvcToDataVolume(qq422016 qtio422016.Writer, o interface{}) {
+//line kubevirt.qtpl:226
+	qw422016 := qt422016.AcquireWriter(qq422016)
+//line kubevirt.qtpl:226
+	StreamPvcToDataVolume(qw422016, o)
+//line kubevirt.qtpl:226
+	qt422016.ReleaseWriter(qw422016)
+//line kubevirt.qtpl:226
+}
+
+//line kubevirt.qtpl:226
+func PvcToDataVolume(o interface{}) string {
+//line kubevirt.qtpl:226
+	qb422016 := qt422016.AcquireByteBuffer()
+//line kubevirt.qtpl:226
+	WritePvcToDataVolume(qb422016, o)
+//line kubevirt.qtpl:226
+	qs422016 := string(qb422016.B)
+//line kubevirt.qtpl:226
+	qt422016.ReleaseByteBuffer(qb422016)
+//line kubevirt.qtpl:226
+	return qs422016
+//line kubevirt.qtpl:226
+}
+
 // # VmToDataVolume finds DataVolumes referenced by a VirtualMachine.
 // name: VmToDataVolume
 // start:
@@ -927,12 +988,12 @@ func DataVolumeToPVC(o interface{}) string {
 //   classes: [DataVolume.cdi.kubevirt.io]
 //
 
-//line kubevirt.qtpl:222
+//line kubevirt.qtpl:237
 func StreamVmToDataVolume(qw422016 *qt422016.Writer, o interface{}) {
-//line kubevirt.qtpl:222
+//line kubevirt.qtpl:237
 	qw422016.N().S(`
 `)
-//line kubevirt.qtpl:224
+//line kubevirt.qtpl:239
 	obj, _, ns, _, _ := k8sMetadata(o)
 	RequireAll(ns)
 	spec := obj["spec"].(map[string]any)
@@ -940,96 +1001,164 @@ func StreamVmToDataVolume(qw422016 *qt422016.Writer, o interface{}) {
 	tmplSpec := spec["template"].(map[string]any)["spec"].(map[string]any)
 	volumes := mapSlice(tmplSpec, "volumes")
 
-//line kubevirt.qtpl:230
+//line kubevirt.qtpl:245
 	qw422016.N().S(`
 `)
-//line kubevirt.qtpl:231
+//line kubevirt.qtpl:246
 	for _, t := range dvTemplates {
-//line kubevirt.qtpl:231
+//line kubevirt.qtpl:246
 		qw422016.N().S(`
 `)
-//line kubevirt.qtpl:232
+//line kubevirt.qtpl:247
 		dvName := t.(map[string]any)["metadata"].(map[string]any)["name"].(string)
 
-//line kubevirt.qtpl:232
+//line kubevirt.qtpl:247
 		qw422016.N().S(`
 k8s:DataVolume.cdi.kubevirt.io:{"namespace":`)
-//line kubevirt.qtpl:233
+//line kubevirt.qtpl:248
 		qw422016.N().Q(ns)
-//line kubevirt.qtpl:233
+//line kubevirt.qtpl:248
 		qw422016.N().S(`,"name":`)
-//line kubevirt.qtpl:233
+//line kubevirt.qtpl:248
 		qw422016.N().Q(dvName)
-//line kubevirt.qtpl:233
+//line kubevirt.qtpl:248
 		qw422016.N().S(`}
 `)
-//line kubevirt.qtpl:234
+//line kubevirt.qtpl:249
 	}
-//line kubevirt.qtpl:234
+//line kubevirt.qtpl:249
 	qw422016.N().S(`
 `)
-//line kubevirt.qtpl:235
+//line kubevirt.qtpl:250
 	for _, v := range volumes {
-//line kubevirt.qtpl:235
+//line kubevirt.qtpl:250
 		qw422016.N().S(`
 `)
-//line kubevirt.qtpl:236
+//line kubevirt.qtpl:251
 		vol := v.(map[string]any)
 
-//line kubevirt.qtpl:236
+//line kubevirt.qtpl:251
 		qw422016.N().S(`
 `)
-//line kubevirt.qtpl:237
+//line kubevirt.qtpl:252
 		if dv, ok := vol["dataVolume"].(map[string]any); ok {
-//line kubevirt.qtpl:237
+//line kubevirt.qtpl:252
 			qw422016.N().S(`
 k8s:DataVolume.cdi.kubevirt.io:{"namespace":`)
-//line kubevirt.qtpl:238
+//line kubevirt.qtpl:253
 			qw422016.N().Q(ns)
-//line kubevirt.qtpl:238
+//line kubevirt.qtpl:253
 			qw422016.N().S(`,"name":`)
-//line kubevirt.qtpl:238
+//line kubevirt.qtpl:253
 			qw422016.N().Q(dv["name"].(string))
-//line kubevirt.qtpl:238
+//line kubevirt.qtpl:253
 			qw422016.N().S(`}
 `)
-//line kubevirt.qtpl:239
+//line kubevirt.qtpl:254
 		}
-//line kubevirt.qtpl:239
+//line kubevirt.qtpl:254
 		qw422016.N().S(`
 `)
-//line kubevirt.qtpl:240
+//line kubevirt.qtpl:255
 	}
-//line kubevirt.qtpl:240
+//line kubevirt.qtpl:255
 	qw422016.N().S(`
 `)
-//line kubevirt.qtpl:241
+//line kubevirt.qtpl:256
 }
 
-//line kubevirt.qtpl:241
+//line kubevirt.qtpl:256
 func WriteVmToDataVolume(qq422016 qtio422016.Writer, o interface{}) {
-//line kubevirt.qtpl:241
+//line kubevirt.qtpl:256
 	qw422016 := qt422016.AcquireWriter(qq422016)
-//line kubevirt.qtpl:241
+//line kubevirt.qtpl:256
 	StreamVmToDataVolume(qw422016, o)
-//line kubevirt.qtpl:241
+//line kubevirt.qtpl:256
 	qt422016.ReleaseWriter(qw422016)
-//line kubevirt.qtpl:241
+//line kubevirt.qtpl:256
 }
 
-//line kubevirt.qtpl:241
+//line kubevirt.qtpl:256
 func VmToDataVolume(o interface{}) string {
-//line kubevirt.qtpl:241
+//line kubevirt.qtpl:256
 	qb422016 := qt422016.AcquireByteBuffer()
-//line kubevirt.qtpl:241
+//line kubevirt.qtpl:256
 	WriteVmToDataVolume(qb422016, o)
-//line kubevirt.qtpl:241
+//line kubevirt.qtpl:256
 	qs422016 := string(qb422016.B)
-//line kubevirt.qtpl:241
+//line kubevirt.qtpl:256
 	qt422016.ReleaseByteBuffer(qb422016)
-//line kubevirt.qtpl:241
+//line kubevirt.qtpl:256
 	return qs422016
-//line kubevirt.qtpl:241
+//line kubevirt.qtpl:256
+}
+
+// # DataVolumeToVm finds the VirtualMachine that owns a DataVolume created
+// # from its dataVolumeTemplates, via the DataVolume ownerReferences.
+// name: DataVolumeToVm
+// start:
+//   domain: k8s
+//   classes: [DataVolume.cdi.kubevirt.io]
+// goal:
+//   domain: k8s
+//   classes: [VirtualMachine.kubevirt.io]
+//
+
+//line kubevirt.qtpl:268
+func StreamDataVolumeToVm(qw422016 *qt422016.Writer, o interface{}) {
+//line kubevirt.qtpl:268
+	qw422016.N().S(`
+`)
+//line kubevirt.qtpl:270
+	_, md, ns, _, _ := k8sMetadata(o)
+	RequireAll(ns)
+	vmName := ""
+	for _, r := range mapSlice(md, "ownerReferences") {
+		if ref, ok := r.(map[string]any); ok && ref["kind"] == "VirtualMachine" {
+			vmName, _ = ref["name"].(string)
+		}
+	}
+	RequireAll(vmName)
+
+//line kubevirt.qtpl:279
+	qw422016.N().S(`
+k8s:VirtualMachine.kubevirt.io:{"namespace":`)
+//line kubevirt.qtpl:280
+	qw422016.N().Q(ns)
+//line kubevirt.qtpl:280
+	qw422016.N().S(`,"name":`)
+//line kubevirt.qtpl:280
+	qw422016.N().Q(vmName)
+//line kubevirt.qtpl:280
+	qw422016.N().S(`}
+`)
+//line kubevirt.qtpl:281
+}
+
+//line kubevirt.qtpl:281
+func WriteDataVolumeToVm(qq422016 qtio422016.Writer, o interface{}) {
+//line kubevirt.qtpl:281
+	qw422016 := qt422016.AcquireWriter(qq422016)
+//line kubevirt.qtpl:281
+	StreamDataVolumeToVm(qw422016, o)
+//line kubevirt.qtpl:281
+	qt422016.ReleaseWriter(qw422016)
+//line kubevirt.qtpl:281
+}
+
+//line kubevirt.qtpl:281
+func DataVolumeToVm(o interface{}) string {
+//line kubevirt.qtpl:281
+	qb422016 := qt422016.AcquireByteBuffer()
+//line kubevirt.qtpl:281
+	WriteDataVolumeToVm(qb422016, o)
+//line kubevirt.qtpl:281
+	qs422016 := string(qb422016.B)
+//line kubevirt.qtpl:281
+	qt422016.ReleaseByteBuffer(qb422016)
+//line kubevirt.qtpl:281
+	return qs422016
+//line kubevirt.qtpl:281
 }
 
 // # VmiToPVC finds PersistentVolumeClaims referenced by a VirtualMachineInstance.
@@ -1042,138 +1171,138 @@ func VmToDataVolume(o interface{}) string {
 //   classes: [PersistentVolumeClaim]
 //
 
-//line kubevirt.qtpl:252
+//line kubevirt.qtpl:292
 func StreamVmiToPVC(qw422016 *qt422016.Writer, o interface{}) {
-//line kubevirt.qtpl:252
+//line kubevirt.qtpl:292
 	qw422016.N().S(`
 `)
-//line kubevirt.qtpl:254
+//line kubevirt.qtpl:294
 	obj, _, ns, _, _ := k8sMetadata(o)
 	RequireAll(ns)
 	volumes := mapSlice(obj["spec"].(map[string]any), "volumes")
 
-//line kubevirt.qtpl:257
+//line kubevirt.qtpl:297
 	qw422016.N().S(`
 `)
-//line kubevirt.qtpl:258
+//line kubevirt.qtpl:298
 	for _, v := range volumes {
-//line kubevirt.qtpl:258
+//line kubevirt.qtpl:298
 		qw422016.N().S(`
 `)
-//line kubevirt.qtpl:259
+//line kubevirt.qtpl:299
 		vol := v.(map[string]any)
 
-//line kubevirt.qtpl:259
+//line kubevirt.qtpl:299
 		qw422016.N().S(`
 `)
-//line kubevirt.qtpl:260
+//line kubevirt.qtpl:300
 		if pvc, ok := vol["persistentVolumeClaim"].(map[string]any); ok {
-//line kubevirt.qtpl:260
+//line kubevirt.qtpl:300
 			qw422016.N().S(`
 k8s:PersistentVolumeClaim:{"namespace":`)
-//line kubevirt.qtpl:261
+//line kubevirt.qtpl:301
 			qw422016.N().Q(ns)
-//line kubevirt.qtpl:261
+//line kubevirt.qtpl:301
 			qw422016.N().S(`,"name":`)
-//line kubevirt.qtpl:261
+//line kubevirt.qtpl:301
 			qw422016.N().Q(pvc["claimName"].(string))
-//line kubevirt.qtpl:261
+//line kubevirt.qtpl:301
 			qw422016.N().S(`}
 `)
-//line kubevirt.qtpl:262
+//line kubevirt.qtpl:302
 		}
-//line kubevirt.qtpl:262
+//line kubevirt.qtpl:302
 		qw422016.N().S(`
 `)
-//line kubevirt.qtpl:263
+//line kubevirt.qtpl:303
 		if dv, ok := vol["dataVolume"].(map[string]any); ok {
-//line kubevirt.qtpl:263
+//line kubevirt.qtpl:303
 			qw422016.N().S(`
 k8s:PersistentVolumeClaim:{"namespace":`)
-//line kubevirt.qtpl:264
+//line kubevirt.qtpl:304
 			qw422016.N().Q(ns)
-//line kubevirt.qtpl:264
+//line kubevirt.qtpl:304
 			qw422016.N().S(`,"name":`)
-//line kubevirt.qtpl:264
+//line kubevirt.qtpl:304
 			qw422016.N().Q(dv["name"].(string))
-//line kubevirt.qtpl:264
+//line kubevirt.qtpl:304
 			qw422016.N().S(`}
 `)
-//line kubevirt.qtpl:265
+//line kubevirt.qtpl:305
 		}
-//line kubevirt.qtpl:265
+//line kubevirt.qtpl:305
 		qw422016.N().S(`
 `)
-//line kubevirt.qtpl:266
+//line kubevirt.qtpl:306
 		if eph, ok := vol["ephemeral"].(map[string]any); ok {
-//line kubevirt.qtpl:266
+//line kubevirt.qtpl:306
 			qw422016.N().S(`
 k8s:PersistentVolumeClaim:{"namespace":`)
-//line kubevirt.qtpl:267
+//line kubevirt.qtpl:307
 			qw422016.N().Q(ns)
-//line kubevirt.qtpl:267
+//line kubevirt.qtpl:307
 			qw422016.N().S(`,"name":`)
-//line kubevirt.qtpl:267
+//line kubevirt.qtpl:307
 			qw422016.N().Q(eph["persistentVolumeClaim"].(map[string]any)["claimName"].(string))
-//line kubevirt.qtpl:267
+//line kubevirt.qtpl:307
 			qw422016.N().S(`}
 `)
-//line kubevirt.qtpl:268
+//line kubevirt.qtpl:308
 		}
-//line kubevirt.qtpl:268
+//line kubevirt.qtpl:308
 		qw422016.N().S(`
 `)
-//line kubevirt.qtpl:269
+//line kubevirt.qtpl:309
 		if md, ok := vol["memoryDump"].(map[string]any); ok {
-//line kubevirt.qtpl:269
+//line kubevirt.qtpl:309
 			qw422016.N().S(`
 k8s:PersistentVolumeClaim:{"namespace":`)
-//line kubevirt.qtpl:270
+//line kubevirt.qtpl:310
 			qw422016.N().Q(ns)
-//line kubevirt.qtpl:270
+//line kubevirt.qtpl:310
 			qw422016.N().S(`,"name":`)
-//line kubevirt.qtpl:270
+//line kubevirt.qtpl:310
 			qw422016.N().Q(md["claimName"].(string))
-//line kubevirt.qtpl:270
+//line kubevirt.qtpl:310
 			qw422016.N().S(`}
 `)
-//line kubevirt.qtpl:271
+//line kubevirt.qtpl:311
 		}
-//line kubevirt.qtpl:271
+//line kubevirt.qtpl:311
 		qw422016.N().S(`
 `)
-//line kubevirt.qtpl:272
+//line kubevirt.qtpl:312
 	}
-//line kubevirt.qtpl:272
+//line kubevirt.qtpl:312
 	qw422016.N().S(`
 `)
-//line kubevirt.qtpl:273
+//line kubevirt.qtpl:313
 }
 
-//line kubevirt.qtpl:273
+//line kubevirt.qtpl:313
 func WriteVmiToPVC(qq422016 qtio422016.Writer, o interface{}) {
-//line kubevirt.qtpl:273
+//line kubevirt.qtpl:313
 	qw422016 := qt422016.AcquireWriter(qq422016)
-//line kubevirt.qtpl:273
+//line kubevirt.qtpl:313
 	StreamVmiToPVC(qw422016, o)
-//line kubevirt.qtpl:273
+//line kubevirt.qtpl:313
 	qt422016.ReleaseWriter(qw422016)
-//line kubevirt.qtpl:273
+//line kubevirt.qtpl:313
 }
 
-//line kubevirt.qtpl:273
+//line kubevirt.qtpl:313
 func VmiToPVC(o interface{}) string {
-//line kubevirt.qtpl:273
+//line kubevirt.qtpl:313
 	qb422016 := qt422016.AcquireByteBuffer()
-//line kubevirt.qtpl:273
+//line kubevirt.qtpl:313
 	WriteVmiToPVC(qb422016, o)
-//line kubevirt.qtpl:273
+//line kubevirt.qtpl:313
 	qs422016 := string(qb422016.B)
-//line kubevirt.qtpl:273
+//line kubevirt.qtpl:313
 	qt422016.ReleaseByteBuffer(qb422016)
-//line kubevirt.qtpl:273
+//line kubevirt.qtpl:313
 	return qs422016
-//line kubevirt.qtpl:273
+//line kubevirt.qtpl:313
 }
 
 // # VmiToDataVolume finds DataVolumes referenced by a VirtualMachineInstance.
@@ -1186,81 +1315,81 @@ func VmiToPVC(o interface{}) string {
 //   classes: [DataVolume.cdi.kubevirt.io]
 //
 
-//line kubevirt.qtpl:284
+//line kubevirt.qtpl:324
 func StreamVmiToDataVolume(qw422016 *qt422016.Writer, o interface{}) {
-//line kubevirt.qtpl:284
+//line kubevirt.qtpl:324
 	qw422016.N().S(`
 `)
-//line kubevirt.qtpl:286
+//line kubevirt.qtpl:326
 	obj, _, ns, _, _ := k8sMetadata(o)
 	RequireAll(ns)
 	volumes := mapSlice(obj["spec"].(map[string]any), "volumes")
 
-//line kubevirt.qtpl:289
+//line kubevirt.qtpl:329
 	qw422016.N().S(`
 `)
-//line kubevirt.qtpl:290
+//line kubevirt.qtpl:330
 	for _, v := range volumes {
-//line kubevirt.qtpl:290
+//line kubevirt.qtpl:330
 		qw422016.N().S(`
 `)
-//line kubevirt.qtpl:291
+//line kubevirt.qtpl:331
 		vol := v.(map[string]any)
 
-//line kubevirt.qtpl:291
+//line kubevirt.qtpl:331
 		qw422016.N().S(`
 `)
-//line kubevirt.qtpl:292
+//line kubevirt.qtpl:332
 		if dv, ok := vol["dataVolume"].(map[string]any); ok {
-//line kubevirt.qtpl:292
+//line kubevirt.qtpl:332
 			qw422016.N().S(`
 k8s:DataVolume.cdi.kubevirt.io:{"namespace":`)
-//line kubevirt.qtpl:293
+//line kubevirt.qtpl:333
 			qw422016.N().Q(ns)
-//line kubevirt.qtpl:293
+//line kubevirt.qtpl:333
 			qw422016.N().S(`,"name":`)
-//line kubevirt.qtpl:293
+//line kubevirt.qtpl:333
 			qw422016.N().Q(dv["name"].(string))
-//line kubevirt.qtpl:293
+//line kubevirt.qtpl:333
 			qw422016.N().S(`}
 `)
-//line kubevirt.qtpl:294
+//line kubevirt.qtpl:334
 		}
-//line kubevirt.qtpl:294
+//line kubevirt.qtpl:334
 		qw422016.N().S(`
 `)
-//line kubevirt.qtpl:295
+//line kubevirt.qtpl:335
 	}
-//line kubevirt.qtpl:295
+//line kubevirt.qtpl:335
 	qw422016.N().S(`
 `)
-//line kubevirt.qtpl:296
+//line kubevirt.qtpl:336
 }
 
-//line kubevirt.qtpl:296
+//line kubevirt.qtpl:336
 func WriteVmiToDataVolume(qq422016 qtio422016.Writer, o interface{}) {
-//line kubevirt.qtpl:296
+//line kubevirt.qtpl:336
 	qw422016 := qt422016.AcquireWriter(qq422016)
-//line kubevirt.qtpl:296
+//line kubevirt.qtpl:336
 	StreamVmiToDataVolume(qw422016, o)
-//line kubevirt.qtpl:296
+//line kubevirt.qtpl:336
 	qt422016.ReleaseWriter(qw422016)
-//line kubevirt.qtpl:296
+//line kubevirt.qtpl:336
 }
 
-//line kubevirt.qtpl:296
+//line kubevirt.qtpl:336
 func VmiToDataVolume(o interface{}) string {
-//line kubevirt.qtpl:296
+//line kubevirt.qtpl:336
 	qb422016 := qt422016.AcquireByteBuffer()
-//line kubevirt.qtpl:296
+//line kubevirt.qtpl:336
 	WriteVmiToDataVolume(qb422016, o)
-//line kubevirt.qtpl:296
+//line kubevirt.qtpl:336
 	qs422016 := string(qb422016.B)
-//line kubevirt.qtpl:296
+//line kubevirt.qtpl:336
 	qt422016.ReleaseByteBuffer(qb422016)
-//line kubevirt.qtpl:296
+//line kubevirt.qtpl:336
 	return qs422016
-//line kubevirt.qtpl:296
+//line kubevirt.qtpl:336
 }
 
 // # VmSnapshotToVm finds the source VirtualMachine of a snapshot.
@@ -1273,55 +1402,55 @@ func VmiToDataVolume(o interface{}) string {
 //   classes: [VirtualMachine.kubevirt.io]
 //
 
-//line kubevirt.qtpl:307
+//line kubevirt.qtpl:347
 func StreamVmSnapshotToVm(qw422016 *qt422016.Writer, o interface{}) {
-//line kubevirt.qtpl:307
+//line kubevirt.qtpl:347
 	qw422016.N().S(`
 `)
-//line kubevirt.qtpl:309
+//line kubevirt.qtpl:349
 	obj, _, ns, _, _ := k8sMetadata(o)
 	RequireAll(ns)
 	srcName := Require(obj["spec"].(map[string]any)["source"].(map[string]any)["name"].(string))
 
-//line kubevirt.qtpl:312
+//line kubevirt.qtpl:352
 	qw422016.N().S(`
 k8s:VirtualMachine.kubevirt.io:{"namespace":`)
-//line kubevirt.qtpl:313
+//line kubevirt.qtpl:353
 	qw422016.N().Q(ns)
-//line kubevirt.qtpl:313
+//line kubevirt.qtpl:353
 	qw422016.N().S(`,"name":`)
-//line kubevirt.qtpl:313
+//line kubevirt.qtpl:353
 	qw422016.N().Q(srcName)
-//line kubevirt.qtpl:313
+//line kubevirt.qtpl:353
 	qw422016.N().S(`}
 `)
-//line kubevirt.qtpl:314
+//line kubevirt.qtpl:354
 }
 
-//line kubevirt.qtpl:314
+//line kubevirt.qtpl:354
 func WriteVmSnapshotToVm(qq422016 qtio422016.Writer, o interface{}) {
-//line kubevirt.qtpl:314
+//line kubevirt.qtpl:354
 	qw422016 := qt422016.AcquireWriter(qq422016)
-//line kubevirt.qtpl:314
+//line kubevirt.qtpl:354
 	StreamVmSnapshotToVm(qw422016, o)
-//line kubevirt.qtpl:314
+//line kubevirt.qtpl:354
 	qt422016.ReleaseWriter(qw422016)
-//line kubevirt.qtpl:314
+//line kubevirt.qtpl:354
 }
 
-//line kubevirt.qtpl:314
+//line kubevirt.qtpl:354
 func VmSnapshotToVm(o interface{}) string {
-//line kubevirt.qtpl:314
+//line kubevirt.qtpl:354
 	qb422016 := qt422016.AcquireByteBuffer()
-//line kubevirt.qtpl:314
+//line kubevirt.qtpl:354
 	WriteVmSnapshotToVm(qb422016, o)
-//line kubevirt.qtpl:314
+//line kubevirt.qtpl:354
 	qs422016 := string(qb422016.B)
-//line kubevirt.qtpl:314
+//line kubevirt.qtpl:354
 	qt422016.ReleaseByteBuffer(qb422016)
-//line kubevirt.qtpl:314
+//line kubevirt.qtpl:354
 	return qs422016
-//line kubevirt.qtpl:314
+//line kubevirt.qtpl:354
 }
 
 // # VmToVmSnapshot finds snapshots of a VirtualMachine.
@@ -1334,54 +1463,54 @@ func VmSnapshotToVm(o interface{}) string {
 //   classes: [VirtualMachineSnapshot.snapshot.kubevirt.io]
 //
 
-//line kubevirt.qtpl:325
+//line kubevirt.qtpl:365
 func StreamVmToVmSnapshot(qw422016 *qt422016.Writer, o interface{}) {
-//line kubevirt.qtpl:325
+//line kubevirt.qtpl:365
 	qw422016.N().S(`
 `)
-//line kubevirt.qtpl:326
+//line kubevirt.qtpl:366
 	_, _, ns, name, _ := k8sMetadata(o)
 	RequireAll(ns, name)
 
-//line kubevirt.qtpl:326
+//line kubevirt.qtpl:366
 	qw422016.N().S(`
 k8s:VirtualMachineSnapshot.snapshot.kubevirt.io:{"namespace":`)
-//line kubevirt.qtpl:327
+//line kubevirt.qtpl:367
 	qw422016.N().Q(ns)
-//line kubevirt.qtpl:327
+//line kubevirt.qtpl:367
 	qw422016.N().S(`,"labels":{"vm.kubevirt.io/name":`)
-//line kubevirt.qtpl:327
+//line kubevirt.qtpl:367
 	qw422016.N().Q(name)
-//line kubevirt.qtpl:327
+//line kubevirt.qtpl:367
 	qw422016.N().S(`}}
 `)
-//line kubevirt.qtpl:328
+//line kubevirt.qtpl:368
 }
 
-//line kubevirt.qtpl:328
+//line kubevirt.qtpl:368
 func WriteVmToVmSnapshot(qq422016 qtio422016.Writer, o interface{}) {
-//line kubevirt.qtpl:328
+//line kubevirt.qtpl:368
 	qw422016 := qt422016.AcquireWriter(qq422016)
-//line kubevirt.qtpl:328
+//line kubevirt.qtpl:368
 	StreamVmToVmSnapshot(qw422016, o)
-//line kubevirt.qtpl:328
+//line kubevirt.qtpl:368
 	qt422016.ReleaseWriter(qw422016)
-//line kubevirt.qtpl:328
+//line kubevirt.qtpl:368
 }
 
-//line kubevirt.qtpl:328
+//line kubevirt.qtpl:368
 func VmToVmSnapshot(o interface{}) string {
-//line kubevirt.qtpl:328
+//line kubevirt.qtpl:368
 	qb422016 := qt422016.AcquireByteBuffer()
-//line kubevirt.qtpl:328
+//line kubevirt.qtpl:368
 	WriteVmToVmSnapshot(qb422016, o)
-//line kubevirt.qtpl:328
+//line kubevirt.qtpl:368
 	qs422016 := string(qb422016.B)
-//line kubevirt.qtpl:328
+//line kubevirt.qtpl:368
 	qt422016.ReleaseByteBuffer(qb422016)
-//line kubevirt.qtpl:328
+//line kubevirt.qtpl:368
 	return qs422016
-//line kubevirt.qtpl:328
+//line kubevirt.qtpl:368
 }
 
 // # VmRestoreToVm finds the target VirtualMachine of a restore.
@@ -1394,55 +1523,55 @@ func VmToVmSnapshot(o interface{}) string {
 //   classes: [VirtualMachine.kubevirt.io]
 //
 
-//line kubevirt.qtpl:339
+//line kubevirt.qtpl:379
 func StreamVmRestoreToVm(qw422016 *qt422016.Writer, o interface{}) {
-//line kubevirt.qtpl:339
+//line kubevirt.qtpl:379
 	qw422016.N().S(`
 `)
-//line kubevirt.qtpl:341
+//line kubevirt.qtpl:381
 	obj, _, ns, _, _ := k8sMetadata(o)
 	RequireAll(ns)
 	targetName := Require(obj["spec"].(map[string]any)["target"].(map[string]any)["name"].(string))
 
-//line kubevirt.qtpl:344
+//line kubevirt.qtpl:384
 	qw422016.N().S(`
 k8s:VirtualMachine.kubevirt.io:{"namespace":`)
-//line kubevirt.qtpl:345
+//line kubevirt.qtpl:385
 	qw422016.N().Q(ns)
-//line kubevirt.qtpl:345
+//line kubevirt.qtpl:385
 	qw422016.N().S(`,"name":`)
-//line kubevirt.qtpl:345
+//line kubevirt.qtpl:385
 	qw422016.N().Q(targetName)
-//line kubevirt.qtpl:345
+//line kubevirt.qtpl:385
 	qw422016.N().S(`}
 `)
-//line kubevirt.qtpl:346
+//line kubevirt.qtpl:386
 }
 
-//line kubevirt.qtpl:346
+//line kubevirt.qtpl:386
 func WriteVmRestoreToVm(qq422016 qtio422016.Writer, o interface{}) {
-//line kubevirt.qtpl:346
+//line kubevirt.qtpl:386
 	qw422016 := qt422016.AcquireWriter(qq422016)
-//line kubevirt.qtpl:346
+//line kubevirt.qtpl:386
 	StreamVmRestoreToVm(qw422016, o)
-//line kubevirt.qtpl:346
+//line kubevirt.qtpl:386
 	qt422016.ReleaseWriter(qw422016)
-//line kubevirt.qtpl:346
+//line kubevirt.qtpl:386
 }
 
-//line kubevirt.qtpl:346
+//line kubevirt.qtpl:386
 func VmRestoreToVm(o interface{}) string {
-//line kubevirt.qtpl:346
+//line kubevirt.qtpl:386
 	qb422016 := qt422016.AcquireByteBuffer()
-//line kubevirt.qtpl:346
+//line kubevirt.qtpl:386
 	WriteVmRestoreToVm(qb422016, o)
-//line kubevirt.qtpl:346
+//line kubevirt.qtpl:386
 	qs422016 := string(qb422016.B)
-//line kubevirt.qtpl:346
+//line kubevirt.qtpl:386
 	qt422016.ReleaseByteBuffer(qb422016)
-//line kubevirt.qtpl:346
+//line kubevirt.qtpl:386
 	return qs422016
-//line kubevirt.qtpl:346
+//line kubevirt.qtpl:386
 }
 
 // # VmToVmRestore finds restores targeting a VirtualMachine.
@@ -1455,54 +1584,54 @@ func VmRestoreToVm(o interface{}) string {
 //   classes: [VirtualMachineRestore.snapshot.kubevirt.io]
 //
 
-//line kubevirt.qtpl:357
+//line kubevirt.qtpl:397
 func StreamVmToVmRestore(qw422016 *qt422016.Writer, o interface{}) {
-//line kubevirt.qtpl:357
+//line kubevirt.qtpl:397
 	qw422016.N().S(`
 `)
-//line kubevirt.qtpl:358
+//line kubevirt.qtpl:398
 	_, _, ns, name, _ := k8sMetadata(o)
 	RequireAll(ns, name)
 
-//line kubevirt.qtpl:358
+//line kubevirt.qtpl:398
 	qw422016.N().S(`
 k8s:VirtualMachineRestore.snapshot.kubevirt.io:{"namespace":`)
-//line kubevirt.qtpl:359
+//line kubevirt.qtpl:399
 	qw422016.N().Q(ns)
-//line kubevirt.qtpl:359
+//line kubevirt.qtpl:399
 	qw422016.N().S(`,"labels":{"vm.kubevirt.io/name":`)
-//line kubevirt.qtpl:359
+//line kubevirt.qtpl:399
 	qw422016.N().Q(name)
-//line kubevirt.qtpl:359
+//line kubevirt.qtpl:399
 	qw422016.N().S(`}}
 `)
-//line kubevirt.qtpl:360
+//line kubevirt.qtpl:400
 }
 
-//line kubevirt.qtpl:360
+//line kubevirt.qtpl:400
 func WriteVmToVmRestore(qq422016 qtio422016.Writer, o interface{}) {
-//line kubevirt.qtpl:360
+//line kubevirt.qtpl:400
 	qw422016 := qt422016.AcquireWriter(qq422016)
-//line kubevirt.qtpl:360
+//line kubevirt.qtpl:400
 	StreamVmToVmRestore(qw422016, o)
-//line kubevirt.qtpl:360
+//line kubevirt.qtpl:400
 	qt422016.ReleaseWriter(qw422016)
-//line kubevirt.qtpl:360
+//line kubevirt.qtpl:400
 }
 
-//line kubevirt.qtpl:360
+//line kubevirt.qtpl:400
 func VmToVmRestore(o interface{}) string {
-//line kubevirt.qtpl:360
+//line kubevirt.qtpl:400
 	qb422016 := qt422016.AcquireByteBuffer()
-//line kubevirt.qtpl:360
+//line kubevirt.qtpl:400
 	WriteVmToVmRestore(qb422016, o)
-//line kubevirt.qtpl:360
+//line kubevirt.qtpl:400
 	qs422016 := string(qb422016.B)
-//line kubevirt.qtpl:360
+//line kubevirt.qtpl:400
 	qt422016.ReleaseByteBuffer(qb422016)
-//line kubevirt.qtpl:360
+//line kubevirt.qtpl:400
 	return qs422016
-//line kubevirt.qtpl:360
+//line kubevirt.qtpl:400
 }
 
 // # VmRestoreToVmSnapshot finds the source snapshot of a restore.
@@ -1515,55 +1644,55 @@ func VmToVmRestore(o interface{}) string {
 //   classes: [VirtualMachineSnapshot.snapshot.kubevirt.io]
 //
 
-//line kubevirt.qtpl:371
+//line kubevirt.qtpl:411
 func StreamVmRestoreToVmSnapshot(qw422016 *qt422016.Writer, o interface{}) {
-//line kubevirt.qtpl:371
+//line kubevirt.qtpl:411
 	qw422016.N().S(`
 `)
-//line kubevirt.qtpl:373
+//line kubevirt.qtpl:413
 	obj, _, ns, _, _ := k8sMetadata(o)
 	RequireAll(ns)
 	snapName := Require(obj["spec"].(map[string]any)["virtualMachineSnapshotName"].(string))
 
-//line kubevirt.qtpl:376
+//line kubevirt.qtpl:416
 	qw422016.N().S(`
 k8s:VirtualMachineSnapshot.snapshot.kubevirt.io:{"namespace":`)
-//line kubevirt.qtpl:377
+//line kubevirt.qtpl:417
 	qw422016.N().Q(ns)
-//line kubevirt.qtpl:377
+//line kubevirt.qtpl:417
 	qw422016.N().S(`,"name":`)
-//line kubevirt.qtpl:377
+//line kubevirt.qtpl:417
 	qw422016.N().Q(snapName)
-//line kubevirt.qtpl:377
+//line kubevirt.qtpl:417
 	qw422016.N().S(`}
 `)
-//line kubevirt.qtpl:378
+//line kubevirt.qtpl:418
 }
 
-//line kubevirt.qtpl:378
+//line kubevirt.qtpl:418
 func WriteVmRestoreToVmSnapshot(qq422016 qtio422016.Writer, o interface{}) {
-//line kubevirt.qtpl:378
+//line kubevirt.qtpl:418
 	qw422016 := qt422016.AcquireWriter(qq422016)
-//line kubevirt.qtpl:378
+//line kubevirt.qtpl:418
 	StreamVmRestoreToVmSnapshot(qw422016, o)
-//line kubevirt.qtpl:378
+//line kubevirt.qtpl:418
 	qt422016.ReleaseWriter(qw422016)
-//line kubevirt.qtpl:378
+//line kubevirt.qtpl:418
 }
 
-//line kubevirt.qtpl:378
+//line kubevirt.qtpl:418
 func VmRestoreToVmSnapshot(o interface{}) string {
-//line kubevirt.qtpl:378
+//line kubevirt.qtpl:418
 	qb422016 := qt422016.AcquireByteBuffer()
-//line kubevirt.qtpl:378
+//line kubevirt.qtpl:418
 	WriteVmRestoreToVmSnapshot(qb422016, o)
-//line kubevirt.qtpl:378
+//line kubevirt.qtpl:418
 	qs422016 := string(qb422016.B)
-//line kubevirt.qtpl:378
+//line kubevirt.qtpl:418
 	qt422016.ReleaseByteBuffer(qb422016)
-//line kubevirt.qtpl:378
+//line kubevirt.qtpl:418
 	return qs422016
-//line kubevirt.qtpl:378
+//line kubevirt.qtpl:418
 }
 
 // # VmExportToVm finds the source VirtualMachine of an export.
@@ -1576,12 +1705,12 @@ func VmRestoreToVmSnapshot(o interface{}) string {
 //   classes: [VirtualMachine.kubevirt.io]
 //
 
-//line kubevirt.qtpl:389
+//line kubevirt.qtpl:429
 func StreamVmExportToVm(qw422016 *qt422016.Writer, o interface{}) {
-//line kubevirt.qtpl:389
+//line kubevirt.qtpl:429
 	qw422016.N().S(`
 `)
-//line kubevirt.qtpl:391
+//line kubevirt.qtpl:431
 	obj, _, ns, _, _ := k8sMetadata(o)
 	RequireAll(ns)
 	src := obj["spec"].(map[string]any)["source"].(map[string]any)
@@ -1589,45 +1718,45 @@ func StreamVmExportToVm(qw422016 *qt422016.Writer, o interface{}) {
 		Fail("not a VirtualMachine export")
 	}
 
-//line kubevirt.qtpl:395
+//line kubevirt.qtpl:435
 	qw422016.N().S(`
 k8s:VirtualMachine.kubevirt.io:{"namespace":`)
-//line kubevirt.qtpl:396
+//line kubevirt.qtpl:436
 	qw422016.N().Q(ns)
-//line kubevirt.qtpl:396
+//line kubevirt.qtpl:436
 	qw422016.N().S(`,"name":`)
-//line kubevirt.qtpl:396
+//line kubevirt.qtpl:436
 	qw422016.N().Q(src["name"].(string))
-//line kubevirt.qtpl:396
+//line kubevirt.qtpl:436
 	qw422016.N().S(`}
 `)
-//line kubevirt.qtpl:397
+//line kubevirt.qtpl:437
 }
 
-//line kubevirt.qtpl:397
+//line kubevirt.qtpl:437
 func WriteVmExportToVm(qq422016 qtio422016.Writer, o interface{}) {
-//line kubevirt.qtpl:397
+//line kubevirt.qtpl:437
 	qw422016 := qt422016.AcquireWriter(qq422016)
-//line kubevirt.qtpl:397
+//line kubevirt.qtpl:437
 	StreamVmExportToVm(qw422016, o)
-//line kubevirt.qtpl:397
+//line kubevirt.qtpl:437
 	qt422016.ReleaseWriter(qw422016)
-//line kubevirt.qtpl:397
+//line kubevirt.qtpl:437
 }
 
-//line kubevirt.qtpl:397
+//line kubevirt.qtpl:437
 func VmExportToVm(o interface{}) string {
-//line kubevirt.qtpl:397
+//line kubevirt.qtpl:437
 	qb422016 := qt422016.AcquireByteBuffer()
-//line kubevirt.qtpl:397
+//line kubevirt.qtpl:437
 	WriteVmExportToVm(qb422016, o)
-//line kubevirt.qtpl:397
+//line kubevirt.qtpl:437
 	qs422016 := string(qb422016.B)
-//line kubevirt.qtpl:397
+//line kubevirt.qtpl:437
 	qt422016.ReleaseByteBuffer(qb422016)
-//line kubevirt.qtpl:397
+//line kubevirt.qtpl:437
 	return qs422016
-//line kubevirt.qtpl:397
+//line kubevirt.qtpl:437
 }
 
 // # VmExportToVmSnapshot finds the source VirtualMachineSnapshot of an export.
@@ -1640,12 +1769,12 @@ func VmExportToVm(o interface{}) string {
 //   classes: [VirtualMachineSnapshot.snapshot.kubevirt.io]
 //
 
-//line kubevirt.qtpl:408
+//line kubevirt.qtpl:448
 func StreamVmExportToVmSnapshot(qw422016 *qt422016.Writer, o interface{}) {
-//line kubevirt.qtpl:408
+//line kubevirt.qtpl:448
 	qw422016.N().S(`
 `)
-//line kubevirt.qtpl:410
+//line kubevirt.qtpl:450
 	obj, _, ns, _, _ := k8sMetadata(o)
 	RequireAll(ns)
 	src := obj["spec"].(map[string]any)["source"].(map[string]any)
@@ -1653,45 +1782,45 @@ func StreamVmExportToVmSnapshot(qw422016 *qt422016.Writer, o interface{}) {
 		Fail("not a VirtualMachineSnapshot export")
 	}
 
-//line kubevirt.qtpl:414
+//line kubevirt.qtpl:454
 	qw422016.N().S(`
 k8s:VirtualMachineSnapshot.snapshot.kubevirt.io:{"namespace":`)
-//line kubevirt.qtpl:415
+//line kubevirt.qtpl:455
 	qw422016.N().Q(ns)
-//line kubevirt.qtpl:415
+//line kubevirt.qtpl:455
 	qw422016.N().S(`,"name":`)
-//line kubevirt.qtpl:415
+//line kubevirt.qtpl:455
 	qw422016.N().Q(src["name"].(string))
-//line kubevirt.qtpl:415
+//line kubevirt.qtpl:455
 	qw422016.N().S(`}
 `)
-//line kubevirt.qtpl:416
+//line kubevirt.qtpl:456
 }
 
-//line kubevirt.qtpl:416
+//line kubevirt.qtpl:456
 func WriteVmExportToVmSnapshot(qq422016 qtio422016.Writer, o interface{}) {
-//line kubevirt.qtpl:416
+//line kubevirt.qtpl:456
 	qw422016 := qt422016.AcquireWriter(qq422016)
-//line kubevirt.qtpl:416
+//line kubevirt.qtpl:456
 	StreamVmExportToVmSnapshot(qw422016, o)
-//line kubevirt.qtpl:416
+//line kubevirt.qtpl:456
 	qt422016.ReleaseWriter(qw422016)
-//line kubevirt.qtpl:416
+//line kubevirt.qtpl:456
 }
 
-//line kubevirt.qtpl:416
+//line kubevirt.qtpl:456
 func VmExportToVmSnapshot(o interface{}) string {
-//line kubevirt.qtpl:416
+//line kubevirt.qtpl:456
 	qb422016 := qt422016.AcquireByteBuffer()
-//line kubevirt.qtpl:416
+//line kubevirt.qtpl:456
 	WriteVmExportToVmSnapshot(qb422016, o)
-//line kubevirt.qtpl:416
+//line kubevirt.qtpl:456
 	qs422016 := string(qb422016.B)
-//line kubevirt.qtpl:416
+//line kubevirt.qtpl:456
 	qt422016.ReleaseByteBuffer(qb422016)
-//line kubevirt.qtpl:416
+//line kubevirt.qtpl:456
 	return qs422016
-//line kubevirt.qtpl:416
+//line kubevirt.qtpl:456
 }
 
 // # VmExportToPVC finds the source PVC of an export.
@@ -1704,12 +1833,12 @@ func VmExportToVmSnapshot(o interface{}) string {
 //   classes: [PersistentVolumeClaim]
 //
 
-//line kubevirt.qtpl:427
+//line kubevirt.qtpl:467
 func StreamVmExportToPVC(qw422016 *qt422016.Writer, o interface{}) {
-//line kubevirt.qtpl:427
+//line kubevirt.qtpl:467
 	qw422016.N().S(`
 `)
-//line kubevirt.qtpl:429
+//line kubevirt.qtpl:469
 	obj, _, ns, _, _ := k8sMetadata(o)
 	RequireAll(ns)
 	src := obj["spec"].(map[string]any)["source"].(map[string]any)
@@ -1717,45 +1846,45 @@ func StreamVmExportToPVC(qw422016 *qt422016.Writer, o interface{}) {
 		Fail("not a PersistentVolumeClaim export")
 	}
 
-//line kubevirt.qtpl:433
+//line kubevirt.qtpl:473
 	qw422016.N().S(`
 k8s:PersistentVolumeClaim:{"namespace":`)
-//line kubevirt.qtpl:434
+//line kubevirt.qtpl:474
 	qw422016.N().Q(ns)
-//line kubevirt.qtpl:434
+//line kubevirt.qtpl:474
 	qw422016.N().S(`,"name":`)
-//line kubevirt.qtpl:434
+//line kubevirt.qtpl:474
 	qw422016.N().Q(src["name"].(string))
-//line kubevirt.qtpl:434
+//line kubevirt.qtpl:474
 	qw422016.N().S(`}
 `)
-//line kubevirt.qtpl:435
+//line kubevirt.qtpl:475
 }
 
-//line kubevirt.qtpl:435
+//line kubevirt.qtpl:475
 func WriteVmExportToPVC(qq422016 qtio422016.Writer, o interface{}) {
-//line kubevirt.qtpl:435
+//line kubevirt.qtpl:475
 	qw422016 := qt422016.AcquireWriter(qq422016)
-//line kubevirt.qtpl:435
+//line kubevirt.qtpl:475
 	StreamVmExportToPVC(qw422016, o)
-//line kubevirt.qtpl:435
+//line kubevirt.qtpl:475
 	qt422016.ReleaseWriter(qw422016)
-//line kubevirt.qtpl:435
+//line kubevirt.qtpl:475
 }
 
-//line kubevirt.qtpl:435
+//line kubevirt.qtpl:475
 func VmExportToPVC(o interface{}) string {
-//line kubevirt.qtpl:435
+//line kubevirt.qtpl:475
 	qb422016 := qt422016.AcquireByteBuffer()
-//line kubevirt.qtpl:435
+//line kubevirt.qtpl:475
 	WriteVmExportToPVC(qb422016, o)
-//line kubevirt.qtpl:435
+//line kubevirt.qtpl:475
 	qs422016 := string(qb422016.B)
-//line kubevirt.qtpl:435
+//line kubevirt.qtpl:475
 	qt422016.ReleaseByteBuffer(qb422016)
-//line kubevirt.qtpl:435
+//line kubevirt.qtpl:475
 	return qs422016
-//line kubevirt.qtpl:435
+//line kubevirt.qtpl:475
 }
 
 // # NodeToVmi finds VirtualMachineInstances running on a Node.
@@ -1768,50 +1897,50 @@ func VmExportToPVC(o interface{}) string {
 //   classes: [VirtualMachineInstance.kubevirt.io]
 //
 
-//line kubevirt.qtpl:446
+//line kubevirt.qtpl:486
 func StreamNodeToVmi(qw422016 *qt422016.Writer, o interface{}) {
-//line kubevirt.qtpl:446
+//line kubevirt.qtpl:486
 	qw422016.N().S(`
 `)
-//line kubevirt.qtpl:447
+//line kubevirt.qtpl:487
 	_, _, _, name, _ := k8sMetadata(o)
 	RequireAll(name)
 
-//line kubevirt.qtpl:447
+//line kubevirt.qtpl:487
 	qw422016.N().S(`
 k8s:VirtualMachineInstance.kubevirt.io:{"labels":{"kubevirt.io/nodeName":`)
-//line kubevirt.qtpl:448
+//line kubevirt.qtpl:488
 	qw422016.N().Q(name)
-//line kubevirt.qtpl:448
+//line kubevirt.qtpl:488
 	qw422016.N().S(`}}
 `)
-//line kubevirt.qtpl:449
+//line kubevirt.qtpl:489
 }
 
-//line kubevirt.qtpl:449
+//line kubevirt.qtpl:489
 func WriteNodeToVmi(qq422016 qtio422016.Writer, o interface{}) {
-//line kubevirt.qtpl:449
+//line kubevirt.qtpl:489
 	qw422016 := qt422016.AcquireWriter(qq422016)
-//line kubevirt.qtpl:449
+//line kubevirt.qtpl:489
 	StreamNodeToVmi(qw422016, o)
-//line kubevirt.qtpl:449
+//line kubevirt.qtpl:489
 	qt422016.ReleaseWriter(qw422016)
-//line kubevirt.qtpl:449
+//line kubevirt.qtpl:489
 }
 
-//line kubevirt.qtpl:449
+//line kubevirt.qtpl:489
 func NodeToVmi(o interface{}) string {
-//line kubevirt.qtpl:449
+//line kubevirt.qtpl:489
 	qb422016 := qt422016.AcquireByteBuffer()
-//line kubevirt.qtpl:449
+//line kubevirt.qtpl:489
 	WriteNodeToVmi(qb422016, o)
-//line kubevirt.qtpl:449
+//line kubevirt.qtpl:489
 	qs422016 := string(qb422016.B)
-//line kubevirt.qtpl:449
+//line kubevirt.qtpl:489
 	qt422016.ReleaseByteBuffer(qb422016)
-//line kubevirt.qtpl:449
+//line kubevirt.qtpl:489
 	return qs422016
-//line kubevirt.qtpl:449
+//line kubevirt.qtpl:489
 }
 
 // # DataVolumeToImporterPod finds the CDI importer Pod for a DataVolume.
@@ -1824,54 +1953,54 @@ func NodeToVmi(o interface{}) string {
 //   classes: [Pod]
 //
 
-//line kubevirt.qtpl:460
+//line kubevirt.qtpl:500
 func StreamDataVolumeToImporterPod(qw422016 *qt422016.Writer, o interface{}) {
-//line kubevirt.qtpl:460
+//line kubevirt.qtpl:500
 	qw422016.N().S(`
 `)
-//line kubevirt.qtpl:461
+//line kubevirt.qtpl:501
 	_, _, ns, name, _ := k8sMetadata(o)
 	RequireAll(ns, name)
 
-//line kubevirt.qtpl:461
+//line kubevirt.qtpl:501
 	qw422016.N().S(`
 k8s:Pod:{"namespace":`)
-//line kubevirt.qtpl:462
+//line kubevirt.qtpl:502
 	qw422016.N().Q(ns)
-//line kubevirt.qtpl:462
+//line kubevirt.qtpl:502
 	qw422016.N().S(`,"labels":{"cdi.kubevirt.io/storage.import.importPvcName":`)
-//line kubevirt.qtpl:462
+//line kubevirt.qtpl:502
 	qw422016.N().Q(name)
-//line kubevirt.qtpl:462
+//line kubevirt.qtpl:502
 	qw422016.N().S(`}}
 `)
-//line kubevirt.qtpl:463
+//line kubevirt.qtpl:503
 }
 
-//line kubevirt.qtpl:463
+//line kubevirt.qtpl:503
 func WriteDataVolumeToImporterPod(qq422016 qtio422016.Writer, o interface{}) {
-//line kubevirt.qtpl:463
+//line kubevirt.qtpl:503
 	qw422016 := qt422016.AcquireWriter(qq422016)
-//line kubevirt.qtpl:463
+//line kubevirt.qtpl:503
 	StreamDataVolumeToImporterPod(qw422016, o)
-//line kubevirt.qtpl:463
+//line kubevirt.qtpl:503
 	qt422016.ReleaseWriter(qw422016)
-//line kubevirt.qtpl:463
+//line kubevirt.qtpl:503
 }
 
-//line kubevirt.qtpl:463
+//line kubevirt.qtpl:503
 func DataVolumeToImporterPod(o interface{}) string {
-//line kubevirt.qtpl:463
+//line kubevirt.qtpl:503
 	qb422016 := qt422016.AcquireByteBuffer()
-//line kubevirt.qtpl:463
+//line kubevirt.qtpl:503
 	WriteDataVolumeToImporterPod(qb422016, o)
-//line kubevirt.qtpl:463
+//line kubevirt.qtpl:503
 	qs422016 := string(qb422016.B)
-//line kubevirt.qtpl:463
+//line kubevirt.qtpl:503
 	qt422016.ReleaseByteBuffer(qb422016)
-//line kubevirt.qtpl:463
+//line kubevirt.qtpl:503
 	return qs422016
-//line kubevirt.qtpl:463
+//line kubevirt.qtpl:503
 }
 
 // # VmToNetAttachDef finds NetworkAttachmentDefinitions referenced by a VirtualMachine.
@@ -1884,97 +2013,97 @@ func DataVolumeToImporterPod(o interface{}) string {
 //   classes: [NetworkAttachmentDefinition.k8s.cni.cncf.io]
 //
 
-//line kubevirt.qtpl:474
+//line kubevirt.qtpl:514
 func StreamVmToNetAttachDef(qw422016 *qt422016.Writer, o interface{}) {
-//line kubevirt.qtpl:474
+//line kubevirt.qtpl:514
 	qw422016.N().S(`
 `)
-//line kubevirt.qtpl:476
+//line kubevirt.qtpl:516
 	obj, _, ns, _, _ := k8sMetadata(o)
 	RequireAll(ns)
 	networks := mapSlice(obj["spec"].(map[string]any)["template"].(map[string]any)["spec"].(map[string]any), "networks")
 
-//line kubevirt.qtpl:479
+//line kubevirt.qtpl:519
 	qw422016.N().S(`
 `)
-//line kubevirt.qtpl:480
+//line kubevirt.qtpl:520
 	for _, n := range networks {
-//line kubevirt.qtpl:480
+//line kubevirt.qtpl:520
 		qw422016.N().S(`
 `)
-//line kubevirt.qtpl:481
+//line kubevirt.qtpl:521
 		net := n.(map[string]any)
 
-//line kubevirt.qtpl:481
+//line kubevirt.qtpl:521
 		qw422016.N().S(`
 `)
-//line kubevirt.qtpl:482
+//line kubevirt.qtpl:522
 		if m, ok := net["multus"].(map[string]any); ok {
-//line kubevirt.qtpl:482
+//line kubevirt.qtpl:522
 			qw422016.N().S(`
 `)
-//line kubevirt.qtpl:483
+//line kubevirt.qtpl:523
 			netName := m["networkName"].(string)
 
-//line kubevirt.qtpl:483
+//line kubevirt.qtpl:523
 			qw422016.N().S(`
 `)
-//line kubevirt.qtpl:484
+//line kubevirt.qtpl:524
 			if !strings.Contains(netName, "/") {
-//line kubevirt.qtpl:484
+//line kubevirt.qtpl:524
 				qw422016.N().S(`
 k8s:NetworkAttachmentDefinition.k8s.cni.cncf.io:{"namespace":`)
-//line kubevirt.qtpl:485
+//line kubevirt.qtpl:525
 				qw422016.N().Q(ns)
-//line kubevirt.qtpl:485
+//line kubevirt.qtpl:525
 				qw422016.N().S(`,"name":`)
-//line kubevirt.qtpl:485
+//line kubevirt.qtpl:525
 				qw422016.N().Q(netName)
-//line kubevirt.qtpl:485
+//line kubevirt.qtpl:525
 				qw422016.N().S(`}
 `)
-//line kubevirt.qtpl:486
+//line kubevirt.qtpl:526
 			}
-//line kubevirt.qtpl:486
+//line kubevirt.qtpl:526
 			qw422016.N().S(`
 `)
-//line kubevirt.qtpl:487
+//line kubevirt.qtpl:527
 		}
-//line kubevirt.qtpl:487
+//line kubevirt.qtpl:527
 		qw422016.N().S(`
 `)
-//line kubevirt.qtpl:488
+//line kubevirt.qtpl:528
 	}
-//line kubevirt.qtpl:488
+//line kubevirt.qtpl:528
 	qw422016.N().S(`
 `)
-//line kubevirt.qtpl:489
+//line kubevirt.qtpl:529
 }
 
-//line kubevirt.qtpl:489
+//line kubevirt.qtpl:529
 func WriteVmToNetAttachDef(qq422016 qtio422016.Writer, o interface{}) {
-//line kubevirt.qtpl:489
+//line kubevirt.qtpl:529
 	qw422016 := qt422016.AcquireWriter(qq422016)
-//line kubevirt.qtpl:489
+//line kubevirt.qtpl:529
 	StreamVmToNetAttachDef(qw422016, o)
-//line kubevirt.qtpl:489
+//line kubevirt.qtpl:529
 	qt422016.ReleaseWriter(qw422016)
-//line kubevirt.qtpl:489
+//line kubevirt.qtpl:529
 }
 
-//line kubevirt.qtpl:489
+//line kubevirt.qtpl:529
 func VmToNetAttachDef(o interface{}) string {
-//line kubevirt.qtpl:489
+//line kubevirt.qtpl:529
 	qb422016 := qt422016.AcquireByteBuffer()
-//line kubevirt.qtpl:489
+//line kubevirt.qtpl:529
 	WriteVmToNetAttachDef(qb422016, o)
-//line kubevirt.qtpl:489
+//line kubevirt.qtpl:529
 	qs422016 := string(qb422016.B)
-//line kubevirt.qtpl:489
+//line kubevirt.qtpl:529
 	qt422016.ReleaseByteBuffer(qb422016)
-//line kubevirt.qtpl:489
+//line kubevirt.qtpl:529
 	return qs422016
-//line kubevirt.qtpl:489
+//line kubevirt.qtpl:529
 }
 
 // # VmiToNetAttachDef finds NetworkAttachmentDefinitions referenced by a VirtualMachineInstance.
@@ -1987,97 +2116,97 @@ func VmToNetAttachDef(o interface{}) string {
 //   classes: [NetworkAttachmentDefinition.k8s.cni.cncf.io]
 //
 
-//line kubevirt.qtpl:500
+//line kubevirt.qtpl:540
 func StreamVmiToNetAttachDef(qw422016 *qt422016.Writer, o interface{}) {
-//line kubevirt.qtpl:500
+//line kubevirt.qtpl:540
 	qw422016.N().S(`
 `)
-//line kubevirt.qtpl:502
+//line kubevirt.qtpl:542
 	obj, _, ns, _, _ := k8sMetadata(o)
 	RequireAll(ns)
 	networks := mapSlice(obj["spec"].(map[string]any), "networks")
 
-//line kubevirt.qtpl:505
+//line kubevirt.qtpl:545
 	qw422016.N().S(`
 `)
-//line kubevirt.qtpl:506
+//line kubevirt.qtpl:546
 	for _, n := range networks {
-//line kubevirt.qtpl:506
+//line kubevirt.qtpl:546
 		qw422016.N().S(`
 `)
-//line kubevirt.qtpl:507
+//line kubevirt.qtpl:547
 		net := n.(map[string]any)
 
-//line kubevirt.qtpl:507
+//line kubevirt.qtpl:547
 		qw422016.N().S(`
 `)
-//line kubevirt.qtpl:508
+//line kubevirt.qtpl:548
 		if m, ok := net["multus"].(map[string]any); ok {
-//line kubevirt.qtpl:508
+//line kubevirt.qtpl:548
 			qw422016.N().S(`
 `)
-//line kubevirt.qtpl:509
+//line kubevirt.qtpl:549
 			netName := m["networkName"].(string)
 
-//line kubevirt.qtpl:509
+//line kubevirt.qtpl:549
 			qw422016.N().S(`
 `)
-//line kubevirt.qtpl:510
+//line kubevirt.qtpl:550
 			if !strings.Contains(netName, "/") {
-//line kubevirt.qtpl:510
+//line kubevirt.qtpl:550
 				qw422016.N().S(`
 k8s:NetworkAttachmentDefinition.k8s.cni.cncf.io:{"namespace":`)
-//line kubevirt.qtpl:511
+//line kubevirt.qtpl:551
 				qw422016.N().Q(ns)
-//line kubevirt.qtpl:511
+//line kubevirt.qtpl:551
 				qw422016.N().S(`,"name":`)
-//line kubevirt.qtpl:511
+//line kubevirt.qtpl:551
 				qw422016.N().Q(netName)
-//line kubevirt.qtpl:511
+//line kubevirt.qtpl:551
 				qw422016.N().S(`}
 `)
-//line kubevirt.qtpl:512
+//line kubevirt.qtpl:552
 			}
-//line kubevirt.qtpl:512
+//line kubevirt.qtpl:552
 			qw422016.N().S(`
 `)
-//line kubevirt.qtpl:513
+//line kubevirt.qtpl:553
 		}
-//line kubevirt.qtpl:513
+//line kubevirt.qtpl:553
 		qw422016.N().S(`
 `)
-//line kubevirt.qtpl:514
+//line kubevirt.qtpl:554
 	}
-//line kubevirt.qtpl:514
+//line kubevirt.qtpl:554
 	qw422016.N().S(`
 `)
-//line kubevirt.qtpl:515
+//line kubevirt.qtpl:555
 }
 
-//line kubevirt.qtpl:515
+//line kubevirt.qtpl:555
 func WriteVmiToNetAttachDef(qq422016 qtio422016.Writer, o interface{}) {
-//line kubevirt.qtpl:515
+//line kubevirt.qtpl:555
 	qw422016 := qt422016.AcquireWriter(qq422016)
-//line kubevirt.qtpl:515
+//line kubevirt.qtpl:555
 	StreamVmiToNetAttachDef(qw422016, o)
-//line kubevirt.qtpl:515
+//line kubevirt.qtpl:555
 	qt422016.ReleaseWriter(qw422016)
-//line kubevirt.qtpl:515
+//line kubevirt.qtpl:555
 }
 
-//line kubevirt.qtpl:515
+//line kubevirt.qtpl:555
 func VmiToNetAttachDef(o interface{}) string {
-//line kubevirt.qtpl:515
+//line kubevirt.qtpl:555
 	qb422016 := qt422016.AcquireByteBuffer()
-//line kubevirt.qtpl:515
+//line kubevirt.qtpl:555
 	WriteVmiToNetAttachDef(qb422016, o)
-//line kubevirt.qtpl:515
+//line kubevirt.qtpl:555
 	qs422016 := string(qb422016.B)
-//line kubevirt.qtpl:515
+//line kubevirt.qtpl:555
 	qt422016.ReleaseByteBuffer(qb422016)
-//line kubevirt.qtpl:515
+//line kubevirt.qtpl:555
 	return qs422016
-//line kubevirt.qtpl:515
+//line kubevirt.qtpl:555
 }
 
 // # VmToSecret finds Secrets referenced by a VirtualMachine's volumes and accessCredentials.
@@ -2090,12 +2219,12 @@ func VmiToNetAttachDef(o interface{}) string {
 //   classes: [Secret]
 //
 
-//line kubevirt.qtpl:526
+//line kubevirt.qtpl:566
 func StreamVmToSecret(qw422016 *qt422016.Writer, o interface{}) {
-//line kubevirt.qtpl:526
+//line kubevirt.qtpl:566
 	qw422016.N().S(`
 `)
-//line kubevirt.qtpl:528
+//line kubevirt.qtpl:568
 	obj, _, ns, _, _ := k8sMetadata(o)
 	RequireAll(ns)
 	tmplSpec := obj["spec"].(map[string]any)["template"].(map[string]any)["spec"].(map[string]any)
@@ -2104,55 +2233,55 @@ func StreamVmToSecret(qw422016 *qt422016.Writer, o interface{}) {
 	names := kvSecretNames(volumes, creds)
 	RequireAll(names)
 
-//line kubevirt.qtpl:535
+//line kubevirt.qtpl:575
 	qw422016.N().S(`
 `)
-//line kubevirt.qtpl:536
+//line kubevirt.qtpl:576
 	for _, n := range names {
-//line kubevirt.qtpl:536
+//line kubevirt.qtpl:576
 		qw422016.N().S(`
 k8s:Secret:{"namespace":`)
-//line kubevirt.qtpl:537
+//line kubevirt.qtpl:577
 		qw422016.N().Q(ns)
-//line kubevirt.qtpl:537
+//line kubevirt.qtpl:577
 		qw422016.N().S(`,"name":`)
-//line kubevirt.qtpl:537
+//line kubevirt.qtpl:577
 		qw422016.N().Q(n)
-//line kubevirt.qtpl:537
+//line kubevirt.qtpl:577
 		qw422016.N().S(`}
 `)
-//line kubevirt.qtpl:538
+//line kubevirt.qtpl:578
 	}
-//line kubevirt.qtpl:538
+//line kubevirt.qtpl:578
 	qw422016.N().S(`
 `)
-//line kubevirt.qtpl:539
+//line kubevirt.qtpl:579
 }
 
-//line kubevirt.qtpl:539
+//line kubevirt.qtpl:579
 func WriteVmToSecret(qq422016 qtio422016.Writer, o interface{}) {
-//line kubevirt.qtpl:539
+//line kubevirt.qtpl:579
 	qw422016 := qt422016.AcquireWriter(qq422016)
-//line kubevirt.qtpl:539
+//line kubevirt.qtpl:579
 	StreamVmToSecret(qw422016, o)
-//line kubevirt.qtpl:539
+//line kubevirt.qtpl:579
 	qt422016.ReleaseWriter(qw422016)
-//line kubevirt.qtpl:539
+//line kubevirt.qtpl:579
 }
 
-//line kubevirt.qtpl:539
+//line kubevirt.qtpl:579
 func VmToSecret(o interface{}) string {
-//line kubevirt.qtpl:539
+//line kubevirt.qtpl:579
 	qb422016 := qt422016.AcquireByteBuffer()
-//line kubevirt.qtpl:539
+//line kubevirt.qtpl:579
 	WriteVmToSecret(qb422016, o)
-//line kubevirt.qtpl:539
+//line kubevirt.qtpl:579
 	qs422016 := string(qb422016.B)
-//line kubevirt.qtpl:539
+//line kubevirt.qtpl:579
 	qt422016.ReleaseByteBuffer(qb422016)
-//line kubevirt.qtpl:539
+//line kubevirt.qtpl:579
 	return qs422016
-//line kubevirt.qtpl:539
+//line kubevirt.qtpl:579
 }
 
 // # VmiToSecret finds Secrets referenced by a VirtualMachineInstance's volumes.
@@ -2165,12 +2294,12 @@ func VmToSecret(o interface{}) string {
 //   classes: [Secret]
 //
 
-//line kubevirt.qtpl:550
+//line kubevirt.qtpl:590
 func StreamVmiToSecret(qw422016 *qt422016.Writer, o interface{}) {
-//line kubevirt.qtpl:550
+//line kubevirt.qtpl:590
 	qw422016.N().S(`
 `)
-//line kubevirt.qtpl:552
+//line kubevirt.qtpl:592
 	obj, _, ns, _, _ := k8sMetadata(o)
 	RequireAll(ns)
 	volumes := mapSlice(obj["spec"].(map[string]any), "volumes")
@@ -2178,55 +2307,55 @@ func StreamVmiToSecret(qw422016 *qt422016.Writer, o interface{}) {
 	names := kvSecretNames(volumes, creds)
 	RequireAll(names)
 
-//line kubevirt.qtpl:558
+//line kubevirt.qtpl:598
 	qw422016.N().S(`
 `)
-//line kubevirt.qtpl:559
+//line kubevirt.qtpl:599
 	for _, n := range names {
-//line kubevirt.qtpl:559
+//line kubevirt.qtpl:599
 		qw422016.N().S(`
 k8s:Secret:{"namespace":`)
-//line kubevirt.qtpl:560
+//line kubevirt.qtpl:600
 		qw422016.N().Q(ns)
-//line kubevirt.qtpl:560
+//line kubevirt.qtpl:600
 		qw422016.N().S(`,"name":`)
-//line kubevirt.qtpl:560
+//line kubevirt.qtpl:600
 		qw422016.N().Q(n)
-//line kubevirt.qtpl:560
+//line kubevirt.qtpl:600
 		qw422016.N().S(`}
 `)
-//line kubevirt.qtpl:561
+//line kubevirt.qtpl:601
 	}
-//line kubevirt.qtpl:561
+//line kubevirt.qtpl:601
 	qw422016.N().S(`
 `)
-//line kubevirt.qtpl:562
+//line kubevirt.qtpl:602
 }
 
-//line kubevirt.qtpl:562
+//line kubevirt.qtpl:602
 func WriteVmiToSecret(qq422016 qtio422016.Writer, o interface{}) {
-//line kubevirt.qtpl:562
+//line kubevirt.qtpl:602
 	qw422016 := qt422016.AcquireWriter(qq422016)
-//line kubevirt.qtpl:562
+//line kubevirt.qtpl:602
 	StreamVmiToSecret(qw422016, o)
-//line kubevirt.qtpl:562
+//line kubevirt.qtpl:602
 	qt422016.ReleaseWriter(qw422016)
-//line kubevirt.qtpl:562
+//line kubevirt.qtpl:602
 }
 
-//line kubevirt.qtpl:562
+//line kubevirt.qtpl:602
 func VmiToSecret(o interface{}) string {
-//line kubevirt.qtpl:562
+//line kubevirt.qtpl:602
 	qb422016 := qt422016.AcquireByteBuffer()
-//line kubevirt.qtpl:562
+//line kubevirt.qtpl:602
 	WriteVmiToSecret(qb422016, o)
-//line kubevirt.qtpl:562
+//line kubevirt.qtpl:602
 	qs422016 := string(qb422016.B)
-//line kubevirt.qtpl:562
+//line kubevirt.qtpl:602
 	qt422016.ReleaseByteBuffer(qb422016)
-//line kubevirt.qtpl:562
+//line kubevirt.qtpl:602
 	return qs422016
-//line kubevirt.qtpl:562
+//line kubevirt.qtpl:602
 }
 
 // # VmToConfigMap finds ConfigMaps referenced by a VirtualMachine's volumes.
@@ -2239,67 +2368,67 @@ func VmiToSecret(o interface{}) string {
 //   classes: [ConfigMap]
 //
 
-//line kubevirt.qtpl:573
+//line kubevirt.qtpl:613
 func StreamVmToConfigMap(qw422016 *qt422016.Writer, o interface{}) {
-//line kubevirt.qtpl:573
+//line kubevirt.qtpl:613
 	qw422016.N().S(`
 `)
-//line kubevirt.qtpl:575
+//line kubevirt.qtpl:615
 	obj, _, ns, _, _ := k8sMetadata(o)
 	RequireAll(ns)
 	volumes := mapSlice(obj["spec"].(map[string]any)["template"].(map[string]any)["spec"].(map[string]any), "volumes")
 	names := kvConfigMapNames(volumes)
 	RequireAll(names)
 
-//line kubevirt.qtpl:580
+//line kubevirt.qtpl:620
 	qw422016.N().S(`
 `)
-//line kubevirt.qtpl:581
+//line kubevirt.qtpl:621
 	for _, n := range names {
-//line kubevirt.qtpl:581
+//line kubevirt.qtpl:621
 		qw422016.N().S(`
 k8s:ConfigMap:{"namespace":`)
-//line kubevirt.qtpl:582
+//line kubevirt.qtpl:622
 		qw422016.N().Q(ns)
-//line kubevirt.qtpl:582
+//line kubevirt.qtpl:622
 		qw422016.N().S(`,"name":`)
-//line kubevirt.qtpl:582
+//line kubevirt.qtpl:622
 		qw422016.N().Q(n)
-//line kubevirt.qtpl:582
+//line kubevirt.qtpl:622
 		qw422016.N().S(`}
 `)
-//line kubevirt.qtpl:583
+//line kubevirt.qtpl:623
 	}
-//line kubevirt.qtpl:583
+//line kubevirt.qtpl:623
 	qw422016.N().S(`
 `)
-//line kubevirt.qtpl:584
+//line kubevirt.qtpl:624
 }
 
-//line kubevirt.qtpl:584
+//line kubevirt.qtpl:624
 func WriteVmToConfigMap(qq422016 qtio422016.Writer, o interface{}) {
-//line kubevirt.qtpl:584
+//line kubevirt.qtpl:624
 	qw422016 := qt422016.AcquireWriter(qq422016)
-//line kubevirt.qtpl:584
+//line kubevirt.qtpl:624
 	StreamVmToConfigMap(qw422016, o)
-//line kubevirt.qtpl:584
+//line kubevirt.qtpl:624
 	qt422016.ReleaseWriter(qw422016)
-//line kubevirt.qtpl:584
+//line kubevirt.qtpl:624
 }
 
-//line kubevirt.qtpl:584
+//line kubevirt.qtpl:624
 func VmToConfigMap(o interface{}) string {
-//line kubevirt.qtpl:584
+//line kubevirt.qtpl:624
 	qb422016 := qt422016.AcquireByteBuffer()
-//line kubevirt.qtpl:584
+//line kubevirt.qtpl:624
 	WriteVmToConfigMap(qb422016, o)
-//line kubevirt.qtpl:584
+//line kubevirt.qtpl:624
 	qs422016 := string(qb422016.B)
-//line kubevirt.qtpl:584
+//line kubevirt.qtpl:624
 	qt422016.ReleaseByteBuffer(qb422016)
-//line kubevirt.qtpl:584
+//line kubevirt.qtpl:624
 	return qs422016
-//line kubevirt.qtpl:584
+//line kubevirt.qtpl:624
 }
 
 // # VmiToConfigMap finds ConfigMaps referenced by a VirtualMachineInstance's volumes.
@@ -2312,67 +2441,67 @@ func VmToConfigMap(o interface{}) string {
 //   classes: [ConfigMap]
 //
 
-//line kubevirt.qtpl:595
+//line kubevirt.qtpl:635
 func StreamVmiToConfigMap(qw422016 *qt422016.Writer, o interface{}) {
-//line kubevirt.qtpl:595
+//line kubevirt.qtpl:635
 	qw422016.N().S(`
 `)
-//line kubevirt.qtpl:597
+//line kubevirt.qtpl:637
 	obj, _, ns, _, _ := k8sMetadata(o)
 	RequireAll(ns)
 	volumes := mapSlice(obj["spec"].(map[string]any), "volumes")
 	names := kvConfigMapNames(volumes)
 	RequireAll(names)
 
-//line kubevirt.qtpl:602
+//line kubevirt.qtpl:642
 	qw422016.N().S(`
 `)
-//line kubevirt.qtpl:603
+//line kubevirt.qtpl:643
 	for _, n := range names {
-//line kubevirt.qtpl:603
+//line kubevirt.qtpl:643
 		qw422016.N().S(`
 k8s:ConfigMap:{"namespace":`)
-//line kubevirt.qtpl:604
+//line kubevirt.qtpl:644
 		qw422016.N().Q(ns)
-//line kubevirt.qtpl:604
+//line kubevirt.qtpl:644
 		qw422016.N().S(`,"name":`)
-//line kubevirt.qtpl:604
+//line kubevirt.qtpl:644
 		qw422016.N().Q(n)
-//line kubevirt.qtpl:604
+//line kubevirt.qtpl:644
 		qw422016.N().S(`}
 `)
-//line kubevirt.qtpl:605
+//line kubevirt.qtpl:645
 	}
-//line kubevirt.qtpl:605
+//line kubevirt.qtpl:645
 	qw422016.N().S(`
 `)
-//line kubevirt.qtpl:606
+//line kubevirt.qtpl:646
 }
 
-//line kubevirt.qtpl:606
+//line kubevirt.qtpl:646
 func WriteVmiToConfigMap(qq422016 qtio422016.Writer, o interface{}) {
-//line kubevirt.qtpl:606
+//line kubevirt.qtpl:646
 	qw422016 := qt422016.AcquireWriter(qq422016)
-//line kubevirt.qtpl:606
+//line kubevirt.qtpl:646
 	StreamVmiToConfigMap(qw422016, o)
-//line kubevirt.qtpl:606
+//line kubevirt.qtpl:646
 	qt422016.ReleaseWriter(qw422016)
-//line kubevirt.qtpl:606
+//line kubevirt.qtpl:646
 }
 
-//line kubevirt.qtpl:606
+//line kubevirt.qtpl:646
 func VmiToConfigMap(o interface{}) string {
-//line kubevirt.qtpl:606
+//line kubevirt.qtpl:646
 	qb422016 := qt422016.AcquireByteBuffer()
-//line kubevirt.qtpl:606
+//line kubevirt.qtpl:646
 	WriteVmiToConfigMap(qb422016, o)
-//line kubevirt.qtpl:606
+//line kubevirt.qtpl:646
 	qs422016 := string(qb422016.B)
-//line kubevirt.qtpl:606
+//line kubevirt.qtpl:646
 	qt422016.ReleaseByteBuffer(qb422016)
-//line kubevirt.qtpl:606
+//line kubevirt.qtpl:646
 	return qs422016
-//line kubevirt.qtpl:606
+//line kubevirt.qtpl:646
 }
 
 // # VmToServiceAccount finds ServiceAccounts referenced by a VirtualMachine's volumes.
@@ -2385,81 +2514,81 @@ func VmiToConfigMap(o interface{}) string {
 //   classes: [ServiceAccount]
 //
 
-//line kubevirt.qtpl:617
+//line kubevirt.qtpl:657
 func StreamVmToServiceAccount(qw422016 *qt422016.Writer, o interface{}) {
-//line kubevirt.qtpl:617
+//line kubevirt.qtpl:657
 	qw422016.N().S(`
 `)
-//line kubevirt.qtpl:619
+//line kubevirt.qtpl:659
 	obj, _, ns, _, _ := k8sMetadata(o)
 	RequireAll(ns)
 	volumes := mapSlice(obj["spec"].(map[string]any)["template"].(map[string]any)["spec"].(map[string]any), "volumes")
 
-//line kubevirt.qtpl:622
+//line kubevirt.qtpl:662
 	qw422016.N().S(`
 `)
-//line kubevirt.qtpl:623
+//line kubevirt.qtpl:663
 	for _, v := range volumes {
-//line kubevirt.qtpl:623
+//line kubevirt.qtpl:663
 		qw422016.N().S(`
 `)
-//line kubevirt.qtpl:624
+//line kubevirt.qtpl:664
 		vol := v.(map[string]any)
 
-//line kubevirt.qtpl:624
+//line kubevirt.qtpl:664
 		qw422016.N().S(`
 `)
-//line kubevirt.qtpl:625
+//line kubevirt.qtpl:665
 		if sa, ok := vol["serviceAccount"].(map[string]any); ok {
-//line kubevirt.qtpl:625
+//line kubevirt.qtpl:665
 			qw422016.N().S(`
 k8s:ServiceAccount:{"namespace":`)
-//line kubevirt.qtpl:626
+//line kubevirt.qtpl:666
 			qw422016.N().Q(ns)
-//line kubevirt.qtpl:626
+//line kubevirt.qtpl:666
 			qw422016.N().S(`,"name":`)
-//line kubevirt.qtpl:626
+//line kubevirt.qtpl:666
 			qw422016.N().Q(sa["serviceAccountName"].(string))
-//line kubevirt.qtpl:626
+//line kubevirt.qtpl:666
 			qw422016.N().S(`}
 `)
-//line kubevirt.qtpl:627
+//line kubevirt.qtpl:667
 		}
-//line kubevirt.qtpl:627
+//line kubevirt.qtpl:667
 		qw422016.N().S(`
 `)
-//line kubevirt.qtpl:628
+//line kubevirt.qtpl:668
 	}
-//line kubevirt.qtpl:628
+//line kubevirt.qtpl:668
 	qw422016.N().S(`
 `)
-//line kubevirt.qtpl:629
+//line kubevirt.qtpl:669
 }
 
-//line kubevirt.qtpl:629
+//line kubevirt.qtpl:669
 func WriteVmToServiceAccount(qq422016 qtio422016.Writer, o interface{}) {
-//line kubevirt.qtpl:629
+//line kubevirt.qtpl:669
 	qw422016 := qt422016.AcquireWriter(qq422016)
-//line kubevirt.qtpl:629
+//line kubevirt.qtpl:669
 	StreamVmToServiceAccount(qw422016, o)
-//line kubevirt.qtpl:629
+//line kubevirt.qtpl:669
 	qt422016.ReleaseWriter(qw422016)
-//line kubevirt.qtpl:629
+//line kubevirt.qtpl:669
 }
 
-//line kubevirt.qtpl:629
+//line kubevirt.qtpl:669
 func VmToServiceAccount(o interface{}) string {
-//line kubevirt.qtpl:629
+//line kubevirt.qtpl:669
 	qb422016 := qt422016.AcquireByteBuffer()
-//line kubevirt.qtpl:629
+//line kubevirt.qtpl:669
 	WriteVmToServiceAccount(qb422016, o)
-//line kubevirt.qtpl:629
+//line kubevirt.qtpl:669
 	qs422016 := string(qb422016.B)
-//line kubevirt.qtpl:629
+//line kubevirt.qtpl:669
 	qt422016.ReleaseByteBuffer(qb422016)
-//line kubevirt.qtpl:629
+//line kubevirt.qtpl:669
 	return qs422016
-//line kubevirt.qtpl:629
+//line kubevirt.qtpl:669
 }
 
 // # VmiToServiceAccount finds ServiceAccounts referenced by a VirtualMachineInstance's volumes.
@@ -2472,81 +2601,81 @@ func VmToServiceAccount(o interface{}) string {
 //   classes: [ServiceAccount]
 //
 
-//line kubevirt.qtpl:640
+//line kubevirt.qtpl:680
 func StreamVmiToServiceAccount(qw422016 *qt422016.Writer, o interface{}) {
-//line kubevirt.qtpl:640
+//line kubevirt.qtpl:680
 	qw422016.N().S(`
 `)
-//line kubevirt.qtpl:642
+//line kubevirt.qtpl:682
 	obj, _, ns, _, _ := k8sMetadata(o)
 	RequireAll(ns)
 	volumes := mapSlice(obj["spec"].(map[string]any), "volumes")
 
-//line kubevirt.qtpl:645
+//line kubevirt.qtpl:685
 	qw422016.N().S(`
 `)
-//line kubevirt.qtpl:646
+//line kubevirt.qtpl:686
 	for _, v := range volumes {
-//line kubevirt.qtpl:646
+//line kubevirt.qtpl:686
 		qw422016.N().S(`
 `)
-//line kubevirt.qtpl:647
+//line kubevirt.qtpl:687
 		vol := v.(map[string]any)
 
-//line kubevirt.qtpl:647
+//line kubevirt.qtpl:687
 		qw422016.N().S(`
 `)
-//line kubevirt.qtpl:648
+//line kubevirt.qtpl:688
 		if sa, ok := vol["serviceAccount"].(map[string]any); ok {
-//line kubevirt.qtpl:648
+//line kubevirt.qtpl:688
 			qw422016.N().S(`
 k8s:ServiceAccount:{"namespace":`)
-//line kubevirt.qtpl:649
+//line kubevirt.qtpl:689
 			qw422016.N().Q(ns)
-//line kubevirt.qtpl:649
+//line kubevirt.qtpl:689
 			qw422016.N().S(`,"name":`)
-//line kubevirt.qtpl:649
+//line kubevirt.qtpl:689
 			qw422016.N().Q(sa["serviceAccountName"].(string))
-//line kubevirt.qtpl:649
+//line kubevirt.qtpl:689
 			qw422016.N().S(`}
 `)
-//line kubevirt.qtpl:650
+//line kubevirt.qtpl:690
 		}
-//line kubevirt.qtpl:650
+//line kubevirt.qtpl:690
 		qw422016.N().S(`
 `)
-//line kubevirt.qtpl:651
+//line kubevirt.qtpl:691
 	}
-//line kubevirt.qtpl:651
+//line kubevirt.qtpl:691
 	qw422016.N().S(`
 `)
-//line kubevirt.qtpl:652
+//line kubevirt.qtpl:692
 }
 
-//line kubevirt.qtpl:652
+//line kubevirt.qtpl:692
 func WriteVmiToServiceAccount(qq422016 qtio422016.Writer, o interface{}) {
-//line kubevirt.qtpl:652
+//line kubevirt.qtpl:692
 	qw422016 := qt422016.AcquireWriter(qq422016)
-//line kubevirt.qtpl:652
+//line kubevirt.qtpl:692
 	StreamVmiToServiceAccount(qw422016, o)
-//line kubevirt.qtpl:652
+//line kubevirt.qtpl:692
 	qt422016.ReleaseWriter(qw422016)
-//line kubevirt.qtpl:652
+//line kubevirt.qtpl:692
 }
 
-//line kubevirt.qtpl:652
+//line kubevirt.qtpl:692
 func VmiToServiceAccount(o interface{}) string {
-//line kubevirt.qtpl:652
+//line kubevirt.qtpl:692
 	qb422016 := qt422016.AcquireByteBuffer()
-//line kubevirt.qtpl:652
+//line kubevirt.qtpl:692
 	WriteVmiToServiceAccount(qb422016, o)
-//line kubevirt.qtpl:652
+//line kubevirt.qtpl:692
 	qs422016 := string(qb422016.B)
-//line kubevirt.qtpl:652
+//line kubevirt.qtpl:692
 	qt422016.ReleaseByteBuffer(qb422016)
-//line kubevirt.qtpl:652
+//line kubevirt.qtpl:692
 	return qs422016
-//line kubevirt.qtpl:652
+//line kubevirt.qtpl:692
 }
 
 // # VmToInstancetype finds the instancetype or cluster instancetype for a VirtualMachine.
@@ -2558,77 +2687,77 @@ func VmiToServiceAccount(o interface{}) string {
 //   domain: k8s
 //
 
-//line kubevirt.qtpl:662
+//line kubevirt.qtpl:702
 func StreamVmToInstancetype(qw422016 *qt422016.Writer, o interface{}) {
-//line kubevirt.qtpl:662
+//line kubevirt.qtpl:702
 	qw422016.N().S(`
 `)
-//line kubevirt.qtpl:664
+//line kubevirt.qtpl:704
 	obj, _, ns, _, _ := k8sMetadata(o)
 	RequireAll(ns)
 	it := obj["spec"].(map[string]any)["instancetype"].(map[string]any)
 	name := Require(it["name"].(string))
 	kind, _ := it["kind"].(string)
 
-//line kubevirt.qtpl:669
+//line kubevirt.qtpl:709
 	qw422016.N().S(`
 `)
-//line kubevirt.qtpl:670
+//line kubevirt.qtpl:710
 	if kind == "VirtualMachineInstancetype" {
-//line kubevirt.qtpl:670
+//line kubevirt.qtpl:710
 		qw422016.N().S(`
 k8s:VirtualMachineInstancetype.instancetype.kubevirt.io:{"namespace":`)
-//line kubevirt.qtpl:671
+//line kubevirt.qtpl:711
 		qw422016.N().Q(ns)
-//line kubevirt.qtpl:671
+//line kubevirt.qtpl:711
 		qw422016.N().S(`,"name":`)
-//line kubevirt.qtpl:671
+//line kubevirt.qtpl:711
 		qw422016.N().Q(name)
-//line kubevirt.qtpl:671
+//line kubevirt.qtpl:711
 		qw422016.N().S(`}
 `)
-//line kubevirt.qtpl:672
+//line kubevirt.qtpl:712
 	} else {
-//line kubevirt.qtpl:672
+//line kubevirt.qtpl:712
 		qw422016.N().S(`
 k8s:VirtualMachineClusterInstancetype.instancetype.kubevirt.io:{"name":`)
-//line kubevirt.qtpl:673
+//line kubevirt.qtpl:713
 		qw422016.N().Q(name)
-//line kubevirt.qtpl:673
+//line kubevirt.qtpl:713
 		qw422016.N().S(`}
 `)
-//line kubevirt.qtpl:674
+//line kubevirt.qtpl:714
 	}
-//line kubevirt.qtpl:674
+//line kubevirt.qtpl:714
 	qw422016.N().S(`
 `)
-//line kubevirt.qtpl:675
+//line kubevirt.qtpl:715
 }
 
-//line kubevirt.qtpl:675
+//line kubevirt.qtpl:715
 func WriteVmToInstancetype(qq422016 qtio422016.Writer, o interface{}) {
-//line kubevirt.qtpl:675
+//line kubevirt.qtpl:715
 	qw422016 := qt422016.AcquireWriter(qq422016)
-//line kubevirt.qtpl:675
+//line kubevirt.qtpl:715
 	StreamVmToInstancetype(qw422016, o)
-//line kubevirt.qtpl:675
+//line kubevirt.qtpl:715
 	qt422016.ReleaseWriter(qw422016)
-//line kubevirt.qtpl:675
+//line kubevirt.qtpl:715
 }
 
-//line kubevirt.qtpl:675
+//line kubevirt.qtpl:715
 func VmToInstancetype(o interface{}) string {
-//line kubevirt.qtpl:675
+//line kubevirt.qtpl:715
 	qb422016 := qt422016.AcquireByteBuffer()
-//line kubevirt.qtpl:675
+//line kubevirt.qtpl:715
 	WriteVmToInstancetype(qb422016, o)
-//line kubevirt.qtpl:675
+//line kubevirt.qtpl:715
 	qs422016 := string(qb422016.B)
-//line kubevirt.qtpl:675
+//line kubevirt.qtpl:715
 	qt422016.ReleaseByteBuffer(qb422016)
-//line kubevirt.qtpl:675
+//line kubevirt.qtpl:715
 	return qs422016
-//line kubevirt.qtpl:675
+//line kubevirt.qtpl:715
 }
 
 // # VmToPreference finds the preference or cluster preference for a VirtualMachine.
@@ -2640,75 +2769,75 @@ func VmToInstancetype(o interface{}) string {
 //   domain: k8s
 //
 
-//line kubevirt.qtpl:685
+//line kubevirt.qtpl:725
 func StreamVmToPreference(qw422016 *qt422016.Writer, o interface{}) {
-//line kubevirt.qtpl:685
+//line kubevirt.qtpl:725
 	qw422016.N().S(`
 `)
-//line kubevirt.qtpl:687
+//line kubevirt.qtpl:727
 	obj, _, ns, _, _ := k8sMetadata(o)
 	RequireAll(ns)
 	pref := obj["spec"].(map[string]any)["preference"].(map[string]any)
 	name := Require(pref["name"].(string))
 	kind, _ := pref["kind"].(string)
 
-//line kubevirt.qtpl:692
+//line kubevirt.qtpl:732
 	qw422016.N().S(`
 `)
-//line kubevirt.qtpl:693
+//line kubevirt.qtpl:733
 	if kind == "VirtualMachinePreference" {
-//line kubevirt.qtpl:693
+//line kubevirt.qtpl:733
 		qw422016.N().S(`
 k8s:VirtualMachinePreference.instancetype.kubevirt.io:{"namespace":`)
-//line kubevirt.qtpl:694
+//line kubevirt.qtpl:734
 		qw422016.N().Q(ns)
-//line kubevirt.qtpl:694
+//line kubevirt.qtpl:734
 		qw422016.N().S(`,"name":`)
-//line kubevirt.qtpl:694
+//line kubevirt.qtpl:734
 		qw422016.N().Q(name)
-//line kubevirt.qtpl:694
+//line kubevirt.qtpl:734
 		qw422016.N().S(`}
 `)
-//line kubevirt.qtpl:695
+//line kubevirt.qtpl:735
 	} else {
-//line kubevirt.qtpl:695
+//line kubevirt.qtpl:735
 		qw422016.N().S(`
 k8s:VirtualMachineClusterPreference.instancetype.kubevirt.io:{"name":`)
-//line kubevirt.qtpl:696
+//line kubevirt.qtpl:736
 		qw422016.N().Q(name)
-//line kubevirt.qtpl:696
+//line kubevirt.qtpl:736
 		qw422016.N().S(`}
 `)
-//line kubevirt.qtpl:697
+//line kubevirt.qtpl:737
 	}
-//line kubevirt.qtpl:697
+//line kubevirt.qtpl:737
 	qw422016.N().S(`
 `)
-//line kubevirt.qtpl:698
+//line kubevirt.qtpl:738
 }
 
-//line kubevirt.qtpl:698
+//line kubevirt.qtpl:738
 func WriteVmToPreference(qq422016 qtio422016.Writer, o interface{}) {
-//line kubevirt.qtpl:698
+//line kubevirt.qtpl:738
 	qw422016 := qt422016.AcquireWriter(qq422016)
-//line kubevirt.qtpl:698
+//line kubevirt.qtpl:738
 	StreamVmToPreference(qw422016, o)
-//line kubevirt.qtpl:698
+//line kubevirt.qtpl:738
 	qt422016.ReleaseWriter(qw422016)
-//line kubevirt.qtpl:698
+//line kubevirt.qtpl:738
 }
 
-//line kubevirt.qtpl:698
+//line kubevirt.qtpl:738
 func VmToPreference(o interface{}) string {
-//line kubevirt.qtpl:698
+//line kubevirt.qtpl:738
 	qb422016 := qt422016.AcquireByteBuffer()
-//line kubevirt.qtpl:698
+//line kubevirt.qtpl:738
 	WriteVmToPreference(qb422016, o)
-//line kubevirt.qtpl:698
+//line kubevirt.qtpl:738
 	qs422016 := string(qb422016.B)
-//line kubevirt.qtpl:698
+//line kubevirt.qtpl:738
 	qt422016.ReleaseByteBuffer(qb422016)
-//line kubevirt.qtpl:698
+//line kubevirt.qtpl:738
 	return qs422016
-//line kubevirt.qtpl:698
+//line kubevirt.qtpl:738
 }

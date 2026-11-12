@@ -277,6 +277,17 @@ rules:
       query: |-
         k8s:PersistentVolumeClaim:{"namespace":"{{.metadata.namespace}}","name":"{{.metadata.name}}"}
 
+  - name: PvcToDataVolume
+    start:
+      domain: k8s
+      classes: [PersistentVolumeClaim]
+    goal:
+      domain: k8s
+      classes: [DataVolume.cdi.kubevirt.io]
+    result:
+      query: |-
+        k8s:DataVolume.cdi.kubevirt.io:{"namespace":"{{.metadata.namespace}}","name":"{{.metadata.name}}"}
+
   # ─── VirtualMachine ↔ DataVolume ──────────────────────────────────────────
 
   - name: VmToDataVolume
@@ -294,6 +305,21 @@ rules:
         {{- range .spec.template.spec.volumes }}
         {{- with index . "dataVolume" }}
         k8s:DataVolume.cdi.kubevirt.io:{"namespace":"{{$.metadata.namespace}}","name":"{{.name}}"}
+        {{- end }}
+        {{- end }}
+
+  - name: DataVolumeToVm
+    start:
+      domain: k8s
+      classes: [DataVolume.cdi.kubevirt.io]
+    goal:
+      domain: k8s
+      classes: [VirtualMachine.kubevirt.io]
+    result:
+      query: |-
+        {{- range .metadata.ownerReferences }}
+        {{- if eq .kind "VirtualMachine" }}
+        k8s:VirtualMachine.kubevirt.io:{"namespace":"{{$.metadata.namespace}}","name":"{{.name}}"}
         {{- end }}
         {{- end }}
 

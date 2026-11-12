@@ -210,6 +210,21 @@ goal:
 k8s:PersistentVolumeClaim:{"namespace":{%q= ns %},"name":{%q= name %}}
 {% endfunc %}
 
+# PvcToDataVolume finds the DataVolume for a PersistentVolumeClaim
+# (they share namespace/name, the reverse of DataVolumeToPVC).
+name: PvcToDataVolume
+start:
+  domain: k8s
+  classes: [PersistentVolumeClaim]
+goal:
+  domain: k8s
+  classes: [DataVolume.cdi.kubevirt.io]
+
+{% func PvcToDataVolume(o interface{}) %}
+{% code _, _, ns, name, _ := k8sMetadata(o); RequireAll(ns, name) %}
+k8s:DataVolume.cdi.kubevirt.io:{"namespace":{%q= ns %},"name":{%q= name %}}
+{% endfunc %}
+
 # VmToDataVolume finds DataVolumes referenced by a VirtualMachine.
 name: VmToDataVolume
 start:
@@ -238,6 +253,31 @@ k8s:DataVolume.cdi.kubevirt.io:{"namespace":{%q= ns %},"name":{%q= dvName %}}
 k8s:DataVolume.cdi.kubevirt.io:{"namespace":{%q= ns %},"name":{%q= dv["name"].(string) %}}
 {% endif %}
 {% endfor %}
+{% endfunc %}
+
+# DataVolumeToVm finds the VirtualMachine that owns a DataVolume created
+# from its dataVolumeTemplates, via the DataVolume ownerReferences.
+name: DataVolumeToVm
+start:
+  domain: k8s
+  classes: [DataVolume.cdi.kubevirt.io]
+goal:
+  domain: k8s
+  classes: [VirtualMachine.kubevirt.io]
+
+{% func DataVolumeToVm(o interface{}) %}
+{% code
+	_, md, ns, _, _ := k8sMetadata(o)
+	RequireAll(ns)
+	vmName := ""
+	for _, r := range mapSlice(md, "ownerReferences") {
+		if ref, ok := r.(map[string]any); ok && ref["kind"] == "VirtualMachine" {
+			vmName, _ = ref["name"].(string)
+		}
+	}
+	RequireAll(vmName)
+%}
+k8s:VirtualMachine.kubevirt.io:{"namespace":{%q= ns %},"name":{%q= vmName %}}
 {% endfunc %}
 
 # VmiToPVC finds PersistentVolumeClaims referenced by a VirtualMachineInstance.
