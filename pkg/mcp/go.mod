@@ -1,6 +1,6 @@
 module github.com/korrel8r/korrel8r/pkg/mcp
 
-go 1.26.0
+go 1.26.11
 
 replace github.com/korrel8r/korrel8r/pkg/api => ../api
 
