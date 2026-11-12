@@ -1,6 +1,6 @@
 module github.com/korrel8r/korrel8r/tools
 
-go 1.26.0
+go 1.26.11
 
 tool (
 	github.com/duh-rpc/openapi-markdown.go/cmd/openapi-markdown
