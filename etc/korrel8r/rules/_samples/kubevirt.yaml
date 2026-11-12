@@ -150,7 +150,7 @@ rules:
       classes: [VirtualMachine.kubevirt.io]
     result:
       query: |-
-        k8s:VirtualMachine.kubevirt.io:{"namespace":"{{index .Labels "namespace" | required}}","name":"{{index .Labels "name" | required}}"}
+        k8s:VirtualMachine.kubevirt.io:{"namespace":"{{index .Labels "namespace" | required}}","name":"{{or (index .Labels "vm") (index .Labels "name") | required}}"}
 
   - name: VmToAlert
     start:
