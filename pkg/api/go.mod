@@ -1,6 +1,6 @@
 module github.com/korrel8r/korrel8r/pkg/api
 
-go 1.26.0
+go 1.26.11
 
 require (
 	github.com/getkin/kin-openapi v0.149.0
