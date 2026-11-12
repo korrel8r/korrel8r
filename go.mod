@@ -20,8 +20,8 @@ require (
 	github.com/gin-gonic/gin v1.12.0
 	github.com/go-logr/logr v1.4.4
 	github.com/go-logr/stdr v1.2.2
-	github.com/korrel8r/korrel8r/pkg/api v0.13.3
-	github.com/korrel8r/korrel8r/pkg/mcp v0.13.3
+	github.com/korrel8r/korrel8r/pkg/api v0.13.4
+	github.com/korrel8r/korrel8r/pkg/mcp v0.13.4
 	github.com/modelcontextprotocol/go-sdk v1.8.0
 	github.com/oapi-codegen/runtime v1.8.0
 	github.com/openshift/api v0.0.0-20261103105328-7912bdb54653
