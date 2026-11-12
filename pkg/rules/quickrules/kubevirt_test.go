@@ -93,6 +93,16 @@ func TestKubevirtRules(t *testing.T) {
 			want:  []string{`k8s:VirtualMachine.v1.kubevirt.io:{"namespace":"vm-ns","name":"my-vm"}`},
 		},
 		{
+			rule:  "AlertToVM",
+			start: &alert.Object{Labels: map[string]string{"namespace": "vm-ns", "vm": "my-vm"}},
+			want:  []string{`k8s:VirtualMachine.v1.kubevirt.io:{"namespace":"vm-ns","name":"my-vm"}`},
+		},
+		{
+			rule:  "AlertToVM",
+			start: &alert.Object{Labels: map[string]string{"namespace": "vm-ns", "name": "generic-name", "vm": "my-vm"}},
+			want:  []string{`k8s:VirtualMachine.v1.kubevirt.io:{"namespace":"vm-ns","name":"my-vm"}`},
+		},
+		{
 			rule:  "VmToAlert",
 			start: newK8s("VirtualMachine.kubevirt.io", "vm-ns", "my-vm", nil),
 			want:  []string{`alert:alert:{"namespace":"vm-ns","name":"my-vm"}`},
