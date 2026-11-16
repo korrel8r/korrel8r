@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+- Go modules require Go 1.26.10 again (0.13.4 required 1.26.11) so downstream users are not forced to upgrade.
+  CI builds release binaries with Go 1.26.11 to include the `net/http` fix for GO-2026-6859.
+
 ## [0.13.4] - 2026-11-12
 
 ## [0.13.3] - 2026-11-06
