@@ -53,4 +53,4 @@ for tag in "${tags[@]}"; do
 	refs+=("refs/tags/$tag")
 done
 git push --atomic origin "${refs[@]}"
-echo "Released $VERSION. Run `make post-release` to bump the patch version."
+echo "Released $VERSION. Run 'make post-release' to bump the patch version."
