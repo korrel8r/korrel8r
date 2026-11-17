@@ -121,6 +121,12 @@ make all                          # Pre-commit build/test/image/doc validation
 
 Tests whose names end in `_cluster` (including `_cluster-fm`) require a configured Kubernetes/OpenShift environment. Do not claim full validation if those tests were skipped or infrastructure was unavailable. Report the exact commands run and any failures.
 
+To prepare a cluster for those tests, log in as `cluster-admin` and run `make test-setup`.
+This fetches the setup scripts from <https://github.com/korrel8r/config> into the git-ignored
+`_test-setup` directory and installs the observability components; `make test-setup-clean`
+removes them. See [hack/openshift/README.md](hack/openshift/README.md) for the
+`TEST_SETUP_*` variables.
+
 For OpenAPI changes, edit `korrel8r-openapi.yaml`, regenerate, and test both `pkg/api` and `pkg/rest`. For documentation changes, use `make doc` and, when relevant, `make check-links`.
 
 ## Local and Cluster Workflows

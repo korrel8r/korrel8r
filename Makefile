@@ -124,6 +124,31 @@ vuln: $(BIN) ## Check Go dependencies for known vulnerabilities.
 test-clean: ## Remove test namespaces from the cluster
 	kubectl delete ns -l test=korrel8r
 
+## TEST_SETUP_REPO: Repository of cluster test-setup scripts, see https://github.com/korrel8r/config
+TEST_SETUP_REPO?=https://github.com/korrel8r/config.git
+## TEST_SETUP_REF: Branch, tag or commit of TEST_SETUP_REPO to use.
+TEST_SETUP_REF?=main
+## TEST_SETUP_DIR: Local checkout of TEST_SETUP_REPO, set to an existing clone to work from it directly.
+TEST_SETUP_DIR?=_test-setup
+
+$(TEST_SETUP_DIR):
+	git clone --filter=blob:none $(TEST_SETUP_REPO) $@
+	git -C $@ checkout $(TEST_SETUP_REF)
+
+.PHONY: test-setup-update
+test-setup-update: $(TEST_SETUP_DIR)  ## Update the test-setup checkout to TEST_SETUP_REF.
+	git -C $(TEST_SETUP_DIR) fetch origin
+	git -C $(TEST_SETUP_DIR) checkout $(TEST_SETUP_REF)
+	-git -C $(TEST_SETUP_DIR) pull --ff-only
+
+.PHONY: test-setup
+test-setup: test-setup-update  ## Install observability signals on the current OpenShift cluster, for `make test`.
+	$(MAKE) -C $(TEST_SETUP_DIR)/openshift all -j5
+
+.PHONY: test-setup-clean
+test-setup-clean: $(TEST_SETUP_DIR)  ## Remove observability components installed by `make test-setup`.
+	$(MAKE) -C $(TEST_SETUP_DIR)/openshift clean-cluster -j5
+
 .PHONY: cover
 cover:  ## Run tests with accumulated coverage stats in _cover.
 	@rm -rf  $(GOCOVERDIR) ; mkdir -p $(GOCOVERDIR)
