@@ -8,7 +8,7 @@ export VERSION # For make
 	echo "expected version X.Y.Z[-prerelease][+build]: $VERSION" >&2
 	exit 1
 }
-[ "$(git log -1 --format=%s)" = "Release $VERSION" ] || {
+[ "$(git log -1 --format=%s)" = "Prepare release $VERSION" ] || {
 	echo "run VERSION=$VERSION make pre-release first" >&2
 	exit 1
 }
@@ -25,32 +25,61 @@ grep -q "^## \[$VERSION\] - " CHANGELOG.md || {
 	exit 1
 }
 branch=$(git branch --show-current)
-# A dependency's replace directive is ignored by Go consumers. Verify the
-# required versions before publishing the matching module tags.
-for module in api mcp; do
-	grep -Eq "^[[:space:]]*(require[[:space:]]+)?github.com/korrel8r/korrel8r/pkg/$module v$VERSION([[:space:]]|$)" go.mod || {
-		echo "go.mod must require pkg/$module v$VERSION" >&2
-		exit 1
-	}
-done
-grep -Eq "^[[:space:]]*(require[[:space:]]+)?github.com/korrel8r/korrel8r/pkg/api v$VERSION([[:space:]]|$)" pkg/mcp/go.mod || {
-	echo "pkg/mcp/go.mod must require pkg/api v$VERSION" >&2
+case $branch in
+main | v[0-9]*.[0-9]*) ;;
+*)
+	echo "releases must be from main or a vX.Y branch" >&2
+	exit 1
+	;;
+esac
+# Check before creating tags: an atomic push cannot advance a diverged branch.
+git fetch origin "$branch"
+git merge-base --is-ancestor FETCH_HEAD HEAD || {
+	echo "origin/$branch advanced since pre-release; integrate upstream, revalidate, and retag before publishing" >&2
 	exit 1
 }
+for tag in "v$VERSION" "pkg/api/v$VERSION" "pkg/mcp/v$VERSION"; do
+	if git rev-parse -q --verify "refs/tags/$tag" >/dev/null || git ls-remote --exit-code --tags origin "refs/tags/$tag" >/dev/null; then
+		echo "tag already exists: $tag" >&2
+		exit 1
+	fi
+done
 
-# pre-release already built and tested this commit.
-# No need to lint or test here, just push the commit and publish the versioned and latest images.
+# Publish API at the validated commit before changing any of its source.
+git tag -a "pkg/api/v$VERSION" -m "Release API $VERSION"
+git push --atomic origin "HEAD:refs/heads/$branch" "refs/tags/pkg/api/v$VERSION"
+
+# MCP now requires the published API version, which can be tidied and tested.
+go -C pkg/mcp mod edit -require="github.com/korrel8r/korrel8r/pkg/api@v$VERSION"
+GOPROXY=direct go -C pkg/mcp mod tidy
+go -C pkg/mcp test ./...
+git diff --exit-code "pkg/api/v$VERSION" -- pkg/api
+git add -A pkg/mcp
+git commit -m "Prepare MCP $VERSION"
+git tag -a "pkg/mcp/v$VERSION" -m "Release MCP $VERSION"
+git push --atomic origin "HEAD:refs/heads/$branch" "refs/tags/pkg/mcp/v$VERSION"
+
+# Resolve and validate the final root dependency versions before publishing
+# the root release. All checks that depend on new tags must run at this stage.
+go mod edit -require="github.com/korrel8r/korrel8r/pkg/api@v$VERSION" -require="github.com/korrel8r/korrel8r/pkg/mcp@v$VERSION"
+GOPROXY=direct go mod download "github.com/korrel8r/korrel8r/pkg/api@v$VERSION" "github.com/korrel8r/korrel8r/pkg/mcp@v$VERSION"
+make all
+git diff --exit-code "pkg/api/v$VERSION" -- pkg/api
+git diff --exit-code "pkg/mcp/v$VERSION" -- pkg/mcp
+git add -A
+git commit -m "Release $VERSION"
+[ -z "$(git status --porcelain)" ] || {
+	echo "release commit left uncommitted changes" >&2
+	exit 1
+}
+# Push the image before the root tag so a failed image push leaves the root
+# version unpublished. The module tags have already been published.
 git push origin "HEAD:refs/heads/$branch"
 make image-latest NOLINT=1
 [ -z "$(git status --porcelain)" ] || {
 	echo "image build changed the working tree; not tagging" >&2
 	exit 1
 }
-tags=("v$VERSION" "pkg/api/v$VERSION" "pkg/mcp/v$VERSION")
-refs=()
-for tag in "${tags[@]}"; do
-	git tag -a "$tag" -m "Release $VERSION"
-	refs+=("refs/tags/$tag")
-done
-git push --atomic origin "${refs[@]}"
+git tag -a "v$VERSION" -m "Release $VERSION"
+git push origin "refs/tags/v$VERSION"
 echo "Released $VERSION. Run 'make post-release' to bump the patch version."
