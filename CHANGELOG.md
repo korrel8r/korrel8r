@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [0.13.7] - 2026-11-18
+
 ### Performance
 - Cache neighborhood routing for repeated searches with the same engine, start class, and depth; reduce traversal allocations and duplicate-check work.
 
