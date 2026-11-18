@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Performance
+- Cache neighborhood routing for repeated searches with the same engine, start class, and depth; reduce traversal allocations and duplicate-check work.
+
+### Changed
+- Use a Go workspace for local development across the main, API, MCP, and tools modules instead of local `go.mod` replacements. Tools run directly with `go tool`. Workspace modules share dependency versions, including `pflag` v1.1.0, which changes generated CLI help text.
+- Update the preferred Go build toolchain to 1.26.11 without raising the minimum Go version, and validate pinned tools during linting.
+- Automate fetching and updating the cluster test setup scripts with `make test-setup`.
+- Update Go dependencies, including controller-runtime.
+
 ## [0.13.5] - 2026-11-16
 
 ### Changed

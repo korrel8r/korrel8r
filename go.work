@@ -1,0 +1,8 @@
+go 1.26.10
+
+use (
+	.
+	./pkg/api
+	./pkg/mcp
+	./tools
+)

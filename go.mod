@@ -9,11 +9,6 @@ go 1.26.10
 
 toolchain go1.26.11
 
-replace (
-	github.com/korrel8r/korrel8r/pkg/api => ./pkg/api
-	github.com/korrel8r/korrel8r/pkg/mcp => ./pkg/mcp
-)
-
 require (
 	github.com/Masterminds/sprig/v3 v3.3.0
 	github.com/VictoriaMetrics/metricsql v0.87.6
