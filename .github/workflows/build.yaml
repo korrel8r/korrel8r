@@ -23,7 +23,7 @@ jobs:
 
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: "1.26.11" # May be newer than go.mod, which is the minimum for downstream users.
+          go-version-file: go.mod # Uses the preferred toolchain, not the minimum Go version.
           check-latest: true
 
       - name: test
