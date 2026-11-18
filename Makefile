@@ -24,8 +24,8 @@ BIN ?= _bin
 export GOCOVERDIR := $(abspath _cover)
 $(shell mkdir -p $(GOCOVERDIR))
 
-# Run pinned tools from the tools module without installing binaries.
-GO_TOOL = go tool -modfile=$(abspath tools/go.mod)
+# Tools from the tools module, included in go.work.
+GO_TOOL = go tool
 TOOL_DEPS = tools/go.mod tools/go.sum
 $(BIN):
 	@mkdir -p $@

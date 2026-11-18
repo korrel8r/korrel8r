@@ -148,6 +148,10 @@ github.com/klauspost/compress v1.20.1 h1:T7kKElXUMXrUJ2E9QhQhxFtcK5rPyLdsGZvdbLM
 github.com/klauspost/compress v1.20.1/go.mod h1:LUdAzn7YLVvxLpc7y3V1m40wESHTgc1422pwwBSKYuI=
 github.com/klauspost/cpuid/v2 v2.4.0 h1:S6Hrbc7+ywsr0r+RLapfGBHfyefhCTwEh3A0tV913Dw=
 github.com/klauspost/cpuid/v2 v2.4.0/go.mod h1:19jmZ9mjzoF//ddRSUsv0zfBTJWh3QJh9FNxZTMrGxU=
+github.com/korrel8r/korrel8r/pkg/api v0.13.5 h1:Almi9UD7PvZVtmONq7L2I01/BSga0viL6+lAmJqJlFc=
+github.com/korrel8r/korrel8r/pkg/api v0.13.5/go.mod h1:M78lr13zr0YStxduMajNpf83v2k+Ff1ObDFTGSmOip4=
+github.com/korrel8r/korrel8r/pkg/mcp v0.13.5 h1:6ljkD8TJefNGUdSUiz3oJB/VwqADyVNZUrUCkeCy9OQ=
+github.com/korrel8r/korrel8r/pkg/mcp v0.13.5/go.mod h1:sARYMtPgV+P5RJQkvJh35+l5Qla3HMhO/Hq6s1WqgP0=
 github.com/kr/pretty v0.3.1 h1:flRD4NNwYAUpkphVc1HcthR4KEIFJ65n8Mw5qdRn3LE=
 github.com/kr/pretty v0.3.1/go.mod h1:hoEshYVHaxMs3cyo3Yncou5ZscifuDolrwPKZanG3xk=
 github.com/kr/text v0.2.0 h1:5Nx0Ya0ZqY2ygV366QzturHI13Jq95ApcVaJBhpS+AY=

@@ -91,8 +91,9 @@ Edit their source specifications/templates instead. Commit regenerated outputs w
 - Avoid broad refactors in bug fixes. Do not add dependencies unless necessary.
 - For shell changes, follow existing scripts; lint runs `shfmt` and `shellcheck`.
 - `make lint` is mutating: it runs generation, `go mod tidy`, `golangci-lint --fix`, and `shfmt -w`.
-- Go tools are pinned in `tools/go.mod` and run with `go tool`. 
-  - To update tools, run `go get -modfile=tools/go.mod tool`, then `make check-tools` to ensure compatible versions.
+- `go.work` uses the main, `pkg/api`, `pkg/mcp`, and `tools` modules from this checkout. The application modules still require released versions for consumers outside the workspace. Use `GOWORK=off` to check standalone module resolution.
+- Go tools are declared in `tools/go.mod` and run from the workspace with `go tool`; the `doc` module remains separate. Workspace modules share a dependency graph, so another module can raise a tool's transitive dependency version.
+  - To update tools, run `GOWORK=off go -C tools get <tool>@<version>`, then `make check-tools` to ensure compatible versions.
   - Review changes to `tools/go.mod` and `tools/go.sum`.
 
 ### Logging Levels
