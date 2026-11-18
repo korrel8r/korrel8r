@@ -21,14 +21,14 @@ IMG?=$(REGISTRY_BASE)/korrel8r
 IMAGE=$(IMG):$(VERSION)
 
 BIN ?= _bin
-export PATH := $(abspath $(BIN)):$(PATH)
 export GOCOVERDIR := $(abspath _cover)
 $(shell mkdir -p $(GOCOVERDIR))
 
-# Install tool binaries from the tools module into $(BIN), which is on PATH.
-$(BIN): tools/go.mod tools/go.sum
-	GOBIN=$(abspath $(BIN)) go -C tools install tool
-	@touch $@
+# Run pinned tools from the tools module without installing binaries.
+GO_TOOL = go tool -modfile=$(abspath tools/go.mod)
+TOOL_DEPS = tools/go.mod tools/go.sum
+$(BIN):
+	@mkdir -p $@
 
 # Main and sub-modules
 GO_MODULES=. ./pkg/mcp ./pkg/api ./tools
@@ -72,26 +72,30 @@ endif
 $(VERSION_TXT):
 	echo $(VERSION) > $@
 
-$(GEN_OPENAPI_API): $(OPENAPI_SPEC) $(BIN)
-	oapi-codegen -generate types,spec -package api -o $@ $<
+$(GEN_OPENAPI_API): $(OPENAPI_SPEC) $(TOOL_DEPS)
+	$(GO_TOOL) oapi-codegen -generate types,spec -package api -o $@ $<
 
-$(GEN_OPENAPI_IMPL): $(OPENAPI_SPEC) $(BIN)
-	oapi-codegen -generate gin -package rest -import-mapping "$<:github.com/korrel8r/korrel8r/pkg/api" -alias-types -o $@ $<
+$(GEN_OPENAPI_IMPL): $(OPENAPI_SPEC) $(TOOL_DEPS)
+	$(GO_TOOL) oapi-codegen -generate gin -package rest -import-mapping "$<:github.com/korrel8r/korrel8r/pkg/api" -alias-types -o $@ $<
 
 # Compile quicktemplate files to go.
-$(GEN_QUICKRULES): $(wildcard $(dir $(GEN_QUICKRULES))*.qtpl)
+$(GEN_QUICKRULES): $(wildcard $(dir $(GEN_QUICKRULES))*.qtpl) $(TOOL_DEPS)
 	go generate ./$(dir $@)
 	hack/gen-applyfuncs.sh $(dir $@) | gofmt > $@
 
 # Generate the pkg/domains/*/doc.md files that are embedded in the korrel8r executable.
-%/doc.md: %/doc.go $(shell find doc/gomarkdoc) $(BIN)
+%/doc.md: %/doc.go $(shell find doc/gomarkdoc) $(TOOL_DEPS)
 	@mkdir -p $(dir $@)
-	@gomarkdoc ./$(dir $@) --template-file file=doc/gomarkdoc/file.gotxt | sed -E 's/[Pp]ackage *[a-zA-Z0-9]+ *(is a)? *(korrel8r)? *(domain)? *(for)? *//' > $@
+	@$(GO_TOOL) gomarkdoc ./$(dir $@) --template-file file=doc/gomarkdoc/file.gotxt | sed -E 's/[Pp]ackage *[a-zA-Z0-9]+ *(is a)? *(korrel8r)? *(domain)? *(for)? *//' > $@
 
 SHELLCHECK:= $(BIN)/shellcheck
 $(SHELLCHECK):
 	@mkdir -p $(BIN)
 	./hack/install-shellcheck.sh $(BIN) 0.10.0
+
+.PHONY: check-tools
+check-tools: ## Build all pinned Go tools to catch incompatible transitive dependencies.
+	go -C tools build tool
 
 .PHONY: go-mod-tidy
 # Generated Go files must exist before tidy, especially after make clean.
@@ -99,9 +103,9 @@ go-mod-tidy: generate ## Tidy dependencies in the main and submodules.
 	@set -e; for d in $(GO_MODULES); do go -C "$$d" mod tidy; done
 
 ifndef NOLINT
-lint: go-mod-tidy generate $(SHELLCHECK) $(BIN) ## Run the linter to find and fix code style problems.
-	golangci-lint run --fix
-	shfmt -l -w ./**/*.sh
+lint: go-mod-tidy check-tools generate $(SHELLCHECK) ## Run the linter to find and fix code style problems.
+	$(GO_TOOL) golangci-lint run --fix
+	$(GO_TOOL) shfmt -l -w ./**/*.sh
 	$(SHELLCHECK) -x -S style hack/*.sh
 else
 lint: ## Linting skipped (NOLINT is set).
@@ -117,9 +121,9 @@ test: lint							 ## Run all tests, requires cluster. Set NO_CLUSTER=1 to skip c
 	go -C pkg/mcp test -fullpath -race ./... $(TEST_FLAGS)
 
 .PHONY: vuln
-vuln: $(BIN) ## Check Go dependencies for known vulnerabilities.
+vuln: ## Check Go dependencies for known vulnerabilities.
 	go version
-	govulncheck $(VULN_FLAGS) ./...
+	$(GO_TOOL) govulncheck $(VULN_FLAGS) ./...
 
 test-clean: ## Remove test namespaces from the cluster
 	kubectl delete ns -l test=korrel8r
@@ -163,10 +167,10 @@ BENCH_NAME?=$(DESCRIBE)
 BENCH_PKG?=./...
 BENCH_COUNT?=6
 .PHONY: bench
-bench: $(BIN)
+bench:
 	mkdir -p _bench
 	go test -v -bench=. -run=- -count=$(BENCH_COUNT) $(BENCH_PKG) | tee _bench/$(BENCH_NAME).bench
-	benchstat _bench/*
+	$(GO_TOOL) benchstat _bench/*
 
 image-build: lint kustomize-edit ## Build image locally, don't push.
 	$(IMGTOOL) build --tag=$(IMAGE) -f Containerfile .
@@ -180,10 +184,10 @@ image-latest: image ## Build and push image with 'latest' alias
 WAIT_DEPLOYMENT=hack/wait.sh rollout $(NAMESPACE) deployment.apps/korrel8r
 DEPLOY_ROUTE=kubectl apply -k config/route -n $(NAMESPACE) || echo "skipping route" # Non-openshift cluster
 
-kustomize-edit: $(BIN)
+kustomize-edit:
 	cd config; \
-	kustomize edit set image "korrel8r=$(IMAGE)"; \
-	kustomize edit set namespace "$(NAMESPACE)"
+	$(GO_TOOL) kustomize edit set image "korrel8r=$(IMAGE)"; \
+	$(GO_TOOL) kustomize edit set namespace "$(NAMESPACE)"
 
 deploy: image ## Deploy to current cluster using kustomize.
 	kubectl apply -k config
@@ -223,9 +227,9 @@ doc: doc/public ## Generate documentation
 	$(MAKE) check-links
 
 .PHONY: preview
-preview: doc/public $(BIN) ## Preview documentation in browser at http://localhost:1313
+preview: doc/public ## Preview documentation in browser at http://localhost:1313
 	@rm -rf $<
-	hugo server --source doc --baseURL http://localhost:1313 --bind 0.0.0.0
+	$(GO_TOOL) hugo server --source doc --baseURL http://localhost:1313 --bind 0.0.0.0
 	@touch $<
 
 .PHONY: check-links
@@ -249,9 +253,9 @@ doc/content/docs/reference/quickrules.md: pkg/rules/quickrules/doc.md $(FRONT)
 
 DOC_PUBLIC+=doc/content/docs/reference/rest/index.md
 CLEANFILES+=doc/content/docs/reference/rest
-doc/content/docs/reference/rest/index.md: $(OPENAPI_SPEC) $(MAKEFILE_LIST) $(FRONT) $(BIN)
+doc/content/docs/reference/rest/index.md: $(OPENAPI_SPEC) $(MAKEFILE_LIST) $(FRONT) $(TOOL_DEPS)
 	@mkdir -p $(dir $@)
-	openapi-markdown -o $@ -title "REST API" -description "HTTP API reference" $<
+	$(GO_TOOL) openapi-markdown -o $@ -title "REST API" -description "HTTP API reference" $<
 	@sed -i 's/^# REST API$$//'	$@				# Remove redundant header
 	@perl -pi -e 'if (/^### ((?:PUT|GET|POST|DELETE|PATCH) .+)$$/) { my $$t = $$1; (my $$a = lc $$t) =~ s/[^a-z0-9]//g; $$_ = "### $$t {#$$a}\n"; }' $@ # Fix anchors
 	@$(FRONT) $@ 'title: REST API' 'description: HTTP API reference' 'weight: 80'
@@ -286,17 +290,17 @@ doc/content/docs/reference/mcp/index.md: $(shell find pkg/mcp) cmd/korrel8r-docg
 
 DOC_PUBLIC+=doc/content/docs/reference/template-functions.md
 CLEANFILES+=doc/content/docs/reference/template-functions.md
-doc/content/docs/reference/template-functions.md: pkg/engine/template_funcs.go $(MAKEFILE_LIST) $(FRONT) $(BIN)
+doc/content/docs/reference/template-functions.md: pkg/engine/template_funcs.go $(MAKEFILE_LIST) $(FRONT) $(TOOL_DEPS)
 	@mkdir -p $(dir $@)
 	@echo > $@
-	@gomarkdoc -u ./pkg/engine \
+	@$(GO_TOOL) gomarkdoc -u ./pkg/engine \
     -t 'package={{range .Types}}{{range .Methods}}{{if eq .Name "TemplateFuncs"}}{{template "doc" .Doc}}{{"\n\n"}}{{end}}{{end}}{{end}}' >> $@
-	@gomarkdoc -u $(shell go list ./pkg/domains/...) \
+	@$(GO_TOOL) gomarkdoc -u $(shell go list ./pkg/domains/...) \
      -t 'package={{range .Types}}{{range .Methods}}{{if eq .Name "TemplateFuncs"}}## {{$$.Name}}{{"\n"}}{{template "doc" .Doc}}{{"\n\n"}}{{end}}{{end}}{{end}}' >> $@
 	@$(FRONT) $@ 'title: Template Functions' 'description: Functions available in rule templates' 'weight: 40'
 
-doc/public: $(DOC_PUBLIC) $(shell find doc/* -name public -prune -o -print) $(BIN)
-	hugo --quiet --source doc
+doc/public: $(DOC_PUBLIC) $(shell find doc/* -name public -prune -o -print) $(TOOL_DEPS)
+	$(GO_TOOL) hugo --quiet --source doc
 	@touch $@
 CLEANFILES+=doc/public
 CLEANFILES+=$(DOC_PUBLIC)

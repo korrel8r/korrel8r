@@ -3,9 +3,11 @@ module github.com/korrel8r/korrel8r
 // Note: The Go version here is the minimum required by downstream users, keep it in sync with:
 // - doc/go.mod, pkg/api/go.mod, pkg/mcp/go.mod, tools/go.mod
 // - Containerfile (builder image must be compatible)
-// The CI build toolchain (.github/workflows/build.yaml, publish.yaml) may be newer,
-// to pick up standard library security fixes without raising the minimum.
+// The preferred build toolchain may be newer to pick up standard library security fixes
+// without raising the minimum required by downstream users.
 go 1.26.10
+
+toolchain go1.26.11
 
 replace (
 	github.com/korrel8r/korrel8r/pkg/api => ./pkg/api
