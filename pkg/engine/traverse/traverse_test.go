@@ -515,8 +515,8 @@ func TestNewTraverser_LazyNodeState(t *testing.T) {
 	for id, state := range tr.nodeState {
 		assert.Nil(t, state, "node %d state must be lazy", id)
 	}
-	for id, static := range tr.nodeStatic {
-		assert.NotNil(t, static.class, "node %d static metadata", id)
+	for id, routing := range tr.nodeRouting {
+		assert.NotNil(t, routing.class, "node %d routing metadata", id)
 	}
 
 	a, ok := e.GraphData().NodeID(b.Class("d:a"))

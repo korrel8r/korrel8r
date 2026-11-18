@@ -155,6 +155,22 @@ func BenchmarkNewTraverser(b *testing.B) {
 	}
 }
 
+// BenchmarkCachedNeighborTraverser measures per-search state construction after
+// the immutable routing has been prepared for a neighborhood.
+func BenchmarkCachedNeighborTraverser(b *testing.B) {
+	e := makeEngine(b)
+	start := benchmarkStart(b, e)
+	data := e.GraphData()
+	routing, err := neighborRoutings.get(e, start.Class, benchmarkDepth)
+	require.NoError(b, err)
+
+	b.ReportAllocs()
+	b.ResetTimer()
+	for b.Loop() {
+		_ = newTraverserWithRouting(e, data, routing, nil, benchmarkDepth)
+	}
+}
+
 // BenchmarkRuleGraph measures immutable rule topology construction. The Data subbenchmark
 // excludes the Gonum adapter; View includes creation of its read-only view.
 func BenchmarkRuleGraph(b *testing.B) {
