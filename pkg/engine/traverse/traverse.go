@@ -516,17 +516,20 @@ func (t *traverser) addObject(ctx context.Context, n *nodeState, object korrel8r
 	}
 	t.budgetMu.Lock()
 	defer t.budgetMu.Unlock()
+	if t.totalObjects < t.totalLimit {
+		// Add already checks for duplicates. Avoid a separate Contains lookup
+		// while there is budget left, and charge only retained objects.
+		if n.Result.Add(object) {
+			t.totalObjects++
+		}
+		return true
+	}
+	// At the limit, duplicates are still allowed without consuming budget.
 	if n.Result.Contains(object) {
 		return true
 	}
-	if t.totalObjects >= t.totalLimit {
-		t.exceed(ctx, "totalLimit", t.totalLimit, metricTotalLimit)
-		return false
-	}
-	if n.Result.Add(object) {
-		t.totalObjects++
-	}
-	return true
+	t.exceed(ctx, "totalLimit", t.totalLimit, metricTotalLimit)
+	return false
 }
 
 func (t *traverser) isDuplicate(ctx context.Context, ql queryLine) bool {

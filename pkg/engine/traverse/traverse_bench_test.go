@@ -14,6 +14,7 @@ import (
 	"github.com/korrel8r/korrel8r/pkg/engine"
 	"github.com/korrel8r/korrel8r/pkg/graph"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
+	"github.com/korrel8r/korrel8r/pkg/result"
 	"github.com/korrel8r/korrel8r/pkg/rules/quickrules"
 	"github.com/stretchr/testify/require"
 )
@@ -168,6 +169,24 @@ func BenchmarkCachedNeighborTraverser(b *testing.B) {
 	b.ResetTimer()
 	for b.Loop() {
 		_ = newTraverserWithRouting(e, data, routing, nil, benchmarkDepth)
+	}
+}
+
+// BenchmarkAddObjectWithTotalLimit measures object deduplication while the
+// global budget still has room, without including store or traversal setup.
+func BenchmarkAddObjectWithTotalLimit(b *testing.B) {
+	class := mock.NewBuilder("d").Class("d:a")
+	n := &nodeState{Node: &graph.Node{Result: result.New(class)}}
+	n.mu.Lock()
+	defer n.mu.Unlock()
+	tr := &traverser{totalLimit: 1 << 30}
+	ctx := b.Context()
+	object := 0
+	b.ReportAllocs()
+	b.ResetTimer()
+	for b.Loop() {
+		tr.addObject(ctx, n, object)
+		object++
 	}
 }
 

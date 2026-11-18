@@ -15,6 +15,7 @@ import (
 	"github.com/korrel8r/korrel8r/pkg/engine"
 	"github.com/korrel8r/korrel8r/pkg/graph"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
+	"github.com/korrel8r/korrel8r/pkg/result"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -43,6 +44,29 @@ func TestTraverserTotalQueryLimit(t *testing.T) {
 	limitErr, ok := errors.AsType[*LimitError](tr.limitErr)
 	require.True(t, ok)
 	assert.Equal(t, "totalQueryLimit", limitErr.Name)
+}
+
+func TestAddObjectTotalLimitDeduplicates(t *testing.T) {
+	class := mock.NewBuilder("d").Class("d:a")
+	n := &nodeState{Node: &graph.Node{Result: result.New(class)}}
+	n.mu.Lock()
+	defer n.mu.Unlock()
+	tr := &traverser{totalLimit: 2}
+	ctx := context.Background()
+	assert.True(t, tr.addObject(ctx, n, 1))
+	assert.True(t, tr.addObject(ctx, n, 1)) // Duplicate under budget.
+	assert.Equal(t, 1, tr.totalObjects)
+	assert.True(t, tr.addObject(ctx, n, 2))
+	assert.True(t, tr.addObject(ctx, n, 1)) // Duplicates at the limit are allowed.
+	assert.True(t, tr.addObject(ctx, n, 2))
+	assert.Nil(t, tr.limitErr)
+	assert.Equal(t, 2, tr.totalObjects)
+	assert.Equal(t, []korrel8r.Object{1, 2}, n.Result.List())
+
+	assert.False(t, tr.addObject(ctx, n, 3))
+	assert.Equal(t, &LimitError{Name: "totalLimit", Limit: 2}, tr.limitErr)
+	assert.Equal(t, 2, tr.totalObjects)
+	assert.Equal(t, []korrel8r.Object{1, 2}, n.Result.List())
 }
 
 func TestTraverserTotalLimit(t *testing.T) {
