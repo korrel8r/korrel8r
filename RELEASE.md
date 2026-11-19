@@ -6,16 +6,17 @@ successive commits: API, MCP, then root.
 
 ## Prepare
 
-Update and commit the `Unreleased` section of `CHANGELOG.md` on `main` or a
-`vX.Y` branch. With a clean tree and cluster access, run:
+Prepare to release - local only, does not publish anything.
+Update and commit the `Unreleased` section of `CHANGELOG.md` on `main` or a `vX.Y` branch.
+With a clean tree and cluster access, run:
 
 ```sh
 unset REGISTRY_BASE; make pre-release VERSION=X.Y.Z
 ```
 
 This runs `make all` against the last published module versions and creates a
-local `Prepare release X.Y.Z` commit. It pushes nothing. Review the commit.
-Do not set `NO_CLUSTER=1` for a release.
+local `chore(release): pkg/api X.Y.Z` commit. It pushes nothing. Review the commit.
+Do not set `NO_CLUSTER=1`, a release should pass all tests.
 
 ## Publish tags and images
 
