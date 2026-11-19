@@ -8,7 +8,7 @@ export VERSION # For make
 	echo "expected version X.Y.Z[-prerelease][+build]: $VERSION" >&2
 	exit 1
 }
-[ "$(git log -1 --format=%s)" = "Prepare release $VERSION" ] || {
+[ "$(git log -1 --format=%s)" = "chore(release): pkg/api $VERSION" ] || {
 	echo "run VERSION=$VERSION make pre-release first" >&2
 	exit 1
 }
@@ -55,7 +55,7 @@ GOPROXY=direct go -C pkg/mcp mod tidy
 go -C pkg/mcp test ./...
 git diff --exit-code "pkg/api/v$VERSION" -- pkg/api
 git add -A pkg/mcp
-git commit -m "Prepare MCP $VERSION"
+git commit -m "chore(release): pkg/mcp $VERSION"
 git tag -a "pkg/mcp/v$VERSION" -m "Release MCP $VERSION"
 git push --atomic origin "HEAD:refs/heads/$branch" "refs/tags/pkg/mcp/v$VERSION"
 
@@ -67,7 +67,7 @@ make all
 git diff --exit-code "pkg/api/v$VERSION" -- pkg/api
 git diff --exit-code "pkg/mcp/v$VERSION" -- pkg/mcp
 git add -A
-git commit -m "Release $VERSION"
+git commit -m "chore(release): $VERSION"
 [ -z "$(git status --porcelain)" ] || {
 	echo "release commit left uncommitted changes" >&2
 	exit 1

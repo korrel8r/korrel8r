@@ -51,7 +51,7 @@ fi
 make clean
 make all
 git add -A
-git commit -m "Prepare release $VERSION"
+git commit -m "chore(release): pkg/api $VERSION"
 [ -z "$(git status --porcelain)" ] || {
 	echo "pre-release left uncommitted changes" >&2
 	exit 1
