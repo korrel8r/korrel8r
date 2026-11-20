@@ -5,7 +5,7 @@ go 1.26.0
 require (
 	github.com/go-logr/logr v1.4.4
 	github.com/google/jsonschema-go v0.4.3
-	github.com/korrel8r/korrel8r/pkg/api v0.13.7
+	github.com/korrel8r/korrel8r/pkg/api v0.13.8
 	github.com/modelcontextprotocol/go-sdk v1.7.0
 	github.com/stretchr/testify v1.12.1
 )
