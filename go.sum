@@ -53,8 +53,8 @@ github.com/gabriel-vasile/mimetype v1.4.15 h1:05iP/CYtZ/w455R/KZM6rZ5ieAdh99UPtd
 github.com/gabriel-vasile/mimetype v1.4.15/go.mod h1:azpTcoLcDZRNgFou5j+APrqQx9HqVPWa6ijYQIIVswQ=
 github.com/getkin/kin-openapi v0.149.0 h1:ZbhmVJ4yq5RZDUsyP8lcBcGMsjsaTqXEFt6isdtMDfA=
 github.com/getkin/kin-openapi v0.149.0/go.mod h1:1+BHDzstro+P5CKtPy1X4PfofnFgmRe6uvMy9+r9fKY=
-github.com/gin-contrib/pprof v1.5.8 h1:I8SJ+h9gbKdnytMSVTaG3HypvBU/L+ipWzd5fsRxdzA=
-github.com/gin-contrib/pprof v1.5.8/go.mod h1:ZfxrDdnTvx6RymksWtv8pVhZsfB181f8+kNSo9EbIk8=
+github.com/gin-contrib/pprof v1.5.6 h1:vSz0d0fh+A+fXM97UTJiXtgro2Un7iMSNBSNNwn8AUU=
+github.com/gin-contrib/pprof v1.5.6/go.mod h1:tYtH9qL2ssbUnHVnTlWlBdweZTwndCYuPN6Cmr1ggPA=
 github.com/gin-contrib/sse v1.1.1 h1:uGYpNwTacv5R68bSGMapo62iLTRa9l5zxGCps4hK6ko=
 github.com/gin-contrib/sse v1.1.1/go.mod h1:QXzuVkA0YO7o/gun03UI1Q+FTI8ZV/n5t03kIQAI89s=
 github.com/gin-gonic/gin v1.12.0 h1:b3YAbrZtnf8N//yjKeU2+MQsh2mY5htkZidOM7O0wG8=
@@ -150,8 +150,8 @@ github.com/klauspost/cpuid/v2 v2.4.0 h1:S6Hrbc7+ywsr0r+RLapfGBHfyefhCTwEh3A0tV91
 github.com/klauspost/cpuid/v2 v2.4.0/go.mod h1:19jmZ9mjzoF//ddRSUsv0zfBTJWh3QJh9FNxZTMrGxU=
 github.com/korrel8r/korrel8r/pkg/api v0.13.7 h1:uPcYljIGW1myYLQG9FcG6tCIESfWsvFd7v+I1CV+E04=
 github.com/korrel8r/korrel8r/pkg/api v0.13.7/go.mod h1:f2+n/HMbHPrGFcjJECS2yvGx3ntxm+jUgVnIrmmen3A=
-github.com/korrel8r/korrel8r/pkg/mcp v0.13.7 h1:jdLOWxf9blJB5aWqtnSbnrJm1Iu+RxWOaqB5IQs8lq4=
-github.com/korrel8r/korrel8r/pkg/mcp v0.13.7/go.mod h1:Mdkt7X06CnY4D9SUpn2sJUE4ZOI+1vnozkmSk8RH8/Q=
+github.com/korrel8r/korrel8r/pkg/mcp v0.13.3 h1:KwLC18xeKIwW3vIJ3N5wDPjcj1j9ZYXAqZ/N9tSwF4w=
+github.com/korrel8r/korrel8r/pkg/mcp v0.13.3/go.mod h1:sYs+ujX/Ki0zTbW2gTEeqgfbhM0LoYmaEi3xdRaE7KU=
 github.com/kr/pretty v0.3.1 h1:flRD4NNwYAUpkphVc1HcthR4KEIFJ65n8Mw5qdRn3LE=
 github.com/kr/pretty v0.3.1/go.mod h1:hoEshYVHaxMs3cyo3Yncou5ZscifuDolrwPKZanG3xk=
 github.com/kr/text v0.2.0 h1:5Nx0Ya0ZqY2ygV366QzturHI13Jq95ApcVaJBhpS+AY=

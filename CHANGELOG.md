@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+- Lower the minimum Go version for the main and MCP modules to 1.26.0 while retaining Go 1.26.11 as the preferred build toolchain for standard library security fixes.
+
 ## [0.13.7] - 2026-11-18
 
 ### Performance

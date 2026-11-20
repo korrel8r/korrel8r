@@ -5,7 +5,7 @@ module github.com/korrel8r/korrel8r
 // - Containerfile (builder image must be compatible)
 // The preferred build toolchain may be newer to pick up standard library security fixes
 // without raising the minimum required by downstream users.
-go 1.26.10
+go 1.26.0
 
 toolchain go1.26.11
 
@@ -13,12 +13,12 @@ require (
 	github.com/Masterminds/sprig/v3 v3.3.0
 	github.com/VictoriaMetrics/metricsql v0.87.6
 	github.com/bytedance/sonic v1.15.5
-	github.com/gin-contrib/pprof v1.5.8
+	github.com/gin-contrib/pprof v1.5.6
 	github.com/gin-gonic/gin v1.12.0
 	github.com/go-logr/logr v1.4.4
 	github.com/go-logr/stdr v1.2.2
 	github.com/korrel8r/korrel8r/pkg/api v0.13.7
-	github.com/korrel8r/korrel8r/pkg/mcp v0.13.7
+	github.com/korrel8r/korrel8r/pkg/mcp v0.13.3
 	github.com/modelcontextprotocol/go-sdk v1.8.0
 	github.com/oapi-codegen/runtime v1.9.0
 	github.com/openshift/api v0.0.0-20261103105328-7912bdb54653

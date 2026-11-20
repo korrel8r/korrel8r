@@ -1,6 +1,6 @@
 module github.com/korrel8r/korrel8r/pkg/mcp
 
-go 1.26.10
+go 1.26.0
 
 require (
 	github.com/go-logr/logr v1.4.4
