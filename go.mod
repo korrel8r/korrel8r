@@ -20,7 +20,7 @@ require (
 	github.com/korrel8r/korrel8r/pkg/api v0.13.8
 	github.com/korrel8r/korrel8r/pkg/mcp v0.13.8
 	github.com/modelcontextprotocol/go-sdk v1.8.0
-	github.com/oapi-codegen/runtime v1.9.0
+	github.com/oapi-codegen/runtime v1.9.1
 	github.com/openshift/api v0.0.0-20261103105328-7912bdb54653
 	github.com/prometheus/client_golang v1.25.0
 	github.com/prometheus/common v0.74.0
