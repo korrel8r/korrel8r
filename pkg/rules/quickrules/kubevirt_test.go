@@ -7,6 +7,7 @@ import (
 
 	"github.com/korrel8r/korrel8r/pkg/domains/alert"
 	"github.com/korrel8r/korrel8r/pkg/domains/k8s"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestKubevirtRules(t *testing.T) {
@@ -93,6 +94,16 @@ func TestKubevirtRules(t *testing.T) {
 			want:  []string{`k8s:VirtualMachine.v1.kubevirt.io:{"namespace":"vm-ns","name":"my-vm"}`},
 		},
 		{
+			rule:  "AlertToVM",
+			start: &alert.Object{Labels: map[string]string{"namespace": "vm-ns", "vm": "my-vm"}},
+			want:  []string{`k8s:VirtualMachine.v1.kubevirt.io:{"namespace":"vm-ns","name":"my-vm"}`},
+		},
+		{
+			rule:  "AlertToVM",
+			start: &alert.Object{Labels: map[string]string{"namespace": "vm-ns", "name": "generic-name", "vm": "my-vm"}},
+			want:  []string{`k8s:VirtualMachine.v1.kubevirt.io:{"namespace":"vm-ns","name":"my-vm"}`},
+		},
+		{
 			rule:  "VmToAlert",
 			start: newK8s("VirtualMachine.kubevirt.io", "vm-ns", "my-vm", nil),
 			want:  []string{`alert:alert:{"namespace":"vm-ns","name":"my-vm"}`},
@@ -120,12 +131,12 @@ func TestKubevirtRules(t *testing.T) {
 		{
 			rule:  "VmToMetric",
 			start: newK8s("VirtualMachine.kubevirt.io", "vm-ns", "my-vm", nil),
-			want:  []string{`metric:metric:{namespace="vm-ns",name="my-vm"}`},
+			want:  []string{`metric:metric:{namespace="vm-ns",name="my-vm"}?namespace=vm-ns`},
 		},
 		{
 			rule:  "VmiToMetric",
 			start: newK8s("VirtualMachineInstance.kubevirt.io", "vm-ns", "my-vmi", nil),
-			want:  []string{`metric:metric:{namespace="vm-ns",name="my-vmi"}`},
+			want:  []string{`metric:metric:{namespace="vm-ns",name="my-vmi"}?namespace=vm-ns`},
 		},
 		{
 			rule:  "VmiToLogs",
@@ -177,6 +188,24 @@ func TestKubevirtRules(t *testing.T) {
 			rule:  "DataVolumeToPVC",
 			start: newK8s("DataVolume.cdi.kubevirt.io", "vm-ns", "my-dv", nil),
 			want:  []string{`k8s:PersistentVolumeClaim.v1:{"namespace":"vm-ns","name":"my-dv"}`},
+		},
+		{
+			rule:  "PvcToDataVolume",
+			start: newK8s("PersistentVolumeClaim", "vm-ns", "my-dv", nil),
+			want:  []string{`k8s:DataVolume.v1beta1.cdi.kubevirt.io:{"namespace":"vm-ns","name":"my-dv"}`},
+		},
+		{
+			rule: "DataVolumeToVm",
+			start: newK8s("DataVolume.cdi.kubevirt.io", "vm-ns", "my-dv", k8s.Object{
+				"metadata": k8s.Object{
+					"ownerReferences": []k8s.Object{{
+						"name":       "my-vm",
+						"kind":       "VirtualMachine",
+						"apiVersion": "kubevirt.io/v1",
+					}},
+				},
+			}),
+			want: []string{`k8s:VirtualMachine.v1.kubevirt.io:{"namespace":"vm-ns","name":"my-vm"}`},
 		},
 		{
 			rule: "VmToDataVolume",
@@ -438,4 +467,16 @@ func TestKubevirtRules(t *testing.T) {
 	} {
 		x.Run(t)
 	}
+}
+
+// TestDataVolumeToVmNotOwned checks DataVolumeToVm does not apply when the
+// DataVolume has no VirtualMachine owner (standalone DataVolume).
+func TestDataVolumeToVmNotOwned(t *testing.T) {
+	r := setup().Rule("DataVolumeToVm")
+	if !assert.NotNil(t, r) {
+		return
+	}
+	got, err := r.Apply(newK8s("DataVolume.cdi.kubevirt.io", "vm-ns", "standalone-dv", nil))
+	assert.Error(t, err)
+	assert.Nil(t, got)
 }

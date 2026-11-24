@@ -224,7 +224,11 @@ metric:metric:{namespace=`)
 //line k8s.qtpl:62
 	qw422016.N().Q(name)
 //line k8s.qtpl:62
-	qw422016.N().S(`}
+	qw422016.N().S(`}?namespace=`)
+//line k8s.qtpl:62
+	qw422016.N().S(ns)
+//line k8s.qtpl:62
+	qw422016.N().S(`
 `)
 //line k8s.qtpl:63
 }

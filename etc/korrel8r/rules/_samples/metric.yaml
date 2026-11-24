@@ -6,7 +6,7 @@ rules:
       domain: metric
     result:
       query: |-
-        metric:metric:{namespace="{{.metadata.namespace}}",{{lower .kind}}="{{.metadata.name}}"}
+        metric:metric:{namespace="{{.metadata.namespace}}",{{lower .kind}}="{{.metadata.name}}"}?namespace={{.metadata.namespace}}
 
   - name: MetricToDaemonSet
     start:

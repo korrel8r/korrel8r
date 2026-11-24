@@ -8,9 +8,9 @@ help: ## Display this help.
 	@grep -hE '^## [A-Z0-9_]+: ' Makefile | sed 's/^## \([A-Z0-9_]*\): \(.*\)/\1#\2/' | column -s'#' -t
 
 ## VERSION: Semantic version for release, use -dev for development pre-release versions.
-VERSION?=0.12.3
-## REGISTRY_BASE: Image registry base, for example quay.io/somebody
-REGISTRY_BASE?=$(error REGISTRY_BASE must be set to push images)
+VERSION?=0.13.8
+## REGISTRY_BASE: Image registry base, defaults to quay.io/korrel8r.
+REGISTRY_BASE?=quay.io/korrel8r
 ## IMGTOOL: May be podman or docker.
 IMGTOOL?=$(or $(shell which podman 2>/dev/null),$(shell which docker 2>/dev/null),$(error Cannot find podman or docker in PATH))
 ## NAMESPACE: Namespace for `make deploy`
@@ -21,14 +21,17 @@ IMG?=$(REGISTRY_BASE)/korrel8r
 IMAGE=$(IMG):$(VERSION)
 
 BIN ?= _bin
-export PATH := $(abspath $(BIN)):$(PATH)
 export GOCOVERDIR := $(abspath _cover)
 $(shell mkdir -p $(GOCOVERDIR))
 
-# Install tool binaries from the tools module into $(BIN), which is on PATH.
-$(BIN): tools/go.mod tools/go.sum
-	GOBIN=$(abspath $(BIN)) go -C tools install tool
-	@touch $@
+# Tools from the tools module, included in go.work.
+GO_TOOL = go tool
+TOOL_DEPS = tools/go.mod tools/go.sum
+$(BIN):
+	@mkdir -p $@
+
+# Main and sub-modules
+GO_MODULES=. ./pkg/mcp ./pkg/api ./tools
 
 # Sources for generated files
 OPENAPI_SPEC=korrel8r-openapi.yaml
@@ -69,32 +72,40 @@ endif
 $(VERSION_TXT):
 	echo $(VERSION) > $@
 
-$(GEN_OPENAPI_API): $(OPENAPI_SPEC) $(BIN)
-	oapi-codegen -generate types,spec -package api -o $@ $<
+$(GEN_OPENAPI_API): $(OPENAPI_SPEC) $(TOOL_DEPS)
+	$(GO_TOOL) oapi-codegen -generate types,spec -package api -o $@ $<
 
-$(GEN_OPENAPI_IMPL): $(OPENAPI_SPEC) $(BIN)
-	oapi-codegen -generate gin -package rest -import-mapping "$<:github.com/korrel8r/korrel8r/pkg/api" -alias-types -o $@ $<
+$(GEN_OPENAPI_IMPL): $(OPENAPI_SPEC) $(TOOL_DEPS)
+	$(GO_TOOL) oapi-codegen -generate gin -package rest -import-mapping "$<:github.com/korrel8r/korrel8r/pkg/api" -alias-types -o $@ $<
 
 # Compile quicktemplate files to go.
-$(GEN_QUICKRULES): $(wildcard $(dir $(GEN_QUICKRULES))*.qtpl)
+$(GEN_QUICKRULES): $(wildcard $(dir $(GEN_QUICKRULES))*.qtpl) $(TOOL_DEPS)
 	go generate ./$(dir $@)
 	hack/gen-applyfuncs.sh $(dir $@) | gofmt > $@
 
 # Generate the pkg/domains/*/doc.md files that are embedded in the korrel8r executable.
-%/doc.md: %/doc.go $(shell find doc/gomarkdoc) $(BIN)
+%/doc.md: %/doc.go $(shell find doc/gomarkdoc) $(TOOL_DEPS)
 	@mkdir -p $(dir $@)
-	@gomarkdoc ./$(dir $@) --template-file file=doc/gomarkdoc/file.gotxt | sed -E 's/[Pp]ackage *[a-zA-Z0-9]+ *(is a)? *(korrel8r)? *(domain)? *(for)? *//' > $@
+	@$(GO_TOOL) gomarkdoc ./$(dir $@) --template-file file=doc/gomarkdoc/file.gotxt | sed -E 's/[Pp]ackage *[a-zA-Z0-9]+ *(is a)? *(korrel8r)? *(domain)? *(for)? *//' > $@
 
 SHELLCHECK:= $(BIN)/shellcheck
 $(SHELLCHECK):
 	@mkdir -p $(BIN)
 	./hack/install-shellcheck.sh $(BIN) 0.10.0
 
+.PHONY: check-tools
+check-tools: ## Build all pinned Go tools to catch incompatible transitive dependencies.
+	go -C tools build tool
+
+.PHONY: go-mod-tidy
+# Generated Go files must exist before tidy, especially after make clean.
+go-mod-tidy: generate ## Tidy dependencies in the main and submodules.
+	@set -e; for d in $(GO_MODULES); do go -C "$$d" mod tidy; done
+
 ifndef NOLINT
-lint: generate $(SHELLCHECK) $(BIN) ## Run the linter to find and fix code style problems.
-	go mod tidy
-	golangci-lint run --fix
-	shfmt -l -w ./**/*.sh
+lint: go-mod-tidy check-tools generate $(SHELLCHECK) ## Run the linter to find and fix code style problems.
+	$(GO_TOOL) golangci-lint run --fix
+	$(GO_TOOL) shfmt -l -w ./**/*.sh
 	$(SHELLCHECK) -x -S style hack/*.sh
 else
 lint: ## Linting skipped (NOLINT is set).
@@ -106,13 +117,41 @@ TEST_FLAGS?=$(and $(NO_CLUSTER),-skip='_cluster(-fm)?$$|/_cluster(-fm)?$$')
 .PHONY: test
 test: lint							 ## Run all tests, requires cluster. Set NO_CLUSTER=1 to skip cluster tests.
 	go test -fullpath -race ./... $(TEST_FLAGS)
+	go -C pkg/api test -fullpath -race ./... $(TEST_FLAGS)
+	go -C pkg/mcp test -fullpath -race ./... $(TEST_FLAGS)
 
 .PHONY: vuln
-vuln: $(BIN) ## Check Go dependencies for known vulnerabilities.
-	govulncheck $(VULN_FLAGS) ./...
+vuln: ## Check Go dependencies for known vulnerabilities.
+	go version
+	$(GO_TOOL) govulncheck $(VULN_FLAGS) ./...
 
 test-clean: ## Remove test namespaces from the cluster
 	kubectl delete ns -l test=korrel8r
+
+## TEST_SETUP_REPO: Repository of cluster test-setup scripts, see https://github.com/korrel8r/config
+TEST_SETUP_REPO?=https://github.com/korrel8r/config.git
+## TEST_SETUP_REF: Branch, tag or commit of TEST_SETUP_REPO to use.
+TEST_SETUP_REF?=main
+## TEST_SETUP_DIR: Local checkout of TEST_SETUP_REPO, set to an existing clone to work from it directly.
+TEST_SETUP_DIR?=_test-setup
+
+$(TEST_SETUP_DIR):
+	git clone --filter=blob:none $(TEST_SETUP_REPO) $@
+	git -C $@ checkout $(TEST_SETUP_REF)
+
+.PHONY: test-setup-update
+test-setup-update: $(TEST_SETUP_DIR)  ## Update the test-setup checkout to TEST_SETUP_REF.
+	git -C $(TEST_SETUP_DIR) fetch origin
+	git -C $(TEST_SETUP_DIR) checkout $(TEST_SETUP_REF)
+	-git -C $(TEST_SETUP_DIR) pull --ff-only
+
+.PHONY: test-setup
+test-setup: test-setup-update  ## Install observability signals on the current OpenShift cluster, for `make test`.
+	$(MAKE) -C $(TEST_SETUP_DIR)/openshift all -j5
+
+.PHONY: test-setup-clean
+test-setup-clean: $(TEST_SETUP_DIR)  ## Remove observability components installed by `make test-setup`.
+	$(MAKE) -C $(TEST_SETUP_DIR)/openshift clean-cluster -j5
 
 .PHONY: cover
 cover:  ## Run tests with accumulated coverage stats in _cover.
@@ -128,10 +167,10 @@ BENCH_NAME?=$(DESCRIBE)
 BENCH_PKG?=./...
 BENCH_COUNT?=6
 .PHONY: bench
-bench: $(BIN)
+bench:
 	mkdir -p _bench
 	go test -v -bench=. -run=- -count=$(BENCH_COUNT) $(BENCH_PKG) | tee _bench/$(BENCH_NAME).bench
-	benchstat _bench/*
+	$(GO_TOOL) benchstat _bench/*
 
 image-build: lint kustomize-edit ## Build image locally, don't push.
 	$(IMGTOOL) build --tag=$(IMAGE) -f Containerfile .
@@ -145,10 +184,10 @@ image-latest: image ## Build and push image with 'latest' alias
 WAIT_DEPLOYMENT=hack/wait.sh rollout $(NAMESPACE) deployment.apps/korrel8r
 DEPLOY_ROUTE=kubectl apply -k config/route -n $(NAMESPACE) || echo "skipping route" # Non-openshift cluster
 
-kustomize-edit: $(BIN)
+kustomize-edit:
 	cd config; \
-	kustomize edit set image "korrel8r=$(IMAGE)"; \
-	kustomize edit set namespace "$(NAMESPACE)"
+	$(GO_TOOL) kustomize edit set image "korrel8r=$(IMAGE)"; \
+	$(GO_TOOL) kustomize edit set namespace "$(NAMESPACE)"
 
 deploy: image ## Deploy to current cluster using kustomize.
 	kubectl apply -k config
@@ -159,20 +198,20 @@ undeploy:			## Delete resources created by `make deploy`
 	@kubectl delete -k config/route || true
 	@kubectl delete -k config || true
 
-# See RELEASE.md
-pre-release:
-	@branch=$$(git rev-parse --abbrev-ref HEAD); \
-	case "$$branch" in main|v[0-9]*.[0-9]*) ;; *) echo "error: releases must be from main or vX.Y branch, not $$branch" >&2; exit 1;; esac
-	$(MAKE) all image kustomize-edit
-	@echo Ready to release $(VERSION) to $(REGISTRY_BASE)
+pre-release:										## Prepare a release, see RELEASE.md
+	$(if $(filter file,$(origin VERSION)),$(error set VERSION explicitly for pre-release))
+	$(if $(filter file,$(origin REGISTRY_BASE)),,$(error REGISTRY_BASE must use the Makefile default))
+	hack/pre-release.sh $(VERSION)
 
-# See RELEASE.md
-release:
-	$(MAKE) clean
-	$(MAKE) pre-release
-	hack/tag-release.sh $(VERSION)
-	$(MAKE) image-latest
-	@echo Released $(VERSION) to $(REGISTRY_BASE)
+push-release:									## Publish a release, see RELEASE.md
+	$(if $(filter file,$(origin VERSION)),,$(error VERSION must come from the Makefile for push-release))
+	$(if $(filter file,$(origin REGISTRY_BASE)),,$(error REGISTRY_BASE must use the Makefile default))
+	hack/push-release.sh $(VERSION)
+
+post-release:									## Bump the dev or patch version after release, see RELEASE.md
+	$(if $(filter file,$(origin VERSION)),,$(error VERSION must come from the Makefile for post-release))
+	$(if $(filter file,$(origin REGISTRY_BASE)),,$(error REGISTRY_BASE must use the Makefile default))
+	hack/post-release.sh $(VERSION)
 
 DEVSPACE_TAG?=devspace-$(shell git rev-parse --short HEAD)-$(shell sha256sum go.sum | cut -c1-8)
 DEVSPACE_IMAGE?=$(REGISTRY_BASE)/korrel8r:$(DEVSPACE_TAG)
@@ -188,9 +227,9 @@ doc: doc/public ## Generate documentation
 	$(MAKE) check-links
 
 .PHONY: preview
-preview: doc/public $(BIN) ## Preview documentation in browser at http://localhost:1313
+preview: doc/public ## Preview documentation in browser at http://localhost:1313
 	@rm -rf $<
-	hugo server --source doc --baseURL http://localhost:1313 --bind 0.0.0.0
+	$(GO_TOOL) hugo server --source doc --baseURL http://localhost:1313 --bind 0.0.0.0
 	@touch $<
 
 .PHONY: check-links
@@ -214,9 +253,9 @@ doc/content/docs/reference/quickrules.md: pkg/rules/quickrules/doc.md $(FRONT)
 
 DOC_PUBLIC+=doc/content/docs/reference/rest/index.md
 CLEANFILES+=doc/content/docs/reference/rest
-doc/content/docs/reference/rest/index.md: $(OPENAPI_SPEC) $(MAKEFILE_LIST) $(FRONT) $(BIN)
+doc/content/docs/reference/rest/index.md: $(OPENAPI_SPEC) $(MAKEFILE_LIST) $(FRONT) $(TOOL_DEPS)
 	@mkdir -p $(dir $@)
-	openapi-markdown -o $@ -title "REST API" -description "HTTP API reference" $<
+	$(GO_TOOL) openapi-markdown -o $@ -title "REST API" -description "HTTP API reference" $<
 	@sed -i 's/^# REST API$$//'	$@				# Remove redundant header
 	@perl -pi -e 'if (/^### ((?:PUT|GET|POST|DELETE|PATCH) .+)$$/) { my $$t = $$1; (my $$a = lc $$t) =~ s/[^a-z0-9]//g; $$_ = "### $$t {#$$a}\n"; }' $@ # Fix anchors
 	@$(FRONT) $@ 'title: REST API' 'description: HTTP API reference' 'weight: 80'
@@ -251,17 +290,17 @@ doc/content/docs/reference/mcp/index.md: $(shell find pkg/mcp) cmd/korrel8r-docg
 
 DOC_PUBLIC+=doc/content/docs/reference/template-functions.md
 CLEANFILES+=doc/content/docs/reference/template-functions.md
-doc/content/docs/reference/template-functions.md: pkg/engine/template_funcs.go $(MAKEFILE_LIST) $(FRONT) $(BIN)
+doc/content/docs/reference/template-functions.md: pkg/engine/template_funcs.go $(MAKEFILE_LIST) $(FRONT) $(TOOL_DEPS)
 	@mkdir -p $(dir $@)
 	@echo > $@
-	@gomarkdoc -u ./pkg/engine \
+	@$(GO_TOOL) gomarkdoc -u ./pkg/engine \
     -t 'package={{range .Types}}{{range .Methods}}{{if eq .Name "TemplateFuncs"}}{{template "doc" .Doc}}{{"\n\n"}}{{end}}{{end}}{{end}}' >> $@
-	@gomarkdoc -u $(shell go list ./pkg/domains/...) \
+	@$(GO_TOOL) gomarkdoc -u $(shell go list ./pkg/domains/...) \
      -t 'package={{range .Types}}{{range .Methods}}{{if eq .Name "TemplateFuncs"}}## {{$$.Name}}{{"\n"}}{{template "doc" .Doc}}{{"\n\n"}}{{end}}{{end}}{{end}}' >> $@
 	@$(FRONT) $@ 'title: Template Functions' 'description: Functions available in rule templates' 'weight: 40'
 
-doc/public: $(DOC_PUBLIC) $(shell find doc/* -name public -prune -o -print) $(BIN)
-	hugo --quiet --source doc
+doc/public: $(DOC_PUBLIC) $(shell find doc/* -name public -prune -o -print) $(TOOL_DEPS)
+	$(GO_TOOL) hugo --quiet --source doc
 	@touch $@
 CLEANFILES+=doc/public
 CLEANFILES+=$(DOC_PUBLIC)

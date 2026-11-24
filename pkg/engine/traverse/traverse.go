@@ -49,16 +49,18 @@ func Goals(ctx context.Context, e *engine.Engine, start Start, goals []korrel8r.
 }
 
 // Neighbors traverses to all neighbors of the start objects, traversing links up to the given depth.
+// Searches with the same engine, start class, and depth reuse immutable scope/routing;
+// query and result state is always fresh for each search.
 func Neighbors(ctx context.Context, e *engine.Engine, start Start, depth int) (*graph.Graph, error) {
 	ctx, done := guardSearch(ctx, e)
 	defer done()
 	log.V(2).Info("Neighbourhood search", "start", start, "depth", depth, "constraint", start.Constraint)
 	data := e.GraphData()
-	scope, err := neighborScope(data, start.Class, depth)
+	routing, err := neighborRoutings.get(e, start.Class, depth)
 	if err != nil {
 		return nil, err
 	}
-	return newTraverser(e, data, scope, start.Constraint, depth).run(ctx, start)
+	return newTraverserWithRouting(e, data, routing, start.Constraint, depth).run(ctx, start)
 }
 
 // guardSearch registers a traversal for memory-pressure cancellation.
@@ -192,7 +194,7 @@ func (t *traverser) initLine(id int) *graph.Line {
 // within the group preserves last-scoped-line-wins for duplicate endpoint/rule
 // keys, including repeated IDs and scopes in a different order from topology creation.
 func (t *traverser) scopedLine(start, goal int64, rule korrel8r.Rule) int {
-	lines := t.nodeStatic[start].lines
+	lines := t.nodeRouting[start].lines
 	lo, _ := slices.BinarySearchFunc(lines, goal, func(id int, goal int64) int {
 		_, to := t.data.Endpoints(id)
 		return cmp.Compare(to, goal)
@@ -210,9 +212,9 @@ func (t *traverser) scopedLine(start, goal int64, rule korrel8r.Rule) int {
 	return last
 }
 
-// nodeStatic holds class identity and immutable search routing metadata,
+// nodeRouting holds class identity and immutable search routing metadata,
 // indexed by node ID. It contains no mutable result node.
-type nodeStatic struct {
+type nodeRouting struct {
 	class       korrel8r.Class
 	rules       []korrel8r.Rule
 	lines       []int // Scoped outgoing IDs sorted by goal; shared contiguous backing.
@@ -278,7 +280,7 @@ type traverser struct {
 	maxDepth   int // -1 for unlimited
 
 	// Read-only after init
-	nodeStatic      []nodeStatic // Immutable routing, indexed by graph node ID.
+	nodeRouting     []nodeRouting // Immutable routing, indexed by graph node ID.
 	totalLimit      int
 	totalQueryLimit int
 
@@ -299,21 +301,32 @@ type traverser struct {
 }
 
 func newTraverser(e *engine.Engine, data *graph.Data, scopeLines []int, c *korrel8r.Constraint, maxDepth int) *traverser {
-	t := &traverser{
-		engine:          e,
-		data:            data,
-		constraint:      c,
-		maxDepth:        maxDepth,
-		nodeStatic:      make([]nodeStatic, data.NodeCount()),
+	return newTraverserWithRouting(e, data, prepareRouting(e, data, scopeLines), c, maxDepth)
+}
+
+// newTraverserWithRouting creates fresh per-search state using the supplied routing.
+// Routing must be search-owned or fully initialized and immutable before sharing.
+func newTraverserWithRouting(e *engine.Engine, data *graph.Data, routing []nodeRouting, c *korrel8r.Constraint, maxDepth int) *traverser {
+	return &traverser{
+		engine:     e,
+		data:       data,
+		constraint: c,
+		maxDepth:   maxDepth,
+		// Routing is search-owned or fully initialized and immutable.
+		nodeRouting:     routing,
 		nodeState:       make([]*nodeState, data.NodeCount()),
 		work:            newWorkQueue(),
 		seen:            map[korrel8r.Query]struct{}{},
 		totalLimit:      effectiveLimit(e.Tuning.TotalLimit, c.GetTotalLimit()),
 		totalQueryLimit: effectiveLimit(e.Tuning.TotalQueryLimit, c.GetTotalQueryLimit()),
 	}
+}
 
+func prepareRouting(e *engine.Engine, data *graph.Data, scopeLines []int) []nodeRouting {
+	routing := make([]nodeRouting, data.NodeCount())
 	// Partition one ID buffer into per-node routing slices. Storage scales with
 	// the scope, not the entire topology, so narrow goal searches stay small.
+	// These slices and rule lists must not be modified after caching.
 	counts := make([]int, data.NodeCount())
 	for _, id := range scopeLines {
 		start, _ := data.Endpoints(id)
@@ -322,15 +335,17 @@ func newTraverser(e *engine.Engine, data *graph.Data, scopeLines []int, c *korre
 	ids := make([]int, len(scopeLines))
 	offset := 0
 	for node, count := range counts {
-		t.nodeStatic[node].lines = ids[offset : offset : offset+count]
+		// Start with length zero but enough capacity for this node's lines;
+		// otherwise append would leave zero-value line IDs in the routing.
+		routing[node].lines = ids[offset : offset : offset+count]
 		offset += count
 	}
 	for _, id := range scopeLines {
 		startID, goalID := data.Endpoints(id)
 		rule := data.RuleForLine(id)
-		t.initNodeStatic(startID, data.Class(startID))
-		t.initNodeStatic(goalID, data.Class(goalID))
-		start := &t.nodeStatic[startID]
+		initRoutingNode(e, &routing[startID], data.Class(startID))
+		initRoutingNode(e, &routing[goalID], data.Class(goalID))
+		start := &routing[startID]
 		if !slices.Contains(start.rules, rule) {
 			start.rules = append(start.rules, rule)
 		}
@@ -339,15 +354,15 @@ func newTraverser(e *engine.Engine, data *graph.Data, scopeLines []int, c *korre
 	// Sort each node's lines by goal so scopedLine can binary-search the goal group
 	// instead of scanning the whole (potentially very wide) out-adjacency.
 	// A stable sort keeps scope order within a group, for last-scoped-line-wins.
-	for node := range t.nodeStatic {
-		slices.SortStableFunc(t.nodeStatic[node].lines, func(a, b int) int {
+	for node := range routing {
+		slices.SortStableFunc(routing[node].lines, func(a, b int) int {
 			_, ga := data.Endpoints(a)
 			_, gb := data.Endpoints(b)
 			return cmp.Compare(ga, gb)
 		})
 	}
 
-	return t
+	return routing
 }
 
 func effectiveLimit(server, request int) int {
@@ -368,12 +383,15 @@ func (t *traverser) exceed(ctx context.Context, name string, limit int, attrs me
 	})
 }
 
-func (t *traverser) initNodeStatic(id int64, class korrel8r.Class) {
-	n := &t.nodeStatic[id]
+func initRoutingNode(e *engine.Engine, n *nodeRouting, class korrel8r.Class) {
 	if n.class == nil {
 		n.class = class
-		n.classMetric = t.engine.ClassMetricAttrs(class)
+		n.classMetric = e.ClassMetricAttrs(class)
 	}
+}
+
+func (t *traverser) initNodeRouting(id int64, class korrel8r.Class) {
+	initRoutingNode(t.engine, &t.nodeRouting[id], class)
 }
 
 func (t *traverser) getOrCreateNodeState(id int64) *nodeState {
@@ -390,7 +408,7 @@ func (t *traverser) getOrCreateNodeState(id int64) *nodeState {
 // run launches the worker pool, primes start data, and waits for completion.
 func (t *traverser) run(ctx context.Context, start Start) (*graph.Graph, error) {
 	startID, _ := t.data.NodeID(start.Class) // Scope construction validated the class.
-	t.initNodeStatic(startID, start.Class)
+	t.initNodeRouting(startID, start.Class)
 	startNode := t.getOrCreateNodeState(startID)
 
 	// Launch worker pool — workers block on the empty queue until work arrives.
@@ -498,17 +516,20 @@ func (t *traverser) addObject(ctx context.Context, n *nodeState, object korrel8r
 	}
 	t.budgetMu.Lock()
 	defer t.budgetMu.Unlock()
+	if t.totalObjects < t.totalLimit {
+		// Add already checks for duplicates. Avoid a separate Contains lookup
+		// while there is budget left, and charge only retained objects.
+		if n.Result.Add(object) {
+			t.totalObjects++
+		}
+		return true
+	}
+	// At the limit, duplicates are still allowed without consuming budget.
 	if n.Result.Contains(object) {
 		return true
 	}
-	if t.totalObjects >= t.totalLimit {
-		t.exceed(ctx, "totalLimit", t.totalLimit, metricTotalLimit)
-		return false
-	}
-	if n.Result.Add(object) {
-		t.totalObjects++
-	}
-	return true
+	t.exceed(ctx, "totalLimit", t.totalLimit, metricTotalLimit)
+	return false
 }
 
 func (t *traverser) isDuplicate(ctx context.Context, ql queryLine) bool {
@@ -516,7 +537,7 @@ func (t *traverser) isDuplicate(ctx context.Context, ql queryLine) bool {
 	defer t.seenMu.Unlock()
 	if _, exists := t.seen[ql.Query]; exists {
 		id, _ := t.data.NodeID(ql.Query.Class())
-		metricDuplicateQueries.Add(ctx, 1, t.nodeStatic[id].classMetric)
+		metricDuplicateQueries.Add(ctx, 1, t.nodeRouting[id].classMetric)
 		return true
 	}
 	if t.totalQueryLimit > 0 && len(t.seen) >= t.totalQueryLimit {
@@ -550,7 +571,7 @@ func (t *traverser) handleQuery(ctx context.Context, ql *queryLine) {
 	_ = t.engine.Get(ctx, ql.Query, t.constraint, korrel8r.AppenderFunc(func(objects ...korrel8r.Object) {
 		results = append(results, objects...)
 	}))
-	metricQueries.Add(ctx, 1, t.nodeStatic[goalID].classMetric)
+	metricQueries.Add(ctx, 1, t.nodeRouting[goalID].classMetric)
 	if ctx.Err() != nil {
 		return
 	}
@@ -620,15 +641,15 @@ func (t *traverser) applyRules(ctx context.Context, nodeID int64, n *nodeState, 
 	objects := n.Result.List()
 	start := n.processed
 	n.processed = len(objects)
-	static := &t.nodeStatic[nodeID]
-	class := static.class
+	routing := &t.nodeRouting[nodeID]
+	class := routing.class
 	n.mu.Unlock()
 
 	if start >= len(objects) {
 		return
 	}
 
-	rules := static.rules
+	rules := routing.rules
 	for _, o := range objects[start:] {
 		for _, r := range rules {
 			if ctx.Err() != nil {

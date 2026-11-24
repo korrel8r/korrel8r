@@ -8,3 +8,4 @@ debug.test*
 /doc/public
 /doc/content/ref/
 /doc/.hugo_build.lock
+/_test-setup/

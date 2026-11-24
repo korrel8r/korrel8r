@@ -10,8 +10,7 @@ ENV GOEXPERIMENT=strictfipsruntime
 
 RUN go build -tags strictfipsruntime,openssl ./cmd/korrel8r
 
-# ART/Doozer handles base image pinning
-FROM registry.redhat.io/ubi9/ubi-minimal:latest
+FROM registry.redhat.io/ubi9/ubi-minimal:latest@sha256:8eb2830d0936237fc13a1f2f7e45aecf90d69043380ad167fad0343632937f41
 WORKDIR /
 
 COPY --from=builder /workspace/korrel8r /bin/korrel8r
@@ -21,7 +20,7 @@ USER 1000
 
 ENTRYPOINT [ "/bin/korrel8r", "web" ]
 
-ARG VERSION=release-coo-1.5
+ARG VERSION=release-coo-1.6
 LABEL com.redhat.component="coo-korrel8r-container" \
       name="cluster-observability-operator/korrel8r-rhel9" \
       cpe="cpe:/a:redhat:cluster_observability_operator:1.5::el9" \

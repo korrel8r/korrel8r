@@ -84,7 +84,7 @@ Available Go template functions:
     domain: metric
   result:
     query: |-
-      metric:metric:{namespace="{{.metadata.namespace}}",{{lower .kind}}="{{.metadata.name}}"}
+      metric:metric:{namespace="{{.metadata.namespace}}",{{lower .kind}}="{{.metadata.name}}"}?namespace={{.metadata.namespace}}
 ```
 
 ## Interactive Generation

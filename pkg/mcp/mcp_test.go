@@ -5,13 +5,16 @@ package mcp
 import (
 	"context"
 	"encoding/json"
+	"maps"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"testing"
 	"time"
 
 	"github.com/go-logr/logr"
 	"github.com/korrel8r/korrel8r/pkg/api"
+	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -170,25 +173,285 @@ func TestNewClient_DefaultHTTPClient(t *testing.T) {
 	assert.NotNil(t, c.httpClient)
 }
 
-func TestAddTools(t *testing.T) {
-	tools := AddTools(nil, nil)
-	names := make([]string, len(tools))
-	for i, tool := range tools {
-		names[i] = tool.Name
-	}
-	assert.ElementsMatch(t, []string{
-		ListDomains, ListDomainClasses, Help,
-		CreateNeighborsGraph, CreateGoalsGraph, GetObjects,
-		GetConsole, ShowInConsole,
-	}, names)
+// testArgs are valid arguments for each tool, for use with mockAPI.
+var testArgs = map[string]any{
+	ListDomains:          map[string]any{},
+	ListDomainClasses:    map[string]any{"domain": "k8s"},
+	Help:                 map[string]any{"domain": "k8s"},
+	CreateNeighborsGraph: map[string]any{"start": map[string]any{"queries": []string{"k8s:Pod:{}"}}, "depth": 2},
+	CreateGoalsGraph:     map[string]any{"start": map[string]any{"queries": []string{"k8s:Pod:{}"}}, "goals": []string{"log:application"}},
+	GetObjects:           map[string]any{"query": "k8s:Pod:{}"},
+	GetConsole:           map[string]any{},
+	ShowInConsole:        map[string]any{"view": "k8s:Pod.v1:{}"},
 }
 
-func TestNewServer(t *testing.T) {
-	c, _ := testClient(t)
-	s := NewServer(c, "test-version", logr.Discard())
-	assert.NotNil(t, s.Server)
-	assert.Len(t, s.AllTools(), 8)
+// asJSON converts v to a generic JSON value, for comparison with values decoded from the wire.
+func asJSON(t *testing.T, v any) any {
+	t.Helper()
+	b, err := json.Marshal(v)
+	require.NoError(t, err)
+	var result any
+	require.NoError(t, json.Unmarshal(b, &result))
+	return result
 }
+
+func callTool(t *testing.T, r Binding, args any) *mcp.CallToolResult {
+	t.Helper()
+	raw, err := json.Marshal(args)
+	require.NoError(t, err)
+	result, err := r.Handler(t.Context(), &mcp.CallToolRequest{Params: &mcp.CallToolParamsRaw{Arguments: raw}})
+	require.NoError(t, err)
+	return result
+}
+
+// resultValues are the parts of a tool result that a handler controls.
+// The server session adds its own metadata.
+func resultValues(t *testing.T, r *mcp.CallToolResult) any {
+	t.Helper()
+	return asJSON(t, map[string]any{"content": r.Content, "structured": r.StructuredContent, "isError": r.IsError})
+}
+
+func TestBindTool(t *testing.T) {
+	c, _ := testClient(t)
+	for _, name := range slices.Collect(maps.Keys(testArgs)) {
+		r, ok := BindTool(c, name)
+		require.True(t, ok, name)
+		assert.Equal(t, name, r.Tool.Name)
+		assert.NotNil(t, r.Handler)
+		assert.NotNil(t, callTool(t, r, testArgs[name]))
+	}
+	_, ok := BindTool(c, "unknown")
+	assert.False(t, ok)
+}
+
+// ToolNames must advertise and behave exactly like the tools of the standalone server.
+func TestToolNames(t *testing.T) {
+	c, _ := testClient(t)
+	names := ToolNames
+	require.ElementsMatch(t, slices.Collect(maps.Keys(testArgs)), names)
+	require.Equal(t, ListDomains, names[0])
+
+	// Connect an MCP client to the standalone server.
+	ctx := t.Context()
+	clientTransport, serverTransport := mcp.NewInMemoryTransports()
+	_, err := NewServer(c, "test", logr.Discard()).Connect(ctx, serverTransport, nil)
+	require.NoError(t, err)
+	cs, err := mcp.NewClient(&mcp.Implementation{Name: "test"}, nil).Connect(ctx, clientTransport, nil)
+	require.NoError(t, err)
+	defer func() { _ = cs.Close() }()
+	list, err := cs.ListTools(ctx, nil)
+	require.NoError(t, err)
+	require.Len(t, list.Tools, len(names))
+	listed := map[string]*mcp.Tool{}
+	for _, tool := range list.Tools {
+		listed[tool.Name] = tool
+	}
+
+	for _, name := range names {
+		t.Run(name, func(t *testing.T) {
+			r, ok := BindTool(c, name)
+			require.True(t, ok)
+			require.Contains(t, listed, name, "tool not advertised by server")
+			assert.Equal(t, asJSON(t, r.Tool), asJSON(t, listed[name]), "tool definition")
+
+			args := testArgs[name]
+			viaServer, err := cs.CallTool(ctx, &mcp.CallToolParams{Name: name, Arguments: args})
+			require.NoError(t, err)
+			assert.Equal(t, resultValues(t, viaServer), resultValues(t, callTool(t, r, args)), "tool result")
+		})
+	}
+}
+
+func TestServerInstructions(t *testing.T) {
+	ctx := t.Context()
+	clientTransport, serverTransport := mcp.NewInMemoryTransports()
+	_, err := NewServer(nil, "test", logr.Discard()).Connect(ctx, serverTransport, nil)
+	require.NoError(t, err)
+	cs, err := mcp.NewClient(&mcp.Implementation{Name: "test"}, nil).Connect(ctx, clientTransport, nil)
+	require.NoError(t, err)
+	defer func() { _ = cs.Close() }()
+
+	assert.Equal(t, Instructions, cs.InitializeResult().Instructions)
+}
+
+// Exercise a realistic pod selector through both graph tool schemas and handlers.
+// Tool prose may change without changing this API contract.
+func TestGraphToolPodQueries(t *testing.T) {
+	c, _ := testClient(t)
+	start := api.Start{Queries: []string{`k8s:Pod:{"namespace":"default","name":"my-pod"}`}}
+	for _, tc := range []struct {
+		name string
+		args any
+	}{
+		{CreateNeighborsGraph, api.Neighbors{Start: start, Depth: 2}},
+		{CreateGoalsGraph, api.Goals{Start: start, Goals: []string{"log:application"}}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			binding, ok := BindTool(c, tc.name)
+			require.True(t, ok)
+			result := callTool(t, binding, tc.args)
+			require.False(t, result.IsError)
+			assert.NotNil(t, result.StructuredContent)
+		})
+	}
+}
+
+func TestBindTool_rawJSONObjects(t *testing.T) {
+	c, _ := testClient(t)
+	for _, name := range []string{CreateGoalsGraph, CreateNeighborsGraph} {
+		t.Run(name, func(t *testing.T) {
+			binding, ok := BindTool(c, name)
+			require.True(t, ok)
+			for _, object := range []json.RawMessage{
+				json.RawMessage(`{"name":"pod"}`), json.RawMessage(`[1,"value"]`),
+				json.RawMessage(`"value"`), json.RawMessage(`42`), json.RawMessage(`null`),
+			} {
+				t.Run(string(object), func(t *testing.T) {
+					args := map[string]any{"start": api.Start{Class: "k8s:Pod.v1", Objects: []api.Object{object}}}
+					if name == CreateGoalsGraph {
+						args["goals"] = []string{"log:application"}
+					} else {
+						args["depth"] = 2
+					}
+					assert.False(t, callTool(t, binding, args).IsError)
+				})
+			}
+		})
+	}
+}
+
+func TestBindTool_emptyLists(t *testing.T) {
+	c := NewClientForHandler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		writeJSON(w, nil) // The REST API may return null for empty lists.
+	}))
+	for _, name := range []string{ListDomains, ListDomainClasses} {
+		r, ok := BindTool(c, name)
+		require.True(t, ok)
+		args := map[string]any{}
+		key := "domains"
+		if name == ListDomainClasses {
+			args["domain"] = "empty"
+			key = "classes"
+		}
+		result := callTool(t, r, args)
+		require.False(t, result.IsError, name)
+		var body map[string]any
+		require.NoError(t, json.Unmarshal([]byte(result.Content[0].(*mcp.TextContent).Text), &body))
+		assert.Equal(t, []any{}, body[key], name)
+	}
+}
+
+type invalidOutput struct {
+	Items string `json:"items"`
+}
+
+func (invalidOutput) MarshalJSON() ([]byte, error) { return []byte(`{"items":42}`), nil }
+
+func TestNewTool_validatesOutput(t *testing.T) {
+	r := newTool(&mcp.Tool{Name: "invalid_output"}, func(context.Context, struct{}) (invalidOutput, error) {
+		return invalidOutput{}, nil
+	})
+	_, err := r.Handler(t.Context(), &mcp.CallToolRequest{Params: &mcp.CallToolParamsRaw{Arguments: json.RawMessage(`{}`)}})
+	require.ErrorContains(t, err, "invalid invalid_output result")
+}
+
+func TestBindTool_annotations(t *testing.T) {
+	for _, name := range ToolNames {
+		r, ok := BindTool(nil, name)
+		require.True(t, ok)
+		if r.Tool.Name == ShowInConsole { // The only tool that changes state.
+			require.NotNil(t, r.Tool.Annotations.DestructiveHint)
+			assert.True(t, *r.Tool.Annotations.DestructiveHint)
+		} else {
+			assert.True(t, r.Tool.Annotations.ReadOnlyHint, r.Tool.Name)
+		}
+	}
+}
+
+func TestBindTool_errors(t *testing.T) {
+	c, _ := testClient(t)
+	for _, x := range []struct{ tool, args, want string }{
+		{ListDomainClasses, `{"domain":"nonexistent"}`, "404"}, // Error from the REST API.
+		{Help, `{}`, "invalid arguments"},                      // Domain is required.
+		{GetObjects, `{"constraint":{}}`, "invalid arguments"}, // Missing required argument.
+		{GetObjects, `{"query":123}`, "invalid arguments"},     // Wrong argument type.
+	} {
+		t.Run(x.tool+x.args, func(t *testing.T) {
+			binding, ok := BindTool(c, x.tool)
+			require.True(t, ok)
+			result := callTool(t, binding, json.RawMessage(x.args))
+			assert.True(t, result.IsError)
+			assert.Contains(t, result.Content[0].(*mcp.TextContent).Text, x.want)
+		})
+	}
+}
+
+func TestClient_responseTooLarge(t *testing.T) {
+	c, _ := testClient(t)
+	c.MaxResponseBytes = 4
+	_, err := c.ListDomains(t.Context())
+	assert.ErrorIs(t, err, ErrResponseTooLarge)
+}
+
+func TestClient_cancel(t *testing.T) {
+	blocked := make(chan struct{})
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		close(blocked)
+		<-r.Context().Done()
+	}))
+	defer srv.Close()
+	ctx, cancel := context.WithCancel(t.Context())
+	go func() { <-blocked; cancel() }()
+	_, err := NewClient(srv.URL, srv.Client()).ListDomains(ctx)
+	assert.ErrorIs(t, err, context.Canceled)
+}
+
+// Console calls go to the session selected by the identity of the client transport.
+// Clients for different users must not see each other's console.
+func TestClient_consolePerUser(t *testing.T) {
+	consoles := map[string]api.Console{"alice": {View: "k8s:Pod.v1:alice"}, "bob": {View: "k8s:Pod.v1:bob"}}
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		console, ok := consoles[r.Header.Get("X-User")]
+		if !ok {
+			http.Error(w, "no console is connected", http.StatusNotFound)
+			return
+		}
+		if r.Method == http.MethodPut {
+			require.NoError(t, json.NewDecoder(r.Body).Decode(&console))
+			consoles[r.Header.Get("X-User")] = console
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+		writeJSON(w, console)
+	}))
+	defer srv.Close()
+	clientFor := func(user string) *Client {
+		return NewClient(srv.URL, &http.Client{Transport: userTransport(user)})
+	}
+
+	require.NoError(t, clientFor("alice").ShowInConsole(t.Context(), &api.Console{View: "k8s:Pod.v1:updated"}))
+	alice, err := clientFor("alice").GetConsole(t.Context())
+	require.NoError(t, err)
+	assert.Equal(t, api.Query("k8s:Pod.v1:updated"), alice.View)
+	bob, err := clientFor("bob").GetConsole(t.Context())
+	require.NoError(t, err)
+	assert.Equal(t, api.Query("k8s:Pod.v1:bob"), bob.View)
+	_, err = clientFor("nobody").GetConsole(t.Context())
+	assert.ErrorContains(t, err, "no console is connected")
+}
+
+// userTransport identifies the user to the test server, like an authorization header.
+func userTransport(user string) roundTripFunc {
+	return func(r *http.Request) (*http.Response, error) {
+		r = r.Clone(r.Context())
+		r.Header.Set("X-User", user)
+		return http.DefaultTransport.RoundTrip(r)
+	}
+}
+
+type roundTripFunc func(*http.Request) (*http.Response, error)
+
+func (f roundTripFunc) RoundTrip(r *http.Request) (*http.Response, error) { return f(r) }
 
 func TestJsonValue_MarshalLog(t *testing.T) {
 	v := jsonValue{v: map[string]int{"a": 1}}

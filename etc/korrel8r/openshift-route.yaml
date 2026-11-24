@@ -15,6 +15,7 @@ stores:
 
   - domain: metric
     metric: 'https://{{k8sRouteHost "openshift-monitoring" "thanos-querier"}}'
+    namespaced: 'https://{{k8sRouteHost "openshift-monitoring" "thanos-querier-namespaced"}}'
 
   - domain: netflow
     lokiStack: 'https://{{k8sRouteHost "netobserv" "loki"}}'

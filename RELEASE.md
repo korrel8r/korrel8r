@@ -1,53 +1,55 @@
 # Releasing a New Version
 
-Steps to release a new version X.Y.Z, for maintainers.
+Release version `X.Y.Z` from `main`, or a patch from a `vX.Y` branch.
+The root, `pkg/api`, and `pkg/mcp` modules share a version but are tagged on
+successive commits: API, MCP, then root.
 
-- latest version, use branch `main`
-- update for an old version use branch `vX.Y`
+## Prepare
 
-## Update CHANGELOG
+Prepare to release - local only, does not publish anything.
+Update and commit the `Unreleased` section of `CHANGELOG.md` on `main` or a `vX.Y` branch.
+With a clean tree and cluster access, run:
 
-Update CHANGELOG.md to reflect changes since last release, add the new release header.
-Follow [these guidelines](http://keepachangelog.com).
-You can list git changes with:
+```sh
+unset REGISTRY_BASE; make pre-release VERSION=X.Y.Z
+```
 
-    git log --oneline $(git describe --abbrev=0).. --reverse
+This runs `make all` against the last published module versions and creates a
+local `chore(release): pkg/api X.Y.Z` commit. It pushes nothing. Review the commit.
+Do not set `NO_CLUSTER=1`, a release should pass all tests.
 
-## Prepare for Release
+## Publish tags and images
 
-Edit Makefile and set `VERSION?=X.Y.Z` for the new release.
-Make sure you are logged in to `quay.io/korrel8r` to push images.
+With cluster and image registry access, run:
 
-    make clean; make pre-release REGISTRY_BASE=quay.io/korrel8r
+```sh
+unset REGISTRY_BASE; make push-release
+```
 
-Use `git status` to verify that all changes are related to the version number change.
+This publishes the API tag, then updates and tidies MCP against it and publishes
+the MCP tag. Finally it updates and validates the root against both tags,
+publishes the image, and publishes the root tag. `go mod tidy` cannot resolve
+unpublished versions, so final-version checks must run at this stage.
 
-## Release Latest Version
+Both scripts check that the branch contains the latest upstream commit. If
+`push-release` fails, do not move or delete published tags: finish the remaining
+stage or use a new version if tagged source must change. If the first atomic
+push fails, its API tag is *only local*; integrate upstream, revalidate, and
+remove that unpublished local tag before retrying. Never force-push.
 
-Updating the latest version to `X.Y.Z` is done on main to avoid needless branching.
+## Post-release
 
-1. Commit and push your changes to `main` with commit message `Release X.Y.Z`
-2. `make release REGISTRY_BASE=quay.io/korrel8r`
+On `main` or `vX.Y`, run:
 
-`make release` does the following:
+```sh
+unset REGISTRY_BASE; make post-release
+```
 
-- `make clean` and re-build, verify nothing changes, working tree is clean.
-- Create and push git tag: `vX.Y.Z`
-- Update the `latest` image tag to point to the new images.
+This bumps `VERSION?=` to `X.Y.(Z+1)` (no `-dev`),
+runs `make all`, and commits and pushes the version bump. Leave Go module
+requirements at the last released version until preparing the next release.
 
-## Prepare for Next Development Version
+## Patch an Older Version
 
-After releasing, bump `main` to the next development version so builds are clearly marked as pre-release:
-
-1. Edit Makefile and set `VERSION?=X.Y.Z-dev` for the next version (e.g. after releasing `0.12.2`, set `0.12.3-dev`).
-2. `make all REGISTRY_BASE=quay.io/korrel8r`
-3. Commit and push to `main` with commit message `Update version to X.Y.Z-dev`.
-
-## Release Patch to Old Version
-
-Version branches are created only when needed.
-To release a patch `X.Y.Z` to an old X.Y version:
-
-1. Create branch `vX.Y`, if it does not already exist, starting from tag `vX.Y.0`
-2. Commit and push your changes to branch `vX.Y` with message `Release X.Y.Z`
-3. `make release REGISTRY_BASE=quay.io/korrel8r`
+Create branch `vX.Y` from tag `vX.Y.0` if it does not already exist. Follow the
+same preparation and publication steps on that branch.

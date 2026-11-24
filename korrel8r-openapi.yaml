@@ -17,7 +17,7 @@ info:
     name: Apache 2.0
     url: https://github.com/korrel8r/korrel8r/blob/main/LICENSE
   version: v1alpha1
-  x-korrel8r-version: "0.12.3"
+  x-korrel8r-version: "0.13.8"
 externalDocs:
   url: https://korrel8r.github.io/korrel8r/
   description: Korrel8r User Guide
@@ -509,8 +509,9 @@ components:
             Ignore objects with timestamps before this start time.
             Default: 1 hour before end.
           format: date-time
+          example: "2017-07-21T17:32:28.1341231Z"
           x-oapi-codegen-extra-tags:
-            jsonschema: "Ignore objects with timestamps before this start time. Default: 1 hour before end."
+            jsonschema: "Ignore objects with timestamps before this start time (RFC-3339 format). Default: 1 hour before end."
         end:
           type: string
           description: >
@@ -519,15 +520,13 @@ components:
           format: date-time
           example: "2017-07-21T17:32:28.1341231Z"
           x-oapi-codegen-extra-tags:
-            jsonschema: "Ignore objects with timestamps after this end time. Default: now."
+            jsonschema: "Ignore objects with timestamps after this end time (RFC-3339 format). Default: now."
         limit:
           type: integer
           description: >
-            Limit total number of objects per query.
-            Default: 100.
-          default: 100
+            Limit total number of objects per query. Omit or set to zero for no limit.
           x-oapi-codegen-extra-tags:
-            jsonschema: "Limit total number of objects per query. Default: 100."
+            jsonschema: "Limit total number of objects per query. Omit or set to zero for no limit."
         queryLimit:
           type: integer
           description: >

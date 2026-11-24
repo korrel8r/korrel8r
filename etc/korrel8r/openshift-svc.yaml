@@ -16,6 +16,7 @@ stores:
 
   - domain: metric
     metric: https://thanos-querier.openshift-monitoring.svc:9091
+    namespaced: https://thanos-querier.openshift-monitoring.svc:9092
     certificateAuthority: /var/run/secrets/kubernetes.io/serviceaccount/service-ca.crt
 
   - domain: netflow

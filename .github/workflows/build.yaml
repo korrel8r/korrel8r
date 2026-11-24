@@ -1,9 +1,10 @@
 name: Build
 
 on:
+  # Run workflow on all pull requests.
+  pull_request:
   push:
     branches: ["main", "release-coo-*"]
-  pull_request:
   workflow_dispatch: # Allow manual triggers
 
 # Security: Explicit permissions
@@ -18,11 +19,12 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15 # Prevent runaway jobs
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: "1.26.11" # Should match ../../go.mod
+          go-version-file: go.mod # Uses the preferred toolchain, not the minimum Go version.
+          check-latest: true
 
       - name: test
         run: make test NO_CLUSTER=1
@@ -33,7 +35,7 @@ jobs:
         run: make vuln
 
       - name: Upload test results
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
           name: test-results
@@ -43,7 +45,7 @@ jobs:
           retention-days: 30
 
       - name: Test Summary
-        uses: test-summary/action@37b508cfee6d4d080eedd00b5bb240a6a784a6a5 # v2
+        uses: test-summary/action@37b508cfee6d4d080eedd00b5bb240a6a784a6a5 # v2.6
         if: always()
         with:
           paths: test-results/*.xml

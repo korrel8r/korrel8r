@@ -4,6 +4,8 @@ package impl
 
 import (
 	"fmt"
+	"net/url"
+	"strings"
 
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 )
@@ -22,6 +24,34 @@ func ParseQuery(domain korrel8r.Domain, query string) (class korrel8r.Class, sel
 		return nil, "", korrel8r.NewClassNotFoundError(d, c)
 	}
 	return class, q, nil
+}
+
+// SplitURLQueryData separates a trailing URL query section from query data.
+// It searches question marks from right to left and returns the first non-empty
+// suffix accepted by url.ParseQuery. If no valid suffix is found, it returns the
+// original data and nil values; malformed candidate sections are reported when no
+// valid trailing candidate exists. Callers must resolve language-specific ambiguity
+// first (for example, parse an expression before calling this helper).
+func SplitURLQueryData(data string) (string, url.Values, error) {
+	var parseErr error
+	for i := strings.LastIndexByte(data, '?'); i >= 0; i = strings.LastIndexByte(data[:i], '?') {
+		section := data[i+1:]
+		if section == "" {
+			continue
+		}
+		params, err := url.ParseQuery(section)
+		if err != nil {
+			if parseErr == nil {
+				parseErr = err
+			}
+			continue
+		}
+		return data[:i], params, nil
+	}
+	if parseErr != nil {
+		return data, nil, parseErr
+	}
+	return data, nil, nil
 }
 
 // UnmarshalQueryString unmarshals JSON query string to Go values.

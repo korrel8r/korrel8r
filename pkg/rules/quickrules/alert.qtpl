@@ -170,6 +170,7 @@ alert:alert:{"namespace":{%q= ns %},"statefulset":{%q= name %}}
 {% endfunc %}
 
 # AlertToVM finds a VirtualMachine from alert labels.
+# Prefers the typed vm label, falls back to the generic name label.
 name: AlertToVM
 start:
   domain: alert
@@ -180,7 +181,7 @@ goal:
 
 {% func AlertToVM(o interface{}) %}
 {% code l := o.(*alert.Object).Labels %}
-k8s:VirtualMachine.kubevirt.io:{"namespace":{%q= Require(l["namespace"]) %},"name":{%q= Require(l["name"]) %}}
+k8s:VirtualMachine.kubevirt.io:{"namespace":{%q= Require(l["namespace"]) %},"name":{%q= Require(Default(l["name"], l["vm"])) %}}
 {% endfunc %}
 
 # AlertToVMI finds a VirtualMachineInstance from alert labels.
