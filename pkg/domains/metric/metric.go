@@ -20,6 +20,7 @@ import (
 	"github.com/korrel8r/korrel8r/pkg/domains/k8s"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r/impl"
+	"github.com/korrel8r/korrel8r/pkg/unique"
 	"github.com/prometheus/common/model"
 )
 
@@ -155,7 +156,7 @@ type response struct {
 	Data   []model.Metric
 }
 
-func (s *Store) Get(ctx context.Context, kquery korrel8r.Query, c *korrel8r.Constraint, result korrel8r.Appender) error {
+func (s *Store) Get(ctx context.Context, kquery korrel8r.Query, c *korrel8r.Constraint, result korrel8r.Appender) (err error) {
 	// Type assertion errors are not store errors, treat as "not found".
 	query, ok := kquery.(Query)
 	if !ok {
@@ -170,7 +171,12 @@ func (s *Store) Get(ctx context.Context, kquery korrel8r.Query, c *korrel8r.Cons
 	if err != nil {
 		return err
 	}
-	baseURL, namespaces := s.queryTarget(params)
+	baseURL, namespaces, ignoredNamespaces := s.queryTarget(params)
+	defer func() {
+		if err != nil && ignoredNamespaces {
+			err = fmt.Errorf("used main metric URL, namespaced URL not configured: %w", err)
+		}
+	}()
 	baseURL = baseURL.JoinPath("/api/v1")
 
 	// NOTE: Store does not use github.com/prometheus/client_golang because the current version v1.19.1
@@ -218,16 +224,14 @@ func formatTime(t time.Time) string {
 }
 
 // queryTarget selects the namespace-scoped URL for explicit namespace suffixes when configured.
-func (s *Store) queryTarget(params url.Values) (*url.URL, map[string]bool) {
+// ignoredNamespaces reports that namespace scoping was requested but no namespaced URL is configured.
+func (s *Store) queryTarget(params url.Values) (target *url.URL, namespaces unique.Set[string], ignoredNamespaces bool) {
 	if ns := params[namespaceParam]; len(ns) > 0 {
-		namespaces := make(map[string]bool, len(ns))
-		for _, n := range ns {
-			namespaces[n] = true
-		}
+		namespaces = unique.NewSet(ns...)
 		if s.namespacedURL != nil {
-			return s.namespacedURL, namespaces
+			return s.namespacedURL, namespaces, false
 		}
-		return s.baseURL, namespaces
+		return s.baseURL, namespaces, true
 	}
-	return s.baseURL, nil
+	return s.baseURL, nil, false
 }

@@ -7,6 +7,62 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [0.13.8] - 2026-11-20
+
+### Changed
+- Lower the minimum Go version for the main and MCP modules to 1.26.0 while retaining Go 1.26.11 as the preferred build toolchain for standard library security fixes.
+
+## [0.13.7] - 2026-11-18
+
+### Performance
+- Cache neighborhood routing for repeated searches with the same engine, start class, and depth; reduce traversal allocations and duplicate-check work.
+
+### Changed
+- Use a Go workspace for local development across the main, API, MCP, and tools modules instead of local `go.mod` replacements. Tools run directly with `go tool`. Workspace modules share dependency versions, including `pflag` v1.1.0, which changes generated CLI help text.
+- Update the preferred Go build toolchain to 1.26.11 without raising the minimum Go version, and validate pinned tools during linting.
+- Automate fetching and updating the cluster test setup scripts with `make test-setup`.
+- Update Go dependencies, including controller-runtime.
+
+## [0.13.5] - 2026-11-16
+
+### Changed
+- Go modules require Go 1.26.10 again (0.13.4 required 1.26.11) so downstream users are not forced to upgrade.
+  CI builds release binaries with Go 1.26.11 to include the `net/http` fix for GO-2026-6859.
+
+## [0.13.4] - 2026-11-12
+
+## [0.13.3] - 2026-11-06
+
+### Fixed
+- MCP schemas and argument validation now accept any JSON value for serialized start objects and graph results, rather than treating `json.RawMessage` as an array of bytes.
+
+## [0.13.2] - 2026-11-05
+
+## [0.13.1] - 2026-11-05
+
+### Added
+- MCP `instructions` tool returns the server instructions for clients that do not use
+  the instructions provided during MCP initialization.
+
+## [0.13.0] - 2026-11-04
+
+### Added
+- Metric queries support `?namespace=NS` suffixes for namespace-scoped
+  Prometheus access; multiple namespaces are supported.
+- `mcp.Registrations` exposes tool definitions and handlers for embedding in
+  other MCP servers. `mcp.Client.MaxResponseBytes` bounds REST responses.
+- MCP annotations identify `show_in_console` as state-changing and the other
+  tools as read-only.
+
+### Changed
+- **Breaking:** Removed `mcp.AddTools` and `mcp.Server.AllTools` in favor of
+  `mcp.Registrations`. `pkg/api` and `pkg/mcp` are now separate Go modules.
+- Release automation tags the root, API, and MCP modules with the same version.
+- Updated Go dependencies and CI to use Go 1.26.
+
+### Fixed
+- Metric store errors now report when namespace parameters were ignored.
+
 ## [0.12.3] - 2026-10-01
 
 ### Added

@@ -192,7 +192,7 @@ func TestStore_Get_StripsManagedFields(t *testing.T) {
 		Operation:  metav1.ManagedFieldsOperationApply,
 		APIVersion: "v1",
 		FieldsType: "FieldsV1",
-		FieldsV1:   &metav1.FieldsV1{Raw: []byte(`{"f:metadata":{"f:labels":{}}}`)},
+		FieldsV1:   metav1.NewFieldsV1(`{"f:metadata":{"f:labels":{}}}`),
 	}}
 	c := fake.NewClientBuilder().
 		WithRESTMapper(testrestmapper.TestOnlyStaticRESTMapper(scheme.Scheme)).

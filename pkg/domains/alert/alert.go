@@ -21,6 +21,7 @@ import (
 	"github.com/korrel8r/korrel8r/pkg/domains/k8s"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r/impl"
+	"github.com/korrel8r/korrel8r/pkg/unique"
 	"github.com/prometheus/client_golang/api"
 	v1 "github.com/prometheus/client_golang/api/prometheus/v1"
 	"github.com/prometheus/common/model"
@@ -293,7 +294,7 @@ func newPrometheusClient(u *url.URL, hc *http.Client) (v1.API, error) {
 func (*Store) Domain() korrel8r.Domain { return Domain }
 
 // getLokiRulesForTenant queries the Loki Ruler API for a specific tenant.
-func (s *Store) getLokiRulesForTenant(ctx context.Context, tenant string, namespaces map[string]bool) (v1.RulesResult, error) {
+func (s *Store) getLokiRulesForTenant(ctx context.Context, tenant string, namespaces unique.Set[string]) (v1.RulesResult, error) {
 	// Build Loki Ruler URL with tenant
 	// LokiStack multi-tenant pattern: /api/logs/v1/{tenant}/loki/api/v1/rules
 	rulesURL := s.lokiRulerURL.JoinPath("/api/logs/v1", tenant, "/loki/api/v1/rules")
@@ -350,7 +351,7 @@ func (s *Store) getLokiRulesForTenant(ctx context.Context, tenant string, namesp
 
 // getLokiRules queries the Loki Ruler API for alerting rules across all tenants.
 // If lokiRulerURL is empty, returns an empty result without error.
-func (s *Store) getLokiRules(ctx context.Context, namespaces map[string]bool) (v1.RulesResult, error) {
+func (s *Store) getLokiRules(ctx context.Context, namespaces unique.Set[string]) (v1.RulesResult, error) {
 	// If no Loki Ruler URL configured, return empty result
 	if s.lokiRulerURL == nil || s.lokiRulerURL.String() == "" {
 		return v1.RulesResult{}, nil
@@ -375,7 +376,7 @@ func (s *Store) getLokiRules(ctx context.Context, namespaces map[string]bool) (v
 }
 
 // alertmanagerAPIForAccess returns an Alertmanager API client with the appropriate port.
-func (s *Store) alertmanagerAPIForAccess(ctx context.Context, namespaces map[string]bool) (*alertmanagerClient, error) {
+func (s *Store) alertmanagerAPIForAccess(ctx context.Context, namespaces unique.Set[string]) (*alertmanagerClient, error) {
 	u := prometheus.EffectiveURL(ctx, s.alertmanagerURL, s.k8sClient)
 
 	// If using tenancy port (9092), wrap HTTP client to inject namespace query parameters
@@ -409,7 +410,7 @@ func (s *Store) alertmanagerAPIForAccess(ctx context.Context, namespaces map[str
 // This is required for Alertmanager port 9092 (namespace-scoped access).
 type namespaceInjectingTransport struct {
 	base       http.RoundTripper
-	namespaces map[string]bool
+	namespaces unique.Set[string]
 }
 
 func (t *namespaceInjectingTransport) RoundTrip(req *http.Request) (*http.Response, error) {
@@ -448,11 +449,11 @@ func matchesSubquery(q map[string]string, a *v1.Alert) bool {
 }
 
 // extractNamespacesFromQuery extracts unique namespace values from parsed alert queries.
-func extractNamespacesFromQuery(q *Query) map[string]bool {
-	namespaces := make(map[string]bool)
+func extractNamespacesFromQuery(q *Query) unique.Set[string] {
+	namespaces := unique.Set[string]{}
 	for _, subq := range q.Parsed {
 		if ns, ok := subq["namespace"]; ok && ns != "" {
-			namespaces[ns] = true
+			namespaces.Add(ns)
 		}
 	}
 	return namespaces

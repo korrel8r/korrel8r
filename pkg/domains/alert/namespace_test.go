@@ -8,6 +8,7 @@ package alert
 import (
 	"testing"
 
+	"github.com/korrel8r/korrel8r/pkg/unique"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -15,7 +16,7 @@ func TestExtractNamespacesFromQuery(t *testing.T) {
 	tests := []struct {
 		name     string
 		query    Query
-		expected map[string]bool
+		expected unique.Set[string]
 	}{
 		{
 			name: "single namespace",
@@ -24,7 +25,7 @@ func TestExtractNamespacesFromQuery(t *testing.T) {
 					{"namespace": "default"},
 				},
 			},
-			expected: map[string]bool{"default": true},
+			expected: unique.NewSet("default"),
 		},
 		{
 			name: "multiple different namespaces",
@@ -34,7 +35,7 @@ func TestExtractNamespacesFromQuery(t *testing.T) {
 					{"namespace": "kube-system"},
 				},
 			},
-			expected: map[string]bool{"default": true, "kube-system": true},
+			expected: unique.NewSet("default", "kube-system"),
 		},
 		{
 			name: "duplicate namespaces",
@@ -44,7 +45,7 @@ func TestExtractNamespacesFromQuery(t *testing.T) {
 					{"namespace": "default"},
 				},
 			},
-			expected: map[string]bool{"default": true},
+			expected: unique.NewSet("default"),
 		},
 		{
 			name: "no namespace",
@@ -53,7 +54,7 @@ func TestExtractNamespacesFromQuery(t *testing.T) {
 					{"alertname": "MyAlert"},
 				},
 			},
-			expected: map[string]bool{},
+			expected: unique.Set[string]{},
 		},
 		{
 			name: "empty namespace value",
@@ -62,7 +63,7 @@ func TestExtractNamespacesFromQuery(t *testing.T) {
 					{"namespace": ""},
 				},
 			},
-			expected: map[string]bool{},
+			expected: unique.Set[string]{},
 		},
 		{
 			name: "mixed with and without namespace",
@@ -73,7 +74,7 @@ func TestExtractNamespacesFromQuery(t *testing.T) {
 					{"namespace": "kube-system"},
 				},
 			},
-			expected: map[string]bool{"default": true, "kube-system": true},
+			expected: unique.NewSet("default", "kube-system"),
 		},
 		{
 			name: "namespace with special characters",
@@ -82,14 +83,14 @@ func TestExtractNamespacesFromQuery(t *testing.T) {
 					{"namespace": "openshift-monitoring"},
 				},
 			},
-			expected: map[string]bool{"openshift-monitoring": true},
+			expected: unique.NewSet("openshift-monitoring"),
 		},
 		{
 			name: "empty query",
 			query: Query{
 				Parsed: []map[string]string{},
 			},
-			expected: map[string]bool{},
+			expected: unique.Set[string]{},
 		},
 	}
 
