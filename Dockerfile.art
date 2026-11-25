@@ -4,7 +4,6 @@ WORKDIR /workspace
 
 COPY . .
 
-ENV GOFLAGS='-mod=mod'
 ENV CGO_ENABLED=1
 ENV GOEXPERIMENT=strictfipsruntime
 
