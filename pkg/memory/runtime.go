@@ -9,12 +9,13 @@ import (
 )
 
 // RuntimeSampler reports Go-owned memory against GOMEMLIMIT.
-type RuntimeSampler struct{}
+// AllowUnlimited permits sampling usage without a finite GOMEMLIMIT for an absolute guard limit.
+type RuntimeSampler struct{ AllowUnlimited bool }
 
-func (RuntimeSampler) Sample() (used, limit uint64, err error) {
+func (s RuntimeSampler) Sample() (used, limit uint64, err error) {
 	gomemlimit := debug.SetMemoryLimit(-1)
-	if gomemlimit <= 0 || gomemlimit >= 1<<62 {
-		return 0, 0, fmt.Errorf("finite GOMEMLIMIT unavailable")
+	if (gomemlimit <= 0 || gomemlimit >= 1<<62) && !s.AllowUnlimited {
+		return 0, 0, fmt.Errorf("GOMEMLIMIT not set")
 	}
 	samples := []metrics.Sample{
 		{Name: "/memory/classes/total:bytes"},
@@ -29,15 +30,15 @@ func (RuntimeSampler) Sample() (used, limit uint64, err error) {
 	return total - released, uint64(gomemlimit), nil
 }
 
-// SystemSampler uses whichever of cgroup memory or GOMEMLIMIT is under greater pressure.
+// SystemSampler selects the greater pressure, or the greater usage for an absolute limit.
 type SystemSampler struct {
-	Cgroup     Sampler
-	Runtime    Sampler
-	PreferUsed bool
+	Cgroup        Sampler
+	Runtime       Sampler
+	AbsoluteLimit bool
 }
 
-func NewSystemSampler(preferUsed bool) SystemSampler {
-	return SystemSampler{Cgroup: CgroupSampler{}, Runtime: RuntimeSampler{}, PreferUsed: preferUsed}
+func NewSystemSampler(absoluteLimit bool) SystemSampler {
+	return SystemSampler{Cgroup: CgroupSampler{}, Runtime: RuntimeSampler{AllowUnlimited: absoluteLimit}, AbsoluteLimit: absoluteLimit}
 }
 
 func (s SystemSampler) Sample() (used, limit uint64, err error) {
@@ -45,7 +46,7 @@ func (s SystemSampler) Sample() (used, limit uint64, err error) {
 	ru, rl, re := s.Runtime.Sample()
 	switch {
 	case ce == nil && re == nil:
-		if s.PreferUsed {
+		if s.AbsoluteLimit {
 			if ru > cu {
 				return ru, rl, nil
 			}
@@ -60,6 +61,6 @@ func (s SystemSampler) Sample() (used, limit uint64, err error) {
 	case re == nil:
 		return ru, rl, nil
 	default:
-		return 0, 0, fmt.Errorf("memory limits unavailable: cgroup: %v; GOMEMLIMIT: %v", ce, re)
+		return 0, 0, fmt.Errorf("no memory limit found: cgroup: %v; %v", ce, re)
 	}
 }
