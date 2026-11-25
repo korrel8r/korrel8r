@@ -12,6 +12,7 @@ import (
 	"slices"
 	"strings"
 	"sync"
+	"sync/atomic"
 
 	"github.com/korrel8r/korrel8r/internal/pkg/json"
 	"github.com/korrel8r/korrel8r/internal/pkg/logging"
@@ -67,6 +68,7 @@ type Selector struct {
 //	 stores:
 //		  domain: k8s
 type Store struct {
+	domain   *domain
 	cfg      *rest.Config
 	c        client.WithWatch
 	base     *url.URL
@@ -75,6 +77,7 @@ type Store struct {
 
 // Validate interfaces
 var _ = impl.AssertDomainTypes(Domain, Object(nil), Class{}, &Query{}, &Store{})
+var _ korrel8r.GrowingDomain = Domain
 
 // domain implementation
 type domain struct {
@@ -82,6 +85,9 @@ type domain struct {
 	resources map[korrel8r.Class]metav1.APIResource
 	groups    map[string]*metav1.APIGroup
 	classes   unique.Set[korrel8r.Class]
+	version   atomic.Int64 // Number of classes added after the built-in defaults, read without locking.
+	watchMu   sync.Mutex
+	watcher   *crdWatcher // Current CRD watcher, nil if none started.
 }
 
 func newDomain() *domain {
@@ -91,6 +97,7 @@ func newDomain() *domain {
 		classes:   unique.NewSet[korrel8r.Class](),
 	}
 	d.addClasses(nil, defaultResources)
+	d.version.Store(0) // Built-in defaults are not additions.
 	return d
 }
 
@@ -113,11 +120,12 @@ func nonBlank(v1, v2 string) string {
 	return v1
 }
 
+// addClasses adds new classes and updates metadata for existing classes.
 func (d *domain) addClasses(groups []*metav1.APIGroup, resourceLists []*metav1.APIResourceList) {
 	d.m.Lock()
 	defer d.m.Unlock()
 	for _, g := range groups {
-		d.groups[g.Name] = g
+		d.groups[g.Name] = g // Preferred versions can change as CRDs are updated.
 	}
 	for _, l := range resourceLists {
 		gv, err := schema.ParseGroupVersion(l.GroupVersion)
@@ -134,8 +142,12 @@ func (d *domain) addClasses(groups []*metav1.APIGroup, resourceLists []*metav1.A
 				Kind:    r.Kind,
 			}
 			c := Class(gvk)
+			d.resources[c] = r // Resource name and scope can change without changing the class.
+			if d.classes.Has(c) {
+				continue
+			}
 			d.classes.Add(c)
-			d.resources[c] = r
+			d.version.Add(1)
 			// Make sure every known resource has a group with a preferred version.
 			if _, ok := d.groups[gvk.Group]; !ok {
 				gvd := metav1.GroupVersionForDiscovery{
@@ -150,6 +162,21 @@ func (d *domain) addClasses(groups []*metav1.APIGroup, resourceLists []*metav1.A
 			}
 		}
 	}
+}
+
+// ClassVersion increases whenever classes are added.
+// It is updated with the lock held after classes are added, so classes are visible to
+// callers that see the new version. Lock-free so the engine can check it cheaply.
+func (d *domain) ClassVersion() int { return int(d.version.Load()) }
+
+// refresh adds newly discovered classes. Discovery errors are logged and partial results used,
+// since partial failure is common (e.g. an unavailable aggregated API).
+func (d *domain) refresh(di discovery.DiscoveryInterface) {
+	groups, resources, err := di.ServerGroupsAndResources()
+	if err != nil {
+		log.V(1).Info("k8s discovery error, continuing", "error", err)
+	}
+	d.addClasses(groups, resources)
 }
 
 // Store connects to the kube config default cluster. The config parameter is ignored.
@@ -225,12 +252,9 @@ func (d *domain) NewStoreWithDiscovery(c client.WithWatch, cfg *rest.Config, di 
 	if err != nil {
 		return nil, err
 	}
-	groups, resources, err := di.ServerGroupsAndResources()
-	if err != nil {
-		log.Info("k8s discovery error, continuing", "error", err) // Log but continue.
-	}
-	d.addClasses(groups, resources)
-	return &Store{cfg: cfg, c: c, base: base, discover: di}, nil
+	d.refresh(di)
+	d.startWatch(c, di)
+	return &Store{domain: d, cfg: cfg, c: c, base: base, discover: di}, nil
 }
 
 func (c Class) ID(o korrel8r.Object) any {
@@ -288,7 +312,7 @@ func (q *Query) Class() korrel8r.Class { return q.class }
 func (q *Query) Data() string          { b, _ := json.Marshal(q); return string(b) }
 func (q *Query) String() string        { return korrel8r.QueryString(q) }
 
-func (s *Store) Domain() korrel8r.Domain  { return Domain }
+func (s *Store) Domain() korrel8r.Domain  { return s.domain }
 func (s *Store) Client() client.WithWatch { return s.c }
 func (s *Store) Config() *rest.Config     { return s.cfg }
 

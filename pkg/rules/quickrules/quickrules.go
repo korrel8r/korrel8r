@@ -46,6 +46,7 @@ type classSpec struct {
 // see the package documentation.
 func Rules(d *korrel8r.Domains) []korrel8r.Rule {
 	var result []korrel8r.Rule
+	missing := &rules.MissingClasses{}
 	entries, err := fs.ReadDir(qtplFiles, ".")
 	if err != nil {
 		panic(fmt.Errorf("compiled rules: %w", err))
@@ -61,7 +62,7 @@ func Rules(d *korrel8r.Domains) []korrel8r.Rule {
 			panic(fmt.Errorf("compiled rules: file %q: %w", entry.Name(), err))
 		}
 		for _, spec := range specs {
-			r, err := newRule(d, spec)
+			r, err := newRule(d, spec, missing)
 			if err != nil {
 				logger.V(1).Info("skipped compiled rule", "rule", spec.Name, "error", err)
 				continue
@@ -71,6 +72,7 @@ func Rules(d *korrel8r.Domains) []korrel8r.Rule {
 			}
 		}
 	}
+	missing.Log(logger)
 	return result
 }
 
@@ -159,13 +161,13 @@ func parseRule(buf []string) (*ruleSpec, error) {
 
 // newRule constructs a korrel8r.Rule for a compiled rule, resolving its classes and applying the
 // generated stream function registered for it in applyFuncs.
-// It returns (nil, nil) if the rule has no usable start or goal classes, so the rule is skipped.
-func newRule(d *korrel8r.Domains, spec *ruleSpec) (korrel8r.Rule, error) {
-	start, missingStart := classes(d, spec.Name, &spec.Start)
-	goal, missingGoal := classes(d, spec.Name, &spec.Goal)
+// It adds any unknown classes to missing and returns a nil rule if no usable start or goal classes remain.
+func newRule(d *korrel8r.Domains, spec *ruleSpec, missing *rules.MissingClasses) (korrel8r.Rule, error) {
+	start, missingStart := classes(d, &spec.Start)
+	goal, missingGoal := classes(d, &spec.Goal)
+	missing.Add(spec.Name, append(missingStart, missingGoal...)...)
 	if len(start) == 0 || len(goal) == 0 {
-		logger.V(1).Info("skipped compiled rule: no known start or goal classes", "rule", spec.Name,
-			"missingClasses", append(missingStart, missingGoal...))
+		missing.DropRule(spec.Name)
 		return nil, nil
 	}
 	apply, ok := applyFuncs[spec.Name]
@@ -178,13 +180,12 @@ func newRule(d *korrel8r.Domains, spec *ruleSpec) (korrel8r.Rule, error) {
 // classes resolves the classes of a classSpec to korrel8r.Class.
 // If no classes are listed, all classes in the domain are used.
 // Unknown classes are skipped and returned in the second result, so callers can report them;
-// an unknown domain reports all classes as missing.
-func classes(d *korrel8r.Domains, name string, spec *classSpec) (found []korrel8r.Class, missing []string) {
+// an unknown domain reports all classes as missing, or "domain:*" for a wildcard.
+func classes(d *korrel8r.Domains, spec *classSpec) (found []korrel8r.Class, missing []string) {
 	if len(spec.Classes) == 0 {
 		dom, err := d.Domain(spec.Domain)
 		if err != nil {
-			logger.V(1).Info("skipped class: unknown domain", "rule", name, "domain", spec.Domain)
-			return nil, nil
+			return nil, []string{spec.Domain + ":*"}
 		}
 		return dom.Classes(), nil
 	}

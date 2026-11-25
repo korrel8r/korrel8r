@@ -9,6 +9,7 @@ import (
 	"weak"
 
 	"github.com/korrel8r/korrel8r/pkg/engine"
+	"github.com/korrel8r/korrel8r/pkg/graph"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 )
 
@@ -29,6 +30,7 @@ type routingBuild struct {
 
 type neighborRoutingKey struct {
 	engine weak.Pointer[engine.Engine]
+	data   *graph.Data
 	start  int64
 	depth  int
 }
@@ -57,13 +59,12 @@ func (c *neighborRoutingCache) removeEngine(key weak.Pointer[engine.Engine]) {
 	})
 }
 
-func (c *neighborRoutingCache) get(e *engine.Engine, start korrel8r.Class, depth int) ([]nodeRouting, error) {
-	data := e.GraphData()
+func (c *neighborRoutingCache) get(e *engine.Engine, data *graph.Data, start korrel8r.Class, depth int) ([]nodeRouting, error) {
 	startID, ok := data.NodeID(start)
 	if !ok {
 		return nil, fmt.Errorf("class not found in graph: %v", start)
 	}
-	key := neighborRoutingKey{weak.Make(e), startID, depth}
+	key := neighborRoutingKey{weak.Make(e), data, startID, depth}
 	defer runtime.KeepAlive(e)
 	return c.getOrBuild(e, key, func() ([]nodeRouting, error) {
 		scope, err := neighborScope(data, start, depth)

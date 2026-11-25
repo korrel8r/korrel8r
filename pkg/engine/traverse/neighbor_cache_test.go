@@ -23,10 +23,11 @@ func TestNeighborRoutingCache(t *testing.T) {
 		Stores(b.Store("d", nil)).Engine()
 	require.NoError(t, err)
 	start := b.Class("d:a")
+	data := e.GraphData()
 	var cache neighborRoutingCache
-	routing, err := cache.get(e, start, 1)
+	routing, err := cache.get(e, data, start, 1)
 	require.NoError(t, err)
-	again, err := cache.get(e, start, 1)
+	again, err := cache.get(e, data, start, 1)
 	require.NoError(t, err)
 	assert.Same(t, &routing[0], &again[0])
 
@@ -36,7 +37,7 @@ func TestNeighborRoutingCache(t *testing.T) {
 	results := make([][]nodeRouting, 8)
 	errs := make([]error, len(results))
 	for i := range results {
-		wg.Go(func() { results[i], errs[i] = concurrent.get(e, start, 1) })
+		wg.Go(func() { results[i], errs[i] = concurrent.get(e, data, start, 1) })
 	}
 	wg.Wait()
 	for i, r := range results {
@@ -56,10 +57,10 @@ func TestNeighborRoutingCache(t *testing.T) {
 	}
 	wg.Wait()
 
-	zero, err := cache.get(e, start, 0)
+	zero, err := cache.get(e, data, start, 0)
 	require.NoError(t, err)
 	assert.Empty(t, zero[0].lines)
-	_, err = cache.get(e, b.Class("d:missing"), 1)
+	_, err = cache.get(e, data, b.Class("d:missing"), 1)
 	require.Error(t, err)
 }
 
@@ -129,14 +130,39 @@ func TestNeighborRoutingCacheConcurrentMiss(t *testing.T) {
 	assert.Zero(t, warmBuilds.Load())
 }
 
+func TestNeighborRoutingCacheAfterRuleUpdate(t *testing.T) {
+	d := mock.NewGrowingDomain("d")
+	a, b, c := d.Class("a"), d.Class("b"), d.Class("c")
+	e, err := engine.Build().Domains(d).RuleFactory(func(*korrel8r.Domains) []korrel8r.Rule {
+		rules := []korrel8r.Rule{mock.NewRule("ab", []korrel8r.Class{a}, []korrel8r.Class{b}, nil)}
+		if d.ClassVersion() > 0 {
+			rules = append(rules, mock.NewRule("bc", []korrel8r.Class{b}, []korrel8r.Class{c}, nil))
+		}
+		return rules
+	}).Engine()
+	require.NoError(t, err)
+	var cache neighborRoutingCache
+	old := e.GraphData()
+	_, err = cache.get(e, old, a, 2)
+	require.NoError(t, err)
+	d.Grow()
+	require.NoError(t, e.RefreshNewClasses())
+	routing, err := cache.get(e, e.GraphData(), a, 2)
+	require.NoError(t, err)
+	assert.NotSame(t, old, e.GraphData())
+	assert.Len(t, cache.entries, 2)
+	assert.Len(t, routing, 3) // Includes the new class at depth 2.
+}
+
 func TestNeighborRoutingCacheEviction(t *testing.T) {
 	b := mock.NewBuilder("d")
 	e, err := engine.Build().Rules(b.Rule("ab", "d:a", "d:b", nil)).Engine()
 	require.NoError(t, err)
 	var cache neighborRoutingCache
 	start := b.Class("d:a")
+	data := e.GraphData()
 	for depth := range maxNeighborRoutings + 1 {
-		_, err := cache.get(e, start, depth)
+		_, err := cache.get(e, data, start, depth)
 		require.NoError(t, err)
 	}
 	require.Len(t, cache.entries, maxNeighborRoutings)
@@ -146,7 +172,7 @@ func TestNeighborRoutingCacheEviction(t *testing.T) {
 	// Releasing one engine removes its scopes without disturbing another's.
 	other, err := engine.Build().Rules(b.Rule("ab", "d:a", "d:b", nil)).Engine()
 	require.NoError(t, err)
-	_, err = cache.get(other, start, 0)
+	_, err = cache.get(other, other.GraphData(), start, 0)
 	require.NoError(t, err)
 	engineCleanup{&cache, weak.Make(e)}.remove()
 	require.Len(t, cache.entries, 1)

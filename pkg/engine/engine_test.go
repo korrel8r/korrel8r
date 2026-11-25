@@ -6,20 +6,241 @@ import (
 	"context"
 	"fmt"
 	"slices"
+	"sync"
+	"sync/atomic"
 	"testing"
+	"text/template"
 	"time"
 
 	"github.com/korrel8r/korrel8r/internal/pkg/test/mock"
 	"github.com/korrel8r/korrel8r/pkg/config"
+	"github.com/korrel8r/korrel8r/pkg/domains/k8s"
 	"github.com/korrel8r/korrel8r/pkg/engine"
 	"github.com/korrel8r/korrel8r/pkg/engine/traverse"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"github.com/korrel8r/korrel8r/pkg/result"
+	"github.com/korrel8r/korrel8r/pkg/status"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	fakediscovery "k8s.io/client-go/discovery/fake"
+	"k8s.io/client-go/rest"
+	clienttesting "k8s.io/client-go/testing"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 func list[T any](x ...T) []T { return x }
+
+func TestRefreshNewClasses(t *testing.T) {
+	d := mock.NewGrowingDomain("g")
+	a, b, c := d.Class("a"), d.Class("b"), d.Class("c")
+	s := mock.NewDomain("s")
+	x, y := s.Class("x"), s.Class("y")
+	cfg := config.Configs{{
+		Rules: []config.Rule{{Name: "config-ba",
+			Start:  config.ClassSpec{Domain: "g", Classes: []string{"b"}},
+			Goal:   config.ClassSpec{Domain: "g", Classes: []string{"a"}},
+			Result: config.ResultSpec{Query: "g:a:x"}}},
+		StatusRules: []config.StatusRule{{Name: "config-status",
+			Start: config.ClassSpec{Domain: "g", Classes: []string{"b"}}, Status: "ok"}},
+	}}
+	var factoryCalls atomic.Int64
+	e, err := engine.Build().Domains(d).Config(cfg).
+		Rules(mock.NewRule("xy", list(x), list(y), mock.NewQuery(y, ""))).
+		StatusRules(status.New(list(a), template.Must(template.New("static").Parse("ok")))).
+		RuleFactory(func(*korrel8r.Domains) []korrel8r.Rule {
+			factoryCalls.Add(1)
+			if d.ClassVersion() == 0 {
+				return nil
+			}
+			return list[korrel8r.Rule](mock.NewRule("bc", list(b), list(c), mock.NewQuery(c, "")))
+		}).Engine()
+	require.NoError(t, err)
+	assert.EqualValues(t, 1, factoryCalls.Load())
+	assert.Nil(t, e.Rule("bc"))
+
+	// No new classes, no rebuild.
+	old := e.GraphData()
+	require.NoError(t, e.RefreshNewClasses())
+	assert.Same(t, old, e.GraphData())
+	assert.EqualValues(t, 1, factoryCalls.Load())
+
+	// New classes rebuild once, even with concurrent searches.
+	d.Grow()
+	var wg sync.WaitGroup
+	for range 8 {
+		wg.Go(func() { assert.NoError(t, e.RefreshNewClasses()) })
+	}
+	wg.Wait()
+	assert.EqualValues(t, 2, factoryCalls.Load())
+	for _, name := range []string{"xy", "config-ba", "bc"} {
+		assert.NotNil(t, e.Rule(name), name)
+	}
+	assert.Len(t, e.StatusRulesFor(a), 1)
+	assert.Len(t, e.StatusRulesFor(b), 1)
+	assert.NotNil(t, e.ClassMetricAttrs(c))
+	assert.NotNil(t, e.RuleMetricAttrs(e.Rule("bc")))
+	assert.Equal(t, 2, old.LineCount()) // Old searches retain their topology.
+	assert.Equal(t, 3, e.GraphData().LineCount())
+}
+
+func TestRuleAccessorsRefresh(t *testing.T) {
+	for name, refreshed := range map[string]func(*engine.Engine, korrel8r.Class) bool{
+		"Rule":           func(e *engine.Engine, _ korrel8r.Class) bool { return e.Rule("new") != nil },
+		"Rules":          func(e *engine.Engine, _ korrel8r.Class) bool { return len(e.Rules()) == 2 },
+		"GraphData":      func(e *engine.Engine, _ korrel8r.Class) bool { return e.GraphData().LineCount() == 2 },
+		"Graph":          func(e *engine.Engine, _ korrel8r.Class) bool { return e.Graph().Nodes().Len() == 3 },
+		"StatusRulesFor": func(e *engine.Engine, b korrel8r.Class) bool { return len(e.StatusRulesFor(b)) == 1 },
+	} {
+		t.Run(name, func(t *testing.T) {
+			d := mock.NewGrowingDomain("g")
+			a, b, c := d.Class("a"), d.Class("b"), d.Class("c")
+			e, err := engine.Build().Domains(d).
+				RuleFactory(func(*korrel8r.Domains) []korrel8r.Rule {
+					if d.ClassVersion() == 0 {
+						return []korrel8r.Rule{mock.NewRule("old", list(a), list(b), mock.NewQuery(b, ""))}
+					}
+					return []korrel8r.Rule{ // Adds a node to the graph.
+						mock.NewRule("new", list(a), list(b), mock.NewQuery(b, "")),
+						mock.NewRule("bc", list(b), list(c), mock.NewQuery(c, "")),
+					}
+				}).
+				StatusRuleFactory(func(*korrel8r.Domains) []status.Rule {
+					if d.ClassVersion() == 0 {
+						return nil
+					}
+					return []status.Rule{status.New(list(b), template.Must(template.New("s").Parse("ok")))}
+				}).Engine()
+			require.NoError(t, err)
+			oldRule := e.Rule("old")
+			require.NotNil(t, oldRule)
+			d.Grow()
+			assert.True(t, refreshed(e, b)) // No explicit RefreshNewClasses.
+			// Rules from the previous state still have metric attributes, for searches in progress.
+			assert.Nil(t, e.Rule("old"))
+			assert.NotNil(t, e.RuleMetricAttrs(oldRule))
+		})
+	}
+}
+
+func TestRefreshNewClassesError(t *testing.T) {
+	d := mock.NewGrowingDomain("g")
+	a, b := d.Class("a"), d.Class("b")
+	var calls atomic.Int64
+	e, err := engine.Build().Domains(d).
+		RuleFactory(func(*korrel8r.Domains) []korrel8r.Rule {
+			calls.Add(1)
+			rules := []korrel8r.Rule{mock.NewRule("ab", list(a), list(b), mock.NewQuery(b, ""))}
+			switch d.ClassVersion() {
+			case 0:
+				return rules
+			case 1: // Invalid: duplicate rule name.
+				return append(rules, mock.NewRule("ab", list(b), list(a), mock.NewQuery(a, "")))
+			default:
+				return append(rules, mock.NewRule("ba", list(b), list(a), mock.NewQuery(a, "")))
+			}
+		}).Engine()
+	require.NoError(t, err)
+	old := e.GraphData()
+
+	// A failed rebuild keeps the previous rules.
+	d.Grow()
+	require.Error(t, e.RefreshNewClasses())
+	assert.Same(t, old, e.GraphData())
+	assert.NotNil(t, e.Rule("ab"))
+	assert.EqualValues(t, 2, calls.Load())
+
+	// No retry until classes change again.
+	require.NoError(t, e.RefreshNewClasses())
+	assert.EqualValues(t, 2, calls.Load())
+
+	// New classes trigger another rebuild.
+	d.Grow()
+	require.NoError(t, e.RefreshNewClasses())
+	assert.EqualValues(t, 3, calls.Load())
+	assert.NotNil(t, e.Rule("ba"))
+}
+
+func TestRuleFactories(t *testing.T) {
+	d := mock.NewDomain("factory", "a", "b")
+	a, b := d.Class("a"), d.Class("b")
+	ruleCalls, statusCalls := 0, 0
+	e, err := engine.Build().Domains(d).
+		RuleFactory(func(domains *korrel8r.Domains) []korrel8r.Rule {
+			ruleCalls++
+			assert.Same(t, d, domains.Get("factory"))
+			return []korrel8r.Rule{mock.NewRule("ab", list(a), list(b), mock.NewQuery(b, ""))}
+		}).
+		StatusRuleFactory(func(domains *korrel8r.Domains) []status.Rule {
+			statusCalls++
+			assert.Same(t, d, domains.Get("factory"))
+			return []status.Rule{status.New(list(a), template.Must(template.New("label").Parse("ok")))}
+		}).
+		RuleFactory(func(*korrel8r.Domains) []korrel8r.Rule {
+			return []korrel8r.Rule{mock.NewRule("ba", list(b), list(a), mock.NewQuery(a, ""))}
+		}).
+		StatusRuleFactory(func(*korrel8r.Domains) []status.Rule {
+			return []status.Rule{status.New(list(b), template.Must(template.New("other").Parse("ok")))}
+		}).Engine()
+	require.NoError(t, err)
+	assert.Equal(t, 1, ruleCalls)
+	assert.Equal(t, 1, statusCalls)
+	assert.NotNil(t, e.Rule("ab"))
+	assert.NotNil(t, e.Rule("ba"))
+	assert.Len(t, e.StatusRulesFor(a), 1)
+	assert.Len(t, e.StatusRulesFor(b), 1)
+}
+
+func TestRefreshPreviouslyMissingRule(t *testing.T) {
+	const class = "Widget.v1.refresh.example.io"
+	cfg := config.Configs{{Rules: []config.Rule{{
+		Name:   "pod-to-refresh-widget",
+		Start:  config.ClassSpec{Domain: "k8s", Classes: []string{"Pod"}},
+		Goal:   config.ClassSpec{Domain: "k8s", Classes: []string{class}},
+		Result: config.ResultSpec{Query: `k8s:Widget.v1.refresh.example.io:{}`},
+	}}}}
+	ruleCalls, statusCalls := 0, 0
+	e, err := engine.Build().Domains(k8s.Domain).Config(cfg).
+		RuleFactory(func(domains *korrel8r.Domains) []korrel8r.Rule {
+			ruleCalls++
+			widget := domains.Get("k8s").Class(class)
+			if widget == nil {
+				return nil
+			}
+			pod := domains.Get("k8s").Class("Pod")
+			return []korrel8r.Rule{mock.NewRule("factory-widget", list(pod), list(widget), mock.NewQuery(widget, ""))}
+		}).
+		StatusRuleFactory(func(domains *korrel8r.Domains) []status.Rule {
+			statusCalls++
+			widget := domains.Get("k8s").Class(class)
+			if widget == nil {
+				return nil
+			}
+			return []status.Rule{status.New(list(widget), template.Must(template.New("widget").Parse("ok")))}
+		}).Engine()
+	require.NoError(t, err)
+	assert.Equal(t, 1, ruleCalls)
+	assert.Equal(t, 1, statusCalls)
+	other, err := engine.Build().Domains(k8s.Domain).Config(cfg).Engine()
+	require.NoError(t, err)
+	assert.Nil(t, e.Rule("pod-to-refresh-widget"))
+	old := e.GraphData()
+	_, err = k8s.Domain.NewStoreWithDiscovery(fake.NewClientBuilder().Build(), &rest.Config{},
+		&fakediscovery.FakeDiscovery{Fake: &clienttesting.Fake{Resources: []*metav1.APIResourceList{{
+			GroupVersion: "refresh.example.io/v1", APIResources: []metav1.APIResource{{Name: "widgets", Kind: "Widget", Namespaced: true}},
+		}}}})
+	require.NoError(t, err)
+	require.NoError(t, e.RefreshNewClasses())
+	require.NoError(t, other.RefreshNewClasses()) // Independent indexes for concurrent engines.
+	assert.NotNil(t, other.Rule("pod-to-refresh-widget"))
+	assert.Equal(t, 0, old.LineCount())
+	assert.Equal(t, 2, e.GraphData().LineCount())
+	assert.Equal(t, 2, ruleCalls)
+	assert.Equal(t, 2, statusCalls)
+	assert.NotNil(t, e.Rule("factory-widget"))
+	assert.Len(t, e.StatusRulesFor(k8s.Domain.Class(class)), 1)
+	assert.NotNil(t, e.Rule("pod-to-refresh-widget"))
+}
 
 func TestEngine_Class(t *testing.T) {
 	domain := mock.NewDomain("mock")

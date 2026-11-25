@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"text/template"
 
-	"github.com/korrel8r/korrel8r/pkg/domains/k8s"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"github.com/korrel8r/korrel8r/pkg/result"
 	"github.com/korrel8r/korrel8r/pkg/rules"
@@ -44,8 +43,8 @@ func (e *Engine) TemplateFuncs() template.FuncMap {
 	return template.FuncMap{
 		"query":        e.query,
 		"k8sRouteHost": e.k8sRouteHost,
-		"require":    func(v any) any { return rules.Require(v) },
-		"requireAll": func(values ...any) string { rules.RequireAll(values...); return "" },
+		"require":      func(v any) any { return rules.Require(v) },
+		"requireAll":   func(values ...any) string { rules.RequireAll(values...); return "" },
 	}
 }
 
@@ -74,6 +73,6 @@ func (e *Engine) k8sRouteHost(namespace, name string) (host string, err error) {
 	if err != nil || len(routes) == 0 {
 		return "", err
 	}
-	host, _, err = unstructured.NestedString(routes[0].(k8s.Object), "spec", "host")
+	host, _, err = unstructured.NestedString(routes[0].(map[string]any), "spec", "host")
 	return host, err
 }

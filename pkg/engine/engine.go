@@ -8,6 +8,8 @@ import (
 	"context"
 	"fmt"
 	"slices"
+	"sync"
+	"sync/atomic"
 	"text/template"
 	"time"
 
@@ -16,31 +18,32 @@ import (
 	"github.com/korrel8r/korrel8r/pkg/graph"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"github.com/korrel8r/korrel8r/pkg/status"
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
 )
 
 var log = logging.Log()
 
 // Engine manages a set of rules and stores to perform correlation.
-// Once created (see [Build]) an engine is immutable and concurrent safe.
+// Searches use an immutable rule graph snapshot; rule updates are published atomically.
 type Engine struct {
-	domains       *korrel8r.Domains
-	storeHolders  map[korrel8r.Domain]*storeHolders
-	templateFuncs template.FuncMap
-	templateBase  *template.Template // Base template set with named templates from configuration.
-	rulesByName   map[string]korrel8r.Rule
-	rules         []korrel8r.Rule
-	statuses      map[string][]status.Rule // Keyed by class.String()
-	data          *graph.Data              // Immutable rule graph data, built once.
+	// Set during construction; unchanged after the engine is built.
+	domains             *korrel8r.Domains
+	storeHolders        map[korrel8r.Domain]*storeHolders
+	templateFuncs       template.FuncMap
+	templateBase        *template.Template // Base template set with named templates from configuration.
+	configs             config.Configs
+	ruleFactories       []func(*korrel8r.Domains) []korrel8r.Rule
+	statusRuleFactories []func(*korrel8r.Domains) []status.Rule
+	growing             []korrel8r.GrowingDomain // Domains that can add classes.
+	storeMetricAttrs    map[string][2]metric.MeasurementOption
+	searchGuard         SearchGuard
+	Tuning              config.Tuning
 
-	// Tuning parameters
-	Tuning config.Tuning
-
-	// Pre-calculated metric attributes, shared by all traversals.
-	storeMetricAttrs map[string][2]metric.MeasurementOption
-	classMetricAttrs map[korrel8r.Class]metric.MeasurementOption
-	ruleMetricAttrs  map[korrel8r.Rule]metric.MeasurementOption
-	searchGuard      SearchGuard
+	// Rules are rebuilt when domains add classes
+	mu           sync.Mutex // Serializes rebuilds.
+	ruleState    atomic.Pointer[ruleState]
+	classVersion atomic.Int64 // Class version used to build ruleState, see classVersionNow.
 }
 
 // SearchGuard registers active searches for cancellation by a process-wide guard.
@@ -69,12 +72,26 @@ func (e *Engine) Domains() []korrel8r.Domain                  { return e.domains
 
 // ClassMetricAttrs returns the immutable metric attributes for a class.
 func (e *Engine) ClassMetricAttrs(c korrel8r.Class) metric.MeasurementOption {
-	return e.classMetricAttrs[c]
+	if a, ok := e.ruleState.Load().classMetrics[c]; ok {
+		return a
+	}
+	return classMetricAttrs(c) // Not in the current rules, e.g. used by a search on old rules.
 }
 
 // RuleMetricAttrs returns the immutable metric attributes for a rule.
 func (e *Engine) RuleMetricAttrs(r korrel8r.Rule) metric.MeasurementOption {
-	return e.ruleMetricAttrs[r]
+	if a, ok := e.ruleState.Load().ruleMetrics[r]; ok {
+		return a
+	}
+	return ruleMetricAttrs(r) // Not in the current rules, e.g. used by a search on old rules.
+}
+
+func classMetricAttrs(c korrel8r.Class) metric.MeasurementOption {
+	return metric.WithAttributes(attribute.String("domain", c.Domain().Name()), attribute.String("class", c.Name()))
+}
+
+func ruleMetricAttrs(r korrel8r.Rule) metric.MeasurementOption {
+	return metric.WithAttributes(attribute.String("rule", r.Name()))
 }
 
 // StoreFor returns the aggregated store for a domain, nil if there is none.
@@ -156,19 +173,100 @@ func (e *Engine) Queries(queryStrings []string) ([]korrel8r.Query, error) {
 	return queries, nil
 }
 
-func (e *Engine) Rules() []korrel8r.Rule { return slices.Clone(e.rules) }
+// Rules returns the current rules, see [Engine.RefreshNewClasses].
+func (e *Engine) Rules() []korrel8r.Rule { return slices.Clone(e.currentRules().rules) }
 
-func (e *Engine) Rule(name string) korrel8r.Rule { return e.rulesByName[name] }
+// Rule returns the named rule from the current rules, nil if not found.
+func (e *Engine) Rule(name string) korrel8r.Rule { return e.currentRules().byName[name] }
 
 // StatusRulesFor returns the status rules for the given class.
-func (e *Engine) StatusRulesFor(c korrel8r.Class) []status.Rule { return e.statuses[c.String()] }
+func (e *Engine) StatusRulesFor(c korrel8r.Class) []status.Rule {
+	return e.currentRules().statuses[c.String()]
+}
 
-// GraphData returns the immutable rule graph data.
-func (e *Engine) GraphData() *graph.Data { return e.data }
+// GraphData returns the immutable graph data for the current rules.
+// A rule refresh replaces the graph data, callers should hold on to the returned value
+// for a consistent view of the rules.
+func (e *Engine) GraphData() *graph.Data { return e.currentRules().data }
 
 // Graph returns a read-only Gonum view directly over the immutable topology.
 // It does not allocate or cache a mutable graph. Use GraphData for rule/line IDs.
-func (e *Engine) Graph() graph.View { return e.data.Graph() }
+func (e *Engine) Graph() graph.View { return e.GraphData().Graph() }
+
+type ruleState struct {
+	rules        []korrel8r.Rule
+	byName       map[string]korrel8r.Rule
+	data         *graph.Data
+	classMetrics map[korrel8r.Class]metric.MeasurementOption
+	ruleMetrics  map[korrel8r.Rule]metric.MeasurementOption
+	statuses     map[string][]status.Rule // Keyed by class.String()
+}
+
+func newRuleState(rules []korrel8r.Rule, byName map[string]korrel8r.Rule, statuses map[string][]status.Rule) *ruleState {
+	s := &ruleState{rules: rules, byName: byName, statuses: statuses, data: graph.NewData(rules...),
+		ruleMetrics: make(map[korrel8r.Rule]metric.MeasurementOption, len(rules))}
+	s.classMetrics = make(map[korrel8r.Class]metric.MeasurementOption, s.data.NodeCount())
+	for id := range s.data.NodeCount() {
+		c := s.data.Class(int64(id))
+		s.classMetrics[c] = classMetricAttrs(c)
+	}
+	for _, r := range rules {
+		s.ruleMetrics[r] = ruleMetricAttrs(r)
+	}
+	return s
+}
+
+// classVersionNow returns the sum of [korrel8r.GrowingDomain] class versions.
+// Versions only increase, so the sum changes if any domain adds classes.
+func (e *Engine) classVersionNow() (v int64) {
+	for _, g := range e.growing {
+		v += int64(g.ClassVersion())
+	}
+	return v
+}
+
+// currentRules returns the rule state, refreshed first if domains have added classes.
+func (e *Engine) currentRules() *ruleState {
+	_ = e.RefreshNewClasses() // Errors are logged, the previous rules remain in use.
+	return e.ruleState.Load()
+}
+
+// rebuildRules rebuilds and publishes the rule state. Searches using the old state can finish on it.
+func (e *Engine) rebuildRules() error {
+	v := e.classVersionNow() // Before building, so classes added during the build cause another rebuild.
+	state, err := e.buildRules()
+	if err != nil {
+		return err
+	}
+	e.ruleState.Store(state)
+	e.classVersion.Store(v)
+	return nil
+}
+
+// RefreshNewClasses rebuilds the rules if a [korrel8r.GrowingDomain] has added classes since the last build.
+// Classes are never removed, so the new rules are a superset of the old.
+// Methods that return rules call it automatically, it is cheap if there are no new classes.
+//
+// If the rebuild fails, the error is logged and returned, and the previous rules remain in use.
+// The rebuild is not retried until more classes are added, so a bad rule doesn't fail every search.
+func (e *Engine) RefreshNewClasses() error {
+	if e.classVersionNow() == e.classVersion.Load() {
+		return nil // Fast path: no new classes.
+	}
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	v := e.classVersionNow()
+	if v == e.classVersion.Load() {
+		return nil // Another goroutine rebuilt the rules.
+	}
+	log.V(2).Info("rebuilding rules for new domain classes")
+	if err := e.rebuildRules(); err != nil {
+		e.classVersion.Store(v) // Don't retry until classes change again.
+		log.Error(err, "rule rebuild failed, using previous rules")
+		return err
+	}
+	return nil
+}
 
 // Get results for query from all stores for the query domain.
 func (e *Engine) Get(ctx context.Context, query korrel8r.Query, constraint *korrel8r.Constraint, result korrel8r.Appender) (err error) {

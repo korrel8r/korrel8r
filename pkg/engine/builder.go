@@ -10,7 +10,6 @@ import (
 
 	"github.com/Masterminds/sprig/v3"
 	"github.com/korrel8r/korrel8r/pkg/config"
-	"github.com/korrel8r/korrel8r/pkg/graph"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
 	"github.com/korrel8r/korrel8r/pkg/rules"
 	"github.com/korrel8r/korrel8r/pkg/status"
@@ -22,33 +21,25 @@ import (
 // Builder initializes the state of an engine.
 // [Engine] returns the immutable engine instance.
 type Builder struct {
-	e       *Engine
-	err     error
-	finally []func()
+	e   *Engine
+	err error
 
 	// Named templates from configuration, collected before building the template base.
 	templates []config.Template
-
-	// Skipped rules by missing class.
-	missingClasses map[string][]string
 }
 
 func Build() *Builder {
 	e := &Engine{
 		domains:          korrel8r.NewDomains(),
 		storeHolders:     map[korrel8r.Domain]*storeHolders{},
-		rulesByName:      map[string]korrel8r.Rule{},
-		statuses:         map[string][]status.Rule{},
 		storeMetricAttrs: map[string][2]metric.MeasurementOption{},
-		classMetricAttrs: map[korrel8r.Class]metric.MeasurementOption{},
-		ruleMetricAttrs:  map[korrel8r.Rule]metric.MeasurementOption{},
 	}
 	// Add template functions that are always available.
 	e.templateFuncs = e.TemplateFuncs()
 	maps.Copy(e.templateFuncs, sprig.TxtFuncMap())
 	e.templateBase = template.New("").Funcs(e.templateFuncs).Option("missingkey=error")
 
-	return &Builder{e: e, missingClasses: map[string][]string{}}
+	return &Builder{e: e}
 }
 
 // GetDomains returns the domain registry used by the engine.
@@ -134,44 +125,17 @@ func (b *Builder) store(sc config.Store, s korrel8r.Store) *storeHolder {
 	return wrapper
 }
 
-// store adds a wrapper store created by [Store] or [StoreConfigs]
-
+// Rules adds pre-built rules to the engine, and adds their domains if necessary.
 func (b *Builder) Rules(rules ...korrel8r.Rule) *Builder {
-	// Delay adding rules after domains and stores are configured.
-	b.finally = append(b.finally, func() { b.rules(rules...) })
-	return b
+	for _, r := range rules {
+		b.Domains(r.Start()[0].Domain(), r.Goal()[0].Domain())
+	}
+	return b.RuleFactory(func(*korrel8r.Domains) []korrel8r.Rule { return rules })
 }
 
 // StatusRules adds pre-built status rules to the engine.
 func (b *Builder) StatusRules(rules ...status.Rule) *Builder {
-	b.finally = append(b.finally, func() {
-		if b.err != nil {
-			return
-		}
-		for _, r := range rules {
-			for _, c := range r.Start() {
-				key := c.String()
-				b.e.statuses[key] = append(b.e.statuses[key], r)
-			}
-		}
-	})
-	return b
-}
-
-func (b *Builder) rules(rules ...korrel8r.Rule) {
-	for _, r := range rules {
-		if b.err != nil {
-			return
-		}
-		r2 := b.e.rulesByName[r.Name()]
-		if r2 != nil {
-			b.err = fmt.Errorf("duplicate rule name: %v", r.Name())
-			return
-		}
-		b.Domains(r.Start()[0].Domain(), r.Goal()[0].Domain())
-		b.e.rulesByName[r.Name()] = r
-		b.e.rules = append(b.e.rules, r)
-	}
+	return b.StatusRuleFactory(func(*korrel8r.Domains) []status.Rule { return rules })
 }
 
 // Config an engine.Builder.
@@ -179,6 +143,7 @@ func (b *Builder) Config(configs config.Configs) *Builder {
 	if b.err != nil {
 		return b
 	}
+	b.e.configs = append(b.e.configs, configs...)
 	for source, c := range configs {
 		b.config(&c)
 		if b.err != nil {
@@ -197,6 +162,20 @@ func (b *Builder) Tuning(t *config.Tuning) *Builder {
 	return b
 }
 
+// RuleFactory adds rules produced from the engine domains.
+// The factory is called again when a [korrel8r.GrowingDomain] adds classes.
+func (b *Builder) RuleFactory(factory func(*korrel8r.Domains) []korrel8r.Rule) *Builder {
+	b.e.ruleFactories = append(b.e.ruleFactories, factory)
+	return b
+}
+
+// StatusRuleFactory adds status rules produced from the engine domains.
+// The factory is called again when a [korrel8r.GrowingDomain] adds classes.
+func (b *Builder) StatusRuleFactory(factory func(*korrel8r.Domains) []status.Rule) *Builder {
+	b.e.statusRuleFactories = append(b.e.statusRuleFactories, factory)
+	return b
+}
+
 // SearchGuard sets the process-wide guard used to cancel active searches.
 func (b *Builder) SearchGuard(guard SearchGuard) *Builder {
 	b.e.searchGuard = guard
@@ -212,34 +191,23 @@ func (b *Builder) ConfigFile(file string) *Builder {
 	return b.Config(cfg)
 }
 
-// Engine returns the final engine, which can not be modified.
+// Engine returns the final engine.
+// Rules are rebuilt by [Engine.RefreshNewClasses] when domains add classes.
 // The [Builder] is reset to the initial state returned by [Build].
 func (b *Builder) Engine() (*Engine, error) {
 	// Build the base template set with named templates before processing rules.
 	b.buildTemplateBase()
-
-	// Complete deferred configuration
-	for _, f := range b.finally {
-		f()
-		if b.err != nil {
-			break
+	e := b.e
+	for _, d := range e.Domains() {
+		if g, ok := d.(korrel8r.GrowingDomain); ok {
+			e.growing = append(e.growing, g)
 		}
 	}
-	for class, rules := range b.missingClasses {
-		log.V(1).Info("skipped rules with missing class", "class", class, "rules", rules)
+	e.ruleState.Store(newRuleState(nil, nil, nil)) // Never nil, even on error.
+	if b.err == nil {
+		b.err = e.rebuildRules()
 	}
-	b.e.data = graph.NewData(b.e.rules...)
-	for id := range b.e.data.NodeCount() {
-		class := b.e.data.Class(int64(id))
-		b.e.classMetricAttrs[class] = metric.WithAttributes(
-			attribute.String("domain", class.Domain().Name()),
-			attribute.String("class", class.Name()),
-		)
-	}
-	for _, rule := range b.e.rules {
-		b.e.ruleMetricAttrs[rule] = metric.WithAttributes(attribute.String("rule", rule.Name()))
-	}
-	e, err := b.e, b.err
+	err := b.err
 	*b = *Build() // Reset the builder.
 	return e, err
 }
@@ -250,19 +218,6 @@ func (b *Builder) config(c *config.Config) {
 	}
 	b.StoreConfigs(c.Stores...)
 	b.templates = append(b.templates, c.Templates...)
-	for _, r := range c.Rules {
-		if b.err != nil {
-			return
-		}
-		// Defer adding rules until domains and stores are configured.
-		b.finally = append(b.finally, func() { b.configRule(r) })
-	}
-	for _, lr := range c.StatusRules {
-		if b.err != nil {
-			return
-		}
-		b.finally = append(b.finally, func() { b.configStatusRule(lr) })
-	}
 }
 
 // buildTemplateBase adds named templates from configuration to the base template set.
@@ -280,7 +235,77 @@ func (b *Builder) buildTemplateBase() {
 	}
 }
 
-func (b *Builder) configRule(r config.Rule) {
+// ruleBuilder resolves the engine's rules against the current domain classes.
+type ruleBuilder struct {
+	e        *Engine
+	base     *template.Template
+	err      error
+	byName   map[string]korrel8r.Rule
+	rules    []korrel8r.Rule
+	statuses map[string][]status.Rule // Keyed by class.String().
+	missing  rules.MissingClasses     // Report of rules affected by unknown classes.
+}
+
+// buildRules builds a rule state from configuration and rule factories.
+func (e *Engine) buildRules() (*ruleState, error) {
+	// Rule templates are associated with a clone, so a rebuild doesn't modify templates in use.
+	base, err := e.templateBase.Clone()
+	if err != nil {
+		return nil, err
+	}
+	b := &ruleBuilder{e: e, base: base, byName: map[string]korrel8r.Rule{},
+		statuses: map[string][]status.Rule{}}
+	for _, c := range e.configs {
+		for _, r := range c.Rules {
+			b.configRule(r)
+		}
+		for _, r := range c.StatusRules {
+			b.configStatusRule(r)
+		}
+	}
+	for _, f := range e.ruleFactories {
+		b.addRules(f(e.domains)...)
+	}
+	for _, f := range e.statusRuleFactories {
+		b.addStatusRules(f(e.domains)...)
+	}
+	if b.err != nil {
+		return nil, b.err
+	}
+	b.missing.Log(log)
+	return newRuleState(b.rules, b.byName, b.statuses), nil
+}
+
+func (b *ruleBuilder) addRules(rules ...korrel8r.Rule) {
+	for _, r := range rules {
+		if b.err != nil {
+			return
+		}
+		if b.byName[r.Name()] != nil {
+			b.err = fmt.Errorf("duplicate rule name: %v", r.Name())
+			return
+		}
+		for _, d := range []korrel8r.Domain{r.Start()[0].Domain(), r.Goal()[0].Domain()} {
+			if b.e.domains.Get(d.Name()) == nil {
+				b.err = fmt.Errorf("rule %v: unknown domain %v", r.Name(), d.Name())
+				return
+			}
+		}
+		b.byName[r.Name()] = r
+		b.rules = append(b.rules, r)
+	}
+}
+
+func (b *ruleBuilder) addStatusRules(rules ...status.Rule) {
+	for _, r := range rules {
+		for _, c := range r.Start() {
+			key := c.String()
+			b.statuses[key] = append(b.statuses[key], r)
+		}
+	}
+}
+
+func (b *ruleBuilder) configRule(r config.Rule) {
 	if b.err != nil {
 		return
 	}
@@ -291,17 +316,21 @@ func (b *Builder) configRule(r config.Rule) {
 	}()
 	start := b.classes(r.Name, &r.Start)
 	goal := b.classes(r.Name, &r.Goal)
+	if b.err != nil {
+		return
+	}
 	if len(start) == 0 || len(goal) == 0 {
+		b.missing.DropRule(r.Name)
 		return
 	}
 	var kr korrel8r.Rule
-	kr, b.err = rules.NewTemplateRule(start, goal, b.e.NewTemplate(r.Name), r.Result.Query, b.e.domains)
+	kr, b.err = rules.NewTemplateRule(start, goal, b.base.New(r.Name), r.Result.Query, b.e.domains)
 	if b.err == nil {
-		b.rules(kr)
+		b.addRules(kr)
 	}
 }
 
-func (b *Builder) configStatusRule(r config.StatusRule) {
+func (b *ruleBuilder) configStatusRule(r config.StatusRule) {
 	if b.err != nil {
 		return
 	}
@@ -311,22 +340,22 @@ func (b *Builder) configStatusRule(r config.StatusRule) {
 		}
 	}()
 	start := b.classes(r.Name, &r.Start)
-	if len(start) == 0 {
-		return
-	}
-	var tmpl *template.Template
-	tmpl, b.err = b.e.NewTemplate(r.Name).Parse(r.Status)
 	if b.err != nil {
 		return
 	}
-	lb := status.New(start, tmpl)
-	for _, c := range start {
-		key := c.String()
-		b.e.statuses[key] = append(b.e.statuses[key], lb)
+	if len(start) == 0 {
+		b.missing.DropStatusRule(r.Name)
+		return
 	}
+	var tmpl *template.Template
+	tmpl, b.err = b.base.New(r.Name).Parse(r.Status)
+	if b.err != nil {
+		return
+	}
+	b.addStatusRules(status.New(start, tmpl))
 }
 
-func (b *Builder) classes(name string, spec *config.ClassSpec) []korrel8r.Class {
+func (b *ruleBuilder) classes(name string, spec *config.ClassSpec) []korrel8r.Class {
 	var d korrel8r.Domain
 	d, b.err = b.e.Domain(spec.Domain)
 	if b.err != nil {
@@ -340,7 +369,7 @@ func (b *Builder) classes(name string, spec *config.ClassSpec) []korrel8r.Class 
 				// A missing class is not a fatal error, because some domains (k8s)
 				// may have different sets of classes (custom resources) for different clusters
 				// Collect and log a report at end of configuration.
-				b.missingClasses[class] = append(b.missingClasses[class], name)
+				b.missing.Add(name, spec.Domain+":"+class)
 			} else {
 				list.Append(c)
 			}

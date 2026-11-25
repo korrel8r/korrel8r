@@ -92,9 +92,9 @@ func newEngineWithConfigsAndGuard(c config.Configs, guard engine.SearchGuard) (*
 	b := engine.Build()
 	return b.Domains(append(domains.All, mock.NewDomain("mock"))...).
 		Config(c).
+		RuleFactory(quickrules.Rules).
+		StatusRuleFactory(quickrules.StatusRules).
 		SearchGuard(guard).
-		Rules(quickrules.Rules(b.GetDomains())...).
-		StatusRules(quickrules.StatusRules(b.GetDomains())...).
 		Engine()
 }
 

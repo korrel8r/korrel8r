@@ -56,7 +56,7 @@ func Neighbors(ctx context.Context, e *engine.Engine, start Start, depth int) (*
 	defer done()
 	log.V(2).Info("Neighbourhood search", "start", start, "depth", depth, "constraint", start.Constraint)
 	data := e.GraphData()
-	routing, err := neighborRoutings.get(e, start.Class, depth)
+	routing, err := neighborRoutings.get(e, data, start.Class, depth)
 	if err != nil {
 		return nil, err
 	}
