@@ -5,6 +5,7 @@ package memory
 import (
 	"context"
 	"errors"
+	"runtime/debug"
 	"testing"
 	"time"
 
@@ -104,6 +105,15 @@ func TestGuardAbsoluteLimit(t *testing.T) {
 	assert.Equal(t, 1, canceled)
 }
 
+func TestGuardAbsoluteLimitWithoutSamplerLimit(t *testing.T) {
+	g, err := New(&fakeSampler{used: 500}, 80, 70, 500, time.Second)
+	require.NoError(t, err)
+	canceled := 0
+	g.Register(func() { canceled++ })
+	g.sample()
+	assert.Equal(t, 1, canceled)
+}
+
 func TestGuardSamplesImmediately(t *testing.T) {
 	g, err := New(&fakeSampler{used: 90, limit: 100}, 90, 80, 0, time.Hour)
 	require.NoError(t, err)
@@ -123,6 +133,32 @@ func TestNewFromTuningInterval(t *testing.T) {
 	g, err := NewFromTuning(nil)
 	require.NoError(t, err)
 	assert.Equal(t, 200*time.Millisecond, g.interval)
+}
+
+func TestNewFromTuningAbsoluteLimitWithoutCgroupOrGOMEMLIMIT(t *testing.T) {
+	previous := debug.SetMemoryLimit(-1)
+	debug.SetMemoryLimit(1<<63 - 1)
+	defer debug.SetMemoryLimit(previous)
+
+	g, err := NewFromTuning(&config.Tuning{MemoryLimit: 1})
+	require.NoError(t, err)
+	s := g.sampler.(SystemSampler)
+	s.Cgroup = &fakeSampler{err: errors.New("no cgroup limit")}
+	g.sampler = s
+
+	canceled := 0
+	g.Register(func() { canceled++ })
+	g.sample()
+	assert.Equal(t, 1, canceled)
+	assert.False(t, g.sampleFailed)
+	assert.Equal(t, int64(1<<63-1), debug.SetMemoryLimit(-1), "configuration must not change the Go runtime limit")
+
+	percentageGuard, err := NewFromTuning(nil)
+	require.NoError(t, err)
+	percentageSampler := percentageGuard.sampler.(SystemSampler)
+	percentageSampler.Cgroup = &fakeSampler{err: errors.New("no cgroup limit")}
+	_, _, err = percentageSampler.Sample()
+	assert.ErrorContains(t, err, "GOMEMLIMIT not set")
 }
 
 func TestNewFromTuningDisabled(t *testing.T) {

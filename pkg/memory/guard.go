@@ -82,6 +82,7 @@ func NewFromTuning(tuning *config.Tuning) (*Guard, error) {
 }
 
 // Register adds a search. Searches registered during pressure are canceled immediately.
+// Unregister does not wait for a cancellation already selected by a concurrent sample.
 func (g *Guard) Register(cancel func()) func() {
 	if g.sampler == nil {
 		return func() {}
@@ -140,29 +141,34 @@ func (g *Guard) sample() {
 		g.sampleFailed = true
 		g.mu.Unlock()
 		if firstFailure {
-			log.V(1).Info("Cannot sample cgroup memory; memory pressure guard is inactive", "error", err)
+			log.V(1).Info("Memory pressure guard is off. To turn it on, set a container memory limit, GOMEMLIMIT, or tuning.memoryLimit", "reason", err)
 		}
 		return
 	}
 	g.mu.Lock()
 	g.sampleFailed = false
 	g.mu.Unlock()
-	if limit == 0 {
-		return
-	}
-	percent := int(float64(min(used, limit)) * 100 / float64(limit))
-	high := percent >= g.high
-	reset := percent <= g.reset
+	var high, reset bool
+	details := []any{"used", used}
 	if g.limit > 0 {
 		high = used >= g.limit
 		reset = used <= g.limit*uint64(g.reset)/uint64(g.high)
+		details = append(details, "limit", g.limit)
+	} else {
+		if limit == 0 {
+			return
+		}
+		percent := int(float64(min(used, limit)) * 100 / float64(limit))
+		high = percent >= g.high
+		reset = percent <= g.reset
+		details = append(details, "limit", limit, "percent", percent)
 	}
 	var cancels []func()
 	g.mu.Lock()
 	switch {
 	case !g.pressured && high:
 		g.pressured = true
-		log.V(1).Info("Memory pressure is canceling active searches", "used", used, "limit", limit, "percent", percent)
+		log.V(1).Info("Memory pressure is canceling active searches", details...)
 		metricPressureTransitions.Add(context.Background(), 1)
 		cancels = make([]func(), 0, len(g.active))
 		for _, cancel := range g.active {
@@ -170,7 +176,7 @@ func (g *Guard) sample() {
 		}
 	case g.pressured && reset:
 		g.pressured = false
-		log.V(2).Info("Memory pressure cleared", "used", used, "limit", limit, "percent", percent)
+		log.V(2).Info("Memory pressure cleared", details...)
 	}
 	g.mu.Unlock()
 	for _, cancel := range cancels {

@@ -196,12 +196,15 @@ its effective limit. REST responses also include `X-Korrel8r-Truncated`,
   returns a successful partial graph with truncation condition `memoryPressure`. Defaults to `80`.
 
 `memoryLimit`
-: Overrides percentage-based detection with an absolute byte quantity such as `768Mi`. The guard still
-  uses cgroup usage when available and Go runtime usage otherwise. Set to `-1` to disable the guard.
+: Overrides percentage-based detection with an absolute byte threshold such as `768Mi`. The guard
+  compares it against the greater of cgroup and Go runtime usage when both are available; it can use
+  runtime usage even without a finite cgroup limit or `GOMEMLIMIT`. This does not set `GOMEMLIMIT` or
+  impose a container memory limit. Set to `-1` to disable the guard.
 
 `memoryPressureReset`
 : Clears memory pressure at this lower percentage, providing hysteresis. It must be lower than
-  `memoryPressureLimit`. If omitted, it defaults to 10 percentage points below the limit.
+  `memoryPressureLimit`. If omitted, it defaults to 10 percentage points below the limit. With an
+  absolute `memoryLimit`, the reset threshold is `memoryLimit × memoryPressureReset / memoryPressureLimit`.
 
 Memory is sampled every `200ms`, with the first sample occurring immediately.
 

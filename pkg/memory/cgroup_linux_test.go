@@ -40,9 +40,9 @@ func TestSystemSamplerUsesGreaterPressure(t *testing.T) {
 
 func TestSystemSamplerUsesGreaterBytesForAbsoluteLimit(t *testing.T) {
 	s := SystemSampler{
-		Cgroup:     &fakeSampler{used: 800, limit: 2000},
-		Runtime:    &fakeSampler{used: 700, limit: 800},
-		PreferUsed: true,
+		Cgroup:        &fakeSampler{used: 800, limit: 2000},
+		Runtime:       &fakeSampler{used: 700, limit: 800},
+		AbsoluteLimit: true,
 	}
 	used, limit, err := s.Sample()
 	require.NoError(t, err)
