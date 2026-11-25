@@ -71,14 +71,17 @@ func TestRuleInterfaces(t *testing.T) {
 // classes are skipped, and the rule is dropped only if start or goal have no known classes.
 func TestRulesUnknownClasses(t *testing.T) {
 	d := testDomains()
+	missing := &rules.MissingClasses{}
 	// Mixed known/unknown classes: rule is kept with only the known classes.
 	r, err := newRule(d, &ruleSpec{
 		Name:  "MetricToPod",
 		Start: classSpec{Domain: "metric", Classes: []string{"metric"}},
 		Goal:  classSpec{Domain: "k8s", Classes: []string{"Pod", "NoSuchResource", "Deployment.apps"}},
-	})
+	}, missing)
 	require.NoError(t, err)
 	require.NotNil(t, r)
+	assert.Equal(t, []string{"MetricToPod"}, missing.Classes["k8s:NoSuchResource"])
+	assert.Empty(t, missing.Dropped) // Rule is kept.
 	goal := []string{}
 	for _, c := range r.Goal() {
 		goal = append(goal, c.String())
@@ -89,22 +92,28 @@ func TestRulesUnknownClasses(t *testing.T) {
 	}
 
 	// Only unknown classes in goal: rule is dropped.
+	*missing = rules.MissingClasses{}
 	r, err = newRule(d, &ruleSpec{
 		Name:  "MetricToPod",
 		Start: classSpec{Domain: "metric", Classes: []string{"metric"}},
 		Goal:  classSpec{Domain: "k8s", Classes: []string{"NoSuchResource", "AlsoNoSuch"}},
-	})
+	}, missing)
 	require.NoError(t, err)
 	assert.Nil(t, r)
+	assert.Equal(t, map[string][]string{"k8s:NoSuchResource": {"MetricToPod"}, "k8s:AlsoNoSuch": {"MetricToPod"}}, missing.Classes)
+	assert.Equal(t, []string{"MetricToPod"}, missing.Dropped)
 
 	// Unknown domain: rule is dropped.
+	*missing = rules.MissingClasses{}
 	r, err = newRule(d, &ruleSpec{
 		Name:  "MetricToPod",
 		Start: classSpec{Domain: "nosuchdomain", Classes: []string{"x"}},
 		Goal:  classSpec{Domain: "k8s", Classes: []string{"Pod"}},
-	})
+	}, missing)
 	require.NoError(t, err)
 	assert.Nil(t, r)
+	assert.Equal(t, []string{"MetricToPod"}, missing.Classes["nosuchdomain:x"])
+	assert.Equal(t, []string{"MetricToPod"}, missing.Dropped)
 }
 
 // TestParseRuleAnnotations verifies the registry metadata is read from the *.qtpl annotations.

@@ -162,7 +162,7 @@ func BenchmarkCachedNeighborTraverser(b *testing.B) {
 	e := makeEngine(b)
 	start := benchmarkStart(b, e)
 	data := e.GraphData()
-	routing, err := neighborRoutings.get(e, start.Class, benchmarkDepth)
+	routing, err := neighborRoutings.get(e, data, start.Class, benchmarkDepth)
 	require.NoError(b, err)
 
 	b.ReportAllocs()

@@ -39,6 +39,14 @@ type Domain interface {
 	Store(config any) (Store, error)
 }
 
+// GrowingDomain is an optional Domain interface for domains that can add classes at runtime.
+// Classes are never removed.
+type GrowingDomain interface {
+	Domain
+	// ClassVersion increases whenever classes are added.
+	ClassVersion() int
+}
+
 // Class identifies a subset of objects with the same schema.
 //
 // For example, in the k8s domain Pod and Deployment are two separate classes.

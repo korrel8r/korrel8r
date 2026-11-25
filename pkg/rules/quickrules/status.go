@@ -10,6 +10,7 @@ import (
 	"github.com/korrel8r/korrel8r/pkg/domains/k8s"
 	"github.com/korrel8r/korrel8r/pkg/domains/log"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
+	"github.com/korrel8r/korrel8r/pkg/rules"
 	"github.com/korrel8r/korrel8r/pkg/status"
 )
 
@@ -46,14 +47,17 @@ func StatusRules(d *korrel8r.Domains) []status.Rule {
 		{name: "LogSeverity", domain: "log", apply: logSeverity},
 	}
 	var result []status.Rule
+	missing := &rules.MissingClasses{}
 	for _, s := range specs {
-		start, missing := classes(d, s.name, &classSpec{Domain: s.domain, Classes: s.classes})
+		start, unknown := classes(d, &classSpec{Domain: s.domain, Classes: s.classes})
+		missing.Add(s.name, unknown...)
 		if len(start) == 0 {
-			logger.V(1).Info("skipped compiled status rule: no known start classes", "rule", s.name, "missingClasses", missing)
+			missing.DropStatusRule(s.name)
 			continue
 		}
 		result = append(result, &compiledStatus{name: s.name, start: start, apply: s.apply})
 	}
+	missing.Log(logger)
 	return result
 }
 

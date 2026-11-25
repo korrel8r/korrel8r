@@ -13,8 +13,8 @@ VERSION?=0.13.9-dev
 REGISTRY_BASE?=quay.io/korrel8r
 ## IMGTOOL: May be podman or docker.
 IMGTOOL?=$(or $(shell which podman 2>/dev/null),$(shell which docker 2>/dev/null),$(error Cannot find podman or docker in PATH))
-## NAMESPACE: Namespace for `make deploy`
-NAMESPACE=korrel8r
+## NAMESPACE: Namespace for `make deploy` (default: korrel8r).
+NAMESPACE?=korrel8r
 
 # Name of image.
 IMG?=$(REGISTRY_BASE)/korrel8r
@@ -187,16 +187,18 @@ DEPLOY_ROUTE=kubectl apply -k config/route -n $(NAMESPACE) || echo "skipping rou
 kustomize-edit:
 	cd config; \
 	$(GO_TOOL) kustomize edit set image "korrel8r=$(IMAGE)"; \
-	$(GO_TOOL) kustomize edit set namespace "$(NAMESPACE)"
+	$(GO_TOOL) kustomize edit set namespace "$(NAMESPACE)"; \
+	sed -i 's/^  name: .*/  name: $(NAMESPACE)/' namespace.yaml
 
-deploy: image ## Deploy to current cluster using kustomize.
-	kubectl apply -k config
+deploy: image ## Deploy the freshly built image with CRD watch RBAC.
+	kubectl apply -k config -n $(NAMESPACE)
 	$(DEPLOY_ROUTE)
+	kubectl rollout restart deployment/korrel8r -n $(NAMESPACE)
 	$(WAIT_DEPLOYMENT)
 
 undeploy:			## Delete resources created by `make deploy`
-	@kubectl delete -k config/route || true
-	@kubectl delete -k config || true
+	@kubectl delete -k config/route -n $(NAMESPACE) || true
+	@kubectl delete -k config -n $(NAMESPACE) || true
 
 pre-release:										## Prepare a release, see RELEASE.md
 	$(if $(filter file,$(origin VERSION)),$(error set VERSION explicitly for pre-release))

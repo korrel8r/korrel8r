@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Added
+- Discover new Kubernetes custom resource classes when CRDs change and rebuild correlation and status rules for them without restarting.
+
+### Fixed
+- Catch CRD changes missed while a watch was down, update preferred API versions on discovery, and retry a failed CRD watch with back-off; a new store replaces the CRD watch only if it is failing.
+
 ## [0.13.8] - 2026-11-20
 
 ### Changed

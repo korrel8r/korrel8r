@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"slices"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/korrel8r/korrel8r/internal/pkg/json"
@@ -49,6 +50,18 @@ func (d *Domain) Class(name string) korrel8r.Class {
 	return c
 }
 func (d *Domain) Classes() []korrel8r.Class { return d.classes }
+
+// GrowingDomain is a mock [korrel8r.GrowingDomain], call Grow to increase the class version.
+type GrowingDomain struct {
+	*Domain
+	version atomic.Int64
+}
+
+func NewGrowingDomain(name string, classes ...string) *GrowingDomain {
+	return &GrowingDomain{Domain: NewDomain(name, classes...)}
+}
+func (d *GrowingDomain) ClassVersion() int { return int(d.version.Load()) }
+func (d *GrowingDomain) Grow()             { d.version.Add(1) }
 
 func (d *Domain) Query(query string) (korrel8r.Query, error) {
 	domainName, className, selector, err := korrel8r.QuerySplit(query)
