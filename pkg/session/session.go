@@ -9,6 +9,7 @@ package session
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -16,11 +17,10 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/gin-gonic/gin"
 	"github.com/korrel8r/korrel8r/internal/pkg/logging"
 	"github.com/korrel8r/korrel8r/pkg/api/auth"
-	"github.com/korrel8r/korrel8r/pkg/tokenreview"
 	"github.com/korrel8r/korrel8r/pkg/engine"
+	"github.com/korrel8r/korrel8r/pkg/tokenreview"
 )
 
 var log = logging.Log()
@@ -192,21 +192,23 @@ func UpdateRequest(req *http.Request, sessions Manager) (*http.Request, func(), 
 	return req, cancel, nil
 }
 
-// Middleware to enable auth, session and timeout.
-func Middleware(sessions Manager) func(*gin.Context) {
-	return func(c *gin.Context) {
-		c.Request = auth.UpdateRequest(c.Request)
-		req, cancel, err := UpdateRequest(c.Request, sessions)
-		if err != nil {
-			status := http.StatusInternalServerError
-			if _, ok := errors.AsType[*AuthError](err); ok {
-				status = http.StatusUnauthorized
+// Middleware enables authentication, session and timeout for an HTTP handler.
+func Middleware(sessions Manager) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			req, cancel, err := UpdateRequest(auth.UpdateRequest(r), sessions)
+			if err != nil {
+				status := http.StatusInternalServerError
+				if _, ok := errors.AsType[*AuthError](err); ok {
+					status = http.StatusUnauthorized
+				}
+				w.Header().Set("Content-Type", "application/json; charset=utf-8")
+				w.WriteHeader(status)
+				_ = json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
+				return
 			}
-			c.AbortWithStatusJSON(status, c.Error(err).JSON())
-			return
-		}
-		defer cancel()
-		c.Request = req
-		c.Next()
+			defer cancel()
+			next.ServeHTTP(w, req)
+		})
 	}
 }

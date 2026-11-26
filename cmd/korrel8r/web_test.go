@@ -95,6 +95,24 @@ func TestMain_server_insecure(t *testing.T) {
 	assertDo(t, http.DefaultClient, domains, "GET", u, "")
 }
 
+func TestMain_server_metrics_and_profile(t *testing.T) {
+	base := startServer(t, http.DefaultClient, "http", "-c", "testdata/korrel8r.yaml", "--httpprofile")
+	for _, tt := range []struct {
+		path, contentType string
+	}{
+		{"/metrics", "text/plain"},
+		{"/debug/pprof/", "text/html"},
+	} {
+		t.Run(tt.path, func(t *testing.T) {
+			resp, err := http.Get(base.Scheme + "://" + base.Host + tt.path)
+			require.NoError(t, err)
+			defer func() { _ = resp.Body.Close() }()
+			assert.Equal(t, http.StatusOK, resp.StatusCode)
+			assert.Contains(t, resp.Header.Get("Content-Type"), tt.contentType)
+		})
+	}
+}
+
 func TestMain_server_secure(t *testing.T) {
 	_, clientTLS := certSetup(t, tmpDir)
 	h := &http.Client{Transport: &http.Transport{TLSClientConfig: clientTLS}}

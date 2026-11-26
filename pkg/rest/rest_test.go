@@ -11,17 +11,14 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
 
-	"github.com/gin-gonic/gin"
 	"github.com/korrel8r/korrel8r/internal/pkg/test"
 	"github.com/korrel8r/korrel8r/internal/pkg/test/mock"
 	"github.com/korrel8r/korrel8r/pkg/api"
-	"github.com/korrel8r/korrel8r/pkg/api/auth"
 	"github.com/korrel8r/korrel8r/pkg/config"
 	"github.com/korrel8r/korrel8r/pkg/engine"
 	"github.com/korrel8r/korrel8r/pkg/korrel8r"
@@ -56,7 +53,7 @@ func TestAPI_ListDomainClasses(t *testing.T) {
 	assertDo(t, a, "GET", "/api/v1alpha1/domain/foo/classes", nil, http.StatusOK, []string{"a", "b"})
 
 	// Test with invalid domain
-	assertDo(t, a, "GET", "/api/v1alpha1/domain/nonexistent/classes", nil, http.StatusNotFound, api.Error{Error: "domain not found: nonexistent: domain not found: nonexistent"})
+	assertDo(t, a, "GET", "/api/v1alpha1/domain/nonexistent/classes", nil, http.StatusNotFound, api.Error{Error: "domain not found: nonexistent"})
 }
 
 func TestAPIListGoals(t *testing.T) {
@@ -147,21 +144,15 @@ func TestAPIGetObjects_withConstraint(t *testing.T) {
 	require.Equal(t, `["a1"]`, w.Body.String())
 }
 
-func ginEngine() *gin.Engine {
-	if os.Getenv(gin.EnvGinMode) == "" { // Don't override an explicit env setting.
-		gin.SetMode(gin.TestMode)
-	}
-	r := gin.New()
-	return r
-}
+func testMux() *http.ServeMux { return http.NewServeMux() }
 
 type testAPI struct {
 	*API
-	Router *gin.Engine
+	Router *http.ServeMux
 }
 
 func newTestAPI(t *testing.T, e *engine.Engine) *testAPI {
-	r := ginEngine()
+	r := testMux()
 	a, err := New(session.NewSingleManager(e), r)
 	require.NoError(t, err)
 	return &testAPI{API: a, Router: r}
@@ -307,10 +298,166 @@ func TestAPIGraphNeighbors_truncated(t *testing.T) {
 	assert.Equal(t, api.Truncation{Condition: "totalLimit", Limit: 1}, *got.Truncation)
 }
 
+func TestAPIGoals_badRequest(t *testing.T) {
+	a := newTestAPI(t, testEngine(t))
+	for _, path := range []string{"/api/v1alpha1/graphs/goals", "/api/v1alpha1/lists/goals"} {
+		t.Run(path, func(t *testing.T) {
+			w := a.do(t, "POST", path, `not json`)
+			require.Equal(t, http.StatusBadRequest, w.Code)
+			assert.JSONEq(t, `{"error":"invalid character 'o' in literal null (expecting 'u')"}`, w.Body.String())
+		})
+	}
+}
+
 func TestAPIGraphNeighbors_badRequest(t *testing.T) {
 	a := newTestAPI(t, testEngine(t))
 	w := a.do(t, "POST", "/api/v1alpha1/graphs/neighbors", `not json`)
-	assert.Equal(t, http.StatusBadRequest, w.Code)
+	require.Equal(t, http.StatusBadRequest, w.Code)
+	assert.Equal(t, "application/json; charset=utf-8", w.Header().Get("Content-Type"))
+	assert.JSONEq(t, `{"error":"invalid character 'o' in literal null (expecting 'u')"}`, w.Body.String())
+}
+
+func TestHTTPRoutesAndValidation(t *testing.T) {
+	a := newTestAPI(t, testEngine(t))
+	for _, tt := range []struct {
+		method, path string
+		status       int
+		allow        string
+	}{
+		{"GET", "/api/v1alpha1/domain/mock/classes", http.StatusOK, ""},
+		{"GET", "/api/v1alpha1/does-not-exist", http.StatusNotFound, ""},
+		{"POST", "/api/v1alpha1/domains", http.StatusMethodNotAllowed, "GET, HEAD"},
+	} {
+		t.Run(tt.method+" "+tt.path, func(t *testing.T) {
+			w := a.do(t, tt.method, tt.path, nil)
+			assert.Equal(t, tt.status, w.Code, w.Body.String())
+			if tt.allow != "" {
+				assert.Equal(t, tt.allow, w.Header().Get("Allow"))
+			}
+		})
+	}
+
+	w := a.do(t, "PUT", "/api/v1alpha1/config?verbose=not-an-integer", nil)
+	require.Equal(t, http.StatusBadRequest, w.Code)
+	assert.Equal(t, "application/json; charset=utf-8", w.Header().Get("Content-Type"))
+	var got api.Error
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &got))
+	assert.Contains(t, got.Error, "Invalid format for parameter verbose")
+}
+
+func TestHomePageListsAllPaths(t *testing.T) {
+	a := newTestAPI(t, testEngine(t))
+	a.AddPaths("/metrics", "/debug/pprof/")
+	w := a.do(t, "GET", "/", nil)
+	require.Equal(t, http.StatusOK, w.Code)
+	lines := strings.Split(w.Body.String(), "\n")
+	for _, path := range []string{"/", api.BasePath, api.BasePath + "/domains", "/metrics", "/debug/pprof/"} {
+		assert.Contains(t, lines, path)
+	}
+}
+
+func TestRecoverFromPanic(t *testing.T) {
+	t.Run("before response", func(t *testing.T) {
+		h := Recover(http.HandlerFunc(func(http.ResponseWriter, *http.Request) { panic("boom") }))
+		w := httptest.NewRecorder()
+		assert.NotPanics(t, func() { h.ServeHTTP(w, httptest.NewRequest("GET", "/", nil)) })
+		assert.Equal(t, http.StatusInternalServerError, w.Code)
+		assert.JSONEq(t, `{"error":"internal error"}`, w.Body.String()) // No panic details leaked.
+	})
+
+	t.Run("after response", func(t *testing.T) {
+		h := Recover(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			writeJSON(w, http.StatusOK, []string{"partial"})
+			panic("boom")
+		}))
+		w := httptest.NewRecorder()
+		assert.NotPanics(t, func() { h.ServeHTTP(w, httptest.NewRequest("GET", "/", nil)) })
+		assert.Equal(t, http.StatusOK, w.Code)
+		assert.Equal(t, `["partial"]`, w.Body.String())
+	})
+
+	t.Run("abort is not recovered", func(t *testing.T) {
+		h := Recover(http.HandlerFunc(func(http.ResponseWriter, *http.Request) { panic(http.ErrAbortHandler) }))
+		assert.PanicsWithError(t, http.ErrAbortHandler.Error(), func() {
+			h.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest("GET", "/", nil))
+		})
+	})
+}
+
+func TestSharedResponseWriter(t *testing.T) {
+	rw := newResponseWriter(httptest.NewRecorder())
+	assert.Same(t, rw, newResponseWriter(rw), "chained middleware must share one wrapper")
+}
+
+func TestResponseWriterDoesNotBufferStreams(t *testing.T) {
+	w := newResponseWriter(httptest.NewRecorder())
+	for range 100 {
+		_, err := w.Write([]byte("event: update\n\n"))
+		require.NoError(t, err)
+		w.Flush()
+	}
+	assert.Nil(t, w.body, "normal requests and SSE streams must not accumulate a response body")
+
+	w.body = &bytes.Buffer{} // Detailed logging also must not buffer an SSE stream.
+	w.Header().Set("Content-Type", "text/event-stream")
+	_, err := w.Write([]byte("event: update\n\n"))
+	require.NoError(t, err)
+	assert.Zero(t, w.body.Len())
+}
+
+func TestMetricsUseRoutePattern(t *testing.T) {
+	a := newTestAPI(t, testEngine(t))
+	path := "/api/v1alpha1/domain/untrusted-domain/classes"
+	w := a.do(t, http.MethodGet, path, nil)
+	require.Equal(t, http.StatusNotFound, w.Code)
+
+	cachedRequestAttrs.mu.Lock()
+	defer cachedRequestAttrs.mu.Unlock()
+	_, ok := cachedRequestAttrs.attrs[requestMetricKey{"GET", "/api/v1alpha1/domain/{domain}/classes", "404"}]
+	assert.True(t, ok, "metrics must use the registered pattern")
+	for key := range cachedRequestAttrs.attrs {
+		assert.NotContains(t, key.path, "untrusted-domain", "metric label must not contain URL parameters")
+	}
+}
+
+func TestHTTPRoutingAndAuth(t *testing.T) {
+	sessions := session.NewTokenReviewManager(test.FakeTokenReview(), time.Hour, func() (*engine.Engine, error) {
+		return testEngine(t), nil
+	})
+	mux := http.NewServeMux()
+	_, err := New(sessions, mux)
+	require.NoError(t, err)
+	assert.Contains(t, WebProfile(mux, sessions), "/debug/pprof/")
+	mux.HandleFunc("GET /metrics", func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusOK) })
+	mux.Handle("/mcp", session.Middleware(sessions)(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	})))
+
+	for _, path := range []string{"/api/v1alpha1/domains", "/api/v1alpha1", "/debug/pprof/", "/mcp"} {
+		w := httptest.NewRecorder()
+		mux.ServeHTTP(w, httptest.NewRequest(http.MethodGet, path, nil))
+		assert.Equal(t, http.StatusUnauthorized, w.Code, path)
+		assert.Equal(t, "application/json; charset=utf-8", w.Header().Get("Content-Type"))
+		assert.JSONEq(t, `{"error":"session authentication error: no bearer token in request"}`, w.Body.String())
+	}
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/metrics", nil))
+	assert.Equal(t, http.StatusOK, w.Code, "metrics must remain public")
+
+	for _, tt := range []struct {
+		path   string
+		status int
+	}{
+		{"/api/v1alpha1/domains", http.StatusOK},
+		{"/debug/pprof/", http.StatusOK},
+		{"/mcp", http.StatusNoContent},
+	} {
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodGet, tt.path, nil)
+		req.Header.Set("Authorization", "Bearer token-A")
+		mux.ServeHTTP(w, req)
+		assert.Equal(t, tt.status, w.Code, tt.path, w.Body.String())
+	}
 }
 
 func TestMultiSession_QueryIsolation(t *testing.T) {
@@ -326,12 +473,7 @@ func TestMultiSession_QueryIsolation(t *testing.T) {
 	}
 	sessions := session.NewTokenReviewManager(test.FakeTokenReview(), time.Hour, factory)
 
-	r := ginEngine()
-	r.Use(func(c *gin.Context) {
-		ctx := auth.WithToken(c.Request.Context(), auth.HeaderToken(c.Request.Header))
-		c.Request = c.Request.WithContext(ctx)
-		c.Next()
-	})
+	r := testMux()
 	_, err := New(sessions, r)
 	require.NoError(t, err)
 
@@ -427,6 +569,9 @@ func TestAPI_ShowInConsole(t *testing.T) {
 	resp, err := http.DefaultClient.Do(req)
 	require.NoError(t, err)
 	defer func() { _ = resp.Body.Close() }()
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.Equal(t, "text/event-stream", resp.Header.Get("Content-Type"))
+	assert.Equal(t, "no-cache", resp.Header.Get("Cache-Control"))
 
 	events := make(chan string, 10)
 	go func() {

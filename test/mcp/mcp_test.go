@@ -12,12 +12,10 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/gin-gonic/gin"
 	"github.com/go-logr/logr"
 	"github.com/korrel8r/korrel8r/internal/pkg/test"
 	"github.com/korrel8r/korrel8r/internal/pkg/test/mock"
@@ -216,15 +214,11 @@ func newEngineMany(t *testing.T) *engine.Engine {
 	return e
 }
 
-// newRouter creates a gin router with REST endpoints for the given engine.
-func newRouter(t *testing.T, e *engine.Engine) *gin.Engine {
+// newRouter creates a standard HTTP router with REST endpoints for the given engine.
+func newRouter(t *testing.T, e *engine.Engine) *http.ServeMux {
 	t.Helper()
-	if os.Getenv(gin.EnvGinMode) == "" {
-		gin.SetMode(gin.TestMode)
-	}
 	sessions := session.NewSingleManager(e)
-	router := gin.New()
-	router.Use(session.Middleware(sessions))
+	router := http.NewServeMux()
 	_, err := rest.New(sessions, router)
 	require.NoError(t, err)
 	return router
@@ -358,7 +352,7 @@ func TestCreateGoalsGraph_invalidGoal(t *testing.T) {
 
 // interopFixture holds a REST router and an MCP client that share the same session manager.
 type interopFixture struct {
-	router *gin.Engine
+	router *http.ServeMux
 	mcp    *mcp.ClientSession
 }
 
@@ -644,19 +638,15 @@ func TestInterop_ShowInConsoleToSSE(t *testing.T) {
 // multiSessionFixture provides REST and MCP servers sharing a pool session manager.
 // Each MCP client and REST request carries a bearer token to select its session.
 type multiSessionFixture struct {
-	restRouter *gin.Engine
+	restRouter *http.ServeMux
 	sessions   session.Manager
 	mcpSrvURL  string
 }
 
 func newMultiSessionFixture(t *testing.T) *multiSessionFixture {
 	t.Helper()
-	if os.Getenv(gin.EnvGinMode) == "" {
-		gin.SetMode(gin.TestMode)
-	}
 	sessions := session.NewTokenReviewManager(test.FakeTokenReview(), time.Hour, func() (*engine.Engine, error) { return newEngine(t), nil })
-	router := gin.New()
-	router.Use(session.Middleware(sessions))
+	router := http.NewServeMux()
 	_, err := rest.New(sessions, router)
 	require.NoError(t, err)
 
