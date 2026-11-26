@@ -11,7 +11,6 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/gin-gonic/gin"
 	"github.com/korrel8r/korrel8r/internal/pkg/json"
 	"github.com/korrel8r/korrel8r/internal/pkg/text"
 	"github.com/korrel8r/korrel8r/pkg/api"
@@ -162,6 +161,25 @@ func NewGraph(g *graph.Graph, optsPtr *api.GraphOptions) *api.Graph {
 	return result
 }
 
+func writeJSON(w http.ResponseWriter, status int, value any) {
+	data, err := json.Marshal(value)
+	if err != nil {
+		log.V(1).Error(err, "Cannot marshal REST response")
+		status = http.StatusInternalServerError
+		data = []byte(`{"error":"internal error"}`)
+	}
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.WriteHeader(status)
+	_, _ = w.Write(data)
+}
+
+// flush sends buffered data to the client if the writer supports it.
+func flush(w http.ResponseWriter) {
+	if f, ok := w.(http.Flusher); ok {
+		f.Flush()
+	}
+}
+
 func copyBody(r *http.Request) string {
 	if r.Body == nil {
 		return ""
@@ -172,25 +190,37 @@ func copyBody(r *http.Request) string {
 	return buf.String()
 }
 
-// Response writer that collects the response body for logging.
+// responseWriter records the status and optionally captures the body for detailed logging.
 type responseWriter struct {
-	gin.ResponseWriter
-	*bytes.Buffer
+	http.ResponseWriter
+	body   *bytes.Buffer
+	status int
+	wrote  bool
 }
 
-func newResponseWriter(rw gin.ResponseWriter) *responseWriter {
-	return &responseWriter{ResponseWriter: rw, Buffer: &bytes.Buffer{}}
+// newResponseWriter wraps rw, or returns it unchanged if it is already wrapped,
+// so that chained middleware shares a single wrapper.
+func newResponseWriter(rw http.ResponseWriter) *responseWriter {
+	if w, ok := rw.(*responseWriter); ok {
+		return w
+	}
+	return &responseWriter{ResponseWriter: rw, status: http.StatusOK}
 }
 
-func (w responseWriter) Write(b []byte) (int, error) {
-	w.Buffer.Write(b)
+func (w *responseWriter) WriteHeader(status int) {
+	w.status, w.wrote = status, true
+	w.ResponseWriter.WriteHeader(status)
+}
+
+func (w *responseWriter) Write(b []byte) (int, error) {
+	if w.body != nil && w.Header().Get("Content-Type") != "text/event-stream" {
+		_, _ = w.body.Write(b)
+	}
+	w.wrote = true
 	return w.ResponseWriter.Write(b)
 }
 
-func (w responseWriter) WriteString(s string) (int, error) {
-	w.Buffer.WriteString(s)
-	return w.ResponseWriter.WriteString(s)
-}
+func (w *responseWriter) Flush() { flush(w.ResponseWriter) }
 
 // TraverseStart constructs a traverse.Start from a rest.Start parameter.
 func TraverseStart(e *engine.Engine, start api.Start) (traverse.Start, error) {

@@ -8,11 +8,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
 	"sort"
 	"strings"
 
-	"github.com/gin-gonic/gin"
 	"github.com/go-logr/logr"
 	"github.com/korrel8r/korrel8r/internal/pkg/test/mock"
 	"github.com/korrel8r/korrel8r/pkg/engine"
@@ -37,10 +37,7 @@ func run() error {
 	}
 
 	// Create a REST router and MCP server with in-process transport.
-	if os.Getenv(gin.EnvGinMode) == "" {
-		gin.SetMode(gin.ReleaseMode)
-	}
-	router := gin.New()
+	router := http.NewServeMux()
 	sessions := session.NewSingleManager(e)
 	if _, err := rest.New(sessions, router); err != nil {
 		return fmt.Errorf("creating REST API: %w", err)

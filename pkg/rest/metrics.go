@@ -3,11 +3,11 @@
 package rest
 
 import (
+	"net/http"
 	"strconv"
 	"sync"
 	"time"
 
-	"github.com/gin-gonic/gin"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
@@ -49,19 +49,17 @@ func (a *requestMetricAttrs) get(method, path, status string) metric.Measurement
 
 var cachedRequestAttrs = requestMetricAttrs{attrs: map[requestMetricKey]metric.MeasurementOption{}}
 
-// Metrics returns gin middleware that records HTTP request metrics.
-func Metrics() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		ctx := c.Request.Context()
+// metrics records requests with the registered route pattern, never the raw URL.
+func metrics(path string, next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
 		metricActiveRequests.Add(ctx, 1)
 		start := time.Now()
-
-		c.Next()
-
-		duration := time.Since(start).Seconds()
-		attrs := cachedRequestAttrs.get(c.Request.Method, c.FullPath(), strconv.Itoa(c.Writer.Status()))
+		rw := newResponseWriter(w)
+		next.ServeHTTP(rw, r)
+		attrs := cachedRequestAttrs.get(r.Method, path, strconv.Itoa(rw.status))
 		metricRequests.Add(ctx, 1, attrs)
-		metricRequestDuration.Record(ctx, duration, attrs)
+		metricRequestDuration.Record(ctx, time.Since(start).Seconds(), attrs)
 		metricActiveRequests.Add(ctx, -1)
-	}
+	})
 }

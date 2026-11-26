@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+- Replace Gin with Go's standard `net/http` for REST and MCP HTTP routing, reducing dependencies.
+  This changes some HTTP behaviour:
+  - A request with an unsupported method returns 405 with an `Allow` header, instead of 404.
+  - A URL with a trailing slash, for example `/api/v1alpha1/domains/`, returns 404 instead of redirecting.
+  - `domain not found` errors are no longer duplicated in the error message.
+
 ### Added
 - Discover new Kubernetes custom resource classes when CRDs change and rebuild correlation and status rules for them without restarting.
 

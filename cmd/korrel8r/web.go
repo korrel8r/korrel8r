@@ -12,7 +12,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/gin-gonic/gin"
 	"github.com/korrel8r/korrel8r/internal/pkg/build"
 	"github.com/korrel8r/korrel8r/internal/pkg/json"
 	"github.com/korrel8r/korrel8r/internal/pkg/logging"
@@ -99,34 +98,34 @@ var webCmd = &cobra.Command{
 			sessions = session.NewTokenReviewManager(tokenReview, timeout, factory)
 		}
 
-		if os.Getenv(gin.EnvGinMode) == "" {
-			gin.SetMode(gin.ReleaseMode)
-		}
-		router := gin.New()
-		router.Use(gin.Recovery())
+		router := http.NewServeMux()
 
-		// metrics first, not subject to token-based auth
-		router.GET("/metrics", gin.WrapH(metricsHandler))
+		// Metrics are not subject to token-based auth.
+		router.Handle("GET /metrics", rest.Recover(metricsHandler))
 		log.V(0).Info("Metrics endpoint", "path", "/metrics")
-		router.Use(session.Middleware(sessions))
-
+		var restAPI *rest.API
+		paths := []string{"/metrics"}
 		if *restFlag {
-			must.Must1(rest.New(sessions, router))
+			restAPI = must.Must1(rest.New(sessions, router))
 			log.V(0).Info("REST endpoint", "path", api.BasePath)
 		}
 		if *mcpFlag {
-			mcpRouter := gin.New()
-			mcpRouter.Use(gin.Recovery(), session.Middleware(sessions))
+			// REST routes on mcpRouter already include authentication and instrumentation.
+			mcpRouter := http.NewServeMux()
 			must.Must1(rest.New(sessions, mcpRouter))
 			client := mcp.NewClientForHandler(mcpRouter)
 			mcpSrv := mcp.NewServer(client, build.Version, logging.Log())
 			mcpSrv.AddReceivingMiddleware(mcpmetrics.Metrics)
-			router.Any(mcp.StreamablePath, gin.WrapH(mcpSrv.HTTPHandler()))
+			router.Handle(mcp.StreamablePath, rest.Recover(session.Middleware(sessions)(mcpSrv.HTTPHandler())))
+			paths = append(paths, mcp.StreamablePath)
 			log.V(0).Info("MCP Streamable endpoint", "path", mcp.StreamablePath)
 		}
 		s.Handler = router
 		if *httpprofileFlag {
-			rest.WebProfile(router)
+			paths = append(paths, rest.WebProfile(router, sessions)...)
+		}
+		if restAPI != nil {
+			restAPI.AddPaths(paths...) // List the non-REST endpoints on the home page.
 		}
 
 		done := make(chan struct{})

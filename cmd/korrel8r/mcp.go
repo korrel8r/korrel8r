@@ -4,9 +4,8 @@ package main
 
 import (
 	"context"
-	"os"
+	"net/http"
 
-	"github.com/gin-gonic/gin"
 	"github.com/korrel8r/korrel8r/internal/pkg/build"
 	"github.com/korrel8r/korrel8r/internal/pkg/logging"
 	mcpmetrics "github.com/korrel8r/korrel8r/internal/pkg/mcp"
@@ -34,11 +33,7 @@ For a HTTP streaming server use the 'web' command with the '--mcp' flag.
 		go guard.Run(ctx)
 		e := must.Must1(newEngineWithConfigsAndGuard(configs, guard))
 		sessions := session.NewSingleManager(e)
-		if os.Getenv(gin.EnvGinMode) == "" {
-			gin.SetMode(gin.ReleaseMode)
-		}
-		router := gin.New()
-		router.Use(gin.Recovery(), session.Middleware(sessions))
+		router := http.NewServeMux()
 		must.Must1(rest.New(sessions, router))
 		client := mcp.NewClientForHandler(router)
 		server := mcp.NewServer(client, build.Version, logging.Log())

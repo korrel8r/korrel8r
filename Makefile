@@ -76,7 +76,7 @@ $(GEN_OPENAPI_API): $(OPENAPI_SPEC) $(TOOL_DEPS)
 	$(GO_TOOL) oapi-codegen -generate types,spec -package api -o $@ $<
 
 $(GEN_OPENAPI_IMPL): $(OPENAPI_SPEC) $(TOOL_DEPS)
-	$(GO_TOOL) oapi-codegen -generate gin -package rest -import-mapping "$<:github.com/korrel8r/korrel8r/pkg/api" -alias-types -o $@ $<
+	$(GO_TOOL) oapi-codegen -generate std-http -package rest -import-mapping "$<:github.com/korrel8r/korrel8r/pkg/api" -alias-types -o $@ $<
 
 # Compile quicktemplate files to go.
 $(GEN_QUICKRULES): $(wildcard $(dir $(GEN_QUICKRULES))*.qtpl) $(TOOL_DEPS)

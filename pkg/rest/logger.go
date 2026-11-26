@@ -3,42 +3,35 @@
 package rest
 
 import (
+	"bytes"
+	"net/http"
 	"time"
-
-	"github.com/gin-gonic/gin"
 )
 
-// logger is a Gin handler to log requests for debugging.
-func (a *API) logger(c *gin.Context) {
-	if log.V(3).Enabled() {
+// logger records REST requests at the configured verbosity.
+func (a *API) logger(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !log.V(3).Enabled() {
+			next.ServeHTTP(w, r)
+			return
+		}
 		start := time.Now()
-		detail := log.V(9).Enabled() // Extra detail
-		common := []any{"method", c.Request.Method, "url", c.Request.URL}
-		if sn, _ := a.session(c); sn != nil {
+		common := []any{"method", r.Method, "url", r.URL}
+		if sn, _ := a.session(r); sn != nil {
 			common = append(common, "session", sn.ID)
 		}
-
-		// Log on receiving request
-		values := common
-		var rw *responseWriter
+		detail := log.V(9).Enabled()
+		rw := newResponseWriter(w)
 		if detail {
-			rw = newResponseWriter(c.Writer)
-			c.Writer = rw // Save the response
-			values = append(values, "from", c.Request.RemoteAddr, "body", copyBody(c.Request))
+			rw.body = &bytes.Buffer{}
+			common = append(common, "from", r.RemoteAddr, "body", copyBody(r))
 		}
-		log.V(3).Info("REST Request", values...)
-
-		// Log before sending response
-		defer func() {
-			values := append(common, "status", c.Writer.Status(), "latency", time.Since(start))
-			if len(c.Errors.Errors()) > 0 {
-				values = append(values, "errors", c.Errors.Errors())
-			}
-			if detail {
-				values = append(values, "response", rw.String())
-			}
-			log.V(3).Info("REST Response", values...)
-		}()
-	}
-	c.Next()
+		log.V(3).Info("REST Request", common...)
+		next.ServeHTTP(rw, r)
+		values := append(common, "status", rw.status, "latency", time.Since(start))
+		if detail {
+			values = append(values, "response", rw.body.String())
+		}
+		log.V(3).Info("REST Response", values...)
+	})
 }
