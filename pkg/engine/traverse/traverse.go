@@ -298,6 +298,8 @@ type traverser struct {
 	seen         map[korrel8r.Query]struct{}
 	lineMu       sync.Mutex
 	lines        map[int]*graph.Line // Only lines with completed queries; search-owned.
+	startErrOnce sync.Once
+	startErr     error // First failed initial query; read after workers finish.
 }
 
 func newTraverser(e *engine.Engine, data *graph.Data, scopeLines []int, c *korrel8r.Constraint, maxDepth int) *traverser {
@@ -449,6 +451,9 @@ func (t *traverser) run(ctx context.Context, start Start) (*graph.Graph, error) 
 
 	g := t.buildGraph()
 	cause := context.Cause(ctx)
+	if cause == nil {
+		cause = t.startErr
+	}
 	if cause == nil && t.limitErr != nil {
 		cause = t.limitErr
 	}
@@ -568,9 +573,12 @@ func (t *traverser) handleQuery(ctx context.Context, ql *queryLine) {
 
 	// Execute query into a local slice.
 	var results []korrel8r.Object
-	_ = t.engine.Get(ctx, ql.Query, t.constraint, korrel8r.AppenderFunc(func(objects ...korrel8r.Object) {
+	err := t.engine.Get(ctx, ql.Query, t.constraint, korrel8r.AppenderFunc(func(objects ...korrel8r.Object) {
 		results = append(results, objects...)
 	}))
+	if err != nil && ql.lineID == -1 && ctx.Err() == nil {
+		t.startErrOnce.Do(func() { t.startErr = fmt.Errorf("start query %s: %w", ql.Query, err) })
+	}
 	metricQueries.Add(ctx, 1, t.nodeRouting[goalID].classMetric)
 	if ctx.Err() != nil {
 		return

@@ -20,6 +20,29 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestStartQueryError(t *testing.T) {
+	b := mock.NewBuilder("d")
+	e, err := engine.Build().Rules(b.Rule("ab", "d:a", "d:b", nil)).Stores(b.Store("d", nil)).Engine()
+	require.NoError(t, err)
+	failure := errors.New("backend rejected query")
+	start := Start{Class: b.Class("d:a"), Queries: []korrel8r.Query{mock.NewQueryError(b.Class("d:a"), "bad", failure)}}
+	for _, search := range []struct {
+		name string
+		run  func() (*graph.Graph, error)
+	}{
+		{"neighbors", func() (*graph.Graph, error) { return Neighbors(context.Background(), e, start, 1) }},
+		{"goals", func() (*graph.Graph, error) {
+			return Goals(context.Background(), e, start, []korrel8r.Class{b.Class("d:b")})
+		}},
+	} {
+		t.Run(search.name, func(t *testing.T) {
+			_, err := search.run()
+			require.ErrorContains(t, err, failure.Error())
+			assert.ErrorContains(t, err, "start query")
+		})
+	}
+}
+
 func TestEffectiveLimit(t *testing.T) {
 	assert.Equal(t, 0, effectiveLimit(0, 0))
 	assert.Equal(t, 5, effectiveLimit(5, 0))
